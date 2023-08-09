@@ -45,29 +45,43 @@ std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module);
 
 namespace detail {
 
-struct CollectHostFunctionVisitor : public ir::IRMutator<> {
+// TODO(LiuYang): This Class only just do something on lower_func and other
+// visitor is totally unused, meanwhile, add funtion call optims again but
+// optims was
+//  called just now
+struct CollectHostFunctionVisitor {
   explicit CollectHostFunctionVisitor(const std::string& module_name)
       : host_module_builder(module_name + "_host", common::DefaultHostTarget()),
         device_module_builder(module_name + "_gpu_device",
                               common::DefaultNVGPUTarget()) {}
 
-  std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
-    ir::IRMutator<>::Visit(expr, expr);
+  std::tuple<ir::Module, ir::Module> operator()(const ir::Module& mod) {
+    Visit(mod.As<ir::_Module_>());
     return std::make_tuple(host_module_builder.Build(),
                            device_module_builder.Build());
   }
 
  private:
-  void Visit(const ir::_LoweredFunc_* op, Expr* expr) override {
-    if (op->body.As<ir::Call>()) {
-      host_module_builder.AddFunction(expr->as_lowered_func_ref());
+  void Visit(const ir::_Module_* mod) {
+    for (auto& func : mod->functions) {
+      Visit(func.As<ir::_LoweredFunc_>(), &func);
+    }
+    for (auto& mod : mod->submodules) {
+      Visit(mod.As<ir::_Module_>());
+    }
+  }
+
+  void Visit(const ir::_LoweredFunc_* func, const ir::Expr* expr) {
+    if (func->body.As<ir::Call>()) {
+      host_module_builder.AddFunctionWithoutOptim(expr->as_lowered_func_ref());
     } else {
-      if (!op->cuda_axis_info.valid()) {
+      if (!func->cuda_axis_info.valid()) {
         expr->as_lowered_func_ref()->cuda_axis_info.set_valid(true);
       }
-      auto host_func = CreateHostFunctionGivenDeviceKernel(op);
-      host_module_builder.AddFunction(host_func.as_lowered_func_ref());
-      device_module_builder.AddFunction(
+      auto host_func = CreateHostFunctionGivenDeviceKernel(func);
+      host_module_builder.AddFunctionWithoutOptim(
+          host_func.as_lowered_func_ref());
+      device_module_builder.AddFunctionWithoutOptim(
           CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
     }
   }
@@ -125,7 +139,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     return ir::_LoweredFunc_::Make(func->name, arguments, call_extern_api, {});
   }
 
-  Expr CreateDeviceFunctionGivenDeviceKernel(Expr expr) {
+  Expr CreateDeviceFunctionGivenDeviceKernel(const Expr& expr) {
     auto copied = optim::IRCopy(expr);
     auto* lowered_func = copied.as_lowered_func();
     lowered_func->name = GenDeviceKernelName(lowered_func->name);

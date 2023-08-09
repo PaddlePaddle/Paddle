@@ -16,17 +16,23 @@
 
 #include <memory>
 
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/optimize.h"
 
 namespace cinn {
 namespace ir {
 
-void Module::Builder::AddFunction(ir::LoweredFunc func) {
-  optim::Simplify(&(func->body));
-  optim::SimplifyForLoops(&(func->body));
-  optim::SimplifyBlocks(&(func->body));
-  func->body = optim::Optimize(func->body, module_->target);
+void Module::Builder::AddFunction(const ir::LoweredFunc &func) {
+  auto tmp_func = optim::IRCopy(func);
+  optim::Simplify(&(tmp_func->body));
+  optim::SimplifyForLoops(&(tmp_func->body));
+  optim::SimplifyBlocks(&(tmp_func->body));
+  tmp_func->body = optim::Optimize(tmp_func->body, module_->target);
+  module_->functions.emplace_back(std::move(func));
+}
+
+void Module::Builder::AddFunctionWithoutOptim(const ir::LoweredFunc &func) {
   module_->functions.push_back(func);
 }
 

@@ -41,7 +41,8 @@ class Module : public ir::IrNodeRef {
       module_->target = target;
     }
 
-    void AddFunction(ir::LoweredFunc func);
+    void AddFunction(const ir::LoweredFunc& func);
+    void AddFunctionWithoutOptim(const ir::LoweredFunc& func);
     void AddBuffer(ir::Buffer buffer);
     void Clear();
 

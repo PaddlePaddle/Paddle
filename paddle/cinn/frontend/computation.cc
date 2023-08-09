@@ -113,6 +113,7 @@ std::shared_ptr<CinnComputation> CinnComputation::CompilePaddleModel(
     bool params_combined,
     const CompileOptions &options,
     void *stream) {
+  std::cout << "compile paddle model\n";
   CHECK(input_names.size() == input_shapes.size());
   auto scope = std::make_shared<hlir::framework::Scope>();
   std::unordered_map<std::string, std::vector<int>> input_shape_map;
