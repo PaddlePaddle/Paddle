@@ -1513,22 +1513,18 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
     out->set_dtype(phi::DataType::INT8);
   }
   out->set_layout(x.layout());
-  out->share_lod(x);
 
   residual_out->set_dims(out_dims);
   residual_out->set_dtype(x.dtype());
   residual_out->set_layout(x.layout());
-  residual_out->share_lod(x);
 
   mean->set_dims(phi::make_ddim({rows}));
   mean->set_dtype(DataType::FLOAT32);
   mean->set_layout(x.layout());
-  mean->share_lod(x);
 
   variance->set_dims(phi::make_ddim({rows}));
   variance->set_dtype(DataType::FLOAT32);
   variance->set_layout(x.layout());
-  variance->share_lod(x);
 }
 
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,

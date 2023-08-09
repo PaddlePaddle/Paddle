@@ -491,9 +491,6 @@ inline cudaError_t TryDispatchLayerNormBlockSMemImplBlockSize(
   // RichardWooSJTU.
 
   constexpr int block_size_conf_1 = 128;
-  // constexpr int block_size_conf_2 = 256;
-  // constexpr int block_size_conf_3 = 512;
-  // constexpr int block_size_conf_4 = 1024;
 
   int dev = 0;
   {
@@ -1072,7 +1069,7 @@ void FusedLayerNormKernel(const Context& dev_ctx,
 
 #ifndef PADDLE_WITH_HIP
 #if CUDNN_VERSION_MIN(8, 1, 0)
-PD_REGISTER_KERNEL(fused_layer_norm,
+PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
@@ -1080,7 +1077,7 @@ PD_REGISTER_KERNEL(fused_layer_norm,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
-PD_REGISTER_KERNEL(fused_layer_norm,
+PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
@@ -1088,7 +1085,7 @@ PD_REGISTER_KERNEL(fused_layer_norm,
                    phi::dtype::float16) {}
 #endif  // CUDNN_VERSION_MIN
 #else
-PD_REGISTER_KERNEL(fused_layer_norm,
+PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,

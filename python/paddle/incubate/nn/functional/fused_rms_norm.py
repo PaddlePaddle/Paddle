@@ -15,8 +15,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def fused_rms_norm(
@@ -64,7 +63,7 @@ def fused_rms_norm(
             epsilon = 1e-6
             paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.rms_norm(
             x,
             bias,

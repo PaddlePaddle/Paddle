@@ -1017,13 +1017,13 @@
     data_type : dtype
     backend : place
 
-- op : fused_layer_norm
+- op : fused_bias_residual_layernorm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
   output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : FusedLayerNormInferMeta
   kernel :
-    func : fused_layer_norm
+    func : fused_bias_residual_layernorm
     data_type : x
   optional : bias, residual, norm_weight, norm_bias, residual_out
 

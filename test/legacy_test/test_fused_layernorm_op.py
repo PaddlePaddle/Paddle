@@ -125,9 +125,6 @@ class TestlayernormOp(unittest.TestCase):
         gamma = paddle.to_tensor(gamma_np.astype(np.float32))
         beta = paddle.to_tensor(beta_np.astype(np.float32))
 
-        print("Gamma dtype is: ", gamma.dtype)
-        # raise Exception()
-
         paddle_layernorm_out = paddle.incubate.nn.functional.fused_layer_norm(
             x, gamma, beta, self.epsilon, begin_norm_axis=1
         )
