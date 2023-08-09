@@ -1481,7 +1481,7 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(const std::string& op_type,
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
         result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
       } else if (item == Py_None) {
-        result_list.emplace_back();
+        continue;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -1500,7 +1500,7 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(const std::string& op_type,
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
         result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
       } else if (item == Py_None) {
-        result_list.emplace_back();
+        continue;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
