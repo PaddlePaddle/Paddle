@@ -61,6 +61,7 @@ TEST(TypeConverterTest, paramterless_type) {
                                  ir::Int16Type,
                                  ir::Int32Type,
                                  ir::Int64Type,
+                                 ir::IndexType,
                                  ir::BoolType,
                                  ir::Complex64Type,
                                  ir::Complex128Type>();

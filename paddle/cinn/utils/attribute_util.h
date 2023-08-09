@@ -87,6 +87,7 @@ common::Type ConvertIRType(::ir::Type type) {
   CASE_TYPE(Int16Type, I16)
   CASE_TYPE(Int32Type, I32)
   CASE_TYPE(Int64Type, I64)
+  CASE_TYPE(IndexType, I32)
   CASE_TYPE(BoolType, UI1)
 
   LOG(FATAL) << "unknown ir::Type " << type;
