@@ -405,8 +405,8 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
       IR_NODE_LINK_TO(weights_vars[i], op);
       IR_NODE_LINK_TO(bias_vars[i], op);
     }
-    for (size_t i = 0; i < relu_vars.size(); ++i) {
-      IR_NODE_LINK_TO(op, relu_vars[i]);
+    for (auto& relu_var : relu_vars) {
+      IR_NODE_LINK_TO(op, relu_var);
     }
     IR_NODE_LINK_TO(op, last_out_var);
 
@@ -418,8 +418,8 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
       marked_nodes.erase(weights_vars[i]);
       marked_nodes.erase(bias_vars[i]);
     }
-    for (size_t i = 0; i < relu_vars.size(); ++i) {
-      marked_nodes.erase(relu_vars[i]);
+    for (auto& relu_var : relu_vars) {
+      marked_nodes.erase(relu_var);
     }
     marked_nodes.erase(input_var);
     marked_nodes.erase(last_out_var);

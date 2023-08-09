@@ -15,13 +15,23 @@
   optional : x_max, y_max
 
 - op : add_layernorm_xpu
-  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, int64_t m, int64_t n, float epsilon)
+  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon)
   output : Tensor(out), Tensor(mean), Tensor(variance), Tensor(z_add)
   infer_meta :
     func : AddLayernormXPUInferMeta
   kernel :
     func : add_layernorm_xpu
     data_type : x
+
+- op : conv1d_xpu
+  args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, str padding_algorithm, int dilations, int strides, int groups, int act_type, float act_param)
+  output : Tensor(out), Tensor(out_max)
+  infer_meta :
+    func : Conv1dXPUInferMeta
+  kernel :
+    func : conv1d_xpu
+    data_type : x
+  optional : bias, branch, branch_max, x_max
 
 - op : conv2d_transpose_xpu
   args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format, bool has_bias, bool with_act, str act_type)
@@ -73,7 +83,7 @@
   optional : bias, x_max
 
 - op : fused_bias_act
-  args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", int rows = -1, int cols = -1, float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
+  args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
   output : Tensor(out)
   infer_meta :
     func: FusedBiasActInferMeta
@@ -97,7 +107,7 @@
   support_dygraph_mode : true
 
 - op : fused_linear_param_grad_add
-  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true)
+  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
   output : Tensor(dweight_out), Tensor(dbias_out)
   infer_meta:
     func : FusedLinearParamGradAddInferMeta

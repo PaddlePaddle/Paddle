@@ -79,6 +79,9 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
 ir::OpResult CastPyArg2OpResult(const std::string& op_type,
                                 PyObject* obj,
                                 size_t arg_pos);
+std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(const std::string& op_type,
+                                                     PyObject* obj,
+                                                     size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
@@ -305,6 +308,10 @@ paddle::Place CastPyArg2Place(PyObject* obj,
 paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos);
+
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos);
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 std::shared_ptr<phi::distributed::auto_parallel::TensorDistAttr>

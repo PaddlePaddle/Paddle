@@ -265,7 +265,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
     the average value of both elements in the middle is calculated as the median.
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, float32, float64.
+        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, bfloat16, float32, float64.
         axis (None|int|list|tuple, optional):
             The axis along which to perform median calculations ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
@@ -319,7 +319,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x,
             'X',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            ['int32', 'int64', 'float16', 'float32', 'float64', 'uint16'],
             'nanmedian',
         )
 

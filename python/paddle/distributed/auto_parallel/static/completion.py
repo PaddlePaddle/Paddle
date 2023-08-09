@@ -983,6 +983,9 @@ class Completer:
             op_dist_attr.process_mesh = process_mesh
             original_op_dist_attr = copy.deepcopy(op_dist_attr)
 
+            if serial_op.type == "create_py_reader":
+                continue
+
             for arg_name in serial_op.input_arg_names:
                 serial_tensor = dist_op.get_serial_input(arg_name)
                 if not serial_tensor.is_parameter:

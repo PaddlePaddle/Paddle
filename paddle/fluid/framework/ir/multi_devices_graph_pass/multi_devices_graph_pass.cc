@@ -50,7 +50,7 @@ namespace {
 // all operators. NOTE that even we use a vector here, the operators is
 // unordered.
 typedef std::vector<details::OpHandleBase *> GraphOps;
-const char kGraphOps[] = "ops";
+const char kGraphOps[] = "ops";  // NOLINT
 
 bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
   return PADDLE_GET_CONST(
@@ -473,8 +473,7 @@ void MultiDevSSAGraphBuilderBase::CreateFusedBroadcastOp(
 #endif
   result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
-  for (size_t i = 0; i < places_.size(); ++i) {
-    auto &p = places_[i];
+  for (auto &p : places_) {
     SetCommunicationContext(op_handle, p);
   }
 

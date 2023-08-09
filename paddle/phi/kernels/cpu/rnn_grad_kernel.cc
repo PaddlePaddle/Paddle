@@ -53,7 +53,7 @@ void CreateLstmGrad(phi::funcs::LstmMetaGrad<T>* lstm_grad) {
 
 template <typename T>
 struct GradCell {
-  virtual ~GradCell() {}
+  virtual ~GradCell() = default;
   virtual void operator()(const CPUContext& dev_ctx UNUSED,
                           DenseTensor* gate_tensor UNUSED,
                           DenseTensor* state_tensor UNUSED,
@@ -355,7 +355,7 @@ struct LSTMGradCell : GradCell<T> {
 template <typename T, typename GradCellType>
 struct GradLayer {
   explicit GradLayer(const GradCellType& cell) : cell_(cell) {}
-  virtual ~GradLayer() {}
+  virtual ~GradLayer() = default;
   void run_rnn_grad_function(
       const CPUContext& dev_ctx,
       const DenseTensor* input,
@@ -690,7 +690,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
   // explicit SingleGradLayer(GradCellType& cell) : cell_(cell) {}
   explicit SingleGradLayer(const GradCellType& cell)
       : GradLayer<T, GradCellType>(cell) {}
-  virtual ~SingleGradLayer() {}
+  ~SingleGradLayer() override = default;
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* input,
                   const DenseTensor* output,
@@ -802,7 +802,7 @@ template <typename T, typename GradCellType>
 struct BidirGradLayer : GradLayer<T, GradCellType> {
   explicit BidirGradLayer(const GradCellType& cell)
       : GradLayer<T, GradCellType>(cell) {}
-  virtual ~BidirGradLayer() {}
+  ~BidirGradLayer() override = default;
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* input,
                   const DenseTensor* output,
@@ -1036,8 +1036,8 @@ void RnnGradFunc(const CPUContext& dev_ctx,
   ResetParameterVector(
       weight_list, num_layers, gate_num, is_bidirec, &parameter_lists);
 
-  for (unsigned int i = 0; i < weight_grad_list.size(); ++i) {
-    dev_ctx.Alloc<T>(weight_grad_list[i]);
+  for (auto& weight_grad : weight_grad_list) {
+    dev_ctx.Alloc<T>(weight_grad);
   }
   std::vector<std::vector<DenseTensor>> parameter_lists_grad;
   parameter_lists_grad.reserve(num_layers);
@@ -1120,11 +1120,9 @@ void RnnGradFunc(const CPUContext& dev_ctx,
     hidden_tensor_unbind = Unbind(hidden_tensor);
   }
   // squeeze the hidden first dim
-  for (unsigned int i = 0; i < hidden_tensor_unbind.size(); i++) {
-    hidden_tensor_unbind[i].Resize(
-        phi::slice_ddim(hidden_tensor_unbind[i].dims(),
-                        1,
-                        hidden_tensor_unbind[i].dims().size()));
+  for (auto& hidden_tensor : hidden_tensor_unbind) {
+    hidden_tensor.Resize(
+        phi::slice_ddim(hidden_tensor.dims(), 1, hidden_tensor.dims().size()));
   }
   // add the output tensor to the hidden vector
   DenseTensor tmp;
