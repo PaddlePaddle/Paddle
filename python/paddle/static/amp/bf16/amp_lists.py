@@ -36,7 +36,7 @@ class AutoMixedPrecisionListsBF16:
         .. code-block:: python
         >>> import paddle
         >>> paddle.enable_static()
-        >>> with paddle.static.amp.bf16_guard():
+        >>> with paddle.static.amp.fp16_guard():
         ...     paddle.static.amp.bf16.AutoMixedPrecisionListsBF16(custom_fp32_list={'lstm'})
     """
 
