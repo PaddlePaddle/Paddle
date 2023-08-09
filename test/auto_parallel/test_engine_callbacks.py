@@ -179,6 +179,8 @@ class TestSynchronizedIPSCallback(unittest.TestCase):
       class: SynchronizedIPSMetric
     * This unit test will enable synchronized IPS during model training to
       accurately measure IPS when CPU and GPU are not synchronized.
+      Since enabling this metric will cause significant performance drop,
+      by default this metric is set to OFF.
     '''
 
     def setUp(self):
@@ -200,6 +202,12 @@ class TestSynchronizedIPSCallback(unittest.TestCase):
         engine = auto.Engine(LeNet(), strategy=strategy)
         engine.prepare(inputs_spec, mode="predict")
 
+        synchronized_IPS_configs = {
+            'enabled': True,
+            'sync_every_n_steps': 1,
+            'visualize_sync_time': True,
+        }
+
         cbks = config_callbacks(
             engine=engine,
             batch_size=128,
@@ -209,7 +217,7 @@ class TestSynchronizedIPSCallback(unittest.TestCase):
             verbose=self.verbose,
             metrics=['loss', 'acc'],
             save_dir=self.save_dir,
-            enable_synchronized_IPS=True,  # enable synchronized IPS here
+            synchronized_IPS_configs=synchronized_IPS_configs,  # enable synchronized IPS here
         )
         cbks.on_begin('train')
 
