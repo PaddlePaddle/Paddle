@@ -125,8 +125,10 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
-  operator_base_ =
-      ir::BuildOperatorBase(op, value_2_var_name, yaml_info_parser);
+  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
+
+  operator_base_ = ir::BuildOperatorBase(
+      op, value_2_var_name, yaml_info_parser, variable_2_var_name, inner_scope);
   paddle::framework::VariableValueMap in_map;
   paddle::framework::VariableValueMap out_map;
   auto dev_ctx = phi::DeviceContextPool::Instance().Get(
@@ -153,7 +155,6 @@ LegacyKernelInstruction::LegacyKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
   InitInputsOutputsIds(
       op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";

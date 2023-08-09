@@ -12,275 +12,279 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
+
+import numpy as np
 
 import paddle
 
-# class TestNewIr(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.enable_static()
-#         place = (
-#             paddle.CUDAPlace(0)
-#             if paddle.is_compiled_with_cuda()
-#             else paddle.CPUPlace()
-#         )
-#         exe = paddle.static.Executor(place)
-
-#         main_program = paddle.static.Program()
-#         new_scope = paddle.static.Scope()
-#         with paddle.static.scope_guard(new_scope):
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.ones([2, 2], dtype="float32")
-#                 y = paddle.ones([2, 2], dtype="float32")
-
-#                 z = x + y
-#             out = exe.run(main_program, {}, fetch_list=[z.name])
-
-#         gold_res = np.ones([2, 2], dtype="float32") * 2
-
-#         np.testing.assert_array_equal(out[0], gold_res)
+paddle.enable_static()
 
 
-# class TestCombineOp(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.enable_static()
-#         place = (
-#             paddle.CUDAPlace(0)
-#             if paddle.is_compiled_with_cuda()
-#             else paddle.CPUPlace()
-#         )
+class TestNewIr(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        exe = paddle.static.Executor(place)
 
-#         exe = paddle.static.Executor(place)
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones([2, 2], dtype="float32")
+                y = paddle.ones([2, 2], dtype="float32")
 
-#         main_program = paddle.static.Program()
-#         new_scope = paddle.static.Scope()
-#         with paddle.static.scope_guard(new_scope):
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.ones([2, 2], dtype="float32")
-#                 y = paddle.ones([2, 2], dtype="float32")
+                z = x + y
+            out = exe.run(main_program, {}, fetch_list=[z.name])
 
-#                 z = paddle.linalg.multi_dot([x, y])
-#             out = exe.run(main_program, {}, fetch_list=[z.name])
+        gold_res = np.ones([2, 2], dtype="float32") * 2
 
-#         gold_res = np.ones([2, 2], dtype="float32") * 2
-
-#         np.testing.assert_array_equal(out[0], gold_res)
-
-
-# class TestFeedOp(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.enable_static()
-#         place = (
-#             paddle.CUDAPlace(0)
-#             if paddle.is_compiled_with_cuda()
-#             else paddle.CPUPlace()
-#         )
-#         exe = paddle.static.Executor(place)
-
-#         main_program = paddle.static.Program()
-#         new_scope = paddle.static.Scope()
-#         with paddle.static.scope_guard(new_scope):
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.static.data("x", [2, 2], dtype="float32")
-#                 y = paddle.static.data("y", [2, 2], dtype="float32")
-
-#                 z = x + y
-
-#             np_a = np.random.rand(2, 2).astype("float32")
-#             np_b = np.random.rand(2, 2).astype("float32")
-#             out = exe.run(
-#                 main_program,
-#                 feed={"x": np_a, "y": np_b},
-#                 fetch_list=[z.name],
-#             )
-
-#         gold_res = np_a + np_b
-
-#         np.testing.assert_array_equal(out[0], gold_res)
+        np.testing.assert_array_equal(out[0], gold_res)
 
 
-# class TestSelectedRows(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         # TODO(phlrain): support selected rows in GPU
-#         paddle.enable_static()
-#         place = paddle.CPUPlace()
-#         exe = paddle.static.Executor(place)
+class TestCombineOp(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
 
-#         main_program = paddle.static.Program()
-#         new_scope = paddle.static.Scope()
-#         with paddle.static.scope_guard(new_scope):
-#             with paddle.static.program_guard(main_program):
-#                 w = paddle.uniform([10, 10], dtype="float32")
-#                 w.stop_gradient = False
-#                 id = paddle.ones([2], dtype="int32")
-#                 t = paddle.nn.functional.embedding(id, w, sparse=True)
-#                 loss = paddle.mean(t)
-#                 paddle.static.gradients(loss, w)
+        exe = paddle.static.Executor(place)
 
-#             out = exe.run(
-#                 main_program,
-#                 fetch_list=[loss.name],
-#             )
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones([2, 2], dtype="float32")
+                y = paddle.ones([2, 2], dtype="float32")
 
+                z = paddle.linalg.multi_dot([x, y])
+            out = exe.run(main_program, {}, fetch_list=[z.name])
 
-# class TestAddGradOp(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.enable_static()
-#         place = (
-#             paddle.CUDAPlace(0)
-#             if paddle.is_compiled_with_cuda()
-#             else paddle.CPUPlace()
-#         )
-#         exe = paddle.static.Executor(place)
+        gold_res = np.ones([2, 2], dtype="float32") * 2
 
-#         main_program = paddle.static.Program()
-#         new_scope = paddle.static.Scope()
-#         with paddle.static.scope_guard(new_scope):
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.static.data("x", [2, 2], dtype="float32")
-#                 y = paddle.static.data("y", [2, 2], dtype="float32")
-#                 x.stop_gradient = False
-
-#                 z = x * y
-
-#                 paddle.static.gradients(z, x)
-
-#             np_a = np.random.rand(2, 2).astype("float32")
-#             np_b = np.random.rand(2, 2).astype("float32")
-#             out = exe.run(
-#                 main_program,
-#                 feed={"x": np_a, "y": np_b},
-#                 fetch_list=[z.name],
-#             )
-
-#         gold_res = np_a * np_b
-
-#         np.testing.assert_array_equal(out[0], gold_res)
+        np.testing.assert_array_equal(out[0], gold_res)
 
 
-# class TestNewIrDygraph(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.disable_static()
+class TestFeedOp(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        exe = paddle.static.Executor(place)
 
-#         @paddle.jit.to_static
-#         def func(x, y):
-#             return x + y
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data("x", [2, 2], dtype="float32")
+                y = paddle.static.data("y", [2, 2], dtype="float32")
 
-#         x = paddle.ones([2, 2], dtype='float32')
-#         y = paddle.ones([2, 2], dtype='float32')
-#         z = func(x, y)
+                z = x + y
 
-#         gold_res = np.ones([2, 2], dtype="float32") * 2
-#         np.testing.assert_array_equal(z.numpy(), gold_res)
+            np_a = np.random.rand(2, 2).astype("float32")
+            np_b = np.random.rand(2, 2).astype("float32")
+            out = exe.run(
+                main_program,
+                feed={"x": np_a, "y": np_b},
+                fetch_list=[z.name],
+            )
 
+        gold_res = np_a + np_b
 
-# class TestNewIrBackwardDygraph(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.disable_static()
-#         build_strategy = paddle.static.BuildStrategy()
-#         build_strategy.enable_inplace = False
-
-#         @paddle.jit.to_static(build_strategy=build_strategy)
-#         def func(x, y):
-#             return x * y
-
-#         x = paddle.ones([2, 2], dtype='float32')
-#         y = paddle.ones([2, 2], dtype='float32')
-#         x.stop_gradient = False
-#         y.stop_gradient = False
-#         z = func(x, y)
-#         loss = z.mean()
-#         loss.backward()
-#         gold_res = np.ones([2, 2], dtype="float32")
-#         np.testing.assert_array_equal(z.numpy(), gold_res)
-
-#         gold_res = np.ones([2, 2], dtype="float32") * 0.25
-#         np.testing.assert_array_equal(x.gradient(), gold_res)
-#         np.testing.assert_array_equal(y.gradient(), gold_res)
+        np.testing.assert_array_equal(out[0], gold_res)
 
 
-# class TestNewIrReshapeBackwardDygraph(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.disable_static()
-#         build_strategy = paddle.static.BuildStrategy()
-#         build_strategy.enable_inplace = False
+class TestSelectedRows(unittest.TestCase):
+    def test_with_new_ir(self):
+        # TODO(phlrain): support selected rows in GPU
+        paddle.enable_static()
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
 
-#         @paddle.jit.to_static(build_strategy=build_strategy)
-#         def func(x, y):
-#             x = x.reshape([-1, 2, 2])
-#             y = y.reshape([-1, 2, 2])
-#             return x * y
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                w = paddle.uniform([10, 10], dtype="float32")
+                w.stop_gradient = False
+                id = paddle.ones([2], dtype="int32")
+                t = paddle.nn.functional.embedding(id, w, sparse=True)
+                loss = paddle.mean(t)
+                paddle.static.gradients(loss, w)
 
-#         x = paddle.ones([2, 2], dtype='float32')
-#         y = paddle.ones([2, 2], dtype='float32')
-#         x.stop_gradient = False
-#         y.stop_gradient = False
-#         z = func(x, y)
-#         loss = z.mean()
-#         loss.backward()
-#         gold_res = np.ones([1, 2, 2], dtype="float32")
-
-#         np.testing.assert_array_equal(z.numpy(), gold_res)
-
-#         gold_res = np.ones([2, 2], dtype="float32") * 0.25
-#         np.testing.assert_array_equal(x.gradient(), gold_res)
-#         np.testing.assert_array_equal(y.gradient(), gold_res)
+            out = exe.run(
+                main_program,
+                fetch_list=[loss.name],
+            )
 
 
-# class TestSplitOp(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.enable_static()
-#         place = (
-#             paddle.CUDAPlace(0)
-#             if paddle.is_compiled_with_cuda()
-#             else paddle.CPUPlace()
-#         )
+class TestAddGradOp(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        exe = paddle.static.Executor(place)
 
-#         exe = paddle.static.Executor(place)
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data("x", [2, 2], dtype="float32")
+                y = paddle.static.data("y", [2, 2], dtype="float32")
+                x.stop_gradient = False
 
-#         main_program = paddle.static.Program()
-#         new_scope = paddle.static.Scope()
-#         with paddle.static.scope_guard(new_scope):
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.static.data("x", [6, 2], dtype="float32")
-#                 out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=0)
+                z = x * y
 
-#             np_a = np.random.rand(6, 2).astype("float32")
-#             out = exe.run(
-#                 main_program,
-#                 feed={"x": np_a},
-#                 fetch_list=[out0.name],
-#             )
+                paddle.static.gradients(z, x)
 
-#             np.testing.assert_array_equal(out[0], np_a[0:2])
+            np_a = np.random.rand(2, 2).astype("float32")
+            np_b = np.random.rand(2, 2).astype("float32")
+            out = exe.run(
+                main_program,
+                feed={"x": np_a, "y": np_b},
+                fetch_list=[z.name],
+            )
+
+        gold_res = np_a * np_b
+
+        np.testing.assert_array_equal(out[0], gold_res)
 
 
-# class TestNewIrPrint(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.enable_static()
-#         place = (
-#             paddle.CUDAPlace(0)
-#             if paddle.is_compiled_with_cuda()
-#             else paddle.CPUPlace()
-#         )
-#         exe = paddle.static.Executor(place)
+class TestNewIrDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
 
-#         main_program = paddle.static.Program()
-#         new_scope = paddle.static.Scope()
-#         with paddle.static.scope_guard(new_scope):
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.ones([2, 2], dtype="float32")
-#                 y = paddle.ones([2, 2], dtype="float32")
+        @paddle.jit.to_static
+        def func(x, y):
+            return x + y
 
-#                 z = x + y
-#                 z = paddle.static.Print(z)
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        z = func(x, y)
 
-#             out = exe.run(main_program, {}, fetch_list=[z.name])
+        gold_res = np.ones([2, 2], dtype="float32") * 2
+        np.testing.assert_array_equal(z.numpy(), gold_res)
 
-#         gold_res = np.ones([2, 2], dtype="float32") * 2
 
-#         np.testing.assert_array_equal(out[0], gold_res)
+class TestNewIrBackwardDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.enable_inplace = False
+
+        @paddle.jit.to_static(build_strategy=build_strategy)
+        def func(x, y):
+            return x * y
+
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
+        z = func(x, y)
+        loss = z.mean()
+        loss.backward()
+        gold_res = np.ones([2, 2], dtype="float32")
+        np.testing.assert_array_equal(z.numpy(), gold_res)
+
+        gold_res = np.ones([2, 2], dtype="float32") * 0.25
+        np.testing.assert_array_equal(x.gradient(), gold_res)
+        np.testing.assert_array_equal(y.gradient(), gold_res)
+
+
+class TestNewIrReshapeBackwardDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.enable_inplace = False
+
+        @paddle.jit.to_static(build_strategy=build_strategy)
+        def func(x, y):
+            x = x.reshape([-1, 2, 2])
+            y = y.reshape([-1, 2, 2])
+            return x * y
+
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
+        z = func(x, y)
+        loss = z.mean()
+        loss.backward()
+        gold_res = np.ones([1, 2, 2], dtype="float32")
+
+        np.testing.assert_array_equal(z.numpy(), gold_res)
+
+        gold_res = np.ones([2, 2], dtype="float32") * 0.25
+        np.testing.assert_array_equal(x.gradient(), gold_res)
+        np.testing.assert_array_equal(y.gradient(), gold_res)
+
+
+class TestSplitOp(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+        exe = paddle.static.Executor(place)
+
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data("x", [6, 2], dtype="float32")
+                out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=0)
+
+            np_a = np.random.rand(6, 2).astype("float32")
+            out = exe.run(
+                main_program,
+                feed={"x": np_a},
+                fetch_list=[out0.name],
+            )
+
+            np.testing.assert_array_equal(out[0], np_a[0:2])
+
+
+class TestNewIrPrint(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        exe = paddle.static.Executor(place)
+
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones([2, 2], dtype="float32")
+                y = paddle.ones([2, 2], dtype="float32")
+
+                z = x + y
+                z = paddle.static.Print(z)
+
+            out = exe.run(main_program, {}, fetch_list=[z.name])
+
+        gold_res = np.ones([2, 2], dtype="float32") * 2
+
+        np.testing.assert_array_equal(out[0], gold_res)
 
 
 class TestJitSaveOp(unittest.TestCase):
@@ -312,8 +316,8 @@ class TestJitSaveOp(unittest.TestCase):
         ] = paddle.fluid.io.load_inference_model(
             "./example_model",
             executor=exe,
-            model_filename="./example_model/linear" + ".pdmodel",
-            params_filename="./example_model/linear" + ".pdiparams",
+            model_filename="./example_model/linear.pdmodel",
+            params_filename="./example_model/linear.pdiparams",
         )
 
 
