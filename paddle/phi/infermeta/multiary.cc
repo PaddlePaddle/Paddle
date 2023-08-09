@@ -1259,6 +1259,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dweight,
                                       const MetaTensor& dbias,
                                       bool multi_precision,
+                                      bool has_bias,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out) {
   const auto dtype = dout.dtype();
@@ -1302,7 +1303,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
           ? DataType::FLOAT32
           : dtype;
 
-  if (dbias_out) {
+  if (has_bias && dbias_out) {
     dbias_out->set_dims({weight_dims[1]});
     dbias_out->set_dtype(multi_precision ? mp_dtype : dtype);
   }
