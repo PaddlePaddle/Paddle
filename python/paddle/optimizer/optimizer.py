@@ -1237,8 +1237,6 @@ class Optimizer:
 
         """
 
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
-
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)

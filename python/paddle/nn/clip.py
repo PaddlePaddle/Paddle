@@ -716,15 +716,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
             if getattr(p, 'need_clip', True) is False:
                 params_and_grads.append((p, g))
                 continue
-            # TODO(wangxi): use inplace elementwise_mul
             if need_clip:
                 clip_input = (
                     clip_var.astype(g.dtype)
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
-                new_grad = paddle.multiply(g, clip_input)
-                params_and_grads.append((p, new_grad))
+                g.multiply_(clip_input)
+                params_and_grads.append((p, g))
             else:
                 params_and_grads.append((p, g))
 
