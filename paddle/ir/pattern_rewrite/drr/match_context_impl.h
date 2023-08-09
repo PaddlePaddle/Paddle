@@ -18,7 +18,6 @@
 #include <unordered_map>
 
 #include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/pattern_rewrite/drr/api/operation_interface.h"
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_tensor.h"
@@ -49,7 +48,7 @@ class MatchContextImpl final {
     return *tensor_map_.at(tensor_name);
   }
 
-  const OperationInterface& Operation(const std::string& op_name) const {
+  const IrOperation& Operation(const std::string& op_name) const {
     return *operation_map_.at(op_name);
   }
 

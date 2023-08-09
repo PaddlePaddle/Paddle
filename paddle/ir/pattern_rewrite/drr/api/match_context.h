@@ -18,7 +18,7 @@
 #include <string>
 
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
-#include "paddle/ir/pattern_rewrite/drr/api/operation_interface.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 
 namespace ir {
 namespace drr {
@@ -32,7 +32,7 @@ class MatchContext final {
 
   const TensorInterface& Tensor(const std::string& tensor_name) const;
 
-  const OperationInterface& Operation(const std::string& op_name) const;
+  const IrOperation& Operation(const std::string& op_name) const;
 
   template <typename T>
   T Attr(const std::string& attr_name) const;

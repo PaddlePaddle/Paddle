@@ -15,16 +15,15 @@
 #pragma once
 
 #include "paddle/ir/core/operation.h"
-#include "paddle/ir/pattern_rewrite/drr/api/operation_interface.h"
 
 namespace ir {
 namespace drr {
 
-class IrOperation : public OperationInterface {
+class IrOperation {
  public:
   explicit IrOperation(ir::Operation* op) : op_(op) {}
 
-  ir::Operation* Operation() const override { return op_; }
+  ir::Operation* get() const { return op_; }
 
  private:
   ir::Operation* op_;

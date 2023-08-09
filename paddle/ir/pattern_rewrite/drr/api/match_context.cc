@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/pattern_rewrite/drr/api/match_context.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 #include "paddle/ir/pattern_rewrite/drr/match_context_impl.h"
 
 namespace ir {
@@ -26,7 +27,7 @@ const TensorInterface& MatchContext::Tensor(
   return impl_->Tensor(tensor_name);
 }
 
-const OperationInterface& MatchContext::Operation(
+const IrOperation& MatchContext::Operation(
     const std::string& op_name) const {
   return impl_->Operation(op_name);
 }
