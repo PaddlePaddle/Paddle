@@ -147,7 +147,7 @@ scalar_type_maps = {
     'bool': 'ir::BoolAttribute',
 }
 
-no_need_gen_ops = {'add_n'}
+_NO_NEED_GEN_OPS = {'add_n'}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -727,7 +727,7 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
-            if op_name in no_need_gen_ops:
+            if op_name in _NO_NEED_GEN_OPS:
                 continue
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name

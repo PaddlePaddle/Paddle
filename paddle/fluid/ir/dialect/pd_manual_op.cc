@@ -23,11 +23,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/backward.h"
-#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
-#include "paddle/phi/infermeta/nullary.h"
-#include "paddle/phi/infermeta/ternary.h"
-#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace dialect {
@@ -105,7 +101,7 @@ void AddNOp::Build(ir::Builder &builder,             // NOLINT
   (void)x;
 
   std::vector<phi::DenseTensor> vec_dense_x;
-  for (size_t i = 0; i < static_cast<size_t>(x.size()); i++) {
+  for (size_t i = 0; i < x.size(); i++) {
     vec_dense_x.push_back(phi::DenseTensor(
         std::make_unique<paddle::experimental::DefaultAllocator>(
             paddle::platform::CPUPlace())

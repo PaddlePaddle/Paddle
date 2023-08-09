@@ -24,7 +24,7 @@ namespace paddle {
 namespace pybind {
 PyObject *static_api_add_n(PyObject *self, PyObject *args, PyObject *kwargs) {
   try {
-    VLOG(6) << "Add mean op into program";
+    VLOG(6) << "Add add_n op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
     // Get OpResult from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
