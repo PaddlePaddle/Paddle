@@ -22,31 +22,31 @@
 namespace ir {
 namespace drr {
 
-const drr::OpCall& PatternGraph::AddOpCall(
-    const std::shared_ptr<drr::OpCall>& op_call) {
+const drr::OpCall &
+PatternGraph::AddOpCall(const std::shared_ptr<drr::OpCall> &op_call) {
   owned_op_call_.push_back(op_call);
-  for (const auto& input : op_call->inputs()) {
-    const auto& tensor_id = input.lock()->id();
+  for (const auto &input : op_call->inputs()) {
+    const auto &tensor_id = input->id();
     CHECK(id2owned_tensor_.count(tensor_id));
-    id2owned_tensor_.at(tensor_id)->AddConsumer(op_call);
+    id2owned_tensor_.at(tensor_id)->AddConsumer(op_call).get();
 
-    if (input.lock()->producer().use_count() == 0) {
+    if (input->producer().use_count() == 0) {
       input_tensors_.insert(tensor_id);
     }
     if (output_tensors_.find(tensor_id) != output_tensors_.end()) {
       output_tensors_.erase(tensor_id);
     }
   }
-  for (auto& output : op_call->outputs()) {
-    const auto& out_tensor_id = output.lock()->id();
+  for (auto &output : op_call->outputs()) {
+    const auto &out_tensor_id = output->id();
     CHECK(id2owned_tensor_.count(out_tensor_id));
-    id2owned_tensor_[output.lock()->id()]->set_producer(op_call);
+    id2owned_tensor_[output->id()]->set_producer(op_call);
   }
   return *owned_op_call_.back();
 }
 
-const drr::Tensor& PatternGraph::AddTensor(
-    const std::shared_ptr<drr::Tensor>& tensor) {
+const drr::Tensor &
+PatternGraph::AddTensor(const std::shared_ptr<drr::Tensor> &tensor) {
   if (id2owned_tensor_.find(tensor->id()) == id2owned_tensor_.end()) {
     id2owned_tensor_[tensor->id()] = tensor;
     output_tensors_.insert(tensor->id());
@@ -54,16 +54,16 @@ const drr::Tensor& PatternGraph::AddTensor(
   return *id2owned_tensor_[tensor->id()];
 }
 
-drr::Tensor& PatternGraph::AddTmpTensor(
-    const std::shared_ptr<drr::Tensor>& tensor) {
+drr::Tensor &
+PatternGraph::AddTmpTensor(const std::shared_ptr<drr::Tensor> &tensor) {
   CHECK(id2owned_tensor_.find(tensor->id()) == id2owned_tensor_.end());
   id2owned_tensor_[tensor->id()] = tensor;
   output_tensors_.insert(tensor->id());
   return *id2owned_tensor_[tensor->id()];
 }
 
-void PatternGraph::UpdateTmpTensor(const id_type& tmp_tensor_id,
-                                   const id_type& new_tensor_id) {
+void PatternGraph::UpdateTmpTensor(const id_type &tmp_tensor_id,
+                                   const id_type &new_tensor_id) {
   if (input_tensors_.count(tmp_tensor_id)) {
     input_tensors_.erase(tmp_tensor_id);
     input_tensors_.insert(new_tensor_id);
@@ -83,34 +83,34 @@ void PatternGraph::UpdateTmpTensor(const id_type& tmp_tensor_id,
 
 void PatternGraph::Print() const {
   std::cout << "All Tensors:" << std::endl;
-  for (const auto& kv : id2owned_tensor_) {
+  for (const auto &kv : id2owned_tensor_) {
     std::cout << "  " << kv.first;
   }
   std::cout << "\n" << std::endl;
 
   std::cout << "Input Tensors:" << std::endl;
-  for (const auto& tensor_id : input_tensors_) {
+  for (const auto &tensor_id : input_tensors_) {
     std::cout << "  " << tensor_id;
   }
   std::cout << "\n" << std::endl;
 
   std::cout << "Output Tensors:" << std::endl;
-  for (const auto& tensor_id : output_tensors_) {
+  for (const auto &tensor_id : output_tensors_) {
     std::cout << "  " << tensor_id;
   }
   std::cout << "\n" << std::endl;
 
   std::cout << "OpCalls:" << std::endl;
-  for (const auto& op_call : owned_op_call_) {
+  for (const auto &op_call : owned_op_call_) {
     std::cout << "  " << op_call->name() << " : ";
     std::cout << "inputs[ ";
-    for (const auto& input : op_call->inputs()) {
+    for (const auto &input : op_call->inputs()) {
       std::cout << input.lock()->id() << " ";
     }
     std::cout << "], ";
 
     std::cout << "outputs[ ";
-    for (const auto& output : op_call->outputs()) {
+    for (const auto &output : op_call->outputs()) {
       std::cout << output.lock()->id() << " ";
     }
     std::cout << "]" << std::endl;
@@ -118,9 +118,9 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
-OpCall* SourcePatternGraph::AnchorNode() const {
-  return id2owned_tensor_.at(*output_tensors_.begin())->producer();
+const OpCall *SourcePatternGraph::AnchorNode() const {
+  return id2owned_tensor_.at(*output_tensors_.begin())->producer().get();
 }
 
-}  // namespace drr
-}  // namespace ir
+} // namespace drr
+} // namespace ir
