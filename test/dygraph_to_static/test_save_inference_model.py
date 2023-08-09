@@ -64,8 +64,8 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
             x = fluid.dygraph.to_variable(x_data)
             layer = SimpleFcLayer(fc_size)
-            adam = fluid.optimizer.SGD(
-                learning_rate=0.1, parameter_list=layer.parameters()
+            adam = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=layer.parameters()
             )
 
             for i in range(5):

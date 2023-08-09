@@ -16,9 +16,19 @@
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/builtin_op.h"
 
 namespace paddle {
 namespace dialect {
+ir::OpResult add_n(std::vector<ir::OpResult> x) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(x);
+  paddle::dialect::AddNOp add_n_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::AddNOp>(
+          combine_op.out());
+  return add_n_op.out();
+}
+
 ir::OpResult mean(ir::OpResult x, std::vector<int64_t> axis, bool keepdim) {
   paddle::dialect::MeanOp mean_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::MeanOp>(
@@ -51,6 +61,24 @@ ir::OpResult full(std::vector<int64_t> shape,
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::FullOp>(
           shape, value, dtype, place);
   return full_op.out();
+}
+
+ir::OpResult tanh_grad(ir::OpResult out, ir::OpResult grad_out) {
+  paddle::dialect::TanhGradOp tanh_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::TanhGradOp>(
+          out, grad_out);
+  return tanh_grad_op.result(0);
+}
+
+ir::OpResult mean_grad(ir::OpResult x,
+                       ir::OpResult out_grad,
+                       std::vector<int64_t> axis,
+                       bool keepdim,
+                       bool reduce_all) {
+  paddle::dialect::MeanGradOp mean_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::MeanGradOp>(
+          x, out_grad, axis, keepdim, reduce_all);
+  return mean_grad_op.result(0);
 }
 
 }  // namespace dialect
