@@ -2399,7 +2399,7 @@ class Model:
                 >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> params_info = model.summary()
-                >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
+                >>> # doctest: +SKIP
                 >>> print(params_info)
                 ---------------------------------------------------------------------------
                 Layer (type)       Input Shape          Output Shape         Param #

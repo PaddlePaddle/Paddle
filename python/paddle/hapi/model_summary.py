@@ -78,7 +78,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet = LeNet()
 
             >>> params_info = paddle.summary(lenet, (1, 1, 28, 28))
-            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
+            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
@@ -119,7 +119,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> params_info = paddle.summary(lenet_multi_input,
             ...                              [(1, 1, 28, 28), (1, 400)],
             ...                              dtypes=['float32', 'float32'])
-            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
+            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
@@ -158,7 +158,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet_list_input = LeNetListInput()
             >>> input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
             >>> params_info = paddle.summary(lenet_list_input, input=input_data)
-            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
+            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
@@ -198,7 +198,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
             ...               'x2': paddle.rand([1, 400])}
             >>> params_info = paddle.summary(lenet_dict_input, input=input_data)
-            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
+            >>> # doctest: +SKIP
             >>> print(params_info)
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
