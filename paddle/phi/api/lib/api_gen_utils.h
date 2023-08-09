@@ -131,8 +131,5 @@ void TransStride(phi::DeviceContext* dev_ctx,
 
 phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
 
-// std::vector<phi::distributed::DistTensor*>
-// SetKernelDistOutput(std::vector<Tensor*>* out);
-
 }  // namespace experimental
 }  // namespace paddle

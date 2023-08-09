@@ -28,6 +28,17 @@ from api_gen import (
 # Code Gen Templates #
 ######################
 
+API_IMPL_TEMPLATE = """
+PADDLE_API {} {}({}) {{
+  // Kernel Key Construction{}
+  // Kernel Dispatch Body{}
+}}
+"""
+DIPATCH_END_GUARD_TEMPLATE = """
+PADDLE_THROW(phi::errors::Unimplemented(
+          "The kernel of ({}) for input tensors is unimplemented, please check the type of input tensors."));
+"""
+
 # TODO(chenweihang): add profle function code later
 # TODO(chenweihang): add view support later
 MAIN_DIST_BRANCH_TEMPLATE = """
@@ -54,7 +65,7 @@ API_OUT_CREATION_TEMPLATE = """
     {} api_output{};
 """
 INPLACE_API_OUT_CREATION_TEMPLATE = """
-    {} api_output{{}};
+    {} api_output{{{}}};
 """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output);
@@ -375,6 +386,7 @@ class DistForwardAPI(ForwardAPI):
     def generate_reshard_input_code(self) -> str:
         return INPUT_RESHARD_TEMPLATE.format()
 
+    # override BaseAPI's method
     def generate_dense_input(
         self,
         input_name,
@@ -601,16 +613,25 @@ class DistForwardAPI(ForwardAPI):
             self.generate_return_code(),
         )
 
+    def check_argument_whether_support_auto_parallel(self):
+        for name in self.inputs['names']:
+            if self.inputs['input_info'][name] != "const Tensor&":
+                return False
+        for out_type in self.outputs['types']:
+            if out_type != "Tensor":
+                return False
+        return True
+
     # override BaseAPI's method
-    def gene_base_api_code(self, inplace_flag=False, for_auto_parallel=False):
+    def gene_base_api_code(self, inplace_flag=False):
+        # init status
         self.inplace_flag = inplace_flag
+        self.dist_output_args = []
+        self.dense_output_args = []
+        # generate api body
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
-        api_code = f"""
-PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
-{self.gene_kernel_select()}
-"""
 
         if len(self.kernel['func']) > 1:
             kernel_dispatch_code = ''
@@ -618,14 +639,13 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
                 kernel_dispatch_code += self.gene_dispatch_code(
                     kernel_name, inplace_flag
                 )
-            return (
-                api_code
-                + f"""
-{kernel_dispatch_code}
-  PADDLE_THROW(phi::errors::Unimplemented(
-          "The kernel of ({self.api}) for input tensors is unimplemented, please check the type of input tensors."));
-}}
-"""
+            return API_IMPL_TEMPLATE.format(
+                self.get_return_type(inplace_flag),
+                api_func_name,
+                self.get_define_args(inplace_flag),
+                self.gene_kernel_select(),
+                kernel_dispatch_code
+                + DIPATCH_END_GUARD_TEMPLATE.format(self.api),
             )
         else:
             # auto parallel branch, all apis contains this branch default
@@ -634,20 +654,23 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
             # 3. doesn't support view api
             # 4. only for general forward and backward
             # 5. only support single tensor input and output
+            dist_branch_code = ""
             if (
-                for_auto_parallel is True
-                and len(self.inputs['names']) > 0
+                len(self.inputs['names']) > 0
                 and len(self.view_map) == 0
                 and self.check_argument_whether_support_auto_parallel()
             ):
-                api_code += self.generate_auto_paralel_branch()
+                dist_branch_code = self.generate_auto_paralel_branch()
 
-            return (
-                api_code
-                + self.gen_kernel_code(self.kernel['func'][0], '', inplace_flag)
-                + """
-}
-"""
+            return API_IMPL_TEMPLATE.format(
+                self.get_return_type(inplace_flag),
+                api_func_name,
+                self.get_define_args(inplace_flag),
+                self.gene_kernel_select(),
+                dist_branch_code
+                + self.gen_kernel_code(
+                    self.kernel['func'][0], '', inplace_flag
+                ),
             )
 
 
@@ -696,13 +719,9 @@ def generate_api(
 
         header_file.write(dist_foward_api.gene_api_declaration())
         if is_fused_ops_yaml is True:
-            source_file.write(
-                dist_foward_api.gene_api_code(for_auto_parallel=False)
-            )
+            source_file.write(dist_foward_api.gene_api_code())
         else:
-            source_file.write(
-                dist_foward_api.gene_api_code(for_auto_parallel=True)
-            )
+            source_file.write(dist_foward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

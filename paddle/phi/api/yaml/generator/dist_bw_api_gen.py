@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -99,7 +99,6 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        for_auto_parallel=False,
     ):
         return BackwardAPI.gene_output(
             self,
@@ -114,7 +113,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         return BackwardAPI.get_return_type(self)
 
     # override BaseAPI's method
-    def gene_return_code(self, for_auto_parallel=False):
+    def gene_return_code(self):
         return ""
 
     # override BaseAPI's method
@@ -224,11 +223,9 @@ def generate_backward_api(
         dist_bw_api = DistBackwardAPI(bw_api)
         header_file.write(dist_bw_api.gene_api_declaration())
         if is_fused_backward_yaml is True:
-            source_file.write(
-                dist_bw_api.gene_api_code(for_auto_parallel=False)
-            )
+            source_file.write(dist_bw_api.gene_api_code())
         else:
-            source_file.write(dist_bw_api.gene_api_code(for_auto_parallel=True))
+            source_file.write(dist_bw_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
