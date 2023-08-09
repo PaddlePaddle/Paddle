@@ -53,7 +53,7 @@ class TestTensorCopyToCpuOnDefaultCPU(unittest.TestCase):
         self.assertTrue(static_place.is_cpu_place())
 
 
-class TestTensorCopyToCPUOnDefaultCPU(unittest.TestCase):
+class TestTensorCopyToCUDAOnDefaultCPU(unittest.TestCase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         x1 = paddle.ones([1, 2, 3])
@@ -64,6 +64,12 @@ class TestTensorCopyToCPUOnDefaultCPU(unittest.TestCase):
         if not paddle.fluid.is_compiled_with_cuda():
             return
 
+        """
+        Note(liudongxue01): If the following asserts fail to run,
+        please check the workaround logic for memcpy OP
+        whether is still taking effect or not.
+        See ConstructDeviceContext() in interpreter_util.cc.
+        """
         paddle.fluid.framework._set_expected_place(paddle.CPUPlace())
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False

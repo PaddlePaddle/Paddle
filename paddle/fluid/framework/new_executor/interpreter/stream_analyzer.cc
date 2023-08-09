@@ -172,39 +172,6 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
           ->dev_context();
     }
 #endif
-  } else {
-    // NOTE(liudongxue01):
-    // The following code aims to fixup the memcpy kernel which does not handle
-    // some rare case. The case is:
-    //  1. The default place in the current execution context is not CUDAPlace,
-    //  such as CPUPlace,
-    //  2. The dst_place_type is 1 which means CUDAPlace,
-    //  3. The expected result place is CUDAPlace but the actual result is
-    //  CPUPlace.
-    // When the default place is CPUPlace, we call the tensor.cuda() would
-    // simply hit such case.
-    //
-    // Q: Why we do not add such logic in the memcpy kernel?
-    // A: (1) To fixup the memcpy kernel, we need to construct a CUDAPlace() and
-    //    corresponding DeviceContext instance which used by the phi::Copy(...)
-    //    api to perform the real memcpy action. (2) We should not access the
-    //    singleton of the DeviceContextPool object in the PHI framework which
-    //    is designed as a standalone module and all context data should passed
-    //    into the kernel API through arguments. (3) So we have no way to
-    //    construct a CUDAPlace() in the memcpy kernel and then pass it
-    //     to the phi::Copy(...) api.
-    if (op_type == "memcpy") {
-      int dst_place_type = op->Attr<int>("dst_place_type");
-      if (dst_place_type == 1) {  // 1 : CUDAPlace
-        dev_ctx = platform::DeviceContextPool::Instance().Get(
-            paddle::DefaultGPUPlace());
-        VLOG(6) << "Change the device context for memcpy OP: ("
-                << op_func_node.dev_ctx_->type_info().name() << ") -> ("
-                << dev_ctx->type_info().name() << ")";
-        SetDeviceCommContext(op.get(), dev_ctx);
-        return dev_ctx;
-      }
-    }
   }
 
   if (op != nullptr) {
