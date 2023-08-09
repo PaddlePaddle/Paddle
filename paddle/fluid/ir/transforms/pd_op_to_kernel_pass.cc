@@ -61,7 +61,8 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
 
 const std::unordered_set<std::string> LegacyOpList = {
     "pd.fused_softmax_mask_upper_triangle",
-    "pd.fused_softmax_mask_upper_triangle_grad"};
+    "pd.fused_softmax_mask_upper_triangle_grad",
+    "pd.load_combine"};
 
 bool NeedFallBackCpu(const ir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -387,6 +388,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
+    if (op_item->name() == "pd.load_combine") {
+      kernel_key.set_dtype(phi::DataType::FLOAT32);
+    }
     if (NeedFallBackCpu((op_item), kernel_fn_str, kernel_key)) {
       kernel_key.set_backend(phi::Backend::CPU);
     }
