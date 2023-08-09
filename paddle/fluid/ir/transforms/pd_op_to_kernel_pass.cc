@@ -364,14 +364,66 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
   std::unordered_map<ir::Operation*, ir::Operation*> map_op_pair;
   std::unordered_map<ir::Value, ir::OpResult> map_value_pair;
 
-  std::string op_name = paddle::dialect::PhiKernelOp::name();
-
-  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  std::string phi_kernel_op_name = paddle::dialect::PhiKernelOp::name();
+  ir::OpInfo phi_kernel_op_info = ctx->GetRegisteredOpInfo(phi_kernel_op_name);
 
   for (auto op_item : *block) {
     VLOG(6) << "op name " << op_item->name();
+    if (op_item->dialect()->name() == "builtin") {
+      // Copy op output type
+      std::vector<ir::Type> op_output_types;
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          op_output_types.push_back(op_item->result(i).type());
+        }
+      }
+      // Copy op attributes
+      std::unordered_map<std::string, ir::Attribute> op_attribute;
+      for (auto& map_item : op_item->attributes()) {
+        op_attribute.emplace(map_item.first, map_item.second);
+      }
+      // Copy op inputs
+      std::vector<ir::OpResult> vec_inputs;
+      if (op_item->num_operands() > 0) {
+        for (size_t i = 0; i < op_item->num_operands(); ++i) {
+          auto cur_in = op_item->operand_source(i);
+          if (!cur_in) {
+            vec_inputs.emplace_back();
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(map_value_pair.count(cur_in),
+                            true,
+                            phi::errors::PreconditionNotMet(
+                                "[%d]'s input of [%s] op MUST in map pair",
+                                i,
+                                op_item->name()));
+          auto new_in = map_value_pair.at(cur_in);
+          vec_inputs.push_back(new_in);
+        }
+      }
+      // Get op info
+      ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+      // Generate new op
+      ir::Operation* op = ir::Operation::Create(
+          vec_inputs, op_attribute, op_output_types, op_info);
+      program->block()->push_back(op);
+
+      map_op_pair[op_item] = op;
+      // only deal with single output
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          map_value_pair[op_item->result(i)] = op->result(i);
+        }
+      }
+
+      VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+      continue;
+    }
+
+    // Lower from PaddleDialect to KernelDialect
     paddle::dialect::OpYamlInfoInterface op_info_interface =
         op_item->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+
     std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
     if (op_info_interface) {
       op_info_parser =
@@ -399,7 +451,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     // need update new kernel key layout and data tyep
 
     std::vector<ir::Type> op_output_types;
-
     if (op_item->num_results() > 0) {
       auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
           kernel_fn_str, kernel_key);
@@ -484,7 +535,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
-
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -563,7 +613,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     ir::Operation* op = ir::Operation::Create(
-        vec_inputs, op_attribute, op_output_types, op_info);
+        vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
 
     map_op_pair[op_item] = op;
 
@@ -593,8 +643,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           phi::TransToPhiPlace(shadow_key.backend()),
           op_item->result(0).type().dyn_cast<dialect::DenseTensorType>());
 
-      ir::Operation* shadow_op =
-          ir::Operation::Create({op->result(0)}, attr_map, {out_type}, op_info);
+      ir::Operation* shadow_op = ir::Operation::Create(
+          {op->result(0)}, attr_map, {out_type}, phi_kernel_op_info);
 
       map_op_pair[op_item] = shadow_op;
       program->block()->push_back(shadow_op);
