@@ -51,6 +51,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     if (align_mode == 0) {
       layer->setResizeMode(nvinfer1::ResizeMode::kLINEAR);
     }
+#if IS_TRT_VERSION_GE(8000)
     if (align_corners == true) {
       layer->setCoordinateTransformation(
           nvinfer1::ResizeCoordinateTransformation::kALIGN_CORNERS);
@@ -58,6 +59,10 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       layer->setCoordinateTransformation(
           nvinfer1::ResizeCoordinateTransformation::kHALF_PIXEL);
     }
+#endif
+#if !IS_TRT_VERSION_GE(8000)
+    layer->setAlignCorners(align_corners);
+#endif
     auto in_dim = input->getDimensions();
     float scale_h = -1.f;
     float scale_w = -1.f;
