@@ -205,37 +205,37 @@ def collect_operator_stats(program=None, print_subblocks=False):
 
      .. code-block:: python
 
-        import paddle
+        >>> import paddle
+        >>> paddle.enable_static()
 
-        paddle.enable_static()
+        >>> class SimpleConvNet(paddle.nn.Layer):
+        ...     def __init__(self):
+        ...         super().__init__()
+        ...         self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+        ...         self.linear = paddle.nn.Linear(in_features=26, out_features=10)
+        ... 
+        ...     def forward(self, x):
+        ...         out = self.conv(x)
+        ...         out = paddle.nn.functional.relu(out)
+        ...         out = self.linear(out)
+        ...         out = paddle.nn.functional.softmax(out)
+        ...         return out
 
-        class SimpleConvNet(paddle.nn.Layer):
-            def __init__(self):
-                super().__init__()
-                self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-                self.linear = paddle.nn.Linear(in_features=26, out_features=10)
-
-            def forward(self, x):
-                out = self.conv(x)
-                out = paddle.nn.functional.relu(out)
-                out = self.linear(out)
-                out = paddle.nn.functional.softmax(out)
-                return out
-
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main_program, startup_program):
-                model = SimpleConvNet()
-                x = paddle.static.data(
-                    name='input', shape=[None, 1, 28, 28], dtype='float32'
-                )
-                out = model(x)
-                loss = paddle.mean(out)
-                optimizer = paddle.optimizer.AdamW()
-                optimizer = paddle.static.amp.decorate(optimizer)
-                optimizer.minimize(loss)
-        paddle.static.amp.debugging.collect_operator_stats(main_program)
+        >>> main_program = paddle.static.Program()
+        >>> startup_program = paddle.static.Program()
+        >>> with paddle.utils.unique_name.guard():
+        ...     with paddle.static.program_guard(main_program, startup_program):
+        ...         model = SimpleConvNet()
+        ...         x = paddle.static.data(
+        ...             name='input', shape=[None, 1, 28, 28], dtype='float32'
+        ...         )
+        ...         out = model(x)
+        ...         loss = paddle.mean(out)
+        ...         optimizer = paddle.optimizer.AdamW()
+        ...         optimizer = paddle.static.amp.decorate(optimizer)
+        ...         optimizer.minimize(loss)
+        >>> paddle.static.amp.debugging.collect_operator_stats(main_program)
+        
         # <------------------------------------------------ op list of all blocks ------------------------------------------------->
         # <------------------------------------------------------- op list -------------------------------------------------------->
         # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->

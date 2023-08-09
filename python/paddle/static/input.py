@@ -52,38 +52,46 @@ def data(name, shape, dtype=None, lod_level=0):
     Examples:
         .. code-block:: python
 
-          import numpy as np
-          import paddle
-          paddle.enable_static()
+            >>> import numpy as np
+            >>> import paddle
+            >>> paddle.enable_static()
 
-          # Creates a variable with fixed size [3, 2, 1]
-          # User can only feed data of the same shape to x
-          # the dtype is not set, so it will set "float32" by
-          # paddle.get_default_dtype(). You can use paddle.get_default_dtype() to
-          # change the global dtype
-          x = paddle.static.data(name='x', shape=[3, 2, 1])
+            # Creates a variable with fixed size [3, 2, 1]
+            # User can only feed data of the same shape to x
+            # the dtype is not set, so it will set "float32" by
+            # paddle.get_default_dtype(). You can use paddle.get_default_dtype() to
+            # change the global dtype
+            >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
 
-          # Creates a variable with changeable batch size -1.
-          # Users can feed data of any batch size into y,
-          # but size of each data sample has to be [2, 1]
-          y = paddle.static.data(name='y', shape=[-1, 2, 1], dtype='float32')
+            # Creates a variable with changeable batch size -1.
+            # Users can feed data of any batch size into y,
+            # but size of each data sample has to be [2, 1]
+            >>> y = paddle.static.data(name='y', shape=[-1, 2, 1], dtype='float32')
 
-          z = x + y
+            >>> z = x + y
 
-          # In this example, we will feed x and y with np-ndarray "1"
-          # and fetch z, like implementing "1 + 1 = 2" in PaddlePaddle
-          feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+            # In this example, we will feed x and y with np-ndarray "1"
+            # and fetch z, like implementing "1 + 1 = 2" in PaddlePaddle
+            >>> feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
 
-          exe = paddle.static.Executor(paddle.framework.CPUPlace())
-          out = exe.run(paddle.static.default_main_program(),
-                        feed={
-                            'x': feed_data,
-                            'y': feed_data
-                        },
-                        fetch_list=[z.name])
+            >>> exe = paddle.static.Executor(paddle.framework.CPUPlace())
+            >>> out = exe.run(paddle.static.default_main_program(),
+            ...             feed={
+            ...                 'x': feed_data,
+            ...                 'y': feed_data
+            ...             },
+            ...             fetch_list=[z.name])
 
-          # np-ndarray of shape=[3, 2, 1], dtype=float32, whose elements are 2
-          print(out)
+            # np-ndarray of shape=[3, 2, 1], dtype=float32, whose elements are 2
+            >>> print(out)
+            [array([[[2.],
+                    [2.]],
+
+                [[2.],
+                    [2.]],
+
+                [[2.],
+                    [2.]]], dtype=float32)]
 
     """
     helper = LayerHelper('data', **locals())
@@ -141,13 +149,17 @@ class InputSpec:
     Examples:
         .. code-block:: python
 
-            from paddle.static import InputSpec
+            >>> import paddle
+            >>> from paddle.static import InputSpec
 
-            input = InputSpec([None, 784], 'float32', 'x')
-            label = InputSpec([None, 1], 'int64', 'label')
+            >>> input = InputSpec([None, 784], 'float32', 'x')
+            >>> label = InputSpec([None, 1], 'int64', 'label')
 
-            print(input)  # InputSpec(shape=(-1, 784), dtype=paddle.float32, name=x)
-            print(label)  # InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label)
+            >>> print(input)
+            InputSpec(shape=(-1, 784), dtype=paddle.float32, name=x, stop_gradient=False)
+
+            >>> print(label)
+            InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label, stop_gradient=False)
     """
 
     def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
@@ -187,14 +199,15 @@ class InputSpec:
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.static import InputSpec
+                >>> import paddle
+                >>> from paddle.static import InputSpec
 
-                paddle.disable_static()
+                >>> paddle.disable_static()
 
-                x = paddle.ones([2, 2], dtype="float32")
-                x_spec = InputSpec.from_tensor(x, name='x')
-                print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
+                >>> x = paddle.ones([2, 2], dtype="float32")
+                >>> x_spec = InputSpec.from_tensor(x, name='x')
+                >>> print(x_spec)
+                InputSpec(shape=(2, 2), dtype=paddle.float32, name=x, stop_gradient=False)
 
         """
         if isinstance(tensor, (Variable, core.eager.Tensor)):
@@ -220,12 +233,13 @@ class InputSpec:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                from paddle.static import InputSpec
+                >>> import numpy as np
+                >>> from paddle.static import InputSpec
 
-                x = np.ones([2, 2], np.float32)
-                x_spec = InputSpec.from_numpy(x, name='x')
-                print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
+                >>> x = np.ones([2, 2], np.float32)
+                >>> x_spec = InputSpec.from_numpy(x, name='x')
+                >>> print(x_spec)
+                InputSpec(shape=(2, 2), dtype=paddle.float32, name=x, stop_gradient=False)
 
         """
         return cls(ndarray.shape, ndarray.dtype, name)
@@ -243,11 +257,12 @@ class InputSpec:
         Examples:
             .. code-block:: python
 
-                from paddle.static import InputSpec
+                >>> from paddle.static import InputSpec
 
-                x_spec = InputSpec(shape=[64], dtype='float32', name='x')
-                x_spec.batch(4)
-                print(x_spec) # InputSpec(shape=(4, 64), dtype=paddle.float32, name=x)
+                >>> x_spec = InputSpec(shape=[64], dtype='float32', name='x')
+                >>> x_spec.batch(4)
+                >>> print(x_spec)
+                InputSpec(shape=(4, 64), dtype=paddle.float32, name=x, stop_gradient=False)
 
         """
         if isinstance(batch_size, (list, tuple)):
@@ -280,11 +295,12 @@ class InputSpec:
         Examples:
             .. code-block:: python
 
-                from paddle.static import InputSpec
+                >>> from paddle.static import InputSpec
 
-                x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
-                x_spec.unbatch()
-                print(x_spec) # InputSpec(shape=(64,), dtype=paddle.float32, name=x)
+                >>> x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
+                >>> x_spec.unbatch()
+                >>> print(x_spec) # InputSpec(shape=(64,), dtype=paddle.float32, name=x)
+                InputSpec(shape=(64,), dtype=paddle.float32, name=x, stop_gradient=False)
 
         """
         if len(self.shape) == 0:
