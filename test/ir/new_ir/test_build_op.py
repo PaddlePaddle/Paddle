@@ -43,7 +43,6 @@ class TestBuildOp(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
-        print(newir_program)
         self.assertEqual(out.get_defining_op().name(), "pd.mean")
         self.assertEqual(
             out.get_defining_op()
@@ -65,7 +64,6 @@ class TestBuildOp2(unittest.TestCase):
             out1 = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
             out = paddle.add_n([out1, out2])
-        print(newir_program)
         self.assertEqual(out.get_defining_op().name(), "pd.add_n")
         self.assertEqual(
             out.get_defining_op()
