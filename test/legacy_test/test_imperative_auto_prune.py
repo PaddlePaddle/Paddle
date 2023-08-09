@@ -283,9 +283,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             linear2_origin = linear2.weight.numpy()
             linear2.weight.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.003,
-                parameter_list=(linear.parameters() + linear2.parameters()),
+                parameters=(linear.parameters() + linear2.parameters()),
             )
             optimizer.minimize(out2)
             np.testing.assert_array_equal(
@@ -311,9 +311,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             linear2_origin = linear2.weight.numpy()
             out2.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.003,
-                parameter_list=(linear.parameters() + linear2.parameters()),
+                parameters=(linear.parameters() + linear2.parameters()),
             )
             optimizer.minimize(out2)
             np.testing.assert_array_equal(
@@ -359,8 +359,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
         with fluid.dygraph.guard(place):
             model = MyLayer(size, vocab_size, size)
             grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
-            optimizer = fluid.optimizer.AdamOptimizer(
-                0.001, parameter_list=model.parameters(), grad_clip=grad_clip
+            optimizer = paddle.optimizer.Adam(
+                0.001, parameters=model.parameters(), grad_clip=grad_clip
             )
             indices = fluid.dygraph.to_variable(indices)
             embed = fluid.dygraph.to_variable(embed)
@@ -378,8 +378,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
         with fluid.dygraph.guard(place):
             model = MyLayer2(size, vocab_size, size)
             grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
-            optimizer = fluid.optimizer.AdamOptimizer(
-                0.001, parameter_list=model.parameters(), grad_clip=grad_clip
+            optimizer = paddle.optimizer.Adam(
+                0.001, parameters=model.parameters(), grad_clip=grad_clip
             )
 
             indices = fluid.dygraph.to_variable(indices)

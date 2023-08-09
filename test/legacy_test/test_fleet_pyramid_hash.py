@@ -72,7 +72,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
         fleet.init(role)
 
         strategy = StrategyFactory.create_geo_strategy(5)
-        optimizer = fluid.optimizer.SGD(0.1)
+        optimizer = paddle.optimizer.SGD(0.1)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(cost)
 

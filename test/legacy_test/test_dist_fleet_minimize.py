@@ -254,7 +254,7 @@ class TestPSMinimize(unittest.TestCase):
         sparse_config['embedding'] = self.gen_sparse_config()
         strategy.fleet_desc_configs = sparse_config
 
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
 
