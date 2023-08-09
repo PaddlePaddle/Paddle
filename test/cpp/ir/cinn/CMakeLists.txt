@@ -13,3 +13,14 @@ if(WITH_TESTING AND WITH_CINN)
   set_tests_properties(test_graph_compiler_new_ir PROPERTIES LABELS
                                                              "RUN_TYPE=CINN")
 endif()
+
+cc_test_old(
+  ir_op_fusion_test
+  SRCS
+  ir_op_fusion_test.cc
+  DEPS
+  fusion_merge_pass
+  pd_dialect
+  ir
+  gtest
+  glog)

@@ -13,3 +13,8 @@ cc_library(
   SRCS constant_folding_pass.cc
   DEPS standalone_executor phi pd_op_to_kernel_pass transform_general_functions
        ir)
+
+cc_library(
+  fusion_merge_pass
+  SRCS fusion_merge_pass.cc
+  DEPS phi_utils pd_interface pd_trait ir)
