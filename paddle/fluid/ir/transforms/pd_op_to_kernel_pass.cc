@@ -374,6 +374,43 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       std::vector<ir::Type> op_output_types;
       if (op_item->num_results() > 0) {
         for (size_t i = 0; i < op_item->num_results(); ++i) {
+          auto result_type = op_item->result(i).type();
+          if (!result_type) {
+            op_output_types.push_back(result_type);
+          } else if (result_type.isa<dialect::DenseTensorType>()) {
+            op_output_types.push_back(result_type);
+          } else if (result_type.isa<ir::VectorType>()) {
+            std::vector<ir::Type> vec_inner_types;
+            auto base_types = result_type.dyn_cast<ir::VectorType>().data();
+            for (auto& base_type : base_types) {
+              if (base_type) {
+                if (base_type.isa<dialect::DenseTensorType>()) {
+                  vec_inner_types.push_back(base_type);
+                } else {
+                  PADDLE_THROW(phi::errors::Unimplemented(
+                      "only support dense tensor in vector type for now"));
+                }
+              } else {
+                // NOTE(phlrain), kernel not support a nullptr in output
+                ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+                phi::DDim dims = {};
+                phi::DataLayout data_layout = phi::DataLayout::NCHW;
+                phi::LoD lod = {{}};
+                size_t offset = 0;
+                auto dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
+                    ctx, fp32_dtype, dims, data_layout, lod, offset);
+                vec_inner_types.push_back(dense_tensor_dtype);
+              }
+            }
+            ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
+            op_output_types.push_back(t1);
+          } else if (result_type.isa<dialect::SelectedRowsType>()) {
+            op_output_types.emplace_back(result_type);
+          } else {
+            PADDLE_THROW(phi::errors::Unimplemented(
+                "Result type only support DenseTensorType and VectorType"));
+          }
+
           op_output_types.push_back(op_item->result(i).type());
         }
       }
