@@ -218,7 +218,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         model = SE_ResNeXt(layers=50)
         out = model.net(input=image, class_dim=102)
         cost = paddle.nn.functional.cross_entropy(
-            input=out, label=label, reduction='none', use_softmax=False
+            input=out, label=label, reduction='none', use_softmax=True
         )
 
         avg_cost = paddle.mean(x=cost)
