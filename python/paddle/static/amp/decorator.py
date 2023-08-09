@@ -865,14 +865,14 @@ def decorate(  # noqa: F811
 
         >>> import paddle
         >>> paddle.enable_static()
-        
+
         >>> # doctest: +REQUIRES(env:GPU)
         >>> class SimpleConvNet(paddle.nn.Layer):
         ...     def __init__(self):
         ...         super().__init__()
         ...         self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
         ...         self.linear = paddle.nn.Linear(in_features=26, out_features=10)
-        ... 
+        ...
         ...     def forward(self, x):
         ...         out = self.conv(x)
         ...         out = paddle.nn.functional.relu(out)
@@ -898,7 +898,7 @@ def decorate(  # noqa: F811
         ...     place = paddle.CUDAPlace(0)
         ...     exe = paddle.static.Executor(place)
         ...     exe.run(startup_program)
-        ... 
+        ...
         ...     # Call `amp_init` after FP32 parameters initialization, such as `exe.run(startup_program)`,
         ...     # to convert FP32 parameters to low precision FP16 / BF16.
         ...     optimizer.amp_init(place, scope=paddle.static.global_scope())

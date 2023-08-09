@@ -211,7 +211,7 @@ def auc(
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
-            
+
             >>> paddle.seed(2023)
             >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")

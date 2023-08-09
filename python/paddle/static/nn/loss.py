@@ -104,7 +104,7 @@ def nce(
             >>> for i in range(window_size):
             ...     if i == label_word:
             ...         continue
-            ... 
+            ...
             ...     emb = paddle.static.nn.embedding(input=words[i], size=[dict_size, 32],
             ...                         param_attr='embed', is_sparse=True)
             ...     embs.append(emb)

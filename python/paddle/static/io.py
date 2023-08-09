@@ -978,7 +978,7 @@ def save_vars(
 
             # all variables whose names contain "fc " are saved.
             >>> paddle.static.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog, vars=None, predicate = name_has_fc)
-            
+
 
     """
     save_to_memory = False
@@ -1139,7 +1139,7 @@ def load_vars(
             ...                    vars=None, predicate=name_has_fc)
             >>> paddle.static.io.load_vars(executor=exe, dirname=param_path, main_program=main_prog,
             ...                    vars=None, predicate=name_has_fc)
-                            
+
             # Load All variables in the `main_program` whose name includes "fc".
             # And all the variables are supposed to be saved in separate files.
 

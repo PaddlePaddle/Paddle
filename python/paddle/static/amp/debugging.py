@@ -213,7 +213,7 @@ def collect_operator_stats(program=None, print_subblocks=False):
         ...         super().__init__()
         ...         self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
         ...         self.linear = paddle.nn.Linear(in_features=26, out_features=10)
-        ... 
+        ...
         ...     def forward(self, x):
         ...         out = self.conv(x)
         ...         out = paddle.nn.functional.relu(out)
@@ -235,7 +235,7 @@ def collect_operator_stats(program=None, print_subblocks=False):
         ...         optimizer = paddle.static.amp.decorate(optimizer)
         ...         optimizer.minimize(loss)
         >>> paddle.static.amp.debugging.collect_operator_stats(main_program)
-        
+
         # <------------------------------------------------ op list of all blocks ------------------------------------------------->
         # <------------------------------------------------------- op list -------------------------------------------------------->
         # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
