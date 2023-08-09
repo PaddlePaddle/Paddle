@@ -66,7 +66,7 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(
@@ -178,7 +178,7 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(
@@ -289,7 +289,7 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(

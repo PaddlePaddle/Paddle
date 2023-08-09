@@ -448,10 +448,10 @@ def optimizer(cfg, parameter_list):
     lr_decay = cfg.learning_rate_decay
     l2_weight_decay = cfg.l2_weight_decay
     lr = [base_lr, base_lr * lr_decay]
-    optimizer = fluid.optimizer.Adam(
-        fluid.layers.piecewise_decay(boundaries=bd, values=lr),
-        parameter_list=parameter_list,
-        regularization=paddle.regularizer.L2Decay(coeff=l2_weight_decay),
+    optimizer = paddle.optimizer.Adam(
+        paddle.optimizer.lr.PiecewiseDecay(boundaries=bd, values=lr),
+        parameters=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(coeff=l2_weight_decay),
     )
     return optimizer
 

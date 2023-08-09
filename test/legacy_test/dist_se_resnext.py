@@ -238,12 +238,12 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
         if not use_dgc:
-            optimizer = fluid.optimizer.Momentum(
-                learning_rate=fluid.layers.piecewise_decay(
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=paddle.optimizer.lr.PiecewiseDecay(
                     boundaries=bd, values=lr
                 ),
                 momentum=0.9,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
         else:
             optimizer = (
