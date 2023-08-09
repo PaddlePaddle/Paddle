@@ -117,6 +117,8 @@ void OpCompatibleMap::InitOpCompatibleMap() {
                                              OpCompatibleType::possible};
   op_compatible_map_["conditional_block_infer"] = {"1.6.0",
                                                    OpCompatibleType::possible};
+  op_compatible_map_["static_pylayer"] = {"1.6.0",
+                                            OpCompatibleType::possible};
   op_compatible_map_["conv2d"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["conv2d_transpose"] = {"1.6.0",
                                             OpCompatibleType::possible};

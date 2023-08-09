@@ -19,6 +19,7 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
+#include "paddle/fluid/operators/controlflow/static_pylayer_op.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/string/string_helper.h"
 

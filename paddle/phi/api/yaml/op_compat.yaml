@@ -537,6 +537,11 @@
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
 
+- op : static_pylayer
+  backward : static_pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : conj
   inputs :
     x : X

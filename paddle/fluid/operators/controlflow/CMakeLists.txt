@@ -3,12 +3,16 @@ if(WITH_UNITY_BUILD)
   # Load Unity Build rules for operators in paddle/fluid/operators/controlflow.
   include(unity_build_rule.cmake)
 endif()
-register_operators(EXCLUDES conditional_block_op DEPS naive_executor
+register_operators(EXCLUDES conditional_block_op static_pylayer_op DEPS naive_executor
                    standalone_executor)
 
 cc_library(
   conditional_block_op
   SRCS conditional_block_op.cc
+  DEPS executor standalone_executor)
+cc_library(
+  static_pylayer_op
+  SRCS static_pylayer_op.cc
   DEPS executor standalone_executor)
 cc_library(
   op_variant
@@ -17,7 +21,7 @@ cc_library(
 cc_library(
   conditional_block_op_helper
   SRCS conditional_block_op_helper.cc
-  DEPS op_variant operator conditional_block_op)
+  DEPS op_variant operator conditional_block_op static_pylayer_op)
 cc_library(
   recurrent_op_helper
   SRCS recurrent_op_helper.cc
@@ -28,9 +32,9 @@ cc_library(
   DEPS op_variant operator)
 
 if(WITH_UNITY_BUILD)
-  target_link_libraries(paddle_operators_controlflow_unity conditional_block_op)
+  target_link_libraries(paddle_operators_controlflow_unity conditional_block_op static_pylayer_op)
 else()
-  target_link_libraries(conditional_block_infer_op conditional_block_op)
+  target_link_libraries(conditional_block_infer_op conditional_block_op static_pylayer_op)
 endif()
 
 file(APPEND ${pybind_file}
