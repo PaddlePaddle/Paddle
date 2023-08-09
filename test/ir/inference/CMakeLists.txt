@@ -83,8 +83,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(${target} PROPERTIES TIMEOUT 300)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
-  set_tests_properties(test_trt_convert_yolo_box PROPERTIES TIMEOUT 3600)
-  set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 4200)
 endif()
 
 file(
@@ -195,7 +193,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
       test_trt_pool3d_op
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT 45)
   endif()
-  set_tests_properties(test_trt_convert_yolo_box PROPERTIES TIMEOUT 3600)
   set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
                                                                       100)
