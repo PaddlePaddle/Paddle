@@ -1389,6 +1389,7 @@ class Model:
                 >>> from paddle.vision.datasets import MNIST
 
                 >>> dynamic = True  # False
+                >>> # If use static graph, do not set
                 >>> if not dynamic:
                 ...     paddle.enable_static()
 

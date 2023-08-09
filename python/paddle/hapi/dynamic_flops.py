@@ -45,7 +45,6 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
             >>> import paddle
             >>> import paddle.nn as nn
 
@@ -86,6 +85,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             ...                      [1, 1, 28, 28],
             ...                      custom_ops= {nn.LeakyReLU: count_leaky_relu},
             ...                      print_detail=True)
+            >>> # doctest: +SKIP('Cause previous model running, Layer couldn't run from beginning.')
             >>> print(FLOPs)
             <class 'paddle.nn.layer.conv.Conv2D'>'s flops has been counted
             <class 'paddle.nn.layer.activation.ReLU'>'s flops has been counted
@@ -106,6 +106,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             +--------------+-----------------+-----------------+--------+--------+
             Total Flops: 347560     Total Params: 61610
             347560
+            >>> # doctest: -SKIP
     """
     if isinstance(net, nn.Layer):
         # If net is a dy2stat model, net.forward is StaticFunction instance,
