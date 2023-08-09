@@ -16,7 +16,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/framework/ir/do_trans_filter_pass.h"
+#include "paddle/fluid/framework/ir/conv2d_trans_filter_dilations_nxn_to_1x1_pass.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -49,23 +49,22 @@ struct Conv2dLargeDilationsPattern : public PatternBase {
 Conv2dLargeDilationsPattern::Conv2dLargeDilationsPattern(
     PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
-  auto* conv2d =
-      pattern->NewNode(conv2d_repr())
-          ->assert_is_op("conv2d")
-          ->assert_more([](Node* node) {
-            auto data_format =
-                node->Op()->GetAttrIfExists<std::string>("data_format");
-            if (data_format != "NCHW") return false;
-            auto dilations =
-                node->Op()->GetAttrIfExists<std::vector<int>>("dilations");
-            if (dilations.size() != 2) return false;
-            return dilations[0] * dilations[1] > 1;
-          });
+  pattern->NewNode(conv2d_repr())
+      ->assert_is_op("conv2d")
+      ->assert_more([](Node* node) {
+        auto data_format =
+            node->Op()->GetAttrIfExists<std::string>("data_format");
+        if (data_format != "NCHW") return false;
+        auto dilations =
+            node->Op()->GetAttrIfExists<std::vector<int>>("dilations");
+        if (dilations.size() != 2) return false;
+        return dilations[0] * dilations[1] > 1;
+      });
 }
 
 }  // namespace patterns
 
-void DoTransFilterPass::ApplyImpl(ir::Graph* graph) const {
+void Conv2dTransFilterDilationsNxNTo1x1Pass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -98,7 +97,8 @@ static void conv2d_dilation_trans_fn(const T* weights_data,
   }
 }
 
-void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
+void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
+    ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::Conv2dLargeDilationsPattern pattern(gpd.mutable_pattern(),
                                                 name_scope_);
@@ -114,11 +114,6 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
         conv2d->Op()->GetAttrIfExists<std::vector<int>>("dilations");
     auto* weights =
         scope->FindVar(weights_name)->GetMutable<phi::DenseTensor>();
-    // if (weights->dtype() != phi::DataType::FLOAT32) {
-    //   VLOG(3) << "Transfilter only support float32 dtype of weights -- do "
-    //              "nothing and break.";
-    //   return;  // Only support fp32 dtype
-    // }
     auto weights_shape = weights->dims();
     int kh = weights_shape[2];
     int kw = weights_shape[3];
@@ -193,8 +188,9 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(do_trans_filter_pass, paddle::framework::ir::DoTransFilterPass);
-REGISTER_PASS_CAPABILITY(do_trans_filter_pass)
+REGISTER_PASS(conv2d_trans_filter_dilations_nxn_to_1x1_pass,
+              paddle::framework::ir::Conv2dTransFilterDilationsNxNTo1x1Pass);
+REGISTER_PASS_CAPABILITY(conv2d_trans_filter_dilations_nxn_to_1x1_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().LE(
             "conv2d", 1));

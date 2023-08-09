@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestDoTransFilterFusePass(PassAutoScanTest):
+class TestConv2dTransFilterDilationsNxNTo1x1PassPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
         yield config, ["conv2d"], (1e-3, 1e-3)
@@ -156,7 +156,7 @@ class TestDoTransFilterFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=25,
-            passes=["do_trans_filter_pass"],
+            passes=["conv2d_trans_filter_dilations_nxn_to_1x1_pass"],
         )
 
 

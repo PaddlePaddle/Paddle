@@ -31,14 +31,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class DoTransFilterPass : public FusePassBase {
+class Conv2dTransFilterDilationsNxNTo1x1Pass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
   void conv2d_dilation_trans(ir::Graph* graph) const;
 
-  const std::string name_scope_{"do_trans_filter_pass"};
+  const std::string name_scope_{
+      "conv2d_trans_filter_dilations_nxn_to_1x1_pass"};
 };
 
 }  // namespace ir
