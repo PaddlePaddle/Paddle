@@ -70,12 +70,12 @@ class QuantConfig:
     Examples:
        .. code-block:: python
 
-          from paddle.quantization import QuantConfig
-          from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+          >>> from paddle.quantization import QuantConfig
+          >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-          quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-          q_config = QuantConfig(activation=quanter, weight=quanter)
-          print(q_config)
+          >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+          >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+          >>> print(q_config)
 
     """
 
@@ -111,20 +111,20 @@ class QuantConfig:
          Examples:
         .. code-block:: python
 
-             import paddle
-             from paddle.nn import Linear
-             from paddle.quantization import QuantConfig
-             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+             >>> import paddle
+             >>> from paddle.nn import Linear
+             >>> from paddle.quantization import QuantConfig
+             >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-             class Model(paddle.nn.Layer):
-                 def __init__(self):
-                     super().__init__()
-                     self.fc = Linear(576, 120)
-             model = Model()
-             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-             q_config = QuantConfig(activation=None, weight=None)
-             q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-             print(q_config)
+             >>> class Model(paddle.nn.Layer):
+             ...    def __init__(self):
+             ...        super().__init__()
+             ...        self.fc = Linear(576, 120)
+             >>> model = Model()
+             >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+             >>> q_config = QuantConfig(activation=None, weight=None)
+             >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
+             >>> print(q_config)
 
         """
         if isinstance(layer, list):
@@ -155,20 +155,20 @@ class QuantConfig:
          Examples:
         .. code-block:: python
 
-             import paddle
-             from paddle.nn import Linear
-             from paddle.quantization import QuantConfig
-             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+             >>> import paddle
+             >>> from paddle.nn import Linear
+             >>> from paddle.quantization import QuantConfig
+             >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-             class Model(paddle.nn.Layer):
-                 def __init__(self):
-                     super().__init__()
-                     self.fc = Linear(576, 120)
-             model = Model()
-             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-             q_config = QuantConfig(activation=None, weight=None)
-             q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
-             print(q_config)
+             >>> class Model(paddle.nn.Layer):
+             ...     def __init__(self):
+             ...         super().__init__()
+             ...         self.fc = Linear(576, 120)
+             >>> model = Model()
+             >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+             >>> q_config = QuantConfig(activation=None, weight=None)
+             >>> q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
+             >>> print(q_config)
 
         """
         if isinstance(layer_name, str):
@@ -200,20 +200,20 @@ class QuantConfig:
         Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Linear
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> import paddle
+            >>> from paddle.nn import Linear
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-            class Model(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self.fc = Linear(576, 120)
-            model = Model()
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_type_config([Linear], activation=quanter, weight=quanter)
-            print(q_config)
+            >>> class Model(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc = Linear(576, 120)
+            >>> model = Model()
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            >>> q_config = QuantConfig(activation=None, weight=None)
+            >>> q_config.add_type_config([Linear], activation=quanter, weight=quanter)
+            >>> print(q_config)
 
         """
         if isinstance(layer_type, type) and issubclass(
@@ -242,16 +242,16 @@ class QuantConfig:
         Examples:
         .. code-block:: python
 
-            from paddle.nn import Conv2D
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=None, weight=None)
-            class CustomizedQuantedConv2D:
-                def forward(self, x):
-                    pass
-                    # add some code for quantization simulation
-            q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
+            >>> from paddle.nn import Conv2D
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            >>> q_config = QuantConfig(activation=None, weight=None)
+            >>> class CustomizedQuantedConv2D:
+            ...     def forward(self, x):
+            ...         pass
+            ...         # add some code for quantization simulation
+            >>> q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
         """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer
@@ -274,11 +274,11 @@ class QuantConfig:
         Examples:
         .. code-block:: python
 
-            from paddle.nn import Sequential
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_customized_leaf(Sequential)
+            >>> from paddle.nn import Sequential
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> q_config = QuantConfig(activation=None, weight=None)
+            >>> q_config.add_customized_leaf(Sequential)
 
         """
         self._customized_leaves.append(layer_type)
@@ -381,20 +381,20 @@ class QuantConfig:
         Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Linear, Sequential
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> import paddle
+            >>> from paddle.nn import Linear, Sequential
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-            class Model(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self.fc = Sequential(Linear(576, 120),Linear(576, 120))
-            model = Model()
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-            q_config._specify(model)
+            >>> class Model(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc = Sequential(Linear(576, 120),Linear(576, 120))
+            >>> model = Model()
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            >>> q_config = QuantConfig(activation=None, weight=None)
+            >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
+            >>> q_config._specify(model)
         """
         self._model = model
         self._specify_helper(self._model)
