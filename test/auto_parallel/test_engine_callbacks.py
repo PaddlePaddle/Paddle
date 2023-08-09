@@ -259,8 +259,6 @@ class TestSynchronizedIPSCallback(unittest.TestCase):
 
         cbks.on_end('train')
 
-        print(engine.history.history)
-
     def test_callback_with_synchronized_IPS(self):
         self.verbose = 3
         self.run_callback()
