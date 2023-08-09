@@ -150,6 +150,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   bool is_build_{false};
   bool static_build_{false};
 
+  // Note(sonder): share the op dependency and event analysis procedure.
+  bool is_shared_results_build_{false};
+
   const platform::Place place_;
 
   interpreter::DependencyBuilder dependency_builder_;
@@ -189,9 +192,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   // var
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  // dependecy_count_[i] contains the number of dependencies that the i-th op
+  // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
   // need to wait
-  std::vector<size_t> dependecy_count_;
+  std::shared_ptr<std::vector<size_t>> dependecy_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
@@ -241,6 +244,12 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void RecordStreamForGC(InstructionBase* instr);
 
   void SolvePersisableVarNames();
+
+  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
+      const override;
+
+  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
+      const override;
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 

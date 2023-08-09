@@ -348,6 +348,18 @@ const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
   return stream_analyzer_;
 }
 
+const interpreter::NewIrDependencyBuilder&
+ProgramInterpreter::GetNewIrDependencyBuilder() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
+}
+
+const interpreter::NewIrStreamAnalyzer&
+ProgramInterpreter::GetNewIrStreamAnalyzer() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
+}
+
 bool ProgramInterpreter::IsSharedResultsBuild() const {
   return is_shared_results_build_;
 }

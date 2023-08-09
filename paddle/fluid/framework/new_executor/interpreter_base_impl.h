@@ -107,6 +107,12 @@ class InterpreterBaseImpl {
 
   virtual const interpreter::StreamAnalyzer& GetStreamAnalyzer() const = 0;
 
+  virtual const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
+      const = 0;
+
+  virtual const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
+      const = 0;
+
   virtual bool IsSharedResultsBuild() const = 0;
 };
 

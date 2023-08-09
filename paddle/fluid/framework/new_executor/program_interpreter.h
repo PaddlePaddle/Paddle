@@ -63,6 +63,12 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
 
+  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
+      const override;
+
+  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
+      const override;
+
   bool IsSharedResultsBuild() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;

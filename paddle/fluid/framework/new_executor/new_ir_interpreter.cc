@@ -74,6 +74,8 @@ NewIRInterpreter::NewIRInterpreter(
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
+  dependecy_count_ = std::make_shared<std::vector<size_t>>();
+
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
@@ -225,6 +227,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
       RunImpl();
     }
     is_build_ = true;
+    is_shared_results_build_ = true;
   } else {
     RunImpl();
   }
@@ -355,8 +358,17 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "ShareBuildResultsFrom is not implemented in NewIRInterpreter."));
+  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+    return;
+  }
+  // share op dependency
+  ir_dependency_builder_.ShareDependencyFrom(src.GetNewIrDependencyBuilder());
+  dependecy_count_ = src.GetDependencyCount();
+  // share event analysis
+  ir_stream_analyzer_.ShareEventInfoFrom(src.GetNewIrStreamAnalyzer());
+  is_shared_results_build_ = true;
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
+          << ") to InterpreterCore(" << this << ")";
 }
 
 // op dependences
@@ -366,10 +378,14 @@ const interpreter::DependencyBuilder& NewIRInterpreter::GetDependencyBuilder()
       "GetDependencyBuilder is not implemented in NewIRInterpreter."));
 }
 
+const interpreter::NewIrDependencyBuilder&
+NewIRInterpreter::GetNewIrDependencyBuilder() const {
+  return ir_dependency_builder_;
+}
+
 std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
     const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetDependencyCount is not implemented in NewIRInterpreter."));
+  return dependecy_count_;
 }
 
 const interpreter::StreamAnalyzer& NewIRInterpreter::GetStreamAnalyzer() const {
@@ -377,9 +393,13 @@ const interpreter::StreamAnalyzer& NewIRInterpreter::GetStreamAnalyzer() const {
       "GetStreamAnalyzer is not implemented in NewIRInterpreter."));
 }
 
+const interpreter::NewIrStreamAnalyzer&
+NewIRInterpreter::GetNewIrStreamAnalyzer() const {
+  return ir_stream_analyzer_;
+}
+
 bool NewIRInterpreter::IsSharedResultsBuild() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "IsSharedResultsBuild is not implemented in NewIRInterpreter."));
+  return is_shared_results_build_;
 }
 
 bool NewIRInterpreter::BuildInplaceCheckVarIsOnlyInput(
@@ -578,7 +598,11 @@ void NewIRInterpreter::BuildOperatorDependences() {
   // analysis the dependences between ops, add next_instr_list to each instr,
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
-  dependecy_count_ = std::vector<size_t>(instr_num, 0);
+  dependecy_count_ = GetDependencyCount();
+  if (!is_shared_results_build_) {
+    dependecy_count_->assign(instr_num, 0);
+  }
+
   auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
@@ -615,7 +639,7 @@ void NewIRInterpreter::BuildOperatorDependences() {
     }
 
     for (size_t next_instr_id : next_instr_ids) {
-      ++dependecy_count_[next_instr_id];
+      ++(*dependecy_count_)[next_instr_id];
     }
   }
 }
@@ -680,8 +704,8 @@ void NewIRInterpreter::Convert(
 
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       auto& inst = vec_instruction_[i];
       if (inst.OpBaseValid() &&
           inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
@@ -744,7 +768,7 @@ void NewIRInterpreter::Convert(
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
 
-  for (auto& dep : dependecy_count_) {
+  for (auto& dep : *dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
   for (size_t i = 0; i < vec_meta_info.size(); ++i) {
@@ -1010,8 +1034,8 @@ void NewIRInterpreter::ExecuteInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
       if (FLAGS_new_executor_serial_run) {
@@ -1366,8 +1390,8 @@ void NewIRInterpreter::TraceInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
     }
@@ -1446,8 +1470,8 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
   std::vector<size_t> trace_order;
   SchedulingQueue ready_ops(compare);
 
-  for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
-    if (dependecy_count_[instr_id] == 0) {
+  for (size_t instr_id = 0; instr_id < dependecy_count_->size(); ++instr_id) {
+    if ((*dependecy_count_)[instr_id] == 0) {
       ready_ops.push(instr_id);
     }
   }
@@ -1468,7 +1492,7 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
 
   PADDLE_ENFORCE_EQ(
       trace_order.size(),
-      dependecy_count_.size(),
+      dependecy_count_->size(),
       platform::errors::PreconditionNotMet(
           "trace_order size should be equal to dependecy_count_."));
 
@@ -1562,7 +1586,10 @@ void NewIRInterpreter::BuildInstructionDependences() {
   // analysis the dependences between instructions, add next_instr_list to each
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
-  dependecy_count_ = std::vector<size_t>(instr_num, 0);
+  dependecy_count_ = GetDependencyCount();
+  if (!is_shared_results_build_) {
+    dependecy_count_->assign(instr_num, 0);
+  }
 
   std::vector<paddle::framework::InstructionBase*> instructions_ptr;
   for (auto& instr : vec_instruction_base_) {
@@ -1603,8 +1630,10 @@ void NewIRInterpreter::BuildInstructionDependences() {
       }
     }
 
-    for (size_t next_instr_id : next_instr_ids) {
-      ++dependecy_count_[next_instr_id];
+    if (!is_shared_results_build_) {
+      for (size_t next_instr_id : next_instr_ids) {
+        ++(*dependecy_count_)[next_instr_id];
+      }
     }
   }
 }
@@ -1840,7 +1869,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     var_ref_count_[i] = last_live_ops_[i].size();
   }
 
-  for (auto& dep : dependecy_count_) {
+  for (auto& dep : *dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
   for (size_t i = 0; i < variable_list_.size(); ++i) {
@@ -1850,8 +1879,8 @@ void NewIRInterpreter::CalculateLastLiveOps() {
 }
 
 void NewIRInterpreter::ConstructEventForJitInput() {
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
       if (inst->Name() == "pd.memcpy_d2h" && platform::is_gpu_place(place_)) {
         for (auto& item : inst->Inputs()) {
@@ -1921,6 +1950,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
     }
 
     is_build_ = true;
+    is_shared_results_build_ = true;
   } else {
     if (FLAGS_enable_new_ir_in_executor_trace_run) {
       TraceRunImpl();
@@ -2004,8 +2034,8 @@ void NewIRInterpreter::TraceRunInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    if (dependecy_count_[i] == 0) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i).get());
     }
@@ -2048,7 +2078,7 @@ void NewIRInterpreter::MultiThreadRunInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i).get());
@@ -2167,7 +2197,7 @@ void NewIRInterpreter::RunNextInstructions(InstructionBase* instr,
   for (size_t next_instr_id : instr->NextInstrsInDifferenceThread()) {
     if (IsReady(next_instr_id)) {
       async_work_queue_->AddTask(
-          vec_instruction_[next_instr_id]->KernelType(),
+          vec_instruction_base_[next_instr_id]->KernelType(),
           [this, next_instr_id]() { RunInstructionBaseAsync(next_instr_id); });
     }
   }
