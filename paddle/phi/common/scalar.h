@@ -113,7 +113,7 @@ class ScalarBase {
     } else if (str_value == "True") {
       dtype_ = DataType::BOOL;
       data_.b = true;
-    } else if (str_value == "Fasle") {
+    } else if (str_value == "False") {
       dtype_ = DataType::BOOL;
       data_.b = false;
     } else {
