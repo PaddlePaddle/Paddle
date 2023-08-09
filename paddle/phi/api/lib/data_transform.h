@@ -84,11 +84,6 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const TransformFlag& transform_flag,
     bool is_stride_kernel);
 
-std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
-    const Tensor& input,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
-
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
@@ -170,6 +165,15 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
                   (target != Backend::GPUDNN ? target : Backend::GPU));
   return ret;
 }
+
+/* ------------------ for auto parallel ----------------------- */
+
+// TODO(chenweihang): impl Reshard input and output function
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 }  // namespace experimental
 }  // namespace paddle

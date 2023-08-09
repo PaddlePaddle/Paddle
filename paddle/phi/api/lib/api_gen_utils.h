@@ -90,11 +90,8 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 phi::DenseTensor* SetKernelOutput(Tensor* out);
 
-phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
-
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
-                                               std::vector<Tensor>* out,
-                                               bool for_auto_parallel = false);
+                                               std::vector<Tensor>* out);
 
 std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
     size_t out_size, std::vector<Tensor>* out);
@@ -129,6 +126,13 @@ void TransStride(phi::DeviceContext* dev_ctx,
 void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to);
+
+/* ------------------ for auto parallel ----------------------- */
+
+phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
+
+// std::vector<phi::distributed::DistTensor*>
+// SetKernelDistOutput(std::vector<Tensor*>* out);
 
 }  // namespace experimental
 }  // namespace paddle

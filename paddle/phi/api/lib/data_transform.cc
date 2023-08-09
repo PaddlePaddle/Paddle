@@ -318,44 +318,6 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   return nullptr;
 }
 
-std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
-    const Tensor& input,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
-  const auto& tensor_in = input.impl();
-  if (tensor_in) {
-    phi::distributed::DistTensor* dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-    phi::DenseTensor& dense_tensor = *(dist_tensor->mutable_value());
-    VLOG(3) << "tensor in initialized, enter branch";
-    if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
-        (!NeedTransformPlace(
-             dense_tensor.place(), target_args_def.backend, transform_flag) &&
-         !NeedTransformDataType(
-             dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(dense_tensor.layout(),
-                              target_args_def.layout,
-                              dense_tensor.place(),
-                              transform_flag))) {
-      VLOG(3) << "no need to transform, return orignal";
-      return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
-    }
-    phi::DenseTensor out = TransformData(&dense_tensor,
-                                         target_args_def,
-                                         transform_flag,
-                                         /*is_stride_kernel=*/false);
-    // TODO(chenweihang): The global meta in DistTensor is not changed,
-    // but the local meta in DenseTensor maybe changed, such as layout
-    // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
-    VLOG(3) << "return transformed tensor";
-    return std::make_shared<phi::distributed::DistTensor>(
-        std::make_shared<phi::DenseTensor>(std::move(out)),
-        dist_tensor->meta(),
-        dist_tensor->dist_attr());
-  }
-  return nullptr;
-}
-
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
@@ -605,6 +567,45 @@ void TransDataBackend(const phi::SelectedRows* tensor,
   if (tensor) {
     TransDataBackend(&tensor->value(), target_backend, out->mutable_value());
   }
+}
+
+/* ------------------ for auto parallel ----------------------- */
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in) {
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+    phi::DenseTensor& dense_tensor = *(dist_tensor->mutable_value());
+    if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
+        (!NeedTransformPlace(
+             dense_tensor.place(), target_args_def.backend, transform_flag) &&
+         !NeedTransformDataType(
+             dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
+         !NeedTransformLayout(dense_tensor.layout(),
+                              target_args_def.layout,
+                              dense_tensor.place(),
+                              transform_flag) &&
+         !NeedTransform2Contiguous(is_stride_kernel,
+                                   dense_tensor.meta().is_contiguous()))) {
+      return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
+    }
+    phi::DenseTensor out = TransformData(
+        &dense_tensor, target_args_def, transform_flag, is_stride_kernel);
+    // TODO(chenweihang): The global meta in DistTensor is not changed,
+    // but the local meta in DenseTensor maybe changed, such as layout
+    // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
+    VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
+    return std::make_shared<phi::distributed::DistTensor>(
+        std::make_shared<phi::DenseTensor>(std::move(out)),
+        dist_tensor->meta(),
+        dist_tensor->dist_attr());
+  }
+  return nullptr;
 }
 
 }  // namespace experimental

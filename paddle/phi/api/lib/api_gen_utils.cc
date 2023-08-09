@@ -204,26 +204,8 @@ phi::DenseTensor* SetKernelOutput(Tensor* out) {
   return nullptr;
 }
 
-phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
-  if (out) {
-    // TODO(chenweihang): now all dist case are nullptr
-    if (out->impl() == nullptr) {
-      auto dense_t = std::make_shared<phi::DenseTensor>();
-      // TODO(chenweihang): polish code, dist_attr is null now
-      auto dist_attr =
-          std::make_shared<phi::distributed::auto_parallel::TensorDistAttr>();
-      auto dist_t =
-          std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
-      out->set_impl(dist_t);
-    }
-    return static_cast<phi::distributed::DistTensor*>(out->impl().get());
-  }
-  return nullptr;
-}
-
 std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
-                                               std::vector<Tensor>* out,
-                                               bool for_auto_parallel) {
+                                               std::vector<Tensor>* out) {
   out->reserve(out_size);
   std::vector<phi::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
@@ -497,6 +479,25 @@ void TransStride(phi::DeviceContext* dev_ctx,
 void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to) {}
+
+/* ------------------ for auto parallel ----------------------- */
+
+phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
+  if (out) {
+    // TODO(chenweihang): now all dist case are nullptr
+    if (out->impl() == nullptr) {
+      auto dense_t = std::make_shared<phi::DenseTensor>();
+      // TODO(chenweihang): polish code, dist_attr is null now
+      auto dist_attr =
+          std::make_shared<phi::distributed::auto_parallel::TensorDistAttr>();
+      auto dist_t =
+          std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
+      out->set_impl(dist_t);
+    }
+    return static_cast<phi::distributed::DistTensor*>(out->impl().get());
+  }
+  return nullptr;
+}
 
 }  // namespace experimental
 }  // namespace paddle
