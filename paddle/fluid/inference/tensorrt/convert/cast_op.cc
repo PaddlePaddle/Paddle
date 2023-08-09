@@ -46,6 +46,7 @@ class CastOpConverter : public OpConverter {
         layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
         break;
       case 5:  // FP32 = 5
+      case 6:  // FP64 = 6
         layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
         layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
         break;

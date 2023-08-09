@@ -22,8 +22,8 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-static const void* utils_map[4] = {nullptr};
-static uint16_t CHARCASES_MAP[65536] = {0};
+static const void* utils_map[4] = {nullptr};  // NOLINT
+static uint16_t CHARCASES_MAP[65536] = {0};   // NOLINT
 
 const uint8_t* GetUniFlagMap() {
   if (utils_map[1] == nullptr) {

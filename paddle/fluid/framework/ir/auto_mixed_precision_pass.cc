@@ -249,7 +249,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
     subgraphes_[i] = graph->GetSubGraph(i);
     all_op_nodes_[i] = TopologySortOperations(*subgraphes_[i]);
     VLOG(4) << "subgraph " << i << " has " << all_op_nodes_[i].size()
-            << "op nodes";
+            << " op nodes";
     for (auto* var_node : subgraphes_[i]->Nodes()) {
       if (!var_node->IsVar()) continue;
 
@@ -415,7 +415,8 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
           auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
           support_low_precision =
               support_low_precision &&
-              IsFP32AndFP64(static_cast<VarType::Type>(out_dtype));
+              (IsFP32AndFP64(static_cast<VarType::Type>(out_dtype)) ||
+               out_dtype == -1);
         }
 
         // If scale op's "scale" and "bias" attr value exceed the range of fp16

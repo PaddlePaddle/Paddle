@@ -160,7 +160,7 @@ struct BuildStrategy {
   // Inference pass
   bool enable_inference_pass_{false};  // switch for infernce pass
   bool delete_dropout_{true};          // delte dropout op
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   bool use_mkldnn_{true};  // use mkdnn to do inference
 #else
   bool use_mkldnn_{false};  // use mkdnn to do inference

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -406,8 +407,8 @@ template <typename T, typename DeviceContext>
 class Pad2dCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[4];
-    GetPaddings(pads, context);
+    std::array<int, 4> pads;
+    GetPaddings(pads.data(), context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     T value = static_cast<T>(context.Attr<float>("pad_value"));
@@ -524,8 +525,8 @@ template <typename T, typename DeviceContext>
 class Pad2dGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int pads[4];
-    GetPaddings(pads, context);
+    std::array<int, 4> pads;
+    GetPaddings(pads.data(), context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
     auto* d_out =
@@ -699,7 +700,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // only constant mode and non-blocked layouts are supported for oneDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
         ctx.Attr<std::string>("mode") == "constant" &&
@@ -716,7 +717,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();

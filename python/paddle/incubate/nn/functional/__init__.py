@@ -15,7 +15,11 @@
 from .fused_transformer import fused_multi_head_attention
 from .fused_transformer import fused_feedforward
 from .fused_transformer import fused_multi_transformer
-from .fused_matmul_bias import fused_matmul_bias, fused_linear
+from .fused_matmul_bias import (
+    fused_matmul_bias,
+    fused_linear,
+    fused_linear_activation,
+)
 from .fused_transformer import fused_bias_dropout_residual_layer_norm
 from .fused_ec_moe import fused_ec_moe
 from .fused_dropout_add import fused_dropout_add
@@ -23,13 +27,13 @@ from .fused_gate_attention import fused_gate_attention
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
 from .rms_norm import rms_norm
 
-
 __all__ = [
     'fused_multi_head_attention',
     'fused_feedforward',
     'fused_multi_transformer',
     'fused_matmul_bias',
     'fused_linear',
+    'fused_linear_activation',
     'fused_bias_dropout_residual_layer_norm',
     'fused_ec_moe',
     'fused_dropout_add',

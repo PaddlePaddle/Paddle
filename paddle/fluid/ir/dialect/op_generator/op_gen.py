@@ -17,7 +17,11 @@ import os
 
 import yaml
 from op_build_gen import gen_build_func_str
-from op_interface_gen import gen_exclusive_interface_str, gen_op_infer_meta_str
+from op_interface_gen import (
+    gen_exclusive_interface_str,
+    gen_op_infer_meta_str,
+    vjp_interface_gen_op_list,
+)
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
 
@@ -43,9 +47,11 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/ir/interface/vjp.h"
 #include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/fluid/ir/dialect/pd_manual_op.h"
 
 {input}
 
@@ -145,6 +151,8 @@ scalar_type_maps = {
     'dobule': 'ir::DoubleAttribute',
     'bool': 'ir::BoolAttribute',
 }
+
+_NO_NEED_GEN_OPS = {'add_n'}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -303,9 +311,15 @@ class OpInfoParser:
         else:
             self.infer_meta_func = None
 
+        # parse backward name
+        self.backward_name = self.parse_backward_name()
+
         # parse inplace && view
         self.inplace_map = self.parse_op_inplace_info()
         self.view_map = self.parse_op_view_info()
+
+        # parse has_custom_verify
+        self.custom_verify = self.parse_custom_verify()
 
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
@@ -315,6 +329,11 @@ class OpInfoParser:
             assert len(type_list) == len(
                 optional_list
             ), "type list size != optional list size."
+
+    def parse_custom_verify(self):
+        if 'custom_verify' in self.op_yaml_item:
+            return self.op_yaml_item['custom_verify']
+        return False
 
     def parse_op_phi_name(self):
         if (self.parse_op_inplace_info() is None) and (
@@ -604,6 +623,12 @@ class OpInfoParser:
         else:
             return None
 
+    def parse_backward_name(self):
+        if 'backward' in self.op_yaml_item:
+            return self.op_yaml_item['backward']
+        else:
+            return None
+
     def get_phi_dtype_name(self, name):
         name = name.replace('Scalar', 'phi::Scalar')
         name = name.replace('IntArray', 'phi::IntArray')
@@ -712,10 +737,17 @@ def OpGenerator(
         if op_info.infer_meta_func:
             op_interfaces += ["InferMetaInterface"]
 
+        if (
+            op_info.backward_name
+            and op_info.op_phi_name[0] in vjp_interface_gen_op_list
+        ):
+            op_interfaces += ["VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
+            if op_name in _NO_NEED_GEN_OPS:
+                continue
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
 
@@ -980,17 +1012,19 @@ def OpGenerator(
             )
 
             # generate op verify function str
-            op_verify_str = gen_verify_func_str(
-                op_class_name,
-                op_input_type_list,
-                op_input_optional_list,
-                op_mutable_attribute_name_list,
-                op_mutable_attribute_type_list,
-                op_non_mutable_attribute_name_list,
-                op_non_mutable_attribute_type_list,
-                op_output_type_list,
-                op_output_optional_list,
-            )
+            op_verify_str = ''
+            if not op_info.custom_verify:
+                op_verify_str = gen_verify_func_str(
+                    op_class_name,
+                    op_input_type_list,
+                    op_input_optional_list,
+                    op_mutable_attribute_name_list,
+                    op_mutable_attribute_type_list,
+                    op_non_mutable_attribute_name_list,
+                    op_non_mutable_attribute_type_list,
+                    op_output_type_list,
+                    op_output_optional_list,
+                )
 
             op_infer_meta_str = gen_op_infer_meta_str(op_info, op_class_name)
 

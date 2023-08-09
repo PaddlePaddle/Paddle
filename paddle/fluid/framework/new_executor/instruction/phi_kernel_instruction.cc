@@ -15,12 +15,15 @@
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
@@ -29,43 +32,9 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 namespace paddle {
 namespace framework {
-
-OpFuncType AnalyseOpFuncType(ir::Operation* op, const platform::Place& place) {
-  if (platform::is_cpu_place(place)) {
-    return OpFuncType::kCpuSync;
-  }
-
-  PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
-                    true,
-                    phi::errors::Fatal("Unsupported current place %s", place));
-
-  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
-  // computing. They execute serially in device thread and block CUDA kernel
-  // launching in other GPU OPs. To improve performance, set them as kGpuSync
-  // and so that they would be dispatched to host thread.
-  auto op_attributes = op->attributes();
-  auto op_name =
-      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();
-  if (op_name == kCoalesceTensor &&
-      (!platform::is_xpu_place(place) ||
-       op->attribute<ir::BoolAttribute>("persist_output").data() == false) &&
-      op->attribute<ir::BoolAttribute>("set_constant").data() == false &&
-      op->attribute<ir::BoolAttribute>("copy_data").data() == false) {
-    return OpFuncType::kGpuSync;
-  }
-
-  // for memcpy explicitly called by user
-  if (platform::is_gpu_place(place) && op_name == interpreter::kMemcpyD2H) {
-    return OpFuncType::kGpuSync;
-  }
-
-  if (op_name == "shape") {
-    return OpFuncType::kGpuSync;
-  }
-  return OpFuncType::kGpuAsync;
-}
 
 PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
@@ -73,22 +42,18 @@ PhiKernelInstruction::PhiKernelInstruction(
     ir::Operation* op,
     Scope* scope,
     Scope* local_scope,
-    const std::unordered_map<::ir::Value, std::string>& value_2_name_map)
+    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+    const std::map<std::string, int>& var_name_2_id,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name)
     : InstructionBase(id, place) {
   auto op_attributes = op->attributes();
   auto op_name =
-      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
 
   phi_op_name_ = op_name;
-
-  if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-      op_name == "builtin.set_parameter" ||
-      op_name == "builtin.get_parameter") {
-    VLOG(6) << "skip process " << op_name;
-    SetArtificial(true);
-    return;
-  }
+  VLOG(6) << "construct phi kernel instruction for: " << phi_op_name_;
 
   // Todo: support paddle::dialect::DistAttribute
   //   if (op_attributes.count("dist_attr") != 0) {
@@ -117,32 +82,43 @@ PhiKernelInstruction::PhiKernelInstruction(
   //       op_func_node.scheduling_priority_ = 1;
   //     }
   //   }
+  VLOG(6) << "finish process dist attributes";
 
   SetKernelType(AnalyseOpFuncType(op, place));
+  VLOG(6) << "finish process analyse kernel type";
 
   infer_meta_interface_ =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
+  VLOG(6) << "finish process infer_meta_interface_";
+
   auto yaml_interface =
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+  PADDLE_ENFORCE_NOT_NULL(
+      yaml_interface,
+      phi::errors::PreconditionNotMet(
+          "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_());
+  VLOG(6) << "finish process yaml_info_parser";
 
-  ::ir::BuildPhiContext<
-      phi::InferMetaContext,
-      phi::MetaTensor,
-      phi::MetaTensor,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      false>(op,
-             value_2_name_map,
-             scope,
-             local_scope,
-             yaml_info_parser,
-             &infer_meta_context_);
+  if (infer_meta_interface_) {
+    ::ir::BuildPhiContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>(op,
+               value_2_var_name,
+               scope,
+               local_scope,
+               yaml_info_parser,
+               &infer_meta_context_);
+  }
   VLOG(6) << "finish process infer meta context";
 
   auto kernel_name =
-      op_attributes.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+      op_attributes.at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
   auto kernel_key = op_attributes.at("kernel_key")
                         .dyn_cast<paddle::dialect::KernelAttribute>()
                         .data();
@@ -159,27 +135,45 @@ PhiKernelInstruction::PhiKernelInstruction(
                         paddle::small_vector<const phi::TensorBase*>,
                         paddle::small_vector<phi::TensorBase*>,
                         true>(op,
-                              value_2_name_map,
+                              value_2_var_name,
                               scope,
                               local_scope,
                               yaml_info_parser,
-                              &kernel_context_,
-                              &(GetMutableInputs()),
-                              &(GetMutableOutputs()));
+                              &kernel_context_);
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
   VLOG(6) << "finish process kernel context";
 
-  SetDeviceContext(phi::DeviceContextPool::Instance().Get(
-      phi::TransToPhiPlace(kernel_key.backend())));
+  SetDeviceContext(
+      ParseDeviceContext(op,
+                         phi::DeviceContextPool::Instance().Get(
+                             phi::TransToPhiPlace(kernel_key.backend())),
+                         place,
+                         GetExecutionStream(),
+                         GetStreamPriority()));
   VLOG(6) << "finish process device context";
+
+  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
+  InitInputsOutputsIds(
+      op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
+  VLOG(6) << "finish process inputs outputs index";
+
+  auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();
+  std::unordered_set<::ir::Value> no_need_buffer_values;
+  for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
+    no_need_buffer_values.insert(op->operand_source(no_need_buffer_ids[id]));
+  }
+  SetNoNeedBuffer(no_need_buffer_values);
+  VLOG(6) << "finish process no need buffer";
 }
 
 void PhiKernelInstruction::Run() {
-  VLOG(5) << "Run op " << phi_op_name_ << " infer meta.";
-  infer_meta_interface_->infer_meta_(&(infer_meta_context_));
-  VLOG(5) << "Run op " << phi_op_name_ << " kernel.";
+  if (infer_meta_interface_) {
+    infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  }
+  VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
   (*(phi_kernel_))(&(kernel_context_));
+  VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
 }
 
 }  // namespace framework

@@ -591,7 +591,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1TensorRT(
 ):
     def test_post_training_onnx_format_mobilenetv1_tensorrt(self):
         model = "MobileNet-V1"
-        algo = "avg"
+        algo = "KL"
         round_type = "round"
         data_urls = [
             'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/MobileNetV1_infer.tar'

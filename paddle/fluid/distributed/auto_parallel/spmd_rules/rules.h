@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/cross_entropy_with_softmax_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/elementwise_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
@@ -22,6 +23,8 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/split_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/transpose_spmd_rule.h"
 
 // TODO(ljz) Automatic this process in cmake file.
 namespace paddle {
@@ -131,7 +134,7 @@ REGISTER_SPMD_RULE(tanh_shrink, ElementwiseSPMDRule);
 REGISTER_SPMD_RULE(thresholded_relu, ElementwiseSPMDRule);
 REGISTER_SPMD_RULE(trunc, ElementwiseSPMDRule);
 
-// matmul rule
+// layer_norm rule
 REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);
 
 // replicated rule
@@ -144,6 +147,17 @@ REGISTER_SPMD_RULE(lookup_table_v2, EmbeddingSPMDRule);
 // softmax rule
 REGISTER_SPMD_RULE(softmax, SoftmaxSPMDRule);
 REGISTER_SPMD_RULE(log_softmax, SoftmaxSPMDRule);
+
+// cross_entropy_with_softmax
+REGISTER_SPMD_RULE(cross_entropy_with_softmax, CrossEntropyWithSoftmaxSPMDRule);
+REGISTER_SPMD_RULE(softmax_with_cross_entropy, CrossEntropyWithSoftmaxSPMDRule);
+
+// split rule
+REGISTER_SPMD_RULE(split, SplitSPMDRule);
+REGISTER_SPMD_RULE(split_with_num, SplitSPMDRule);
+
+// transpose rule
+REGISTER_SPMD_RULE(transpose, TransposeSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

@@ -1,5 +1,3 @@
-cinn_proto_library(schedule_desc_proto SRCS schedule_desc.proto)
-
 core_gather_headers()
 
 gather_srcs(
@@ -7,27 +5,16 @@ gather_srcs(
   SRCS
   ir.cc
   ir_base.cc
-  ir_schedule.cc
-  ir_schedule_error.cc
-  ir_schedule_util.cc
-  ir_visitor.cc
-  ir_printer.cc
-  ir_mutator.cc
   function_definition.cc
-  lowered_func.cc
-  ir_operators.cc
-  ir_verify.cc
   buffer.cc
   function_base.cc
   operation.cc
-  collect_ir_nodes.cc
   registry.cc
   tensor.cc
   module.cc
+  lowered_func.cc
   intrinsic_ops.cc
   layout.cc
-  schedule_desc.cc
-  ir_compare.cc
   schedule_block_graph.cc)
 
 # cinn_cc_test(test_ir SRCS ir_test.cc DEPS core)

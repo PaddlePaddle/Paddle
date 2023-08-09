@@ -19,21 +19,6 @@
 #include "paddle/ir/core/utils.h"
 
 namespace ir {
-class IR_API StrAttribute : public Attribute {
- public:
-  using Attribute::Attribute;
-
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StrAttribute, StrAttributeStorage);
-
-  bool operator<(const StrAttribute& right) const {
-    return storage() < right.storage();
-  }
-
-  std::string data() const;
-
-  uint32_t size() const;
-};
-
 class IR_API BoolAttribute : public Attribute {
  public:
   using Attribute::Attribute;
@@ -79,21 +64,6 @@ class IR_API Int64Attribute : public Attribute {
   int64_t data() const;
 };
 
-class IR_API ArrayAttribute : public Attribute {
- public:
-  using Attribute::Attribute;
-
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(ArrayAttribute, ArrayAttributeStorage);
-
-  std::vector<Attribute> data() const;
-
-  size_t size() const { return data().size(); }
-
-  bool empty() const { return data().empty(); }
-
-  Attribute operator[](size_t index) const { return data()[index]; }
-};
-
 class IR_API PointerAttribute : public Attribute {
  public:
   using Attribute::Attribute;
@@ -110,6 +80,39 @@ class IR_API TypeAttribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(TypeAttribute, TypeAttributeStorage);
 
   Type data() const;
+};
+
+class IR_API StrAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StrAttribute, StrAttributeStorage);
+
+  bool operator<(const StrAttribute& right) const;
+
+  std::string AsString() const;
+
+  size_t size() const;
+
+  static StrAttribute get(IrContext* ctx, const std::string& value);
+};
+
+class IR_API ArrayAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(ArrayAttribute, ArrayAttributeStorage);
+
+  std::vector<Attribute> AsVector() const;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  Attribute at(size_t index) const;
+
+  static ArrayAttribute get(IrContext* ctx,
+                            const std::vector<Attribute>& value);
 };
 
 }  // namespace ir
