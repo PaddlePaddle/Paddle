@@ -272,7 +272,6 @@ class ETCDMaster(Master):
         else:
             lease = self.client.lease(ttl)
 
-
         # self.client.delete_prefix(self.job_prefix)
 
         beat_path = f"{self.heartbeat_prefix}/{pod_id}"
