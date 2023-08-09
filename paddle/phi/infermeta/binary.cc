@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/binary.h"
 
 #include <algorithm>
+#include <iostream>
 #include <vector>
 
 #include "glog/logging.h"
@@ -380,8 +381,12 @@ void CompareRawInferMeta(const MetaTensor& x,
     out->set_dims(make_ddim(out_dims_array));
     out->share_lod(x);
   }
-  if (out->tensor() != x.tensor()) {
-    out->set_dtype(DataType::BOOL);
+  VLOG(6) << "enter infermeta compareraw infermeta";
+  out->set_dtype(DataType::BOOL);
+  VLOG(6) << "out.dtype:" << out->dtype();
+  if (out->tensor() != nullptr && out->tensor() == x.tensor()) {
+    VLOG(6) << "judge is inpalce ";
+    out->set_dtype(x.dtype());
   }
 }
 
