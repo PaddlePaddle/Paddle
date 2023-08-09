@@ -31,12 +31,4 @@ from paddle.fluid.libpaddle.ir import (
 
 from . import core
 
-__all__ = [  # noqa
-    'Program',
-    'Block',
-    'Operation',
-    'Value',
-    'OpOperand',
-    'OpResult',
-    'translate_to_new_ir',
-]
+__all__ = []
