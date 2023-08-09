@@ -128,7 +128,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
 
         inference_program = paddle.fluid.default_main_program().clone()
 
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
         train_reader = paddle.batch(

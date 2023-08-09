@@ -105,12 +105,11 @@ def train(to_static):
             start_lr=0.0,
             end_lr=cfg.learning_rate,
         )
-
-        optimizer = fluid.optimizer.Momentum(
+        optimizer = paddle.optimizer.Momentum(
             learning_rate=lr,
-            regularization=paddle.regularizer.L2Decay(cfg.weight_decay),
+            weight_decay=paddle.regularizer.L2Decay(cfg.weight_decay),
             momentum=cfg.momentum,
-            parameter_list=model.parameters(),
+            parameters=model.parameters(),
         )
 
         start_time = time.time()
