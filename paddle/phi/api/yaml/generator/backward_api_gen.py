@@ -108,11 +108,8 @@ class BackwardAPI(BaseAPI):
         result = intputs_and_attrs + ', ' + ", ".join(outs)
         return result
 
-    def gene_return_code(self, for_auto_parallel=False):
-        if for_auto_parallel is True:
-            return "return;"
-        else:
-            return ""
+    def gene_return_code(self):
+        return ""
 
     def gene_api_declaration(self):
         if not self.is_base_api and not self.is_only_composite_api:
@@ -149,7 +146,6 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []
@@ -183,19 +179,11 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                 )
 
             else:
-                if for_auto_parallel is True:
-                    output_create = (
-                        output_create
-                        + f"""
-{code_indent}  auto kernel_out_dist = SetKernelDistOutput({self.outputs['names'][0]});
-{code_indent}  auto kernel_out = kernel_out_dist->mutable_value();"""
-                    )
-                else:
-                    output_create = (
-                        output_create
-                        + f"""
+                output_create = (
+                    output_create
+                    + f"""
 {code_indent}  auto kernel_out = {set_out_func}({self.outputs['names'][0]});"""
-                    )
+                )
 
         elif len(out_dtype_list) > 1:
             output_create = ""
@@ -220,19 +208,11 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
 {code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
                         )
 
-                    if for_auto_parallel is True:
-                        output_create = (
-                            output_create
-                            + f"""
-{code_indent}  auto kernel_out_{i}_dist = SetKernelDistOutput({self.outputs['names'][i]});
-{code_indent}  auto kernel_out_{i} = kernel_out_{i}_dist->mutable_value();"""
-                        )
-                    else:
-                        output_create = (
-                            output_create
-                            + f"""
+                    output_create = (
+                        output_create
+                        + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]});"""
-                        )
+                    )
 
                 else:
                     if (
@@ -379,10 +359,7 @@ def generate_backward_api(
     for bw_api in bw_apis:
         bw_api = BackwardAPI(bw_api)
         header_file.write(bw_api.gene_api_declaration())
-        if is_fused_backward_yaml is True:
-            source_file.write(bw_api.gene_api_code(for_auto_parallel=False))
-        else:
-            source_file.write(bw_api.gene_api_code(for_auto_parallel=True))
+        source_file.write(bw_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

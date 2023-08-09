@@ -45,12 +45,10 @@ class ForwardAPI(BaseAPI):
         else:
             return self.api
 
-    def gene_input(
-        self, kernel_tensor_type=None, code_indent='', for_auto_parallel=False
-    ):
+    def gene_input(self, kernel_tensor_type=None, code_indent=''):
         kernel_param = self.kernel['param']
         input_name_tensor_map, input_tensor_code = super().gene_input(
-            kernel_tensor_type, code_indent, for_auto_parallel
+            kernel_tensor_type, code_indent
         )
 
         # generate the input that is in view list
@@ -151,7 +149,7 @@ class ForwardAPI(BaseAPI):
         else:
             return "std::tuple<" + ", ".join(out_type_list) + ">"
 
-    def gene_return_code(self, for_auto_parallel=False):
+    def gene_return_code(self):
         if self.is_dygraph_api or len(self.intermediate_outs) == 0:
             return "return api_output;"
         else:
@@ -173,7 +171,6 @@ class ForwardAPI(BaseAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []
@@ -205,20 +202,13 @@ class ForwardAPI(BaseAPI):
                     + f"""
 {code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
                 )
+
             else:
-                if for_auto_parallel is True:
-                    output_create = (
-                        output_create
-                        + f"""
-{code_indent}  auto kernel_out_dist = SetKernelDistOutput(&api_output);
-{code_indent}  auto kernel_out = kernel_out_dist->mutable_value();"""
-                    )
-                else:
-                    output_create = (
-                        output_create
-                        + f"""
+                output_create = (
+                    output_create
+                    + f"""
 {code_indent}  auto kernel_out = {set_out_func}(&api_output);"""
-                    )
+                )
 
             if (
                 not inplace_flag
@@ -288,19 +278,11 @@ class ForwardAPI(BaseAPI):
                     )
 
                 else:
-                    if for_auto_parallel is True:
-                        output_create = (
-                            output_create
-                            + f"""
-{code_indent}  auto kernel_out_{i}_dist = SetKernelDistOutput({get_out_code});
-{code_indent}  auto kernel_out_{i} = kernel_out_{i}_dist->mutable_value();"""
-                        )
-                    else:
-                        output_create = (
-                            output_create
-                            + f"""
+                    output_create = (
+                        output_create
+                        + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({get_out_code});"""
-                        )
+                    )
 
                 if (
                     not inplace_flag
@@ -469,10 +451,7 @@ def generate_api(
             foward_api.is_dygraph_api = False
 
         header_file.write(foward_api.gene_api_declaration())
-        if is_fused_ops_yaml is True:
-            source_file.write(foward_api.gene_api_code(for_auto_parallel=False))
-        else:
-            source_file.write(foward_api.gene_api_code(for_auto_parallel=True))
+        source_file.write(foward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

@@ -53,7 +53,6 @@ class StringsAPI(ForwardAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []
@@ -305,7 +304,7 @@ class StringsAPI(ForwardAPI):
 
         return kernel_select_code
 
-    def gene_base_api_code(self, inplace_flag=False, for_auto_parallel=False):
+    def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         return f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
@@ -381,7 +380,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     for api in apis:
         strings_api = StringsAPI(api)
         header_file.write(strings_api.gene_api_declaration())
-        source_file.write(strings_api.gene_api_code(for_auto_parallel=False))
+        source_file.write(strings_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

@@ -35,7 +35,6 @@ class SparseAPI(ForwardAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []
@@ -391,7 +390,7 @@ class SparseAPI(ForwardAPI):
   }}
 """
 
-    def gene_base_api_code(self, inplace_flag=False, for_auto_parallel=False):
+    def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
@@ -485,7 +484,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
         if sparse_api.is_dygraph_api:
             sparse_api.is_dygraph_api = False
         header_file.write(sparse_api.gene_api_declaration())
-        source_file.write(sparse_api.gene_api_code(for_auto_parallel=False))
+        source_file.write(sparse_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

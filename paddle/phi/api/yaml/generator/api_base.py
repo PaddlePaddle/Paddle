@@ -571,69 +571,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         return kernel_select_code
 
-    def gene_infer_spmd(self, kernel_output_names, code_indent) -> str:
-        input_names = self.inputs['names']
-        attr_names = self.attrs['names']
-        infer_meta = self.infer_meta
-
-        infer_meta_params = (
-            infer_meta['param']
-            if infer_meta['param'] is not None
-            else input_names + attr_names
-        )
-        # generate meta tensors
-        meta_tensor_code = ""
-        param_code = ""
-        for param in infer_meta_params:
-            if param in input_names:
-                if self.inputs['input_info'][param] == "const Tensor&":
-                    param_code = (
-                        param_code
-                        + "MakeMetaTensor(*"
-                        + PREFIX_TENSOR_NAME
-                        + param
-                        + "_dist), "
-                    )
-                else:
-                    raise ValueError(
-                        f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
-                    )
-            elif param in attr_names:
-                param_code = param_code + param + ", "
-            elif isinstance(param, str):
-                param_code = param_code + "\"" + param + "\", "
-            elif isinstance(param, bool):
-                param_code = param_code + str(param).lower() + ", "
-            else:
-                param_code = param_code + str(param) + ", "
-
-        for i, out_name in enumerate(kernel_output_names):
-            if self.outputs['types'][i] == 'Tensor':
-                meta_tensor_code = (
-                    meta_tensor_code
-                    + code_indent
-                    + "  phi::MetaTensor "
-                    + out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)
-                    + "_dist("
-                    + out_name
-                    + "_dist);"
-                )
-                if len(kernel_output_names) == 1:
-                    param_code = (
-                        param_code
-                        + f"&{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)}_dist, "
-                    )
-                else:
-                    param_code = (
-                        param_code
-                        + f"{out_name}_dist ? &{out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)}_dist : nullptr, "
-                    )
-
-        param_code = param_code[:-2]
-        return f"""{meta_tensor_code}
-{code_indent}  phi::{infer_meta['func']}({param_code});
-"""
-
     def gene_infer_meta(self, kernel_output_names, code_indent) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
@@ -757,11 +694,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return trans_flag
 
     def gene_dense_input(
-        self,
-        input_name,
-        input_name_tensor_map,
-        code_indent='',
-        for_auto_parallel=False,
+        self, input_name, input_name_tensor_map, code_indent=''
     ):
         input_tensor_code = ""
         trans_flag = self.gene_trans_flag(input_name)
@@ -774,19 +707,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_name_tensor_map[input_name].append(
             (f"{PREFIX_TENSOR_NAME}{input_name}", False)
         )
-        if for_auto_parallel is True:
-            input_tensor_code = (
-                input_tensor_code
-                + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_dist = PrepareDataForDistTensor({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {PREFIX_TENSOR_NAME}{input_name}_dist->mutable_value();"""
-            )
-        else:
-            input_tensor_code = (
-                input_tensor_code
-                + f"""
+        input_tensor_code = (
+            input_tensor_code
+            + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);"""
-            )
+        )
         return input_tensor_code
 
     def gene_selected_rows_input(
@@ -883,9 +808,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             )
         return input_tensor_code
 
-    def gene_input(
-        self, kernel_tensor_type=None, code_indent='', for_auto_parallel=False
-    ):
+    def gene_input(self, kernel_tensor_type=None, code_indent=''):
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -904,24 +827,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     else kernel_tensor_type[0][kernel_param.index(input_name)]
                 )
                 if api_tensor_type in self.gene_input_func.keys():
-                    if (
-                        api_tensor_type == "const Tensor&"
-                        and phi_tensor_type == "dense"
-                    ):
-                        input_tensor_code += self.gene_input_func[
-                            api_tensor_type
-                        ][phi_tensor_type](
-                            input_name,
-                            input_name_tensor_map,
-                            code_indent,
-                            for_auto_parallel,
-                        )
-                    else:
-                        input_tensor_code += self.gene_input_func[
-                            api_tensor_type
-                        ][phi_tensor_type](
-                            input_name, input_name_tensor_map, code_indent
-                        )
+                    input_tensor_code += self.gene_input_func[api_tensor_type][
+                        phi_tensor_type
+                    ](input_name, input_name_tensor_map, code_indent)
                 else:
                     # do nothing
                     pass
@@ -946,25 +854,15 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  const auto& {PREFIX_TENSOR_NAME}{input_name} = *{PREFIX_TENSOR_NAME}{input_name}_uq_ptr;"""
                             )
                         else:
-                            if for_auto_parallel is True:
-                                input_tensor_code = (
-                                    input_tensor_code
-                                    + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_dist = {input_name}.impl();
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = static_cast<phi::distributed::DistTensor*>({PREFIX_TENSOR_NAME}{input_name}_dist.get())->mutable_value();"""
-                                )
-                            else:
-                                input_tensor_code = (
-                                    input_tensor_code
-                                    + f"""
+                            input_tensor_code = (
+                                input_tensor_code
+                                + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {input_name}.impl();"""
-                                )
+                            )
 
         return input_name_tensor_map, input_tensor_code
 
-    def get_kernel_args(
-        self, kernel_tensor_type=None, code_indent='', for_auto_parallel=False
-    ):
+    def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -991,7 +889,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             kernel_param = input_names + attr_names
 
         input_name_tensor_map, input_tensor_code = self.gene_input(
-            kernel_tensor_type, code_indent, for_auto_parallel
+            kernel_tensor_type, code_indent
         )
 
         input_tensor_code = (
@@ -1277,7 +1175,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return input_tensor_code, ", ".join(kernel_args), kernel_signature
 
     # Override by child class
-    def gene_return_code(self, for_auto_parallel=False):
+    def gene_return_code(self):
         return "return api_output;"
 
     # Override by child class
@@ -1287,7 +1185,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        for_auto_parallel=False,
     ):
         return None, None, None
 
@@ -1397,120 +1294,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
   }}
 """
 
-    def check_argument_whether_support_auto_parallel(self):
-        for name in self.inputs['names']:
-            if self.inputs['input_info'][name] != "const Tensor&":
-                return False
-        for out_type in self.outputs['types']:
-            if out_type != "Tensor":
-                return False
-        return True
-
-    def gene_auto_parallel_branch(self, kernel_name, code_indent, inplace_flag):
-        # 1. If condition, as long as one input is a DistTensor, enter this branch
-        # TODO(chenwiehang): only support Tensor and optional<Tensor>
-        used_inputs = []
-        for name in self.inputs['names']:
-            if (
-                self.inputs['input_info'][name] == "const Tensor&"
-                or self.inputs['input_info'][name]
-                == "const paddle::optional<Tensor&>"
-            ):
-                used_inputs.append(name)
-        if len(used_inputs) == 0:
-            return ""
-        condition_code = ""
-        if len(used_inputs) > 1:
-            condition_code += f"{used_inputs[0]}.is_dist_tensor()"
-            for name in used_inputs[1:]:
-                if name in self.optional_vars:
-                    condition_code += (
-                        f" || (!{name} || {name}->is_dist_tensor())"
-                    )
-                else:
-                    condition_code += f" || {name}.is_dist_tensor()"
-        else:
-            condition_code += f"{used_inputs[0]}.is_dist_tensor()"
-
-        # 2. TODO(chenweihang): generate InferSPMD code later
-        # InferSPMD contains global InferShape part
-        # infer_spmd_code = f""
-
-        # 3. Kernel Selection
-        kernel_selection_code = f"""
-{code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-{code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
-{code_indent}  const auto& kernel = kernel_result.kernel;
-{code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
-{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);"""
-
-        # 4. Prepare Data
-        # TODO(chenweihang): generate Reshard code later, and maybe we should
-        # split original PrepareData part to TransformPlaceAndDtype and
-        # TransformLayout, then insert Reshard part, result like:
-        # TransformPlaceAndDtype->Reshard->TransformLayout
-        (
-            prepare_input_tensors_code,
-            kernel_args,
-            kernel_signature,
-        ) = self.get_kernel_args(
-            code_indent=code_indent, for_auto_parallel=True
-        )
-
-        # 5. Dist Output Creation
-        out_tensor_type_list = None
-        (
-            outputs_args,
-            kernel_output_names,
-            output_creation_code,
-        ) = self.gene_output(
-            self.outputs['types'],
-            out_tensor_type_list,
-            code_indent,
-            inplace_flag,
-            for_auto_parallel=True,
-        )
-
-        # global InferMeta
-        infer_spmd_code = self.gene_infer_spmd(kernel_output_names, code_indent)
-
-        # 6. Local InferMeta
-        local_infermeta_code = self.gene_infer_meta(
-            kernel_output_names, code_indent
-        )
-
-        # 6. Kernel Call
-        fallback_kernel_output_trans = ""
-        for kernel_out in outputs_args:
-            fallback_kernel_output_trans += f"""
-{code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
-        kernel_call_code = f"""
-{code_indent}  using kernel_signature = {kernel_signature};
-{code_indent}  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-{code_indent}  (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
-{code_indent}  if (kernel_result.has_fallback_cpu) {{
-{fallback_kernel_output_trans}
-{self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}
-{code_indent}  }}"""
-
-        # 7. Return
-        return_code = self.gene_return_code(for_auto_parallel=True)
-
-        return f"""
-  if ({condition_code}) {{
-    {kernel_selection_code}
-    {prepare_input_tensors_code}
-    {output_creation_code}
-
-{infer_spmd_code}
-{local_infermeta_code}
-    {kernel_call_code}
-    {return_code}
-  }}
-"""
-
-    def gene_base_api_code(self, inplace_flag=False, for_auto_parallel=False):
+    def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
@@ -1535,22 +1319,6 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
 """
             )
         else:
-            # auto parallel branch, all apis contains this branch default
-            # 1. only works for the ops contains single kernel
-            # 2. doesn't support initialize ops now
-            # 3. doesn't support view api
-            # 4. only for general forward and backward
-            # 5. only support single tensor input and output
-            if (
-                for_auto_parallel is True
-                and len(self.inputs['names']) > 0
-                and len(self.view_map) == 0
-                and self.check_argument_whether_support_auto_parallel()
-            ):
-                api_code += self.gene_auto_parallel_branch(
-                    self.kernel['func'][0], '  ', inplace_flag
-                )
-
             return (
                 api_code
                 + self.gen_kernel_code(self.kernel['func'][0], '', inplace_flag)
@@ -1565,11 +1333,9 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
   return {invoke_code};
 }}"""
 
-    def gene_api_code(self, for_auto_parallel=False):
+    def gene_api_code(self):
         if self.is_base_api:
-            api_code = self.gene_base_api_code(
-                for_auto_parallel=for_auto_parallel
-            )
+            api_code = self.gene_base_api_code()
             if len(self.inplace_map) > 0:
                 if self.api[-1] == '_':
                     api_code = ""

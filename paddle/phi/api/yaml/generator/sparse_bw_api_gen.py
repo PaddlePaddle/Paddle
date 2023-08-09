@@ -32,7 +32,7 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def get_return_type(self, inplace_flag=False):
         return BackwardAPI.get_return_type(self)
 
-    def gene_return_code(self, for_auto_parallel=False):
+    def gene_return_code(self):
         return "return;"
 
     def gene_api_declaration(self):
@@ -50,7 +50,6 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
         out_tensor_type_list=None,
         code_indent='',
         inplace_flag=False,
-        for_auto_parallel=False,
     ):
         kernel_output = []
         output_names = []
@@ -178,7 +177,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     for api in apis:
         sparse_bw_api = SparseBackwardAPI(api)
         header_file.write(sparse_bw_api.gene_api_declaration())
-        source_file.write(sparse_bw_api.gene_api_code(for_auto_parallel=False))
+        source_file.write(sparse_bw_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
