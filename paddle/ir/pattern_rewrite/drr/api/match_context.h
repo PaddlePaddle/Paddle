@@ -32,8 +32,6 @@ class MatchContext final {
 
   const TensorInterface& Tensor(const std::string& tensor_name) const;
 
-  const IrOperation& Operation(const std::string& op_name) const;
-
   template <typename T>
   T Attr(const std::string& attr_name) const;
 

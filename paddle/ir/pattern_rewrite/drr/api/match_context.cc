@@ -27,11 +27,6 @@ const TensorInterface& MatchContext::Tensor(
   return impl_->Tensor(tensor_name);
 }
 
-const IrOperation& MatchContext::Operation(
-    const std::string& op_name) const {
-  return impl_->Operation(op_name);
-}
-
 template <typename T>
 T MatchContext::Attr(const std::string& attr_name) const {
   return impl_->Attr<T>(attr_name);
