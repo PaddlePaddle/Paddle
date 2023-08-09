@@ -162,6 +162,8 @@ class IR_API Value {
 
   bool HasOneUse() const;
 
+  size_t use_count() const;
+
   friend struct std::hash<Value>;
 
   void ReplaceUsesWithIf(

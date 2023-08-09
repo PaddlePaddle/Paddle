@@ -18,7 +18,9 @@
 #include <unordered_map>
 
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/pattern_rewrite/drr/api/operation_interface.h"
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_tensor.h"
 
 namespace ir {
@@ -41,9 +43,14 @@ PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
 class MatchContextImpl final {
  public:
   MatchContextImpl() = default;
+  ~MatchContextImpl() = default;
 
   const TensorInterface& Tensor(const std::string& tensor_name) const {
     return *tensor_map_.at(tensor_name);
+  }
+
+  const OperationInterface& Operation(const std::string& op_name) const {
+    return *operation_map_.at(op_name);
   }
 
   template <typename T>
@@ -58,12 +65,18 @@ class MatchContextImpl final {
     tensor_map_.emplace(tensor_name, tensor);
   }
 
+  void BindIrOperation(const std::string& op_name,
+                       const std::shared_ptr<IrOperation>& op) {
+    operation_map_.emplace(op_name, op);
+  }
+
   void BindIrAttr(const std::string& attr_name, ir::Attribute attr) {
     attr_map_.emplace(attr_name, attr);
   }
 
  private:
   std::unordered_map<std::string, std::shared_ptr<IrTensor>> tensor_map_;
+  std::unordered_map<std::string, std::shared_ptr<IrOperation>> operation_map_;
   std::unordered_map<std::string, ir::Attribute> attr_map_;
 };
 

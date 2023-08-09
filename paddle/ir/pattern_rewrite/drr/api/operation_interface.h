@@ -14,42 +14,16 @@
 
 #pragma once
 
-
 namespace ir {
+
+class Operation;
+
 namespace drr {
 
-class IrTensor;
-class IrShape;
-class IrDtype;
-
-class ShapeInterface final {
+class OperationInterface {
  public:
-  bool operator==(const ShapeInterface& other) const;
-
- private:
-  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
-
-  friend class IrTensor;
-
-  const IrShape* shape_;
-};
-
-class DtypeInterface final {
- public:
-  bool operator==(const DtypeInterface& other) const;
-
- private:
-  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
-
-  friend class IrTensor;
-
-  const IrDtype* dtype_;
-};
-
-class TensorInterface {
- public:
-  virtual ShapeInterface Shape() const = 0;
-  virtual DtypeInterface Dtype() const = 0;
+  virtual ir::Operation* Operation() const = 0;
+  // Other virtual interface like (prev op and next op) functions.
 };
 
 }  // namespace drr

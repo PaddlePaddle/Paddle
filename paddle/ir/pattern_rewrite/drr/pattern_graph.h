@@ -41,6 +41,8 @@ class PatternGraph {
   void UpdateTmpTensor(const id_type& tmp_tensor_id,
                        const id_type& new_tensor_id);
 
+  size_t CountOfOpCalls() const;
+
   void Print() const;
 
  protected:

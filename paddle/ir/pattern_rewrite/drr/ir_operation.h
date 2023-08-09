@@ -14,42 +14,20 @@
 
 #pragma once
 
+#include "paddle/ir/core/operation.h"
+#include "paddle/ir/pattern_rewrite/drr/api/operation_interface.h"
 
 namespace ir {
 namespace drr {
 
-class IrTensor;
-class IrShape;
-class IrDtype;
-
-class ShapeInterface final {
+class IrOperation : public OperationInterface {
  public:
-  bool operator==(const ShapeInterface& other) const;
+  explicit IrOperation(ir::Operation* op) : op_(op) {}
+
+  ir::Operation* Operation() const override { return op_; }
 
  private:
-  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
-
-  friend class IrTensor;
-
-  const IrShape* shape_;
-};
-
-class DtypeInterface final {
- public:
-  bool operator==(const DtypeInterface& other) const;
-
- private:
-  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
-
-  friend class IrTensor;
-
-  const IrDtype* dtype_;
-};
-
-class TensorInterface {
- public:
-  virtual ShapeInterface Shape() const = 0;
-  virtual DtypeInterface Dtype() const = 0;
+  ir::Operation* op_;
 };
 
 }  // namespace drr

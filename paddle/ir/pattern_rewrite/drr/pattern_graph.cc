@@ -81,6 +81,8 @@ void PatternGraph::UpdateTmpTensor(const id_type &tmp_tensor_id,
   id2owned_tensor_[new_tensor_id] = tmp_tensor;
 }
 
+size_t PatternGraph::CountOfOpCalls() const { return owned_op_call_.size(); }
+
 void PatternGraph::Print() const {
   std::cout << "All Tensors:" << std::endl;
   for (const auto &kv : id2owned_tensor_) {
