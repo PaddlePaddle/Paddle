@@ -27,10 +27,12 @@ namespace operators {
 
 static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
     const OpVariant &fwd_op, const OpVariant &bwd_op) {
-  // NOTE(MarioLulab): To avoide strip `static_pylayer_op.cc` when linker static link libstatic_pylayer_op.a, we should reference
-  // Variable or Function defined in libstatic_pylayer_op.a. Remind of that this is a `Temporary` method, we will use `op_library`
-  // to avoide linker strip.
+  // NOTE(MarioLulab): To avoide strip `static_pylayer_op.cc` when linker static
+  // link libstatic_pylayer_op.a, we should reference Variable or Function
+  // defined in libstatic_pylayer_op.a. Remind of that this is a `Temporary`
+  // method, we will use `op_library` to avoide linker strip.
   std::string temp = std::string(StaticPyLayerOp::kInputs);
+
   return fwd_op.Outputs().at(ConditionalOp::kScope) ==
          bwd_op.Inputs().at(ConditionalOp::kScope);
 }

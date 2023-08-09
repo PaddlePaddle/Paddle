@@ -25,7 +25,6 @@ from typing import Any, List
 import numpy
 
 from paddle.nn import Layer
-from paddle.autograd.py_layer import PyLayerMeta
 
 from .convert_operators import (
     convert_enumerate,
@@ -41,7 +40,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func, unwrap, is_pylayer
+from .utils import is_builtin, is_paddle_func, is_pylayer, unwrap
 
 __all__ = []
 
@@ -149,6 +148,7 @@ def is_unsupported(func):
         )
         return True
 
+
 class StaticPyLayerContext:
     def save_for_backward(self, *tensors):
         # insert one OP ?
@@ -180,8 +180,11 @@ class StaticPyLayerContext:
         print("call set_materialize_grads")
         pass
 
+
 class StaticPyLayer:
-    def __init__(self, dyfunc_self, forward_fn, backward_fn, pylayer_context=None):
+    def __init__(
+        self, dyfunc_self, forward_fn, backward_fn, pylayer_context=None
+    ):
         self.dyfunc_self = dyfunc_self
         self.orig_forward_fn = forward_fn
         self.orig_backward_fn = backward_fn
@@ -190,12 +193,16 @@ class StaticPyLayer:
 
         # self.converted_forward_fn = convert_to_static(forward_fn)
         # self.converted_backward_fn = convert_to_static(backward_fn)
-        self.converted_forward_fn = functools.partial(convert_to_static(forward_fn), self.static_pylayer_context)
-        self.converted_backward_fn = functools.partial(convert_to_static(backward_fn), self.static_pylayer_context)
-
+        self.converted_forward_fn = functools.partial(
+            convert_to_static(forward_fn), self.static_pylayer_context
+        )
+        self.converted_backward_fn = functools.partial(
+            convert_to_static(backward_fn), self.static_pylayer_context
+        )
 
     def __call__(self, *args, **kwargs):
         return self.converted_forward_fn(*args, **kwargs)
+
 
 def convert_call(func):
     """
@@ -266,11 +273,11 @@ def convert_call(func):
 
     if is_builtin(func, "print"):
         return convert_print
-    
+
     temp = getattr(func, "__qualname__", None)
     if temp == "PyLayerContext.save_for_backward":
         print("############# ok #############")
-    
+
     if not is_pylayer(func) and is_builtin(func) or is_unsupported(func):
         return func
 
@@ -376,14 +383,16 @@ def convert_call(func):
                 _, backward_func = unwrap_decorators(func_self.backward)
                 # forward_func = convert_to_static(forward_func)
                 # backward_func = convert_to_static(backward_func)
-                static_pylayer = StaticPyLayer(func_self, forward_func, backward_func, pylayer_context=None)
+                static_pylayer = StaticPyLayer(
+                    func_self, forward_func, backward_func, pylayer_context=None
+                )
             except (OSError, TypeError):
                 func_self = None if func_self else func_self
                 raise NotImplementedError(
                     f"Callable {func} can not be transformed at present."
                 )
             converted_call = static_pylayer
-            func_self = None    # avoid `functools.partial`
+            func_self = None  # avoid `functools.partial`
         else:
             try:
                 call_func = func.__class__.__call__

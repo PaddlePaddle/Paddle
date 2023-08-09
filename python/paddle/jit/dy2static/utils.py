@@ -32,12 +32,12 @@ import numpy as np
 
 import paddle
 from paddle import fluid  # noqa: F401
+from paddle.autograd.py_layer import PyLayerMeta
 from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
-from paddle.autograd.py_layer import PyLayerMeta
 
 from .ast_utils import ast_to_source_code
 from .static_analysis import StaticAnalysisVisitor
@@ -1498,13 +1498,14 @@ def is_builtin(func, name=None):
     else:
         return False
 
+
 def is_pylayer(func):
-    """predict whether a function is a function from PyLayer.
-    """
+    """predict whether a function is a function from PyLayer."""
     func_self = getattr(func, '__self__', None)
     if func_self and isinstance(func.__self__, PyLayerMeta):
-        return True    
-    return False    
+        return True
+    return False
+
 
 @signature_safe_contextmanager
 def backend_guard(backend):

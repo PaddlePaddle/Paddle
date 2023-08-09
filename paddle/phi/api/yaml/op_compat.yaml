@@ -537,11 +537,6 @@
   extra :
     attrs : ['str[] skip_eager_deletion_vars = {}']
 
-- op : static_pylayer
-  backward : static_pylayer_grad
-  extra :
-    attrs : ['str[] skip_eager_deletion_vars = {}']
-
 - op : conj
   inputs :
     x : X
@@ -2645,6 +2640,11 @@
     x : X
   outputs :
     out : Out
+
+- op : static_pylayer
+  backward : static_pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
 
 - op : strided_slice
   backward : strided_slice_grad
