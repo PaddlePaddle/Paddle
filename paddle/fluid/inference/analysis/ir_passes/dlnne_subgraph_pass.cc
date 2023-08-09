@@ -407,14 +407,13 @@ std::string replace_name(std::string name,
 
 auto fix_batch_as_one(
     std::unordered_map<std::string, framework::VarDesc *> *name_var_desc,
-    std::set<std::string> *input_names_after_prune,
+    std::set<std::string> *valid_input_names,
     bool use_static_batch = false) {
   std::unordered_map<std::string, std::vector<int64_t>> name_var_shape;
 
   if (use_static_batch) {
     std::set<std::string> names;
-    names.insert(input_names_after_prune->begin(),
-                 input_names_after_prune->end());
+    names.insert(valid_input_names->begin(), valid_input_names->end());
 
     for (auto name : names) {
       if (name_var_desc->find(name) != name_var_desc->end()) {
@@ -472,7 +471,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
   std::set<std::string> input_names;
   std::set<std::string> input_names_with_id;
   std::vector<std::string> params;
-  std::set<std::string> input_names_after_prune;
+  std::set<std::string> valid_input_names;
   // if we delete fluid copy of params shared by more than 1 ops, there will be
   // problem, so we filter them out.
 
@@ -485,7 +484,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
     }
     if (std::find(graph_params.begin(), graph_params.end(), x->Name()) ==
         graph_params.end()) {
-      input_names_after_prune.insert(x->Name());
+      valid_input_names.insert(x->Name());
     }
   }
 
@@ -560,8 +559,8 @@ void DlnneSubgraphPass::CreateDlnneOp(
 
   // starting fix bath as one
   bool use_static_batch = Get<bool>("use_static_batch");
-  auto name_shape_table = fix_batch_as_one(
-      *name_var_desc, *input_names_after_prune, use_static_batch);
+  auto name_shape_table =
+      fix_batch_as_one(*name_var_desc, *valid_input_names, use_static_batch);
 
   for (const auto &name_shape : name_shape_table) {
     VLOG(4) << "Fix batch shape as one var name: " << name_shape.first;
@@ -599,8 +598,8 @@ void DlnneSubgraphPass::CreateDlnneOp(
   // Set attrs
   op_desc->SetType("dlnne_engine");
   op_desc->SetInput("Xs",
-                    std::vector<std::string>(input_names_after_prune.begin(),
-                                             input_names_after_prune.end()));
+                    std::vector<std::string>(valid_input_names.begin(),
+                                             valid_input_names.end()));
 
   op_desc->SetOutput("Ys",
                      std::vector<std::string>(valid_output_names.begin(),
@@ -621,10 +620,10 @@ void DlnneSubgraphPass::CreateDlnneOp(
   op_desc->SetAttr("subgraph_root_path", subgraph_root_path);
 
   std::stringstream ins_stream;
-  for (auto name : input_names_after_prune) {
+  for (auto name : valid_input_names) {
     ins_stream << "," << name;
   }
-  op_desc->SetAttr("input_names_after_prune", ins_stream.str().substr(1));
+  op_desc->SetAttr("valid_input_names", ins_stream.str().substr(1));
 
   std::stringstream outs_stream;
   for (auto name : valid_output_names) {
@@ -636,7 +635,7 @@ void DlnneSubgraphPass::CreateDlnneOp(
   {
     // add feed to subgraph:
     int input_idx = 0;
-    for (auto input_name : input_names_after_prune) {
+    for (auto input_name : valid_input_names) {
       auto *feed1 = export_block->AppendOp();
       feed1->SetType("feed");
       feed1->SetInput("X", {"feed"});
