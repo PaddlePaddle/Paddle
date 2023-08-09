@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/binary.h"
 
 #include <algorithm>
-#include <iostream>
 #include <vector>
 
 #include "glog/logging.h"
