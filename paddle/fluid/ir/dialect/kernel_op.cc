@@ -20,8 +20,10 @@
 namespace paddle {
 namespace dialect {
 
-const char* PhiKernelOp::attributes_name[attributes_num] = {
-    "op_name", "kernel_name", "kernel_key"};
+const char* PhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
+    "op_name",
+    "kernel_name",
+    "kernel_key"};
 
 void PhiKernelOp::Verify() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";
@@ -45,10 +47,10 @@ void PhiKernelOp::Verify() {
 }
 
 std::string PhiKernelOp::op_name() {
-  return attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
+  return attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
 }
 std::string PhiKernelOp::kernel_name() {
-  return attributes().at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+  return attributes().at("kernel_name").dyn_cast<ir::StrAttribute>().AsString();
 }
 phi::KernelKey PhiKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();

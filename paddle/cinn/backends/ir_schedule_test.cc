@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 #include <gtest/gtest.h>
 #include <stdlib.h>
@@ -24,7 +24,8 @@
 #include "paddle/cinn/backends/codegen_c_x86.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_error.h"
+#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
@@ -154,6 +155,48 @@ void test_split_and_fuse2(void* _args, int32_t num_args)
 
 )ROC";
   ASSERT_EQ(utils::Trim(target_code), utils::Trim(source_code));
+}
+
+void TestSplitThrow() {
+  Context::Global().ResetNameId();
+  Expr M(32);
+  Expr N(32);
+  Expr P(32);
+
+  Target target = common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N});
+  auto B = Compute(
+      {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
+
+  auto stages = CreateStages({A, B});
+
+  auto func = cinn::lang::LowerVec(
+      "test_split_throw", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(
+      mod_expr, -1, false, utils::ErrorMessageLevel::kGeneral);
+  auto fused = ir_sch.Fuse("B", {0, 1});
+  // statement that cause the exception
+  auto splited = ir_sch.Split(fused, {-1, -1});
+
+  auto loops = ir_sch.GetLoops("B");
+  fused = ir_sch.Fuse(loops);
+  splited = ir_sch.Split(fused, {256, -1});
+
+  Module::Builder builder("module1", target);
+  for (auto& i : func) {
+    builder.AddFunction(i);
+  }
+  auto module = builder.Build();
+  CodeGenC codegen(target);
+  codegen.SetInlineBuiltinCodes(false);
+  auto source_code = codegen.Compile(module, CodeGenC::OutputKind::CImpl);
+}
+TEST(IrSchedule, split_throw) {
+  ASSERT_THROW(TestSplitThrow(), utils::enforce::EnforceNotMet);
 }
 
 TEST(IrSchedule, reorder1) {

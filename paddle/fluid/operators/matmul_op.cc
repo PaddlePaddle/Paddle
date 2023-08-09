@@ -573,7 +573,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     auto dim_x = GetDimForInput(*context, "X");
     auto dim_y = GetDimForInput(*context, "Y");
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // For NHWC execution output shape needs to be
     // computed like instead x*y we are to do y*x
     bool channelwise_onednn =
@@ -687,7 +687,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       // only promote inputs’s types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       // When matmul is first oneDNN op in a chain (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH

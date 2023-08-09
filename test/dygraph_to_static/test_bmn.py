@@ -18,6 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -447,10 +448,10 @@ def optimizer(cfg, parameter_list):
     lr_decay = cfg.learning_rate_decay
     l2_weight_decay = cfg.l2_weight_decay
     lr = [base_lr, base_lr * lr_decay]
-    optimizer = fluid.optimizer.Adam(
-        fluid.layers.piecewise_decay(boundaries=bd, values=lr),
-        parameter_list=parameter_list,
-        regularization=paddle.regularizer.L2Decay(coeff=l2_weight_decay),
+    optimizer = paddle.optimizer.Adam(
+        paddle.optimizer.lr.PiecewiseDecay(boundaries=bd, values=lr),
+        parameters=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(coeff=l2_weight_decay),
     )
     return optimizer
 
@@ -636,6 +637,7 @@ def val_bmn(model, args):
     return loss_data
 
 
+@dy2static_unittest
 class TestTrain(unittest.TestCase):
     def setUp(self):
         self.args = Args()
@@ -666,6 +668,7 @@ class TestTrain(unittest.TestCase):
             local_random = np.random.RandomState(SEED)
 
             bmn = BMN(args)
+            bmn = paddle.jit.to_static(bmn)
             adam = optimizer(args, parameter_list=bmn.parameters())
 
             train_reader = fake_data_reader(args, 'train')
@@ -747,6 +750,21 @@ class TestTrain(unittest.TestCase):
                             )
                         break
             return np.array(loss_data)
+
+    @test_with_new_ir
+    def test_train_new_ir(self):
+        static_res = self.train_bmn(self.args, self.place, to_static=True)
+        dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph_res: {},\n static_res: {}'.format(
+                dygraph_res[~np.isclose(dygraph_res, static_res)],
+                static_res[~np.isclose(dygraph_res, static_res)],
+            ),
+            atol=1e-8,
+        )
 
     def test_train(self):
         static_res = self.train_bmn(self.args, self.place, to_static=True)

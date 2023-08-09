@@ -32,8 +32,7 @@ class DeadCodeEliminationPass : public ir::Pass {
     IR_ENFORCE(module_op, "DcePass should run on module op.");
     auto *block = module_op.block();
     std::vector<ir::Operation *> erased_op;
-    for (auto it = block->begin(); it != block->end(); ++it) {
-      auto &op = *it;
+    for (auto &op : *block) {
       // TODO(wilber): Support NoSideEffect trait.
       // if (!op->HasTrait<NoSideEffect>()) continue;
 
@@ -56,7 +55,7 @@ class DeadCodeEliminationPass : public ir::Pass {
             get_parameter_op->attributes()
                 .at(get_parameter_op.attributes_name[0])
                 .dyn_cast<ir::StrAttribute>()
-                .data());
+                .AsString());
       }
       block->erase(*op);
     }

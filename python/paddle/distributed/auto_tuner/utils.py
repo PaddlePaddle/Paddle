@@ -38,11 +38,11 @@ def dist_degree(mode, num_gpus, num_nodes):
     assert mode in ["dp", "mp", "pp", "sharding"]
     results = []
     if mode == "dp":
-        results = divisor(num_gpus, reverse=True)
+        results = divisor(num_gpus, reverse=False)
 
     elif mode == "pp":
         if num_nodes > 1:
-            results = list(range(num_nodes))
+            results = list(range(1, num_nodes + 1))
         else:
             results = divisor(num_gpus, reverse=True)
 
@@ -123,9 +123,7 @@ def default_candidates(tuner_cfg):
     elif tuner_cfg.get("micro_batch_size", None):
         candidates["micro_batch_size"] = tuner_cfg.get("micro_batch_size")
     else:
-        candidates["micro_batch_size"] = [
-            tuner_cfg["model_cfg"]["global_batch_size"]
-        ]
+        candidates["micro_batch_size"] = [None]
 
     return candidates
 
@@ -133,7 +131,7 @@ def default_candidates(tuner_cfg):
 def search_all(tuner_cfg):
     """Permutate the candidates of all hyper params."""
     candidates = tuner_cfg["candidates"]
-    # Order: dp -> mp -> pp -> mbs -> sharding-> recompute
+    # Order: dp -> sharding -> mbs -> pp -> mp  -> recompute
     dp_degree_candidates = candidates["dp_degree"]
     mp_degree_candidates = candidates["mp_degree"]
     pp_degree_candidates = candidates["pp_degree"]
@@ -145,22 +143,22 @@ def search_all(tuner_cfg):
     all_cfgs = list(
         itertools.product(
             dp_degree_candidates,
-            mp_degree_candidates,
-            pp_degree_candidates,
-            mbs_candidates,
             sharding_degree_candidates,
             sharding_stage_candidates,
+            mbs_candidates,
+            pp_degree_candidates,
+            mp_degree_candidates,
             use_recompute_candidates,
             recompute_granularity_candidates,
         )
     )
     mapping = {
         0: "dp_degree",
-        1: "mp_degree",
-        2: "pp_degree",
+        1: "sharding_degree",
+        2: "sharding_stage",
         3: "micro_batch_size",
-        5: "sharding_stage",
-        4: "sharding_degree",
+        4: "pp_degree",
+        5: "mp_degree",
         6: "use_recompute",
         7: "recompute_granularity",
     }
@@ -179,48 +177,96 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
     cmd = copy.deepcopy(tuner_cfg["run_cmd"])
     res_args = copy.deepcopy(raw_args)
     if "dp_degree" in cmd and "dp_degree" in cfg:
-        cmd["dp_degree"][1] = cmd["dp_degree"][1] + "=" + str(cfg["dp_degree"])
-        res_args.extend(cmd["dp_degree"])
+        if "--" in cmd["dp_degree"][0]:
+            cmd["dp_degree"][1] = cmd["dp_degree"][1] + str(cfg["dp_degree"])
+            res_args.extend(cmd["dp_degree"])
+        else:
+            cmd["dp_degree"][1] = (
+                cmd["dp_degree"][1] + "=" + str(cfg["dp_degree"])
+            )
+            res_args.extend(cmd["dp_degree"])
 
     if "mp_degree" in cmd and "mp_degree" in cfg:
-        cmd["mp_degree"][1] = cmd["mp_degree"][1] + "=" + str(cfg["mp_degree"])
-        res_args.extend(cmd["mp_degree"])
+        if "--" in cmd["mp_degree"][0]:
+            cmd["mp_degree"][1] = cmd["mp_degree"][1] + str(cfg["mp_degree"])
+            res_args.extend(cmd["mp_degree"])
+        else:
+            cmd["mp_degree"][1] = (
+                cmd["mp_degree"][1] + "=" + str(cfg["mp_degree"])
+            )
+            res_args.extend(cmd["mp_degree"])
 
     if "pp_degree" in cmd and "pp_degree" in cfg:
-        cmd["pp_degree"][1] = cmd["pp_degree"][1] + "=" + str(cfg["pp_degree"])
-        res_args.extend(cmd["pp_degree"])
+        if "--" in cmd["pp_degree"][0]:
+            cmd["pp_degree"][1] = cmd["pp_degree"][1] + str(cfg["pp_degree"])
+            res_args.extend(cmd["pp_degree"])
+        else:
+            cmd["pp_degree"][1] = (
+                cmd["pp_degree"][1] + "=" + str(cfg["pp_degree"])
+            )
+            res_args.extend(cmd["pp_degree"])
 
     if "micro_batch_size" in cmd and "micro_batch_size" in cfg:
-        cmd["micro_batch_size"][1] = (
-            cmd["micro_batch_size"][1] + "=" + str(cfg["micro_batch_size"])
-        )
-        res_args.extend(cmd["micro_batch_size"])
+        if "--" in cmd["micro_batch_size"][0]:
+            cmd["micro_batch_size"][1] = cmd["micro_batch_size"][1] + str(
+                cfg["micro_batch_size"]
+            )
+            res_args.extend(cmd["micro_batch_size"])
+        else:
+            cmd["micro_batch_size"][1] = (
+                cmd["micro_batch_size"][1] + "=" + str(cfg["micro_batch_size"])
+            )
+            res_args.extend(cmd["micro_batch_size"])
 
     if "sharding_degree" in cmd and "sharding_degree" in cfg:
-        cmd["sharding_degree"][1] = (
-            cmd["sharding_degree"][1] + "=" + str(cfg["sharding_degree"])
-        )
-        res_args.extend(cmd["sharding_degree"])
+        if "--" in cmd["sharding_degree"][0]:
+            cmd["sharding_degree"][1] = cmd["sharding_degree"][1] + str(
+                cfg["sharding_degree"]
+            )
+            res_args.extend(cmd["sharding_degree"])
+        else:
+            cmd["sharding_degree"][1] = (
+                cmd["sharding_degree"][1] + "=" + str(cfg["sharding_degree"])
+            )
+            res_args.extend(cmd["sharding_degree"])
 
     if "sharding_stage" in cmd and "sharding_stage" in cfg:
-        cmd["sharding_stage"][1] = (
-            cmd["sharding_stage"][1] + "=" + str(cfg["sharding_stage"])
-        )
-        res_args.extend(cmd["sharding_stage"])
+        if "--" in cmd["sharding_stage"][0]:
+            cmd["sharding_stage"][1] = cmd["sharding_stage"][1] + str(
+                cfg["sharding_stage"]
+            )
+            res_args.extend(cmd["sharding_stage"])
+        else:
+            cmd["sharding_stage"][1] = (
+                cmd["sharding_stage"][1] + "=" + str(cfg["sharding_stage"])
+            )
+            res_args.extend(cmd["sharding_stage"])
 
     if "use_recompute" in cmd and "use_recompute" in cfg:
-        cmd["use_recompute"][1] = (
-            cmd["use_recompute"][1] + "=" + str(cfg["use_recompute"])
-        )
-        res_args.extend(cmd["use_recompute"])
+        if "--" in cmd["use_recompute"][0]:
+            cmd["use_recompute"][1] = cmd["use_recompute"][1] + str(
+                cfg["use_recompute"]
+            )
+            res_args.extend(cmd["use_recompute"])
+        else:
+            cmd["use_recompute"][1] = (
+                cmd["use_recompute"][1] + "=" + str(cfg["use_recompute"])
+            )
+            res_args.extend(cmd["use_recompute"])
 
     if "recompute_granularity" in cmd and "recompute_granularity" in cfg:
-        cmd["recompute_granularity"][1] = (
-            cmd["recompute_granularity"][1]
-            + "="
-            + str(cfg["recompute_granularity"])
-        )
-        res_args.extend(cmd["recompute_granularity"])
+        if "--" in cmd["recompute_granularity"][0]:
+            cmd["recompute_granularity"][1] = cmd["recompute_granularity"][
+                1
+            ] + str(cfg["recompute_granularity"])
+            res_args.extend(cmd["recompute_granularity"])
+        else:
+            cmd["recompute_granularity"][1] = (
+                cmd["recompute_granularity"][1]
+                + "="
+                + str(cfg["recompute_granularity"])
+            )
+            res_args.extend(cmd["recompute_granularity"])
 
     if "local_batch_size" in cmd:
         local_batch_size = (
@@ -228,10 +274,48 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
             // cfg["sharding_degree"]
             // cfg["dp_degree"]
         )
-        cmd["local_batch_size"][1] = (
-            cmd["local_batch_size"][1] + "=" + str(local_batch_size)
-        )
-        res_args.extend(cmd["local_batch_size"])
+        if "--" in cmd["local_batch_size"][0]:
+            cmd["local_batch_size"][1] = cmd["local_batch_size"][1] + str(
+                local_batch_size
+            )
+            res_args.extend(cmd["local_batch_size"])
+        else:
+            cmd["local_batch_size"][1] = (
+                cmd["local_batch_size"][1] + "=" + str(local_batch_size)
+            )
+            res_args.extend(cmd["local_batch_size"])
+
+    if "gradient_accumulation_steps" in cmd:
+        if "--" in cmd["gradient_accumulation_steps"][0]:
+            try:
+                gradient_accumulation_steps = (
+                    tuner_cfg["model_cfg"]["global_batch_size"]
+                    // cfg["sharding_degree"]
+                    // cfg["dp_degree"]
+                    // cfg["micro_batch_size"]
+                )
+                cmd["gradient_accumulation_steps"][1] = cmd[
+                    "gradient_accumulation_steps"
+                ][1] + str(gradient_accumulation_steps)
+                res_args.extend(cmd["gradient_accumulation_steps"])
+            except:
+                pass
+        else:
+            try:
+                gradient_accumulation_steps = (
+                    tuner_cfg["model_cfg"]["global_batch_size"]
+                    // cfg["sharding_degree"]
+                    // cfg["dp_degree"]
+                    // cfg["micro_batch_size"]
+                )
+                cmd["gradient_accumulation_steps"][1] = (
+                    cmd["gradient_accumulation_steps"][1]
+                    + "="
+                    + str(gradient_accumulation_steps)
+                )
+                res_args.extend(cmd["gradient_accumulation_steps"])
+            except:
+                pass
 
     return res_args
 
@@ -245,7 +329,9 @@ def read_log(
         return (0.0, True)
     with open(target_file, "r") as f:
         # read file
-        re_metric_pattern = r'speed: (\d+(\.\d*)?) *' + target_metric
+        re_metric_pattern = (
+            target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
+        )
 
         metric_list = []
         lines = f.readlines()

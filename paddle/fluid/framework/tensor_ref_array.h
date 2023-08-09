@@ -20,11 +20,11 @@ namespace paddle {
 namespace framework {
 
 template <>
-struct PhiVectorType<const phi::DenseTensor*> {
-  const char* type_name = "PhiTensorRefArray";
+struct PhiVectorType<const framework::Variable*> {
+  const char* type_name = "VariableRefArray";
 };
 
-using TensorRefArray = PhiVector<const phi::DenseTensor*>;
+using VariableRefArray = PhiVector<const framework::Variable*>;
 
 }  // namespace framework
 }  // namespace paddle

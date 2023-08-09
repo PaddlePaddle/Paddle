@@ -91,7 +91,7 @@ ExternalProject_Add(
   BUILD_BYPRODUCTS ${BUILD_BYPRODUCTS_ARGS})
 
 message(STATUS "MKLDNN library: ${MKLDNN_LIB}")
-add_definitions(-DPADDLE_WITH_MKLDNN)
+add_definitions(-DPADDLE_WITH_DNNL)
 # copy the real so.0 lib to install dir
 # it can be directly contained in wheel or capi
 if(WIN32)

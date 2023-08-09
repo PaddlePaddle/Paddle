@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_mode
@@ -47,6 +50,21 @@ __inplace_unary_func__ = [
     'round_',
     'reciprocal_',
     'sigmoid_',
+    'abs_',
+    'sin_',
+    'sinh_',
+    'asin_',
+    'asinh_',
+    'cos_',
+    'cosh_',
+    'acos_',
+    'acosh_',
+    'tan_',
+    'atan_',
+    'atanh_',
+    'expm1_',
+    'erf_',
+    'square_',
 ]
 
 __all__ = []
@@ -76,7 +94,9 @@ for _OP in set(__inplace_unary_func__):
     _new_OP = _OP
     if _OP in __deprecated_func_name__:
         _new_OP = __deprecated_func_name__[_OP]
-    _func = generate_inplace_fn(_OP)
+    func = generate_inplace_fn(_OP)
+    func.__module__ = __name__
+    _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
 
 add_sample_code(
@@ -84,12 +104,15 @@ add_sample_code(
     r"""
 Examples:
     .. code-block:: python
-        import paddle
-        import paddle.nn.functional as F
-        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-        out = F.silu(x)
-        print(out)
-        # [ 0.7310586 1.7615942 2.8577224, 3.9280552 ]
+
+        >>> import paddle
+        >>> import paddle.nn.functional as F
+
+        >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        >>> out = F.silu(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [0.73105860, 1.76159406, 2.85772228, 3.92805505])
 """,
 )
 
@@ -98,12 +121,15 @@ add_sample_code(
     r"""
 Examples:
     .. code-block:: python
-        import paddle
-        import paddle.nn.functional as F
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.log_sigmoid(x)
-        print(out)
-        # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
+
+        >>> import paddle
+        >>> import paddle.nn.functional as F
+
+        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        >>> out = F.log_sigmoid(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [-0.91301525, -0.79813892, -0.64439666, -0.55435526])
 """,
 )
 
@@ -113,13 +139,13 @@ add_sample_code(
 Examples:
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.tanh(x)
-        print(out)
-        # [-0.37994896 -0.19737532  0.09966799  0.29131261]
-
+        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        >>> out = paddle.tanh(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
 """,
 )
 
@@ -129,14 +155,14 @@ add_sample_code(
 Examples:
     .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
+        >>> import paddle
+        >>> import paddle.nn.functional as F
 
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.tanhshrink(x)
-        print(out)
-        # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
-
+        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        >>> out = F.tanhshrink(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
 """,
 )
 
@@ -146,13 +172,13 @@ add_sample_code(
 Examples:
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.abs(x)
-        print(out)
-        # [0.4 0.2 0.1 0.3]
-
+        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        >>> out = paddle.abs(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [0.40000001, 0.20000000, 0.10000000, 0.30000001])
 """,
 )
 
@@ -162,14 +188,14 @@ add_sample_code(
 Examples:
     .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
+        >>> import paddle
+        >>> import paddle.nn.functional as F
 
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softplus(x)
-        print(out)
-        # [0.513015, 0.598139, 0.744397, 0.854355]
-
+        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        >>> out = F.softplus(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [0.51301527, 0.59813893, 0.74439669, 0.85435522])
 """,
 )
 
@@ -179,14 +205,14 @@ add_sample_code(
 Examples:
     .. code-block:: python
 
-        import paddle
-        import paddle.nn.functional as F
+        >>> import paddle
+        >>> import paddle.nn.functional as F
 
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.softsign(x)
-        print(out)
-        # [-0.285714, -0.166667, 0.0909091, 0.230769]
-
+        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        >>> out = F.softsign(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
 """,
 )
 
@@ -208,13 +234,13 @@ def acos(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.acos(x)
-            print(out)
-            # [1.98231317 1.77215425 1.47062891 1.26610367]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.acos(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.98231316, 1.77215421, 1.47062886, 1.26610363])
     """
     if in_dynamic_mode():
         return _C_ops.acos(x)
@@ -245,13 +271,13 @@ def acosh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1., 3., 4., 5.])
-            out = paddle.acosh(x)
-            print(out)
-            # [0.        , 1.76274729, 2.06343699, 2.29243159]
-
+            >>> x = paddle.to_tensor([1., 3., 4., 5.])
+            >>> out = paddle.acosh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.76274717, 2.06343699, 2.29243159])
     """
     if in_dynamic_mode():
         return _C_ops.acosh(x)
@@ -282,13 +308,13 @@ def asin(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.asin(x)
-            print(out)
-            # [-0.41151685 -0.20135792  0.10016742  0.30469265]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.asin(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
     """
     if in_dynamic_mode():
         return _C_ops.asin(x)
@@ -319,13 +345,13 @@ def asinh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.asinh(x)
-            print(out)
-            # [-0.39003533, -0.19869010,  0.09983408,  0.29567307]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.asinh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
     """
     if in_dynamic_mode():
         return _C_ops.asinh(x)
@@ -356,13 +382,13 @@ def atan(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.atan(x)
-            print(out)
-            # [-0.38050638 -0.19739556  0.09966865  0.29145679]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.atan(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.38050640, -0.19739556,  0.09966865,  0.29145682])
     """
     if in_dynamic_mode():
         return _C_ops.atan(x)
@@ -393,13 +419,13 @@ def atanh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.atanh(x)
-            print(out)
-            # [-0.42364895, -0.20273256,  0.10033535,  0.30951962]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.atanh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.42364895, -0.20273255,  0.10033534,  0.30951962])
     """
     if in_dynamic_mode():
         return _C_ops.atanh(x)
@@ -431,13 +457,13 @@ def ceil(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.ceil(x)
-            print(out)
-            # [-0. -0.  1.  1.]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.ceil(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0., -0., 1. , 1. ])
     """
     if in_dynamic_mode():
         return _C_ops.ceil(x)
@@ -470,19 +496,22 @@ def cos(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.cos(x)
-            print(out)
-            # [0.92106099 0.98006658 0.99500417 0.95533649]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.cos(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.92106098, 0.98006660, 0.99500418, 0.95533651])
     """
     if in_dynamic_mode():
         return _C_ops.cos(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'cos'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'cos',
         )
         helper = LayerHelper('cos', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -509,13 +538,13 @@ def cosh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.cosh(x)
-            print(out)
-            # [1.08107237 1.02006676 1.00500417 1.04533851]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.cosh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.08107233, 1.02006674, 1.00500417, 1.04533851])
     """
     if in_dynamic_mode():
         return _C_ops.cosh(x)
@@ -547,13 +576,13 @@ def exp(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.exp(x)
-            print(out)
-            # [0.67032005 0.81873075 1.10517092 1.34985881]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.exp(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.67032003, 0.81873077, 1.10517097, 1.34985888])
     """
     if in_dynamic_mode():
         return _C_ops.exp(x)
@@ -597,13 +626,13 @@ def expm1(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.expm1(x)
-            print(out)
-            # [-0.32967997, -0.18126924,  0.10517092,  0.34985882]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.expm1(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
     """
     if in_dynamic_mode():
         return _C_ops.expm1(x)
@@ -638,13 +667,13 @@ def floor(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.floor(x)
-            print(out)
-            # [-1. -1.  0.  0.]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.floor(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1., -1.,  0.,  0.])
     """
     if in_dynamic_mode():
         return _C_ops.floor(x)
@@ -676,13 +705,13 @@ def reciprocal(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.reciprocal(x)
-            print(out)
-            # [-2.5        -5.         10.          3.33333333]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.reciprocal(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-2.50000000, -5.        ,  10.       ,  3.33333325])
     """
     if in_dynamic_mode():
         return _C_ops.reciprocal(x)
@@ -723,13 +752,13 @@ def round(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
-            out = paddle.round(x)
-            print(out)
-            # [-1. -0.  1.  2.]
-
+            >>> x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
+            >>> out = paddle.round(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1., -0.,  1.,  2.])
     """
     if in_dynamic_mode():
         return _C_ops.round(x)
@@ -762,13 +791,13 @@ def rsqrt(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
-            out = paddle.rsqrt(x)
-            print(out)
-            # [3.16227766 2.23606798 1.82574186 1.58113883]
-
+            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> out = paddle.rsqrt(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [3.16227770, 2.23606801, 1.82574177, 1.58113885])
     """
     if in_dynamic_mode():
         return _C_ops.rsqrt(x)
@@ -799,14 +828,14 @@ def sigmoid(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = F.sigmoid(x)
-            print(out)
-            # [0.40131234 0.450166   0.52497919 0.57444252]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.sigmoid(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40131235, 0.45016602, 0.52497917, 0.57444251])
     """
     if in_dynamic_mode():
         return _C_ops.sigmoid(x)
@@ -837,19 +866,29 @@ def sin(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.sin(x)
-            print(out)
-            # [-0.38941834 -0.19866933  0.09983342  0.29552021]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.sin(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
     """
     if in_dynamic_mode():
         return _C_ops.sin(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sin'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'sin',
         )
         helper = LayerHelper('sin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -874,13 +913,13 @@ def sinh(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.sinh(x)
-            print(out)
-            # [-0.41075233 -0.201336    0.10016675  0.30452029]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.sinh(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
     """
     if in_dynamic_mode():
         return _C_ops.sinh(x)
@@ -911,12 +950,13 @@ def sqrt(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
-            out = paddle.sqrt(x)
-            print(out)
-            # [0.31622777 0.4472136  0.54772256 0.63245553]
+            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> out = paddle.sqrt(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.31622776, 0.44721359, 0.54772258, 0.63245553])
     """
     if in_dynamic_mode():
         return _C_ops.sqrt(x)
@@ -950,12 +990,13 @@ def square(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.square(x)
-            print(out)
-            # [0.16 0.04 0.01 0.09]
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.square(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.16000001, 0.04000000, 0.01000000, 0.09000000])
     """
     if in_dynamic_mode():
         return _C_ops.square(x)
@@ -999,19 +1040,29 @@ def tan(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.tan(x)
-            print(out)
-            # [-0.42279324, -0.20271005, 0.10033467, 0.30933627]
-
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.tan(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.42279324, -0.20271003,  0.10033467,  0.30933627])
     """
     if in_dynamic_mode():
         return _C_ops.tan(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'tan'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'tan',
         )
         helper = LayerHelper('tan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1055,10 +1106,11 @@ Examples:
 
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.erf(x)
-        print(out)
-        # [-0.42839236 -0.22270259  0.11246292  0.32862676]
+        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        >>> out = paddle.erf(x)
+        >>> print(out)
+        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
 """

@@ -44,6 +44,10 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
 endif()
 
+if(NOT WITH_DGC)
+  list(REMOVE_ITEM kernel_cu "gpu/dgc_kernel.cu")
+endif()
+
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
@@ -95,6 +99,7 @@ set(cc_search_pattern
     "strings/*.cc"
     "strings/cpu/*.cc"
     "fusion/*.cc"
+    "stride/*.cc"
     "fusion/cpu/*.cc")
 
 if(WITH_MKLDNN)

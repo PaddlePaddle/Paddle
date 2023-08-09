@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
@@ -1025,27 +1025,27 @@ void DistributeFpnProposalsInferMeta(
           max_level,
           min_level));
   // Set the output shape
-  for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
+  for (auto& multi_fpn_roi : multi_fpn_rois) {
     DDim out_dim = {-1, 4};
-    if (multi_fpn_rois[i] == nullptr) {
+    if (multi_fpn_roi == nullptr) {
       continue;
     }
-    multi_fpn_rois[i]->set_dims(out_dim);
-    multi_fpn_rois[i]->set_dtype(fpn_rois.dtype());
+    multi_fpn_roi->set_dims(out_dim);
+    multi_fpn_roi->set_dtype(fpn_rois.dtype());
   }
   restore_index->set_dims({-1, 1});
   restore_index->set_dtype(DataType::INT32);
-  for (size_t i = 0; i < multi_level_rois_num.size(); ++i) {
-    if (multi_level_rois_num[i] == nullptr) {
+  for (auto& item : multi_level_rois_num) {
+    if (item == nullptr) {
       continue;
     }
-    multi_level_rois_num[i]->set_dims({-1});
-    multi_level_rois_num[i]->set_dtype(DataType::INT32);
+    item->set_dims({-1});
+    item->set_dtype(DataType::INT32);
   }
 
   if (!config.is_runtime) {
-    for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
-      multi_fpn_rois[i]->share_lod(fpn_rois);
+    for (auto& multi_fpn_roi : multi_fpn_rois) {
+      multi_fpn_roi->share_lod(fpn_rois);
     }
   }
 }
@@ -1204,7 +1204,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     bool should_rotate =
         config.is_run_mkldnn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -1230,7 +1230,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (should_rotate) {
       std::rotate(out_dims_array.begin() + 1,
                   out_dims_array.end() - 1,
@@ -1785,6 +1785,33 @@ void IndexSelectInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
+void IndexSelectStridedInferMeta(const MetaTensor& x,
+                                 int64_t index,
+                                 int dim,
+                                 MetaTensor* output) {
+  auto input_dim = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  auto output_dim = phi::vectorize(input_dim);
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  output_dim.erase(output_dim.begin() + dim);
+  output->set_dims(phi::make_ddim(output_dim));
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        const MetaTensor& add_value,
@@ -2093,6 +2120,76 @@ void MatmulInferMeta(const MetaTensor& x,
 
   out->set_dims(ddim_out);
   out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
+void MatmulInt8InferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         bool trans_x,
+                         bool trans_y,
+                         MetaTensor* out) {
+  std::vector<int64_t> dims_x = phi::vectorize(x.dims());
+  std::vector<int64_t> dims_y = phi::vectorize(y.dims());
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(x) dims size must be greater than 0,"
+                        " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_GT(ndims_y,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(y) dims size must be greater than 0,"
+                        " but reviced dims size is 0. "));
+
+  bool x_broadcasted = false, y_broadcasted = false;
+  if (ndims_x == 1) {
+    dims_x.insert(dims_x.begin(), 1);
+    ndims_x = 2;
+    x_broadcasted = true;
+  }
+
+  if (ndims_y == 1) {
+    dims_y.push_back(1);
+    ndims_y = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M, N;
+  if (trans_x) {
+    M = dims_x[ndims_x - 1];
+  } else {
+    M = dims_x[ndims_x - 2];
+  }
+  if (trans_y) {
+    N = dims_y[ndims_y - 2];
+  } else {
+    N = dims_y[ndims_y - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (ndims_x > ndims_y) {
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  } else {
+    new_dims.reserve(ndims_x);
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+    }
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);
+  }
+
+  auto ddim_out = phi::make_ddim(new_dims);
+
+  out->set_dims(ddim_out);
+  out->set_dtype(phi::DataType::INT32);
   out->set_layout(x.layout());
 }
 
@@ -2415,11 +2512,10 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
   constexpr float epsilon = 1e-6;
   output_aspect_ratior->clear();
   output_aspect_ratior->push_back(1.0f);
-  for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
-    float ar = input_aspect_ratior[i];
+  for (auto ar : input_aspect_ratior) {
     bool already_exist = false;
-    for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
-      if (fabs(ar - output_aspect_ratior->at(j)) < epsilon) {
+    for (auto item : *output_aspect_ratior) {
+      if (fabs(ar - item) < epsilon) {
         already_exist = true;
         break;
       }
@@ -2566,6 +2662,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            MetaTensor* out) {
   auto sequences_dims = sorted_sequence.dims();
   auto values_dims = value.dims();
+  PADDLE_ENFORCE_GE(
+      sequences_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "Input sequences's dimension(%d) must be greater or equal than 1",
+          sequences_dims.size()));
 
   bool flag = true;
   if (sequences_dims.size() != values_dims.size()) {

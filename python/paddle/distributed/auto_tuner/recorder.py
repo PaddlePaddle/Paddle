@@ -63,6 +63,7 @@ class History_recorder:
         cols = df.columns.tolist()
         cols.insert(0, cols.pop(cols.index('job_id')))
         df = df.reindex(columns=cols)
+        df = df.drop(columns=['time'])
         # write to csv
         df.to_csv(self.store_path, index=False)
 

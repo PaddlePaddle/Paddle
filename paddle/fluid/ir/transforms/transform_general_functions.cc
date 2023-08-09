@@ -34,7 +34,7 @@ std::pair<std::string, ir::Parameter*> GetParameterFromValue(ir::Value value) {
   std::string name = op->attributes()
                          .at(op.attributes_name[0])
                          .dyn_cast<ir::StrAttribute>()
-                         .data();
+                         .AsString();
   ir::Parameter* param = program->GetParameter(name);
   PADDLE_ENFORCE_NOT_NULL(
       param, phi::errors::InvalidArgument("Parameter should not be null."));
@@ -64,7 +64,7 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
       index < op->num_operands(),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand(index).GetDefiningOp();
+  return op->operand_source(index).GetDefiningOp();
 }
 
 Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index) {

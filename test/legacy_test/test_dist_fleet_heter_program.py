@@ -83,9 +83,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
 
     def build_net(self, inputs):
         def embedding_layer(input):
-            return fluid.layers.embedding(
+            return paddle.static.nn.sparse_embedding(
                 input=input,
-                is_sparse=True,
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
@@ -158,7 +157,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         return avg_cost
 
     def build_optimizer(self, avg_cost, strategy):
-        optimizer = fluid.optimizer.SGD(1e-2)
+        optimizer = paddle.optimizer.SGD(1e-2)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

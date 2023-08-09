@@ -804,6 +804,30 @@ class TestAllOp(OpTest):
         self.check_output()
 
 
+class TestAllFloatOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_all"
+        self.python_api = reduce_all_wrapper
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("float")}
+        self.outputs = {'Out': self.inputs['X'].all()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAllIntOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_all"
+        self.python_api = reduce_all_wrapper
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("int")}
+        self.outputs = {'Out': self.inputs['X'].all()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestAllOp_ZeroDim(OpTest):
     def setUp(self):
         self.python_api = paddle.all
@@ -900,11 +924,6 @@ class TestAllOpError(unittest.TestCase):
             # The input type of reduce_all_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.all, input1)
-            # The input dtype of reduce_all_op must be bool.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            self.assertRaises(TypeError, paddle.all, input2)
 
 
 def reduce_any_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):
@@ -916,6 +935,30 @@ class TestAnyOp(OpTest):
         self.op_type = "reduce_any"
         self.python_api = reduce_any_wrapper
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
+        self.outputs = {'Out': self.inputs['X'].any()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAnyFloatOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_any"
+        self.python_api = reduce_any_wrapper
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("float")}
+        self.outputs = {'Out': self.inputs['X'].any()}
+        self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestAnyIntOp(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_any"
+        self.python_api = reduce_any_wrapper
+        self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("int")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
 
@@ -1021,11 +1064,6 @@ class TestAnyOpError(unittest.TestCase):
             # The input type of reduce_any_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.any, input1)
-            # The input dtype of reduce_any_op must be bool.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            self.assertRaises(TypeError, paddle.any, input2)
 
 
 class Test1DReduce(OpTest):
@@ -1645,11 +1683,43 @@ class TestAllAPI(unittest.TestCase):
                 feed={"input": input_np},
                 fetch_list=[result],
             )
-            np.testing.assert_allclose(fetches[0], np.all(input_np), rtol=1e-05)
+            self.assertTrue((fetches[0] == np.all(input_np)).all())
+
+    def check_static_float_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float"
+            )
+            result = paddle.all(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("float")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            self.assertTrue((fetches[0] == np.all(input_np)).all())
+
+    def check_static_int_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
+            result = paddle.all(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("int")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
+            self.check_static_float_result(place=place)
+            self.check_static_int_result(place=place)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -1679,6 +1749,18 @@ class TestAllAPI(unittest.TestCase):
                 expect_res4 = np.all(np_x, axis=1, keepdims=True)
                 self.assertTrue((np_out4 == expect_res4).all())
 
+                x = paddle.cast(x, 'float')
+                out5 = paddle.all(x)
+                np_out5 = out5.numpy()
+                expect_res5 = np.all(np_x)
+                self.assertTrue((np_out5 == expect_res5).all())
+
+                x = paddle.cast(x, 'int')
+                out6 = paddle.all(x)
+                np_out6 = out6.numpy()
+                expect_res6 = np.all(np_x)
+                self.assertTrue((np_out6 == expect_res6).all())
+
         paddle.enable_static()
 
 
@@ -1702,11 +1784,43 @@ class TestAnyAPI(unittest.TestCase):
                 feed={"input": input_np},
                 fetch_list=[result],
             )
-            np.testing.assert_allclose(fetches[0], np.any(input_np), rtol=1e-05)
+            self.assertTrue((fetches[0] == np.any(input_np)).all())
+
+    def check_static_float_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float"
+            )
+            result = paddle.any(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("float")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            self.assertTrue((fetches[0] == np.any(input_np)).all())
+
+    def check_static_int_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
+            result = paddle.any(x=input)
+            input_np = np.random.randint(0, 2, [4, 4]).astype("int")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
+            self.check_static_float_result(place=place)
+            self.check_static_int_result(place=place)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -1735,6 +1849,21 @@ class TestAnyAPI(unittest.TestCase):
                 np_out4 = out4.numpy()
                 expect_res4 = np.any(np_x, axis=1, keepdims=True)
                 self.assertTrue((np_out4 == expect_res4).all())
+
+                np_x = np.random.randint(0, 2, (12, 10)).astype(np.float32)
+                x = paddle.assign(np_x)
+                x = paddle.cast(x, 'float32')
+
+                out5 = paddle.any(x)
+                np_out5 = out5.numpy()
+                expect_res5 = np.any(np_x)
+                self.assertTrue((np_out5 == expect_res5).all())
+
+                x = paddle.cast(x, 'int')
+                out6 = paddle.any(x)
+                np_out6 = out6.numpy()
+                expect_res6 = np.any(np_x)
+                self.assertTrue((np_out6 == expect_res6).all())
 
         paddle.enable_static()
 

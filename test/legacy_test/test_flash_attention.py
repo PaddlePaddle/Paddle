@@ -25,6 +25,7 @@ from paddle.fluid import core
 from paddle.nn.functional.flash_attention import (
     flash_attention,
     flash_attn_unpadded,
+    scaled_dot_product_attention,
 )
 
 
@@ -56,25 +57,39 @@ def attention_naive(q, k, v, causal=False):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
-is_sm75 = (
-    core.is_compiled_with_cuda()
-    and paddle.device.cuda.get_device_capability()[0] == 7
-    and paddle.device.cuda.get_device_capability()[1] == 5
-)
+def attention_naive_with_mask(q, k, v, attn_bias):
+    qt = paddle.transpose(q, [0, 2, 1, 3])
+    kt = paddle.transpose(k, [0, 2, 1, 3])
+    vt = paddle.transpose(v, [0, 2, 1, 3])
+    scale = 1.0 / np.sqrt(q.shape[-1])
+    s = paddle.matmul(qt, paddle.transpose(kt, [0, 1, 3, 2]))
+    s = paddle.scale(s, scale)
+    p = F.softmax(s + attn_bias)
+    o = paddle.matmul(p, vt)
+    return paddle.transpose(o, [0, 2, 1, 3])
+
+
 is_sm8x = (
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
-is_sm_supported = is_sm75 or is_sm8x
+
+is_sm90 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 9
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
+is_sm_supported = is_sm8x or is_sm90
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
+    or get_cuda_version() < 11040
     or not is_sm_supported,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
-    "and device's compute capability must be 7.5 or 8.x",
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
 )
 class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
@@ -85,6 +100,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.causal = False
         self.return_softmax = False
         self.use_sdp_kernel = False
+        self.use_sdp_api = False
 
     def test_unpadded(self):
         print(
@@ -212,9 +228,15 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 enable_flash=self.enable_flash,
                 enable_mem_efficient=self.enable_mem_efficient,
             ):
-                out, _ = flash_attention(
-                    q, k, v, self.dropout, self.causal, self.return_softmax
-                )
+                if self.use_sdp_api:
+                    out = scaled_dot_product_attention(
+                        q, k, v, None, self.dropout, self.causal
+                    )
+                else:
+                    out, _ = flash_attention(
+                        q, k, v, self.dropout, self.causal, self.return_softmax
+                    )
+
         else:
             out, _ = flash_attention(
                 q, k, v, self.dropout, self.causal, self.return_softmax
@@ -253,14 +275,19 @@ class TestFlashAttentionAPI(unittest.TestCase):
                     enable_flash=self.enable_flash,
                     enable_mem_efficient=self.enable_mem_efficient,
                 ):
-                    outs, softmax = flash_attention(
-                        qs,
-                        ks,
-                        vs,
-                        self.dropout,
-                        self.causal,
-                        self.return_softmax,
-                    )
+                    if self.use_sdp_api:
+                        outs = scaled_dot_product_attention(
+                            qs, ks, vs, None, self.dropout, self.causal
+                        )
+                    else:
+                        outs, softmax = flash_attention(
+                            qs,
+                            ks,
+                            vs,
+                            self.dropout,
+                            self.causal,
+                            self.return_softmax,
+                        )
             else:
                 outs, softmax = flash_attention(
                     qs, ks, vs, self.dropout, self.causal, self.return_softmax
@@ -279,6 +306,64 @@ class TestFlashAttentionAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+    "and device's compute capability must be 7.5 or 8.x",
+)
+class TestFlashAttentionWithMaskAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 128, 8, 32)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = False
+
+    def test_dot_scale_product(self):
+        # test dynamic
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        k_ = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        v_ = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        mask_shape = (self.shape[0], 1, self.shape[1], self.shape[1])
+        mask = np.random.random(mask_shape)
+        m = paddle.to_tensor(
+            mask, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        out = scaled_dot_product_attention(
+            q, k, v, m, self.dropout, self.causal
+        )
+        out_ = attention_naive_with_mask(q_, k_, v_, m)
+        out.backward()
+        out_.backward()
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
@@ -325,6 +410,17 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
         self.use_sdp_kernel = False
 
 
+class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 256)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = False
+
+
 class TestMathAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
@@ -334,9 +430,34 @@ class TestMathAttentionAPITest(TestFlashAttentionAPI):
         self.causal = False
         self.return_softmax = False
         self.use_sdp_kernel = True
+        self.use_sdp_api = False
         self.enable_math = True
         self.enable_flash = False
         self.enable_mem_efficient = False
+
+
+class TestSDPAttentionAPITest(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = True
+        self.use_sdp_api = True
+        self.enable_math = True
+        self.enable_flash = False
+        self.enable_mem_efficient = False
+
+
+class TestFlashAttrnionWithMaskAPI(TestFlashAttentionWithMaskAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
 
 
 if __name__ == '__main__':

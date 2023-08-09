@@ -60,7 +60,7 @@ bool Stream::Init(const Place& place,
   phi::DeviceManager::SetDevice(place_);
   device_->CreateStream(this, priority, flag);
 
-  callback_manager_.reset(new CallbackManager(this));
+  callback_manager_ = std::make_unique<CallbackManager>(this);
   VLOG(3) << "Init Stream: " << stream_ << ", place: " << place_
           << ", priority: " << static_cast<int>(priority)
           << ", flag:" << static_cast<int>(flag);

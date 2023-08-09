@@ -19,27 +19,31 @@
 namespace phi {
 namespace fusion {
 
-template <typename T, typename Context>
-void Conv2dXPUKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& x_max,
-                     const DenseTensor& filter,
-                     const DenseTensor& filter_max,
-                     const paddle::optional<DenseTensor>& bias,
-                     const paddle::optional<DenseTensor>& branch,
-                     const paddle::optional<DenseTensor>& branch_max,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations,
-                     const std::vector<int>& strides,
-                     const std::string& padding_algorithm,
-                     int groups,
-                     bool has_bias,
-                     bool has_branch,
-                     int act_type,
-                     float act_param,
-                     DenseTensor* out,
-                     DenseTensor* out_max) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
+template <typename T_X,
+          typename T_W,
+          typename T_OUT,
+          typename T_GEMM,
+          typename Context>
+void Conv2dXPUKernelImpl(const Context& ctx,
+                         const DenseTensor& x,
+                         const paddle::optional<DenseTensor>& x_max,
+                         const DenseTensor& filter,
+                         const DenseTensor& filter_max,
+                         const paddle::optional<DenseTensor>& bias,
+                         const paddle::optional<DenseTensor>& branch,
+                         const paddle::optional<DenseTensor>& branch_max,
+                         const std::vector<int>& paddings,
+                         const std::vector<int>& dilations,
+                         const std::vector<int>& strides,
+                         const std::string& padding_algorithm,
+                         int groups,
+                         int act_type,
+                         float act_param,
+                         DenseTensor* out,
+                         DenseTensor* out_max) {
+  using XPUTypeX = typename XPUTypeTrait<T_X>::Type;
+  using XPUTypeW = typename XPUTypeTrait<T_W>::Type;
+  using XPUTypeOut = typename XPUTypeTrait<T_OUT>::Type;
   auto input_dims = x.dims();
   auto filter_dims = filter.dims();
   // update paddings and dilations accoring to padding_algorithm
@@ -63,30 +67,51 @@ void Conv2dXPUKernel(const Context& ctx,
   int win_h = static_cast<int>(filter_dims[2]);
   int win_w = static_cast<int>(filter_dims[3]);
 
-  auto* input_data = reinterpret_cast<const XPUType*>(x.data<T>());
+  auto* input_data = reinterpret_cast<const XPUTypeX*>(x.data<T_X>());
   const float* input_max_data =
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
-  auto* branch_data =
-      branch.get_ptr() == nullptr
-          ? nullptr
-          : reinterpret_cast<const XPUType*>(branch.get_ptr()->data<T>());
+  auto* filter_data = reinterpret_cast<const XPUTypeW*>(filter.data<T_W>());
+  auto* filter_max_data = filter_max.data<float>();
+
+  const XPUTypeOut* branch_data = nullptr;
+  auto* branch_tensor = branch.get_ptr();
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  if (branch_tensor != nullptr) {
+    if (branch_tensor->dtype() == out->dtype()) {
+      branch_data =
+          reinterpret_cast<const XPUTypeOut*>(branch_tensor->data<T_OUT>());
+    } else {
+      auto branch_data_temp =
+          RAII_GUARD.alloc_l3_or_gm<XPUTypeOut>(branch_tensor->numel());
+      int r = xpu::cast<XPUTypeX, XPUTypeOut>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUTypeX*>(branch_tensor->data<T_X>()),
+          branch_data_temp,
+          branch_tensor->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      branch_data = branch_data_temp;
+    }
+  }
   const float* branch_max_data = branch_max.get_ptr() == nullptr
                                      ? nullptr
                                      : branch_max.get_ptr()->data<float>();
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  auto* out_data =
+      reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_OUT>(out));
+  auto* out_max_data = ctx.template Alloc<float>(out_max);
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
     act.leaky_alpha = act_param;
   } else if (act_type == xpu::Activation_t::HARD_SIGMOID) {
     act.hard_sigmoid_slope = act_param;
   }
-  int r =
-      xpu::conv2d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX/TW/TY/TGEMM
+
+  int r = xpu::
+      conv2d_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
           /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
           /* const TX* input */ input_data,
-          /* const TW* filter */ filter.data<int16_t>(),
+          /* const TW* filter */ filter_data,
           /* TY* output */ out_data,
           /* int64_t n */ batch,
           /* int64_t ic */ in_c,
@@ -99,8 +124,8 @@ void Conv2dXPUKernel(const Context& ctx,
           /* const std::vector<int>& dilations */ dilations_vec,
           /* int64_t groups */ groups,
           /* const float* in_maxptr */ input_max_data,
-          /* const float* filter_maxptr */ filter_max.data<float>(),
-          /* float* out_maxptr */ ctx.template Alloc<float>(out_max),
+          /* const float* filter_maxptr */ filter_max_data,
+          /* float* out_maxptr */ out_max_data,
           /* bool is_nchw */ true,
           /* const float* bias */ bias_data,
           /* const TY* branch */ branch_data,
@@ -108,6 +133,55 @@ void Conv2dXPUKernel(const Context& ctx,
           /* const float* branch_maxptr */ branch_max_data,
           /* const float* scale */ nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_xpu");
+}
+
+#define CONV2D_XPU_KERNEL_IMPL(x_dtype_, w_dtype_, out_dtype_, gemm_dtype_)  \
+  Conv2dXPUKernelImpl<x_dtype_, w_dtype_, out_dtype_, gemm_dtype_, Context>( \
+      ctx,                                                                   \
+      x,                                                                     \
+      x_max,                                                                 \
+      filter,                                                                \
+      filter_max,                                                            \
+      bias,                                                                  \
+      branch,                                                                \
+      branch_max,                                                            \
+      paddings,                                                              \
+      dilations,                                                             \
+      strides,                                                               \
+      padding_algorithm,                                                     \
+      groups,                                                                \
+      act_type,                                                              \
+      act_param,                                                             \
+      out,                                                                   \
+      out_max);
+
+template <typename T, typename Context>
+void Conv2dXPUKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const paddle::optional<DenseTensor>& x_max,
+                     const DenseTensor& filter,
+                     const DenseTensor& filter_max,
+                     const paddle::optional<DenseTensor>& bias,
+                     const paddle::optional<DenseTensor>& branch,
+                     const paddle::optional<DenseTensor>& branch_max,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations,
+                     const std::vector<int>& strides,
+                     const std::string& padding_algorithm,
+                     int groups,
+                     int act_type,
+                     float act_param,
+                     DataType out_dtype,
+                     DenseTensor* out,
+                     DenseTensor* out_max) {
+  if (out_dtype == DataType::FLOAT32) {
+    CONV2D_XPU_KERNEL_IMPL(T, int16_t, float, int16_t);
+  } else if (out_dtype == DataType::FLOAT16) {
+    CONV2D_XPU_KERNEL_IMPL(T, int16_t, dtype::float16, int16_t);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented("Not support out_dtype is %s.",
+                                            DataTypeToString(out_dtype)));
+  }
 }
 
 }  // namespace fusion
