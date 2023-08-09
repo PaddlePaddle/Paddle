@@ -72,9 +72,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Momentum(
-            learning_rate=0.01, momentum=0.9
-        )
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -87,7 +85,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -100,9 +98,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         startup_prog = fluid.Program()
         train_prog = fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
-        optimizer = paddle.fluid.optimizer.Momentum(
-            learning_rate=0.01, momentum=0.9
-        )
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
@@ -153,9 +149,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
             "exclude_from_weight_decay": ["batch_norm", ".b"],
         }
 
-        optimizer = paddle.fluid.optimizer.Momentum(
-            learning_rate=0.01, momentum=0.9
-        )
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

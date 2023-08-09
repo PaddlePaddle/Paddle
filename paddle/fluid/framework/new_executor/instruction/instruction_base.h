@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/ir/core/value.h"
 
 namespace ir {
 class Value;
@@ -137,7 +138,15 @@ class InstructionBase {
 
   virtual const std::string& Name() const = 0;
 
- private:
+  void InitInputsOutputsIds(
+      ::ir::Operation* op,
+      Scope* inner_scope,
+      const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+      const std::map<std::string, int>& var_name_2_id,
+      const std::unordered_map<const paddle::framework::Variable*, std::string>&
+          variable_2_var_name);
+
+ protected:
   size_t id_;
 
   bool is_artificial_;  // Instruction is artificial means that it is only used

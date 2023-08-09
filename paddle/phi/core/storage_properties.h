@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  // NOLINT
 #endif
 
@@ -50,7 +50,7 @@ struct NPUStorageProperties
 };
 
 // Add OneDNNStorageProperties firstly for unittest covergae
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 struct OneDNNStorageProperties
     : public StorageProperties,
       public TypeInfoTraits<StorageProperties, OneDNNStorageProperties> {

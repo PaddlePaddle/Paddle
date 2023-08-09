@@ -19,6 +19,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -445,11 +446,11 @@ class MobileNetV2(paddle.nn.Layer):
 
 
 def create_optimizer(args, parameter_list):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=args.lr,
         momentum=args.momentum_rate,
-        regularization=paddle.regularizer.L2Decay(args.l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(args.l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
@@ -730,6 +731,13 @@ class TestMobileNet(unittest.TestCase):
                 predictor_pre, st_pre
             ),
         )
+
+    @test_with_new_ir
+    def test_mobile_net_new_ir(self):
+        # MobileNet-V1
+        self.assert_same_loss("MobileNetV1")
+        # MobileNet-V2
+        self.assert_same_loss("MobileNetV2")
 
     def test_mobile_net(self):
         # MobileNet-V1
