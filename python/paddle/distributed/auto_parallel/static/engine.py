@@ -911,8 +911,9 @@ class Engine:
                 [start_step, end_step]. Note that if start_step >= end_step, the nvprof will not apply.
             enable_synchronized_IPS(bool, optional): Enable synchronization between CPU and GPU
                 when measuring IPS metric. Default: False.
-                NOTE: ONLY enable this for performance benchmarking during software development as
-                synchronization may cause performance drop!
+                == NOTE ==
+                ONLY enable this for performance benchmarking during development as
+                synchronization may cause significant performance drop!
         Returns:
             None
 
@@ -970,7 +971,7 @@ class Engine:
             'visualize_sync_time': False,
         }
         if nvprof_range[0] >= 0 or nvprof_range[1] >= 0:
-            # if nv profiler is enabled, then visualize IPS sync time
+            # if nv profiler is enabled, then visualize IPS sync time on the timeline
             synchronized_IPS_configs["visualize_sync_time"] = True
 
         cbks = config_callbacks(
