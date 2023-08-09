@@ -1665,7 +1665,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        runtime_ctx_ =
+            std::make_unique<RuntimeContext>(Inputs(), Outputs(), scope);
         pre_scope_ = cur_scope;
       }
     }
@@ -1702,16 +1703,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
       if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
-        kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+        kernel_signature_ =
+            std::make_unique<phi::KernelSignature>(type_.c_str());
       } else {
-        kernel_signature_.reset(new phi::KernelSignature(
-            std::move(GetExpectedPhiKernelArgs(exe_ctx))));
+        kernel_signature_ = std::make_unique<phi::KernelSignature>(
+            std::move(GetExpectedPhiKernelArgs(exe_ctx)));
       }
 
       VLOG(6) << *kernel_signature_.get();
       phi_kernel_name = kernel_signature_->name;
-      kernel_type_.reset(
-          new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
+      kernel_type_ = std::make_unique<OpKernelType>(
+          std::move(InnerGetExpectedKernelType(exe_ctx)));
       dev_ctx = pool.Get(kernel_type_->place_);
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -1754,9 +1756,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-      phi_kernel_.reset(
-          new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-              phi_kernel_name, phi_kernel_key)));
+      phi_kernel_ = std::make_unique<phi::Kernel>(
+          phi::KernelFactory::Instance().SelectKernel(phi_kernel_name,
+                                                      phi_kernel_key));
 
       if (phi_kernel_->IsValid()) {
         VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
@@ -1898,9 +1900,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           VLOG(3) << "fluid in black list: " << phi_kernel_name;
         }
         phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
-        phi_kernel_.reset(
-            new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                phi_kernel_name, phi_cpu_kernel_key)));
+        phi_kernel_ = std::make_unique<phi::Kernel>(
+            phi::KernelFactory::Instance().SelectKernel(phi_kernel_name,
+                                                        phi_cpu_kernel_key));
 
         dev_ctx = pool.Get(platform::CPUPlace());
         if (phi_kernel_->IsValid()) {
@@ -1996,11 +1998,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           }
         }
 
-        impl_.reset(
-            new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx),
-                          tensors,
-                          HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
+        impl_ = std::make_unique<CacheImpl>(
+            new phi::KernelContext(),
+            new RuntimeInferShapeContext(*this, *runtime_ctx),
+            tensors,
+            HasAttr(CacheImpl::kNotAllowInferShapeCahce));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
@@ -2211,19 +2213,20 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
-    kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+    kernel_signature_ = std::make_unique<phi::KernelSignature>(type_.c_str());
   } else {
-    kernel_signature_.reset(
-        new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
+    kernel_signature_ = std::make_unique<phi::KernelSignature>(
+        std::move(GetExpectedPhiKernelArgs(ctx)));
   }
   VLOG(6) << *kernel_signature_.get();
   phi_kernel_name = kernel_signature_->name;
-  kernel_type_.reset(
-      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
+  kernel_type_ = std::make_unique<OpKernelType>(
+      std::move(InnerGetExpectedKernelType(ctx)));
 
   auto phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-  phi_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-      phi_kernel_name, phi_kernel_key)));
+  phi_kernel_ =
+      std::make_unique<phi::Kernel>(phi::KernelFactory::Instance().SelectKernel(
+          phi_kernel_name, phi_kernel_key));
 
   if (phi_kernel_->IsValid()) {
     VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
@@ -2356,8 +2359,8 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 
   std::lock_guard<std::mutex> lock(cache_update_mutex_);
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
-    kernel_type_.reset(new OpKernelType(expected_kernel_key));
-    kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
+    kernel_type_ = std::make_unique<OpKernelType>(expected_kernel_key);
+    kernel_func_ = std::make_unique<OpKernelFunc>(kernel_iter->second);
   }
 }
 
@@ -3004,14 +3007,14 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
   if (arg_map_fn_ == nullptr) {
     auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(type_);
     if (arg_map_fn) {
-      arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
+      arg_map_fn_ = std::make_unique<phi::ArgumentMappingFn>(*arg_map_fn);
     } else {
       auto func =
           [this](
               const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
         return phi::DefaultKernelSignatureMap::Instance().Get(type_);
       };
-      arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
+      arg_map_fn_ = std::make_unique<phi::ArgumentMappingFn>(func);
     }
   }
   return (*arg_map_fn_)(arg_mapping_ctx);
