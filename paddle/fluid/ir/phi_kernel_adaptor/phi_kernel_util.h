@@ -289,7 +289,7 @@ void BuildPhiContext(ir::Operation* op,
     ir::Value out_ptr = op->result(i);
     auto out_type = out_ptr.type();
     if (out_type) {
-      auto name = name_map.at(out_ptr);
+      auto& name = name_map.at(out_ptr);
       VLOG(6) << "ctx->EmplaceBackOutput: " << name;
     } else {
       VLOG(6) << "ctx->EmplaceBackOutput : an optioanl output";

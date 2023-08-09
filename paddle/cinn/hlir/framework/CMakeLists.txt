@@ -26,6 +26,8 @@ gather_srcs(
 if(NOT CINN_ONLY)
   cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinncore
                   pd_dialect)
+  cinn_cc_library(convert_to_dialect SRCS convert_to_dialect.cc DEPS cinncore
+                  cinn_dialect)
 endif()
 
 if(WITH_CUDA)

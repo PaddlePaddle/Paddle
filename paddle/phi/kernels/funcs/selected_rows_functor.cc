@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
@@ -436,7 +436,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   int64_t input_width,
                   const DeviceContext& context,
                   T* out_data) {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 #endif
   for (auto* input : inputs) {
@@ -446,7 +446,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
     auto* input_data = input->value().data<T>();
     auto& input_rows = input->rows();
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     OneDNNContext onednn_context(context.GetPlace());
     funcs::OneDNNAXPYHandler<T> axpy_handler(
         input_width, T(1.f), onednn_context.GetEngine());

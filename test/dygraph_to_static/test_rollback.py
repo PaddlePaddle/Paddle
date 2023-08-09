@@ -123,5 +123,26 @@ class TestRollBackNet(unittest.TestCase):
         )
 
 
+class FuncRollback(paddle.nn.Layer):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        return x + 1
+
+    @paddle.jit.to_static
+    def func(self, x):
+        return x + 2
+
+
+class TestRollBackNotForward(unittest.TestCase):
+    def test_rollback(self):
+        x = paddle.zeros([2, 2])
+        net = FuncRollback()
+        out = net.func(x)
+        net.func.rollback()
+        self.assertTrue(not isinstance(net.func, StaticFunction))
+
+
 if __name__ == "__main__":
     unittest.main()

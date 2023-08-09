@@ -17,8 +17,7 @@ import abc
 from paddle import fluid
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import SGD
-from paddle.optimizer import SGD as SGD_v2
+from paddle.optimizer import SGD
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 
 __all__ = []
@@ -293,8 +292,8 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
     def __init__(self, optimizer, strategy=None):
         if (
             not isinstance(optimizer, SGD.__bases__)
+            and not isinstance(optimizer, fluid.optimizer.Optimizer)
             and not isinstance(optimizer, OptimizerWithMixedPrecision)
-            and not isinstance(optimizer, SGD_v2.__base__)
         ):
             raise TypeError("optimizer must be an instance of Optimizer")
 
