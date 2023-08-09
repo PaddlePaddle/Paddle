@@ -95,10 +95,10 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
     }
     auto weights_shape = weights->dims();
     auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
-    auto kh = weights_shape[2];
-    auto kw = weights_shape[3];
-    auto new_kh = dilations[0] * (kh - 1) + 1;
-    auto new_kw = dilations[1] * (kw - 1) + 1;
+    int kh = weights_shape[2];
+    int kw = weights_shape[3];
+    int new_kh = dilations[0] * (kh - 1) + 1;
+    int new_kw = dilations[1] * (kw - 1) + 1;
     // New weights
     auto new_weights_name = weights_name + "_dilation_trans";
     auto* new_weights =
@@ -107,11 +107,11 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
     auto* new_weights_data =
         new_weights->mutable_data<float>(platform::CPUPlace());
     memset(new_weights_data, 0, new_weights->numel() * sizeof(float));
-    for (size_t n = 0; n < weights_shape[0]; n++) {
-      for (size_t c = 0; c < weights_shape[1]; c++) {
-        for (size_t h = 0; h < kh; h++) {
+    for (int n = 0; n < weights_shape[0]; n++) {
+      for (int c = 0; c < weights_shape[1]; c++) {
+        for (int h = 0; h < kh; h++) {
           auto h_offset = dilations[0] * h;
-          for (size_t w = 0; w < kw; w++) {
+          for (int w = 0; w < kw; w++) {
             auto w_offset = dilations[1] * w;
             auto new_offset = n * weights_shape[1] * new_kh * new_kw +
                               c * new_kh * new_kw + h_offset * new_kw +
@@ -151,5 +151,5 @@ void DoTransFilterPass::conv2d_dilation_trans(ir::Graph* graph) const {
 REGISTER_PASS(do_trans_filter_pass, paddle::framework::ir::DoTransFilterPass);
 REGISTER_PASS_CAPABILITY(do_trans_filter_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "conv2d", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination().LE(
+            "conv2d", 1));
