@@ -336,6 +336,15 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             np.testing.assert_allclose(p_fw[i].numpy(), outs[i], rtol=1e-05)
         paddle.disable_static()
 
+    def test_error(self):
+        paddle.enable_static()
+        with self.assertRaises(RuntimeError):
+            static_q = paddle.static.data(
+                name="q", shape=self.shape, dtype=self.dtype
+            )
+            fused_rotary_position_embedding(static_q, static_q, static_q)
+        paddle.disable_static()
+
 
 if __name__ == '__main__':
     unittest.main()
