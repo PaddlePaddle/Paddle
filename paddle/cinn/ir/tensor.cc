@@ -600,6 +600,18 @@ std::string GenReduceInitTensorNameOf(const std::string &tensor_name) {
   return tensor_name + "__reduce_init";
 }
 
+bool IsReduceInitTensorName(const std::string &tensor_name) {
+  return tensor_name.length() > 13 &&
+         tensor_name.substr(tensor_name.length() - 13, 13) == "__reduce_init";
+}
+
+std::string GetOriginalReduceTensorName(const std::string &tensor_name) {
+  if (IsReduceInitTensorName(tensor_name)) {
+    return tensor_name.substr(0, tensor_name.length() - 13);
+  }
+  return tensor_name;
+}
+
 bool _Tensor_::is_reduce_sum() const {
   if (!contains_reduce_axis()) return false;
   return body().As<ir::Reduce>() &&
