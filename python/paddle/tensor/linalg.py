@@ -1589,13 +1589,13 @@ def bmm(x, y, name=None):
                     x_shape, y_shape
                 )
             )
-        if x_shape[2] != y_shape[1]:
+        if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
             raise ValueError(
                 "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape
                 )
             )
-        if x_shape[0] != y_shape[0]:
+        if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
             raise ValueError(
                 "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape
