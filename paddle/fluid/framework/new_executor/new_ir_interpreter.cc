@@ -1549,7 +1549,6 @@ void NewIRInterpreter::BuildInstruction() {
       if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
           op_name == "pd.fused_softmax_mask_upper_triangle_grad" ||
           op_name == "pd.load_combine") {
-        std::cerr << "legacy instruction " << std::endl;
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,
@@ -1560,7 +1559,6 @@ void NewIRInterpreter::BuildInstruction() {
                                                       var_name_2_id_,
                                                       variable_2_var_name_));
       } else {
-        std::cerr << "phi instrcution" << std::endl;
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(op_idx++,
                                                    place_,

@@ -389,7 +389,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     VLOG(6) << "kernel type " << kernel_key;
 
     if (op_item->name() == "pd.load_combine") {
-      std::cerr << "set to combine" << std::endl;
       kernel_key.set_dtype(phi::DataType::FLOAT32);
     }
     if (NeedFallBackCpu((op_item), kernel_fn_str, kernel_key)) {

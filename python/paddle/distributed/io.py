@@ -176,7 +176,6 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
             executor, dirname=dirname, main_program=main_program
         )
     else:
-        print("main", main_program)
         paddle.static.io.load_vars(
             executor,
             dirname=dirname,

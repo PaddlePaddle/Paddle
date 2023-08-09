@@ -18,8 +18,6 @@ import numpy as np
 
 import paddle
 
-paddle.enable_static()
-
 
 class TestNewIr(unittest.TestCase):
     def test_with_new_ir(self):
