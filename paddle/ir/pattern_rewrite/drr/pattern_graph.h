@@ -52,7 +52,7 @@ class PatternGraph {
 
 class SourcePatternGraph : public PatternGraph {
  public:
-  std::weak_ptr<OpCall> AnchorNode() const;
+  const OpCall* AnchorNode() const;
 
  private:
   friend class DrrPatternContext;
