@@ -410,10 +410,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             PADDLE_THROW(phi::errors::Unimplemented(
                 "Result type only support DenseTensorType and VectorType"));
           }
-
-          op_output_types.push_back(op_item->result(i).type());
         }
       }
+
       // Copy op attributes
       std::unordered_map<std::string, ir::Attribute> op_attribute;
       for (auto& map_item : op_item->attributes()) {
@@ -438,6 +437,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           vec_inputs.push_back(new_in);
         }
       }
+
       // Get op info
       ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
       // Generate new op
