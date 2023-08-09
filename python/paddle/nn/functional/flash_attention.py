@@ -202,6 +202,7 @@ def flash_attention(
                 key,
                 value,
                 fixed_seed_offset,
+                None,
                 dropout,
                 causal,
                 return_softmax,
@@ -358,6 +359,7 @@ def flash_attn_unpadded(
             cu_seqlens_q,
             cu_seqlens_k,
             fixed_seed_offset,
+            None,
             max_seqlen_q,
             max_seqlen_k,
             scale,
@@ -408,7 +410,13 @@ def flash_attn_unpadded(
 
 
 def scaled_dot_product_attention(
-    query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False
+    query,
+    key,
+    value,
+    attn_mask=None,
+    dropout_p=0.0,
+    is_causal=False,
+    training=True,
 ):
     r"""
     The equation is:
@@ -442,6 +450,7 @@ def scaled_dot_product_attention(
                         not supported yet.
         dropout_p(float): The dropout ratio.
         is_causal(bool): Whether enable causal mode.
+        training(bool): Whether it is in the training phase
 
     Returns:
         out(Tensor): The attention tensor.
@@ -458,6 +467,22 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # xdoctest: -SKIP
     """
-    assert attn_mask is None, "attn_mask is not supported yet"
-    out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    if attn_mask is None:
+        out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    else:
+        fixed_seed_offset = (None,)
+        return_softmax = False
+        rng_name = ""
+        out, _ = _C_ops.flash_attn(
+            query,
+            key,
+            value,
+            fixed_seed_offset,
+            attn_mask,
+            dropout_p,
+            is_causal,
+            return_softmax,
+            not training,
+            rng_name,
+        )
     return out

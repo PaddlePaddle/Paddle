@@ -375,7 +375,7 @@ class CudnnBNAddReluTester {
     SetUp();
   }
 
-  ~CudnnBNAddReluTester() {}
+  ~CudnnBNAddReluTester() = default;
 
   void CheckForward(float diff, bool is_relative_atol = false) {
     LOG(INFO) << "[CheckForward, diff=" << diff

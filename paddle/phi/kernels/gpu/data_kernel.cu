@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/feed_with_place_kernel.h"
+#include "paddle/phi/kernels/data_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/feed_with_place_impl.h"
+#include "paddle/phi/kernels/impl/data_impl.h"
 
 PD_REGISTER_KERNEL(shadow_feed,
                    GPU,
                    ALL_LAYOUT,
                    phi::ShadowFeedKernel,
                    bool,
+                   uint8_t,
                    float,
+                   int8_t,
+                   int16_t,
                    int32_t,
                    int64_t,
                    double,

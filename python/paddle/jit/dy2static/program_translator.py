@@ -14,6 +14,7 @@
 
 import collections
 import inspect
+import os
 import textwrap
 import threading
 import warnings
@@ -192,6 +193,7 @@ class CacheKey:
         'class_instance',
         'kwargs',
         '_spec_names_id',
+        '_new_ir_flags',
     ]
 
     def __init__(
@@ -220,6 +222,9 @@ class CacheKey:
         self.kwargs = kwargs
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
+        )
+        self._new_ir_flags = os.environ.get(
+            'FLAGS_enable_new_ir_in_executor', None
         )
 
     @classmethod
@@ -264,6 +269,7 @@ class CacheKey:
                 self.class_instance,
                 with_hook,
                 is_train,
+                self._new_ir_flags,
             )
         )
 
@@ -303,11 +309,6 @@ def unwrap_decorators(func):
 
 
 class StaticFunction:
-    """
-    Wrapper class to Manage program conversion of decorated function.
-
-    """
-
     def __init__(self, function, input_spec=None, **kwargs):
         """
         Initializes a `StaticFunction`.
@@ -358,7 +359,6 @@ class StaticFunction:
         self._training = True
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
-
         self._property = kwargs.get("property", False)
 
     @property
@@ -421,6 +421,13 @@ class StaticFunction:
             # Note(Aurelius84): To construct new instance of StaticFunction when we
             # first encouter the bound function of layer and cache it.
             new_static_layer = self._clone()
+            if (
+                self._dygraph_function.__name__
+                not in instance._original_funcs.keys()
+            ):
+                instance._original_funcs[
+                    self._dygraph_function.__name__
+                ] = self._dygraph_function
             new_static_layer._class_instance = instance
             self._descriptor_cache[instance] = new_static_layer
 
@@ -467,42 +474,7 @@ class StaticFunction:
                 )
             )
 
-        # 2. trace ops from dygraph layers and cache the generated program.
-        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
-
-        try:
-            concrete_program, partial_program_layer = self.get_concrete_program(
-                *args, **kwargs, is_train=self._is_train_mode()
-            )
-            # 3. synchronize self.training attribute.
-            if isinstance(self._class_instance, layers.Layer):
-                partial_program_layer.training = self._class_instance.training
-            else:
-                partial_program_layer.training = self._training
-
-            partial_program_layer._cuda_graph_capture_mode = (
-                self._cuda_graph_capture_mode
-            )
-            partial_program_layer._cuda_graph_pool_id = self._cuda_graph_pool_id
-
-            # 4. return outputs.
-            try:
-                return partial_program_layer(args)
-            except Exception as e:
-                if not hasattr(e, error.ERROR_DATA):
-                    # runtime error
-                    error.attach_error_data(e, in_runtime=True)
-                    raise
-        except Exception as e:
-            error_data = getattr(e, error.ERROR_DATA, None)
-            if error_data:
-                error_data.raise_new_exception()
-            else:
-                logging_utils.warn(
-                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
-                    " if you can't handle this {} yourself.".format(type(e))
-                )
-                raise e
+        return self._perform_call(*args, **kwargs)
 
     def _is_train_mode(self):
         if self._class_instance is not None:
@@ -536,6 +508,298 @@ class StaticFunction:
         """
         if self.is_property:
             raise RuntimeError("Can not call the func when property=True.")
+
+    def get_concrete_program(self, *args, **kwargs):
+        raise NotImplementedError("Not implemented yet.")
+
+    def get_concrete_program_with_cache_key(self, cached_key):
+        raise NotImplementedError("Not implemented yet.")
+
+    def get_traced_count(self):
+        raise NotImplementedError("Not implemented yet.")
+
+    @property
+    def code(self):
+        raise NotImplementedError("Not implemented yet.")
+
+    @property
+    def dygraph_function(self):
+        """
+        Returns the original decorated function.
+        """
+        if self._class_instance is not None:
+            return self._dygraph_function.__get__(self._class_instance)
+        else:
+            return self._dygraph_function
+
+    @property
+    def concrete_program(self):
+        raise NotImplementedError("Not implemented yet.")
+
+    def concrete_program_specify_input_spec(
+        self, input_spec=None, with_hook=False, is_prim_infer=False
+    ):
+        raise NotImplementedError("Not implemented yet.")
+
+    def rollback(self):
+        """
+        Rollback into original dygraph functions for current class instance.
+
+        Returns:
+            Function or Method
+
+        Example::
+            .. code-block:: python
+
+                >>> # doctest: +SKIP
+                >>> import paddle
+
+                >>> class Net(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...
+                ...     def forward(self, x, flag=True):
+                ...         if flag:
+                ...             out = x + 1
+                ...         else:
+                ...             out = x - 1
+                ...         return out
+                ...
+                >>> x = paddle.randn([10, 1], 'float32')
+                >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
+                >>> out = net(x)
+
+                >>> net.forward.rollback()  # rollback into dygraph mode
+                >>> out = net(x)
+        """
+
+        def rollback_impl(class_instance):
+            for name, func in class_instance._original_funcs.items():
+                setattr(class_instance, name, func.__get__(class_instance))
+
+            for sublayer in class_instance.sublayers(include_self=False):
+                rollback_impl(sublayer)
+
+        if self._class_instance is None:
+            return self._dygraph_function
+
+        # only rollback sub-functions on path of top _dygraph_function
+        func_name = self._dygraph_function.__name__
+        assert (
+            func_name in self._class_instance._original_funcs
+        ), "Not Found function '{}' in class '{}'.".format(
+            func_name, self._class_instance.__class__
+        )
+        func = self._class_instance._original_funcs[func_name]
+        setattr(
+            self._class_instance, func_name, func.__get__(self._class_instance)
+        )
+
+        for sublayer in self._class_instance.sublayers(include_self=False):
+            rollback_impl(sublayer)
+
+        return getattr(self._class_instance, func_name)
+
+    def __deepcopy__(self, memo):
+        """
+        Customized behavior for copy.deepcopy, return original decorated function instead
+        of a new StaticFunction Object. StaticFunction itself is not copyable becuase it's
+        associated with class_instance.
+
+        We add __deepcopy__ here only for the following usage:
+
+        Example::
+            .. code-block:: python
+
+                >>> import copy
+                >>> import paddle
+
+                >>> class Net(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...
+                ...     def forward(self, x, flag=True):
+                ...         if flag:
+                ...             out = x + 1
+                ...         else:
+                ...             out = x - 1
+                ...         return out
+                ...
+                >>> x = paddle.randn([10, 1], 'float32')
+                >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
+
+                >>> copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
+
+        Please attention that original 'net' will unwrap @to_static and rollback into simple Layer.
+        """
+        if self._class_instance is not None:
+            net_name = type(self._class_instance).__name__
+            logging_utils.log(
+                level=-1,
+                msg="Not recommend to deepcopy '{}' decorated with @to_static, it has side effect that will"
+                " rollback into original state before @to_static. Please deepcopy '{}' before applying @to_static.".format(
+                    net_name, net_name
+                ),
+            )
+            self.rollback()
+            return self._dygraph_function.__get__(
+                memo[id(self._class_instance)]
+            )
+        else:
+            return self._dygraph_function
+
+    @property
+    def inputs(self):
+        raise NotImplementedError("Not implemented yet.")
+
+    @property
+    def outputs(self):
+        raise NotImplementedError("Not implemented yet.")
+
+    @property
+    def main_program(self):
+        raise NotImplementedError("Not implemented yet.")
+
+    @property
+    def program_cache(self):
+        raise NotImplementedError("Not implemented yet.")
+
+    @property
+    def function_spec(self):
+        raise NotImplementedError("Not implemented yet.")
+
+
+def raise_error_template(func_str):
+    def _raise_error(*args, **kwargs):
+        error_template = (
+            "Can't call {func} when enable_fallback=True."
+            "Use paddle.jit.to_static(enable_fallback=False) instead."
+        )
+        raise RuntimeError(error_template.format(func=func_str))
+
+    return _raise_error
+
+
+class SymbolicStaticFunction(StaticFunction):
+    def __init__(self, function, input_spec=None, **kwargs):
+        if input_spec is not None:
+            warnings.warn(
+                "\nSymbolic Trace don't support input_spec arguments. It will Will not produce any effect.\n"
+                "1. You can disable fallback mode by `paddle.jit.to_static(enable_fallback=False)` to switch to AST to static, then you can assign input spec.\n"
+            )
+        super().__init__(function, input_spec, **kwargs)
+        self.last_call_input_spec = None
+
+    def _perform_call(self, *args, **kwargs):
+        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+        (
+            input_args_with_spec,
+            input_kwargs_with_spec,
+        ) = self._function_spec.args_to_input_spec(args, kwargs)
+        self.last_call_input_spec = input_args_with_spec
+
+        try:
+            from sot import symbolic_translate
+        except:
+            import os
+
+            os.system(
+                "pip install git+https://github.com/PaddlePaddle/PaddleSOT@develop"
+            )
+            from sot import symbolic_translate
+
+        build_strategy = self._kwargs.get("build_strategy", None)
+        traced_fun = symbolic_translate(
+            self._dygraph_function, build_strategy=build_strategy
+        )
+        if self._class_instance is not None:
+            args = (self._class_instance,) + args
+        return traced_fun(*args, **kwargs)
+
+    @property
+    def code(self):
+        raise_error_template("code")()
+
+    @property
+    def concrete_program(self):
+        raise_error_template("concrete_program")()
+
+    concrete_program_specify_input_spec = raise_error_template(
+        "concrete_program_specify_input_spec"
+    )
+    get_concrete_program = raise_error_template("get_concrete_program")
+    get_concrete_program_with_cache_key = raise_error_template(
+        "get_concrete_program_with_cache_key"
+    )
+    get_traced_count = raise_error_template("get_traced_count")
+
+    @property
+    def inputs(self):
+        raise_error_template("inputs")()
+
+    @property
+    def outputs(self):
+        raise_error_template("outputs")()
+
+    @property
+    def main_program(self):
+        raise_error_template("main_program")()
+
+    @property
+    def program_cache(self):
+        raise_error_template("program_cache")()
+
+    @property
+    def function_spec(self):
+        raise_error_template("function_spec ")()
+
+
+class ASTStaticFunction(StaticFunction):
+    """
+    Wrapper class to Manage program conversion of decorated function.
+
+    """
+
+    def __init__(self, function, input_spec=None, **kwargs):
+        super().__init__(function, input_spec, **kwargs)
+
+    def _perform_call(self, *args, **kwargs):
+        # 1. trace ops from dygraph layers and cache the generated program.
+        args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
+
+        try:
+            concrete_program, partial_program_layer = self.get_concrete_program(
+                *args, **kwargs, is_train=self._is_train_mode()
+            )
+            # 2. synchronize self.training attribute.
+            if isinstance(self._class_instance, layers.Layer):
+                partial_program_layer.training = self._class_instance.training
+            else:
+                partial_program_layer.training = self._training
+
+            partial_program_layer._cuda_graph_capture_mode = (
+                self._cuda_graph_capture_mode
+            )
+            partial_program_layer._cuda_graph_pool_id = self._cuda_graph_pool_id
+
+            # 3. return outputs.
+            try:
+                return partial_program_layer(args)
+            except Exception as e:
+                if not hasattr(e, error.ERROR_DATA):
+                    # runtime error
+                    error.attach_error_data(e, in_runtime=True)
+                    raise
+        except Exception as e:
+            error_data = getattr(e, error.ERROR_DATA, None)
+            if error_data:
+                error_data.raise_new_exception()
+            else:
+                logging_utils.warn(
+                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
+                    " if you can't handle this {} yourself.".format(type(e))
+                )
+                raise e
 
     def get_concrete_program(self, *args, **kwargs):
         """
@@ -622,16 +886,6 @@ class StaticFunction:
         static_func = convert_to_static(self.dygraph_function)
         source_code = func_to_source_code(static_func)
         return source_code
-
-    @property
-    def dygraph_function(self):
-        """
-        Returns the original decorated function.
-        """
-        if self._class_instance is not None:
-            return self._dygraph_function.__get__(self._class_instance)
-        else:
-            return self._dygraph_function
 
     @property
     def concrete_program(self):
@@ -750,113 +1004,6 @@ class StaticFunction:
                 cache_key
             )
             return concrete_program
-
-    def rollback(self):
-        """
-        Rollback into original dygraph functions for current class instance.
-
-        Returns:
-            Function or Method
-
-        Example::
-            .. code-block:: python
-
-                >>> # doctest: +SKIP
-                >>> import paddle
-
-                >>> class Net(paddle.nn.Layer):
-                ...     def __init__(self):
-                ...         super().__init__()
-                ...
-                ...     def forward(self, x, flag=True):
-                ...         if flag:
-                ...             out = x + 1
-                ...         else:
-                ...             out = x - 1
-                ...         return out
-                ...
-                >>> x = paddle.randn([10, 1], 'float32')
-                >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
-                >>> out = net(x)
-
-                >>> net.forward.rollback()  # rollback into dygraph mode
-                >>> out = net(x)
-        """
-
-        def rollback_impl(class_instance):
-            for name, func in class_instance._original_funcs.items():
-                setattr(class_instance, name, func.__get__(class_instance))
-
-            for sublayer in class_instance.sublayers(include_self=False):
-                rollback_impl(sublayer)
-
-        if self._class_instance is None:
-            return self._dygraph_function
-
-        # only rollback sub-functions on path of top _dygraph_function
-        func_name = self._dygraph_function.__name__
-        assert (
-            func_name in self._class_instance._original_funcs
-        ), "Not Found function '{}' in class '{}'.".format(
-            func_name, self._class_instance.__name__
-        )
-        func = self._class_instance._original_funcs[func_name]
-        setattr(
-            self._class_instance, func_name, func.__get__(self._class_instance)
-        )
-
-        for sublayer in self._class_instance.sublayers(include_self=False):
-            rollback_impl(sublayer)
-
-        return getattr(self._class_instance, func_name)
-
-    def __deepcopy__(self, memo):
-        """
-        Customized behavior for copy.deepcopy, return original decorated function instead
-        of a new StaticFunction Object. StaticFunction itself is not copyable becuase it's
-        associated with class_instance.
-
-        We add __deepcopy__ here only for the following usage:
-
-        Example::
-            .. code-block:: python
-
-                >>> import copy
-                >>> import paddle
-
-                >>> class Net(paddle.nn.Layer):
-                ...     def __init__(self):
-                ...         super().__init__()
-                ...
-                ...     def forward(self, x, flag=True):
-                ...         if flag:
-                ...             out = x + 1
-                ...         else:
-                ...             out = x - 1
-                ...         return out
-                ...
-                >>> x = paddle.randn([10, 1], 'float32')
-                >>> net = paddle.jit.to_static(Net())  # convert into static graph mode
-
-                >>> copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
-
-        Please attention that original 'net' will unwrap @to_static and rollback into simple Layer.
-        """
-        if self._class_instance is not None:
-            net_name = type(self._class_instance).__name__
-            logging_utils.log(
-                level=-1,
-                msg="Not recommend to deepcopy '{}' decorated with @to_static, it has side effect that will"
-                " rollback into original state before @to_static. Please deepcopy '{}' before applying @to_static.".format(
-                    net_name, net_name
-                ),
-            )
-            self.rollback()
-            return self._dygraph_function.__get__(
-                memo[id(self._class_instance)]
-            )
-        else:
-            return self._dygraph_function
 
     @property
     def inputs(self):

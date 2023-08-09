@@ -60,8 +60,8 @@ class LinearQuanter(Layer):
         if in_dynamic_mode():
             return _C_ops.quantize_linear(
                 input,
-                self._scales,
-                self._zero_point,
+                self._scales.cast(input.dtype),
+                self._zero_point.cast(input.dtype),
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
@@ -73,8 +73,8 @@ class LinearQuanter(Layer):
                 type='quantize_linear',
                 inputs={
                     'X': input,
-                    'Scale': self._scales,
-                    'ZeroPoint': self._zero_point,
+                    'Scale': self._scales.cast(input.dtype),
+                    'ZeroPoint': self._zero_point.cast(input.dtype),
                 },
                 outputs={'Y': out},
                 attrs={
@@ -110,8 +110,8 @@ class LinearDequanter(Layer):
         if in_dynamic_mode():
             return _C_ops.dequantize_linear(
                 input,
-                self._scales,
-                self._zero_point,
+                self._scales.cast(input.dtype),
+                self._zero_point.cast(input.dtype),
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
@@ -123,8 +123,8 @@ class LinearDequanter(Layer):
                 type='dequantize_linear',
                 inputs={
                     'X': input,
-                    'Scale': self._scales,
-                    'ZeroPoint': self._zero_point,
+                    'Scale': self._scales.cast(input.dtype),
+                    'ZeroPoint': self._zero_point.cast(input.dtype),
                 },
                 outputs={'Y': out},
                 attrs={
@@ -149,29 +149,31 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
     It defines some functions to convert quantizers and observers to quantize
     or dequantize operators that maintain the quantization parameters used
     during inference.
+
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            # Given codes in ./customized_quanter.py
-            class CustomizedQuantedLayer(ConvertibleQuantedLayer):
-                def __init__(self):
-                    super().__init__()
-                    self.weight_a = paddle.create_parameter(shape=[1], dtype='float32')
-                    self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
-                    self.quanter_for_weight_a = None
-                    self.activation_weight = None
-                def forward(self, input):
-                    qweight_a = self.quanter_for_weight_a(self.weight_a)
-                    weight_b = self.weight_b
-                    qinput = self.activation_weight(input)
-                    // compute with qweight_a, weight_b and qinput.
-                    return qweight * qinput + weight_b
-
-                def weights_to_quanters(self):
-                    return [('weight_a', 'quanter_for_weight_a')]
-
-                def activation_quanters(self):
-                    return ['activation_weight']
+            >>> # Given codes in ./customized_quanter.py
+            >>> class CustomizedQuantedLayer(ConvertibleQuantedLayer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.weight_a = paddle.create_parameter(shape=[1], dtype='float32')
+            ...         self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
+            ...         self.quanter_for_weight_a = None
+            ...         self.activation_weight = None
+            ...
+            ...     def forward(self, input):
+            ...         qweight_a = self.quanter_for_weight_a(self.weight_a)
+            ...         weight_b = self.weight_b
+            ...         qinput = self.activation_weight(input)
+            ...         # compute with qweight_a, weight_b and qinput.
+            ...         return qweight * qinput + weight_b
+            ...
+            ...     def weights_to_quanters(self):
+            ...         return [('weight_a', 'quanter_for_weight_a')]
+            ...
+            ...     def activation_quanters(self):
+            ...         return ['activation_weight']
     """
 
     def __init__(self):

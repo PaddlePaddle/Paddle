@@ -15,7 +15,7 @@
   optional : x_max, y_max
 
 - op : add_layernorm_xpu
-  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, int64_t m, int64_t n, float epsilon)
+  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon)
   output : Tensor(out), Tensor(mean), Tensor(variance), Tensor(z_add)
   infer_meta :
     func : AddLayernormXPUInferMeta
@@ -107,7 +107,7 @@
   support_dygraph_mode : true
 
 - op : fused_linear_param_grad_add
-  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true)
+  args : (Tensor x, Tensor dout, Tensor dweight, Tensor dbias, bool multi_precision = true, bool has_bias = true)
   output : Tensor(dweight_out), Tensor(dbias_out)
   infer_meta:
     func : FusedLinearParamGradAddInferMeta
