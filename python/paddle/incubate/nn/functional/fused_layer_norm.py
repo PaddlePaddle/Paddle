@@ -63,8 +63,8 @@ def fused_layer_norm(
             import paddle
 
             paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
-            paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
-            paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
+            paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float32)
+            paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float32)
             epsilon = 1e-6
             paddle_layernorm = paddle.incubate.nn.functional.fused_layer_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
