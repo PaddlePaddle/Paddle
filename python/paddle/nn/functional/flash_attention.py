@@ -277,8 +277,9 @@ def flash_attention(
                 training=training,
             )
             return output, None
+
         else:
-            return _math_attention(
+            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
                 query,
                 key,
                 value,

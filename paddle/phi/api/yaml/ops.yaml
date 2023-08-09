@@ -925,7 +925,6 @@
   kernel :
     func : flash_attn
     data_type : q
-  intermediate : softmax_lse, seed_offset
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
@@ -950,7 +949,6 @@
   kernel :
     func : flash_attn_v1
     data_type : q
-  intermediate : softmax_lse, seed_offset
   backward : flash_attn_v1_grad
 
 - op : flash_attn_v1_unpadded
