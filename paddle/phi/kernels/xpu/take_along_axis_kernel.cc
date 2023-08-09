@@ -26,7 +26,9 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          const DenseTensor& index,
                          int axis,
                          DenseTensor* out) {
+  out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
+
   if (x.numel() == 0 || index.numel() == 0) return;
 
   const auto& index_type = index.dtype();
@@ -41,11 +43,11 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  std::vector<int> xshape(x.dims().size());
+  std::vector<int64_t> xshape(x.dims().size());
   for (int i = 0; i < x.dims().size(); ++i) {
     xshape[i] = x.dims()[i];
   }
-  std::vector<int> idxshape(index.dims().size());
+  std::vector<int64_t> idxshape(index.dims().size());
   for (int i = 0; i < index.dims().size(); ++i) {
     idxshape[i] = index.dims()[i];
   }
@@ -54,7 +56,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
 
   int r = XPU_SUCCESS;
   if (index_type == DataType::INT32) {
-    r = xpu::gather_element<XPUType, int>(
+    r = xpu::plugin::take_along_axis<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         index.data<int>(),
@@ -63,18 +65,10 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
         idxshape,
         axis);
   } else {
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    int32_t* index_int_data = RAII_GUARD.alloc_l3_or_gm<int32_t>(index.numel());
-    PADDLE_ENFORCE_XDNN_NOT_NULL(index_int_data);
-    const int64_t* index_data = index.data<int64_t>();
-    r = xpu::cast<int64_t, int32_t>(
-        dev_ctx.x_context(), index_data, index_int_data, index.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-
-    r = xpu::gather_element<XPUType, int>(
+    r = xpu::plugin::take_along_axis<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
-        index_int_data,
+        index.data<int64_t>(),
         reinterpret_cast<XPUType*>(out->data<T>()),
         xshape,
         idxshape,
