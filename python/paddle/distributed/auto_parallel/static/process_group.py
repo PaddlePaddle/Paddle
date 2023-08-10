@@ -213,26 +213,26 @@ class ProcessGroup:
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
-     #      barrier_tensor = paddle.full([1], 1, dtype="int32")
-     #      paddle._legacy_C_ops.barrier(
-     #          barrier_tensor, barrier_tensor, 'ring_id', ring_id
-     #      )
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', ring_id
+            )
 
-     #      # NOTE(zhiqiu): to avoid send/recv hang in lazy init
-     #      if self._group_type == 'p2p':
-     #          alltoall_tmp = paddle.empty(
-     #              shape=[self.nranks, self.nranks], dtype="int32"
-     #          )
-     #          paddle._legacy_C_ops.alltoall(
-     #              alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
-     #          )
-     #          paddle.device.cuda.synchronize()
+            # NOTE(zhiqiu): to avoid send/recv hang in lazy init
+            if self._group_type == 'p2p':
+                alltoall_tmp = paddle.empty(
+                    shape=[self.nranks, self.nranks], dtype="int32"
+                )
+                paddle._legacy_C_ops.alltoall(
+                    alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
+                )
+                paddle.device.cuda.synchronize()
 
-     #  if self.nranks > 1:
-     #      barrier_tensor = paddle.full([1], 1, dtype="int32")
-     #      paddle._legacy_C_ops.barrier(
-     #          barrier_tensor, barrier_tensor, 'ring_id', 0
-     #      )
+        if self.nranks > 1:
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', 0
+            )
 
         self._is_instantiate = True
         logger.info(f"debug process_group {ring_id} is instantiate true")
