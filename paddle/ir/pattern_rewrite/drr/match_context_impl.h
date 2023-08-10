@@ -20,6 +20,7 @@
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_tensor.h"
+#include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 
 namespace ir {
 namespace drr {
@@ -53,9 +54,21 @@ class MatchContextImpl final {
         .data();
   }
 
+  const IrTensor& GetIrTensor(const std::string& tensor_name) const {
+    return *tensor_map_.at(tensor_name);
+  }
+
+  const std::unordered_map<const OpCall*, ir::Operation*>& op_map() const {
+    return op_map_;
+  }
+
   void BindIrTensor(const std::string& tensor_name,
                     const std::shared_ptr<IrTensor>& tensor) {
     tensor_map_.emplace(tensor_name, tensor);
+  }
+
+  void BindIrOperation(const OpCall* op_call, const ir::Operation* ir_op) {
+    op_map_.emplace(op_call, ir_op);
   }
 
   void BindIrAttr(const std::string& attr_name, ir::Attribute attr) {
@@ -64,6 +77,7 @@ class MatchContextImpl final {
 
  private:
   std::unordered_map<std::string, std::shared_ptr<IrTensor>> tensor_map_;
+  std::unordered_map<const OpCall*, ir::Operation*> op_map_;
   std::unordered_map<std::string, ir::Attribute> attr_map_;
 };
 
