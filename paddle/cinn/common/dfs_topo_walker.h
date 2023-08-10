@@ -30,16 +30,20 @@ class DFSTopoWalker final {
  public:
   DFSTopoWalker(const DFSTopoWalker&) = delete;
   DFSTopoWalker(DFSTopoWalker&&) = delete;
+
   using NodeHandlerType = std::function<void(NodeType)>;
   using NodesVisitorType =
       std::function<void(NodeType, const NodeHandlerType&)>;
+
   DFSTopoWalker(const NodesVisitorType& VisitPreNodes,
                 const NodesVisitorType& VisitNextNodes)
       : VisitPreNodes_(VisitPreNodes), VisitNextNodes_(VisitNextNodes) {}
+
   void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
     std::array<NodeType, 1> nodes{node};
     (*this)(nodes.begin(), nodes.end(), NodeHandler);
   }
+
   template <typename NodeIt>
   void operator()(NodeIt begin,
                   NodeIt end,

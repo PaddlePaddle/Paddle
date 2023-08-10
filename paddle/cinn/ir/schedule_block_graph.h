@@ -29,23 +29,36 @@ using Group = cinn::hlir::framework::Graph::Group;
 namespace cinn {
 namespace ir {
 
+// Node in units of ScheduleBlock.
 class ScheduleBlockNode : public common::GraphNode {
  public:
   ScheduleBlockNode(Expr block, const IRSchedule& ir_sch);
 
+  // Get the id of this node, which is same as the name of ScheduleBlock.
   std::string id() const { return id_; }
+
+  // Get the ScheduleBlockRealize expr
   Expr Block() const;
+
+  // Get all control stmts containing the schedule_block, now only the For node
+  // is being considered.
   std::vector<Expr> ControlStmts() const;
+
+  // Get all the upstream nodes that this node depends on.
   std::unordered_set<std::string> UpstreamNodes() const {
     return upstream_nodes_;
   }
+
+  // Get all downstream nodes that depend on this node.
   std::unordered_set<std::string> DownstreamNodes() const {
     return downstream_nodes_;
   }
-  std::vector<ScheduleBlockNode*> Producers() const;
-  std::vector<ScheduleBlockNode*> Consumers() const;
 
-  void Update();
+  // Get the producer node that this node directly depends on
+  std::vector<ScheduleBlockNode*> Producers() const;
+
+  // Get consumer nodes that directly depend on this node.
+  std::vector<ScheduleBlockNode*> Consumers() const;
 
   void AddUpstreamNode(const std::string& node_id) {
     upstream_nodes_.insert(node_id);
@@ -65,31 +78,71 @@ class ScheduleBlockNode : public common::GraphNode {
   const IRSchedule& ir_sch_;
 };
 
+// Graph in units of ScheduleBlockNode, each node corresponds to a ScheduleBlock
+// in IR.
 class ScheduleBlockGraph : public common::Graph {
  public:
   explicit ScheduleBlockGraph(const IRSchedule& ir_sch);
 
+  // Update graph information according to the new IRSchedule.
   void Update(const IRSchedule& ir_sch);
 
+  // Retrieve a node in the graph by id, the id is same as the name of
+  // ScheduleBlock.
   ScheduleBlockNode* RetrieveNode(const std::string& id) {
     return dynamic_cast<ScheduleBlockNode*>(common::Graph::RetrieveNode(id));
   }
 
+  // Get all block name in order,
+  // this sequence may become invalid after some schedule operations,
+  // and an Update() operation is required.
   std::list<std::string> BlockIdsInOrder() const { return block_ids_in_order_; }
 
+  // Get all nodes without input node.
   std::vector<ScheduleBlockNode*> StartPoints();
+
+  // Get all nodes without output node.
   std::vector<ScheduleBlockNode*> EndPoints();
 
+  // Function used to define the operations to be performed on each node.
   using NodeHandlerType = std::function<void(ScheduleBlockNode*)>;
-  void NodesWalk(const NodeHandlerType& NodeHandler);
-  void DFSTopoWalk(const NodeHandlerType& NodeHandler, bool is_reverse = true);
 
-  ScheduleBlockNode* GetGlobalMasterNode() const;
+  // Walk through each node
+  // and perform some operations defined by NodeHandler on it.
+  void NodesWalk(const NodeHandlerType& NodeHandler);
+
+  // Walk through each node topological dfs topo order
+  // and perform some operations defined by NodeHandler on it.
+  void DFSTopoWalk(const NodeHandlerType& NodeHandler, bool is_reverse = true);
 
  private:
   std::list<std::string> block_ids_in_order_;
 };
 
+/**
+ * The mutator used to construct the order of blocks and their control
+ * statements
+ *
+ * Example:
+ * for0:
+ *   for1:
+ *     block0
+ *     block1
+ *   block2
+ *   for2:
+ *     block3
+ *     block4
+ *
+ * the result is:
+ *   [0]: for0
+ *   [0, 0]: for1
+ *   [0, 0, 0]: block0
+ *   [0, 0, 1]: block1
+ *   [0, 1]: block2
+ *   [0, 2]: for2
+ *   [0, 2, 0]: block3
+ *   [0, 2, 1]: block4
+ */
 struct BlockOrderConstructor : public IRMutator<Expr*> {
   std::map<std::vector<int>, Expr> operator()(ir::Expr* expr) {
     IRMutator::Visit(expr, expr);
