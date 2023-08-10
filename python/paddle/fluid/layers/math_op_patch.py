@@ -146,6 +146,7 @@ def monkey_patch_variable():
             In Static Graph Mode:
 
             .. code-block:: python
+
                 import paddle
                 paddle.enable_static()
 
@@ -192,6 +193,7 @@ def monkey_patch_variable():
             In Static Graph Mode:
 
             .. code-block:: python
+
                 import paddle
                 paddle.enable_static()
 
