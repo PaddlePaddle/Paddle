@@ -248,6 +248,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            place,
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
+#ifdef PADDLE_WITH_DISTRIBUTE
     } else if (self->tensor.is_dist_tensor()) {
       // TODO(chenweihang): deal with DistTensor as local DenseTensor now,
       // if the local DenseTensor is shard or partial, do gather or reduce?
@@ -267,6 +268,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            place,
                            dense_tensor.Holder()->ptr(),
                            dense_tensor.Holder()->size());
+#endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -307,6 +309,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       dense_tensor->Holder()->ptr(),
                                       dense_tensor->Holder()->size(),
                                       kind);
+#ifdef PADDLE_WITH_DISTRIBUTE
     } else if (self->tensor.is_dist_tensor()) {
       VLOG(6) << "Getting DistTensor's numpy value";
       auto* dist_tensor =
@@ -321,6 +324,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       dense_tensor.Holder()->ptr(),
                                       dense_tensor.Holder()->size(),
                                       kind);
+#endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =

@@ -29,6 +29,7 @@ void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
   // Set not grad var to zero and set stop gradient as default value: true
   buffer_[slot_id][rank] =
       paddle::experimental::zeros_like(buffer_[slot_id][rank]);
+  88
 }
 
 void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
@@ -85,6 +86,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
       } else if (t.is_sparse_csr_tensor() || t.is_sparse_coo_tensor()) {
         buffer_[slot_id][rank] =
             paddle::experimental::sparse::full_like(t, 1, t.dtype());
+#ifdef PADDLE_WITH_DISTRIBUTE
       } else if (t.is_dist_tensor()) {
         VLOG(6) << "Create a new dist tensor.";
         // TODO(chenweihang): we need a shard_tensor API in C++
@@ -97,6 +99,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
                 phi::distributed::auto_parallel::TensorDistAttr>());
         temp.set_impl(dist_tensor);
         buffer_[slot_id][rank] = temp;
+#endif
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Only Support DENSE_TENSOR, SPARSE_COO_TENSOR, SPARSE_CSR_TENSOR "
@@ -192,8 +195,10 @@ void GradTensorHolder::add(size_t slot_id,
                                                         &buffer_values);
         }
       }
-    } else if (t.is_dense_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    } else if (t.is_dist_tensor()) {
       buffer_tensor = add_ad_func(t, buffer_tensor);
+#endif
     } else {
       // TODO(jiabin): Support Other TensorBase later
       // TODO(zhanlve): Replace SelectedRowsAddTensor with add_dygraph_function

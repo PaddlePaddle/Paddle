@@ -173,6 +173,7 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   }
 };
 
+#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
@@ -200,6 +201,7 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
     // do nothing
   }
 };
+#endif
 
 }  // namespace detail
 
@@ -233,10 +235,12 @@ DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);
 DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
 
+#ifdef PADDLE_WITH_DISTRIBUTE
 template <typename... Args>
 bool AllInputsAreDistTensor(const Args&... args) {
   return detail::DistTensorTypeParser().apply(args...).result;
 }
+#endif
 
 }  // namespace experimental
 }  // namespace paddle

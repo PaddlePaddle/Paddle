@@ -21,8 +21,10 @@ DECLARE_bool(use_stride_kernel);
 
 #include "glog/logging.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 namespace paddle {
 namespace experimental {
@@ -480,6 +482,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to) {}
 
+#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
@@ -498,6 +501,7 @@ phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
   }
   return nullptr;
 }
+#endif
 
 }  // namespace experimental
 }  // namespace paddle
