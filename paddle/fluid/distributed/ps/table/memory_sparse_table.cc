@@ -97,7 +97,7 @@ int32_t MemorySparseTable::InitializeValue() {
     LOG(INFO) << "merged shard info: [" << _m_sparse_table_shard_num << "|"
               << _m_avg_local_shard_num << "|" << _m_real_local_shard_num
               << "]";
-    _local_shards_new.reset(new shard_type[_real_local_shard_num]);
+    _local_shards_new.reset(new shard_type[_real_local_shard_num]);  // NOLINT
   }
   return 0;
 }
@@ -322,7 +322,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
   // patch model
   if (save_param == 5) {
     _local_shards_patch_model.reset(_local_shards_new.release());
-    _local_shards_new.reset(new shard_type[_real_local_shard_num]);
+    _local_shards_new.reset(new shard_type[_real_local_shard_num]);  // NOLINT
     _save_patch_model_thread = std::thread(std::bind(
         &MemorySparseTable::SavePatch, this, std::string(dirname), save_param));
     return 0;

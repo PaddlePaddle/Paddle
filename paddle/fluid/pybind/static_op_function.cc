@@ -22,7 +22,24 @@
 
 namespace paddle {
 namespace pybind {
+PyObject *static_api_add_n(PyObject *self, PyObject *args, PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add add_n op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get OpResult from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2VectorOfOpResult("add_n", x_obj, 0);
 
+    // Parse Attributes if needed
+
+    // Call ir static api
+    auto out = paddle::dialect::add_n(x);
+    return ToPyObject(out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
 PyObject *static_api_mean(PyObject *self, PyObject *args, PyObject *kwargs) {
   try {
     VLOG(6) << "Add mean op into program";

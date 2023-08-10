@@ -3149,8 +3149,17 @@ function exec_samplecode_test() {
 
 
 function collect_ccache_hits() {
-    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
-    echo "ccache hit rate: ${rate}%"
+    ccache -s
+    ccache_version=$(ccache -V | grep "ccache version" | awk '{print $3}')
+    echo "$ccache_version"
+    if [[ $ccache_version == 4* ]] ; then
+        rate=$(ccache -s | grep "Hits" | awk 'NR==1 {print $5}' | cut -d '(' -f2 | cut -d ')' -f1)
+        echo "ccache hit rate: ${rate}%"
+    else
+        rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+        echo "ccache hit rate: ${rate}"
+    fi
+
     echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
@@ -3962,7 +3971,6 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_DY2ST_TEST=True
         parallel_test
         check_coverage
         ;;
