@@ -1821,7 +1821,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
 
 class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  public:
-  SlotRecordInMemoryDataFeed() {}
+  SlotRecordInMemoryDataFeed() = default;
   virtual ~SlotRecordInMemoryDataFeed();
   void Init(const DataFeedDesc& data_feed_desc) override;
   void LoadIntoMemory() override;

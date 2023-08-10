@@ -29,7 +29,7 @@ namespace tensorrt {
 
 class UnaryOpConverter : public OpConverter {
  public:
-  UnaryOpConverter() {}
+  UnaryOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {

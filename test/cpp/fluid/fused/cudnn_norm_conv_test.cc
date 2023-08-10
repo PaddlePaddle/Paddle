@@ -235,7 +235,7 @@ class CudnnNormConvolutionTester {
     SetUp();
   }
 
-  ~CudnnNormConvolutionTester() {}
+  ~CudnnNormConvolutionTester() = default;
 
   void CheckForward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/box_coder_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -116,8 +117,8 @@ void DecodeCenterSize(const DenseTensor *target_box,
       auto *target_box_data = target_box->data<T>();
       auto *prior_box_data = prior_box->data<T>();
 
-      T var_data[4] = {1., 1., 1., 1.};
-      T *var_ptr = var_data;
+      std::array<T, 4> var_data{1., 1., 1., 1.};
+      T *var_ptr = var_data.data();
       size_t offset = i * col * len + j * len;
       int prior_box_offset = axis == 0 ? j * len : i * len;
 

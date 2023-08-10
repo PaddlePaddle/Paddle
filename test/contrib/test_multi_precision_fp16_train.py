@@ -126,7 +126,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 multi_precision=True,
             )
         elif optimizer == "Lars":
-            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+            optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9, multi_precision=use_pure_fp16
             )
         else:

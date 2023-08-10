@@ -178,9 +178,9 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -1499,7 +1499,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             end_axis = 2
 
           We get:
-            Out.shape = (3, 1000 * 100, 2)
+            Out.shape = (3, 100 * 100, 4)
 
         Case 2:
 
@@ -2038,7 +2038,7 @@ def split(x, num_or_sections, axis=0, name=None):
             attrs['axis'] = dim
 
         if isinstance(num_or_sections, int):
-            assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+            assert num_or_sections > 0, 'num_or_sections must be than 0.'
             if isinstance(dim, int) and input_shape[dim] > 0:
                 assert input_shape[dim] % num_or_sections == 0, (
                     "The input's size along the split dimension "

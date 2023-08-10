@@ -132,16 +132,16 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
-            adam1 = fluid.optimizer.Adam(
+            adam1 = paddle.optimizer.Adam(
                 learning_rate=Exponential_scheduler,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam2 = fluid.optimizer.Adam(
-                learning_rate=Step_scheduler, parameter_list=linear.parameters()
+            adam2 = paddle.optimizer.Adam(
+                learning_rate=Step_scheduler, parameters=linear.parameters()
             )
-            adam3 = fluid.optimizer.Adam(
+            adam3 = paddle.optimizer.Adam(
                 learning_rate=Reducelr_scheduler,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
             print(adam3.state_dict())
 
@@ -172,66 +172,66 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             paddle.save(adam1.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Exponential_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.last_epoch,
                 adam1._learning_rate.last_epoch,
-                "last_epoch is different before and after set_dict",
+                "last_epoch is different before and after set_state_dict",
             )
 
             paddle.save(adam2.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Step_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.last_epoch,
                 adam2._learning_rate.last_epoch,
-                "epoch_num is different before and after set_dict",
+                "epoch_num is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate(),
                 adam2._learning_rate(),
-                "current learning rate is different before and after set_dict",
+                "current learning rate is different before and after set_state_dict",
             )
 
             paddle.save(adam3.state_dict(), "save_path.pdopt")
             opt_state = paddle.load("save_path.pdopt")
-            adam_test = fluid.optimizer.Adam(
+            adam_test = paddle.optimizer.Adam(
                 learning_rate=Reducelr_scheduler_test,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
             )
-            adam_test.set_dict(opt_state)
+            adam_test.set_state_dict(opt_state)
             self.assertEqual(
                 adam_test._learning_rate.best,
                 adam3._learning_rate.best,
-                "best_loss is different before and after set_dict",
+                "best_loss is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.cooldown_counter,
                 adam3._learning_rate.cooldown_counter,
-                "cooldown_counter is different before and after set_dict",
+                "cooldown_counter is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.num_bad_epochs,
                 adam3._learning_rate.num_bad_epochs,
-                "num_bad_epochs is different before and after set_dict",
+                "num_bad_epochs is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate.last_epoch,
                 adam3._learning_rate.last_epoch,
-                "epoch is different before and after set_dict",
+                "epoch is different before and after set_state_dict",
             )
             self.assertEqual(
                 adam_test._learning_rate(),
                 adam3._learning_rate(),
-                "current learning rate is different before and after set_dict",
+                "current learning rate is different before and after set_state_dict",
             )
 
     def test_NoamDecay(self):
@@ -368,8 +368,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             )
 
             linear = paddle.nn.Linear(10, 10)
-            adam = fluid.optimizer.Adam(
-                scheduler, parameter_list=linear.parameters()
+            adam = paddle.optimizer.Adam(
+                scheduler, parameters=linear.parameters()
             )
 
             for epoch in range(30):

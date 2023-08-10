@@ -32,83 +32,104 @@ namespace ir {
 using common::bfloat16;
 using common::float16;
 
-void IrPrinter::Print(Expr e) { IRVisitorRequireReImpl::Visit(&e); }
+void IrPrinter::Print(const Expr &e) {
+  IRVisitorRequireReImpl::Visit(&e);
+  os_ << str_;
+  str_ = "";
+}
 void IrPrinter::Print(const std::vector<Expr> &exprs,
                       const std::string &splitter) {
   for (std::size_t i = 0; !exprs.empty() && i + 1 < exprs.size(); i++) {
-    Print(exprs[i]);
-    os_ << splitter;
+    Visit(exprs[i]);
+    str_ += splitter;
   }
-  if (!exprs.empty()) Print(exprs.back());
+  if (!exprs.empty()) Visit(exprs.back());
+  os_ << str_;
+  str_ = "";
 }
 
 void IrPrinter::Visit(const IntImm *x) {
   if (x->type().is_int(64)) {
-    os_ << x->value << "ll";
+    str_ += std::to_string(x->value);
+    str_ += "ll";
   } else if (x->type().is_int(32)) {
-    os_ << x->value;
+    str_ += std::to_string(x->value);
   } else if (x->type().is_int(16)) {
-    os_ << "(int16_t)" << x->value;
+    str_ += "(int16_t)";
+    str_ += std::to_string(x->value);
   } else if (x->type().is_int(8)) {
-    os_ << "(int8_t)" << x->value;
+    str_ += "(int8_t)";
+    str_ += std::to_string(x->value);
   } else {
     LOG(FATAL) << "Not support int type: " << x->type();
   }
 }
 void IrPrinter::Visit(const UIntImm *x) {
   if (x->type().is_uint(64)) {
-    os_ << x->value << "ull";
+    str_ += std::to_string(x->value);
+    str_ += "ull";
   } else if (x->type().is_uint(32)) {
-    os_ << x->value;
+    str_ += std::to_string(x->value);
   } else if (x->type().is_uint(16)) {
-    os_ << "(uint16_t)" << x->value;
+    str_ += "(uint16_t)";
+    str_ += std::to_string(x->value);
   } else if (x->type().is_uint(8)) {
-    os_ << "(uint8_t)" << x->value;
+    str_ += "(uint8_t)";
+    str_ += std::to_string(x->value);
   } else if (x->type().is_uint(1)) {
     if (x->value) {
-      os_ << "true";
+      str_ += "true";
     } else {
-      os_ << "false";
+      str_ += "false";
     }
   } else {
     LOG(FATAL) << "Not support uint type: " << x->type();
   }
 }
 void IrPrinter::Visit(const FloatImm *x) {
+  std::ostringstream ss;
   if (x->type().is_float16()) {
     if (std::isinf(x->value)) {
-      os_ << "cinn::common::raw_uint16_to_float16(0x7c00)";
+      ss << "cinn::common::raw_uint16_to_float16(0x7c00)";
     } else if (std::isnan(x->value)) {
-      os_ << "cinn::common::raw_uint16_to_float16(0x7e00)";
+      ss << "cinn::common::raw_uint16_to_float16(0x7e00)";
     } else {
-      os_ << "(float16)"
-          << std::setprecision(std::numeric_limits<float16>::max_digits10)
-          << static_cast<float16>(x->value) << "f";
+      ss << "(float16)";
+      ss << std::setprecision(std::numeric_limits<float16>::max_digits10);
+      ss << static_cast<float16>(x->value) << "f";
     }
   } else if (x->type().is_bfloat16()) {
     if (std::isinf(x->value)) {
-      os_ << "cinn::common::raw_uint16_to_bfloat16(0x7F80)";
+      ss << "cinn::common::raw_uint16_to_bfloat16(0x7F80)";
     } else if (std::isnan(x->value)) {
-      os_ << "cinn::common::raw_uint16_to_bfloat16(0x7FC0)";
+      ss << "cinn::common::raw_uint16_to_bfloat16(0x7FC0)";
     } else {
-      os_ << "(bfloat16)"
-          << std::setprecision(std::numeric_limits<bfloat16>::max_digits10)
-          << static_cast<bfloat16>(x->value) << "f";
+      ss << "(bfloat16)";
+      ss << std::setprecision(std::numeric_limits<bfloat16>::max_digits10);
+      ss << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
-    os_ << std::setprecision(std::numeric_limits<float>::max_digits10)
-        << std::showpoint << x->value;
+    ss << std::setprecision(std::numeric_limits<float>::max_digits10);
+    ss << std::showpoint;
+    ss << x->value;
     if (std::isfinite(x->value)) {
-      os_ << "f";
+      ss << "f";
     }
   } else if (x->type().is_float(64)) {
-    os_ << std::setprecision(std::numeric_limits<double>::max_digits10)
-        << std::showpoint << x->value;
+    ss << std::setprecision(std::numeric_limits<double>::max_digits10);
+    ss << std::showpoint;
+    ss << x->value;
   } else {
     LOG(FATAL) << "Not support float type: " << x->type();
   }
+  str_ += ss.str();
 }
-void IrPrinter::Visit(const StringImm *x) { os_ << "\"" << x->value << "\""; }
+void IrPrinter::Visit(const StringImm *x) {
+  str_ += "\"";
+  str_ += x->value;
+  str_ += "\"";
+}
+
 void IrPrinter::Visit(const Add *x) { PrintBinaryOp("+", x); }
 void IrPrinter::Visit(const Sub *x) { PrintBinaryOp("-", x); }
 void IrPrinter::Visit(const Mul *x) { PrintBinaryOp("*", x); }
@@ -123,36 +144,38 @@ void IrPrinter::Visit(const GE *x) { PrintBinaryOp(">=", x); }
 void IrPrinter::Visit(const And *x) { PrintBinaryOp("and", x); }
 void IrPrinter::Visit(const Or *x) { PrintBinaryOp("or", x); }
 void IrPrinter::Visit(const Not *x) {
-  os_ << "!";
-  Print(x->v());
+  str_ += "!";
+  Visit(x->v());
 }
 void IrPrinter::Visit(const Min *x) {
-  os_ << "cinn_min(";
-  Print(x->a());
-  os_ << ", ";
-  Print(x->b());
-  os_ << ")";
+  str_ += "cinn_min(";
+  Visit(x->a());
+  str_ += ", ";
+  Visit(x->b());
+  str_ += ")";
 }
 void IrPrinter::Visit(const Max *x) {
-  os_ << "cinn_max(";
-  Print(x->a());
-  os_ << ", ";
-  Print(x->b());
-  os_ << ")";
+  str_ += "cinn_max(";
+  Visit(x->a());
+  str_ += ", ";
+  Visit(x->b());
+  str_ += ")";
 }
 void IrPrinter::Visit(const Minus *x) {
-  os_ << "-(";
-  Print(x->v());
-  os_ << ")";
+  str_ += "-(";
+  Visit(x->v());
+  str_ += ")";
 }
 void IrPrinter::Visit(const For *x) {
   if (x->is_parallel()) {
-    os() << "parallel for (";
+    str_ += "parallel for (";
   } else if (x->is_unrolled()) {
-    os() << "unroll for (";
+    str_ += "unroll for (";
   } else if (x->is_vectorized()) {
     int factor = x->vectorize_info().factor;
-    os() << "vectorize[" << factor << "] for (";
+    str_ += "vectorize[";
+    str_ += std::to_string(factor);
+    str_ += "] for (";
   } else if (x->is_binded()) {
     auto &bind_info = x->bind_info();
     if (bind_info.valid()) {
@@ -160,181 +183,189 @@ void IrPrinter::Visit(const For *x) {
       auto for_type = bind_info.for_type;
       std::string prefix =
           for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
-      os() << "thread_bind[" << prefix << axis_name << "] for (";
+      str_ += "thread_bind[";
+      str_ += prefix;
+      str_ += axis_name;
+      str_ += "] for (";
     } else {
-      os() << "thread_bind[invalid info] for (";
+      str_ += "thread_bind[invalid info] for (";
     }
   } else if (x->is_serial()) {
-    os() << "serial for (";
+    str_ += "serial for (";
   } else if (x->is_default()) {
-    os() << "default for (";
+    str_ += "default for (";
   } else {
-    os() << "for (";
+    str_ += "for (";
   }
-  Print(x->loop_var);
-  os_ << ", ";
-  Print(x->min);
-  os_ << ", ";
-  Print(x->extent);
-  os_ << ")\n";
+  Visit(x->loop_var);
+  str_ += ", ";
+  Visit(x->min);
+  str_ += ", ";
+  Visit(x->extent);
+  str_ += ")\n";
 
   DoIndent();
-  Print(x->body);
+  Visit(x->body);
 }
 
 void IrPrinter::Visit(const PolyFor *x) {
   if (x->is_parallel()) {
-    os() << "parallel poly_for (";
+    str_ += "parallel poly_for (";
   } else {
-    os() << "poly_for (";
+    str_ += "poly_for (";
   }
-  Print(x->iterator);
-  os_ << ", ";
-  Print(x->init);
-  os_ << ", ";
-  Print(x->condition);
-  os_ << ", ";
-  Print(x->inc);
-  os_ << ")\n";
+  Visit(x->iterator);
+  str_ += ", ";
+  Visit(x->init);
+  str_ += ", ";
+  Visit(x->condition);
+  str_ += ", ";
+  Visit(x->inc);
+  str_ += ")\n";
 
   DoIndent();
-  Print(x->body);
+  Visit(x->body);
 }
 void IrPrinter::Visit(const IfThenElse *x) {
-  os_ << "if (";
-  Print(x->condition);
-  os_ << ") {\n";
+  str_ += "if (";
+  Visit(x->condition);
+  str_ += ") {\n";
   IncIndent();
   DoIndent();
-  Print(x->true_case);
+  Visit(x->true_case);
   DecIndent();
-  os() << "\n";
+  str_ += "\n";
   DoIndent();
-  os() << "}";
+  str_ += "}";
 
   if (x->false_case.defined()) {
-    os_ << " else {\n";
+    str_ += " else {\n";
     IncIndent();
 
     DoIndent();
-    Print(x->false_case);
-    os() << "\n";
+    Visit(x->false_case);
+    str_ += "\n";
 
     DecIndent();
     DoIndent();
-    os_ << "}";
+    str_ += "}";
   }
 }
 void IrPrinter::Visit(const Block *x) {
-  os_ << "{\n";
+  str_ += "{\n";
 
   IncIndent();
   for (std::size_t i = 0; !x->stmts.empty() && i + 1 < x->stmts.size(); i++) {
     DoIndent();
-    Print(x->stmts[i]);
-    os_ << "\n";
+    Visit(x->stmts[i]);
+    str_ += "\n";
   }
   if (!x->stmts.empty()) {
     DoIndent();
-    Print(x->stmts.back());
+    Visit(x->stmts.back());
   }
   DecIndent();
-  os_ << "\n";
+  str_ += "\n";
   DoIndent();
-  os_ << "}";
+  str_ += "}";
 }
 void IrPrinter::Visit(const Call *x) {
-  os_ << x->name << "(";
+  str_ += x->name;
+  str_ += "(";
   if (!x->read_args.empty()) {
     for (std::size_t i = 0; i + 1 < x->read_args.size(); i++) {
-      Print(x->read_args[i]);
-      os_ << ", ";
+      Visit(x->read_args[i]);
+      str_ += ", ";
     }
-    Print(x->read_args.back());
+    Visit(x->read_args.back());
   }
 
   if (!x->write_args.empty()) {
-    if (!x->read_args.empty()) os() << ", ";
+    if (!x->read_args.empty()) str_ += ", ";
 
     for (std::size_t i = 0; i + 1 < x->write_args.size(); i++) {
-      Print(x->write_args[i]);
-      os_ << ", ";
+      Visit(x->write_args[i]);
+      str_ += ", ";
     }
-    Print(x->write_args.back());
+    Visit(x->write_args.back());
   }
 
-  os_ << ")";
+  str_ += ")";
 }
 void IrPrinter::Visit(const Cast *x) {
-  os() << x->type();
-  os() << "(";
-  os() << x->v();
-  os() << ")";
+  str_ += x->type().to_string();
+  str_ += "(";
+  Visit(x->v());
+  str_ += ")";
 }
 void IrPrinter::Visit(const _Module_ *x) {}
-void IrPrinter::Visit(const _Var_ *x) { os_ << x->name; }
+void IrPrinter::Visit(const _Var_ *x) { str_ += x->name; }
 void IrPrinter::Visit(const Alloc *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
   CHECK(buffer);
-  os_ << "alloc(" << buffer->name << ", ";
-  Print(x->extents);
-  os_ << ")";
+  str_ += "alloc(";
+  str_ += buffer->name;
+  str_ += ", ";
+  Visit(x->extents);
+  str_ += ")";
 }
 void IrPrinter::Visit(const Select *x) {
-  os_ << "select(";
-  Print(x->condition);
-  os_ << ", ";
-  Print(x->true_value);
-  os_ << ", ";
-  Print(x->false_value);
-  os_ << ")";
+  str_ += "select(";
+  Visit(x->condition);
+  str_ += ", ";
+  Visit(x->true_value);
+  str_ += ", ";
+  Visit(x->false_value);
+  str_ += ")";
 }
 void IrPrinter::Visit(const Load *x) {
   if (x->is_addr_tensor()) {
     auto *tensor = x->tensor.As<ir::_Tensor_>();
     CHECK(tensor);
-    os_ << tensor->name;
+    str_ += tensor->name;
   } else if (x->is_addr_scalar()) {
-    Print(x->tensor);
+    Visit(x->tensor);
   } else {
     CINN_NOT_IMPLEMENTED
   }
 
-  os_ << "[";
+  str_ += "[";
   for (std::size_t i = 0; i + 1 < x->indices.size(); i++) {
-    Print(x->indices[i]);
-    os() << ", ";
+    Visit(x->indices[i]);
+    str_ += ", ";
   }
-  if (!x->indices.empty()) Print(x->indices.back());
-  os_ << "]";
+  if (!x->indices.empty()) Visit(x->indices.back());
+  str_ += "]";
 }
 void IrPrinter::Visit(const Store *x) {
   if (x->is_addr_tensor()) {
     auto *tensor_node = x->tensor.As<ir::_Tensor_>();
     CHECK(tensor_node);
-    os_ << tensor_node->name;
+    str_ += tensor_node->name;
   } else if (x->is_addr_scalar()) {
-    Print(x->tensor);
+    Visit(x->tensor);
   } else {
     CINN_NOT_IMPLEMENTED
   }
 
-  os_ << "[";
+  str_ += "[";
   for (std::size_t i = 0; i + 1 < x->indices.size(); i++) {
-    Print(x->indices[i]);
-    os() << ", ";
+    Visit(x->indices[i]);
+    str_ += ", ";
   }
-  if (!x->indices.empty()) Print(x->indices.back());
-  os_ << "] = ";
-  Print(x->value);
+  if (!x->indices.empty()) Visit(x->indices.back());
+  str_ += "] = ";
+  Visit(x->value);
 }
 void IrPrinter::Visit(const Free *x) {
   auto *buffer = x->destination.As<ir::_Buffer_>();
   CHECK(buffer);
-  os_ << "free(" << buffer->name << ")";
+  str_ += "free(";
+  str_ += buffer->name;
+  str_ += ")";
 }
 
-void IrPrinter::DoIndent() { os_ << std::string(indent_, ' '); }
+void IrPrinter::DoIndent() { str_ += std::string(indent_, ' '); }
 void IrPrinter::IncIndent() { indent_ += indent_unit; }
 void IrPrinter::DecIndent() { indent_ -= indent_unit; }
 
@@ -345,126 +376,139 @@ void IrPrinter::Visit(const _Buffer_ *x) {
                  std::back_inserter(dim_names),
                  [&](const Expr &x) { return utils::GetStreamCnt(x); });
 
-  os_ << "_Buffer_<" << x->type() << ": " << utils::Join(dim_names, ",") << ">("
-      << x->name << ")";
+  str_ += "_Buffer_<";
+
+  str_ += x->type().to_string();
+  str_ += ": ";
+  str_ += utils::Join(dim_names, ",");
+  str_ += ">(";
+  str_ += x->name;
+  str_ += ")";
 }
 void IrPrinter::Visit(const _Tensor_ *x) {
-  os_ << "Tensor(";
-  os() << x->name << ", ";
-  os() << "[";
+  str_ += "Tensor(";
+  str_ += x->name;
+  str_ += ", ";
+  str_ += "[";
   if (!x->shape.empty()) {
     for (std::size_t i = 0; i + 1 < x->shape.size(); i++) {
-      Print(x->shape[i]);
-      os() << ",";
+      Visit(x->shape[i]);
+      str_ += ",";
     }
-    Print(x->shape.back());
+    Visit(x->shape.back());
   }
-  os_ << "])";
+  str_ += "])";
 }
 void IrPrinter::Visit(const _LoweredFunc_ *f) {
-  os_ << "function " << f->name << " ";
+  str_ += "function ";
+  str_ += f->name;
+  str_ += " ";
 
   std::vector<std::string> arg_names;
   for (auto &arg : f->args) {
     arg_names.push_back(arg.name());
   }
-  os_ << "(" << utils::Join(arg_names, ", ") << ")\n";
+  str_ += "(";
+  str_ += utils::Join(arg_names, ", ");
+  str_ += ")\n";
 
-  Print(f->body);
+  Visit(f->body);
 }
 void IrPrinter::Visit(const Let *f) {
   CHECK(f->type().valid());
-  os() << f->type() << " ";
-  Print(f->symbol);
+  str_ += f->type().to_string();
+  str_ += " ";
+  Visit(f->symbol);
   if (f->body.defined()) {
-    os() << " = ";
-    Print(f->body);
+    str_ += " = ";
+    Visit(f->body);
   }
 }
 
 void IrPrinter::Visit(const Reduce *f) {
-  os() << "Reduce(";
+  str_ += "Reduce(";
   switch (f->reduce_type) {
     case Reduce::ReduceType::kSum:
-      os() << "sum";
+      str_ += "sum";
       break;
     case Reduce::ReduceType::kSub:
-      os() << "sub";
+      str_ += "sub";
       break;
     case Reduce::ReduceType::kDiv:
-      os() << "Div";
+      str_ += "Div";
       break;
     case Reduce::ReduceType::kMul:
-      os() << "Mul";
+      str_ += "Mul";
       break;
     case Reduce::ReduceType::kMax:
-      os() << "Max";
+      str_ += "Max";
       break;
     case Reduce::ReduceType::kMin:
-      os() << "Min";
+      str_ += "Min";
       break;
     case Reduce::ReduceType::kAll:
-      os() << "&&";
+      str_ += "&&";
       break;
     case Reduce::ReduceType::kAny:
-      os() << "||";
+      str_ += "||";
       break;
   }
-  os() << ", ";
-  Print(f->body);
-  os() << ",";
-  Print(f->init);
-  os() << ")";
+  str_ += ", ";
+  Visit(f->body);
+  str_ += ",";
+  Visit(f->init);
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const Ramp *x) {
-  os() << "Ramp(";
-  Print(x->base);
-  os() << ",";
-  Print(x->stride);
-  os() << ",";
-  os() << x->lanes;
-  os() << ")";
+  str_ += "Ramp(";
+  Visit(x->base);
+  str_ += ",";
+  Visit(x->stride);
+  str_ += ",";
+  str_ += std::to_string(x->lanes);
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const Broadcast *x) {
-  os() << "Broadcast(";
-  Print(x->value);
-  os() << ",";
-  os() << x->lanes;
-  os() << ")";
+  str_ += "Broadcast(";
+  Visit(x->value);
+  str_ += ",";
+  str_ += std::to_string(x->lanes);
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const FracOp *x) {
-  os() << "(";
-  Print(x->a());
-  os() << " / ";
-  Print(x->b());
-  os() << ")";
+  str_ += "(";
+  Visit(x->a());
+  str_ += " / ";
+  Visit(x->b());
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const Product *x) {
-  os() << "(";
+  str_ += "(";
   for (std::size_t i = 0; i + 1 < x->operands().size(); i++) {
-    Print(x->operand(i));
-    os() << " * ";
+    Visit(x->operand(i));
+    str_ += " * ";
   }
-  if (!x->operands().empty()) Print(x->operands().back());
-  os() << ")";
+  if (!x->operands().empty()) Visit(x->operands().back());
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const Sum *x) {
-  os() << "(";
+  str_ += "(";
   for (std::size_t i = 0; i + 1 < x->operands().size(); i++) {
-    Print(x->operand(i));
-    os() << " + ";
+    Visit(x->operand(i));
+    str_ += " + ";
   }
-  if (!x->operands().empty()) Print(x->operands().back());
-  os() << ")";
+  if (!x->operands().empty()) Visit(x->operands().back());
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const PrimitiveNode *x) {
-  os() << x->name << "(";
+  str_ += x->name;
+  str_ += "(";
   std::vector<std::string> args_repr;
   for (auto &args : x->arguments) {
     std::vector<std::string> arg_repr;
@@ -474,41 +518,46 @@ void IrPrinter::Visit(const PrimitiveNode *x) {
     args_repr.push_back(utils::Join(arg_repr, ","));
   }
 
-  os() << utils::Join(args_repr, ",");
-  os() << ")";
+  str_ += utils::Join(args_repr, ",");
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const _BufferRange_ *x) {
   auto *buffer = x->buffer.As<ir::_Buffer_>();
   CHECK(buffer);
-  os() << buffer->name << "[";
+  str_ += buffer->name;
+  str_ += "[";
   for (std::size_t i = 0; i < x->ranges.size(); i++) {
-    if (i) os() << ", ";
+    if (i) str_ += ", ";
     auto &range = x->ranges[i];
-    os() << range->name << "(";
+    str_ += range->name;
+    str_ += "(";
     if (range->lower_bound.defined()) {
-      os() << range->lower_bound << ":";
+      Visit(range->lower_bound);
+      str_ += ":";
     } else {
-      os() << "undefined:";
+      str_ += "undefined:";
     }
 
     if (range->upper_bound.defined()) {
-      os() << range->upper_bound;
+      Visit(range->upper_bound);
     } else {
-      os() << "undefined";
+      str_ += "undefined";
     }
-    os() << ")";
+    str_ += ")";
   }
-  os() << "]";
+  str_ += "]";
 }
 
 void IrPrinter::Visit(const ScheduleBlock *x) {}
 
 void IrPrinter::Visit(const ScheduleBlockRealize *x) {
   auto *schedule_block = x->schedule_block.As<ScheduleBlock>();
-  os() << "ScheduleBlock(" << schedule_block->name << ")\n";
+  str_ += "ScheduleBlock(";
+  str_ += schedule_block->name;
+  str_ += ")\n";
   DoIndent();
-  os() << "{\n";
+  str_ += "{\n";
   // print block vars and bindings
   auto iter_vars = schedule_block->iter_vars;
   auto iter_values = x->iter_values;
@@ -516,54 +565,61 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
   IncIndent();
   if (!iter_vars.empty()) DoIndent();
   for (std::size_t i = 0; i < iter_vars.size(); i++) {
-    if (i) os() << ", ";
-    os() << iter_vars[i]->name;
+    if (i) str_ += ", ";
+    str_ += iter_vars[i]->name;
   }
-  if (!iter_vars.empty()) os() << " = axis.bind(";
+  if (!iter_vars.empty()) str_ += " = axis.bind(";
   for (std::size_t i = 0; i < iter_values.size(); i++) {
-    if (i) os() << ", ";
-    os() << iter_values[i];
+    if (i) str_ += ", ";
+    Visit(iter_values[i]);
   }
-  if (!iter_vars.empty()) os() << ")\n";
+  if (!iter_vars.empty()) str_ += ")\n";
   // print block body
   if (!schedule_block->read_buffers.empty()) {
     DoIndent();
-    os() << "read_buffers(";
+    str_ += "read_buffers(";
     auto &read_buffers = schedule_block->read_buffers;
     for (std::size_t i = 0; i < read_buffers.size(); i++) {
-      if (i) os() << ", ";
-      Print(read_buffers[i]);
+      if (i) str_ += ", ";
+      Visit(read_buffers[i]);
     }
-    os() << ")\n";
+    str_ += ")\n";
   }
   if (!schedule_block->write_buffers.empty()) {
     DoIndent();
-    os() << "write_buffers(";
+    str_ += "write_buffers(";
     auto &write_buffers = schedule_block->write_buffers;
     for (std::size_t i = 0; i < write_buffers.size(); i++) {
-      if (i) os() << ", ";
-      Print(write_buffers[i]);
+      if (i) str_ += ", ";
+      Visit(write_buffers[i]);
     }
-    os() << ")\n";
+    str_ += ")\n";
   }
   if (!schedule_block->attrs.empty()) {
     DoIndent();
-    os() << "attrs(";
+    str_ += "attrs(";
     bool comma = false;
     for (auto &&kv : schedule_block->attrs) {
-      if (comma) os() << ", ";
-      os() << kv.first << ":";
-      absl::visit([this](auto &&arg) { this->os() << arg; }, kv.second);
+      if (comma) str_ += ", ";
+      str_ += kv.first;
+      str_ += ":";
+      absl::visit(
+          [this](auto &&arg) {
+            std::ostringstream ss;
+            ss << arg;
+            this->str_ += ss.str();
+          },
+          kv.second);
       comma = true;
     }
-    os() << ")\n";
+    str_ += ")\n";
   }
   DoIndent();
-  Print(schedule_block->body);
-  os() << "\n";
+  Visit(schedule_block->body);
+  str_ += "\n";
   DecIndent();
   DoIndent();
-  os() << "}";
+  str_ += "}";
 }
 
 void IrPrinter::Visit(const IntrinsicOp *x) {
@@ -578,50 +634,52 @@ void IrPrinter::Visit(const IntrinsicOp *x) {
   }
 }
 void IrPrinter::Visit(const intrinsics::BufferGetDataHandle *x) {
-  os() << runtime::intrinsic::buffer_get_data_handle;
-  Print(x->buffer);
-  os() << ")";
+  str_ += runtime::intrinsic::buffer_get_data_handle;
+  Visit(x->buffer);
+  str_ += ")";
 }
 void IrPrinter::Visit(const intrinsics::BufferGetDataConstHandle *x) {
-  os() << runtime::intrinsic::buffer_get_data_const_handle;
-  Print(x->buffer);
-  os() << ")";
+  str_ += runtime::intrinsic::buffer_get_data_const_handle;
+  Visit(x->buffer);
+  str_ += ")";
 }
 void IrPrinter::Visit(const intrinsics::PodValueToX *x) {
-  os() << "pod_value_to_";
-  os() << x->GetOutputType(0);
-  os() << "(";
-  Print(x->pod_value_ptr);
-  os() << ")";
+  str_ += "pod_value_to_";
+  str_ += x->GetOutputType(0).to_string();
+  str_ += "(";
+  Visit(x->pod_value_ptr);
+  str_ += ")";
 }
 void IrPrinter::Visit(const intrinsics::BufferCreate *x) {
-  os() << runtime::intrinsic::buffer_create;
-  os() << "()";
+  str_ += runtime::intrinsic::buffer_create;
+  str_ += "()";
 }
 void IrPrinter::Visit(const intrinsics::GetAddr *x) {
-  os() << "get_addr(";
-  Print(x->data);
-  os() << ")";
+  str_ += "get_addr(";
+  Visit(x->data);
+  str_ += ")";
 }
 void IrPrinter::Visit(const intrinsics::ArgsConstruct *x) {
-  os() << runtime::intrinsic::args_construct_repr;
-  os() << "(";
-  Print(std::vector<Expr>(x->args.begin(), x->args.end()));
-  os() << ")";
+  str_ += runtime::intrinsic::args_construct_repr;
+  str_ += "(";
+  Visit(std::vector<Expr>(x->args.begin(), x->args.end()));
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const intrinsics::BuiltinIntrin *x) {
-  os_ << runtime::intrinsic::builtin_intrin_repr << "_";
-  os_ << x->name << "(";
+  str_ += runtime::intrinsic::builtin_intrin_repr;
+  str_ += "_";
+  str_ += x->name;
+  str_ += "(";
   if (!x->args.empty()) {
     for (std::size_t i = 0; i + 1 < x->args.size(); i++) {
-      Print(x->args[i]);
-      os_ << ", ";
+      Visit(x->args[i]);
+      str_ += ", ";
     }
-    Print(x->args.back());
+    Visit(x->args.back());
   }
 
-  os_ << ")";
+  str_ += ")";
 }
 
 std::ostream &operator<<(std::ostream &os, Expr a) {
