@@ -36,7 +36,7 @@ class XPUOpTest(OpTest):
         '''Fix random seeds to remove randomness from tests'''
         cls.use_xpu = True
         cls.use_mkldnn = False
-        cls.epsilon_xpu2xpu = 0.00005
+        cls.epsilon_xpu2xpu = 0.00000001
         super().setUpClass()
 
     @classmethod
