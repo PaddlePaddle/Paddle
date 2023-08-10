@@ -76,6 +76,9 @@ class QuantConfig:
           >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
           >>> q_config = QuantConfig(activation=quanter, weight=quanter)
           >>> print(q_config)
+          Global config:
+          activation: FakeQuanterWithAbsMaxObserver(name=None,moving_rate=0.9,bit_length=8,dtype=float32)
+          weight: FakeQuanterWithAbsMaxObserver(name=None,moving_rate=0.9,bit_length=8,dtype=float32)
 
     """
 
