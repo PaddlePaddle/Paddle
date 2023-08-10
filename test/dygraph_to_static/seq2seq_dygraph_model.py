@@ -297,7 +297,7 @@ class BaseModel(paddle.nn.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
@@ -728,7 +728,7 @@ class AttentionModel(paddle.nn.Layer):
 
         src_emb = self.src_embeder(self._transpose_batch_time(src))
 
-        # NOTE: modify model code about `enc_hidden` and `enc_cell` to transforme dygraph code successfully.
+        # NOTE: modify model code about `enc_hidden` and `enc_cell` to transform dygraph code successfully.
         # Because nested list can't be transformed now.
         enc_hidden_0 = to_variable(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
@@ -835,13 +835,13 @@ class AttentionModel(paddle.nn.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
         loss = paddle.mean(loss, axis=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss

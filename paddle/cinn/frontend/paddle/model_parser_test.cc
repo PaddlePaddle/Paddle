@@ -24,7 +24,7 @@ namespace cinn::frontend::paddle {
 TEST(LoadModelPb, naive_model) {
   hlir::framework::Scope scope;
   cpp::ProgramDesc program_desc;
-  LoadModelPb(FLAGS_model_dir, "__model__", "", &scope, &program_desc, false);
+  LoadModelPb(FLAGS_model_dir, "/__model__", "", &scope, &program_desc, false);
 
   ASSERT_EQ(program_desc.BlocksSize(), 1UL);
 

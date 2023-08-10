@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
@@ -248,10 +248,10 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
                   phi::SelectedRows* input2) {
     // Ensure all selected rows have the same height
     size_t size = 0u;
-    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      auto& in_rows = (*iter)->rows();
+    for (auto item : input1) {
+      auto& in_rows = item->rows();
       size += in_rows.end() - in_rows.begin();
-      auto in1_height = (*iter)->height();
+      auto in1_height = item->height();
       PADDLE_ENFORCE_EQ(in1_height,
                         input2->height(),
                         phi::errors::InvalidArgument(
@@ -264,8 +264,8 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
     // concat rows
     std::vector<int64_t> in2_rows;
     in2_rows.reserve(in2_rows.size() + size);
-    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      const phi::Vector<int64_t>& in_rows = (*iter)->rows();
+    for (auto item : input1) {
+      const phi::Vector<int64_t>& in_rows = item->rows();
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
     input2->set_rows(in2_rows);
@@ -436,7 +436,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   int64_t input_width,
                   const DeviceContext& context,
                   T* out_data) {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 #endif
   for (auto* input : inputs) {
@@ -446,7 +446,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
     auto* input_data = input->value().data<T>();
     auto& input_rows = input->rows();
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     OneDNNContext onednn_context(context.GetPlace());
     funcs::OneDNNAXPYHandler<T> axpy_handler(
         input_width, T(1.f), onednn_context.GetEngine());

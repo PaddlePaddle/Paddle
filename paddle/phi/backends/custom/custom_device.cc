@@ -356,7 +356,7 @@ class CustomDevice : public DeviceInterface {
       }
     } else {
       if (!pimpl_->memory_copy_p2p) {
-        std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
+        std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);  // NOLINT
         MemoryCopyD2H(src_dev_id, tmp.get(), src, size);
         MemoryCopyH2D(dst_dev_id, dst, tmp.get(), size);
       } else {
@@ -447,7 +447,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_memory_set(device, ptr, value, size));
     } else {
-      std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
+      std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);  // NOLINT
       memset(tmp.get(), value, size);
       MemoryCopyH2D(dev_id, ptr, tmp.get(), size);
     }

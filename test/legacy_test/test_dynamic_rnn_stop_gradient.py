@@ -62,7 +62,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
 
     out = tensor_array_to_tensor(scores, axis=0, use_stack=True)[0]
     loss = paddle.mean(out)
-    opt = fluid.optimizer.Adam(0.01)
+    opt = paddle.optimizer.Adam(0.01)
     opt.minimize(loss)
     exe = fluid.Executor(place)
     data = np.random.random_integers(

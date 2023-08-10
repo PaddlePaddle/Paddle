@@ -258,6 +258,15 @@ void CudnnLSTMInferMeta(
     MetaTensor* reserve,
     MetaTensor* state_out);
 
+void DecayedAdagradInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& moment,
+                             const MetaTensor& learning_rate,
+                             float decay,
+                             float epsilon,
+                             MetaTensor* param_out,
+                             MetaTensor* moment_out);
+
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,
@@ -286,8 +295,6 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            const MetaTensor& smooth,
                            const std::string& act_method,
                            const std::string& compute_dtype,
-                           int rows,
-                           int cols,
                            float quant_scale,
                            int quant_round_type,
                            float quant_max_bound,
@@ -299,6 +306,7 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dweight,
                                       const MetaTensor& dbias,
                                       bool multi_precision,
+                                      bool has_bias,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out);
 
@@ -462,6 +470,17 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                                        MetaTensor* output,
                                        MetaTensor* logsumexp,
                                        MetaTensor* seed_and_offset);
+
+void VariableLengthMemoryEfficientAttentionInferMeta(
+    const MetaTensor& query,
+    const MetaTensor& key,
+    const MetaTensor& value,
+    const MetaTensor& seq_lens,
+    const MetaTensor& kv_seq_lens,
+    const MetaTensor& mask,
+    float scale,
+    bool causal,
+    MetaTensor* out);
 
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);

@@ -47,38 +47,30 @@ template <>
 IntArrayBase<phi::DenseTensor>::IntArrayBase(
     const std::vector<phi::TensorRef>& tensor_ref_list) {
   is_from_tensor_ = true;
-  for (size_t i = 0; i < tensor_ref_list.size(); ++i) {
-    DataType data_type = tensor_ref_list[i].Get()->dtype();
+  for (auto tensor_ref : tensor_ref_list) {
+    DataType data_type = tensor_ref.Get()->dtype();
     switch (data_type) {
       case DataType::INT32:
-        if (tensor_ref_list[i].Get()->place().GetType() ==
-            AllocationType::CPU) {
-          array_.push_back(*tensor_ref_list[i].Get()->template data<int32_t>());
+        if (tensor_ref.Get()->place().GetType() == AllocationType::CPU) {
+          array_.push_back(*tensor_ref.Get()->template data<int32_t>());
         } else {
           phi::DenseTensor tensor_tmp;
           phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-          auto dev_ctx = pool.Get(tensor_ref_list[i].Get()->place());
-          phi::Copy(*dev_ctx,
-                    *(tensor_ref_list[i].Get()),
-                    CPUPlace(),
-                    true,
-                    &tensor_tmp);
+          auto dev_ctx = pool.Get(tensor_ref.Get()->place());
+          phi::Copy(
+              *dev_ctx, *(tensor_ref.Get()), CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int32_t>());
         }
         break;
       case DataType::INT64:
-        if (tensor_ref_list[i].Get()->place().GetType() ==
-            AllocationType::CPU) {
-          array_.push_back(*tensor_ref_list[i].Get()->template data<int64_t>());
+        if (tensor_ref.Get()->place().GetType() == AllocationType::CPU) {
+          array_.push_back(*tensor_ref.Get()->template data<int64_t>());
         } else {
           phi::DenseTensor tensor_tmp;
           phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-          auto dev_ctx = pool.Get(tensor_ref_list[i].Get()->place());
-          phi::Copy(*dev_ctx,
-                    *(tensor_ref_list[i].Get()),
-                    CPUPlace(),
-                    true,
-                    &tensor_tmp);
+          auto dev_ctx = pool.Get(tensor_ref.Get()->place());
+          phi::Copy(
+              *dev_ctx, *(tensor_ref.Get()), CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int64_t>());
         }
         break;
@@ -97,28 +89,28 @@ template <>
 IntArrayBase<phi::DenseTensor>::IntArrayBase(
     const std::vector<phi::DenseTensor>& tensor_list) {
   is_from_tensor_ = true;
-  for (size_t i = 0; i < tensor_list.size(); ++i) {
-    DataType data_type = tensor_list[i].dtype();
+  for (const auto& tensor_item : tensor_list) {
+    DataType data_type = tensor_item.dtype();
     switch (data_type) {
       case DataType::INT32:
-        if (tensor_list[i].place().GetType() == AllocationType::CPU) {
-          array_.push_back(*tensor_list[i].template data<int32_t>());
+        if (tensor_item.place().GetType() == AllocationType::CPU) {
+          array_.push_back(*tensor_item.template data<int32_t>());
         } else {
           phi::DenseTensor tensor_tmp;
           phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-          auto dev_ctx = pool.Get(tensor_list[i].place());
-          phi::Copy(*dev_ctx, tensor_list[i], CPUPlace(), true, &tensor_tmp);
+          auto dev_ctx = pool.Get(tensor_item.place());
+          phi::Copy(*dev_ctx, tensor_item, CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int32_t>());
         }
         break;
       case DataType::INT64:
-        if (tensor_list[i].place().GetType() == AllocationType::CPU) {
-          array_.push_back(*tensor_list[i].template data<int64_t>());
+        if (tensor_item.place().GetType() == AllocationType::CPU) {
+          array_.push_back(*tensor_item.template data<int64_t>());
         } else {
           phi::DenseTensor tensor_tmp;
           phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-          auto dev_ctx = pool.Get(tensor_list[i].place());
-          phi::Copy(*dev_ctx, tensor_list[i], CPUPlace(), true, &tensor_tmp);
+          auto dev_ctx = pool.Get(tensor_item.place());
+          phi::Copy(*dev_ctx, tensor_item, CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int64_t>());
         }
         break;
