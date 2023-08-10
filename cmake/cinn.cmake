@@ -331,7 +331,7 @@ set(ABSL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/absl/include")
 include_directories(${ABSL_INCLUDE_DIR})
 
 # Add isl
-set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/isl/include")
+set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/third_party/install/isl/include")
 include_directories(${ISL_INCLUDE_DIR})
 
 # Add LLVM
