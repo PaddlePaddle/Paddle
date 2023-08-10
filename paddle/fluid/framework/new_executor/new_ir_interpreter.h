@@ -95,6 +95,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void ConstructEventForJitInput();
   void CalculateLastLiveOps();
 
+  // gc
+  void ClearLoDTensorArrayInLocalScope();
+
   // cuda graph
   void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
   void PrepareForCUDAGraphCapture();

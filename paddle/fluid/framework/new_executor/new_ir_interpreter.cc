@@ -55,10 +55,10 @@ NewIRInterpreter::NewIRInterpreter(
     framework::Scope* scope,
     const ExecutionConfig& execution_config)
     : place_(place),
-      ir_stream_analyzer_(place),
       execution_config_(execution_config),
       scope_(scope),
       ir_program_(std::move(ir_prog)),
+      ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
   VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
   static_build_ = FLAGS_new_executor_static_build &&
@@ -292,6 +292,16 @@ void NewIRInterpreter::CheckCUDAGraphBeforeRun(
                                           "not the same as the place to run."));
   }
 #endif
+}
+
+void NewIRInterpreter::ClearLoDTensorArrayInLocalScope() {
+  auto vars = local_scope_->LocalVars();
+  for (auto var : vars) {
+    if (var->IsType<LoDTensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+      lod_tensor_arr->clear();
+    }
+  }
 }
 
 std::string NewIRInterpreter::GetDepsString() const {
