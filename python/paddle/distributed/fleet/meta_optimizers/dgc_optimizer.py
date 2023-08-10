@@ -531,7 +531,7 @@ class DGCOptimizer(MetaOptimizerBase):
 
     def apply_optimize(self, loss, startup_program, params_grads):
         self._init_dgc_opt()
-        return self.dgc_opt.apply_optimize(
+        return self.dgc_opt._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
 

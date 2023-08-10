@@ -40,7 +40,7 @@ class TestFleetDGCOptimizer(TestFleetMetaOptimizer):
         params_grads = dgc_opt.backward(avg_cost, startup_prog)
 
         ops = [op.type for op in avg_cost.block.ops]
-        self.assertNotIn('dgc', ops)
+        self.assertIn('dgc', ops)
 
     def test_dgc_optimizer_gradients(self):
         """test dgc optimizer backward + gradients"""

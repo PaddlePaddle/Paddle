@@ -1117,6 +1117,55 @@ class Optimizer:
     def _append_dgc_ops(self, param_and_grad):
         pass
 
+    def _process_distribute_lookuptable(self, param_grads):
+        """
+        Because distribute lookup table only support SGD optimizer for now, not support
+        other optimizer and regularization, so we should find the table parameter out,
+        and avoid to add regularization and other op for it, and add sgd optimize op
+        for it independently.
+        :param param_grads(list((Var, Var))): list of (param, grad) pair.
+        :param loss: the loss variable.
+        :param startup_program: the startup program
+        """
+        from paddle.distributed.distribute_lookup_table import (
+            find_distributed_lookup_table,
+        )
+
+        program = framework.default_main_program()
+        global_block = framework.default_main_program().global_block()
+        table_name = find_distributed_lookup_table(program)
+        table_param = None
+        table_grad = None
+        new_param_grads = []
+        for p, g in param_grads:
+            if p.name == table_name:
+                if table_param is not None:
+                    raise RuntimeError(
+                        "multi dist table var found, only support one now!"
+                    )
+                table_param = p
+                table_grad = g
+            else:
+                new_param_grads.append((p, g))
+        sgd_op = None
+        if table_param is not None:
+            param_and_grad = [table_param, table_grad]
+            with table_param.block.program._optimized_guard(
+                param_and_grad
+            ), framework.name_scope("optimizer"):
+                self._create_global_learning_rate()
+                # create the optimize op
+                sgd_op = global_block.append_op(
+                    type='sgd',
+                    inputs={
+                        "Param": table_param,
+                        "Grad": table_grad,
+                        "LearningRate": self._create_param_lr(param_and_grad),
+                    },
+                    outputs={"ParamOut": param_and_grad[0]},
+                )
+        return new_param_grads, (table_param, table_grad), sgd_op
+
     def backward(
         self,
         loss,
