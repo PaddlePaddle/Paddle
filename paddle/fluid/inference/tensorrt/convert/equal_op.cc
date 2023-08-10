@@ -21,7 +21,7 @@ namespace tensorrt {
 
 class EqualOpConverter : public OpConverter {
  public:
-  EqualOpConverter() {}
+  EqualOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
@@ -74,7 +74,7 @@ class EqualOpConverter : public OpConverter {
 
 class NotEqualOpConverter : public OpConverter {
  public:
-  NotEqualOpConverter() {}
+  NotEqualOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {

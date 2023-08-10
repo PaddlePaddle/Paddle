@@ -14,12 +14,11 @@
 
 #pragma once
 
-#include <any>
 #include <memory>
 #include <string>
-#include <typeindex>
 
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 
 namespace ir {
 namespace drr {
@@ -29,14 +28,15 @@ class MatchContextImpl;
 
 class MatchContext final {
  public:
-  MatchContext(std::unique_ptr<const MatchContextImpl> impl);
+  MatchContext(std::shared_ptr<const MatchContextImpl> impl);
+
   const TensorInterface& Tensor(const std::string& tensor_name) const;
 
   template <typename T>
   T Attr(const std::string& attr_name) const;
 
  private:
-  std::unique_ptr<const MatchContextImpl> impl_;
+  std::shared_ptr<const MatchContextImpl> impl_;
 };
 
 }  // namespace drr

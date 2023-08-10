@@ -17,6 +17,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from yolov3 import YOLOv3, cfg
 
 import paddle
@@ -104,12 +105,11 @@ def train(to_static):
             start_lr=0.0,
             end_lr=cfg.learning_rate,
         )
-
-        optimizer = fluid.optimizer.Momentum(
+        optimizer = paddle.optimizer.Momentum(
             learning_rate=lr,
-            regularization=paddle.regularizer.L2Decay(cfg.weight_decay),
+            weight_decay=paddle.regularizer.L2Decay(cfg.weight_decay),
             momentum=cfg.momentum,
-            parameter_list=model.parameters(),
+            parameters=model.parameters(),
         )
 
         start_time = time.time()
@@ -166,6 +166,7 @@ def train(to_static):
 
 
 class TestYolov3(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)

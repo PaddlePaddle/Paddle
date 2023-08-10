@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include "paddle/ir/pattern_rewrite/drr/api/match_context.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 #include "paddle/ir/pattern_rewrite/drr/match_context_impl.h"
 
 namespace ir {
 namespace drr {
 
-MatchContext::MatchContext(std::unique_ptr<const MatchContextImpl> impl)
-    : impl_(std::move(impl)) {}
+MatchContext::MatchContext(std::shared_ptr<const MatchContextImpl> impl)
+    : impl_(impl) {}
 
 const TensorInterface& MatchContext::Tensor(
     const std::string& tensor_name) const {

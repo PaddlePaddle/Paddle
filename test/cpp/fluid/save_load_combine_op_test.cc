@@ -39,8 +39,8 @@ T* CreateForSaveCombineOp(int x,
   auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({x, y});
   expect_lod->resize(1);
-  for (size_t i = 0; i < lod_info.size(); i++) {
-    (*expect_lod)[0].push_back(lod_info[i]);
+  for (auto item : lod_info) {
+    (*expect_lod)[0].push_back(item);
   }
   tensor->set_lod(*expect_lod);
   T* expect = tensor->mutable_data<T>(place);

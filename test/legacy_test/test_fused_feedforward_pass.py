@@ -129,7 +129,7 @@ class TestFusedFeedforwadPass(unittest.TestCase):
             out = feed_forward(data)
 
             loss = paddle.mean(out)
-            sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
         if use_pass:

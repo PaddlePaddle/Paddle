@@ -59,11 +59,11 @@ def optimizer_setting(params, parameter_list=None):
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
         if fluid.in_dygraph_mode():
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=0.01, parameter_list=parameter_list
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=parameter_list
             )
         else:
-            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         # TODO(minqiyang): Add learning rate scheduler support to dygraph mode
         #  optimizer = fluid.optimizer.Momentum(
         #  learning_rate=params["lr"],

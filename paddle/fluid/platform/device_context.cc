@@ -161,7 +161,7 @@ void EmplaceDeviceContexts(
   }
   for (auto& place : set) {
     if (place.GetType() == phi::AllocationType::CPU) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       EmplaceDeviceContext<phi::OneDNNContext>(
           place_to_device_context,
           place,

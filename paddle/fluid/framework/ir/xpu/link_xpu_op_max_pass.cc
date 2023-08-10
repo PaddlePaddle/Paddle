@@ -165,10 +165,9 @@ void LinkXPUOpMaxPass::LinkConv2dMax(ir::Graph* graph, bool with_branch) const {
     GET_IR_NODE(x);
     GET_IR_NODE(branch);
     auto* fusion_op_desc = fusion_op->Op();
-    if (fusion_op_desc->HasAttr("has_branch")) {
-      bool fusion_op_branch =
-          PADDLE_GET_CONST(bool, fusion_op_desc->GetAttr("has_branch"));
-      if (fusion_op_branch != with_branch) {
+    bool fusion_op_has_branch = fusion_op_desc->HasInput("branch");
+    if (fusion_op_has_branch) {
+      if (fusion_op_has_branch != with_branch) {
         return;
       }
     }

@@ -69,7 +69,7 @@ TEST(StandaloneExecutor, run) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
 
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
@@ -110,7 +110,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
 
   auto place = platform::CPUPlace();
   Scope scope;
-  InterpreterCore test_core(place, std::move(kernel_program), &scope);
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
 
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(

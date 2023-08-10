@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/core/value.h"
+#include <cstddef>
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/value_impl.h"
 
@@ -87,6 +88,12 @@ bool Value::use_empty() const { return !first_use(); }
 
 bool Value::HasOneUse() const { return impl()->HasOneUse(); }
 
+size_t Value::use_count() const {
+  size_t count = 0;
+  for (auto it = begin(); it != end(); ++it) count++;
+  return count;
+}
+
 void Value::ReplaceUsesWithIf(
     Value new_value,
     const std::function<bool(OpOperand)> &should_replace) const {
@@ -120,6 +127,15 @@ uint32_t OpResult::GetResultIndex() const { return impl()->GetResultIndex(); }
 detail::OpResultImpl *OpResult::impl() const {
   IR_ENFORCE(impl_, "Can't use impl() interface while value is null.");
   return reinterpret_cast<detail::OpResultImpl *>(impl_);
+}
+
+bool OpResult::operator==(const OpResult &other) const {
+  return impl_ == other.impl_;
+}
+
+detail::ValueImpl *OpResult::value_impl() const {
+  IR_ENFORCE(impl_, "Can't use value_impl() interface while value is null.");
+  return impl_;
 }
 
 uint32_t OpResult::GetValidInlineIndex(uint32_t index) {

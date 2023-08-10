@@ -222,7 +222,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
 
         clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
         if kwargs.get('optimizer', None) == "LarsMomentum":
-            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+            optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9
             )
         else:

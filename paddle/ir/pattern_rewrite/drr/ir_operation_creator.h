@@ -24,6 +24,11 @@
 namespace ir {
 namespace drr {
 
+Value GetIrValueByDrrTensor(const Tensor& tensor,
+                            const MatchContextImpl& res_match_ctx) {
+  return res_match_ctx.GetIrValue(tensor.name()).ir_value();
+}
+
 std::vector<Value> GetIrValuesByDrrTensors(
     const std::vector<const Tensor*>& tensors,
     const MatchContextImpl& res_match_ctx) {
@@ -32,11 +37,7 @@ std::vector<Value> GetIrValuesByDrrTensors(
   for (const auto* tensor : tensors) {
     ir_values.push_back(GetIrValueByDrrTensor(*tensor, res_match_ctx));
   }
-}
-
-Value GetIrValueByDrrTensor(const Tensor& tensor,
-                            const MatchContextImpl& res_match_ctx) {
-  return res_match_ctx.GetIrTensor(tensor.id()).ir_value();
+  return ir_values;
 }
 
 Operation* CreateOperation(const OpCall& op_call,
@@ -45,13 +46,13 @@ Operation* CreateOperation(const OpCall& op_call,
   if (op_call.name() == "pd.reshape") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
-        GetIrValuesByDrrTensors(inputs, res_match_ctx);
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     // TODO(zyfncg): support attr in build op.
     Operation* reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
-        ir_values[0], std::vector<int64_t>{16, 3, 4, 16});
+        ir::OpResult(ir_values[0].impl()), std::vector<int64_t>{16, 3, 4, 16});
     auto out = reshape_op->result(0);
-    res_match_ctx->BindIrTensor(op_call.outputs()[0]->id(),
-                                std::make_shared<IrTensor>(out));
+    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
+                               std::make_shared<IrValue>(out));
     return reshape_op;
   }
   LOG(ERROR) << "Unknown op " << op_call.name();

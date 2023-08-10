@@ -51,7 +51,7 @@ void InterpreterEngine::CreateInterpreterCore() {
   auto pass =
       framework::ir::PassRegistry::Instance().Get("delete_dropout_op_x_pass");
   pass->Apply(&graph);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   auto mkldnn_pass =
       framework::ir::PassRegistry::Instance().Get("mkldnn_placement_pass");
   mkldnn_pass->Set("mkldnn_enabled_op_types",

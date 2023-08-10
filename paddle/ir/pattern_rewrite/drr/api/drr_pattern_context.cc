@@ -14,7 +14,7 @@
 
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
-#include <glog/logging.h>
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 
 namespace ir {
@@ -37,9 +37,9 @@ const Op& DrrPatternContext::SourceOpPattern(
 }
 
 const drr::Tensor& DrrPatternContext::SourceTensorPattern(
-    const std::string& tensor_id) {
+    const std::string& name) {
   return source_pattern_graph_->AddTensor(std::shared_ptr<drr::Tensor>(
-      new drr::Tensor(tensor_id, source_pattern_graph_.get())));
+      new drr::Tensor(name, source_pattern_graph_.get())));
 }
 
 const Op& DrrPatternContext::ResultOpPattern(
@@ -51,9 +51,9 @@ const Op& DrrPatternContext::ResultOpPattern(
 }
 
 const drr::Tensor& DrrPatternContext::ResultTensorPattern(
-    const std::string& tensor_id) {
+    const std::string& name) {
   return result_pattern_graph_->AddTensor(std::shared_ptr<drr::Tensor>(
-      new drr::Tensor(tensor_id, result_pattern_graph_.get())));
+      new drr::Tensor(name, result_pattern_graph_.get())));
 }
 
 std::vector<Constraint> DrrPatternContext::constraints() const {
@@ -71,36 +71,33 @@ std::vector<Constraint> DrrPatternContext::constraints() const {
 void DrrPatternContext::RequireEqual(const TensorShape& first,
                                      const TensorShape& second) {
   auto constrain_fn = [&](const MatchContext& match_context) {
-    return match_context.Tensor(first.tensor_id()).Shape() ==
-           match_context.Tensor(second.tensor_id()).Shape();
+    return match_context.Tensor(first.name()).Shape() ==
+           match_context.Tensor(second.name()).Shape();
   };
   constraints_.emplace_back(constrain_fn);
 }
 
 void Op::operator()(const Tensor& arg, const Tensor* out) const {
-  std::vector<std::weak_ptr<const Tensor>> inputs{arg.shared_from_this()};
-  std::vector<std::weak_ptr<const Tensor>> outputs{out->shared_from_this()};
-  pattern_graph_->AddOpCall(
-      std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
+  std::vector<const Tensor*> inputs{&arg};
+  std::vector<const Tensor*> outputs{out};
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
 }
 
 Tensor& Op::operator()(const Tensor& arg) const {
-  std::vector<std::weak_ptr<const Tensor>> inputs{arg.shared_from_this()};
+  std::vector<const Tensor*> inputs{&arg};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
       "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
-  std::vector<std::weak_ptr<const Tensor>> outputs{out.shared_from_this()};
-  pattern_graph_->AddOpCall(
-      std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
+  std::vector<const Tensor*> outputs{&out};
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
   return out;
 }
 
 Tensor& Op::operator()() const {
-  std::vector<std::weak_ptr<const Tensor>> inputs{};
+  std::vector<const Tensor*> inputs{};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
       "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
-  std::vector<std::weak_ptr<const Tensor>> outputs{out.shared_from_this()};
-  pattern_graph_->AddOpCall(
-      std::make_shared<OpCall>(shared_from_this(), inputs, outputs));
+  std::vector<const Tensor*> outputs{&out};
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
   return out;
 }
 
@@ -108,10 +105,10 @@ int64_t Op::count = 0;
 
 void Tensor::operator=(Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
-  CHECK(this->pattern_graph_ == other.pattern_graph_);
-  if (other.tensor_id_.substr(0, 4) == "tmp_" &&
-      tensor_id_.substr(0, 4) != "tmp_") {
-    other.pattern_graph_->UpdateTmpTensor(other.tensor_id_, this->tensor_id_);
+  IR_ENFORCE(this->pattern_graph_ == other.pattern_graph_);
+  if (other.name_.substr(0, 4) == "tmp_" &&
+      name_.substr(0, 4) != "tmp_") {
+    other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);
   }
 }
 

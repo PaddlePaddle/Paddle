@@ -35,7 +35,7 @@ static void DeepCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
                      phi::DenseTensor *dst_item) {
   if (src_item.IsInitialized()) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == phi::DataLayout::ONEDNN) {
       phi::DenseTensor out;

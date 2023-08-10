@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -49,6 +50,8 @@ class PatternGraph {
     return output_tensors_;
   }
 
+  size_t CountOfOpCalls() const;
+
   void Print() const;
 
  protected:
@@ -63,7 +66,7 @@ class GraphTopo {
   explicit GraphTopo(const PatternGraph* graph) : graph_(graph) {}
 
   void WalkGraphNodesTopoOrder(
-      const std::function<void(const OpCall&)>& VisitNode) const;
+      const std::function<void(const OpCall&)>& VisitNode) const {}
 
  private:
   const PatternGraph* graph_;
@@ -71,7 +74,7 @@ class GraphTopo {
 
 class SourcePatternGraph : public PatternGraph {
  public:
-  std::weak_ptr<OpCall> AnchorNode() const;
+  const OpCall* AnchorNode() const;
 
  private:
   friend class DrrPatternContext;

@@ -34,8 +34,6 @@ class PatternGraph;
 class SourcePatternGraph;
 class ResultPatternGraph;
 
-using id_type = std::string;
-
 class Attribute {
  public:
   explicit Attribute(const std::string& id) : attr_id_(id) {}
@@ -48,12 +46,12 @@ class Attribute {
 
 class TensorShape {
  public:
-  explicit TensorShape(const std::string& tensor_id) : tensor_id_(tensor_id) {}
+  explicit TensorShape(const std::string& name) : name_(name) {}
 
-  const std::string& tensor_id() const { return tensor_id_; }
+  const std::string& name() const { return name_; }
 
  private:
-  std::string tensor_id_;
+  std::string name_;
 };
 
 class Constraint {
@@ -93,12 +91,12 @@ class DrrPatternContext {
   const Op& SourceOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
-  const drr::Tensor& SourceTensorPattern(const std::string& tensor_id);
+  const drr::Tensor& SourceTensorPattern(const std::string& name);
 
   const Op& ResultOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
-  const drr::Tensor& ResultTensorPattern(const std::string& tensor_id);
+  const drr::Tensor& ResultTensorPattern(const std::string& name);
 
   // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
@@ -149,68 +147,58 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
  public:
   const std::string& DebugName() const;
 
-  TensorShape shape() const { return TensorShape(id()); }
+  TensorShape shape() const { return TensorShape(name()); }
 
   Tensor& operator=(const Tensor& other) = delete;
 
   void operator=(Tensor& other) const;  // NOLINT
 
-  const id_type& id() const { return tensor_id_; }
+  const std::string& name() const { return name_; }
 
-  void set_id(const id_type& id) { tensor_id_ = id; }
+  void SetName(const std::string& name) { name_ = name; }
 
-  std::weak_ptr<OpCall> producer() const { return producer_; }
+  OpCall* producer() const { return producer_; }
 
-  void set_producer(std::weak_ptr<OpCall> producer) { producer_ = producer; }
+  void set_producer(OpCall* producer) { producer_ = producer; }
 
-  const std::vector<std::weak_ptr<const OpCall>>& consumers() const {
-    return consumers_;
-  }
+  const std::vector<const OpCall*>& consumers() const { return consumers_; }
 
-  void set_consumables(
-      const std::vector<std::weak_ptr<const OpCall>>& consumers) {
+  void set_consumables(const std::vector<const OpCall*>& consumers) {
     consumers_ = consumers;
   }
 
-  void AddConsumer(std::weak_ptr<const OpCall> consumer) {
-    consumers_.push_back(consumer);
-  }
+  void AddConsumer(const OpCall* consumer) { consumers_.push_back(consumer); }
 
  private:
   friend class DrrPatternContext;
   friend class Op;
 
-  Tensor(const id_type& tensor_id, PatternGraph* pattern_graph)
-      : tensor_id_(tensor_id), pattern_graph_(pattern_graph) {}
+  Tensor(const std::string& name, PatternGraph* pattern_graph)
+      : name_(name), pattern_graph_(pattern_graph) {}
 
-  id_type tensor_id_;
-  std::weak_ptr<OpCall> producer_;
-  std::vector<std::weak_ptr<const OpCall>> consumers_;
+  std::string name_;
+  OpCall* producer_;
+  std::vector<const OpCall*> consumers_;
   PatternGraph* pattern_graph_;
 };
 
 class OpCall : public std::enable_shared_from_this<OpCall> {
  public:
-  OpCall(std::weak_ptr<const Op> op,
-         const std::vector<std::weak_ptr<const Tensor>>& inputs,
-         const std::vector<std::weak_ptr<const Tensor>>& outputs)
+  OpCall(const Op* op,
+         const std::vector<const Tensor*>& inputs,
+         const std::vector<const Tensor*>& outputs)
       : op_(op), inputs_(inputs), outputs_(outputs) {}
 
-  const std::string& name() const { return op_.lock()->name(); }
+  const std::string& name() const { return op_->name(); }
 
-  const std::vector<std::weak_ptr<const Tensor>>& inputs() const {
-    return inputs_;
-  }
+  const std::vector<const Tensor*>& inputs() const { return inputs_; }
 
-  const std::vector<std::weak_ptr<const Tensor>>& outputs() const {
-    return outputs_;
-  }
+  const std::vector<const Tensor*>& outputs() const { return outputs_; }
 
  private:
-  id_type op_call_id_;
-  std::weak_ptr<const Op> op_;
-  std::vector<std::weak_ptr<const Tensor>> inputs_;
-  std::vector<std::weak_ptr<const Tensor>> outputs_;
+  const Op* op_;
+  std::vector<const Tensor*> inputs_;
+  std::vector<const Tensor*> outputs_;
 };
 
 class ResultPattern {
@@ -221,8 +209,8 @@ class ResultPattern {
     return ctx_->ResultOpPattern(op_type, attributes);
   }
 
-  const drr::Tensor& Tensor(const std::string& tensor_id) {
-    return ctx_->ResultTensorPattern(tensor_id);
+  const drr::Tensor& Tensor(const std::string& name) {
+    return ctx_->ResultTensorPattern(name);
   }
 
   Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
@@ -245,8 +233,8 @@ class SourcePattern {
     return ctx_->SourceOpPattern(op_type, attributes);
   }
 
-  const drr::Tensor& Tensor(const std::string& tensor_id) {
-    return ctx_->SourceTensorPattern(tensor_id);
+  const drr::Tensor& Tensor(const std::string& name) {
+    return ctx_->SourceTensorPattern(name);
   }
 
   Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
