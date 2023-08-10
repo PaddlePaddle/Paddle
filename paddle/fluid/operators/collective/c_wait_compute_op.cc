@@ -48,7 +48,6 @@ class CWaitComputeOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
 
-
     gpuStream_t compute_stream =
         static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
@@ -59,8 +58,9 @@ class CWaitComputeOp : public framework::OperatorBase {
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(std::to_string(ring_id))) {
-      phi::distributed::NCCLCommContext* comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
+      phi::distributed::NCCLCommContext* comm_ctx =
+          static_cast<phi::distributed::NCCLCommContext*>(
+              comm_context_manager.Get(std::to_string(ring_id)));
       comm_stream = comm_ctx->GetStream();
       event = comm_ctx->GetComputeEvent();
       VLOG(3) << "new comm_context_manager has rid " << ring_id;

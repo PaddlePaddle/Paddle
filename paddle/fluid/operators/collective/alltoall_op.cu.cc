@@ -53,24 +53,22 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(std::to_string(ring_id))) {
-        comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-                comm_context_manager.Get(std::to_string(ring_id)));
-        PADDLE_ENFORCE_NE(
-                comm_ctx,
-                nullptr,
-                platform::errors::Unavailable(
-                    "NCCLCommContext is nullptr, collective op should "
-                    "has ring_id attr."));
-        stream = comm_ctx->GetStream();
-        nranks = comm_ctx->GetSize();
-        VLOG(3) << "new comm_context_manager has rid " << ring_id;
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      nranks = comm_ctx->GetSize();
+      VLOG(3) << "new comm_context_manager has rid " << ring_id;
     } else {
-        comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
-        stream = comm->stream();
-        nranks = comm->nranks();
-        VLOG(3) << "old NCCLCommContext has rid " << ring_id;
+      comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      stream = comm->stream();
+      nranks = comm->nranks();
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
-
 
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should ExecutionContext for calc stream.
@@ -93,27 +91,27 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     send_numel /= nranks;
 
     if (comm_ctx) {
-        comm_ctx->GroupStart();
-        for (auto i = 0; i < nranks; ++i) {
-            auto send_buf = distributed::GetPartialTensor(*x, offset, send_numel);
-            comm_ctx->Send(send_buf, send_numel, i, stream);
-            auto recv_buf = distributed::GetPartialTensor(*out, offset, send_numel);
-            comm_ctx->Recv(&recv_buf, send_numel, i, stream);
-            offset += send_numel;
-        }
-        comm_ctx->GroupEnd();
-        VLOG(3) << "new comm_context_manager has rid " << ring_id;
+      comm_ctx->GroupStart();
+      for (auto i = 0; i < nranks; ++i) {
+        auto send_buf = distributed::GetPartialTensor(*x, offset, send_numel);
+        comm_ctx->Send(send_buf, send_numel, i, stream);
+        auto recv_buf = distributed::GetPartialTensor(*out, offset, send_numel);
+        comm_ctx->Recv(&recv_buf, send_numel, i, stream);
+        offset += send_numel;
+      }
+      comm_ctx->GroupEnd();
+      VLOG(3) << "new comm_context_manager has rid " << ring_id;
     } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
-        for (auto i = 0; i < nranks; ++i) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
-                        send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-                        recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
-            offset += send_numel;
-        }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
-        VLOG(3) << "old NCCLCommContext has rid " << ring_id;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      for (auto i = 0; i < nranks; ++i) {
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+            send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+            recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
+        offset += send_numel;
+      }
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 #else
     PADDLE_THROW(

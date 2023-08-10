@@ -13,8 +13,8 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/macros.h"
@@ -40,15 +40,17 @@ class NCCLCommContext final : public CommContext {
 
   gpuEvent_t GetComputeEvent();
 
-  void SetComputeEvent(std::shared_ptr<paddle::platform::CudaEventObject>&& compute_event);
+  void SetComputeEvent(
+      std::shared_ptr<paddle::platform::CudaEventObject>&& compute_event);
 
   gpuEvent_t GetCommEvent();
 
-  void SetCommEvent(std::shared_ptr<paddle::platform::CudaEventObject>&& comm_event);
+  void SetCommEvent(
+      std::shared_ptr<paddle::platform::CudaEventObject>&& comm_event);
 
   phi::GPUContext* GetDevContext();
 
-  void SetDevContext(std::unique_ptr<phi::GPUContext>&& dev_ctx); 
+  void SetDevContext(std::unique_ptr<phi::GPUContext>&& dev_ctx);
 
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,

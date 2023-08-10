@@ -307,20 +307,19 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(std::to_string(rid))) {
-        comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-                comm_context_manager.Get(std::to_string(rid)));
-        PADDLE_ENFORCE_NE(
-                comm_ctx,
-                nullptr,
-                platform::errors::Unavailable(
-                    "NCCLCommContext is nullptr, collective op should "
-                    "has ring_id attr."));
-        stream = comm_ctx->GetStream();
-        VLOG(3) << "new comm_context_manager has rid " << rid;
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {
-        comm = platform::NCCLCommContext::Instance().Get(rid, place);
-        stream = comm->stream();
-        VLOG(3) << "old NCCLCommContext has rid " << rid;
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
+      stream = comm->stream();
+      VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should not use global ctx for calc stream.

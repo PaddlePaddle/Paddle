@@ -353,9 +353,11 @@ TCPStore::TCPStore(std::string host,
   VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
   VLOG(0) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-    VLOG(0) << "before master port " << port << ", num_workers:" << num_workers << ", timeout: " << timeout;
+    VLOG(0) << "before master port " << port << ", num_workers:" << num_workers
+            << ", timeout: " << timeout;
     _server = detail::TCPServer::create(port, num_workers, timeout);
-    VLOG(0) << "after master port " << port << ", num_workers:" << num_workers << ", timeout: " << timeout;
+    VLOG(0) << "after master port " << port << ", num_workers:" << num_workers
+            << ", timeout: " << timeout;
   }
 
   VLOG(0) << "bfore connect host " << host << ", port:" << port;

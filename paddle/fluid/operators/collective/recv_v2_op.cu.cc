@@ -175,26 +175,25 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     const auto &comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
     if (comm_context_manager.Has(std::to_string(rid))) {
-        comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-                comm_context_manager.Get(std::to_string(rid)));
-        PADDLE_ENFORCE_NE(
-                comm_ctx,
-                nullptr,
-                platform::errors::Unavailable(
-                    "NCCLCommContext is nullptr, collective op should "
-                    "has ring_id attr."));
-        stream = comm_ctx->GetStream();
-        VLOG(3) << "new comm_context_manager has rid " << rid;
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {
-        comm = platform::NCCLCommContext::Instance().Get(rid, place);
-        PADDLE_ENFORCE_LT(peer,
-                comm->nranks(),
-                platform::errors::InvalidArgument(
-                    "The value of peer (%d) you set must "
-                    "be less than comm->nranks (%d).",
-                    peer,
-                    comm->nranks()));
-        stream = comm->stream();
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
+      PADDLE_ENFORCE_LT(peer,
+                        comm->nranks(),
+                        platform::errors::InvalidArgument(
+                            "The value of peer (%d) you set must "
+                            "be less than comm->nranks (%d).",
+                            peer,
+                            comm->nranks()));
+      stream = comm->stream();
       VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
 
@@ -257,16 +256,16 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     } else {
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
       PADDLE_ENFORCE_LT(peer,
-              comm->nranks(),
-              platform::errors::InvalidArgument(
-                  "The value of peer (%d) you set must "
-                  "be less than comm->nranks (%d).",
-                  peer,
-                  comm->nranks()));
+                        comm->nranks(),
+                        platform::errors::InvalidArgument(
+                            "The value of peer (%d) you set must "
+                            "be less than comm->nranks (%d).",
+                            peer,
+                            comm->nranks()));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           out->data<T>(), numel, dtype, peer, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " recv " << phi::product(out->dims())
-              << " from " << peer;
+      VLOG(3) << "rank " << comm->rank() << " recv "
+              << phi::product(out->dims()) << " from " << peer;
     }
 #else
     PADDLE_THROW(platform::errors::Unavailable(
