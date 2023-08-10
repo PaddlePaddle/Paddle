@@ -70,6 +70,13 @@ ir::OpResult reshape(ir::OpResult x, std::vector<int64_t> shape) {
   return reshape_op.out();
 }
 
+ir::OpResult expand(ir::OpResult x, std::vector<int64_t> shape) {
+  paddle::dialect::ExpandOp expand_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ExpandOp>(
+          x, shape);
+  return expand_op.out();
+}
+
 ir::OpResult tile(ir::OpResult x, std::vector<int64_t> repeat_times) {
   paddle::dialect::TileOp tile_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::TileOp>(
