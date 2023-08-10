@@ -23,10 +23,11 @@
 namespace paddle {
 namespace primitive {
 namespace experimental {
+
 std::vector<std::vector<paddle::Tensor>> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
-    const std::vector<std::vector<int>>& stop_gradients) {
+    const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       1, std::vector<paddle::Tensor>(1));
   // get tanh_grad res.
@@ -78,16 +79,16 @@ std::vector<std::vector<paddle::Tensor>> tanh_vjp(
 std::vector<std::vector<paddle::Tensor>> mean_vjp(
     const Tensor& x,
     const Tensor& out_grad,
-    std::vector<int64_t> axis,
+    const IntArray& axis,
     bool keepdim,
     bool reduce_all,
-    const std::vector<std::vector<int>>& stop_gradients) {
+    const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       1, std::vector<paddle::Tensor>(1));
   // get mean_grad res.
   Tensor op_res =
       backend::experimental::mean_grad<primitive::experimental::DescTensor>(
-          x, out_grad, axis, keepdim, reduce_all);
+          x, out_grad, axis.GetData(), keepdim, reduce_all);
 
   // check stop_gradients size and op result size
   PADDLE_ENFORCE_EQ(
