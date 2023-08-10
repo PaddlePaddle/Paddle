@@ -997,19 +997,12 @@ class ASTStaticFunction(StaticFunction):
                             )
                         )
                     if with_hook:
+                        # if is prim, will return concrete_program at first branch
                         cache_key = self._program_cache._recent_cache_key
                         cache_key.kwargs["with_hook"] = True
-                        if not is_prim_infer:
-                            concrete_program, _ = self._program_cache[cache_key]
-                            return concrete_program
-                        else:
-                            (
-                                concrete_program,
-                                _,
-                            ) = self.get_concrete_program_with_cache_key(
-                                cache_key
-                            )
-                            return concrete_program
+                        concrete_program, _ = self._program_cache[cache_key]
+                        return concrete_program
+
                     else:
                         cache_key, (
                             concrete_program,
