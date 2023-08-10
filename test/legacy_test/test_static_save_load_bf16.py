@@ -23,7 +23,6 @@ from test_static_save_load import PtbModel
 import paddle
 from paddle import fluid
 from paddle.fluid import core, framework
-from paddle.fluid.optimizer import SGDOptimizer
 
 
 @unittest.skipIf(
@@ -63,7 +62,7 @@ class TestSaveLoadBF16(unittest.TestCase):
 
             place = self.set_place()
             exe = fluid.Executor(place)
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             x = paddle.static.data(
                 name="x", shape=[-1, num_steps], dtype='int64'
             )

@@ -27,7 +27,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import framework
 from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle.optimizer import SGD
 
 paddle.enable_static()
 
@@ -188,7 +188,7 @@ def train(use_cuda, save_dirname, is_local=True):
     # test program
     test_program = fluid.default_main_program().clone(for_test=True)
 
-    sgd_optimizer = SGDOptimizer(learning_rate=0.2)
+    sgd_optimizer = SGD(learning_rate=0.2)
     sgd_optimizer.minimize(avg_cost)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()

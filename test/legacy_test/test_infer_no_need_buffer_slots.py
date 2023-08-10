@@ -39,7 +39,7 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
         startup_program = framework.Program()
         with fluid.program_guard(program, startup_program):
             loss = self.net()
-            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            sgd = paddle.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
         block = program.global_block()

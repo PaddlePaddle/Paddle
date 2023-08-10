@@ -60,7 +60,7 @@ if(WITH_MKL)
   add_definitions(-DCINN_WITH_MKL_CBLAS)
 endif()
 if(WITH_MKLDNN)
-  add_definitions(-DCINN_WITH_MKLDNN)
+  add_definitions(-DCINN_WITH_DNNL)
 endif()
 
 if(WITH_GPU)

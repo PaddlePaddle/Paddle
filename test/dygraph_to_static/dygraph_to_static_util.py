@@ -145,9 +145,6 @@ def test_and_compare_with_new_ir(need_check_output: bool = True):
             outs = func(*args, **kwargs)
             if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
                 return outs
-            # only run in CI-Coverage
-            if os.environ.get('FLAGS_NEW_IR_DY2ST_TEST', None) is None:
-                return outs
             ir_outs = test_with_new_ir(func)(*args, **kwargs)
             if not need_check_output:
                 return outs

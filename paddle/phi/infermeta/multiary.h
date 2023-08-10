@@ -258,6 +258,15 @@ void CudnnLSTMInferMeta(
     MetaTensor* reserve,
     MetaTensor* state_out);
 
+void DecayedAdagradInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& moment,
+                             const MetaTensor& learning_rate,
+                             float decay,
+                             float epsilon,
+                             MetaTensor* param_out,
+                             MetaTensor* moment_out);
+
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,

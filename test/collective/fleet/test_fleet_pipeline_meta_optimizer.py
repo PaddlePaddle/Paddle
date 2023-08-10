@@ -78,7 +78,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             with fluid.unique_name.guard():
                 avg_cost = self.net()
 
-                optimizer = paddle.fluid.optimizer.Adam(0.01)
+                optimizer = paddle.optimizer.Adam(0.01)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, strategy=strategy
                 )
@@ -102,7 +102,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             with fluid.unique_name.guard():
                 avg_cost = self.net()
 
-                optimizer = paddle.fluid.optimizer.Adam(0.01)
+                optimizer = paddle.optimizer.Adam(0.01)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, strategy=strategy
                 )
