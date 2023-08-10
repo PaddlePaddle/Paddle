@@ -133,6 +133,7 @@ TEST(ScheduleBlockGraph, elementwise) {
   CHECK_EQ(dfs_topo_order_ids.size(), 6);
 }
 
+#ifdef CINN_WITH_CUDA
 TEST(ScheduleBlockGraph, reduce) {
   frontend::Program program = CreateReduceProgram();
   IRSchedule ir_sch = MakeIRSchedule(&program);
@@ -172,6 +173,7 @@ TEST(ScheduleBlockGraph, reduce) {
   }
   CHECK_EQ(dfs_topo_order_ids.size(), 8);
 }
+#endif
 
 }  // namespace ir
 }  // namespace cinn
