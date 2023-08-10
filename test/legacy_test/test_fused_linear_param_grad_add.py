@@ -140,7 +140,6 @@ class TestMainClassBase(unittest.TestCase):
         return x, dy, dweight, dbias
 
     def check_main(self, has_dweight, has_dbias, multi_precision, has_bias):
-        print(has_dweight, has_dbias, multi_precision, has_bias)
         x, dy, dweight, dbias = self.generate_rand_inputs(
             has_dweight, has_dbias, multi_precision, has_bias
         )
