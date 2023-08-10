@@ -316,22 +316,31 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
     args_with_spec = []
     for arg, name_prefix in zip(args, arg_names):
         index = 0
-        for idx, input_var in enumerate(paddle.utils.flatten(arg)):
-            if isinstance(input_var, np.ndarray):
-                input_var = paddle.static.InputSpec.from_numpy(input_var)
+        for idx, origin_input in enumerate(paddle.utils.flatten(arg)):
+            if isinstance(origin_input, np.ndarray):
+                input_var = paddle.static.InputSpec.from_numpy(origin_input)
                 input_var.stop_gradient = True
-            elif isinstance(input_var, core.eager.Tensor):
-                stop_gradient = input_var.stop_gradient
-                input_var = paddle.static.InputSpec.from_tensor(input_var)
+            elif isinstance(origin_input, core.eager.Tensor):
+                stop_gradient = origin_input.stop_gradient
+                input_var = paddle.static.InputSpec.from_tensor(origin_input)
                 input_var.stop_gradient = stop_gradient
-            elif isinstance(input_var, paddle.fluid.framework.Variable):
-                stop_gradient = input_var.stop_gradient
+            elif isinstance(origin_input, paddle.fluid.framework.Variable):
+                stop_gradient = origin_input.stop_gradient
                 input_var = paddle.static.InputSpec(
-                    input_var.shape, input_var.dtype, input_var.name
+                    origin_input.shape, origin_input.dtype, origin_input.name
                 )
                 input_var.stop_gradient = stop_gradient
+            else:
+                input_var = origin_input
 
-            if isinstance(input_var, paddle.static.InputSpec):
+            if isinstance(
+                origin_input,
+                (
+                    np.ndarray,
+                    core.eager.Tensor,
+                    paddle.fluid.framework.Variable,
+                ),
+            ):
                 input_var.name = "_jst." + name_prefix + "." + str(index)
                 index += 1
             args_with_spec.append(input_var)
