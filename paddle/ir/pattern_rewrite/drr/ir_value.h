@@ -58,7 +58,7 @@ class IrValue : public TensorInterface {
   ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
   DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }
 
-  Value ir_value() const { return value_; }
+  const Value& get() const { return value_; }
 
  private:
   const Value value_;

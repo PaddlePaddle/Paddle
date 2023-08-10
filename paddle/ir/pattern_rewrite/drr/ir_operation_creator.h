@@ -26,7 +26,7 @@ namespace drr {
 
 Value GetIrValueByDrrTensor(const Tensor& tensor,
                             const MatchContextImpl& res_match_ctx) {
-  return res_match_ctx.GetIrValue(tensor.name()).ir_value();
+  return res_match_ctx.GetIrValue(tensor.name()).get();
 }
 
 std::vector<Value> GetIrValuesByDrrTensors(

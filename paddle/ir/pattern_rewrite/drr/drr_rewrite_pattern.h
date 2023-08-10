@@ -261,8 +261,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     for (const auto& output_name : source_pattern_graph_->output_tensors()) {
       const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
       const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
-      rewriter.ReplaceAllUsesWith(src_ir_tensor.ir_value(),
-                                  res_ir_tensor.ir_value());
+      rewriter.ReplaceAllUsesWith(src_ir_tensor.get(), res_ir_tensor.get());
     }
   }
 
