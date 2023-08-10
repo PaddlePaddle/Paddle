@@ -771,7 +771,7 @@ char const* EmbLayerNormVarSeqlenPluginBase::getPluginNamespace()
 }
 
 EmbLayerNormVarSeqlenPluginBaseCreator::
-    EmbLayerNormVarSeqlenPluginBaseCreator() {}
+    EmbLayerNormVarSeqlenPluginBaseCreator() = default;
 
 char const* EmbLayerNormVarSeqlenPluginBaseCreator::getPluginName()
     const noexcept {

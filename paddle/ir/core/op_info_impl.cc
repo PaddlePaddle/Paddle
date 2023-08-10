@@ -22,7 +22,7 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
                           std::vector<InterfaceValue> &&interface_map,
                           const std::vector<TypeId> &trait_set,
                           size_t attributes_num,
-                          const char *attributes_name[],
+                          const char *attributes_name[],  // NOLINT
                           VerifyPtr verify) {
   // (1) Malloc memory for interfaces, traits, opinfo_impl.
   size_t interfaces_num = interface_map.size();
@@ -121,7 +121,7 @@ void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
 }
 
 void OpInfoImpl::Destroy() {
-  VLOG(6) << "Destroy op_info impl at " << this;
+  VLOG(10) << "Destroy op_info impl at " << this;
   // (1) free interfaces
   char *base_ptr = reinterpret_cast<char *>(this) -
                    sizeof(ir::TypeId) * num_traits_ -
@@ -134,7 +134,7 @@ void OpInfoImpl::Destroy() {
     }
   }
   // (2) free memeory
-  VLOG(6) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
+  VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
   free(base_ptr);
 }
 

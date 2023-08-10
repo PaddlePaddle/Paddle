@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.core import (
+from paddle.fluid.libpaddle.ir import (
     Program,
     Block,
     Operation,
@@ -21,11 +21,15 @@ from paddle.fluid.core import (
     OpResult,
     Type,
 )  # noqa: F401
-from paddle.fluid.core import (
-    get_op_result_shape,
-    get_op_result_dtype,
+from paddle.fluid.libpaddle.ir import (
     translate_to_new_ir,
+    set_global_program,
+    set_insertion_point,
+    reset_insertion_point_to_start,
+    reset_insertion_point_to_end,
 )  # noqa: F401
+
+from . import core
 
 __all__ = [  # noqa
     'Program',
@@ -35,7 +39,5 @@ __all__ = [  # noqa
     'OpOperand',
     'OpResult',
     'Type',
-    'get_op_result_shape',
-    'get_op_result_dtype',
     'translate_to_new_ir',
 ]

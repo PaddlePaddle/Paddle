@@ -207,22 +207,22 @@ void InitDevices(const std::vector<int> devices) {
 
   std::vector<platform::Place> places;
 
-  for (size_t i = 0; i < devices.size(); ++i) {
+  for (auto device : devices) {
     // In multi process multi gpu mode, we may have gpuid = 7
     // but count = 1.
-    if (devices[i] < 0) {
+    if (device < 0) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    places.emplace_back(platform::CUDAPlace(devices[i]));
+    places.emplace_back(platform::CUDAPlace(device));
 #endif
 #ifdef PADDLE_WITH_XPU
-    places.emplace_back(platform::XPUPlace(devices[i]));
+    places.emplace_back(platform::XPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_IPU
-    places.emplace_back(platform::IPUPlace(devices[i]));
+    places.emplace_back(platform::IPUPlace(device));
 #endif
   }
   places.emplace_back(platform::CPUPlace());
@@ -255,7 +255,7 @@ void InitDevices(const std::vector<int> devices) {
 #endif
   platform::DeviceContextPool::Init(places);
 
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 }
@@ -263,7 +263,7 @@ void InitDevices(const std::vector<int> devices) {
 #ifndef _WIN32
 // Description Quoted from
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
-const struct {
+const struct {  // NOLINT
   int signal_number;
   const char *name;
   const char *error_string;
@@ -283,11 +283,9 @@ bool StartsWith(const char *str, const char *prefix) {
 }
 
 const char *ParseSignalErrorString(const std::string &str) {
-  for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
-       ++i) {
-    if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
-      return SignalErrorStrings[i].error_string;
+  for (const auto &SignalErrorString : SignalErrorStrings) {
+    if (std::string::npos != str.find(SignalErrorString.name)) {
+      return SignalErrorString.error_string;
     }
   }
   return "Unknown signal";
@@ -344,15 +342,13 @@ void SignalHandle(const char *data, int size) {
 
 void DisableSignalHandler() {
 #ifndef _WIN32
-  for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
-       ++i) {
-    int signal_number = SignalErrorStrings[i].signal_number;
+  for (const auto &SignalErrorString : SignalErrorStrings) {
+    int signal_number = SignalErrorString.signal_number;
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;
-    sigaction(signal_number, &sig_action, NULL);
+    sigaction(signal_number, &sig_action, nullptr);
   }
 #endif
 }
@@ -371,10 +367,10 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
                                 GENERIC_WRITE,
                                 0,
-                                NULL,
+                                nullptr,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL,
-                                NULL);
+                                nullptr);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -388,8 +384,8 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                      hDumpFile,
                      MiniDumpWithPrivateReadWriteMemory,
                      &dumpInfo,
-                     NULL,
-                     NULL);
+                     nullptr,
+                     nullptr);
   CloseHandle(hDumpFile);
 }
 

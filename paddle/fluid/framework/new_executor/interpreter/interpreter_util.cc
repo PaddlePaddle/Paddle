@@ -19,6 +19,7 @@
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
@@ -36,7 +37,7 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -156,6 +157,18 @@ bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
 }
 
+bool IsCpuOp(Instruction* instr) {
+  return platform::is_cpu_place(instr->DeviceContext().GetPlace());
+}
+
+bool IsCpuOp(const paddle::framework::InstructionBase& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+bool IsCpuOp(paddle::framework::InstructionBase* instr) {
+  return platform::is_cpu_place(instr->DeviceContext().GetPlace());
+}
+
 bool IsGradOp(const std::string& op_name) {
   return paddle::string::ends_with(op_name, "_grad");
 }
@@ -171,6 +184,14 @@ bool IsMemcpyD2H(const Instruction& instr) {
 
 bool IsMemcpyH2D(const Instruction& instr) {
   return instr.OpBase()->Type() == kMemcpyH2D;
+}
+
+bool IsMemcpyH2D(Instruction* instr) {
+  return instr->OpBase()->Type() == kMemcpyH2D;
+}
+
+bool IsMemcpyH2D(paddle::framework::InstructionBase* instr) {
+  return instr->Name() == "pd.memcpy_h2d";
 }
 
 bool IsMemcpyOp(const Instruction& instr) {
@@ -325,7 +346,7 @@ void CreateAllOps(const framework::BlockDesc& block,
         info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
@@ -506,7 +527,7 @@ void BuildOpFuncList(const platform::Place& place,
         main_program, block.ID(), ops_unique);
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::RegisterModelLayout(ops_unique, place);
 #endif
   // its elements will be moved to vec_func_list
@@ -948,18 +969,15 @@ void BuildOpFuncList(
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  for (auto it = block->begin(); it != block->end(); ++it) {
+  for (auto op : *block) {
     OpFuncNode op_func_node;
-    auto attr_map = (*it)->attributes();
+    auto attr_map = op->attributes();
 
     auto op_name =
         attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shaddow_output") {
+    if (GetSpecialOpNames().count(op_name)) {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -981,7 +999,7 @@ void BuildOpFuncList(
           phi::MetaTensor,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>((*it),
+          false>(op,
                  value_2_name_map,
                  scope,
                  local_scope,
@@ -1009,13 +1027,13 @@ void BuildOpFuncList(
         kernel_name == "fused_softmax_mask_upper_triangle_grad") {
       // builder operator
       op_func_node.operator_base_ =
-          ir::BuildOperatorBase((*it), value_2_name_map, op_yaml_info_parser);
+          ir::BuildOperatorBase(op, value_2_name_map, op_yaml_info_parser);
       paddle::framework::VariableValueMap in_map;
       paddle::framework::VariableValueMap out_map;
       op_func_node.runtime_ctx_ =
           std::make_shared<paddle::framework::RuntimeContext>(
               paddle::framework::RuntimeContext(in_map, out_map));
-      ir::BuildRuntimeContext((*it),
+      ir::BuildRuntimeContext(op,
                               value_2_name_map,
                               scope,
                               local_scope,
@@ -1028,7 +1046,7 @@ void BuildOpFuncList(
                             phi::TensorBase*,
                             paddle::small_vector<const phi::TensorBase*>,
                             paddle::small_vector<phi::TensorBase*>,
-                            true>((*it),
+                            true>(op,
                                   value_2_name_map,
                                   scope,
                                   local_scope,
@@ -1115,8 +1133,8 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
     int ring_id = operator_base->Attr<int>("ring_id");
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(ring_id)) {
-      auto comm_context = comm_context_manager.Get(ring_id);
+    if (comm_context_manager.Has(std::to_string(ring_id))) {
+      auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
       if (!dev_ctx->GetCommContext()) {
         dev_ctx->SetCommContext(comm_context);
       }
@@ -1125,6 +1143,41 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
               << ", get comm_context failed!";
     }
   }
+}
+
+void SetDeviceCommContext(::ir::Operation* op,
+                          platform::DeviceContext* dev_ctx) {
+  auto op_attributes = op->attributes();
+  if (op_attributes.count("ring_id") != 0) {
+    int ring_id =
+        op_attributes.at("ring_id").dyn_cast<::ir::Int32Attribute>().data();
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(std::to_string(ring_id))) {
+      auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
+      if (!dev_ctx->GetCommContext()) {
+        dev_ctx->SetCommContext(comm_context);
+      }
+    } else {
+      VLOG(3) << "op: "
+              << op_attributes.at("op_name")
+                     .dyn_cast<::ir::StrAttribute>()
+                     .AsString()
+              << ", ring_id: " << ring_id << ", get comm_context failed!";
+    }
+  }
+}
+
+std::unordered_set<std::string> GetSpecialOpNames() {
+  return {
+      "builtin.combine",
+      "builtin.slice",
+      "pd.feed",
+      "builtin.set_parameter",
+      "builtin.get_parameter",
+      "pd.data",
+      "pd.shadow_output",
+  };
 }
 
 }  // namespace interpreter
