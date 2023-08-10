@@ -400,11 +400,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           }
         }
       }
-      // Copy op attributes
-      std::unordered_map<std::string, ir::Attribute> op_attribute;
-      for (auto& map_item : op_item->attributes()) {
-        op_attribute.emplace(map_item.first, map_item.second);
-      }
       // Copy op output type
       std::vector<ir::Type> op_output_types;
       if (op_item->num_results() > 0) {
@@ -453,7 +448,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
       // Generate new op
       ir::Operation* op = ir::Operation::Create(
-          vec_inputs, op_attribute, op_output_types, op_info);
+          vec_inputs, op_item->attributes(), op_output_types, op_info);
       program->block()->push_back(op);
       map_op_pair[op_item] = op;
       // only deal with single output
@@ -501,11 +496,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           }
         }
       }
-      // Copy op attributes
-      std::unordered_map<std::string, ir::Attribute> op_attribute;
-      for (auto& map_item : op_item->attributes()) {
-        op_attribute.emplace(map_item.first, map_item.second);
-      }
       // Copy op output type
       std::vector<ir::Type> op_output_types;
       if (op_item->num_results() > 0) {
@@ -530,7 +520,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
       // Generate new op
       ir::Operation* op = ir::Operation::Create(
-          vec_inputs, op_attribute, op_output_types, op_info);
+          vec_inputs, op_item->attributes(), op_output_types, op_info);
       program->block()->push_back(op);
       map_op_pair[op_item] = op;
       // only deal with single output
