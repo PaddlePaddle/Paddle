@@ -77,7 +77,7 @@ void PatternGraph::UpdateTmpTensor(const id_type &tmp_tensor_id,
 
   auto tmp_tensor = id2owned_tensor_[tmp_tensor_id];
   id2owned_tensor_.erase(tmp_tensor_id);
-  tmp_tensor->SetName(new_tensor_id);
+  tmp_tensor->set_name(new_tensor_id);
   id2owned_tensor_[new_tensor_id] = tmp_tensor;
 }
 

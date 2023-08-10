@@ -20,12 +20,12 @@
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_tensor.h"
-#include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_value.h"
 
 namespace ir {
 namespace drr {
 
+class OpCall;
 template <class T>
 struct CppTypeToIrAttribute;
 

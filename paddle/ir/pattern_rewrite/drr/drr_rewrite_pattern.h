@@ -56,9 +56,9 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
     std::unordered_set<const OpCall*> drr_visited;
-    std::unordered_set<Operation*> ir_visited;
+    std::unordered_set<const Operation*> ir_visited;
     std::queue<const OpCall*> drr_q;
-    std::queue<ir::Operation*> ir_q;
+    std::queue<const ir::Operation*> ir_q;
     drr_q.push(anchor);
     ir_q.push(op);
     drr_visited.insert(anchor);
