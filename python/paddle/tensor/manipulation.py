@@ -1499,7 +1499,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             end_axis = 2
 
           We get:
-            Out.shape = (3, 1000 * 100, 2)
+            Out.shape = (3, 100 * 100, 4)
 
         Case 2:
 

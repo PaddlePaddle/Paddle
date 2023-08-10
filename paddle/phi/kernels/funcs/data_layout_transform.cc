@@ -23,7 +23,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
@@ -31,7 +31,7 @@
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 void* GetDataFromTensor(const DenseTensor& tensor,
                         dnnl::memory::data_type type) {

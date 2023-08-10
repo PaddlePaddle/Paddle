@@ -305,7 +305,7 @@ bool IsCompiledWithIPU() {
 }
 
 bool IsCompiledWithMKLDNN() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return true;
@@ -338,7 +338,7 @@ bool IsCompiledWithHETERPS() {
 }
 
 bool SupportsBfloat16() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
@@ -349,7 +349,7 @@ bool SupportsBfloat16() {
 }
 
 bool SupportsBfloat16FastPerformance() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16))
@@ -360,7 +360,7 @@ bool SupportsBfloat16FastPerformance() {
 }
 
 bool SupportsInt8() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
@@ -369,7 +369,7 @@ bool SupportsInt8() {
 }
 
 bool SupportsVNNI() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return phi::backends::cpu::MayIUse(
@@ -1999,12 +1999,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("init_tensor_operants", []() {
-    paddle::OperantsManager::Instance().eager_operants.reset(
-        new paddle::prim::EagerTensorOperants());
-    paddle::OperantsManager::Instance().static_operants.reset(
-        new paddle::prim::StaticTensorOperants());
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().eager_operants =
+        std::make_unique<paddle::prim::EagerTensorOperants>();
+    paddle::OperantsManager::Instance().static_operants =
+        std::make_unique<paddle::prim::StaticTensorOperants>();
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);

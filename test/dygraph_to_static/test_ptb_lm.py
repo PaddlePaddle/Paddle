@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit.api import to_static
+from paddle.optimizer import SGD
 
 PRINT_STEP = 20
 SEED = 2020
@@ -247,9 +247,7 @@ def train(place):
             dropout=dropout,
         )
 
-        sgd = SGDOptimizer(
-            learning_rate=1e-3, parameter_list=ptb_model.parameters()
-        )
+        sgd = SGD(learning_rate=1e-3, parameters=ptb_model.parameters())
 
         for epoch_id in range(max_epoch):
             total_loss = 0.0
