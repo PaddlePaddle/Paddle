@@ -49,7 +49,11 @@ void LarsMomentumKernel(
     auto p = phi::EigenVector<T>::Flatten(*(param[i]));
     auto v = phi::EigenVector<T>::Flatten(*(velocity[i]));
     Eigen::TensorMap g = phi::EigenVector<T>::Flatten(*(grad[i]));
+#ifdef _WIN32
+    Eigen::TensorCwiseUnaryOp rescale_g = static_cast<double>(rescale_grad) * g;
+#else
     Eigen::TensorCwiseUnaryOp rescale_g = rescale_grad * g;
+#endif
 
     phi::DenseTensor p_norm_t, g_norm_t;
     p_norm_t.Resize({1});
