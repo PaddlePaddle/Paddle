@@ -374,17 +374,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                     )
                 )
 
-                self.learning_rate = paddle.static.create_global_var(
-                    name="learning_rate",
-                    shape=[1],
-                    value=1.0,
-                    dtype='float32',
-                    persistable=True,
-                )
-
-                optimizer = fluid.optimizer.SGD(
-                    learning_rate=self.learning_rate
-                )
+                optimizer = paddle.optimizer.SGD(learning_rate=1.0)
                 optimizer.minimize(self.loss)
 
         self.exe.run(self.startup_program)
@@ -465,7 +455,6 @@ class PaddingRNNTestBase(unittest.TestCase):
                 feed=input_data_feed,
                 fetch_list=[
                     self.loss.name,
-                    "learning_rate",
                     self.last_hidden.name,
                     self.last_cell.name,
                 ],
@@ -473,9 +462,8 @@ class PaddingRNNTestBase(unittest.TestCase):
             )
 
             cost_train = np.array(fetch_outs[0])
-            lr = np.array(fetch_outs[1])
-            init_hidden = np.array(fetch_outs[2])
-            init_cell = np.array(fetch_outs[3])
+            init_hidden = np.array(fetch_outs[1])
+            init_cell = np.array(fetch_outs[2])
 
             total_loss += cost_train
             iters += self.config.num_steps

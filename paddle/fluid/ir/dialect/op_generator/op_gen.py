@@ -51,6 +51,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/fluid/ir/dialect/pd_manual_op.h"
 
 {input}
 
@@ -150,6 +151,8 @@ scalar_type_maps = {
     'dobule': 'ir::DoubleAttribute',
     'bool': 'ir::BoolAttribute',
 }
+
+_NO_NEED_GEN_OPS = {'add_n'}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -743,6 +746,8 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
+            if op_name in _NO_NEED_GEN_OPS:
+                continue
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
 
