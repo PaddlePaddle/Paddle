@@ -23,17 +23,18 @@
 namespace cinn {
 namespace ir {
 
-void Module::Builder::AddFunction(const ir::LoweredFunc &func) {
-  auto tmp_func = optim::IRCopy(func);
-  optim::Simplify(&(tmp_func->body));
-  optim::SimplifyForLoops(&(tmp_func->body));
-  optim::SimplifyBlocks(&(tmp_func->body));
-  tmp_func->body = optim::Optimize(tmp_func->body, module_->target);
-  module_->functions.emplace_back(std::move(func));
-}
-
-void Module::Builder::AddFunctionWithoutOptim(const ir::LoweredFunc &func) {
-  module_->functions.push_back(func);
+void Module::Builder::AddFunction(const ir::LoweredFunc &func,
+                                  bool use_optim = true) {
+  if (use_optim) {
+    auto tmp_func = optim::IRCopy(func);
+    optim::Simplify(&(tmp_func->body));
+    optim::SimplifyForLoops(&(tmp_func->body));
+    optim::SimplifyBlocks(&(tmp_func->body));
+    tmp_func->body = optim::Optimize(tmp_func->body, module_->target);
+    module_->functions.emplace_back(std::move(func));
+  } else {
+    module_->functions.push_back(func);
+  }
 }
 
 void Module::Builder::AddBuffer(ir::Buffer buffer) {

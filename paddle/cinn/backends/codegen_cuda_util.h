@@ -44,11 +44,6 @@ namespace backends {
 std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module);
 
 namespace detail {
-
-// TODO(LiuYang): This Class only just do something on lower_func and other
-// visitor is totally unused, meanwhile, add funtion call optims again but
-// optims was
-//  called just now
 struct CollectHostFunctionVisitor {
   explicit CollectHostFunctionVisitor(const std::string& module_name)
       : host_module_builder(module_name + "_host", common::DefaultHostTarget()),
@@ -73,16 +68,16 @@ struct CollectHostFunctionVisitor {
 
   void Visit(const ir::_LoweredFunc_* func, const ir::Expr* expr) {
     if (func->body.As<ir::Call>()) {
-      host_module_builder.AddFunctionWithoutOptim(expr->as_lowered_func_ref());
+      host_module_builder.AddFunction(expr->as_lowered_func_ref(), false);
     } else {
       if (!func->cuda_axis_info.valid()) {
         expr->as_lowered_func_ref()->cuda_axis_info.set_valid(true);
       }
       auto host_func = CreateHostFunctionGivenDeviceKernel(func);
-      host_module_builder.AddFunctionWithoutOptim(
-          host_func.as_lowered_func_ref());
-      device_module_builder.AddFunctionWithoutOptim(
-          CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
+      host_module_builder.AddFunction(host_func.as_lowered_func_ref(), false);
+      device_module_builder.AddFunction(
+          CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref(),
+          false);
     }
   }
 

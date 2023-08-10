@@ -22,7 +22,6 @@ namespace backends {
 
 std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module) {
   detail::CollectHostFunctionVisitor visitor(module->name);
-  // Expr expr(module);
   return visitor(module);
 }
 
