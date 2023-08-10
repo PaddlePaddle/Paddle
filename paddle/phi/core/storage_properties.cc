@@ -26,7 +26,7 @@ std::unique_ptr<StorageProperties> CopyStorageProperties(
       result->storage_dims =
           static_cast<NPUStorageProperties*>(sp.get())->storage_dims;
       return result;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     } else if (OneDNNStorageProperties::classof(sp.get())) {
       auto result = std::make_unique<OneDNNStorageProperties>();
       result->format = static_cast<OneDNNStorageProperties*>(sp.get())->format;
