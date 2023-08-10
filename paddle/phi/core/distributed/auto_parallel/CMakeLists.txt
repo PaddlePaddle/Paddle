@@ -3,8 +3,15 @@ proto_library(auto_parallel_proto SRCS auto_parallel.proto)
 set(DISTRIBUTED_SRCS "")
 
 if(WITH_DISTRIBUTE)
-  list(APPEND DISTRIBUTED_SRCS dist_tensor.cc reshard_function.cc
-       reshard_split_functor.cc r_to_s_reshard_function.cc)
+  list(
+    APPEND
+    DISTRIBUTED_SRCS
+    dist_tensor.cc
+    reshard_function.cc
+    reshard_split_functor.cc
+    reshard_all_gather_functor.cc
+    r_to_s_reshard_function.cc
+    s_to_r_reshard_function.cc)
 endif()
 
 collect_srcs(
