@@ -51,7 +51,6 @@ def _stride_column(param):
 
     Examples:
        .. code-block:: python
-            >>> # doctest: +SKIP('module paddle.nn.utils has no attribute stride_column')
             >>> import paddle
             >>> paddle.seed(100)
 
@@ -62,7 +61,7 @@ def _stride_column(param):
                    [[ 0.11732829, -0.64161885, -1.06996548],
                     [ 0.03456247, -0.29862350, -0.52380574]])
 
-            >>> paddle.nn.utils.stride_column(linear.weight)
+            >>> paddle.nn.utils._stride_column(linear.weight)
             >>> print(linear.weight)
 
     """
