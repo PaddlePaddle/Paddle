@@ -57,7 +57,7 @@ __global__ void fast_gather1d(const int8_t* x,
         int64_t offset = ((local_index[j] + x_dim0) % x_dim0) * x_stride0;
         GM2LM_ASYNC(x + offset, local_x + j * x_stride0, x_stride0);
       }
-      mfence();
+      mfence_lm();
       LM2GM(local_x, y + i * x_stride0, x_stride0 * count_in_thread);
     }
   }
@@ -103,7 +103,7 @@ __global__ void fast_gather2d(const int8_t* x,
             ((local_index[j * 2 + 1] + x_dim1) % x_dim1) * x_stride1;
         GM2LM_ASYNC(x + offset, local_x + j * x_stride1, x_stride1);
       }
-      mfence();
+      mfence_lm();
       LM2GM(local_x, y + i * x_stride1, x_stride1 * count_in_thread);
     }
   }
@@ -153,7 +153,7 @@ __global__ void fast_gather3d(const int8_t* x,
             ((local_index[j * 3 + 2] + x_dim2) % x_dim2) * x_stride2;
         GM2LM_ASYNC(x + offset, local_x + j * x_stride2, x_stride2);
       }
-      mfence();
+      mfence_lm();
       LM2GM(local_x, y + i * x_stride2, x_stride2 * count_in_thread);
     }
   }
@@ -207,7 +207,7 @@ __global__ void fast_gather4d(const int8_t* x,
             ((local_index[j * 4 + 3] + x_dim3) % x_dim3) * x_stride3;
         GM2LM_ASYNC(x + offset, local_x + j * x_stride3, x_stride3);
       }
-      mfence();
+      mfence_lm();
       LM2GM(local_x, y + i * x_stride3, x_stride3 * count_in_thread);
     }
   }

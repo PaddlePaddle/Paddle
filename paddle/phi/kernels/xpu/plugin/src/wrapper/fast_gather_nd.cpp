@@ -107,6 +107,7 @@ static int xpu2_wrapper(Context* ctx,
                         T* y,
                         const VectorParam<int64_t>& x_shape,
                         const std::vector<int64_t>& index_shape) {
+  using XPU_TID = typename XPUIndexType<TID>::type;
   int64_t x_shape_size = x_shape.len;
   int64_t index_shape_size = index_shape.size();
   int64_t end_size = index_shape.back();
@@ -122,7 +123,6 @@ static int xpu2_wrapper(Context* ctx,
   for (int64_t i = end_size - 2; i >= 0; i--) {
     gather_strides[i] = gather_strides[i + 1] * x_shape.cpu[i + 1];
   }
-  using XPU_TID = typename XPUIndexType<TID>::type;
   auto casted_x = static_cast<const int8_t*>(static_cast<const void*>(x));
   auto casted_index =
       static_cast<const XPU_TID*>(static_cast<const void*>(index));
