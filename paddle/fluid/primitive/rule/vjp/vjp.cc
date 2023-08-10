@@ -132,6 +132,71 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
   return vjp_res;
 }
 
+std::vector<std::vector<paddle::Tensor>> add_vjp(
+    const Tensor& x,
+    const Tensor& y,
+    const Tensor& out_grad,
+    int axis,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res(
+      2, std::vector<paddle::Tensor>(1));
+  // get mean_grad res.
+  std::tuple<Tensor, Tensor> op_res =
+      backend::experimental::add_grad<primitive::experimental::DescTensor>(
+          x, y, out_grad, axis);
+
+  // check stop_gradients size and op result size
+  PADDLE_ENFORCE_EQ(
+      stop_gradients.size(),
+      2u,
+      phi::errors::InvalidArgument(
+          "The size of stop_gradients should be the same as"
+          "pd.add_grad result size."
+          "But the size of stop_gradients: %d, pd.add_grad result size: %d",
+          stop_gradients.size(),
+          2u));
+
+  for (size_t i = 0; i < 2; i++) {
+    PADDLE_ENFORCE_EQ(
+        stop_gradients[i].size(),
+        1u,
+        phi::errors::InvalidArgument(
+            "The size of stop_gradients[%d] should be the same as"
+            "size of corresponding-index pd.add_grad's result."
+            "But the size of stop_gradients: %d, pd.add_grad result size: %d",
+            i,
+            stop_gradients[i].size(),
+            1u));
+  }
+
+  // set op stop_gradient info
+  // TODO(wanghao107): Replace with more generic code.
+  // Support set stop_gradients for all ops.
+  ir::Operation* grad_op =
+      std::static_pointer_cast<primitive::experimental::DescTensor>(
+          std::get<0>(op_res).impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>()
+          .owner();
+  std::vector<ir::Attribute> ir_stop_gradients(2);
+  for (size_t i = 0; i < 2; i++) {
+    if (stop_gradients[i][0]) {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), true);
+    } else {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), false);
+    }
+  }
+  grad_op->set_attribute(
+      "stop_gradient",
+      ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
+
+  // construct vjp result by op result and stop_gradients info
+  vjp_res[0][0] = !stop_gradients[0][0] ? std::get<0>(op_res) : vjp_res[0][0];
+  vjp_res[1][0] = !stop_gradients[1][0] ? std::get<1>(op_res) : vjp_res[1][0];
+  return vjp_res;
+}
 }  // namespace experimental
 }  // namespace primitive
 }  // namespace paddle
