@@ -987,20 +987,36 @@ class ASTStaticFunction(StaticFunction):
                 return concrete_program
             else:
                 if cached_program_len != 0:
-                    logging_utils.warn(
-                        "No input_spec is found, save cached program instead"
-                    )
-                    if cached_program_len > 1:
-                        logging_utils.warn(
-                            "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
-                                self._function_spec, cached_program_len
+                    if with_hook:
+                        cache_key = self._program_cache._recent_cache_key
+                        cache_key.kwargs["with_hook"] = True
+                        if not is_prim_infer:
+                            concrete_program, _ = self._program_cache[cache_key]
+                            return concrete_program
+                        else:
+                            (
+                                concrete_program,
+                                _,
+                            ) = self.get_concrete_program_with_cache_key(
+                                cache_key
                             )
+                            return concrete_program
+                    else:
+                        logging_utils.warn(
+                            "No input_spec is found, save cached program instead"
                         )
-                    cache_key, (
-                        concrete_program,
-                        partial_layer,
-                    ) = self._program_cache.last()
-                    return concrete_program
+                        if cached_program_len > 1:
+                            logging_utils.warn(
+                                "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
+                                    self._function_spec, cached_program_len
+                                )
+                            )
+                        cache_key, (
+                            concrete_program,
+                            partial_layer,
+                        ) = self._program_cache.last()
+                        return concrete_program
+
                 else:
                     raise ValueError(
                         "No valid transformed program for {}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n".format(
