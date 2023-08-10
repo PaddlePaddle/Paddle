@@ -399,11 +399,12 @@ __global__ void masked_multiquery_attention_kernel(
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
-  const int hid = (hi % params.head_kv);
+  
+  const int hid = hi / (params.num_head / params.head_kv);
   const int bhi = bi * params.num_head + hi;
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
   const int tid = threadIdx.x;
-  const int bhi_kv = bi * params.head_kv + hi % params.head_kv;
+  const int bhi_kv = bi * params.head_kv + hid;
   const int bi_seq_len_offset = bi * params.max_seq_length;
   const int ti =
        params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
@@ -608,7 +609,7 @@ __global__ void masked_multiquery_attention_kernel(
     int offset = bhi_kv * params.max_seq_length * Dh +
                  co * params.max_seq_length * QK_ELTS_IN_16B +
                  act_time_step * QK_ELTS_IN_16B + ci;
-    if (blockIdx.x < params.head_kv && (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
+    if (blockIdx.x % (params.num_head / params.head_kv) == 0 && (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
       *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
     }
 
@@ -818,7 +819,8 @@ __global__ void masked_multiquery_attention_kernel(
                            vi]);
       v = add(v, v_bias);
     }
-    *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
+    if (blockIdx.x % (params.num_head / params.head_kv) == 0) 
+      *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
     out = fma(logits_smem[act_time_step], cast_to_float(v), out);
