@@ -17,7 +17,7 @@ set(GINAC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/ginac)
 
 function(download_ginac)
   message(
-    STATUS 
+    STATUS
       "Downloading ${GINAC_DOWNLOAD_URL} to ${GINAC_DOWNLOAD_DIR}/${GINAC_FILE}"
   )
   file(
