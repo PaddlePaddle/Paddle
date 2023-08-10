@@ -456,8 +456,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 )
             else:
                 learning_rate = Config.LR
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=0.001, parameter_list=ocr_attention.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.001, parameters=ocr_attention.parameters()
             )
             dy_param_init_value = {}
             for param in ocr_attention.parameters():
@@ -533,7 +533,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             else:
                 learning_rate = Config.LR
 
-            optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
 
             images = paddle.static.data(
                 name='pixel', shape=[-1] + Config.DATA_SHAPE, dtype='float32'

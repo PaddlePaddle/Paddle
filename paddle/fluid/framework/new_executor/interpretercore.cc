@@ -47,13 +47,15 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       place, block, scope, execution_config);
 }
 
-InterpreterCore::InterpreterCore(const platform::Place& place,
-                                 std::unique_ptr<::ir::Program> ir_prog,
-                                 framework::Scope* scope,
-                                 const ExecutionConfig& execution_config) {
+InterpreterCore::InterpreterCore(
+    const platform::Place& place,
+    const std::vector<std::string>& fetch_var_names,
+    std::unique_ptr<::ir::Program> ir_prog,
+    framework::Scope* scope,
+    const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
   impl_ = std::make_unique<NewIRInterpreter>(
-      place, std::move(ir_prog), scope, execution_config);
+      place, fetch_var_names, std::move(ir_prog), scope, execution_config);
 }
 
 InterpreterCore::~InterpreterCore() {
@@ -79,6 +81,12 @@ FetchList InterpreterCore::BetaRun(const std::vector<std::string>& feed_names,
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
   impl_->ShareWorkQueueFrom(const_cast<InterpreterBaseImpl*>(src->Impl()));
+}
+
+void InterpreterCore::ShareBuildResultsFrom(
+    std::shared_ptr<InterpreterCore> src) {
+  // ShareBuildResultsFrom required const InterpreterBaseImpl& src as input
+  impl_->ShareBuildResultsFrom(*src->Impl());
 }
 
 void InterpreterCore::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -117,5 +125,6 @@ const platform::Place& InterpreterCore::GetPlace() const {
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
+
 }  // namespace framework
 }  // namespace paddle

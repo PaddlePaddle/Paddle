@@ -166,9 +166,19 @@ PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, CPU, ALL_LAYOUT, phi::func, float, double) {}
 
-PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
-PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)
-PD_REGISTER_ACTIVATION_KERNEL(tan, TanKernel)
+#define PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(name, func) \
+  PD_REGISTER_KERNEL(name,                                     \
+                     CPU,                                      \
+                     ALL_LAYOUT,                               \
+                     phi::func,                                \
+                     float,                                    \
+                     double,                                   \
+                     phi::dtype::complex<float>,               \
+                     phi::dtype::complex<double>) {}
+
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sin, SinKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(cos, CosKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tan, TanKernel)
 PD_REGISTER_ACTIVATION_KERNEL(acos, AcosKernel)
 PD_REGISTER_ACTIVATION_KERNEL(asin, AsinKernel)
 PD_REGISTER_ACTIVATION_KERNEL(atan, AtanKernel)
@@ -177,7 +187,7 @@ PD_REGISTER_ACTIVATION_KERNEL(cosh, CoshKernel)
 PD_REGISTER_ACTIVATION_KERNEL(asinh, AsinhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(acosh, AcoshKernel)
 PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardtanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
@@ -219,7 +229,7 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 

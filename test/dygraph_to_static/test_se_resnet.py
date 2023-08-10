@@ -20,6 +20,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
@@ -77,13 +78,13 @@ def optimizer_setting(params, parameter_list):
     bd = [step * e for e in ls["epochs"]]
     lr = params["lr"]
     num_epochs = params["num_epochs"]
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=fluid.layers.cosine_decay(
-            learning_rate=lr, step_each_epoch=step, epochs=num_epochs
+    optimizer = paddle.optimizer.Momentum(
+        learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=lr, T_max=num_epochs
         ),
         momentum=momentum_rate,
-        regularization=paddle.regularizer.L2Decay(l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
@@ -560,6 +561,7 @@ class TestSeResnet(unittest.TestCase):
                 ),
             )
 
+    @ast_only_test
     def test_check_result(self):
         pred_1, loss_1, acc1_1, acc5_1 = self.train(
             self.train_reader, to_static=False

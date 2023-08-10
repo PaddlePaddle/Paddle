@@ -35,7 +35,7 @@ FetchOpHandle::FetchOpHandle(ir::Node *node,
       local_exec_scopes_(local_exec_scopes),
       return_merged_(return_merged) {}
 
-FetchOpHandle::~FetchOpHandle() {}
+FetchOpHandle::~FetchOpHandle() = default;
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW(platform::errors::PermissionDenied(

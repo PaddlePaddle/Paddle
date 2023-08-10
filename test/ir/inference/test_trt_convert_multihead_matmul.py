@@ -28,17 +28,14 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(batch, dim1):
-            return np.full((batch, dim1, 768), 1).astype(np.float32)
+        def generate_input(shape):
+            return np.full(shape, 0.1).astype(np.float32)
 
-        def generate_input2(shape):
-            return np.full(shape, 1).astype(np.float32)
-
-        def generate_weight1():
-            return np.full((768, 768), 0.1).astype(np.float32)
-
-        def generate_weight2():
-            return np.full((768), 0.1).astype(np.float32)
+        def generate_weight(shape):
+            return (
+                np.random.rand(*shape).astype(np.float32).round(decimals=1) / 5
+                - 0.1
+            )
 
         for batch in [1, 4]:
             self.batch = batch
@@ -303,36 +300,50 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights={
                                     "mul1_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul2_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul3_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul4_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "elementwise_add1_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                     "elementwise_add2_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                     "elementwise_add3_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                 },
                                 inputs={
                                     "input_data1": TensorConfig(
                                         data_gen=partial(
-                                            generate_input1, batch, dim1
+                                            generate_input, (batch, dim1, 768)
                                         )
                                     ),
                                     "input_data2": TensorConfig(
                                         data_gen=partial(
-                                            generate_input2, input2_shape
+                                            generate_input, input2_shape
                                         )
                                     ),
                                 },
@@ -374,10 +385,12 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
+        yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 1e-2)
+        program_config.set_input_type(np.float16)
+        yield self.create_inference_config(), (1, 3), (1e-2, 1e-2)
 
     def test(self):
         self.run_test()
@@ -385,17 +398,14 @@ class TrtConvertMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
 class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
     def sample_program_configs(self):
-        def generate_input1(batch, dim1):
-            return np.full((batch, dim1, 768), 1).astype(np.float32)
+        def generate_input(shape):
+            return np.full(shape, 0.1).astype(np.float32)
 
-        def generate_input2(shape):
-            return np.full(shape, 1).astype(np.float32)
-
-        def generate_weight1():
-            return np.full((768, 768), 0.1).astype(np.float32)
-
-        def generate_weight2():
-            return np.full((768), 0.1).astype(np.float32)
+        def generate_weight(shape):
+            return (
+                np.random.rand(*shape).astype(np.float32).round(decimals=1) / 5
+                - 0.1
+            )
 
         for batch in [4]:
             self.batch = batch
@@ -684,36 +694,50 @@ class TrtConvertMultiHeadMatmulTestInt8(TrtConvertMultiHeadMatmulTest):
                                 ops=ops,
                                 weights={
                                     "mul1_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul2_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul3_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul4_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "elementwise_add1_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                     "elementwise_add2_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                     "elementwise_add3_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                 },
                                 inputs={
                                     "input_data1": TensorConfig(
                                         data_gen=partial(
-                                            generate_input1, batch, dim1
+                                            generate_input, (batch, dim1, 768)
                                         )
                                     ),
                                     "input_data2": TensorConfig(
                                         data_gen=partial(
-                                            generate_input2, input2_shape
+                                            generate_input, input2_shape
                                         )
                                     ),
                                 },
@@ -731,11 +755,11 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         def generate_input1(batch, length):
             return np.full((batch, length, 768), 0.1).astype(np.float32)
 
-        def generate_weight1():
-            return np.full((768, 2304), 0.1).astype(np.float32)
-
-        def generate_weight2():
-            return np.full((2304), 0.1).astype(np.float32)
+        def generate_weight(shape):
+            return (
+                np.random.rand(*shape).astype(np.float32).round(decimals=1) / 5
+                - 0.1
+            )
 
         for batch in [4]:
             self.batch = batch
@@ -911,10 +935,10 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                     ops=ops,
                     weights={
                         "matmul1_weight": TensorConfig(
-                            data_gen=partial(generate_weight1)
+                            data_gen=partial(generate_weight, (768, 2304))
                         ),
                         "elementwise_add1_weight": TensorConfig(
-                            data_gen=partial(generate_weight2)
+                            data_gen=partial(generate_weight, (2304,))
                         ),
                     },
                     inputs={
@@ -961,16 +985,19 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.workspace_size = 2013265920
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        program_config.set_input_type(np.int8)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             1e-3,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             2e-2,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-5,
             1e-5,
@@ -985,20 +1012,14 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(batch, dim1):
-            return np.full((batch, dim1, 768), 1).astype(np.float32)
+        def generate_input(shape):
+            return np.full(shape, 0.1).astype(np.float32)
 
-        def generate_input2(shape):
-            return np.full(shape, 1).astype(np.float32)
-
-        def generate_weight1():
-            return np.full((768, 768), 0.1).astype(np.float32)
-
-        def generate_weight2():
-            return np.full((768), 0.1).astype(np.float32)
-
-        def generate_weight3():
-            return np.full((768, 768), 0.1).astype(np.float32)
+        def generate_weight(shape):
+            return (
+                np.random.rand(*shape).astype(np.float32).round(decimals=1) / 5
+                - 0.1
+            )
 
         for batch in [2]:
             self.batch = batch
@@ -1263,36 +1284,50 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
                                 ops=ops,
                                 weights={
                                     "mul1_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul2_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul3_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "mul4_weight": TensorConfig(
-                                        data_gen=partial(generate_weight1)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "elementwise_add1_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                     "elementwise_add2_weight": TensorConfig(
-                                        data_gen=partial(generate_weight3)
+                                        data_gen=partial(
+                                            generate_weight, (768, 768)
+                                        )
                                     ),
                                     "elementwise_add3_weight": TensorConfig(
-                                        data_gen=partial(generate_weight2)
+                                        data_gen=partial(
+                                            generate_weight, (768,)
+                                        )
                                     ),
                                 },
                                 inputs={
                                     "input_data1": TensorConfig(
                                         data_gen=partial(
-                                            generate_input1, batch, dim1
+                                            generate_input, (batch, dim1, 768)
                                         )
                                     ),
                                     "input_data2": TensorConfig(
                                         data_gen=partial(
-                                            generate_input2, input2_shape
+                                            generate_input, input2_shape
                                         )
                                     ),
                                 },
@@ -1334,10 +1369,12 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
+        yield self.create_inference_config(), (1, 3), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-3, 1e-2)
+        program_config.set_input_type(np.float16)
+        yield self.create_inference_config(), (1, 3), (1e-2, 1e-2)
 
     def test(self):
         self.run_test()

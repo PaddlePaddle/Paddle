@@ -50,18 +50,22 @@ class Identity(Layer):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
 
-          input_tensor = paddle.randn(shape=[3, 2])
-          layer = paddle.nn.Identity()
-          out = layer(input_tensor)
-          # input_tensor: [[-0.32342386 -1.200079  ]
-          #                [ 0.7979031  -0.90978354]
-          #                [ 0.40597573  1.8095392 ]]
-          # out: [[-0.32342386 -1.200079  ]
-          #      [ 0.7979031  -0.90978354]
-          #      [ 0.40597573  1.8095392 ]]
-
+            >>> input_tensor = paddle.randn(shape=[3, 2])
+            >>> layer = paddle.nn.Identity()
+            >>> out = layer(input_tensor)
+            >>> print(input_tensor)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.41661501,  0.25904641],
+             [ 0.00979547, -0.30324230],
+             [-1.34256756, -0.76540256]])
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.41661501,  0.25904641],
+             [ 0.00979547, -0.30324230],
+             [-1.34256756, -0.76540256]])
 
     """
 
@@ -120,28 +124,35 @@ class Linear(Layer):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
 
-          # Define the linear layer.
-          weight_attr = paddle.ParamAttr(
-              name="weight",
-              initializer=paddle.nn.initializer.Constant(value=0.5))
-          bias_attr = paddle.ParamAttr(
-              name="bias",
-              initializer=paddle.nn.initializer.Constant(value=1.0))
-          linear = paddle.nn.Linear(2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
-          # linear.weight: [[0.5 0.5 0.5 0.5]
-          #                 [0.5 0.5 0.5 0.5]]
-          # linear.bias: [1. 1. 1. 1.]
+            >>> # Define the linear layer.
+            >>> weight_attr = paddle.ParamAttr(
+            ...     name="weight",
+            ...     initializer=paddle.nn.initializer.Constant(value=0.5))
+            >>> bias_attr = paddle.ParamAttr(
+            ...     name="bias",
+            ...     initializer=paddle.nn.initializer.Constant(value=1.0))
+            >>> linear = paddle.nn.Linear(2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0.50000000, 0.50000000, 0.50000000, 0.50000000],
+             [0.50000000, 0.50000000, 0.50000000, 0.50000000]])
 
-          x = paddle.randn((3, 2), dtype="float32")
-          # x: [[-0.32342386 -1.200079  ]
-          #     [ 0.7979031  -0.90978354]
-          #     [ 0.40597573  1.8095392 ]]
-          y = linear(x)
-          # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
-          #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
-          #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [1., 1., 1., 1.])
+
+            >>> x = paddle.randn((3, 2), dtype="float32")
+            >>> y = linear(x)
+            >>> print(y)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[ 0.42121571,  0.42121571,  0.42121571,  0.42121571],
+             [ 0.85327661,  0.85327661,  0.85327661,  0.85327661],
+             [-0.05398512, -0.05398512, -0.05398512, -0.05398512]])
     """
 
     def __init__(
@@ -237,19 +248,22 @@ class LinearCompress(Layer):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
 
-          # Define the linear layer.
-          paddle.set_default_dtype('float16')
-          weight_attr = paddle.ParamAttr(
-              name="weight",
-              initializer=paddle.nn.initializer.Constant(value=0.5))
-          bias_attr = paddle.ParamAttr(
-              name="bias",
-              initializer=paddle.nn.initializer.Constant(value=1.0))
-          linear = paddle.nn.LinearCompress(128, 64, weight_attr=weight_attr, bias_attr=bias_attr, bits=8, algo='weight_only')
-          x = paddle.randn((3, 128), dtype="float16")
-          y = linear(x)
+            >>> # Define the linear layer.
+            >>> paddle.set_default_dtype('float16')
+            >>> weight_attr = paddle.ParamAttr(
+            ...     name="weight",
+            ...     initializer=paddle.nn.initializer.Constant(value=0.5))
+
+            >>> bias_attr = paddle.ParamAttr(
+            ...     name="bias",
+            ...     initializer=paddle.nn.initializer.Constant(value=1.0))
+
+            >>> linear = paddle.nn.LinearCompress(128, 64, weight_attr=weight_attr, bias_attr=bias_attr, bits=8, algo='weight_only')
+            >>> x = paddle.randn((3, 128), dtype="float16")
+            >>> y = linear(x)
     """
 
     def __init__(
@@ -527,14 +541,14 @@ class Upsample(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            input = paddle.rand([2,3,6,10], dtype="float32")
-            upsample_out = paddle.nn.Upsample(size=[12,12])
+            >>> input = paddle.rand([2, 3, 6, 10], dtype="float32")
+            >>> upsample_out = paddle.nn.Upsample(size=[12, 12])
 
-            output = upsample_out(x=input)
-            print(output.shape)
-            # [2, 3, 12, 12]
+            >>> output = upsample_out(x=input)
+            >>> print(output.shape)
+            [2, 3, 12, 12]
 
     """
 
@@ -627,15 +641,15 @@ class UpsamplingNearest2D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
-            upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12,12])
-            input = paddle.to_tensor(input_data)
-            output = upsample_out(x=input)
-            print(output.shape)
-            # [2L, 3L, 12L, 12L]
+            >>> input_data = paddle.rand(shape=(2, 3, 6, 10)).astype("float32")
+            >>> upsample_out  = paddle.nn.UpsamplingNearest2D(size=[12, 12])
+            >>> input = paddle.to_tensor(input_data)
+            >>> output = upsample_out(x=input)
+            >>> print(output.shape)
+            [2, 3, 12, 12]
     """
 
     def __init__(
@@ -713,15 +727,15 @@ class UpsamplingBilinear2D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            input_data = paddle.rand(shape=(2,3,6,10)).astype("float32")
-            upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12,12])
-            input = paddle.to_tensor(input_data)
-            output = upsample_out(x=input)
-            print(output.shape)
-            # [2L, 3L, 12L, 12L]
+            >>> input_data = paddle.rand(shape=(2, 3, 6, 10)).astype("float32")
+            >>> upsample_out  = paddle.nn.UpsamplingBilinear2D(size=[12, 12])
+            >>> input = paddle.to_tensor(input_data)
+            >>> output = upsample_out(x=input)
+            >>> print(output.shape)
+            [2, 3, 12, 12]
     """
 
     def __init__(
@@ -798,15 +812,19 @@ class Bilinear(Layer):
        Tensor: A 2-D Tensor of shape [batch_size, out_features].
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        layer1 = paddle.rand((5, 5)).astype('float32')
-        layer2 = paddle.rand((5, 4)).astype('float32')
-        bilinear = paddle.nn.Bilinear(
-            in1_features=5, in2_features=4, out_features=1000)
-        result = bilinear(layer1,layer2)    # result shape [5, 1000]
+            >>> layer1 = paddle.rand((5, 5)).astype('float32')
+            >>> layer2 = paddle.rand((5, 4)).astype('float32')
+            >>> bilinear = paddle.nn.Bilinear(in1_features=5,
+            ...                               in2_features=4,
+            ...                               out_features=1000)
+
+            >>> result = bilinear(layer1,layer2)
+            >>> print(result.shape)
+            [5, 1000]
 
     """
 
@@ -897,23 +915,24 @@ class Dropout(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(2023)
 
-            x = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
-            m = paddle.nn.Dropout(p=0.5)
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype="float32")
+            >>> m = paddle.nn.Dropout(p=0.5)
 
-            y_train = m(x)
-            print(y_train)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[2., 0., 6.],
-            #         [0., 0., 0.]])
+            >>> y_train = m(x)
+            >>> print(y_train)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 4., 0.],
+             [8., 0., 0.]])
 
-            m.eval()  # switch the model to test phase
-            y_test = m(x)
-            print(y_test)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[1., 2., 3.],
-            #         [4., 5., 6.]])
+            >>> m.eval()  # switch the model to test phase
+            >>> y_test = m(x)
+            >>> print(y_test)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [4., 5., 6.]])
     """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
@@ -967,36 +986,33 @@ class Dropout2D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand([2, 2, 1, 3], dtype="float32")
+            >>> print(x)
+            Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.55355281, 0.20714243, 0.01162981]],
+              [[0.51577556, 0.36369765, 0.26091650]]],
+             [[[0.18905126, 0.56219709, 0.00808361]],
+              [[0.78120756, 0.32112977, 0.90572405]]]])
 
-            x = paddle.rand([2, 2, 1, 3], dtype="float32")
-            print(x)
-            # Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[0.10052059, 0.93890846, 0.45351565]],
-            #          [[0.47507706, 0.45021373, 0.11331241]]],
+            >>> m = paddle.nn.Dropout2D(p=0.5)
+            >>> y_train = m(x)
+            >>> print(y_train)
+            Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[1.10710561, 0.41428486, 0.02325963]],
+              [[1.03155112, 0.72739530, 0.52183300]]],
+             [[[0.        , 0.        , 0.        ]],
+              [[0.        , 0.        , 0.        ]]]])
 
-            #         [[[0.53358698, 0.97375143, 0.34997326]],
-            #          [[0.24758087, 0.52628899, 0.17970420]]]])
-
-            m = paddle.nn.Dropout2D(p=0.5)
-            y_train = m(x)
-            print(y_train)
-            # Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[0.        , 0.        , 0.        ]],
-            #          [[0.95015413, 0.90042746, 0.22662482]]],
-
-            #         [[[1.06717396, 1.94750285, 0.69994652]],
-            #          [[0.        , 0.        , 0.        ]]]])
-
-            m.eval()  # switch the model to test phase
-            y_test = m(x)
-            print(y_test)
-            # Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[0.10052059, 0.93890846, 0.45351565]],
-            #          [[0.47507706, 0.45021373, 0.11331241]]],
-
-            #         [[[0.53358698, 0.97375143, 0.34997326]],
-            #          [[0.24758087, 0.52628899, 0.17970420]]]])
+            >>> m.eval()  # switch the model to test phase
+            >>> y_test = m(x)
+            >>> print(y_test)
+            Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.55355281, 0.20714243, 0.01162981]],
+              [[0.51577556, 0.36369765, 0.26091650]]],
+             [[[0.18905126, 0.56219709, 0.00808361]],
+              [[0.78120756, 0.32112977, 0.90572405]]]])
     """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
@@ -1048,48 +1064,35 @@ class Dropout3D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.arange(24, dtype="float32").reshape((1, 2, 2, 2, 3))
-            print(x)
-            # Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[[0. , 1. , 2. ],
-            #            [3. , 4. , 5. ]],
-            #           [[6. , 7. , 8. ],
-            #            [9. , 10., 11.]]],
+            >>> x = paddle.arange(24, dtype="float32").reshape((1, 2, 2, 2, 3))
+            >>> print(x)
+            Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[0. , 1. , 2. ],
+                [3. , 4. , 5. ]],
+               [[6. , 7. , 8. ],
+                [9. , 10., 11.]]],
+              [[[12., 13., 14.],
+                [15., 16., 17.]],
+               [[18., 19., 20.],
+                [21., 22., 23.]]]]])
 
-            #          [[[12., 13., 14.],
-            #            [15., 16., 17.]],
-            #           [[18., 19., 20.],
-            #            [21., 22., 23.]]]]])
+            >>> m = paddle.nn.Dropout3D(p=0.5)
+            >>> y_train = m(x)
 
-            m = paddle.nn.Dropout3D(p=0.5)
-            y_train = m(x)
-            print(y_train)
-            # Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[[0. , 2. , 4. ],
-            #            [6. , 8. , 10.]],
-            #           [[12., 14., 16.],
-            #            [18., 20., 22.]]],
-
-            #          [[[0. , 0. , 0. ],
-            #            [0. , 0. , 0. ]],
-            #           [[0. , 0. , 0. ],
-            #            [0. , 0. , 0. ]]]]])
-
-            m.eval()  # switch the model to test phase
-            y_test = m(x)
-            print(y_test)
-            # Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[[[[0. , 1. , 2. ],
-            #            [3. , 4. , 5. ]],
-            #           [[6. , 7. , 8. ],
-            #            [9. , 10., 11.]]],
-
-            #          [[[12., 13., 14.],
-            #            [15., 16., 17.]],
-            #           [[18., 19., 20.],
-            #            [21., 22., 23.]]]]])
+            >>> m.eval()  # switch the model to test phase
+            >>> y_test = m(x)
+            >>> print(y_test)
+            Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[0. , 1. , 2. ],
+                [3. , 4. , 5. ]],
+               [[6. , 7. , 8. ],
+                [9. , 10., 11.]]],
+              [[[12., 13., 14.],
+                [15., 16., 17.]],
+               [[18., 19., 20.],
+                [21., 22., 23.]]]]])
     """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
@@ -1139,22 +1142,23 @@ class AlphaDropout(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(2023)
 
-            x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
-            m = paddle.nn.AlphaDropout(p=0.5)
-            y_train = m(x)
-            print(y_train)
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[-0.77919382,  1.66559887],
-            #         [-0.77919382, -0.77919382]])
+            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
+            >>> m = paddle.nn.AlphaDropout(p=0.5)
+            >>> y_train = m(x)
+            >>> print(y_train)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.10721093,  1.66559887],
+             [-0.77919382,  1.66559887]])
 
-            m.eval()  # switch the model to test phase
-            y_test = m(x)
-            print(y_test)
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[-1.,  1.],
-            #         [-1.,  1.]])
+            >>> m.eval()  # switch the model to test phase
+            >>> y_test = m(x)
+            >>> print(y_test)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+             [-1.,  1.]])
     """
 
     def __init__(self, p=0.5, name=None):
@@ -1201,18 +1205,19 @@ class Pad1D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            input_shape = (1, 2, 3)
-            pad = [1, 2]
-            mode = "constant"
-            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            my_pad = nn.Pad1D(padding=pad, mode=mode)
-            result = my_pad(data)
-            print(result)
-            # [[[0. 1. 2. 3. 0. 0.]
-            #   [0. 4. 5. 6. 0. 0.]]]
+            >>> input_shape = (1, 2, 3)
+            >>> pad = [1, 2]
+            >>> mode = "constant"
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.Pad1D(padding=pad, mode=mode)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0., 1., 2., 3., 0., 0.],
+              [0., 4., 5., 6., 0., 0.]]])
     """
 
     def __init__(
@@ -1271,21 +1276,22 @@ class Pad2D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            input_shape = (1, 1, 2, 3)
-            pad = [1, 0, 1, 2]
-            mode = "constant"
-            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            my_pad = nn.Pad2D(padding=pad, mode=mode)
-            result = my_pad(data)
-            print(result)
-            # [[[[0. 0. 0. 0.]
-            #    [0. 1. 2. 3.]
-            #    [0. 4. 5. 6.]
-            #    [0. 0. 0. 0.]
-            #    [0. 0. 0. 0.]]]]
+            >>> input_shape = (1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2]
+            >>> mode = "constant"
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.Pad2D(padding=pad, mode=mode)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0., 0., 0., 0.],
+               [0., 1., 2., 3.],
+               [0., 4., 5., 6.],
+               [0., 0., 0., 0.],
+               [0., 0., 0., 0.]]]])
     """
 
     def __init__(
@@ -1336,26 +1342,24 @@ class ZeroPad2D(Layer):
           The data type is same as input x.
 
     Examples:
-        Examples are as follows.
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            input_shape = paddle.to_tensor([1, 1, 2, 3])
-            pad = [1, 0, 1, 2]
-            data = paddle.arange(paddle.prod(input_shape), dtype="float32").reshape(input_shape) + 1
-
-            my_pad = nn.ZeroPad2D(padding=pad)
-            result = my_pad(data)
-
-            print(result)
-            # [[[[0. 0. 0. 0.]
-            #    [0. 1. 2. 3.]
-            #    [0. 4. 5. 6.]
-            #    [0. 0. 0. 0.]
-            #    [0. 0. 0. 0.]]]]
+            >>> input_shape = paddle.to_tensor([1, 1, 2, 3])
+            >>> pad = [1, 0, 1, 2]
+            >>> data = paddle.arange(paddle.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ZeroPad2D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0., 0., 0., 0.],
+               [0., 1., 2., 3.],
+               [0., 4., 5., 6.],
+               [0., 0., 0., 0.],
+               [0., 0., 0., 0.]]]])
     """
 
     def __init__(self, padding, data_format="NCHW", name=None):
@@ -1412,21 +1416,22 @@ class Pad3D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            input_shape = (1, 1, 1, 2, 3)
-            pad = [1, 0, 1, 2, 0, 0]
-            mode = "constant"
-            data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
-            my_pad = nn.Pad3D(padding=pad, mode=mode)
-            result = my_pad(data)
-            print(result)
-            # [[[[[0. 0. 0. 0.]
-            #     [0. 1. 2. 3.]
-            #     [0. 4. 5. 6.]
-            #     [0. 0. 0. 0.]
-            #     [0. 0. 0. 0.]]]]]
+            >>> input_shape = (1, 1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2, 0, 0]
+            >>> mode = "constant"
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.Pad3D(padding=pad, mode=mode)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[0., 0., 0., 0.],
+                [0., 1., 2., 3.],
+                [0., 4., 5., 6.],
+                [0., 0., 0., 0.],
+                [0., 0., 0., 0.]]]]])
     """
 
     def __init__(
@@ -1476,13 +1481,13 @@ class CosineSimilarity(Layer):
 
             Case 0:
                 x1 = [[0.8024077  0.9927354  0.27238318 0.8344984 ]
-                     [0.48949873 0.5797396  0.65444374 0.66510963]
-                     [0.1031398  0.9614342  0.08365563 0.6796464 ]
-                     [0.10760343 0.7461209  0.7726148  0.5801006 ]]
+                      [0.48949873 0.5797396  0.65444374 0.66510963]
+                      [0.1031398  0.9614342  0.08365563 0.6796464 ]
+                      [0.10760343 0.7461209  0.7726148  0.5801006 ]]
                 x2 = [[0.62913156 0.1536727  0.9847992  0.04591406]
-                     [0.9098952  0.15715368 0.8671125  0.3156102 ]
-                     [0.4427798  0.54136837 0.5276275  0.32394758]
-                     [0.3769419  0.8535014  0.48041078 0.9256797 ]]
+                      [0.9098952  0.15715368 0.8671125  0.3156102 ]
+                      [0.4427798  0.54136837 0.5276275  0.32394758]
+                      [0.3769419  0.8535014  0.48041078 0.9256797 ]]
                 axis = 1
                 eps = 1e-8
                 Out: [0.5275037  0.8368967  0.75037485 0.9245899]
@@ -1490,19 +1495,19 @@ class CosineSimilarity(Layer):
     Code Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            x1 = paddle.to_tensor([[1., 2., 3.],
-                                [2., 3., 4.]], dtype="float32")
-            x2 = paddle.to_tensor([[8., 3., 3.],
-                                [2., 3., 4.]], dtype="float32")
+            >>> x1 = paddle.to_tensor([[1., 2., 3.],
+            ...                        [2., 3., 4.]], dtype="float32")
+            >>> x2 = paddle.to_tensor([[8., 3., 3.],
+            ...                        [2., 3., 4.]], dtype="float32")
 
-            cos_sim_func = nn.CosineSimilarity(axis=0)
-            result = cos_sim_func(x1, x2)
-            print(result)
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.65079135, 0.98058069, 1.        ])
+            >>> cos_sim_func = nn.CosineSimilarity(axis=0)
+            >>> result = cos_sim_func(x1, x2)
+            >>> print(result)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.65079135, 0.98058069, 1.        ])
     """
 
     def __init__(self, axis=1, eps=1e-8):
@@ -1544,19 +1549,16 @@ class Embedding(Layer):
         output is a Tensor:
             out.shape = [3, 2, 16]
             out.data = [[[0.129435295, 0.244512452, ..., 0.436322452],
-                        [0.345421456, 0.524563927, ..., 0.144534654]],
-
+                         [0.345421456, 0.524563927, ..., 0.144534654]],
                         [[0.345249859, 0.124939536, ..., 0.194353745],
-                        [0.945345345, 0.435394634, ..., 0.435345365]],
-
+                         [0.945345345, 0.435394634, ..., 0.435345365]],
                         [[0.945345345, 0.435394634, ..., 0.435345365],
-                        [0.0,         0.0,         ..., 0.0        ]]]  # padding data
+                         [0.0,         0.0,         ..., 0.0        ]]]  # padding data
         The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
         It will pad all-zero data when ids is 127.
 
     Parameters:
-        num_embeddings (int): Just one element which indicate the size
-            of the dictionary of embeddings.
+        num_embeddings (int): Just one element which indicate the size of the dictionary of embeddings.
         embedding_dim (int):  Just one element which indicate the size of each embedding vector respectively.
         padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
@@ -1574,9 +1576,8 @@ class Embedding(Layer):
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example for details.
-        name(str|None, optional): For detailed information, please refer
-               to :ref:`api_guide_Name`. Usually name is no need to set and
-               None by default.
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.
@@ -1588,36 +1589,36 @@ class Embedding(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
-            embedding = paddle.nn.Embedding(4, 3, sparse=True)
+            >>> x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
+            >>> embedding = paddle.nn.Embedding(4, 3, sparse=True)
 
-            w0 = paddle.to_tensor([[0., 0., 0.],
-                                [1., 1., 1.],
-                                [2., 2., 2.],
-                                [3., 3., 3.]], dtype="float32")
-            embedding.weight.set_value(w0)
-            print(embedding.weight)
-            # Tensor(shape=[4, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[0., 0., 0.],
-            #         [1., 1., 1.],
-            #         [2., 2., 2.],
-            #         [3., 3., 3.]])
+            >>> w0 = paddle.to_tensor([[0., 0., 0.],
+            ...                        [1., 1., 1.],
+            ...                        [2., 2., 2.],
+            ...                        [3., 3., 3.]], dtype="float32")
+            >>> embedding.weight.set_value(w0)
+            >>> print(embedding.weight)
+            Parameter containing:
+            Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0., 0., 0.],
+             [1., 1., 1.],
+             [2., 2., 2.],
+             [3., 3., 3.]])
 
-            adam = paddle.optimizer.Adam(parameters=[embedding.weight], learning_rate=0.01)
-            adam.clear_grad()
+            >>> adam = paddle.optimizer.Adam(parameters=[embedding.weight], learning_rate=0.01)
+            >>> adam.clear_grad()
 
+            >>> out = embedding(x)
+            >>> print(out)
+            Tensor(shape=[3, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[0., 0., 0.]],
+             [[1., 1., 1.]],
+             [[3., 3., 3.]]])
 
-            out = embedding(x)
-            print(out)
-            # Tensor(shape=[3, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[[0., 0., 0.]],
-            #         [[1., 1., 1.]],
-            #         [[3., 3., 3.]]])
-
-            out.backward()
-            adam.step()
+            >>> out.backward()
+            >>> adam.step()
 
     """
 
@@ -1708,36 +1709,35 @@ class Unfold(Layer):
 
 
     Parameters:
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
-                                  or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
-                                  or an integer stride treated as [sride, stride].
-                                  For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
-                                  [padding_top, padding_left, padding_bottom, padding_right]
-                                  or [padding_h, padding_w] or an integer padding.
-                                  If [padding_h, padding_w] was given, it will expanded to
-                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
-                                  padding was given, [padding, padding, padding, padding] will
-                                  be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
-                                  [dilation_h, dilation_w], or an integer dilation treated as
-                                  [dilation, dilation]. For default, it will be [1, 1].
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
+        kernel_sizes(int|list): The size of convolution kernel, should be [k_h, k_w]
+            or an integer k treated as [k, k].
+        strides(int|list, optional): The strides, should be [stride_h, stride_w]
+            or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
+        paddings(int|list, optional): The paddings of each dimension, should be
+            [padding_top, padding_left, padding_bottom, padding_right] or [padding_h, padding_w]
+            or an integer padding. If [padding_h, padding_w] was given, it will expanded to
+            [padding_h, padding_w, padding_h, padding_w]. If an integer padding was given,
+            [padding, padding, padding, padding] will be used. For default,
+            paddings will be [0, 0, 0, 0].
+        dilations(int|list, optional): The dilations of convolution kernel, should be
+            [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
+            For default, it will be [1, 1].
+        name(str, optional): The default value is None. Normally there is no need for user to
+            set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            x = paddle.randn((100,3,224,224))
-            unfold = nn.Unfold(kernel_sizes=[3, 3])
-            result = unfold(x)
-            print(result)
+            >>> x = paddle.randn((100, 3, 224, 224))
+            >>> unfold = nn.Unfold(kernel_sizes=[3, 3])
+            >>> result = unfold(x)
+            >>> print(result.shape)
+            [100, 27, 49284]
+
     """
 
     def __init__(
@@ -1790,21 +1790,21 @@ class Fold(Layer):
         C_{out} &= \frac{C_{in}}{kernel\_sizes[0]\times kernel\_sizes[1]} \\
 
     Parameters:
-        output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
+        output_sizes(list):  The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional):  The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list|tuple, optional):       The paddings of each dimension, should be
+        paddings(int|list|tuple, optional):  The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional): The dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -1820,13 +1820,14 @@ class Fold(Layer):
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            x = paddle.randn([2,3*2*2,12])
-            fold = nn.Fold(output_sizes=[4, 5], kernel_sizes=2)
-            y = fold(x)
-            # y.shape = [2,3,4,5]
+            >>> x = paddle.randn([2, 3*2*2, 12])
+            >>> fold = nn.Fold(output_sizes=[4, 5], kernel_sizes=2)
+            >>> y = fold(x)
+            >>> print(y.shape)
+            [2, 3, 4, 5]
    """
 
     def __init__(
@@ -1886,12 +1887,13 @@ class Flatten(Layer):
 
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          inp = paddle.ones([5, 2, 3, 4]).astype('float32')
-          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
-          y = flatten(inp)
-          # y.shape = [5, 6, 4]
+            >>> inp = paddle.ones([5, 2, 3, 4]).astype('float32')
+            >>> flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+            >>> y = flatten(inp)
+            >>> print(y.shape)
+            [5, 6, 4]
 
     """
 
@@ -1928,15 +1930,15 @@ class Unflatten(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn(shape=[4, 6, 8])
-            shape = [2, 3]
-            axis = 1
-            unflatten = paddle.nn.Unflatten(axis, shape)
-            res = unflatten(x)
-            print(res.shape)
-            # [4, 2, 3, 8]
+            >>> x = paddle.randn(shape=[4, 6, 8])
+            >>> shape = [2, 3]
+            >>> axis = 1
+            >>> unflatten = paddle.nn.Unflatten(axis, shape)
+            >>> res = unflatten(x)
+            >>> print(res.shape)
+            [4, 2, 3, 8]
 
     """
 
