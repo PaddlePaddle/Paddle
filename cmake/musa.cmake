@@ -15,7 +15,19 @@ set(CMAKE_MODULE_PATH "${MUSA_PATH}/cmake" ${CMAKE_MODULE_PATH})
 
 find_package(MUSA REQUIRED)
 include_directories(${MUSA_PATH}/include)
-include_directories(/usr/lib/llvm-11/include/openmp/)
+
+# set openmp include directory
+set(llvm_search_list)
+foreach(item RANGE 6 20 1)
+  list(APPEND llvm_search_list /usr/lib/llvm-${item}/include/openmp/)
+endforeach()
+
+find_path(
+  OPENMP_INCLUDE_DIR omp.h
+  PATHS ${llvm_search_list}
+  REQUIRED
+  NO_DEFAULT_PATH)
+include_directories(${OPENMP_INCLUDE_DIR})
 
 macro(find_musa_version musa_version_file)
   set(python_file ${PROJECT_BINARY_DIR}/get_version.py)
@@ -68,6 +80,8 @@ find_musa_version(${MUSA_PATH}/version.json)
 list(APPEND MUSA_MCC_FLAGS -Wno-unknown-warning-option)
 list(APPEND MUSA_MCC_FLAGS -Wno-macro-redefined)
 list(APPEND MUSA_MCC_FLAGS -Wno-unused-variable)
+list(APPEND MUSA_MCC_FLAGS -Wno-deprecated-copy-with-user-provided-copy)
+list(APPEND MUSA_MCC_FLAGS -Wno-pragma-once-outside-header)
 list(APPEND MUSA_MCC_FLAGS -Wno-return-type)
 list(APPEND MUSA_MCC_FLAGS -Wno-sign-compare)
 list(APPEND MUSA_MCC_FLAGS -Wno-mismatched-tags)

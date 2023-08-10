@@ -137,13 +137,12 @@ endif()
 # Do not care if this flag is support for gcc.
 
 # https://github.com/PaddlePaddle/Paddle/issues/12773
-# TODO(@caizhi): enable -Werror 
 if(NOT WIN32)
   set(COMMON_FLAGS
       -fPIC
       -fno-omit-frame-pointer
-      -Wall
       -Werror
+      -Wall
       -Wextra
       -Wno-unused-parameter
       -Wno-unused-function

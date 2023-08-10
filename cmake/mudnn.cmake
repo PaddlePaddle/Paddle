@@ -4,6 +4,10 @@ endif()
 
 if(WIN32)
   return()
+else()
+  set(MUDNN_ROOT
+      "/usr/local/musa"
+      CACHE PATH "MUDNN ROOT")
 endif()
 
 find_path(
@@ -11,8 +15,6 @@ find_path(
   PATHS ${MUDNN_ROOT} ${MUDNN_ROOT}/include $ENV{MUDNN_ROOT}
         $ENV{MUDNN_ROOT}/include ${MUSA_TOOLKIT_INCLUDE}
   NO_DEFAULT_PATH)
-
-get_filename_component(__libpath_hist ${MUSA_MUSART_LIBRARY} PATH)
 
 set(TARGET_ARCH "x86_64")
 if(NOT ${CMAKE_SYSTEM_PROCESSOR})
@@ -27,7 +29,6 @@ list(
   ${MUDNN_ROOT}/lib
   ${MUDNN_ROOT}/lib/x64
   ${MUDNN_ROOT}/lib/${TARGET_ARCH}-linux-gnu
-  ${MUDNN_ROOT}/local/cuda-${MUSA_VERSION}/targets/${TARGET_ARCH}-linux/lib/
   $ENV{MUDNN_ROOT}
   $ENV{MUDNN_ROOT}/lib64
   $ENV{MUDNN_ROOT}/lib
@@ -44,7 +45,7 @@ endif()
 find_library(
   MUDNN_LIBRARY
   NAMES ${MUDNN_LIB_NAME}
-  PATHS ${MUDNN_CHECK_LIBRARY_DIRS} ${MUDNN_INCLUDE_DIR} ${__libpath_hist}
+  PATHS ${MUDNN_CHECK_LIBRARY_DIRS} ${MUDNN_INCLUDE_DIR}
   NO_DEFAULT_PATH
   DOC "Path to muDNN library.")
 
@@ -54,14 +55,38 @@ else()
   set(MUDNN_FOUND OFF)
 endif()
 
-# TODO(@caizhi): enable mudnn finding
-#macro(find_cudnn_version cudnn_header_file)
-#endmacro()
+macro(find_mudnn_version mudnn_version_file)
+  file(READ ${mudnn_version_file} MUDNN_VERSION_FILE_CONTENTS)
+  get_filename_component(MUDNN_LIB_PATH ${MUDNN_LIBRARY} DIRECTORY)
 
-#if(MUDNN_FOUND)
-#  find_mudnn_version(${MUDNN_INCLUDE_DIR}/mudnn.h)
-#  if(NOT MUDNN_MAJOR_VERSION)
-#    find_mudnn_version(${MUDNN_INCLUDE_DIR}/mudnn_version.h)
-#  endif()
-#endif()
+  string(REGEX MATCH "define MUDNN_VERSION_MAJOR +([0-9]+)" MUDNN_MAJOR_VERSION
+               "${MUDNN_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define MUDNN_VERSION_MAJOR +([0-9]+)" "\\1"
+               MUDNN_MAJOR_VERSION "${MUDNN_MAJOR_VERSION}")
+  string(REGEX MATCH "define MUDNN_VERSION_MINOR +([0-9]+)" MUDNN_MINOR_VERSION
+               "${MUDNN_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define MUDNN_VERSION_MINOR +([0-9]+)" "\\1"
+	       MUDNN_MINOR_VERSION "${MUDNN_MINOR_VERSION}")
+  string(REGEX MATCH "define MUDNN_VERSION_PATCH +([0-9]+)" MUDNN_PATCH_VERSION
+               "${MUDNN_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define MUDNN_VERSION_PATCH +([0-9]+)" "\\1"
+               MUDNN_PATCH_VERSION "${MUDNN_PATCH_VERSION}")
 
+  if(NOT MUDNN_MAJOR_VERSION)
+    set(MUDNN_VERSION "???")
+  else()
+    add_definitions("-DMUDNN_MAJOR_VERSION=\"${MUDNN_MAJOR_VERSION}\"")
+    math(EXPR MUDNN_VERSION "${MUDNN_MAJOR_VERSION} * 1000 +
+               ${MUDNN_MINOR_VERSION} * 100 + ${MUDNN_PATCH_VERSION}")
+    message(STATUS "Current muDNN version file is ${mudnn_version_file} ")
+    message(
+      STATUS
+        "Current muDNN version is v${MUDNN_MAJOR_VERSION}.${MUDNN_MINOR_VERSION}.${MUDNN_PATCH_VERSION}. "
+    )
+  endif()
+endmacro()
+
+if(MUDNN_FOUND)
+  find_mudnn_version(${MUDNN_INCLUDE_DIR}/mudnn_version.h)
+  include_directories(${MUDNN_INCLUDE_DIR})
+endif()
