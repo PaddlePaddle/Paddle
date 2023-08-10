@@ -184,6 +184,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
   if (CheckCUDADriverResult(dynload::hipGetDeviceCount(&count),
                             "hipGetDeviceCount")) {
 #elif defined(PADDLE_WITH_MUSA)
+	  (void)count;
   // TODO(@caizhi): enable dynload module
   // if (CheckCUDADriverResult(dynload::muDeviceGetCount(&count),
   //                           "muDeviceGetCount")) {
@@ -472,6 +473,8 @@ void GPUDeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
       errors::External("Fail to launch kernel %s (in hipModuleLaunchKernel.)",
                        name_.c_str()));
 #elif defined(PADDLE_WITH_MUSA)
+  (void)num_blocks;
+  (void)dev_ctx;
   // TODO(@caizhi): enable dynload module
   // PADDLE_ENFORCE_EQ(
   //     dynload::muLaunchKernel(function_,

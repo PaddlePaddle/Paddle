@@ -143,6 +143,7 @@ if(NOT WIN32)
       -fPIC
       -fno-omit-frame-pointer
       -Wall
+      -Werror
       -Wextra
       -Wno-unused-parameter
       -Wno-unused-function

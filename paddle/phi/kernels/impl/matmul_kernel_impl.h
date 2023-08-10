@@ -1022,6 +1022,7 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
  
+  (void)blas;
   // TODO(@caizhi): enable it
   //blas.MatMul(x_matrix, y_matrix, out);
   if (z_dim.size() != 2) {
