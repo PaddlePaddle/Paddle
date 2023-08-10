@@ -102,7 +102,7 @@ def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
 )
 class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def setUp(self):
-        self.shape = [1, 16, 2, 16]
+        self.shape = [1, 8, 2, 16]
         self.dtype = 'float32'
         self.training = True
         self.seed = 1203
