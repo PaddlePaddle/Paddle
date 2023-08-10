@@ -42,10 +42,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   ~NewIRInterpreter();
 
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors) override;
-
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
@@ -92,10 +88,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
  private:
   // build graph
-  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
-  void BuildOperatorDependences();
-  void BuildAndCacheInstructionCtx(Instruction* instr_node);
-  void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
   void AnalyseExecuteOrderForTrace(
       std::map<size_t, std::set<size_t>> op_downstream_map,
@@ -103,38 +95,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void ConstructEventForJitInput();
   void CalculateLastLiveOps();
 
-  // inplace
-  void BuildInplace();
-  bool BuildInplaceCheckVarIsOnlyInput(
-      const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
-  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
-
   // cuda graph
   void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
   void PrepareForCUDAGraphCapture();
-
-  // execution
-  void RunImpl();
-  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
-  void RunInstructionAsync(size_t instr_id);
-  void RunInstruction(const Instruction& instr_node);
-  void RunNextInstructions(const Instruction& instr_id,
-                           SchedulingQueue* reserved_next_ops);
-  void RunOperator(const Instruction& instr_node);
-  // Trace
-  void TraceInstructionList(const std::vector<Instruction>& vec_instr);
-
-  // only used when program contains no feed op
-  void Prepare(const std::vector<std::string>& feed_names,
-               const std::vector<phi::DenseTensor>& feed_tensors,
-               bool prepare_feed);
-
-  void RecordMemcpyD2H(const Instruction& instr_node);
-
-  // gc
-  void RecordStreamForGC(const Instruction& instr);
-  void CheckGC(const Instruction& instr);
-  void ClearLoDTensorArrayInLocalScope();
 
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
@@ -155,27 +118,12 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   const platform::Place place_;
 
-  interpreter::DependencyBuilder dependency_builder_;
-  interpreter::StreamAnalyzer stream_analyzer_;
-
-  // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
-  // copy a new program and block, the copy_program_ here is used to
-  // hold the program, otherwise block_ maybe not valid after the
-  // new program is deleted.
-  std::shared_ptr<ProgramDesc> copy_program_{nullptr};
-
   // from variable scope
-  std::vector<Variable*> var_list_;
-  std::map<std::string, int> name2id_;
-  std::vector<VariableMetaInfo> vec_meta_info_;
-
-  std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
   std::atomic<size_t> unfinished_op_number_{0};
 
   ExecutionConfig execution_config_;
 
-  VariableScope var_scope_;
   Scope* scope_{nullptr};
   Scope* local_scope_{nullptr};  // not owned
 
@@ -202,10 +150,6 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   // used for Trace
   int64_t sync_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
-
-  InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
-
-  std::vector<HookFunc> hookfuncs_;
 
   /// ======================== ///
   ///        For new ir        ///
