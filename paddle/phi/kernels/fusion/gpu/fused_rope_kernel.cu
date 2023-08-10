@@ -32,10 +32,9 @@ void FusedRopeKernel(const Context& dev_ctx,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
-  int numel = q.numel();
+  int64_t numel = q.numel();
   if (numel <= 0) return;
   dev_ctx.template Alloc<T>(out_q);
-  out_q->Resize(q.dims());
   // small size for broadcast
   auto batch_size = q.dims()[0];
   auto num_heads = q.dims()[2];
@@ -51,8 +50,8 @@ void FusedRopeKernel(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
 
-  int grid = config.block_per_grid.x;
-  int block = config.thread_per_block.x;
+  int64_t grid = config.block_per_grid.x;
+  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
@@ -65,7 +64,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   if (k.get_ptr()) {
     dev_ctx.template Alloc<T>(out_k);
-    out_k->Resize(q.dims());
     ins_data[1] = k->data<T>();
     outs_data[1] = out_k->data<T>();
     num_inputs++;
@@ -73,7 +71,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   if (v.get_ptr()) {
     dev_ctx.template Alloc<T>(out_v);
-    out_v->Resize(q.dims());
     ins_data[2] = v->data<T>();
     outs_data[2] = out_v->data<T>();
     num_inputs++;

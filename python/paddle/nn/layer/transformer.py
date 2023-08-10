@@ -141,14 +141,16 @@ class MultiHeadAttention(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # encoder input: [batch_size, sequence_length, d_model]
-            query = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, num_heads, query_len, query_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
-            output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, sequence_length, d_model]
+            >>> query = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, num_heads, query_len, query_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
+            >>> output = multi_head_attn(query, None, None, attn_mask=attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     Cache = collections.namedtuple("Cache", ["k", "v"])
@@ -490,15 +492,17 @@ class TransformerEncoderLayer(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerEncoderLayer
+            >>> import paddle
+            >>> from paddle.nn import TransformerEncoderLayer
 
-            # encoder input: [batch_size, src_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, n_head, src_len, src_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            encoder_layer = TransformerEncoderLayer(128, 2, 512)
-            enc_output = encoder_layer(enc_input, attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, src_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, n_head, src_len, src_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> encoder_layer = TransformerEncoderLayer(128, 2, 512)
+            >>> enc_output = encoder_layer(enc_input, attn_mask)
+            >>> print(enc_output.shape)
+            [2, 4, 128]
     """
 
     def __init__(
@@ -659,16 +663,18 @@ class TransformerEncoder(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerEncoderLayer, TransformerEncoder
+            >>> import paddle
+            >>> from paddle.nn import TransformerEncoderLayer, TransformerEncoder
 
-            # encoder input: [batch_size, src_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, n_head, src_len, src_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            encoder_layer = TransformerEncoderLayer(128, 2, 512)
-            encoder = TransformerEncoder(encoder_layer, 2)
-            enc_output = encoder(enc_input, attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, src_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, n_head, src_len, src_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> encoder_layer = TransformerEncoderLayer(128, 2, 512)
+            >>> encoder = TransformerEncoder(encoder_layer, 2)
+            >>> enc_output = encoder(enc_input, attn_mask)
+            >>> print(enc_output.shape)
+            [2, 4, 128]
     """
 
     def __init__(self, encoder_layer, num_layers, norm=None):
@@ -809,22 +815,24 @@ class TransformerDecoderLayer(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerDecoderLayer
+            >>> import paddle
+            >>> from paddle.nn import TransformerDecoderLayer
 
-            # decoder input: [batch_size, tgt_len, d_model]
-            dec_input = paddle.rand((2, 4, 128))
-            # encoder output: [batch_size, src_len, d_model]
-            enc_output = paddle.rand((2, 6, 128))
-            # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
-            self_attn_mask = paddle.rand((2, 2, 4, 4))
-            # cross attention mask: [batch_size, n_head, tgt_len, src_len]
-            cross_attn_mask = paddle.rand((2, 2, 4, 6))
-            decoder_layer = TransformerDecoderLayer(128, 2, 512)
-            output = decoder_layer(dec_input,
-                                   enc_output,
-                                   self_attn_mask,
-                                   cross_attn_mask)  # [2, 4, 128]
+            >>> # decoder input: [batch_size, tgt_len, d_model]
+            >>> dec_input = paddle.rand((2, 4, 128))
+            >>> # encoder output: [batch_size, src_len, d_model]
+            >>> enc_output = paddle.rand((2, 6, 128))
+            >>> # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
+            >>> self_attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> # cross attention mask: [batch_size, n_head, tgt_len, src_len]
+            >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
+            >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
+            >>> output = decoder_layer(dec_input,
+            ...                        enc_output,
+            ...                        self_attn_mask,
+            ...                        cross_attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     def __init__(
@@ -1031,23 +1039,25 @@ class TransformerDecoder(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerDecoderLayer, TransformerDecoder
+            >>> import paddle
+            >>> from paddle.nn import TransformerDecoderLayer, TransformerDecoder
 
-            # decoder input: [batch_size, tgt_len, d_model]
-            dec_input = paddle.rand((2, 4, 128))
-            # encoder output: [batch_size, src_len, d_model]
-            enc_output = paddle.rand((2, 6, 128))
-            # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
-            self_attn_mask = paddle.rand((2, 2, 4, 4))
-            # cross attention mask: [batch_size, n_head, tgt_len, src_len]
-            cross_attn_mask = paddle.rand((2, 2, 4, 6))
-            decoder_layer = TransformerDecoderLayer(128, 2, 512)
-            decoder = TransformerDecoder(decoder_layer, 2)
-            output = decoder(dec_input,
-                             enc_output,
-                             self_attn_mask,
-                             cross_attn_mask)  # [2, 4, 128]
+            >>> # decoder input: [batch_size, tgt_len, d_model]
+            >>> dec_input = paddle.rand((2, 4, 128))
+            >>> # encoder output: [batch_size, src_len, d_model]
+            >>> enc_output = paddle.rand((2, 6, 128))
+            >>> # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
+            >>> self_attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> # cross attention mask: [batch_size, n_head, tgt_len, src_len]
+            >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
+            >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
+            >>> decoder = TransformerDecoder(decoder_layer, 2)
+            >>> output = decoder(dec_input,
+            ...                  enc_output,
+            ...                  self_attn_mask,
+            ...                  cross_attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     def __init__(self, decoder_layer, num_layers, norm=None):
@@ -1242,25 +1252,27 @@ class Transformer(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Transformer
+            >>> import paddle
+            >>> from paddle.nn import Transformer
 
-            # src: [batch_size, tgt_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # tgt: [batch_size, src_len, d_model]
-            dec_input = paddle.rand((2, 6, 128))
-            # src_mask: [batch_size, n_head, src_len, src_len]
-            enc_self_attn_mask = paddle.rand((2, 2, 4, 4))
-            # tgt_mask: [batch_size, n_head, tgt_len, tgt_len]
-            dec_self_attn_mask = paddle.rand((2, 2, 6, 6))
-            # memory_mask: [batch_size, n_head, tgt_len, src_len]
-            cross_attn_mask = paddle.rand((2, 2, 6, 4))
-            transformer = Transformer(128, 2, 4, 4, 512)
-            output = transformer(enc_input,
-                                 dec_input,
-                                 enc_self_attn_mask,
-                                 dec_self_attn_mask,
-                                 cross_attn_mask)  # [2, 6, 128]
+            >>> # src: [batch_size, tgt_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # tgt: [batch_size, src_len, d_model]
+            >>> dec_input = paddle.rand((2, 6, 128))
+            >>> # src_mask: [batch_size, n_head, src_len, src_len]
+            >>> enc_self_attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> # tgt_mask: [batch_size, n_head, tgt_len, tgt_len]
+            >>> dec_self_attn_mask = paddle.rand((2, 2, 6, 6))
+            >>> # memory_mask: [batch_size, n_head, tgt_len, src_len]
+            >>> cross_attn_mask = paddle.rand((2, 2, 6, 4))
+            >>> transformer = Transformer(128, 2, 4, 4, 512)
+            >>> output = transformer(enc_input,
+            ...                      dec_input,
+            ...                      enc_self_attn_mask,
+            ...                      dec_self_attn_mask,
+            ...                      cross_attn_mask)
+            >>> print(output.shape)
+            [2, 6, 128]
     """
 
     def __init__(
@@ -1454,20 +1466,20 @@ class Transformer(Layer):
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.nn.layer.transformer import Transformer
-                length = 5
-                d_model, n_head, dim_feedforward = 8, 4, 64
-                transformer_paddle = Transformer(
-                    d_model, n_head, dim_feedforward=dim_feedforward)
-                mask = transformer_paddle.generate_square_subsequent_mask(length)
-                print(mask)
-
-                # [[  0. -inf -inf -inf -inf]
-                # [  0.   0. -inf -inf -inf]
-                # [  0.   0.   0. -inf -inf]
-                # [  0.   0.   0.   0. -inf]
-                # [  0.   0.   0.   0.   0.]]
+                >>> import paddle
+                >>> from paddle.nn.layer.transformer import Transformer
+                >>> length = 5
+                >>> d_model, n_head, dim_feedforward = 8, 4, 64
+                >>> transformer_paddle = Transformer(
+                ...     d_model, n_head, dim_feedforward=dim_feedforward)
+                >>> mask = transformer_paddle.generate_square_subsequent_mask(length)
+                >>> print(mask)
+                Tensor(shape=[5, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 0.  , -inf., -inf., -inf., -inf.],
+                 [ 0.  ,  0.  , -inf., -inf., -inf.],
+                 [ 0.  ,  0.  ,  0.  , -inf., -inf.],
+                 [ 0.  ,  0.  ,  0.  ,  0.  , -inf.],
+                 [ 0.  ,  0.  ,  0.  ,  0.  ,  0.  ]])
 
         """
         return paddle.tensor.triu(

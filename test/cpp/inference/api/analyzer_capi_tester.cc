@@ -74,7 +74,7 @@ void zero_copy_run() {
 
 TEST(PD_PredictorZeroCopyRun, zero_copy_run) { zero_copy_run(); }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(PD_AnalysisConfig, profile_mkldnn) {
   std::string model_dir = FLAGS_infer_model;
   std::string prog_file = model_dir + "/model";

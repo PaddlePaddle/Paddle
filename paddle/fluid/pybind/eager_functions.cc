@@ -513,8 +513,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize phi tensor operants successfully";
   }
 
@@ -707,8 +707,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     if (require_any_grad && (vec_map.size() > 1)) {
       VLOG(6) << " Construct Grad for Custom Op: " << op_type;
       ConstructFwdAndBwdMap(vec_map, op_type);
-      for (size_t i = 0; i < outs_auto_grad_metas.size(); ++i) {
-        egr::EagerUtils::PassStopGradient(false, outs_auto_grad_metas[i]);
+      for (auto& outs_auto_grad_meta : outs_auto_grad_metas) {
+        egr::EagerUtils::PassStopGradient(false, outs_auto_grad_meta);
       }
       // Note(HongyuJia): In dygraph eager mode, CheckInplace makes sure leaf
       // nodes set stop_gradient=True. However, dygraph mode can also outputs
@@ -755,32 +755,32 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       }
 
       // Prepare Grad inputs with fwd outputs
-      for (auto it = slot_map[0][2].begin(); it != slot_map[0][2].end(); it++) {
-        VLOG(7) << "Prepare fwd_outs: " << it->first
-                << " to grad_inputs: " << it->second;
-        grad_node->fwd_outs[it->second] =
+      for (auto item : slot_map[0][2]) {
+        VLOG(7) << "Prepare fwd_outs: " << item.first
+                << " to grad_inputs: " << item.second;
+        grad_node->fwd_outs[item.second] =
             egr::RunCustomOpNode::ConstructTensorWrapper(
-                ctx.OutputsBetween(ctx.OutputRangeAt(it->first).first,
-                                   ctx.OutputRangeAt(it->first).second));
+                ctx.OutputsBetween(ctx.OutputRangeAt(item.first).first,
+                                   ctx.OutputRangeAt(item.first).second));
       }
 
       // Prepare Grad inputs with fwd inputs
-      for (auto it = slot_map[0][3].begin(); it != slot_map[0][3].end(); it++) {
-        VLOG(7) << "Prepare fwd_ins: " << it->first
-                << " to grad_inputs: " << it->second;
-        grad_node->fwd_ins[it->second] =
+      for (auto item : slot_map[0][3]) {
+        VLOG(7) << "Prepare fwd_ins: " << item.first
+                << " to grad_inputs: " << item.second;
+        grad_node->fwd_ins[item.second] =
             egr::RunCustomOpNode::ConstructTensorWrapper(
-                ctx.InputsBetween(ctx.InputRangeAt(it->first).first,
-                                  ctx.InputRangeAt(it->first).second));
+                ctx.InputsBetween(ctx.InputRangeAt(item.first).first,
+                                  ctx.InputRangeAt(item.first).second));
       }
 
       const std::vector<paddle::any>& res_attrs = ctx.Attrs();
       std::vector<paddle::any> attrs(res_attrs.size());
       // Prepare attrs for Grad node
-      for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {
-        VLOG(7) << "Prepare fwd attrs: " << it->first
-                << " to grad_attrs: " << it->second;
-        attrs[it->second] = res_attrs[it->first];
+      for (auto item : slot_map[0][4]) {
+        VLOG(7) << "Prepare fwd attrs: " << item.first
+                << " to grad_attrs: " << item.second;
+        attrs[item.second] = res_attrs[item.first];
       }
       grad_node->SetAttrs(attrs);
     }
@@ -1258,7 +1258,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
     PADDLE_ENFORCE_NE(grad,
                       nullptr,
                       paddle::platform::errors::Fatal(
-                          "Detected NULL grad"
+                          "Detected nullptr grad"
                           "Please check if you have manually cleared"
                           "the grad inside autograd_meta"));
     if ((*grad).initialized() && ((*grad).dtype() == phi::DataType::FLOAT16 ||
@@ -1278,90 +1278,90 @@ PyMethodDef variable_functions[] = {
     {"scale",
      (PyCFunction)(void (*)())eager_api_scale,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_add_backward_final_hook",
      (PyCFunction)(void (*)())eager_api__add_backward_final_hook,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"run_backward",
      (PyCFunction)(void (*)())eager_api_run_backward,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"run_partial_grad",
      (PyCFunction)(void (*)())eager_api_run_partial_grad,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_get_custom_operator_inplace_map",
      (PyCFunction)(void (*)(
          void))eager_api__get_custom_operator_inplace_reverse_idx,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_run_custom_op",
      (PyCFunction)(void (*)())eager_api_run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"tensor_copy",
      (PyCFunction)(void (*)())eager_api_tensor_copy,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_all_grads",
      (PyCFunction)(void (*)())eager_api_get_all_grads,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_grads_lists",
      (PyCFunction)(void (*)())eager_api_get_grads_lists,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_grads_types",
      (PyCFunction)(void (*)())eager_api_get_grads_types,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"read_next_tensor_list",
      (PyCFunction)(void (*)())eager_api_read_next_tensor_list,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"jit_function_call",
      (PyCFunction)(void (*)())eager_api_jit_function_call,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     /**sparse functions**/
     {"sparse_coo_tensor",
      (PyCFunction)(void (*)())eager_api_sparse_coo_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"sparse_csr_tensor",
      (PyCFunction)(void (*)())eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"register_saved_tensors_hooks",
      (PyCFunction)(void (*)())eager_api_register_saved_tensors_hooks,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"reset_saved_tensors_hooks",
      (PyCFunction)(void (*)())eager_api_reset_saved_tensors_hooks,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     /**amp functions**/
     {"set_master_grads",
      (PyCFunction)(void (*)())eager_api_set_master_grads,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
 /**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)
     {"async_read",
      (PyCFunction)(void (*)())eager_api_async_read,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"async_write",
      (PyCFunction)(void (*)())eager_api_async_write,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"to_uva_tensor",
      (PyCFunction)(void (*)())eager_api_to_uva_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
 #endif
-    {NULL, NULL, 0, NULL}};
+    {nullptr, nullptr, 0, nullptr}};
 
 void BindFunctions(PyObject* module) {
   if (PyModule_AddFunctions(module, variable_functions) < 0) {
