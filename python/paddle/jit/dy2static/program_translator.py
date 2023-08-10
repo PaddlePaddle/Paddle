@@ -987,6 +987,15 @@ class ASTStaticFunction(StaticFunction):
                 return concrete_program
             else:
                 if cached_program_len != 0:
+                    logging_utils.warn(
+                        "No input_spec is found, save cached program instead"
+                    )
+                    if cached_program_len > 1:
+                        logging_utils.warn(
+                            "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
+                                self._function_spec, cached_program_len
+                            )
+                        )
                     if with_hook:
                         cache_key = self._program_cache._recent_cache_key
                         cache_key.kwargs["with_hook"] = True
@@ -1002,15 +1011,6 @@ class ASTStaticFunction(StaticFunction):
                             )
                             return concrete_program
                     else:
-                        logging_utils.warn(
-                            "No input_spec is found, save cached program instead"
-                        )
-                        if cached_program_len > 1:
-                            logging_utils.warn(
-                                "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
-                                    self._function_spec, cached_program_len
-                                )
-                            )
                         cache_key, (
                             concrete_program,
                             partial_layer,
