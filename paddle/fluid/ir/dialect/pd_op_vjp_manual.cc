@@ -38,7 +38,7 @@ std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (tensor_res[0][0].impl()) {
+  if (tensor_res[0][0].defined()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
@@ -63,7 +63,7 @@ std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (tensor_res[0][0].impl()) {
+  if (tensor_res[0][0].defined()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
@@ -90,7 +90,7 @@ std::vector<std::vector<ir::OpResult>> MeanOp::Vjp(
       primitive::experimental::mean_vjp(
           x, out_grad, axis, keepdim, reduce_all, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (tensor_res[0][0].impl()) {
+  if (tensor_res[0][0].defined()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
@@ -114,7 +114,7 @@ std::vector<std::vector<ir::OpResult>> AddOp::Vjp(
       primitive::experimental::add_vjp(x, y, out_grad, axis, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(2, std::vector<ir::OpResult>(1));
   for (size_t i = 0; i < 2; ++i) {
-    if (tensor_res[i][0].impl()) {
+    if (tensor_res[i][0].defined()) {
       res[i][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                       tensor_res[i][0].impl())
                       ->getValue()
@@ -139,7 +139,7 @@ std::vector<std::vector<ir::OpResult>> Add_Op::Vjp(
       primitive::experimental::add_vjp(x, y, out_grad, axis, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(2, std::vector<ir::OpResult>(1));
   for (size_t i = 0; i < 2; ++i) {
-    if (tensor_res[i][0].impl()) {
+    if (tensor_res[i][0].defined()) {
       res[i][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                       tensor_res[i][0].impl())
                       ->getValue()
