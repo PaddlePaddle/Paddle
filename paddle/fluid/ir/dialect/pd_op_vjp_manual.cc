@@ -35,7 +35,7 @@ std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (!stop_gradients[0][0]) {
+  if (tensor_res[0][0].impl()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
@@ -60,7 +60,7 @@ std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (!stop_gradients[0][0]) {
+  if (tensor_res[0][0].impl()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
@@ -89,7 +89,7 @@ std::vector<std::vector<ir::OpResult>> MeanOp::Vjp(
       primitive::experimental::mean_vjp(
           x, out_grad, axis, keepdim, reduce_all, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (!stop_gradients[0][0]) {
+  if (tensor_res[0][0].impl()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
