@@ -462,15 +462,16 @@ def scaled_dot_product_attention(
                     The dtype can be float16 or bfloat16.
 
     Examples:
-        .. code-block:: python
+    .. code-block:: python
 
-            # required: skiptest
-            import paddle
+        # required: skiptest
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
-            output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
-            print(output)
-    """
+        >>> # xdoctest: +SKIP()
+        >>> import paddle
+        >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
+        >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
+        >>> print(output)
+        >>> # xdoctest: -SKIP"""
     if attn_mask is None:
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
     else:
