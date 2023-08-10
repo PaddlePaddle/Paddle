@@ -561,7 +561,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
-    VLOG(6) << "Get kernel type ";
 
     if (NeedFallBackCpu((op_item), kernel_fn_str, kernel_key)) {
       kernel_key.set_backend(phi::Backend::CPU);
