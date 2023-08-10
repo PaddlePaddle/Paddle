@@ -567,4 +567,32 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
 
 #undef CONDITION_FUNC
 
+#define GROUP_CONDITION_FUNC(func)                         \
+  inline bool func(const std::shared_ptr<Group>& producer, \
+                   const std::shared_ptr<Group>& consumer)
+
+GROUP_CONDITION_FUNC(always_fuse) { return true; }
+
+GROUP_CONDITION_FUNC(no_fuse) { return false; }
+
+GROUP_CONDITION_FUNC(is_same_shape) { return true; }
+
+GROUP_CONDITION_FUNC(is_same_size) { return true; }
+
+GROUP_CONDITION_FUNC(without_last_dimension_in_reduce) { return true; }
+
+GROUP_CONDITION_FUNC(reduce_fuse_reduce) { return true; }
+
+GROUP_CONDITION_FUNC(is_horizontal_relation) { return true; };
+
+GROUP_CONDITION_FUNC(horizontal_or_vertical_reduce_relation) { return true; }
+
+GROUP_CONDITION_FUNC(horizontal_or_can_inline) { return true; }
+
+GROUP_CONDITION_FUNC(horizontal_with_same_size) { return true; }
+
+GROUP_CONDITION_FUNC(reduce_fuse_broadcast) { return true; }
+
+#undef CONDITION_FUNC
+
 }  // namespace ir

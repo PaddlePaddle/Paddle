@@ -1,3 +1,5 @@
+add_subdirectory(cinn)
+
 cc_library(
   transform_general_functions
   SRCS transform_general_functions.cc
@@ -18,3 +20,8 @@ cc_library(
   fusion_merge_pass
   SRCS fusion_merge_pass.cc
   DEPS phi_utils pd_interface pd_trait ir)
+
+cc_library(
+  general_fusion_merge_pass
+  SRCS general_fusion_merge_pass.cc
+  DEPS phi_utils pd_interface fusion_merge_pass pd_trait ir)

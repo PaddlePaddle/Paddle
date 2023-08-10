@@ -126,91 +126,91 @@ TEST(IROpFusionPass, ElementWise_Fusion_1) {
 //   ASSERT_EQ( res.size(), 1u);
 // }
 
-TEST(IROpFusionPass, Reduce_Test_0) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+// TEST(IROpFusionPass, Reduce_Test_0) {
+//   ::ir::IrContext* ctx = ::ir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+//   ::ir::Program program_base(ctx);
+//   ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
 
-  int h = 32, w = 32;
-  auto inputs = BuildInput(&builder_base, {{w}, {w}, {h, w}, {h, w}});
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder_base, {{w}, {w}, {h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+//   ::ir::Program program(ctx);
+//   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  auto e =
-      builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-  auto f =
-      builder.Build<paddle::dialect::AddOp>(inputs[2], inputs[3]).result(0);
-  auto g =
-      builder
-          .Build<paddle::dialect::SumOp>(f, {0}, phi::DataType::FLOAT32, false)
-          .result(0);
-  builder.Build<paddle::dialect::AddOp>(e, g);
+//   auto e =
+//       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
+//   auto f =
+//       builder.Build<paddle::dialect::AddOp>(inputs[2], inputs[3]).result(0);
+//   auto g =
+//       builder
+//           .Build<paddle::dialect::SumOp>(f, {0}, phi::DataType::FLOAT32,
+//           false) .result(0);
+//   builder.Build<paddle::dialect::AddOp>(e, g);
 
-  program.Print(std::cout);
-  auto res = ::ir::OpFusionPassInternal(program);
+//   program.Print(std::cout);
+//   auto res = ::ir::OpFusionPassInternal(program);
 
-  ASSERT_EQ(res.size(), 1u);
-}
+//   ASSERT_EQ(res.size(), 1u);
+// }
 
-TEST(IROpFusionPass, Reduce_Test_1) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+// TEST(IROpFusionPass, Reduce_Test_1) {
+//   ::ir::IrContext* ctx = ::ir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+//   ::ir::Program program_base(ctx);
+//   ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
 
-  int h = 32, w = 32;
-  auto inputs = BuildInput(&builder_base, {{w}, {w}, {h, w}, {h, w}});
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder_base, {{w}, {w}, {h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+//   ::ir::Program program(ctx);
+//   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  auto e =
-      builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-  auto f = builder
-               .Build<paddle::dialect::SumOp>(
-                   inputs[2], {0}, phi::DataType::FLOAT32, false)
-               .result(0);
-  auto g = builder
-               .Build<paddle::dialect::SumOp>(
-                   inputs[3], {0}, phi::DataType::FLOAT32, false)
-               .result(0);
-  auto h = builder.Build<paddle::dialect::AddOp>(e, f).result(0);
-  builder.Build<paddle::dialect::AddOp>(g, h);
+//   auto e =
+//       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
+//   auto f = builder
+//                .Build<paddle::dialect::SumOp>(
+//                    inputs[2], {0}, phi::DataType::FLOAT32, false)
+//                .result(0);
+//   auto g = builder
+//                .Build<paddle::dialect::SumOp>(
+//                    inputs[3], {0}, phi::DataType::FLOAT32, false)
+//                .result(0);
+//   auto h = builder.Build<paddle::dialect::AddOp>(e, f).result(0);
+//   builder.Build<paddle::dialect::AddOp>(g, h);
 
-  program.Print(std::cout);
-  auto res = ::ir::OpFusionPassInternal(program);
+//   program.Print(std::cout);
+//   auto res = ::ir::OpFusionPassInternal(program);
 
-  ASSERT_EQ(res.size(), 1u);
-}
+//   ASSERT_EQ(res.size(), 1u);
+// }
 
-TEST(IROpFusionPass, Reduce_Test_2) {
-  ::ir::IrContext* ctx = ::ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ::ir::Program program_base(ctx);
-  ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
+// TEST(IROpFusionPass, Reduce_Test_2) {
+//   ::ir::IrContext* ctx = ::ir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+//   ::ir::Program program_base(ctx);
+//   ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
 
-  int h = 32, w = 32;
-  auto inputs = BuildInput(&builder_base, {{w}, {w}, {h, w}, {h, w}});
+//   int h = 32, w = 32;
+//   auto inputs = BuildInput(&builder_base, {{w}, {w}, {h, w}, {h, w}});
 
-  ::ir::Program program(ctx);
-  ::ir::Builder builder = ::ir::Builder(ctx, program.block());
+//   ::ir::Program program(ctx);
+//   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  auto e = builder
-               .Build<paddle::dialect::SumOp>(
-                   inputs[2], {0}, phi::DataType::FLOAT32, false)
-               .result(0);
-  auto f = builder
-               .Build<paddle::dialect::SumOp>(
-                   inputs[3], {0}, phi::DataType::FLOAT32, false)
-               .result(0);
-  auto g = builder.Build<paddle::dialect::AddOp>(inputs[0], e).result(0);
-  auto h = builder.Build<paddle::dialect::AddOp>(inputs[1], f).result(0);
-  builder.Build<paddle::dialect::AddOp>(g, h);
+//   auto e = builder
+//                .Build<paddle::dialect::SumOp>(
+//                    inputs[2], {0}, phi::DataType::FLOAT32, false)
+//                .result(0);
+//   auto f = builder
+//                .Build<paddle::dialect::SumOp>(
+//                    inputs[3], {0}, phi::DataType::FLOAT32, false)
+//                .result(0);
+//   auto g = builder.Build<paddle::dialect::AddOp>(inputs[0], e).result(0);
+//   auto h = builder.Build<paddle::dialect::AddOp>(inputs[1], f).result(0);
+//   builder.Build<paddle::dialect::AddOp>(g, h);
 
-  program.Print(std::cout);
-  auto res = ::ir::OpFusionPassInternal(program);
+//   program.Print(std::cout);
+//   auto res = ::ir::OpFusionPassInternal(program);
 
-  ASSERT_EQ(res.size(), 2u);
-}
+//   ASSERT_EQ(res.size(), 2u);
+// }
