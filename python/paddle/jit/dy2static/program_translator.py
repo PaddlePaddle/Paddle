@@ -422,7 +422,8 @@ class StaticFunction:
             # first encouter the bound function of layer and cache it.
             new_static_layer = self._clone()
             if (
-                self._dygraph_function.__name__
+                isinstance(instance, layers.Layer)
+                and self._dygraph_function.__name__
                 not in instance._original_funcs.keys()
             ):
                 instance._original_funcs[
