@@ -42,12 +42,12 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   ~NewIRInterpreter();
 
+  paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      const std::vector<phi::DenseTensor>& feed_tensors) override;
+
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
-
-  paddle::framework::FetchList BetaRun(
-      const std::vector<std::string>& feed_names,
-      bool need_fetch = true) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 

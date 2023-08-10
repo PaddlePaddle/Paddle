@@ -195,7 +195,7 @@ class TestPSPassWithBow(unittest.TestCase):
 
         fleet.init(role)
         loss, acc, _ = self.net()
-        optimizer = fluid.optimizer.SGD(base_lr)
+        optimizer = paddle.optimizer.SGD(base_lr)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True

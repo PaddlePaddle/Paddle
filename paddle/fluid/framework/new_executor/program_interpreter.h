@@ -48,10 +48,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
-  paddle::framework::FetchList BetaRun(
-      const std::vector<std::string>& feed_names,
-      bool need_fetch = true) override;
-
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;

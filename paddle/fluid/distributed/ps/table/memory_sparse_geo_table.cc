@@ -138,7 +138,7 @@ int32_t MemorySparseGeoTable::Initialize() {
     shards_task.reset(new ::ThreadPool(1));
   }
 
-  _local_shards.reset(new shard_type[_task_pool_size]);
+  _local_shards.reset(new shard_type[_task_pool_size]);  // NOLINT
   return 0;
 }
 
