@@ -151,6 +151,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   int64_t sync_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
+  std::vector<HookFunc> hookfuncs_;
+
   /// ======================== ///
   ///        For new ir        ///
   /// ======================== ///
