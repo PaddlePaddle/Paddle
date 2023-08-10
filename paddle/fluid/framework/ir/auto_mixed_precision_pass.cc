@@ -249,7 +249,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
     subgraphes_[i] = graph->GetSubGraph(i);
     all_op_nodes_[i] = TopologySortOperations(*subgraphes_[i]);
     VLOG(4) << "subgraph " << i << " has " << all_op_nodes_[i].size()
-            << "op nodes";
+            << " op nodes";
     for (auto* var_node : subgraphes_[i]->Nodes()) {
       if (!var_node->IsVar()) continue;
 

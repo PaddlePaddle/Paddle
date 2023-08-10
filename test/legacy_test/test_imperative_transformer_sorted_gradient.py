@@ -1142,16 +1142,16 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 )
                 with fluid.default_main_program()._lr_schedule_guard():
                     learning_rate = lr_decay * TrainTaskConfig.learning_rate
-                optimizer = fluid.optimizer.Adam(
+                optimizer = paddle.optimizer.Adam(
                     learning_rate=learning_rate,
                     beta1=TrainTaskConfig.beta1,
                     beta2=TrainTaskConfig.beta2,
                     epsilon=TrainTaskConfig.eps,
-                    parameter_list=transformer.parameters(),
+                    parameters=transformer.parameters(),
                 )
             else:
-                optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.003, parameter_list=transformer.parameters()
+                optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.003, parameters=transformer.parameters()
                 )
             dy_param_init = {}
             dy_param_updated = {}
@@ -1220,7 +1220,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 if not core.is_compiled_with_cuda()
                 else fluid.CUDAPlace(0)
             )
-            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.003)
 
             data_input_names = (
                 encoder_data_input_fields

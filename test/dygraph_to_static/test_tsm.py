@@ -19,6 +19,7 @@ import sys
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
@@ -45,7 +46,9 @@ def parse_args():
         default=fluid.is_compiled_with_cuda(),
         help='default use gpu.',
     )
-    args = parser.parse_args(['--config', 'tsm.yaml'])
+    args = parser.parse_args(
+        ['--config', __file__.rpartition('/')[0] + '/tsm.yaml']
+    )
     return args
 
 
@@ -278,11 +281,13 @@ def create_optimizer(cfg, params):
     l2_weight_decay = cfg.l2_weight_decay
     momentum = cfg.momentum
 
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=fluid.layers.piecewise_decay(boundaries=bd, values=lr),
+    optimizer = paddle.optimizer.Momentum(
+        learning_rate=paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=bd, values=lr
+        ),
         momentum=momentum,
-        regularization=paddle.regularizer.L2Decay(l2_weight_decay),
-        parameter_list=params,
+        weight_decay=paddle.regularizer.L2Decay(l2_weight_decay),
+        parameters=params,
     )
 
     return optimizer
@@ -380,6 +385,7 @@ def train(args, fake_data_reader, to_static):
 
 
 class TestTsm(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({"FLAGS_cudnn_deterministic": True})

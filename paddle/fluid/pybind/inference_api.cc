@@ -117,7 +117,7 @@ void BindPaddleInferPredictor(py::module *m);
 void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
@@ -487,7 +487,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddleInferTensor(m);
   BindPaddlePassBuilder(m);
   BindPredictorPool(m);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   BindMkldnnQuantizerConfig(m);
 #endif
   m->def("create_paddle_predictor",
@@ -499,8 +499,7 @@ void BindInferenceApi(py::module *m) {
   m->def("create_predictor",
          [](const paddle_infer::Config &config)
              -> std::unique_ptr<paddle_infer::Predictor> {
-           auto pred = std::unique_ptr<paddle_infer::Predictor>(
-               new paddle_infer::Predictor(config));
+           auto pred = std::make_unique<paddle_infer::Predictor>(config);
            return pred;
          });
   m->def(
@@ -650,6 +649,9 @@ void BindPaddlePredictor(py::module *m) {
   paddle_predictor
       .def("run",
            [](PaddlePredictor &self, const std::vector<PaddleTensor> &inputs) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
              std::vector<PaddleTensor> outputs;
              self.Run(inputs, &outputs);
              return outputs;
@@ -698,6 +700,9 @@ void BindNativePredictor(py::module *m) {
       .def("run",
            [](NativePaddlePredictor &self,
               const std::vector<PaddleTensor> &inputs) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
              std::vector<PaddleTensor> outputs;
              self.Run(inputs, &outputs);
              return outputs;
@@ -923,7 +928,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       .def("quantizer_config",
            &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
@@ -1038,7 +1043,7 @@ void BindXpuConfig(py::module *m) {
                      &XpuConfig::quant_post_dynamic_op_types);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m) {
   py::class_<MkldnnQuantizerConfig> quantizer_config(*m,
                                                      "MkldnnQuantizerConfig");
@@ -1064,6 +1069,9 @@ void BindAnalysisPredictor(py::module *m) {
       .def(
           "run",
           [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+            pybind11::gil_scoped_release release;
+#endif
             std::vector<PaddleTensor> outputs;
             self.Run(inputs, &outputs);
             return outputs;
@@ -1114,6 +1122,9 @@ void BindPaddleInferPredictor(py::module *m) {
       .def(
           "run",
           [](paddle_infer::Predictor &self, py::handle py_in_tensor_list) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+            pybind11::gil_scoped_release release;
+#endif
             auto in_tensor_list =
                 CastPyArg2VectorOfTensor(py_in_tensor_list.ptr(), 0);
             std::vector<paddle::Tensor> outputs;
@@ -1121,7 +1132,13 @@ void BindPaddleInferPredictor(py::module *m) {
             return py::handle(ToPyObject(outputs));
           },
           py::arg("inputs"))
-      .def("run", [](paddle_infer::Predictor &self) { self.Run(); })
+      .def("run",
+           [](paddle_infer::Predictor &self) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
+             self.Run();
+           })
       .def("clone",
            [](paddle_infer::Predictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
