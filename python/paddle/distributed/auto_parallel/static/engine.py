@@ -757,7 +757,7 @@ class Engine:
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
-        # For now, the completer has to be passed to the planner,
+        # For now, the completer has to be passed to the Parallelizer,
         # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
@@ -978,6 +978,9 @@ class Engine:
             cbks.on_epoch_begin(epoch)
 
             for step, data in enumerate(train_dataloader):
+                if train_dataloader.steps_per_epoch is not None:
+                    if step >= train_dataloader.steps_per_epoch:
+                        break
                 with paddle.profiler.utils._nvprof_range(
                     iter_id=step, start=nvprof_range[0], end=nvprof_range[1]
                 ):

@@ -34,6 +34,10 @@ class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
     def __iter__(self):
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def __next__(self):
+        raise NotImplementedError
+
 
 class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
     def __init__(
@@ -250,20 +254,41 @@ class DistributedDataLoader(DistributedDataLoaderBase):
         self.timeout = timeout
         self.worker_init_fn = worker_init_fn
         self.epochs = epochs
-        self.steps_per_epoch = steps_per_epoch
+        self.steps_per_epoch = self._init_steps_per_epoch(steps_per_epoch)
         self.dp_world_sizes = data_parallel_world_size
         self.dp_ranks = data_parallel_rank
         self.split_data = split_data
         # TODO: rank info
         self.batch_sampler = DistributedBatchSampler(
-            dataset=self.dataset,
-            batch_size=self.batch_size,
-            num_replicas=self.dp_world_sizes[0],
-            rank=self.dp_ranks[0],
-            shuffle=self.shuffle,
-            drop_last=self.drop_last,
+            self.dataset,
+            self.batch_size,
+            self.dp_world_sizes[0],
+            self.dp_ranks[0],
+            self.shuffle,
+            self.drop_last,
         )
-        self._dataloader = paddle.io.DataLoader(
+        self._inner_dataloader = self._create_inner_dataloader()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self.data)
+
+    def _init_steps_per_epoch(self, steps_per_epoch):
+        if isinstance(steps_per_epoch, int) and steps_per_epoch > 0:
+            return steps_per_epoch
+        try:
+            if steps_per_epoch is None:
+                steps_per_epoch = len(self.dataset)
+        except:
+            raise ValueError(
+                "Please set `steps_per_epoch` or implement `__len__` method in dataset class."
+            )
+        return steps_per_epoch
+
+    def _create_inner_dataloader(self):
+        dataloader = paddle.io.DataLoader(
             self.dataset,
             feed_list=self.feed_list,
             places=self.places,
@@ -276,12 +301,6 @@ class DistributedDataLoader(DistributedDataLoaderBase):
             timeout=self.timeout,
             worker_init_fn=self.worker_init_fn,
         )
+        self.data = (x for x in dataloader)
 
-    def __len__(self):
-        return len(self._dataloader)
-
-    def __iter__(self):
-        return self._dataloader.__iter__()
-
-    def __call__(self):
-        return self._dataloader.__iter__()
+        return dataloader

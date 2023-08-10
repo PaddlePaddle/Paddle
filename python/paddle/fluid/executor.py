@@ -26,7 +26,7 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from . import set_flags
+from . import set_flags, get_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -433,6 +433,21 @@ def _set_micro_batch_fetch(plan):
             )
 
 
+def _set_micro_batch_feed(plan):
+    if plan.micro_batch_num() <= 1:
+        return
+
+    for job in plan.job_list():
+        prog = plan.program(job.type())
+        for i in range(prog.block(0).op_size()):
+            op = prog.block(0).op(i)
+            if op.type() == 'feed':
+                col = op.attr('col')
+                op.desc._set_attr(
+                    col * plan.micro_batch_num() + job.micro_batch_id()
+                )
+
+
 def _merge_tensors(tensor, micro_batch_num):
     if micro_batch_num <= 1:
         return tensor
@@ -525,8 +540,9 @@ def _to_name_str(var):
 
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
+    from ..distributed.backup_env import getenv_or_backup
 
-    trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
     fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
     cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
@@ -855,11 +871,18 @@ class _ExecutorCache:
             if build_strategy is None or build_strategy.enable_inplace
             else False
         )
+
         enable_addto = (
             True
             if build_strategy is not None and build_strategy.enable_addto
             else False
         )
+
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+            # todo(phlrain), skip inplace add addto pass in new IR
+            enable_inplace = False
+            enable_addto = False
+
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
             skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
@@ -887,6 +910,7 @@ class _ExecutorCache:
             plan = core.Plan([default_job], type_to_program)
 
         _set_micro_batch_fetch(plan)
+        _set_micro_batch_feed(plan)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
@@ -1080,7 +1104,10 @@ class Executor:
                 idx *= micro_batch_num
                 op.desc._set_attr('col', idx)
 
-                cur_feed_micro = _merge_tensors(cur_feed, micro_batch_num)
+                cur_feed_micro = [
+                    cur_feed[i : i + micro_batch_num]
+                    for i in range(0, cur_feed.shape()[0], micro_batch_num)
+                ]
                 for i in range(int(micro_batch_num)):
                     core.set_feed_variable(
                         scope, cur_feed_micro[i], feed_var_name, idx + i
