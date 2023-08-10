@@ -56,10 +56,11 @@ class Program {
    */
   size_t size() const { return instrs_.size(); }
 
-  const std::vector<std::unique_ptr<Instruction>>& GetPreRunInstructions() {
+  const std::vector<std::unique_ptr<Instruction>>& GetPreRunInstructions()
+      const {
     return prerun_instrs_;
   }
-  const std::vector<std::unique_ptr<Instruction>>& GetRunInstructions() {
+  const std::vector<std::unique_ptr<Instruction>>& GetRunInstructions() const {
     return instrs_;
   }
 

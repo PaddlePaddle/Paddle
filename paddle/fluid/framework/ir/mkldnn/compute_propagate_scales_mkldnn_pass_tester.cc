@@ -57,7 +57,7 @@ static const std::initializer_list<std::string> rnn_variable_names{
 class ComputePropagateScalesMkldnnPassTest : public testing::Test {
  public:
   ComputePropagateScalesMkldnnPassTest() {
-    pass.reset(new ComputePropagateScalesMkldnnPass());
+    pass = std::make_unique<ComputePropagateScalesMkldnnPass>();
   }
 
   std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const {
