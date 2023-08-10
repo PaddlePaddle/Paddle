@@ -133,7 +133,8 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
       }
     }
 #else
-    LOG(ERROR) << "Please compile with cutlass to EnableUseCutlass()";
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Please compile with cutlass to make cutlass available"));
 #endif
   } else {  // m == 1: gemv
     if (weight_dtype == "int8") {

@@ -3116,48 +3116,6 @@ void QrInferMeta(const MetaTensor& x,
   r->set_dtype(x.dtype());
 }
 
-void QuantForInferInferMeta(const MetaTensor& x,
-                            const std::string& layout,
-                            MetaTensor* out,
-                            MetaTensor* scale) {
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      2UL,
-      phi::errors::InvalidArgument(
-          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0] % 16,
-      0,
-      phi::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 16, but got[%d]",
-          x_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[1] % 16,
-      0,
-      phi::errors::InvalidArgument(
-          "The second dimension of input must be divisible by 16, but got[%d]",
-          x_dims[1]));
-  std::vector<int64_t> dim_scale({x_dims[1]});
-  std::vector<int64_t> dim_out;
-  if (layout == "weight_only_int8" || layout == "llm.int8") {
-    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
-  } else if (layout == "weight_only_int4") {
-    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
-  } else {
-    phi::errors::InvalidArgument(
-        "The layout must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8'], but got[%s]",
-        layout);
-  }
-  out->set_dims(phi::make_ddim(dim_out));
-
-  out->set_dtype(DataType::INT8);
-
-  scale->set_dims(phi::make_ddim(dim_scale));
-  scale->set_dtype(DataType::FLOAT32);
-}
-
 DDim ReduceInferDim(const MetaTensor& x,
                     const std::vector<int64_t>& axis,
                     bool keep_dim,
@@ -5070,6 +5028,48 @@ void UnStackInferMeta(const MetaTensor& x,
     outs[i]->set_dims(phi::make_ddim(vec));
     outs[i]->set_dtype(x.dtype());
   }
+}
+
+void WeightQuantizeInferMeta(const MetaTensor& x,
+                             const std::string& algo,
+                             MetaTensor* out,
+                             MetaTensor* scale) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 16, but got[%d]",
+          x_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The second dimension of input must be divisible by 16, but got[%d]",
+          x_dims[1]));
+  std::vector<int64_t> dim_scale({x_dims[1]});
+  std::vector<int64_t> dim_out;
+  if (algo == "weight_only_int8" || algo == "llm.int8") {
+    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
+  } else if (algo == "weight_only_int4") {
+    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
+  } else {
+    phi::errors::InvalidArgument(
+        "The algo must be in ['weight_only_int8', 'weight_only_int4', "
+        "'llm.int8'], but got[%s]",
+        algo);
+  }
+  out->set_dims(phi::make_ddim(dim_out));
+
+  out->set_dtype(DataType::INT8);
+
+  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dtype(DataType::FLOAT32);
 }
 
 void ChannelShuffleInferMeta(const MetaTensor& x,

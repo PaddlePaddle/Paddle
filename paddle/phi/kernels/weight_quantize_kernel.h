@@ -16,9 +16,9 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void QuantForInferKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const std::string& layout,
-                         DenseTensor* out,
-                         DenseTensor* scale);
+void WeightQuantizeKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const std::string& algo,
+                          DenseTensor* out,
+                          DenseTensor* scale);
 }  // namespace phi

@@ -13,18 +13,16 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 
-def quant_for_infer(x, layout="weight_only_int8"):
+def weight_quantize(x, algo="weight_only_int8"):
     """
     Quantization function for weight_only and llm.int8's weight.
 
     Args:
-        x (Tensor): The input Tensor to be quantized .
-        layout (str|None): The layout of Tensor is quantized, must be one of 'weight_only_int8',
+        x (Tensor): The input Tensor to be quantized, the data type is float16 or bfloat16.
+        algo (str|None): The algo that is x will be apply, must be one of 'weight_only_int8',
             'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
 
     Returns:
@@ -35,27 +33,27 @@ def quant_for_infer(x, layout="weight_only_int8"):
 
             # required: cpu
             import paddle
-            from paddle.nn.quant import quant_for_infer
+            from paddle.nn.quant import weight_quantize
 
             x = paddle.cast(paddle.randn(shape=[32, 64]), dtype=paddle.float16).cpu()
-            out, scale = quant_for_infer(x, layout='weight_only_int8')
+            out, scale = weight_quantize(x, algo='weight_only_int8')
             print(out.shape) # [64, 32]
             print(scale.shape) # [64]
     """
 
     if in_dynamic_mode():
-        return _C_ops.quant_for_infer(x, layout)
+        return _C_ops.weight_quantize(x, algo)
     else:
-        type = "quant_for_infer"
+        type = "weight_quantize"
         helper = LayerHelper(type, **locals())
         out = helper.create_variable_for_type_inference('int8')
         scale = helper.create_variable_for_type_inference('float')
 
         helper.append_op(
             type=type,
-            inputs={"X": x},
-            outputs={'Out': out, "Scale": scale},
-            attrs={"layout": layout},
+            inputs={"x": x},
+            outputs={'out': out, "scale": scale},
+            attrs={"algo": algo},
         )
         return (out, scale)
 
@@ -72,7 +70,7 @@ def weight_only_linear(
     This method requires CUDA version >= 11.2.
 
     Args:
-        x (Tensor): The first input Tensor to be multiplied.
+        x (Tensor): The first input Tensor to be multiplied, the data type is float16 or bfloat16.
         weight (Tensor): The second input Tensor to be multiplied. Its rank must be 2.
         bias (Tensor|None): The input bias Tensor. If it is None, no bias addition would
             be performed. Otherwise, The bias is added to the matrix multiplication result.
@@ -104,8 +102,6 @@ def weight_only_linear(
         type = "weight_only_linear"
         helper = LayerHelper(type, **locals())
         dtype = x.dtype
-        check_variable_and_dtype(x, 'x', ['float16', 'bfloat16'], type)
-        check_variable_and_dtype(weight, 'weight', ['int8'], type)
 
         inputs = {
             'x': [x],
@@ -138,7 +134,7 @@ def llm_int8_linear(
     This method requires CUDA version >= 11.2.
 
     Args:
-        x (Tensor): the first input Tensor to be multiplied.
+        x (Tensor): the first input Tensor to be multiplied, the data type is float16 or bfloat16.
         weight (Tensor): the second input Tensor to be multiplied. Its rank must be 2.
         bias (Tensor|None): the input bias Tensor. If it is None, no bias addition would
             be performed. Otherwise, the bias is added to the matrix multiplication result.
@@ -159,7 +155,7 @@ def llm_int8_linear(
             weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
             scale = paddle.randn([32], dtype='float32')
             bias = paddle.cast(paddle.randn([32]), dtype='float16')
-            out = llm_int8_linear(x, weihgt, bias=bias, weight_scale=scale, threshold=6.0)
+            out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
             print(out.shape) # [1, 2, 32]
     """
     if in_dynamic_mode():
@@ -169,8 +165,6 @@ def llm_int8_linear(
         type = "llm_int8_linear"
         helper = LayerHelper(type, **locals())
         dtype = x.dtype
-        check_variable_and_dtype(x, 'x', ['float16', 'bfloat16'], type)
-        check_variable_and_dtype(weight, 'weight', ['int8'], type)
 
         inputs = {
             'x': [x],

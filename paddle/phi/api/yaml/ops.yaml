@@ -1992,15 +1992,6 @@
     func : qr
   backward : qr_grad
 
-- op : quant_for_infer
-  args : (Tensor x, str layout = "weight_only_int8")
-  output : Tensor(out), Tensor(scale)
-  infer_meta :
-    func : QuantForInferInferMeta
-  kernel :
-    func : quant_for_infer
-    data_type: x
-
 - op : real
   args : (Tensor x)
   output : Tensor (out)
@@ -2746,6 +2737,15 @@
     func : weight_only_linear
     data_type : x
   optional: bias
+
+- op : weight_quantize
+  args : (Tensor x, str algo = "weight_only_int8")
+  output : Tensor(out), Tensor(scale)
+  infer_meta :
+    func : WeightQuantizeInferMeta
+  kernel :
+    func : weight_quantize
+    data_type: x
 
 - op : weighted_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
