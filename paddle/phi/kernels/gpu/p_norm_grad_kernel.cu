@@ -13,55 +13,25 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/p_norm_grad_kernel.h"
-
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/p_norm_utils.h"
 
 namespace phi {
-
-template <typename T>
-__device__ __forceinline__ int inline_sgn(T val) {
-  return (T(0) < val) - (val < T(0));
-}
-
-template <typename T>
-__device__ __forceinline__ T inline_pow(T base, T exponent) {
-  return static_cast<T>(
-      pow(static_cast<float>(base), static_cast<float>(exponent)));
-}
-
-template <>
-__device__ __forceinline__ double inline_pow(double base, double exponent) {
-  return pow(base, exponent);
-}
-
-template <typename T>
-__device__ __forceinline__ T inline_abs(T x) {
-  return static_cast<T>(abs(static_cast<float>(x)));
-}
-
-template <>
-__device__ __forceinline__ double inline_abs(double x) {
-  return abs(x);
-}
-
 template <typename T>
 struct InfinityNormGradTensorDirectCUDAFunctor {
   HOSTDEVICE inline T operator()(const T x, const T y, const T dy) const {
-    return static_cast<T>(dy * static_cast<T>(inline_sgn<T>(x)) *
-                          static_cast<T>(inline_abs<T>(x) == y));
+    return static_cast<T>(dy * static_cast<T>(inline_sign(x)) *
+                          static_cast<T>(inline_abs(x) == y));
   }
 };
 
 template <typename T>
 struct OneNormGradTensorDirectCUDAFunctor {
   HOSTDEVICE inline T operator()(const T x, const T y, const T dy) const {
-    return static_cast<T>(dy * static_cast<T>(inline_sgn<T>(x)));
+    return static_cast<T>(dy * static_cast<T>(inline_sign(x)));
   }
 };
 
@@ -92,9 +62,8 @@ struct PNormGradTensorDirectCUDAFunctor {
 
   HOSTDEVICE inline T operator()(const T x, const T y, const T dy) const {
     return static_cast<T>(
-        static_cast<T>(inline_sgn<T>(x)) *
-        inline_pow<T>(inline_abs<T>(x), porder_) * dy *
-        inline_pow<T>(y + epsilon_, static_cast<T>(-1.0) * porder_));
+        static_cast<T>(inline_sign(x)) * inline_pow(inline_abs(x), porder_) *
+        dy * inline_pow(y + epsilon_, static_cast<T>(-1.0) * porder_));
   }
 };
 
@@ -112,16 +81,28 @@ void PNormGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   std::vector<DenseTensor*> outputs = {x_grad};
   DDim x_grad_dims = x_grad->dims();
-  DenseTensor x_copy(x);
-  DenseTensor out_copy(out);
-  DenseTensor out_grad_copy(out_grad);
+
+  auto x_ptr = &x;
+  auto out_ptr = &out;
+  auto out_grad_ptr = &out_grad;
 
   if (asvector) {
-    x_copy.Resize(flatten_to_1d(x_copy.dims()));
-    out_copy.Resize(flatten_to_1d(out_copy.dims()));
-    out_grad_copy.Resize(flatten_to_1d(out_grad_copy.dims()));
+    auto x_copy = new DenseTensor(x);
+    auto out_copy = new DenseTensor(out);
+    auto out_grad_copy = new DenseTensor(out_grad);
+
+    x_copy->Resize(flatten_to_1d(x_copy->dims()));
+    out_copy->Resize(flatten_to_1d(out_copy->dims()));
+    out_grad_copy->Resize(flatten_to_1d(out_grad_copy->dims()));
     x_grad->Resize(flatten_to_1d(x_grad->dims()));
+
+    x_ptr = x_copy;
+    out_ptr = out_copy;
+    out_grad_ptr = out_grad_copy;
   } else if (!keepdim) {
+    auto out_copy = new DenseTensor(out);
+    auto out_grad_copy = new DenseTensor(out_grad);
+
     if (axis < 0) axis += x.dims().size();
     std::vector<int> shape;
 
@@ -136,11 +117,15 @@ void PNormGradKernel(const Context& dev_ctx,
     }
 
     DDim dims = phi::make_ddim(shape);
-    out_copy.Resize(dims);
-    out_grad_copy.Resize(dims);
+
+    out_copy->Resize(dims);
+    out_grad_copy->Resize(dims);
+
+    out_ptr = out_copy;
+    out_grad_ptr = out_grad_copy;
   }
 
-  std::vector<const DenseTensor*> inputs = {&x_copy, &out_copy, &out_grad_copy};
+  std::vector<const DenseTensor*> inputs = {x_ptr, out_ptr, out_grad_ptr};
 
   if (porder == INFINITY || porder == -INFINITY) {
     auto functor = InfinityNormGradTensorDirectCUDAFunctor<T>();
@@ -163,6 +148,12 @@ void PNormGradKernel(const Context& dev_ctx,
 
   if (asvector) {
     x_grad->Resize(x_grad_dims);
+    delete x_ptr;
+    delete out_ptr;
+    delete out_grad_ptr;
+  } else if (!keepdim) {
+    delete out_ptr;
+    delete out_grad_ptr;
   }
 }
 
