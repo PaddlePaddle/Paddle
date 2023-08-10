@@ -140,10 +140,10 @@ class ScalarBase {
         return static_cast<RT>(data_.f32);
       case DataType::FLOAT64:
         return static_cast<RT>(data_.f64);
-      //case DataType::FLOAT16:
-      //  return static_cast<RT>(data_.f16);
-      //case DataType::BFLOAT16:
-      //  return static_cast<RT>(data_.bf16);
+      case DataType::FLOAT16:
+        return static_cast<RT>(data_.f16);
+      case DataType::BFLOAT16:
+        return static_cast<RT>(data_.bf16);
       case DataType::INT32:
         return static_cast<RT>(data_.i32);
       case DataType::INT64:
@@ -162,10 +162,10 @@ class ScalarBase {
         return static_cast<RT>(data_.ui8);
       case DataType::BOOL:
         return static_cast<RT>(data_.b);
-      //case DataType::COMPLEX64:
-      //  return static_cast<RT>(data_.c64);
-      //case DataType::COMPLEX128:
-      //  return static_cast<RT>(data_.c128);
+      case DataType::COMPLEX64:
+        return static_cast<RT>(data_.c64);
+      case DataType::COMPLEX128:
+        return static_cast<RT>(data_.c128);
       default:
         PD_THROW("Invalid enum scalar data type `", dtype_, "`.");
     }
