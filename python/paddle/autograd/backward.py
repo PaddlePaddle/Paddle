@@ -71,7 +71,7 @@ def prepare_grad_outputs(
     else check whether outputs shape and dtype is same to grad_outputs, otherwise raise error.
 
     if only part of op's outputs in outputs, add fill_0 op to create other grad_outputs.
-    eg: split.
+    eg: slice.
 
     update value_to_valuegrad and op_to_opgrad.
 
@@ -313,22 +313,50 @@ def append_backward_ops(
         v2_g = call_vjp(op3, [v3_g], [v2_stopgradient])
 
 
+    special pattern 1:
+        v11 -> combine_op -> v1 -> op -> v3
+        v12 ->
+                             v2 ->
+        value_to_valuegrad[v3] = [[v3_g]]
+
+        v1 is inside python api, we don't describe it in backward process(state)
+        so v1_grad is inside vjp, we don't describe it in backward process(state)
+        [[v11_g, v12_g], v2_g] = call_vjp(op3, [v3_g], [[v11_stopgradient, v12_stopgradient], v2_stop_gradient)
+
+
+        op_vjp is:
+        v11_g <- slice_op <- v1_g <- op_g <- v3_g
+        v12_g <-
+                             v2_g <-
+
+        value_to_valuegrad[v11] = [[v11_g]]
+        value_to_valuegrad[v12] = [[v12_g]]
+        value_to_valuegrad[v2] = [[v2_g]]
+
     if op don't has grad_op, if it don't has input and it's output has more than
     one output_grad, add sumop for grad aggregation.
         (eg: full op and get_parameter op etc.)
 
     else continue to next op.
     '''
-    for op in effective_forward_op:
-        if paddle.framework.core.has_vjp(op):
-            # prepare output_grad
-            output_grad_list = []  # (opresult)
-            zero_flag = [False] * op.num_results()
-            for i, value in enumerate(op.results()):
-                if (
-                    value not in state.value_to_valuegrad
-                    or state.value_to_valuegrad[value] is None
-                ):
+
+    def make_output_grad(op, slice_op):
+        zero_flag = [False] * op.num_results()
+        for i, value in enumerate(op.results()):
+            if (
+                value not in state.value_to_valuegrad
+                or state.value_to_valuegrad[value] is None
+            ):
+                if slice_op is not None and value == slice_op.operand_source(0):
+                    # pattern case:
+                    # this fwd_op's output is vectorType, it will slice to
+                    # Type by builtin.slice op, so need get from slice op's ouput
+                    slice_zero_flag, slice_output_grad = make_output_grad(
+                        slice_op, None
+                    )
+                    zero_flag[i] = all(slice_zero_flag)
+                    grad_value = [op_list[0] for op_list in slice_output_grad]
+                else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
                     # so no output_grad created.
@@ -336,7 +364,6 @@ def append_backward_ops(
                     # second case:
                     # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
-
                     grad_value = paddle.full(
                         value.shape,
                         0.0,
@@ -347,25 +374,94 @@ def append_backward_ops(
                     update_bwdop_structure(
                         backward_ops, state.op_to_opgrad[op], fillop
                     )
-                    state.value_to_valuegrad[value] = [[grad_value]]
                     zero_flag[i] = True
 
-                if len(state.value_to_valuegrad[value]) > 1:
-                    # one value is input of more than one fwd_op,
-                    # so more than one bwd_op create input_grad,
-                    # need add sum op to accumulate gradient
+                state.value_to_valuegrad[value] = [[grad_value]]
 
-                    paddle.add_n(list(state.value_to_valuegrad[value]))
-                    sumop = block.ops[len(block.ops) - 1]
-                    update_bwdop_structure(
-                        backward_ops, state.op_to_opgrad[op], sumop
-                    )
-                    state.value_to_valuegrad[value] = [[sumop.result(0)]]
-                    state.value_to_sumvaluegrad[
-                        value
-                    ] = state.value_to_valuegrad[value]
+            if len(state.value_to_valuegrad[value]) > 1:
+                # one value is input of more than one fwd_op,
+                # so more than one bwd_op create input_grad,
+                # need add sum op to accumulate gradient
 
-                output_grad = state.value_to_valuegrad[value][0]
+                paddle.add_n(list(state.value_to_valuegrad[value]))
+                sumop = block.ops[len(block.ops) - 1]
+                update_bwdop_structure(
+                    backward_ops, state.op_to_opgrad[op], sumop
+                )
+                state.value_to_valuegrad[value] = [[sumop.result(0)]]
+                state.value_to_sumvaluegrad[value] = state.value_to_valuegrad[
+                    value
+                ]
+
+            output_grad = state.value_to_valuegrad[value][0]
+        return zero_flag, output_grad
+
+    def make_input_stopgradient(combine_op, op):
+        input_grad_stopgradient_list = []
+        for input in op.operands_source():
+            if combine_op is not None and input == combine_op.result(0):
+                stop_gradient = make_input_stopgradient(None, combine_op)
+                input_grad_stopgradient_list.append(
+                    [info[0] for info in stop_gradient]
+                )
+            else:
+                if input in no_grad_set:
+                    input_grad_stopgradient_list.append([1])
+                else:
+                    input_grad_stopgradient_list.append([0])
+
+        return input_grad_stopgradient_list
+
+    def update_input_grad_map(combine_op, op, input_grad_list):
+        for i, input in enumerate(op.operands_source()):
+            if combine_op is not None and input == combine_op.reslut(0):
+                update_input_grad_map(None, combine_op, input_grad_list[i])
+            else:
+                input_grad = input_grad_list[i]
+                if input_grad is list:
+                    state.value_to_valuegrad[input].append(input_grad)
+                else:
+                    state.value_to_valuegrad[input].append([input_grad])
+
+    # make op to op pattern, there are four patterns:
+    # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
+    # [op2 , builtin.slice] (op2's inputs are not vectorType, one output is vectorType)
+    # [builtin.combine , op3 , buitin.slice] (op3's one input and one output are vectorType)
+    # [op4] (op4's inputs and outputs are not vectorType)
+    # einsum has twp vectorType outputs, special pattern
+
+    pattern_effective_op_list = []
+    for idx, op in effective_forward_op:
+        if op.name() == "builtin.combine":
+            pattern_effective_op_list.append([op])
+            pattern_effective_op_list[-1].append(effective_forward_op[idx + 1])
+        elif op.name() == "builtin.slice":
+            pattern_effective_op_list[-1].append(op)
+        else:
+            if op not in pattern_effective_op_list[-1]:
+                pattern_effective_op_list.append([op])
+
+    for op_pattern in pattern_effective_op_list:
+        combine_op = None
+        slice_op = None
+        if len(op_pattern) == 1:
+            op = op_pattern[0]
+        elif len(op_pattern) == 2:
+            if op_pattern[0] == 'builtin.combine':
+                combine_op = op_pattern[0]
+                op = op_pattern[1]
+            else:
+                op = op_pattern[0]
+                slice_op = op_pattern[1]
+        else:
+            combine_op = op_pattern[0]
+            op = op_pattern[1]
+            slice_op = op_pattern[2]
+
+        if paddle.framework.core.has_vjp(op):
+            # prepare output_grad
+            output_grad_list = []  # (opresult)
+            zero_flag, output_grad = make_output_grad(op, slice_op)
             output_grad_list.append(output_grad)
 
             # all(zero_flag) support this op has no contribution for grad
@@ -374,34 +470,25 @@ def append_backward_ops(
                 continue
 
             # prepare input_grad stop_gradient info.
-            input_grad_stopgradient_list = []
-            for input in op.operands_source():
-                if input in no_grad_set:
-                    input_grad_stopgradient_list.append([1])
-                else:
-                    input_grad_stopgradient_list.append([0])
+            input_grad_stopgradient_list = make_input_stopgradient(
+                combine_op, op
+            )
 
+            # create grad_op
             before_ops_num = len(block.ops)
-            # prim should be a globel flag, it will make create_grad_op choose diffrient func
             input_grad_list = paddle.framework.core.call_vjp(
                 op, output_grad_list, input_grad_stopgradient_list
             )
             after_ops_num = len(block.ops)
 
-            # find new grad_op_list
-            grad_op_list = []
+            # update grad_op structure
             for i in range(before_ops_num, after_ops_num):
-                grad_op_list.append(block.ops[i])
-
-            for i, input in enumerate(op.operands()):
-                input_grad = input_grad_list[i]
-                state.value_to_valuegrad[input.source()].append(input_grad)
-
-            # add grad_op
-            for grad_op in grad_op_list:
                 update_bwdop_structure(
-                    backward_ops, state.op_to_opgrad[op], grad_op
+                    backward_ops, state.op_to_opgrad[op], block.ops[i]
                 )
+
+            # update input_grad map
+            update_input_grad_map(combine_op, op, input_grad_list)
 
         else:
             if op.num_operands() == 0 and op.num_results() != 0:
