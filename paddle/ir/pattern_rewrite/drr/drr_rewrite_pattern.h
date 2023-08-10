@@ -54,13 +54,13 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     // Match
     auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
-    std::unordered_set<OpCall*> drr_visited;
-    std::unordered_set<Operation*> ir_visited;
-    std::queue<OpCall*> drr_q;
-    std::queue<ir::Operation*> ir_q;
-    drr_q.push(anchor.get());
+    std::unordered_set<const OpCall*> drr_visited;
+    std::unordered_set<const Operation*> ir_visited;
+    std::queue<const OpCall*> drr_q;
+    std::queue<const ir::Operation*> ir_q;
+    drr_q.push(anchor);
     ir_q.push(op);
-    drr_visited.insert(anchor.get());
+    drr_visited.insert(anchor);
     ir_visited.insert(op);
     match_context_impl_->BindIrOperation(op->name(),
                                          std::make_shared<IrOperation>(op));
@@ -87,17 +87,18 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
       const auto& drr_input_tensors = drr_node->inputs();
       auto ir_input_value_size = ir_node->num_operands();
       // check input's size
-      if (drr_input_tensors.sizes() != ir_input_value_size) {
+      if (drr_input_tensors.size() != ir_input_value_size) {
         Matched = false;
         break;
       }
-      for (int i = 0; i < drr_input_tensors.size(); ++i) {
+      for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
         if (!Matched) break;
         // check brother ops
         auto drr_brother_ops = drr_input_tensors[i]->consumers();
-        auto ir_input_value = ir_node->operand(i);
-        match_context_impl_->BindIrValue(drr_input_tensors[i]->name(),
-                                         ir_input_value);
+        auto ir_input_value = ir_node->operand(i).source();
+        match_context_impl_->BindIrValue(
+            drr_input_tensors[i]->name(),
+            std::make_shared<IrValue>(ir_input_value));
         if (drr_brother_ops.size() != ir_input_value.use_count()) {
           Matched = false;
           break;
@@ -154,17 +155,18 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
       const auto& drr_output_tensors = drr_node->outputs();
       auto ir_output_value_size = ir_node->num_results();
       // check output's size
-      if (drr_output_tensors.sizes() != ir_output_value_size) {
+      if (drr_output_tensors.size() != ir_output_value_size) {
         Matched = false;
         break;
       }
-      for (int i = 0; i < drr_output_tensors.size(); ++i) {
+      for (size_t i = 0; i < drr_output_tensors.size(); ++i) {
         if (!Matched) break;
         // check child ops
         auto drr_child_ops = drr_output_tensors[i]->consumers();
         auto ir_output_value = ir_node->result(i);
-        match_context_impl_->BindIrValue(drr_output_tensors[i]->name(),
-                                         ir_output_value);
+        match_context_impl_->BindIrValue(
+            drr_output_tensors[i]->name(),
+            std::make_shared<IrValue>(ir_output_value));
         if (drr_child_ops.size() != ir_output_value.use_count()) {
           Matched = false;
           break;

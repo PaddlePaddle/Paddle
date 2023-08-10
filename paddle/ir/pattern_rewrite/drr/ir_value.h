@@ -47,10 +47,10 @@ class IrDtype {
 
 class IrValue : public TensorInterface {
  public:
-  explicit IrValue(const ir::Value* value)
+  explicit IrValue(const ir::Value& value)
       : shape_(
-            &value->type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
-        dtype_(&value->type()
+            &value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
+        dtype_(&value.type()
                     .dyn_cast<paddle::dialect::DenseTensorType>()
                     .dtype()) {}
 

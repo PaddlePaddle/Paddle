@@ -108,7 +108,7 @@ class DrrPatternContext {
   std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
 };
 
-class Op : public std::enable_shared_from_this<Op> {
+class Op {
  public:
   const std::string& name() const { return op_type_name_; }
 
@@ -143,7 +143,7 @@ class Op : public std::enable_shared_from_this<Op> {
   PatternGraph* pattern_graph_;
 };
 
-class Tensor : public std::enable_shared_from_this<Tensor> {
+class Tensor {
  public:
   const std::string& DebugName() const;
 
@@ -155,7 +155,7 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
 
   const std::string& name() const { return name_; }
 
-  void SetName(const std::string& name) { name_ = name; }
+  void set_name(const std::string& name) { name_ = name; }
 
   OpCall* producer() const { return producer_; }
 
@@ -182,7 +182,7 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
   PatternGraph* pattern_graph_;
 };
 
-class OpCall : public std::enable_shared_from_this<OpCall> {
+class OpCall {
  public:
   OpCall(const Op* op,
          const std::vector<const Tensor*>& inputs,
