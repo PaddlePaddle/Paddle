@@ -173,7 +173,7 @@ void ProcessGroupCustom::CreateCustomManagerCache(
     phi::DeviceGuard guard(places[i]);
     ccl_comms[i] = CustomCCLCommManager::Create(
         device_type, GetSize(), GetRank(), &ccl_id, new phi::ccl::CCLComm);
-    dev_ctx[i].reset(new CustomDeviceContext(places[i]));
+    dev_ctx[i] = std::make_unique<CustomDeviceContext>(places[i]);
     dev_ctx[i]->SetAllocator(
         &(phi::DeviceContextPool::Instance().Get(places[i])->GetAllocator()));
     dev_ctx[i]->SetHostAllocator(&(

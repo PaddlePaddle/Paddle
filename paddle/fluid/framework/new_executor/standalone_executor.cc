@@ -159,7 +159,6 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   // return Fetch Tensors
   if (FLAGS_enable_new_ir_in_executor) {
     framework::FetchList fetch_res;
-
     for (auto& var_name : fetch_var_names_) {
       auto* var = scope_->FindVar(var_name);
       fetch_res.push_back(var->Get<phi::DenseTensor>());

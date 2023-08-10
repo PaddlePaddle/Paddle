@@ -956,14 +956,14 @@ unsigned long GetUnsignedLongFromArgs(  // NOLINT
 
 void InitOpsAttrTypeMap() {
   auto op_info_map = paddle::framework::OpInfoMap::Instance().map();
-  for (auto iter = op_info_map.begin(); iter != op_info_map.end(); ++iter) {
-    auto op_proto = iter->second.proto_;
+  for (auto& item : op_info_map) {
+    auto op_proto = item.second.proto_;
     if (op_proto == nullptr) {
       continue;
     }
     auto attrs_proto = op_proto->attrs();
     for (auto& attr : attrs_proto) {
-      OpAttrTypeMap::Instance().Map()[iter->first][attr.name()] = attr.type();
+      OpAttrTypeMap::Instance().Map()[item.first][attr.name()] = attr.type();
     }
   }
   const auto& extra_attr_maps =

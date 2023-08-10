@@ -58,7 +58,7 @@ class TestCommunicator(unittest.TestCase):
         cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 
-        optimizer = fluid.optimizer.Adam(0.01)
+        optimizer = paddle.optimizer.Adam(0.01)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True

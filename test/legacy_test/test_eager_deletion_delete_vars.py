@@ -48,7 +48,7 @@ def simple_fc_net():
         input=prediction, label=label, reduction='none', use_softmax=False
     )
     loss = paddle.mean(loss)
-    optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
+    optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
     optimizer.minimize(loss)
     return image, label, loss
 

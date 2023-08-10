@@ -287,15 +287,13 @@ void AnalysisConfig::SetIpuCustomInfo(
     const std::vector<std::vector<std::string>> &ipu_custom_ops_info,
     const std::map<std::string, bool> &ipu_custom_patterns) {
   ipu_custom_ops_info_ = ipu_custom_ops_info;
-  for (auto iter = ipu_custom_patterns.begin();
-       iter != ipu_custom_patterns.end();
-       iter++) {
-    if (iter->second == true) {
+  for (const auto &ipu_custom_pattern : ipu_custom_patterns) {
+    if (ipu_custom_pattern.second == true) {
       ipu_custom_patterns_.push_back(
-          std::vector<std::string>{iter->first, "True"});
-    } else if (iter->second == false) {
+          std::vector<std::string>{ipu_custom_pattern.first, "True"});
+    } else if (ipu_custom_pattern.second == false) {
       ipu_custom_patterns_.push_back(
-          std::vector<std::string>{iter->first, "False"});
+          std::vector<std::string>{ipu_custom_pattern.first, "False"});
     }
   }
 
@@ -641,7 +639,7 @@ void AnalysisConfig::EnableCUDNN() {
 }
 
 void AnalysisConfig::EnableMKLDNN() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   use_mkldnn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
@@ -652,7 +650,7 @@ void AnalysisConfig::EnableMKLDNN() {
 }
 
 void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mkldnn_cache_capacity_ = capacity;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
@@ -661,7 +659,7 @@ void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 }
 
 void AnalysisConfig::EnableMkldnnQuantizer() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!mkldnn_quantizer_config_)
     mkldnn_quantizer_config_ = std::make_unique<MkldnnQuantizerConfig>();
   use_mkldnn_quantizer_ = true;
@@ -674,7 +672,7 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 }
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
     LOG(INFO) << "Hardware support for BFLOAT16"
@@ -695,7 +693,7 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 }
 
 void AnalysisConfig::DisableMkldnnFcPasses() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   disable_mkldnn_fc_passes_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
@@ -706,7 +704,7 @@ void AnalysisConfig::DisableMkldnnFcPasses() {
 
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   use_mkldnn_int8_ = true;
   use_fc_padding_ = false;
   if (!op_list.empty())
@@ -938,7 +936,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_mkldnn_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
       LOG(ERROR)
           << "EnableMKLDNN() only works when IR optimization is enabled.";
@@ -954,19 +952,19 @@ void AnalysisConfig::Update() {
       LOG(ERROR) << "EnableMkldnnQuantizer() only works when IR optimization "
                     "is enabled.";
     }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnQuantizer();
 #endif
   }
 
   if (use_mkldnn_bfloat16_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnBfloat16();
 #endif
   }
 
   if (use_mkldnn_int8_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
       LOG(ERROR) << "EnableMkldnnInt8() only works when IR optimization "
                     "is enabled.";
@@ -980,7 +978,7 @@ void AnalysisConfig::Update() {
   }
 
   if (disable_mkldnn_fc_passes_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->DisableMkldnnFcPasses();
 #endif
   }
