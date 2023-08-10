@@ -146,19 +146,9 @@ def vector_to_parameters(vec, parameters, name=None):
             >>> linear2 = paddle.nn.Linear(10, 15)
             >>> # copy weight of linear1 to linear2
             >>> paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
-            >>> print(linear2.weight)
-            Parameter containing:
-            Tensor(shape=[10, 15], dtype=float32, place=Place(cpu), stop_gradient=False,
-                   [[3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
-                    [3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.]])
+            >>> print((linear1.weight == linear2.weight).all())
+            Tensor(shape=[1], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True])
     """
     origin_shapes = []
     sections = []
