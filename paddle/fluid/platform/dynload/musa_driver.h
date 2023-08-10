@@ -33,7 +33,7 @@ extern bool HasCUDADriver();
 /**
  * include all needed musa driver functions
  **/
-#define MUSA_ROUTINE_EACH(__macro)                      \
+#define PLATFORM_MUSA_ROUTINE_EACH(__macro)             \
   __macro(muInit);                                      \
   __macro(muDriverGetVersion);                          \
   __macro(muGetErrorString);                            \
@@ -49,7 +49,7 @@ extern bool HasCUDADriver();
   __macro(muDeviceGetAttribute);                        \
   __macro(muDeviceGet)
 
-MUSA_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_MUSA_WRAP);
+PLATFORM_MUSA_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_MUSA_WRAP);
 
 #undef PLATFORM_DECLARE_DYNAMIC_LOAD_MUSA_WRAP
 
