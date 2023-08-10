@@ -522,15 +522,15 @@ def get_device_capability(device=None):
 
         .. code-block:: python
 
-            # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
 
-            import paddle
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> paddle.device.cuda.get_device_capability()
 
-            paddle.device.cuda.get_device_capability()
+            >>> paddle.device.cuda.get_device_capability(0)
 
-            paddle.device.cuda.get_device_capability(0)
-
-            paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
+            >>> paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
 
     '''
     prop = get_device_properties(device)
