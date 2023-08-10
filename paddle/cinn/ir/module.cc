@@ -23,8 +23,7 @@
 namespace cinn {
 namespace ir {
 
-void Module::Builder::AddFunction(const ir::LoweredFunc &func,
-                                  bool use_optim = true) {
+void Module::Builder::AddFunction(const ir::LoweredFunc &func, bool use_optim) {
   if (use_optim) {
     auto tmp_func = optim::IRCopy(func);
     optim::Simplify(&(tmp_func->body));
