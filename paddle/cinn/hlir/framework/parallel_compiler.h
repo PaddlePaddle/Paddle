@@ -38,12 +38,25 @@ class ParallelCompiler {
     BUILD_INSTRUCTION,
   };
 
+  enum class Status {
+    SUCCESS,
+    UNKNOWN_FAIL,
+    LOWERING_FAIL,
+    CODEGEN_JIT_FAIL,
+    INSTUCTION_FAIL,
+    PROGRAM_FAIL,
+  };
+
   struct CompileOptions {
     ParallelCompiler::Stage stage = ParallelCompiler::Stage::DEFAULT;
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   };
 
   struct CompilationResult {
+    // Compiler status
+    ParallelCompiler::Status status;
+    // Compiler message
+    std::string message;
     // Lower result
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
     // Host/CUDA codegen result
@@ -64,6 +77,9 @@ class ParallelCompiler {
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();
+
+    ParallelCompiler::Status status;
+    std::string message;
 
     const Target target;
     ParallelCompiler* compiler;

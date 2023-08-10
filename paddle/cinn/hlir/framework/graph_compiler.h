@@ -47,6 +47,8 @@ namespace framework {
 class GraphCompiler final {
  public:
   struct CompilationResult {
+    ParallelCompiler::Status status;
+    std::string message;
     std::unique_ptr<Program> runtime_program;
     std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
     std::vector<std::string> source_codes;

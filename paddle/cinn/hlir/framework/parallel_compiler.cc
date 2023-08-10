@@ -115,6 +115,12 @@ void ParallelCompiler::LaunchTask() {
 ParallelCompiler::CompilationResult ParallelCompiler::MergeResult() {
   ParallelCompiler::CompilationResult res;
   for (auto& task : tasks_) {
+    if (task.status != ParallelCompiler::Status::SUCCESS) {
+      LOG(WARNING) << "Compile fail on some task.";
+      res.status = task.status;
+      res.message = task.message;
+      return std::move(res);
+    }
     for (auto& lowered_func : task.lowered_funcs) {
       res.lowered_funcs.emplace_back(lowered_func);
     }

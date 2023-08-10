@@ -91,6 +91,8 @@ GraphCompiler::CompilationResult GraphCompiler::Build(
   VLOG(2) << "Compile With Parallel Compiler Done!";
 
   GraphCompiler::CompilationResult compilation_result;
+  compilation_result.status = result.status;
+  compilation_result.message = result.message;
   compilation_result.runtime_program =
       std::make_unique<Program>(context->scope, std::move(result.instructions));
   compilation_result.lowered_funcs = std::move(result.lowered_funcs);
@@ -116,6 +118,8 @@ GraphCompiler::CompilationResult GraphCompiler::Lowering() {
   auto result = (*parallel_compiler_.get())();
   // Get compile result
   GraphCompiler::CompilationResult compilation_result;
+  compilation_result.status = result.status;
+  compilation_result.message = result.message;
   compilation_result.lowered_funcs = std::move(result.lowered_funcs);
   return compilation_result;
 }
@@ -137,6 +141,8 @@ GraphCompiler::CompilationResult GraphCompiler::CodegenAndJit() {
   auto result = (*parallel_compiler_.get())();
   // Get compile result
   GraphCompiler::CompilationResult compilation_result;
+  compilation_result.status = result.status;
+  compilation_result.message = result.message;
   compilation_result.lowered_funcs = std::move(result.lowered_funcs);
   compilation_result.source_codes = std::move(result.source_codes);
   compilation_result.source_ptxs = std::move(result.source_ptxs);
@@ -160,6 +166,8 @@ GraphCompiler::CompilationResult GraphCompiler::BuildInstruction() {
   auto result = (*parallel_compiler_.get())();
   // Get compile result
   GraphCompiler::CompilationResult compilation_result;
+  compilation_result.status = result.status;
+  compilation_result.message = result.message;
   compilation_result.lowered_funcs = std::move(result.lowered_funcs);
   compilation_result.source_codes = std::move(result.source_codes);
   compilation_result.source_ptxs = std::move(result.source_ptxs);
