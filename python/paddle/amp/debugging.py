@@ -610,23 +610,23 @@ def disable_tensor_checker():
 
         ..  code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
-            paddle.amp.debugging.enable_tensor_checker(checker_config)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-            res = paddle.pow(x, y)
-            paddle.autograd.backward(res, retain_graph=True)
-            paddle.amp.debugging.disable_tensor_checker()
-            #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+            >>> y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            >>> res = paddle.pow(x, y)
+            >>> paddle.autograd.backward(res, retain_graph=True)
+            >>> paddle.amp.debugging.disable_tensor_checker()
+            >>> #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
-            # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-            # Traceback (most recent call last):
-            #     res = paddle.pow(x, y)
-            #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-            #     return _C_ops.elementwise_pow(x, y)
+            >>> # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+            >>> # Traceback (most recent call last):
+            >>> #     res = paddle.pow(x, y)
+            >>> #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            >>> #     return _C_ops.elementwise_pow(x, y)
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})

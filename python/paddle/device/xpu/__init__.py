@@ -38,12 +38,12 @@ def synchronize(device=None):
     Examples:
         .. code-block:: python
 
-            # required: xpu
-            import paddle
+            >>> # required: xpu
+            >>> import paddle
 
-            paddle.device.xpu.synchronize()
-            paddle.device.xpu.synchronize(0)
-            paddle.device.xpu.synchronize(paddle.XPUPlace(0))
+            >>> paddle.device.xpu.synchronize()
+            >>> paddle.device.xpu.synchronize(0)
+            >>> paddle.device.xpu.synchronize(paddle.XPUPlace(0))
 
     '''
 

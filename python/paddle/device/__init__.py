@@ -883,14 +883,14 @@ def synchronize(device=None):
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
     Examples:
         .. code-block:: python
-            # required: custom_device
-            import paddle
+            >>> # required: custom_device
+            >>> import paddle
 
-            paddle.set_device('custom_cpu')
-            paddle.device.synchronize()
-            paddle.device.synchronize("custom_cpu:0")
-            place = paddle.CustomPlace('custom_cpu', 0)
-            paddle.device.synchronize(place)
+            >>> paddle.set_device('custom_cpu')
+            >>> paddle.device.synchronize()
+            >>> paddle.device.synchronize("custom_cpu:0")
+            >>> place = paddle.CustomPlace('custom_cpu', 0)
+            >>> paddle.device.synchronize(place)
     '''
 
     if device is None:
