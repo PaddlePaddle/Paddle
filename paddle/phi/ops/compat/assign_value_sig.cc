@@ -36,6 +36,9 @@ KernelSignature AssignValueOpArgumentMapping(
   } else if (dtype == /*INT64*/ 3) {
     return KernelSignature(
         "assign_value", {}, {"shape", "dtype", "int64_values"}, {"Out"});
+  } else if (dtype == DataType::FLOAT16) {
+    return KernelSignature(
+        "assign_value", {}, {"shape", "dtype", "fp16_values"}, {"Out"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});
   }
