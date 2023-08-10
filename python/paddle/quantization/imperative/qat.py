@@ -139,10 +139,12 @@ class ImperativeQuantAware:
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.static.quantization \
-            ...     import ImperativeQuantAware
-            >>> from paddle.vision.models \
-            ...     import resnet
+            >>> from paddle.static.quantization import (
+            ...     ImperativeQuantAware,
+            ... )
+            >>> from paddle.vision.models import (
+            ...     resnet,
+            ... )
 
             >>> model = resnet.resnet50(pretrained=True)
 
@@ -170,8 +172,9 @@ class ImperativeQuantAware:
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.static.quantization \
-            ...     import ImperativeQuantAware
+            >>> from paddle.static.quantization import (
+            ...     ImperativeQuantAware,
+            ... )
 
             >>> class ImperativeModel(paddle.nn.Layer):
             ...     def __init__(self):
