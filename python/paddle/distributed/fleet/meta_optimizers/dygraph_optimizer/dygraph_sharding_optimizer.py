@@ -100,6 +100,15 @@ class DygraphShardingOptimizer:
             elif not hasattr(p, "main_grad"):
                 p.clear_gradient(set_to_zero)
 
+    def filter_parameters(self, parameter_list, hcg):
+        sharding_parallel_rank = hcg.get_sharding_parallel_rank()
+        parameter_list = [
+            param
+            for param in parameter_list
+            if self._param2rank[param.name] == sharding_parallel_rank
+        ]
+        return parameter_list
+
     def _partition_parameters(self):
         """
         Partitions parameters among sharding ranks.
