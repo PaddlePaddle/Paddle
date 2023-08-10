@@ -67,7 +67,7 @@ class TensorConfig:
     def __repr__(self):
         return str({'shape': self.shape, 'lod': self.lod, 'dtype': self.dtype})
 
-    def astype(self, type: np.dtype):
+    def convert_type_inplace(self, type: np.dtype):
         self.data = self.data.astype(type)
         self.dtype = self.data.dtype
         return self
@@ -277,9 +277,9 @@ class ProgramConfig:
 
     def set_input_type(self, type: np.dtype):
         for inp in self.inputs.values():
-            inp.astype(type)
+            inp.convert_type_inplace(type)
         for weight in self.weights.values():
-            weight.astype(type)
+            weight.convert_type_inplace(type)
         return self
 
     def get_input_type(self) -> np.dtype:

@@ -24,16 +24,20 @@ __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
                                           phi::Array<const T*, 2> sin_cos_data,
                                           bool flag_sin_cos,
                                           int sign,
-                                          int batch_size,
-                                          int seq_len,
-                                          int num_heads,
-                                          int head_dim,
+                                          int64_t batch_size,
+                                          int64_t seq_len,
+                                          int64_t num_heads,
+                                          int64_t head_dim,
                                           phi::Array<T*, 3> outs_data,
                                           int num_inputs,
                                           MPType div_c) {
-  int index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
-  int stride = gridDim.x * blockDim.x * VecSize;
-  int size = batch_size * seq_len * num_heads * head_dim;
+  int64_t index =
+      (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+       threadIdx.x) *
+      VecSize;
+  int64_t stride = static_cast<int64_t>(gridDim.x) *
+                   static_cast<int64_t>(blockDim.x) * VecSize;
+  int64_t size = batch_size * seq_len * num_heads * head_dim;
   MPType sin_value[VecSize];
   MPType cos_value[VecSize];
   MPType result[VecSize];
@@ -44,11 +48,11 @@ __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
   for (; index < size; index += stride) {
     if (flag_sin_cos) {
 #pragma unroll
-      for (int nx = 0; nx < VecSize; ++nx) {
-        int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-        int pos_seq = index_wc / (num_heads * head_dim);
-        int pos_head = index_wc % head_dim;
-        int index_sc = pos_seq * head_dim + pos_head;
+      for (int64_t nx = 0; nx < VecSize; ++nx) {
+        int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+        int64_t pos_seq = index_wc / (num_heads * head_dim);
+        int64_t pos_head = index_wc % head_dim;
+        int64_t index_sc = pos_seq * head_dim + pos_head;
         const T* sin_input = sin_cos_data[0] + index_sc;
         const T* cos_input = sin_cos_data[1] + index_sc;
 
@@ -59,8 +63,8 @@ __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
 #pragma unroll
       for (int nx = 0; nx < VecSize; ++nx) {
         // get sin_index and cos_index
-        int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-        int pos_seq = index_wc / (num_heads * head_dim);
+        int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+        int64_t pos_seq = index_wc / (num_heads * head_dim);
         MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
         MPType indicses =
             static_cast<MPType>(1) /

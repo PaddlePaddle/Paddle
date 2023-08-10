@@ -30,10 +30,10 @@ namespace ir {
 class Module;
 
 struct IrPrinter : public IRVisitorRequireReImpl<void> {
-  explicit IrPrinter(std::ostream &os) : os_(os) {}
+  explicit IrPrinter(std::ostream &os) : os_(os), str_("") {}
 
   //! Emit an expression on the output stream.
-  void Print(Expr e);
+  void Print(const Expr &e);
   //! Emit a expression list with , splitted.
   void Print(const std::vector<Expr> &exprs,
              const std::string &splitter = ", ");
@@ -50,6 +50,17 @@ struct IrPrinter : public IRVisitorRequireReImpl<void> {
 
   std::ostream &os() { return os_; }
 
+  void Visit(const Expr &x) { IRVisitorRequireReImpl::Visit(&x); }
+
+  void Visit(const std::vector<Expr> &exprs,
+             const std::string &splitter = ", ") {
+    for (std::size_t i = 0; !exprs.empty() && i + 1 < exprs.size(); i++) {
+      Visit(exprs[i]);
+      str_ += splitter;
+    }
+    if (!exprs.empty()) Visit(exprs.back());
+  }
+
 #define __(op__) void Visit(const op__ *x) override;
   NODETY_FORALL(__)
 #undef __
@@ -57,6 +68,9 @@ struct IrPrinter : public IRVisitorRequireReImpl<void> {
 #define __(op__) virtual void Visit(const intrinsics::op__ *x);
   INTRINSIC_KIND_FOR_EACH(__)
 #undef __
+
+ protected:
+  std::string str_;
 
  private:
   std::ostream &os_;
@@ -71,11 +85,13 @@ std::ostream &operator<<(std::ostream &os, const Module &m);
 template <typename IRN>
 void IrPrinter::PrintBinaryOp(const std::string &op,
                               const BinaryOpNode<IRN> *x) {
-  os_ << "(";
-  Print(x->a());
-  os_ << " " + op + " ";
-  Print(x->b());
-  os_ << ")";
+  str_ += "(";
+  Visit(x->a());
+  str_ += " ";
+  str_ += op;
+  str_ += " ";
+  Visit(x->b());
+  str_ += ")";
 }
 
 }  // namespace ir

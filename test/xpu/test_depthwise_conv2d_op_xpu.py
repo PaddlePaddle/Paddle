@@ -70,6 +70,7 @@ class XPUTestDepthwiseConv2DOp(XPUOpTestWrapper):
 
     class TestDepthwiseConvWithDilation(XPUTestConv2DOp.TestConv2DOp):
         def init_test_case(self):
+            self.epsilon_xpu2xpu = 0.00005
             self.use_cuda = False
             self.pad = [1, 1]
             self.stride = [2, 2]
@@ -149,6 +150,7 @@ class XPUTestDepthwiseConv2DOp_v2(XPUOpTestWrapper):
         XPUTestConv2DOp_v2.TestConv2DOp_v2
     ):
         def init_test_case(self):
+            self.epsilon_xpu2xpu = 0.00005
             self.use_cuda = False
             self.pad = [1, 1]
             self.stride = [2, 2]

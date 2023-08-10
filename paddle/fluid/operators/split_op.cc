@@ -94,7 +94,7 @@ class SplitOp : public framework::OperatorWithKernel {
     } else {
       sections_final = std::move(phi::IntArray(sections));
     }
-    if (sections.size() > 0) {
+    if (!sections.empty()) {
       if (ctx->IsRuntime()) {
         phi::SplitInferMeta(
             x, sections_final, axis_final, out_ptr, {true, false});
@@ -117,7 +117,7 @@ class SplitOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or

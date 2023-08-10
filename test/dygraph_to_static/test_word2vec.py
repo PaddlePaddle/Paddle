@@ -17,6 +17,7 @@ import random
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import fluid
@@ -291,9 +292,9 @@ def train(to_static):
         skip_gram_model = SkipGram(
             "skip_gram_model", vocab_size, embedding_size
         )
-        adam = fluid.optimizer.AdamOptimizer(
+        adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
-            parameter_list=skip_gram_model.parameters(),
+            parameters=skip_gram_model.parameters(),
         )
 
         step = 0
@@ -320,6 +321,7 @@ def train(to_static):
 
 
 class TestWord2Vec(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)

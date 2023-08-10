@@ -100,7 +100,7 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
   }
   std::wstring cache_text = L"";
   auto PushCacheText = [&]() {
-    if (cache_text != L"") {
+    if (!cache_text.empty()) {
       res->emplace_back(cache_text);
       cache_text = L"";
     }
@@ -245,7 +245,7 @@ void BertTokenizer::BuildInputsWithSpecialTokens(
     vector<int64_t>* inputs,
     const vector<int64_t>& token_ids_0,
     const vector<int64_t>& token_ids_1 /* = vector<int64_t>() */) const {
-  if (token_ids_1.size() == 0) {
+  if (token_ids_1.empty()) {
     inputs->clear();
     inputs->resize(token_ids_0.size() + 2);
     inputs->at(0) = std::move(cls_token_id_);
@@ -286,7 +286,7 @@ void BertTokenizer::CreateTokenTypeIdsFromSequences(
     vector<int64_t>* token_type_ids,
     const vector<int64_t>& token_ids_0,
     const vector<int64_t>& token_ids_1 /* = vector<int64_t>() */) const {
-  if (token_ids_1.size() == 0) {
+  if (token_ids_1.empty()) {
     vector<int64_t> tmp(token_ids_0.size() + 2, 0);
     token_type_ids->swap(tmp);
   } else {
@@ -304,7 +304,7 @@ void BertTokenizer::TruncateSequence(
     const size_t num_tokens_to_remove /* = 0 */,
     const size_t stride /* = 0 */) const {
   for (size_t i = 0; i < num_tokens_to_remove; i++) {
-    if ((pair_ids->size() == 0) || (ids->size() > pair_ids->size())) {
+    if ((pair_ids->empty()) || (ids->size() > pair_ids->size())) {
       ids->pop_back();
     } else {
       pair_ids->pop_back();
@@ -326,7 +326,7 @@ int BertTokenizer::Encode(
   if (!is_split_into_words) {
     Tokenize(text, &ids);
     if (ids.empty()) return 0;
-    if (text_pair != "") {
+    if (!text_pair.empty()) {
       Tokenize(text_pair, &pair_ids);
       if (pair_ids.empty()) return 0;
     }
@@ -348,7 +348,7 @@ int BertTokenizer::Encode(
   }
 
   bool pair = false;
-  if (pair_ids.size() != 0) {
+  if (!pair_ids.empty()) {
     pair = true;
   }
 
