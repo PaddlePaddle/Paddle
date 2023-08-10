@@ -148,7 +148,9 @@ void BindModule(py::module *m) {
 
   py::class_<ir::Module::Builder> builder(module, "Builder");
   builder.def(py::init<const std::string &, const common::Target &>())
-      .def("add_function", &ir::Module::Builder::AddFunction)
+      .def("add_function",
+           &ir::Module::Builder::AddFunction,
+           arg("use_optim") = true)
       .def("add_buffer", &ir::Module::Builder::AddBuffer)
       .def("build", &ir::Module::Builder::Build);
 }
