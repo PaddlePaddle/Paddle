@@ -23,17 +23,16 @@ set(BOOST_PROJECT "extern_boost")
 # checked that the devtools package of CentOS 6 installs boost 1.41.0.
 # So we use 1.41.0 here.
 set(BOOST_VER "1.41.0")
-set(BOOST_TAR
-    "boost_1_41_0"
+set(BOOST_FILE
+    "boost_1_41_0.tar.gz"
     CACHE STRING "" FORCE)
-set(BOOST_URL
-    "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz"
-    CACHE STRING "" FORCE)
+set(BOOST_DOWNLOAD_URL "http://paddlepaddledeps.bj.bcebos.com/${BOOST_FILE}")
 
+set(BOOST_URL_MD5 f891e8c2c9424f0565f0129ad9ab4aff)
+set(BOOST_DOWNLOAD_DIR ${PADDLE_SOURCE_DIR}/third_party/boost)
+set(BOOST_PREFIX_DIR ${THIRD_PARTY_PATH}/boost)
+set(BOOST_INSTALL_DIR ${THIRD_PARTY_PATH}/install/boost)
 message(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
-
-set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
-set(BOOST_DOWNLOAD_DIR "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
 
 set(BOOST_INCLUDE_DIR
     "${BOOST_DOWNLOAD_DIR}"
@@ -41,13 +40,46 @@ set(BOOST_INCLUDE_DIR
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${BOOST_INCLUDE_DIR})
 
+function(download_boost)
+  message(
+    STATUS
+      "Downloading ${BOOST_DOWNLOAD_URL} to ${BOOST_DOWNLOAD_DIR}/${BOOST_FILE}"
+  )
+  file(
+    DOWNLOAD ${BOOST_DOWNLOAD_URL} ${BOOST_DOWNLOAD_DIR}/${BOOST_FILE}
+    EXPECTED_MD5 ${BOOST_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${BOOST_FILE} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${BOOST_FILE} again"
+    )
+  endif()
+endfunction()
+
+# Download and check boost.
+if(EXISTS ${BOOST_DOWNLOAD_DIR}/${BOOST_FILE})
+  file(MD5 ${BOOST_DOWNLOAD_DIR}/${BOOST_FILE} BOOST_MD5)
+  if(NOT BOOST_MD5 STREQUAL BOOST_URL_MD5)
+    # clean build file
+    file(REMOVE_RECURSE ${BOOST_PREFIX_DIR})
+    file(REMOVE_RECURSE ${BOOST_INSTALL_DIR})
+    download_boost()
+  endif()
+else()
+  download_boost()
+endif()
+
 ExternalProject_Add(
   ${BOOST_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
+  URL ${BOOST_DOWNLOAD_DIR}/${BOOST_FILE}
+  URL_MD5 ${BOOST_URL_MD5}
   DOWNLOAD_DIR ${BOOST_DOWNLOAD_DIR}
-  URL ${BOOST_URL}
-  DOWNLOAD_NO_PROGRESS 1
-  PREFIX ${BOOST_SOURCES_DIR}
+  PREFIX ${BOOST_PREFIX_DIR}
+  SOURCE_DIR ${BOOST_INSTALL_DIR}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""
