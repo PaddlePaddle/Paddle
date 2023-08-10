@@ -53,6 +53,37 @@ ir::OpResult divide(ir::OpResult x, ir::OpResult y) {
   return divide_op.out();
 }
 
+ir::OpResult add(ir::OpResult x, ir::OpResult y) {
+  paddle::dialect::AddOp add_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::AddOp>(x, y);
+  return add_op.out();
+}
+
+ir::OpResult multiply(ir::OpResult x, ir::OpResult y) {
+  paddle::dialect::MultiplyOp multiply_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::MultiplyOp>(
+          x, y);
+  return multiply_op.out();
+}
+
+ir::OpResult elementwise_pow(ir::OpResult x, ir::OpResult y) {
+  paddle::dialect::ElementwisePowOp elementwise_pow_op =
+      APIBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::ElementwisePowOp>(x, y);
+  return elementwise_pow_op.out();
+}
+
+ir::OpResult scale(ir::OpResult x,
+                   float scale,
+                   float bias,
+                   bool bias_after_scale) {
+  paddle::dialect::ScaleOp scale_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ScaleOp>(
+          x, scale, bias, bias_after_scale);
+  return scale_op.out();
+}
+
 ir::OpResult full(std::vector<int64_t> shape,
                   float value,
                   phi::DataType dtype,
@@ -61,6 +92,27 @@ ir::OpResult full(std::vector<int64_t> shape,
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::FullOp>(
           shape, value, dtype, place);
   return full_op.out();
+}
+
+ir::OpResult reshape(ir::OpResult x, std::vector<int64_t> shape) {
+  paddle::dialect::ReshapeOp reshape_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ReshapeOp>(
+          x, shape);
+  return reshape_op.out();
+}
+
+ir::OpResult expand(ir::OpResult x, std::vector<int64_t> shape) {
+  paddle::dialect::ExpandOp expand_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ExpandOp>(
+          x, shape);
+  return expand_op.out();
+}
+
+ir::OpResult tile(ir::OpResult x, std::vector<int64_t> repeat_times) {
+  paddle::dialect::TileOp tile_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::TileOp>(
+          x, repeat_times);
+  return tile_op.out();
 }
 
 ir::OpResult tanh_grad(ir::OpResult out, ir::OpResult grad_out) {
