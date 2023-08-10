@@ -88,7 +88,7 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
   // get mean_grad res.
   Tensor op_res =
       backend::experimental::mean_grad<primitive::experimental::DescTensor>(
-          x, out_grad, axis.GetData(), keepdim, reduce_all);
+          x, out_grad, axis, keepdim, reduce_all);
 
   // check stop_gradients size and op result size
   PADDLE_ENFORCE_EQ(
