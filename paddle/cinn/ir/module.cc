@@ -30,7 +30,7 @@ void Module::Builder::AddFunction(const ir::LoweredFunc &func, bool use_optim) {
     optim::SimplifyForLoops(&(tmp_func->body));
     optim::SimplifyBlocks(&(tmp_func->body));
     tmp_func->body = optim::Optimize(tmp_func->body, module_->target);
-    module_->functions.emplace_back(std::move(func));
+    module_->functions.emplace_back(std::move(tmp_func));
   } else {
     module_->functions.push_back(func);
   }
