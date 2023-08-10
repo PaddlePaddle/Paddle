@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
+
 #include <string>
-#include <typeindex>
 
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/ir/core/value.h"
@@ -45,9 +45,9 @@ class IrDtype {
   const ir::Type* dtype_;
 };
 
-class IrTensor : public TensorInterface {
+class IrValue : public TensorInterface {
  public:
-  explicit IrTensor(const Value* value)
+  explicit IrValue(const ir::Value* value)
       : shape_(
             &value->type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
         dtype_(&value->type()
