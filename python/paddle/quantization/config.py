@@ -128,6 +128,10 @@ class QuantConfig:
              >>> q_config = QuantConfig(activation=None, weight=None)
              >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
              >>> print(q_config)
+             Global config:
+             None
+             Layer prefix config: 
+             {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680ee0>}
 
         """
         if isinstance(layer, list):
@@ -172,6 +176,10 @@ class QuantConfig:
              >>> q_config = QuantConfig(activation=None, weight=None)
              >>> q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
              >>> print(q_config)
+             Global config:
+             None
+             Layer prefix config: 
+             {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680fd0>}
 
         """
         if isinstance(layer_name, str):
@@ -217,6 +225,10 @@ class QuantConfig:
             >>> q_config = QuantConfig(activation=None, weight=None)
             >>> q_config.add_type_config([Linear], activation=quanter, weight=quanter)
             >>> print(q_config)
+            Global config:
+            None
+            Layer type config:
+            {<class 'paddle.nn.layer.common.Linear'>: <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680a60>}
 
         """
         if isinstance(layer_type, type) and issubclass(
