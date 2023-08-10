@@ -35,6 +35,28 @@ Tensor mean_grad(const Tensor& x,
                  std::vector<int64_t> axis = {},
                  bool keepdim = false,
                  bool reduce_all = false);
+
+template <typename T>
+Tensor divide(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor sum(const Tensor& x,
+           std::vector<int64_t> axis = {},
+           phi::DataType dtype = phi::DataType::UNDEFINED,
+           bool keepdim = false);
+
+template <typename T>
+Tensor full(std::vector<int64_t> shape,
+            float value,
+            phi::DataType dtype = phi::DataType::FLOAT32,
+            phi::Place place = phi::CPUPlace());
+
+template <typename T>
+Tensor reshape(const Tensor& x, std::vector<int64_t> shape);
+
+template <typename T>
+Tensor tile(const Tensor& x, std::vector<int64_t> repeat_times = {});
+
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive
