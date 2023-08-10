@@ -1134,7 +1134,7 @@ class TestDataset2(unittest.TestCase):
                 fleet.init()
             except ImportError as e:
                 print("warning: no mpi4py")
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = paddle.optimizer.Adam(learning_rate=0.000005)
             try:
                 adam = fleet.distributed_optimizer(adam)
                 adam.minimize([fake_cost], [scope])
@@ -1206,7 +1206,7 @@ class TestDataset2(unittest.TestCase):
                 fleet.init()
             except ImportError as e:
                 print("warning: no mpi4py")
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = paddle.optimizer.Adam(learning_rate=0.000005)
             try:
                 adam = fleet.distributed_optimizer(
                     adam,
@@ -1339,7 +1339,7 @@ class TestDataset2(unittest.TestCase):
                 fleet.init()
             except ImportError as e:
                 print("warning: no mpi4py")
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = paddle.optimizer.Adam(learning_rate=0.000005)
             try:
                 adam = fleet.distributed_optimizer(
                     adam,

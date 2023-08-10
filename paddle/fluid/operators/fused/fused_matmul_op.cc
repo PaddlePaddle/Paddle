@@ -132,7 +132,7 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
       // only promote inputs’s types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
       // op previously) then we also need to rotate shape NHWC -> NCWH
       if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&

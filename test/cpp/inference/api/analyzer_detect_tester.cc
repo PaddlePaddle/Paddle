@@ -125,7 +125,7 @@ void profile(int cache_capacity = 1) {
             VarType::FP32);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_detect, profile_mkldnn) {
   profile(5 /* cache_capacity */);
   profile(10 /* cache_capacity */);
