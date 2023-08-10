@@ -123,7 +123,7 @@ def train(
     else:
         raise NotImplementedError()
 
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     if use_bf16:
         sgd_optimizer = paddle.static.amp.bf16.decorate_bf16(
             sgd_optimizer,

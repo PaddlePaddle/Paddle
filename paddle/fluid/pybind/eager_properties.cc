@@ -445,7 +445,7 @@ PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-struct PyGetSetDef variable_properties[] = {
+struct PyGetSetDef variable_properties[] = {  // NOLINT
     {"data",
      (getter)tensor_properties_get_data,
      (setter)tensor_properties_set_data,
@@ -510,7 +510,7 @@ struct PyGetSetDef variable_properties[] = {
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 // variable_properties for core.eager.StringTensor
-struct PyGetSetDef string_tensor_variable_properties[] = {
+struct PyGetSetDef string_tensor_variable_properties[] = {  // NOLINT
     {"name",
      (getter)tensor_properties_get_name,
      (setter)tensor_properties_set_name,

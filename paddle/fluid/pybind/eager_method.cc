@@ -63,6 +63,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/pybind.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #endif
@@ -455,7 +456,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
         longest_pstring->data(), longest_pstring->size());
     max_unicode_length = (max_unicode_length == 0) ? 1 : max_unicode_length;
     VLOG(6) << "The max unicode length is " << max_unicode_length;
-    auto sp = std::make_unique<uint32_t[]>(max_unicode_length * numel);
+    auto sp =
+        std::make_unique<uint32_t[]>(max_unicode_length * numel);  // NOLINT
     auto py_array_data = sp.get();
     memset(py_array_data, 0, max_unicode_length * numel * sizeof(uint32_t));
     for (int64_t i = 0; i < numel; ++i) {
@@ -1622,6 +1624,18 @@ static PyObject* tensor_remove_grad_hook(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_inplace_assign(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << "inplace assign for tensor:" << self->tensor.name();
+  PyObject* other = PyTuple_GET_ITEM(args, 0);
+  PyObject* self_obj = reinterpret_cast<PyObject*>(self);
+  ShareTensor(self_obj, other);
+  RETURN_PY_NONE;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyDoc_STRVAR(tensor_method__register_reduce_hook__doc__,
              R"DOC(_register_backward_hook($self, hook, /)
 --
@@ -2452,6 +2466,10 @@ PyMethodDef variable_methods[] = {
      nullptr},
     {"_register_grad_hook",
      (PyCFunction)(void (*)())tensor_register_grad_hook,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_inplace_assign",  // NOTE(xiongkun03): only used in sot.
+     (PyCFunction)(void (*)())tensor_inplace_assign,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_remove_grad_hook",

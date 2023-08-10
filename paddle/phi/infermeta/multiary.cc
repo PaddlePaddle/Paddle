@@ -1057,6 +1057,45 @@ void CudnnLSTMInferMeta(
   state_out->set_dtype(phi::DataType::UINT8);
 }
 
+void DecayedAdagradInferMeta(const MetaTensor& param,
+                             const MetaTensor& grad,
+                             const MetaTensor& moment,
+                             const MetaTensor& learning_rate,
+                             float decay,
+                             float epsilon,
+                             MetaTensor* param_out,
+                             MetaTensor* moment_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_NE(phi::product(lr_dims),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Maybe the Input variable LearningRate has not "
+                        "been initialized. You may need to confirm "
+                        "if you put exe.run(startup_program) "
+                        "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      phi::errors::InvalidArgument("LearningRate should have one element"));
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(param_dims,
+                    grad.dims(),
+                    phi::errors::InvalidArgument(
+                        "Param and Grad input of DecayedAdagradOp should have "
+                        "the same dimension."));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Moment input of DecayedAdagradOp should have "
+          "the same dimension."));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+  moment_out->set_dims(param_dims);
+  moment_out->set_dtype(param.dtype());
+}
+
 inline int ConvOutputSize(
     int input_size, int filter_size, int dilation, int padding, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
@@ -1342,8 +1381,6 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            const MetaTensor& smooth,
                            const std::string& act_method,
                            const std::string& compute_dtype,
-                           int rows,
-                           int cols,
                            float quant_scale,
                            int quant_round_type,
                            float quant_max_bound,
@@ -1358,10 +1395,14 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   auto dim = x_dims[1];
 
   PADDLE_ENFORCE_GT(
-      rows, 0, phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
+      x_dims[0],
+      0,
+      phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
 
   PADDLE_ENFORCE_GT(
-      cols, 0, phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+      x_dims[1],
+      0,
+      phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
 
   if (act_method == "geglu" || act_method == "swiglu") {
     PADDLE_ENFORCE_EQ(
