@@ -334,19 +334,41 @@ class RecomputePass(PassBase):
         vars_should_be_hold = list(
             set(vars_should_be_hold) | set(rc_state.checkpoints)
         )
-        self._vars_for_offload = [var for var in vars_should_be_hold if var not in set(rc_state.get_input_nodes())]
+        # _vars_for_offload is for recom-offload pass
+        self._vars_for_offload = [
+            var
+            for var in vars_should_be_hold
+            if var not in set(rc_state.get_input_nodes())
+        ]
         need_remove_var = []
         for var_name in self._vars_for_offload:
-            var_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(main_block.var(var_name))
+            var_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                main_block.var(var_name)
+            )
             var_process_mesh = var_dist_attr.process_mesh
-            assert (var_name in rc_state.var_op_deps), "The var {} isn't in the rc_state.var_op_deps.".format(var_name)
+            assert (
+                var_name in rc_state.var_op_deps
+            ), f"The var {var_name} isn't in the rc_state.var_op_deps."
             for op_idx in rc_state.var_op_deps[var_name]['var_as_input_ops']:
-                var_as_input_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(main_block.ops[op_idx])
-                if var_process_mesh != var_as_input_op_dist_attr.process_mesh and var_name not in need_remove_var:
+                var_as_input_op_dist_attr = (
+                    self._dist_context.get_op_dist_attr_for_program(
+                        main_block.ops[op_idx]
+                    )
+                )
+                if (
+                    var_process_mesh != var_as_input_op_dist_attr.process_mesh
+                    and var_name not in need_remove_var
+                ):
                     need_remove_var.append(var_name)
-        logging.debug(f"The varibales that don't need to be unloaded are {need_remove_var} because of PP strategy.")
-        self._vars_for_offload = [var for var in self._vars_for_offload if var not in need_remove_var]
-        self._vars_for_offload = rc_state.sort_checkpoints(self._vars_for_offload)
+        logging.debug(
+            f"The varibales that don't need to be unloaded are {need_remove_var} because of PP strategy."
+        )
+        self._vars_for_offload = [
+            var for var in self._vars_for_offload if var not in need_remove_var
+        ]
+        self._vars_for_offload = rc_state.sort_checkpoints(
+            self._vars_for_offload
+        )
 
         # 4. get the fwd ops desc to be recomputed.
         var_name_dict = {}  # varname --> varname.subprog_XXX
@@ -498,7 +520,6 @@ class RecomputePass(PassBase):
                                 op_namescope="recompute_segment_dep",
                             )
         main_program._sync_with_cpp()
-
 
     def get_vars_for_offload(self):
         return self._vars_for_offload

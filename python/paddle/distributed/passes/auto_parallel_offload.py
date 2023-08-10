@@ -14,9 +14,6 @@
 
 import logging
 
-from paddle.distributed.auto_parallel.static.process_group import (
-    get_world_process_group,
-)
 from paddle.framework import core
 from paddle.utils import unique_name
 
@@ -24,8 +21,6 @@ from ..auto_parallel.static.dist_attribute import OperatorDistAttr
 from ..auto_parallel.static.utils import set_var_dist_attr
 from .auto_parallel_recompute import insert_dependencies_for_two_ops
 from .pass_base import PassBase, register_pass
-
-world_process_group = get_world_process_group()
 
 # logging.basicConfig(
 #     format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s',
@@ -48,11 +43,13 @@ class RecomOffloadPass(PassBase):
             return False
         return True
 
-    # offload pass must after recompute pass(zero and FSDP in the future)
     def _check_conflict(self, other_pass):
         return True
 
     def _creat_vars(self, varname, ref_var_dist_attr):
+        """
+        Create new variables for offload and fetch.
+        """
         pinned_var_name = unique_name.generate(varname + "@Pinned")
         fetched_var_name = unique_name.generate(varname + "@Fetch")
 
@@ -83,6 +80,9 @@ class RecomOffloadPass(PassBase):
         return pinned_var_name, fetched_var_name
 
     def _reset_op_dist_attr(self, op, new_var_name, is_input=True):
+        """
+        Reset the dist_attr of the input and output of the operator.
+        """
         op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
         var_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
             self._main_block.var(new_var_name)
@@ -125,12 +125,15 @@ class RecomOffloadPass(PassBase):
             return checkpoint_name
         else:
             raise ValueError(
-                "Only support op_type 'offlad' and 'fetch', but reveivee {}".format(
+                "Only support op_type 'offload' and 'fetch', but received {}".format(
                     op_type
                 )
             )
 
     def _get_offload_pos(self):
+        """
+        Parse and get the variables's information that need to be offloaded during forward pass.
+        """
         # such as: "origin_idx : ["fetch", var_name, "fetch", var_name]"
         self.pos_insert_op_map = {}
         self.unoffload_checkpoint_names = self._offload_points[:]
@@ -150,10 +153,9 @@ class RecomOffloadPass(PassBase):
                             idx + 1, output_var_name, "offload"
                         )
                     else:
-                        # the checkpoint var must be producted from only one op
                         raise ValueError(
-                            "The input var {} has already been offloaded".format(
-                                output_var_name
+                            "The variable {} has already been offload, but it is used as output of op {} again.".format(
+                                output_var_name, op.desc.type()
                             )
                         )
                 else:
@@ -165,6 +167,9 @@ class RecomOffloadPass(PassBase):
         )
 
     def _get_fetch_pos(self):
+        """
+        Parse and get the variables's information that need to be fetched during backward pass.
+        """
         # such as: "origin_idx : ["fetch", var_name, "fetch", var_name]"
         self.pos_insert_op_map = {}
         self.unoffload_checkpoint_names = self.need_offload_checkpoint_names[:]
@@ -310,13 +315,13 @@ class RecomOffloadPass(PassBase):
         # paddle.save(main_program, "orgin_prog.pdmodle")
         self._offload_points = self.get_attr("offload_points")
         logging.debug(f"The origin checkpints is {self._offload_points}")
-        loss = self.get_attr("loss")
-        no_grad_set = self.get_attr("no_grad_set")
+        # loss = self.get_attr("loss")
+        # no_grad_set = self.get_attr("no_grad_set")
         self._dist_context = self.get_attr("dist_context")
         self._main_block = main_program.global_block()
 
-        # We need to pop some tensors those shouldn't be offload
-        # 1.Pop the tensors those don't have memory such as Xshape of 'unsqueese2'.
+        # 1. We need to pop some tensors those shouldn't be offload
+        # 1.1 Pop the tensors those don't have memory such as Xshape of 'unsqueese2'.
         ckpts_without_memory = []
         for var_name in self._offload_points:
             var = self._main_block.var(var_name)
@@ -326,7 +331,7 @@ class RecomOffloadPass(PassBase):
         for var_name in ckpts_without_memory:
             self._offload_points.remove(var_name)
 
-        # 2.Pop the checkpoints that are the last op in forward pass
+        # 1.2 Pop the checkpoints that are the last op in forward pass
         # find the first forward op idx and the first backward op idx
         self.fw_start_op_idx = len(self._main_block.ops)
         self.bw_start_op_idx = -1
@@ -388,7 +393,7 @@ class RecomOffloadPass(PassBase):
         self._varnames2pinned_names = {}
         self._varnames2fetch_names = {}
 
-        # ctreat auxiliary vars
+        # 2. ctreat auxiliary vars
         for _, op in enumerate(self._main_block.ops):
             if len(self._varnames2fetch_names) == len(self._offload_points):
                 break
@@ -408,14 +413,12 @@ class RecomOffloadPass(PassBase):
                     self._varnames2pinned_names[output_var] = pinned_var_name
                     self._varnames2fetch_names[output_var] = fetched_var_name
 
-        # add offload op(memcpy_d2h) in forward pass
+        # 3. add offload op(memcpy_d2h) in forward pass
         self._get_offload_pos()
         self._update_main_program(self.fw_start_op_idx, self.bw_start_op_idx)
 
-        # add fetch op(memcpy_h2d) in backward pass
+        # 4. add fetch op(memcpy_h2d) in backward pass
         self._get_fetch_pos()
         self._update_main_program(
             self.bw_start_op_idx, len(self._main_block.ops)
         )
-        # print("finished program = {}".format(main_program))
-        # paddle.save(main_program, "new_final_prog.pdmodel")

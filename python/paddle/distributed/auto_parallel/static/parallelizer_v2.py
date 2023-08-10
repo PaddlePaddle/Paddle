@@ -316,7 +316,6 @@ class Parallelizer:
                 self._strategy.recompute.enable
                 and self._strategy.offload.recom_offload
             ):
-                recom_config = copy.deepcopy(self._strategy.recompute.to_dict())
                 config = copy.deepcopy(self._strategy.offload.to_dict())
                 config["dist_context"] = self._dist_context
                 config["no_grad_set"] = None
