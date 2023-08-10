@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/dgc_momentum_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/dgc_momentum_kernel_impl.h"
 

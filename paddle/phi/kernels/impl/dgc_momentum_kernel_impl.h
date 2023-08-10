@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/momentum_kernel.h"
@@ -32,7 +34,7 @@ void DGCMomentumKernel(const Context& dev_ctx,
                        const DenseTensor& nranks_tensor,
                        float mu,
                        bool use_nesterov,
-                       std::string regularization_method,
+                       const std::string& regularization_method,
                        float regularization_coeff,
                        bool multi_precision,
                        float rescale_grad,
