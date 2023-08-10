@@ -232,7 +232,7 @@ def remove_weight_norm(layer, name='weight'):
                    [1.35883713, 1.32126212, 1.56303072, 1.20874095, 1.22893476])
             >>> remove_weight_norm(conv)
             >>> # The following is the effect after removing the weight norm:
-            >>> print(conv.weight_g)
+            >>> # print(conv.weight_g)
             >>> # AttributeError: 'Conv2D' object has no attribute 'weight_g'
     """
     for k, hook in layer._forward_pre_hooks.items():
