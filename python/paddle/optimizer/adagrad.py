@@ -72,6 +72,7 @@ class Adagrad(Optimizer):
 
             >>> import paddle
             >>> paddle.seed(2023)
+
             >>> inp = paddle.rand(shape=[10, 10])
             >>> linear = paddle.nn.Linear(10, 10)
             >>> out = linear(inp)
@@ -81,6 +82,7 @@ class Adagrad(Optimizer):
             >>> out.backward()
             >>> adagrad.step()
             >>> adagrad.clear_grad()
+
             >>> # Note that the learning_rate of linear_2 is 0.01.
             >>> linear_1 = paddle.nn.Linear(10, 10)
             >>> linear_2 = paddle.nn.Linear(10, 10)

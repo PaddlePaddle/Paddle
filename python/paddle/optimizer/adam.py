@@ -100,6 +100,7 @@ class Adam(Optimizer):
 
             >>> import paddle
             >>> paddle.seed(2023)
+
             >>> linear = paddle.nn.Linear(10, 10)
             >>> inp = paddle.rand([10,10], dtype="float32")
             >>> out = linear(inp)
@@ -116,6 +117,7 @@ class Adam(Optimizer):
             >>> # Adam with beta1/beta2 as Tensor and weight_decay as float
             >>> import paddle
             >>> paddle.seed(2023)
+
             >>> linear = paddle.nn.Linear(10, 10)
             >>> inp = paddle.rand([10,10], dtype="float32")
             >>> out = linear(inp)

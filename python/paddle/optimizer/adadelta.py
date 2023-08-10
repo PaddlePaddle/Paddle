@@ -72,6 +72,7 @@ class Adadelta(Optimizer):
 
             >>> import paddle
             >>> paddle.seed(2023)
+
             >>> inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             >>> linear = paddle.nn.Linear(10, 10)
             >>> out = linear(inp)
@@ -82,6 +83,7 @@ class Adadelta(Optimizer):
             >>> back = out.backward()
             >>> adadelta.step()
             >>> adadelta.clear_grad()
+
             >>> # Note that the learning_rate of linear_2 is 0.01.
             >>> linear_1 = paddle.nn.Linear(10, 10)
             >>> linear_2 = paddle.nn.Linear(10, 10)
