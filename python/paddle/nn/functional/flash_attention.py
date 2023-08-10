@@ -417,6 +417,7 @@ def scaled_dot_product_attention(
     dropout_p=0.0,
     is_causal=False,
     training=True,
+    name = None,
 ):
     r"""
     The equation is:
@@ -450,7 +451,10 @@ def scaled_dot_product_attention(
                         not supported yet.
         dropout_p(float): The dropout ratio.
         is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase
+        training(bool): Whether it is in the training phase.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
 
     Returns:
         out(Tensor): The attention tensor.
