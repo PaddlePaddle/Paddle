@@ -511,12 +511,11 @@ class Optimizer:
                 ...     adam.set_lr(lr_list[i])
                 ...     lr = adam.get_lr()
                 ...     print("current lr is {}".format(lr))
-                Print:
-                   current lr is 0.2
-                   current lr is 0.3
-                   current lr is 0.4
-                   current lr is 0.5
-                   current lr is 0.6
+                current lr is 0.2
+                current lr is 0.3
+                current lr is 0.4
+                current lr is 0.5
+                current lr is 0.6
 
         """
         if not isinstance(value, (int, float)):
