@@ -9,8 +9,7 @@ set(GINAC_FILE
     "ginac-1.8.1_cln-1.3.6_gmp-6.2.1.tar.gz"
     CACHE STRING "" FORCE)
 set(GINAC_DOWNLOAD_URL
-    "https://paddle-inference-dist.bj.bcebos.com/CINN/${GINAC_FILE}"
-)
+    "https://paddle-inference-dist.bj.bcebos.com/CINN/${GINAC_FILE}")
 set(GINAC_URL_MD5 ebc3e4b7770dd604777ac3f01bfc8b06)
 set(GINAC_DOWNLOAD_DIR ${PADDLE_SOURCE_DIR}/third_party/ginac)
 set(GINAC_PREFIX_DIR ${THIRD_PARTY_PATH}/ginac)
@@ -18,7 +17,9 @@ set(GINAC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/ginac)
 
 function(download_ginac)
   message(
-    STATUS "Downloading ${GINAC_DOWNLOAD_URL} to ${GINAC_DOWNLOAD_DIR}/${GINAC_FILE}")
+    STATUS 
+      "Downloading ${GINAC_DOWNLOAD_URL} to ${GINAC_DOWNLOAD_DIR}/${GINAC_FILE}"
+  )
   file(
     DOWNLOAD ${GINAC_DOWNLOAD_URL} ${GINAC_DOWNLOAD_DIR}/${GINAC_FILE}
     EXPECTED_MD5 ${GINAC_URL_MD5}
@@ -64,10 +65,8 @@ ExternalProject_Add(
 
 add_library(ginac STATIC IMPORTED GLOBAL)
 add_dependencies(ginac external_ginac)
-set_property(
-  TARGET ginac PROPERTY IMPORTED_LOCATION
-                        ${GINAC_INSTALL_DIR}/lib/libginac.a)
-target_link_libraries(
-  ginac INTERFACE ${GINAC_INSTALL_DIR}/lib/libcln.a
-                  ${GINAC_INSTALL_DIR}/lib/libgmp.a)
+set_property(TARGET ginac PROPERTY IMPORTED_LOCATION
+                                   ${GINAC_INSTALL_DIR}/lib/libginac.a)
+target_link_libraries(ginac INTERFACE ${GINAC_INSTALL_DIR}/lib/libcln.a
+                                      ${GINAC_INSTALL_DIR}/lib/libgmp.a)
 include_directories(${GINAC_INSTALL_DIR}/include)
