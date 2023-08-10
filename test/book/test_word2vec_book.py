@@ -58,28 +58,28 @@ def train(
     IS_SPARSE = is_sparse
 
     def __network__(words):
-        embed_first = fluid.layers.embedding(
+        embed_first = paddle.static.nn.embedding(
             input=words[0],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
         )
-        embed_second = fluid.layers.embedding(
+        embed_second = paddle.static.nn.embedding(
             input=words[1],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
         )
-        embed_third = fluid.layers.embedding(
+        embed_third = paddle.static.nn.embedding(
             input=words[2],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
         )
-        embed_forth = fluid.layers.embedding(
+        embed_forth = paddle.static.nn.embedding(
             input=words[3],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
@@ -123,7 +123,7 @@ def train(
     else:
         raise NotImplementedError()
 
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     if use_bf16:
         sgd_optimizer = paddle.static.amp.bf16.decorate_bf16(
             sgd_optimizer,

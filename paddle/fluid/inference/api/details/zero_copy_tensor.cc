@@ -375,7 +375,7 @@ void Tensor::CopyToCpuImpl(T *data,
   auto t_place = tensor->place();
 
   if (paddle::platform::is_cpu_place(t_place)) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (tensor->layout() == phi::DataLayout::ONEDNN) {
       phi::DenseTensor out;
       auto mem_allocation =
@@ -685,7 +685,7 @@ std::vector<int> Tensor::shape() const {
           "Not found tensor called %s in the scope", name_));
 // oneDNN may does layout transform internally, so need to reorder before
 // return
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (tensor->layout() == phi::DataLayout::ONEDNN) {
     phi::DataLayout out_layout =
         phi::OneDNNContext::tls().get_cur_paddle_data_layout();
@@ -868,7 +868,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
   auto t_place = tensor->place();
 
   if (paddle::platform::is_cpu_place(t_place)) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (tensor->layout() == phi::DataLayout::ONEDNN) {
       phi::DenseTensor out;
       auto mem_allocation =

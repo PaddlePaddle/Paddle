@@ -79,8 +79,7 @@ void ConvertToMixedPrecisionPass::LoadModel() {
   bool load_params = !params_file_.empty();
   auto program_desc =
       inference::Load(&exe, &scope_, model_file_, params_file_, load_params);
-  main_graph_ = std::unique_ptr<framework::ir::Graph>(
-      new framework::ir::Graph(*program_desc));
+  main_graph_ = std::make_unique<framework::ir::Graph>(*program_desc);
   main_graph_->SetNotOwned(framework::ir::kParamScopeAttr, &scope_);
 }
 

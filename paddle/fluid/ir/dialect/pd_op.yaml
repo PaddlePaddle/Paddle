@@ -1,3 +1,34 @@
+- name: assign_value
+  inputs: []
+  attrs:
+  - {typename: 'int[]', name: shape}
+  - {typename: DataType, name: dtype}
+  - {typename: 'Scalar[]', name: values, data_type: 'std::vector<Scalar>'}
+  - {typename: Place, name: place, default_value: '{}'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AssignValueInferMeta
+    param: [shape, dtype]
+  kernel:
+    func: [assign_value]
+    param: [shape, dtype, values]
+    backend:
+      ordered: true
+      candidates: [place]
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {assign_value: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+
 - name: feed
   inputs: []
   attrs:

@@ -533,7 +533,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                     "forward_recompute", self._optimizer.__class__.__name__
                 )
 
-            self._optimizer = fluid.optimizer.RecomputeOptimizer(
+            self._optimizer = paddle.incubate.optimizer.RecomputeOptimizer(
                 self._optimizer
             )
             self._optimizer._set_checkpoints(self._recompute_checkpoints)

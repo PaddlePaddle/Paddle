@@ -424,6 +424,10 @@ void FakeInitializeOutputsForFunctionKernel(
             if (beta1_pow->place() == beta2_pow->place()) {
               backend = phi::TransToPhiBackend(beta1_pow->place());
             }
+          } else if (op_type == "reshape2") {
+            phi::TensorBase* x =
+                GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
+            backend = phi::TransToPhiBackend(x->place());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "Unsupported UNDEFINED backend for op: %s, parameter: %s",

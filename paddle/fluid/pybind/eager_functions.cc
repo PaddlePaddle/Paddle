@@ -513,8 +513,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize phi tensor operants successfully";
   }
 
@@ -1258,7 +1258,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
     PADDLE_ENFORCE_NE(grad,
                       nullptr,
                       paddle::platform::errors::Fatal(
-                          "Detected NULL grad"
+                          "Detected nullptr grad"
                           "Please check if you have manually cleared"
                           "the grad inside autograd_meta"));
     if ((*grad).initialized() && ((*grad).dtype() == phi::DataType::FLOAT16 ||
@@ -1278,90 +1278,90 @@ PyMethodDef variable_functions[] = {
     {"scale",
      (PyCFunction)(void (*)())eager_api_scale,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_add_backward_final_hook",
      (PyCFunction)(void (*)())eager_api__add_backward_final_hook,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"run_backward",
      (PyCFunction)(void (*)())eager_api_run_backward,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"run_partial_grad",
      (PyCFunction)(void (*)())eager_api_run_partial_grad,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_get_custom_operator_inplace_map",
      (PyCFunction)(void (*)(
          void))eager_api__get_custom_operator_inplace_reverse_idx,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"_run_custom_op",
      (PyCFunction)(void (*)())eager_api_run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"tensor_copy",
      (PyCFunction)(void (*)())eager_api_tensor_copy,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_all_grads",
      (PyCFunction)(void (*)())eager_api_get_all_grads,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_grads_lists",
      (PyCFunction)(void (*)())eager_api_get_grads_lists,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"get_grads_types",
      (PyCFunction)(void (*)())eager_api_get_grads_types,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"read_next_tensor_list",
      (PyCFunction)(void (*)())eager_api_read_next_tensor_list,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"jit_function_call",
      (PyCFunction)(void (*)())eager_api_jit_function_call,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     /**sparse functions**/
     {"sparse_coo_tensor",
      (PyCFunction)(void (*)())eager_api_sparse_coo_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"sparse_csr_tensor",
      (PyCFunction)(void (*)())eager_api_sparse_csr_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"register_saved_tensors_hooks",
      (PyCFunction)(void (*)())eager_api_register_saved_tensors_hooks,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"reset_saved_tensors_hooks",
      (PyCFunction)(void (*)())eager_api_reset_saved_tensors_hooks,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     /**amp functions**/
     {"set_master_grads",
      (PyCFunction)(void (*)())eager_api_set_master_grads,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
 /**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)
     {"async_read",
      (PyCFunction)(void (*)())eager_api_async_read,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"async_write",
      (PyCFunction)(void (*)())eager_api_async_write,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"to_uva_tensor",
      (PyCFunction)(void (*)())eager_api_to_uva_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
 #endif
-    {NULL, NULL, 0, NULL}};
+    {nullptr, nullptr, 0, nullptr}};
 
 void BindFunctions(PyObject* module) {
   if (PyModule_AddFunctions(module, variable_functions) < 0) {

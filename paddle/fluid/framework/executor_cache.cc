@@ -312,7 +312,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
       place, program_desc.Block(0), scope, execution_config));
 
   auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, is_grad);
+      interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
   cached_value.core_ = core;
   return core;
 }
@@ -340,7 +340,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
       place, {}, std::move(ir_program), scope, execution_config));
 
   auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, is_grad);
+      interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
   cached_value.core_ = core;
   return core;
 }
@@ -377,7 +377,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     auto place = in_t.place().GetType();
 
     auto op_desc = block->PrependOp();
-    op_desc->SetType("feed_with_place");
+    op_desc->SetType("data");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
@@ -386,18 +386,21 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     op_desc->SetOutput("out", {name});
   }
 
+  std::set<std::string> input_param_names;
   for (auto &param : params) {
-    auto name = param.name();
+    auto &name = param.name();
     auto place = param.place().GetType();
 
     auto op_desc = local_program.MutableBlock(0)->PrependOp();
-    op_desc->SetType("feed_with_place");
+    op_desc->SetType("data");
     op_desc->SetAttr("index", 0);
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(place));
     op_desc->SetAttr("name", name);
     op_desc->SetOutput("out", {name});
+
+    input_param_names.insert(name);
   }
 
   std::set<std::string> set_parameter_names;
@@ -416,6 +419,10 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   for (auto &name : set_parameter_names) {
     if (!set_output_names.count(name)) {
+      continue;
+    }
+
+    if (input_param_names.count(name)) {
       continue;
     }
 
@@ -471,7 +478,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
         continue;
       }
       auto op_desc = local_program.MutableBlock(0)->PrependOp();
-      op_desc->SetType("feed_with_place");
+      op_desc->SetType("data");
       op_desc->SetAttr("index", 0);
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
