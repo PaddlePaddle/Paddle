@@ -381,12 +381,13 @@ class TestStackListOfSingleTensor(unittest.TestCase):
         paddle.seed(2022)
         self.x = [paddle.randn((4, 2, 6), dtype="float32")]
 
-    def test_amp_nchw(self):
+    def test_list_single_tensor(self):
         expect = paddle.stack(self.x)
         paddle.fluid.core._set_prim_all_enabled(True)
         st_model = paddle.jit.to_static(paddle.stack)
         actual = st_model(self.x)
         np.testing.assert_allclose(expect, actual)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
