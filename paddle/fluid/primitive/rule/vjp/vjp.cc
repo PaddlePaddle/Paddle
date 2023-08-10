@@ -34,16 +34,6 @@ std::vector<std::vector<paddle::Tensor>> tanh_vjp(
   Tensor op_res =
       backend::experimental::tanh_grad<primitive::experimental::DescTensor>(
           out, grad_out);
-  // check stop_gradients size and op result size
-  PADDLE_ENFORCE_EQ(
-      stop_gradients.size(),
-      1u,
-      phi::errors::InvalidArgument(
-          "The size of stop_gradients should be the same as"
-          "pd.tanh_grad result size."
-          "But the size of stop_gradients: %d, pd.tanh_grad result size: %d",
-          stop_gradients.size(),
-          1u));
 
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
@@ -89,17 +79,6 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
   Tensor op_res =
       backend::experimental::mean_grad<primitive::experimental::DescTensor>(
           x, out_grad, axis, keepdim, reduce_all);
-
-  // check stop_gradients size and op result size
-  PADDLE_ENFORCE_EQ(
-      stop_gradients.size(),
-      1u,
-      phi::errors::InvalidArgument(
-          "The size of stop_gradients should be the same as"
-          "pd.mean_grad result size."
-          "But the size of stop_gradients: %d, pd.mean_grad result size: %d",
-          stop_gradients.size(),
-          1u));
 
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
