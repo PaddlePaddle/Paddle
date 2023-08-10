@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import abc
 import enum
 import os
@@ -785,10 +786,12 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 )
                 if (not is_fp8 and quant) or (is_fp8 and not quant):
                     continue
-                
+
                 if explicit:
                     pred_config.enable_tensorrt_explicit_quantization()
-                    self.assertTrue(pred_config.tensorrt_explicit_quantization_enabled())
+                    self.assertTrue(
+                        pred_config.tensorrt_explicit_quantization_enabled()
+                    )
 
                 ignore_flag = False
                 for teller, reason, note in self.ignore_cases:
