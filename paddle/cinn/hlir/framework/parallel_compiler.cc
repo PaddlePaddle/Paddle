@@ -30,15 +30,13 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_int32(cinn_parallel_compile_size);
 DECLARE_int32(cinn_parallel_compile_thread);
 
 namespace cinn {
 namespace hlir {
 namespace framework {
-static constexpr int DebugLogMaxLen = 30000;
 
-std::vector<std::unique_ptr<Instruction>> ParallelCompiler::operator()() {
+ParallelCompiler::CompilationResult ParallelCompiler::operator()() {
   if (graph_->fusion_groups.size() == 0) {
     hlir::framework::ApplyPasses(graph_.get(), {"BuildNonFusedGroupsPass"});
   }
@@ -50,48 +48,31 @@ std::vector<std::unique_ptr<Instruction>> ParallelCompiler::operator()() {
   return MergeResult();
 }
 
-OpPatternKind GetOpKind(const framework::Node* node) {
-  auto& op_pattern_dict =
-      framework::Operator::GetAttrs<OpPatternKind>("OpPattern");
-  CHECK(op_pattern_dict.Find(node->op()))
-      << "Don't find the pattern of op : " << node->id();
-  auto kind = op_pattern_dict[node->op()];
-
-  if (kind == framework::kBroadcast) {
-    // As binary op was defined as broadcast, actually it should be
-    // element-wise.
-    if (node->op()->name != "broadcast_to") {
-      return framework::kElementWise;
-    }
-  }
-
-  return kind;
-}
-
 void ParallelCompiler::SplitTask() {
   CHECK(graph_->fusion_groups.size());
   CHECK(graph_->fusion_groups.size() == option_.lowered_funcs.size() ||
         option_.lowered_funcs.size() == 0);
-  // split task
-  int max_task_num = FLAGS_cinn_parallel_compile_thread > 0
-                         ? FLAGS_cinn_parallel_compile_thread
-                         : graph_->fusion_groups.size();
-
-  int group_per_task = graph_->fusion_groups.size();
-  if (max_task_num > 1) {
-    group_per_task = FLAGS_cinn_parallel_compile_size > 0
-                         ? FLAGS_cinn_parallel_compile_size
-                         : ((graph_->fusion_groups.size() + max_task_num - 1) /
-                            max_task_num);
-  }
-
+  // Assign fusion_group to each task.
+  // The maximum number of tasks is determined by the number of threads.
+  // Fusion_group is assigned to tasks in order and continuous.
+  int fusion_group_size = graph_->fusion_groups.size();
+  int thread_size = FLAGS_cinn_parallel_compile_thread > 0
+                        ? FLAGS_cinn_parallel_compile_thread
+                        : 1;
+  int group_per_task =
+      (graph_->fusion_groups.size() + thread_size - 1) / thread_size;
   for (int idx = 0; idx < graph_->fusion_groups.size(); idx += group_per_task) {
-    tasks_.emplace_back(this, scope_, graph_, option_, target_);
+    Task task(this, scope_, graph_, option_, target_);
+    task.start_gidx = idx;
+    task.stop_gidx =
+        (idx + group_per_task > fusion_group_size ? fusion_group_size
+                                                  : idx + group_per_task);
+    tasks_.emplace_back(std::move(task));
   }
   VLOG(2) << "Split task to " << tasks_.size() << " sub-task!";
 }
 
-void RunTask(ParallelCompiler::Task* task) {
+void ParallelCompiler::RunTask(ParallelCompiler::Task* task) {
   VLOG(2) << "Stark run sub-task, Thread Id : " << std::this_thread::get_id();
   VLOG(4) << "Start Lowering";
   task->Lowering();
@@ -106,7 +87,7 @@ void ParallelCompiler::LaunchTask() {
   // start sub-task.
   std::vector<std::thread> threads;
   for (int idx = 1; idx < tasks_.size(); ++idx) {
-    threads.emplace_back(RunTask, &tasks_[idx]);
+    threads.emplace_back(&ParallelCompiler::RunTask, this, &tasks_[idx]);
   }
 
   RunTask(&tasks_[0]);
@@ -116,11 +97,20 @@ void ParallelCompiler::LaunchTask() {
   }
 }
 
-std::vector<std::unique_ptr<Instruction>> ParallelCompiler::MergeResult() {
-  std::vector<std::unique_ptr<Instruction>> res(graph_->fusion_groups.size());
+ParallelCompiler::CompilationResult ParallelCompiler::MergeResult() {
+  ParallelCompiler::CompilationResult res;
   for (auto& task : tasks_) {
-    for (int idx = 0; idx < task.gidx.size(); ++idx) {
-      res[task.gidx[idx]] = std::move(task.instructions[idx]);
+    for (auto& lowered_func : task.lowered_funcs) {
+      res.lowered_funcs.emplace_back(lowered_func);
+    }
+    for (auto& source_code : task.source_codes) {
+      res.source_codes.emplace_back(source_code);
+    }
+    for (auto& source_ptx : task.source_ptxs) {
+      res.source_ptxs.emplace_back(source_ptx);
+    }
+    for (auto& instruction : task.instructions) {
+      res.instructions.emplace_back(std::move(instruction));
     }
   }
   return std::move(res);
@@ -138,13 +128,7 @@ void ParallelCompiler::Task::Lowering() {
           "infershape");
 
   OpLowerer op_lowerer(dtype_dict, shape_dict, target);
-  while (true) {
-    int idx = compiler->GetGroupIdx();
-    if (idx < 0) {
-      break;
-    }
-
-    gidx.push_back(idx);
+  for (int idx = start_gidx; idx < stop_gidx; ++idx) {
     if (options.lowered_funcs.size()) {
       lowered_funcs.push_back(options.lowered_funcs[idx]);
       continue;
@@ -154,16 +138,15 @@ void ParallelCompiler::Task::Lowering() {
             << std::this_thread::get_id() << " :\n"
             << "Group " << idx << " {\n"
             << graph->DebugGroupedGraph(group->CollectNodes()) << "}\n";
-    lowered_funcs.emplace_back(std::move(op_lowerer.Lower(group)));
-    CHECK_EQ(lowered_funcs.back().size(), 1)
-        << "Lowerd Function Is Not Equal 1!";
+    auto lowered_group = op_lowerer.Lower(group);
+    CHECK_EQ(lowered_group.size(), 1) << "Lowerd Function Is Not Equal 1!";
+    lowered_funcs.emplace_back(std::move(lowered_group));
   }
 }
 
 void ParallelCompiler::Task::CodegenAndJit() {
-  VLOG(2) << "Start Codegen and JIT with Group ["
-          << cinn::utils::Join(this->gidx, ", ") << "] at "
-          << std::this_thread::get_id();
+  VLOG(2) << "Start Codegen and JIT with Group [" << start_gidx << "-"
+          << stop_gidx << ") at thread" << std::this_thread::get_id();
   // build module
   ir::Module::Builder builder(common::UniqName("module"), target);
   for (auto& func : lowered_funcs) {
@@ -172,7 +155,6 @@ void ParallelCompiler::Task::CodegenAndJit() {
   }
 
   auto ir_module = builder.Build();
-  // codegen compile
   if (target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     auto splited_module = backends::SplitCudaAndHostModule(ir_module);
@@ -185,14 +167,15 @@ void ParallelCompiler::Task::CodegenAndJit() {
     auto cuda_c = codegen.Compile(dmodule);
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
+    source_codes.emplace_back(cuda_c);
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
-    graph->SaveSourceCode(cuda_c);
 
     using runtime::cuda::CUDAModule;
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
+    source_ptxs.emplace_back(ptx);
     // load cumodule
     cumodule.reset(new CUDAModule(ptx,
                                   compiler.compile_to_cubin()
@@ -218,7 +201,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
 
 void ParallelCompiler::Task::BuildInstruction() {
   // create instruction.
-  for (int idx : gidx) {
+  for (int idx = start_gidx; idx < stop_gidx; ++idx) {
     VLOG(2) << "Start BuildInstruction of Group " << idx << " at "
             << std::this_thread::get_id();
     auto& group = graph->fusion_groups[idx];
@@ -237,15 +220,6 @@ void ParallelCompiler::Task::BuildInstruction() {
 
     instr->Finalize();
     instructions.push_back(std::move(instr));
-  }
-}
-
-int ParallelCompiler::GetGroupIdx() {
-  std::lock_guard<std::mutex> lock(mtx_);
-  if (index < graph_->fusion_groups.size()) {
-    return index++;
-  } else {
-    return -1;
   }
 }
 

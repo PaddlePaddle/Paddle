@@ -75,7 +75,7 @@
 #include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
 
@@ -600,7 +600,7 @@ bool AnalysisPredictor::PrepareScope(
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
     // TODO(wilber): we need to release memory occupied by weights.
-    scope_.reset(new paddle::framework::Scope());
+    scope_ = std::make_unique<paddle::framework::Scope>();
     status_is_cloned_ = false;
   }
   sub_scope_ = &scope_->NewScope();
@@ -641,7 +641,7 @@ bool AnalysisPredictor::PrepareProgram(
 }
 
 bool AnalysisPredictor::CreateExecutor() {
-  executor_.reset(new paddle::framework::NaiveExecutor(place_));
+  executor_ = std::make_unique<paddle::framework::NaiveExecutor>(place_);
   return true;
 }
 
@@ -722,8 +722,8 @@ bool AnalysisPredictor::PrepareFleetExecutor() {
   if (config_.dist_config().nranks() > 1 && !CommInit()) {
     return false;
   }
-  task_node_.reset(new distributed::TaskNode(inference_program_.get(),
-                                             config_.dist_config().rank()));
+  task_node_ = std::make_unique<distributed::TaskNode>(
+      inference_program_.get(), config_.dist_config().rank());
   // With auto cut, there is no concept of pp, no need to add dependency.
   task_node_->SetType("Compute");
   task_node_->Init(config_.use_feed_fetch_ops_enabled());
@@ -736,7 +736,7 @@ bool AnalysisPredictor::PrepareFleetExecutor() {
     rank_info->set_ip_port(config_.dist_config().trainer_endpoints()[i]);
     id_to_rank.insert({i, i});
   }
-  fleet_exe_.reset(new distributed::FleetExecutor(executor_desc_));
+  fleet_exe_ = std::make_unique<distributed::FleetExecutor>(executor_desc_);
   // NOTE: Vars of feed fetch ops are not persistable,
   // which will result in that those vars will be created in
   // the subscope (microscope) in fleet executor. This will
@@ -997,10 +997,10 @@ bool AnalysisPredictor::LoadConverterConfig(
 #endif
 
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   std::vector<std::vector<int>> inputs_shape;
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs_shape.emplace_back(inputs[i].shape);
+  for (const auto &input : inputs) {
+    inputs_shape.emplace_back(input.shape);
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1008,10 +1008,10 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 
 void AnalysisPredictor::MkldnnPreSet(
     const std::vector<paddle::Tensor> &inputs) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   std::vector<std::vector<int>> inputs_shape;
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    inputs_shape.emplace_back(phi::vectorize<int>(inputs[i].dims()));
+  for (const auto &input : inputs) {
+    inputs_shape.emplace_back(phi::vectorize<int>(input.dims()));
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1019,7 +1019,7 @@ void AnalysisPredictor::MkldnnPreSet(
 
 void AnalysisPredictor::MkldnnPreSet(
     const std::vector<std::vector<int>> &inputs_shape) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
           << phi::OneDNNContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
@@ -1029,9 +1029,9 @@ void AnalysisPredictor::MkldnnPreSet(
         phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
-    for (size_t i = 0; i < inputs_shape.size(); ++i) {
-      for (size_t j = 0; j < inputs_shape[i].size(); ++j) {
-        ss << inputs_shape[i][j] << "-";
+    for (const auto &input_shape : inputs_shape) {
+      for (int item : input_shape) {
+        ss << item << "-";
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
@@ -1044,7 +1044,7 @@ void AnalysisPredictor::MkldnnPreSet(
 }
 
 void AnalysisPredictor::MkldnnPostReset() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0 &&
       static_cast<phi::OneDNNContext *>(
@@ -1069,7 +1069,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "Predictor::predict";
@@ -1119,7 +1119,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
@@ -1135,7 +1135,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
                             std::vector<paddle::Tensor> *outputs) {
   inference::DisplayMemoryInfo(place_, "before run");
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "predict start";
@@ -1183,7 +1183,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
@@ -1237,13 +1237,13 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                         "wrong feed input size, need %d but get %d.",
                         feeds_.size(),
                         inputs.size()));
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    PADDLE_ENFORCE_EQ(inputs[i].defined(),
+  for (const auto &input : inputs) {
+    PADDLE_ENFORCE_EQ(input.defined(),
                       true,
                       paddle::platform::errors::InvalidArgument(
                           "The input Tensor expected to be defined."));
     PADDLE_ENFORCE_EQ(
-        inputs[i].is_dense_tensor(),
+        input.is_dense_tensor(),
         true,
         paddle::platform::errors::InvalidArgument(
             "The input Tensor expected to be type of dense tensor."));
@@ -1252,10 +1252,10 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
   if (std::all_of(inputs.cbegin(), inputs.cend(), [&](const paddle::Tensor &t) {
         return !t.name().empty() && feed_names_.count(t.name());
       })) {
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      auto &t = framework::GetVariableTensor(*scope, inputs[i].name());
+    for (const auto &input : inputs) {
+      auto &t = framework::GetVariableTensor(*scope, input.name());
       t.ShareDataWith(
-          *std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl()));
+          *std::dynamic_pointer_cast<phi::DenseTensor>(input.impl()));
     }
   } else {
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -1341,7 +1341,7 @@ bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
 void AnalysisPredictor::PrepareArgument() {
   VLOG(3) << "AnalysisPredictor::PrepareArgument";
   // Init std::unique_ptr argument_.
-  argument_.reset(new Argument);
+  argument_ = std::make_unique<Argument>();
   argument_->SetUseGPU(config_.use_gpu());
   argument_->SetUseCutlass(config_.use_cutlass_);
   argument_->SetUseFcPadding(config_.use_fc_padding());
@@ -1476,7 +1476,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetUseCinnCompiler(config_.use_cinn_compiler_);
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.mkldnn_quantizer_enabled()) {
     LOG(INFO) << "Quantization is enabled";
     argument_->SetQuantizeEnabledOpTypes(
@@ -1570,7 +1570,8 @@ void AnalysisPredictor::PrepareArgument() {
 
   if (!config_.ir_optim()) {
     argument_->SetEnableIrOptim(false);
-    if (config_.enable_gpu_mixed_) {
+    if (config_.enable_gpu_mixed_ &&
+        model_precision_ == phi::DataType::FLOAT32) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
@@ -1795,7 +1796,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 }
 
 bool AnalysisPredictor::MkldnnQuantize() {
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   if (!mkldnn_quantizer_)
     mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
         *this, config_.mkldnn_quantizer_config());
@@ -1886,6 +1887,10 @@ AnalysisPredictor::GetInputTypes() {
       input_type[name] = paddle_infer::DataType::UINT8;
     } else if (dtype == paddle::framework::proto::VarType::INT8) {
       input_type[name] = paddle_infer::DataType::INT8;
+    } else if (dtype == paddle::framework::proto::VarType::FP64) {
+      input_type[name] = paddle_infer::DataType::FLOAT64;
+    } else if (dtype == paddle::framework::proto::VarType::BOOL) {
+      input_type[name] = paddle_infer::DataType::BOOL;
     } else {
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported data type `%s` when get input dtype ", dtype));
@@ -2072,12 +2077,12 @@ bool AnalysisPredictor::ZeroCopyRun() {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) {
     std::vector<std::vector<int>> shape_vector;
     auto names = GetInputNames();
-    for (size_t i = 0; i < names.size(); ++i) {
-      auto in_tensor = GetInputTensor(names[i]);
+    for (auto &name : names) {
+      auto in_tensor = GetInputTensor(name);
       shape_vector.emplace_back(in_tensor->shape());
     }
     MkldnnPreSet(shape_vector);
@@ -2140,7 +2145,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
   }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
@@ -2338,7 +2343,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
           auto ShapeMaxFreq =
               [](const std::map<int32_t, int32_t> &m) -> int32_t {
             std::vector<std::pair<int32_t, int32_t>> counter;
-            for (auto &it : m) counter.push_back(it);
+            for (auto &it : m) counter.emplace_back(it);
             std::sort(counter.begin(),
                       counter.end(),
                       [](std::pair<int32_t, int32_t> &a,
@@ -2350,10 +2355,10 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
 
           for (size_t d = 0; d < shapes[0].size(); ++d) {
             std::map<int32_t, int32_t> counter;
-            for (size_t i = 0; i < shapes.size(); ++i) {
-              counter[shapes[i][d]] += 1;
-              if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
-              if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+            for (auto &shape : shapes) {
+              counter[shape[d]] += 1;
+              if (shape[d] < min_shape[d]) min_shape[d] = shape[d];
+              if (shape[d] > max_shape[d]) max_shape[d] = shape[d];
             }
             opt_shape[d] = ShapeMaxFreq(counter);
           }
@@ -2420,7 +2425,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
   } else {
     proto.ParseFromString(config_.prog_file());
   }
-  inference_program_.reset(new framework::ProgramDesc(proto));
+  inference_program_ = std::make_unique<framework::ProgramDesc>(proto);
   return true;
 }
 
@@ -2577,16 +2582,15 @@ AnalysisPredictor::~AnalysisPredictor() {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=
         framework::global_transfer_scope_key().end()) {
       auto scope_key_set = framework::global_transfer_scope_key()[sub_scope_];
-      for (auto iter = scope_key_set.begin(); iter != scope_key_set.end();
-           iter++) {
-        framework::global_transfer_data_cache().erase(*iter);
+      for (auto item : scope_key_set) {
+        framework::global_transfer_data_cache().erase(item);
       }
       framework::global_transfer_scope_key().erase(sub_scope_);
     }
     scope_->DeleteScope(sub_scope_);
   }
 
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   if (mkldnn_quantizer_) {
     delete mkldnn_quantizer_;
     mkldnn_quantizer_ = nullptr;
@@ -2610,7 +2614,7 @@ AnalysisPredictor::~AnalysisPredictor() {
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.trt_engine_memory_sharing()) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .releaseContextMemory(predictor_id_);
+        .ReleaseContextMemory(predictor_id_);
   }
 #endif
 }
@@ -3107,7 +3111,7 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
           "The predictor pool size should be greater than 1, but it's (%d)",
           size));
   Config copy_config(config);
-  main_pred_.reset(new Predictor(config));
+  main_pred_ = std::make_unique<Predictor>(config);
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
       Config config_tmp(copy_config);

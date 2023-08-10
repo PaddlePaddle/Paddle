@@ -123,4 +123,5 @@ PD_REGISTER_KERNEL(nanmedian_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

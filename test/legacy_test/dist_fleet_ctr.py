@@ -101,7 +101,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
-        dnn_embedding = fluid.layers.embedding(
+        dnn_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
@@ -113,7 +113,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             padding_idx=0,
         )
         dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=dnn_embedding, pool_type="sum"
+            input=dnn_embedding.squeeze(-2), pool_type="sum"
         )
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -129,7 +129,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embedding = fluid.layers.embedding(
+        lr_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
@@ -141,7 +141,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             padding_idx=0,
         )
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embedding, pool_type="sum"
+            input=lr_embedding.squeeze(-2), pool_type="sum"
         )
 
         merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)

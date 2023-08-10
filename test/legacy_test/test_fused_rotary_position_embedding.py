@@ -168,6 +168,15 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 p_bw[i].numpy(), f_bw[i].numpy(), rtol=1e-05
             )
 
+    def test_error(self):
+        paddle.enable_static()
+        with self.assertRaises(RuntimeError):
+            static_q = paddle.static.data(
+                name="q", shape=self.shape, dtype=self.dtype
+            )
+            fused_rotary_position_embedding(static_q, static_q, static_q)
+        paddle.disable_static()
+
 
 if __name__ == '__main__':
     unittest.main()

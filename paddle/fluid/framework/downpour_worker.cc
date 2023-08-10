@@ -107,14 +107,14 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     uint64_t dest_table = copy_table_config_.dest_sparse_tables(i);
     VLOG(3) << "copy_sparse_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_sparse_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_sparse_tables_.emplace_back(src_table, dest_table);
   }
   for (int i = 0; i < copy_table_config_.src_dense_tables_size(); ++i) {
     uint64_t src_table = copy_table_config_.src_dense_tables(i);
     uint64_t dest_table = copy_table_config_.dest_dense_tables(i);
     VLOG(3) << "copy_dense_tables_ push back " << src_table << "->"
             << dest_table;
-    copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
+    copy_dense_tables_.emplace_back(src_table, dest_table);
   }
   for (auto& m : copy_table_config_.table_denpendency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
@@ -353,9 +353,9 @@ void DownpourWorker::AdjustInsWeight() {
 }
 
 void DownpourWorker::CopySparseTable() {
-  for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-    int64_t src_table = copy_sparse_tables_[i].first;
-    int64_t dest_table = copy_sparse_tables_[i].second;
+  for (auto& copy_sparse_table : copy_sparse_tables_) {
+    int64_t src_table = copy_sparse_table.first;
+    int64_t dest_table = copy_sparse_table.second;
     int32_t feanum = 0;
     if (src_table == dest_table) {
       continue;
@@ -386,9 +386,9 @@ void DownpourWorker::CopyDenseTable() {
     return;
   }
   thread_local std::vector<std::future<int32_t>> pull_dense_status;
-  for (size_t i = 0; i < copy_dense_tables_.size(); ++i) {
-    uint64_t src_table = copy_dense_tables_[i].first;
-    uint64_t dest_table = copy_dense_tables_[i].second;
+  for (auto& copy_dense_table : copy_dense_tables_) {
+    uint64_t src_table = copy_dense_table.first;
+    uint64_t dest_table = copy_dense_table.second;
     if (src_table == dest_table) {
       continue;
     }
@@ -458,8 +458,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
     bool need_skip = false;
-    for (auto t = 0u; t < skip_ops_.size(); ++t) {
-      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+    for (auto& skip_op : skip_ops_) {
+      if (op->Type().find(skip_op) != std::string::npos) {
         need_skip = true;
         break;
       }
@@ -471,8 +471,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
 
   VLOG(3) << "op name size: " << op_name.size();
   op_total_time.resize(op_name.size());
-  for (size_t i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
+  for (double& op_time : op_total_time) {
+    op_time = 0.0;
   }
   platform::Timer timeline;
   double total_time = 0.0;
@@ -555,8 +555,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
     int run_op_idx = 0;
     for (auto& op : ops_) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto& skip_op : skip_ops_) {
+        if (op->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }
@@ -844,8 +844,8 @@ void DownpourWorker::TrainFiles() {
     // do computation here
     for (auto& op : ops_) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto& skip_op : skip_ops_) {
+        if (op->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }

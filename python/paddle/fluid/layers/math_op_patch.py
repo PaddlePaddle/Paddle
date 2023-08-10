@@ -136,11 +136,41 @@ def monkey_patch_variable():
     @static_only
     def cpu(self):
         """
-        Variable should not have cpu() and cuda() interface.
-        But this interface can greatly facilitate dy2static.
-        We do nothing here.
+        In dy2static, Variable also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Returns:
+            The tensor which has copied to cpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+                import paddle
+                paddle.enable_static()
+
+                x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                y = x.cpu()
         """
-        return self
+        block = current_block(self)
+        tmp_name = unique_tmp_name()
+        output = block.create_var(
+            name=tmp_name,
+            dtype=self.dtype,
+            shape=self.shape,
+            type=self.type,
+            persistable=False,
+            stop_gradient=True,
+        )
+        # 0 means cpu place, see paddle/fluid/operators/memcpy_op.h
+        attrs = {'dst_place_type': 0}
+        block.append_op(
+            type='memcpy',
+            inputs={'X': [self]},
+            outputs={'Out': [output]},
+            attrs=attrs,
+        )
+        return output
 
     @static_only
     def cuda(self):

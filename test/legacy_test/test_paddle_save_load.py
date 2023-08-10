@@ -24,7 +24,7 @@ import paddle
 import paddle.optimizer as opt
 from paddle import fluid, nn
 from paddle.fluid import framework
-from paddle.fluid.optimizer import Adam
+from paddle.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
 
 BATCH_SIZE = 16
