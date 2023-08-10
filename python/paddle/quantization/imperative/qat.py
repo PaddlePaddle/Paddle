@@ -248,8 +248,9 @@ class ImperativeQuantAware:
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.static.quantization \
-            ...     import ImperativeQuantAware
+            >>> from paddle.static.quantization import (
+            ...     ImperativeQuantAware,
+            ... )
 
             >>> class ImperativeModel(paddle.nn.Layer):
             ...     def __init__(self):
