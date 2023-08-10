@@ -16,10 +16,11 @@
 
 #include <vector>
 
-#include "build/paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 #include "paddle/ir/pattern_rewrite/drr/match_context_impl.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
+
+#include "paddle/fluid/ir/dialect/pd_op.h"
 
 namespace ir {
 namespace drr {
