@@ -16,7 +16,7 @@
 
 #include <array>
 #include <functional>
-#include <queue>
+#include <stack>
 #include <unordered_set>
 
 namespace cinn {

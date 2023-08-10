@@ -18,7 +18,7 @@
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
-#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 
 namespace cinn {
 namespace ir {

@@ -15,15 +15,15 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/cinn/common/topo_walker.h"
+#include "paddle/cinn/common/dfs_topo_walker.h"
 
 namespace cinn {
 namespace common {
 
-TEST(TopoWalker, simple) {
+TEST(DFSTopoWalker, simple) {
   std::vector<std::pair<int, int>> edges{
       {0, 1}, {2, 3}, {1, 3}, {0, 3}, {3, 4}};
-  TopoWalker<int> visitor(
+  DFSTopoWalker<int> walker(
       [&](int node, const std::function<void(int)>& NodeHandler) {
         for (const auto& pair : edges) {
           if (pair.second == node) {
@@ -40,9 +40,12 @@ TEST(TopoWalker, simple) {
       });
   std::vector<int> sources{0, 2};
   std::vector<int> outputs;
-  visitor(sources.begin(), sources.end(), [&](int node) {
+  walker(sources.begin(), sources.end(), [&](int node) {
     outputs.push_back(node);
   });
+  for (auto output : outputs) {
+    LOG(INFO) << output;
+  }
   std::vector<int> expected{0, 1, 2, 3, 4};
   EXPECT_TRUE((outputs == expected));
 }
