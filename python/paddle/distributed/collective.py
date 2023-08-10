@@ -189,6 +189,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
 
             >>> paddle.distributed.init_parallel_env()
             >>> tindata = paddle.randn(shape=[2, 3])
