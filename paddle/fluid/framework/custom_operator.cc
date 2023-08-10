@@ -1230,51 +1230,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     }
 
     // Grad InferDtype
-    if (grad_infer_dtype_fn == nullptr) {
-      grad_info.infer_var_type_ = [grad_op_inputs,
-                                   grad_op_outputs,
-                                   is_double_grad](InferVarTypeContext* ctx) {
-        // 1. if forward input exists, gradient's dtype is same with forward
-        // input
-        // default
-        //    [Suitable for most situations]
-        // 2. if forward input not exists, and only contains one grad input and
-        // output,
-        //    use grad input dtype as grad output dtype
-        //    [Suitable for the situation that forward input is not used as
-        //    backward input]
-        for (auto& out_name : grad_op_outputs) {
-          auto fwd_name = detail::NoGrad(out_name, is_double_grad);
-          if (detail::IsDuplicableVar(fwd_name)) {
-            // Duplicable forward var must as backward input
-            size_t size = ctx->InputSize(fwd_name);
-            for (size_t i = 0; i < size; ++i) {
-              auto dtype = ctx->GetInputDataType(fwd_name, i);
-              ctx->SetOutputDataType(out_name, dtype, i);
-            }
-          } else {
-            if (ctx->HasInput(fwd_name)) {
-              auto dtype = ctx->GetInputDataType(fwd_name);
-              ctx->SetOutputDataType(out_name, dtype);
-            } else {
-              PADDLE_ENFORCE_EQ(
-                  grad_op_inputs.size() == 1UL && grad_op_outputs.size() == 1UL,
-                  true,
-                  platform::errors::Unavailable(
-                      "Custom grad operator inferdtype error. "
-                      "If a custom grad operator contains only one input and "
-                      "only one output, the input dtype will be directly set "
-                      "to the output dtype. Otherwise, Please set the forward "
-                      "input as the grad operator's input or set the "
-                      "InferDtypeFn of custom grad operator by "
-                      ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-              auto dtype = ctx->GetInputDataType(grad_op_inputs[0]);
-              ctx->SetOutputDataType(out_name, dtype);
-            }
-          }
-        }
-      };
-    } else {
+    if (grad_infer_dtype_fn != nullptr) {
       grad_info.infer_var_type_ =
           [grad_op_inputs,
            grad_op_outputs,
