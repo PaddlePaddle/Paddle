@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
+from dygraph_to_static_util import ast_only_test, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -105,7 +106,7 @@ class TestBert(unittest.TestCase):
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
 
-            optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
+            optimizer = paddle.optimizer.Adam(parameters=bert.parameters())
             step_idx = 0
             speed_list = []
             for input_data in data_loader():
@@ -262,6 +263,18 @@ class TestBert(unittest.TestCase):
         out = output()
         return out
 
+    @test_with_new_ir
+    def test_train_new_ir(self):
+        static_loss, static_ppl = self.train_static(
+            self.bert_config, self.data_reader
+        )
+        dygraph_loss, dygraph_ppl = self.train_dygraph(
+            self.bert_config, self.data_reader
+        )
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
+
+    @ast_only_test
     def test_train(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader

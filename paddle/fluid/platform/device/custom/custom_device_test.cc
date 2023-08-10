@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
@@ -120,8 +121,8 @@ void TestTensorUtils(const paddle::platform::Place& place) {
   int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
                                               paddle::platform::CPUPlace());
 
-  int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  memcpy(src_ptr, arr, 9 * sizeof(int));
+  std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+  memcpy(src_ptr, arr.data(), 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
   paddle::platform::CustomDeviceContext gpu_ctx(place);

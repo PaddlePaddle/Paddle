@@ -514,9 +514,10 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place,
+                                                             max_memory_size);
       } else {
-        gc.reset(new StreamGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<StreamGarbageCollector>(place, max_memory_size);
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -526,7 +527,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new XPUGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -535,7 +536,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 #endif
     } else if (platform::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
-      gc.reset(new IPUGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -545,10 +546,11 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(
-            new CustomDeviceUnsafeFastGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<CustomDeviceUnsafeFastGarbageCollector>(
+            place, max_memory_size);
       } else {
-        gc.reset(new CustomStreamGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<CustomStreamGarbageCollector>(place,
+                                                            max_memory_size);
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -558,7 +560,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new CPUGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created GarbageCollector at " << place;
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -726,13 +728,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
   if (!member_->build_strategy_.async_mode_) {
-    member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-        exec_strategy,
-        member_->local_scopes_,
-        member_->local_exec_scopes_,
-        std::move(var_infos),
-        member_->places_,
-        std::move(member_->executor_)));
+    member_->executor_ =
+        std::make_unique<details::ScopeBufferedSSAGraphExecutor>(
+            exec_strategy,
+            member_->local_scopes_,
+            member_->local_exec_scopes_,
+            std::move(var_infos),
+            member_->places_,
+            std::move(member_->executor_));
   }
 
   ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
@@ -1462,10 +1465,9 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
     auto *nccl_ctxs = member_->nccl_ctxs_->GetSyncBatchNormCtx(
         global_scope, member_->places_);
     auto &pool = platform::DeviceContextPool::Instance();
-    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto *dev_ctx =
-          static_cast<phi::GPUContext *>(pool.Get(member_->places_[dev_id]));
-      auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
+    for (auto &place : member_->places_) {
+      auto *dev_ctx = static_cast<phi::GPUContext *>(pool.Get(place));
+      auto &nccl_ctx = nccl_ctxs->at(place);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
 #else
@@ -1647,12 +1649,12 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
 
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
-    member_->executor_.reset(
-        new details::AsyncSSAGraphExecutor(exec_strategy,
-                                           member_->local_scopes_,
-                                           member_->local_exec_scopes_,
-                                           member_->places_,
-                                           *async_graphs));
+    member_->executor_ = std::make_unique<details::AsyncSSAGraphExecutor>(
+        exec_strategy,
+        member_->local_scopes_,
+        member_->local_exec_scopes_,
+        member_->places_,
+        *async_graphs);
     final_graphs = *async_graphs;
   } else if (member_->build_strategy_.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
@@ -1714,22 +1716,24 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
              "network. It is automatically turned to drop_last=True.";
       if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
         VLOG(3) << "use ThreadedSSAGraphExecutor";
-        member_->executor_.reset(
-            new details::ThreadedSSAGraphExecutor(exec_strategy,
-                                                  member_->local_scopes_,
-                                                  member_->local_exec_scopes_,
-                                                  member_->places_,
-                                                  graph));
+        member_->executor_ =
+            std::make_unique<details::ThreadedSSAGraphExecutor>(
+                exec_strategy,
+                member_->local_scopes_,
+                member_->local_exec_scopes_,
+                member_->places_,
+                graph);
       } else {
         if (member_->use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU)
           VLOG(3) << "use BindThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::BindThreadedSSAGraphExecutor(
-              exec_strategy,
-              member_->local_scopes_,
-              member_->local_exec_scopes_,
-              member_->places_,
-              graph));
+          member_->executor_ =
+              std::make_unique<details::BindThreadedSSAGraphExecutor>(
+                  exec_strategy,
+                  member_->local_scopes_,
+                  member_->local_exec_scopes_,
+                  member_->places_,
+                  graph);
 #else
           PADDLE_THROW(platform::errors::PermissionDenied(
               "Paddle can't use XPU device since it's not compiled with XPU,"
@@ -1737,12 +1741,13 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
 #endif
         } else {
           VLOG(3) << "use FastThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-              exec_strategy,
-              member_->local_scopes_,
-              member_->local_exec_scopes_,
-              member_->places_,
-              graph));
+          member_->executor_ =
+              std::make_unique<details::FastThreadedSSAGraphExecutor>(
+                  exec_strategy,
+                  member_->local_scopes_,
+                  member_->local_exec_scopes_,
+                  member_->places_,
+                  graph);
         }
       }
       final_graphs.emplace_back(graph);

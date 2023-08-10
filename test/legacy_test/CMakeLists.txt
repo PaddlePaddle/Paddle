@@ -160,6 +160,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_linear_compress)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
+  list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
