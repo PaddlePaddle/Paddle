@@ -17,6 +17,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
@@ -134,6 +135,16 @@ def transpose(x, perm, name=None):
             attrs={'axis': perm},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def transpose_(x, perm, name=None):
+    """
+    Inplace version of ``transpose`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_transpose`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.transpose_(x, perm)
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -1331,6 +1342,26 @@ def t(input, name=None):
                 outputs={'Out': [out], 'XShape': [input_shape]},
                 attrs={'axis': [1, 0]},
             )
+        return out
+
+
+def t_(input, name=None):
+    r"""
+    Inplace version of ``t`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_t`.
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape)
+        )
+    if in_dynamic_mode():
+        if len(input.shape) <= 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.transpose_(input, perm)
         return out
 
 

@@ -127,8 +127,10 @@ from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
+from .tensor.linalg import transpose_  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
+from .tensor.linalg import t_  # noqa: F401
 from .tensor.linalg import cdist  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
@@ -157,6 +159,7 @@ from .tensor.logic import isclose  # noqa: F401
 from .tensor.logic import equal_all  # noqa: F401
 from .tensor.logic import is_tensor  # noqa: F401
 from .tensor.manipulation import cast  # noqa: F401
+from .tensor.manipulation import cast_  # noqa: F401
 from .tensor.manipulation import concat  # noqa: F401
 from .tensor.manipulation import broadcast_tensors  # noqa: F401
 from .tensor.manipulation import expand  # noqa: F401
@@ -369,6 +372,7 @@ from .tensor.search import bucketize  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
+from .tensor.search import where_  # noqa: F401
 from .tensor.search import index_select  # noqa: F401
 from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
@@ -470,6 +474,7 @@ __all__ = [  # noqa
     'allclose',
     'isclose',
     't',
+    't_',
     'add',
     'subtract',
     'diag',
@@ -503,6 +508,7 @@ __all__ = [  # noqa
     'is_integer',
     'cross',
     'where',
+    'where_',
     'log1p',
     'cos',
     'cos_',
@@ -653,6 +659,7 @@ __all__ = [  # noqa
     'ones_like',
     'index_sample',
     'cast',
+    'cast_',
     'grad',
     'all',
     'ones',
@@ -679,6 +686,7 @@ __all__ = [  # noqa
     'tanh',
     'tanh_',
     'transpose',
+    'transpose_',
     'randn',
     'strided_slice',
     'unique',

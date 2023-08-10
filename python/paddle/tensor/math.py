@@ -5449,6 +5449,49 @@ def gcd(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def gcd_(x, y, name=None):
+    r"""
+    Inplace version of ``gcd`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_gcd`.
+    """
+    shape = paddle.broadcast_shape(x.shape, y.shape)
+    if shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                shape, x.shape
+            )
+        )
+    y = paddle.broadcast_to(y, shape)
+    x = paddle.abs_(x)
+    y = paddle.abs(y)
+
+    def _gcd_cond_fn(x, y):
+        return paddle.any(y != 0)
+
+    def _gcd_body_fn(x, y):
+        # paddle.mod will raise an error when any element of y is 0. To avoid
+        # that, we change those zeros to ones. Their values don't matter because
+        # they won't be used.
+        y_equal_0 = y == 0
+        y_safe = paddle.where(y_equal_0, y, paddle.ones(y.shape, y.dtype))
+        x, y = (
+            paddle.where_(y_equal_0, x, y),
+            paddle.where(
+                y_equal_0,
+                paddle.zeros(y.shape, y.dtype),
+                paddle.mod(x, y_safe),
+            ),
+        )
+        return (paddle.where_(x >= y, x, y), paddle.where(x < y, x, y))
+
+    if in_dynamic_mode():
+        while _gcd_cond_fn(x, y):
+            x, y = _gcd_body_fn(x, y)
+
+        return x
+
+
 def lcm(x, y, name=None):
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
@@ -5505,6 +5548,26 @@ def lcm(x, y, name=None):
     d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
     out = paddle.where(
         d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe
+    )
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def lcm_(x, y, name=None):
+    r"""
+    Inplace version of ``lcm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_lcm`.
+    """
+    d = paddle.gcd(x, y)
+    # paddle.mod will raise an error when any element of y is 0. To avoid
+    # that, we change those zeros to ones. Their values don't matter because
+    # they won't be used.
+    d_not_equal_0 = d != 0
+    d_safe = paddle.where(d_not_equal_0, d, paddle.ones(d.shape, d.dtype))
+    out = paddle.where(
+        d_not_equal_0,
+        paddle.abs_(x * y) // d_safe,
+        paddle.zeros(d.shape, d.dtype),
     )
     return out
 
@@ -6705,3 +6768,23 @@ def ldexp(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
+
+
+@inplace_apis_in_dygraph_only
+def ldexp_(x, y, name=None):
+    r"""
+    Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_polygamma`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+    if x.dtype == paddle.float64 or y.dtype == paddle.float64:
+        out_dtype = paddle.float64
+    else:
+        out_dtype = paddle.get_default_dtype()
+    x = paddle.cast_(x, dtype=out_dtype)
+    y = paddle.cast(y, dtype=out_dtype)
+    two = paddle.to_tensor(2, dtype=out_dtype)
+    return paddle.multiply_(x, paddle.pow(two, y))

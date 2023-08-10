@@ -230,6 +230,37 @@ def cast(x, dtype):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def cast_(x, dtype):
+    """
+
+    Take in the Tensor :attr:`x` with :attr:`x.dtype` and cast it
+    to the output with :attr:`dtype`. It's meaningless if the output dtype
+    equals the input dtype, but it's fine if you do so.
+
+    Args:
+        x (Tensor): An input N-D Tensor with data type bool, float16,
+            float32, float64, int32, int64, uint8.
+        dtype (np.dtype|str): Data type of the output:
+            bool, float16, float32, float64, int8, int32, int64, uint8.
+
+    Returns:
+        Tensor, A Tensor with the same shape as input's.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([2, 3, 4], 'float64')
+            y = paddle.cast(x, 'uint8')
+    """
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dynamic_mode():
+        return _C_ops.cast_(x, dtype)
+
+
 def slice(input, axes, starts, ends):
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
