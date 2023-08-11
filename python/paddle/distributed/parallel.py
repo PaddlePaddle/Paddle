@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
+import itertools  # TODO(megemini): change file just for test
 import os
 import sys
 import time
