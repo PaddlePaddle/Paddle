@@ -122,23 +122,6 @@ class TestReshapeSPMDRule(unittest.TestCase):
             infered_output_dist_attrs[0].dims_mapping, [1, -1, -1, -1, 0]
         )
 
-        # shape: [6, 12, 48, 24] --> [3, 24, 6, 8, 24]
-        # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, 0, 1], [-1, -1, 0, -1, 1]
-        self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
-
-        result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec], self.attrs
-        )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
-
-        self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, -1, 0, 1]
-        )
-        self.assertEqual(
-            infered_output_dist_attrs[0].dims_mapping, [-1, -1, 0, -1, 1]
-        )
-
         # shape: [6, 12, 48, 24] --> [3, 24, 6, -1, 24]
         # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, 0, 1], [-1, -1, 0, -1, 1]
         self.attrs["shape"] = [3, 24, 6, -1, 24]
@@ -172,6 +155,57 @@ class TestReshapeSPMDRule(unittest.TestCase):
         )
         self.assertEqual(
             infered_output_dist_attrs[0].dims_mapping, [-1, 1, -1, 0, -1]
+        )
+
+        # shape: [6, 12, 48, 24] --> [6, 12, 48, 24]
+        # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, 0, 1], [-1, -1, 0, 1]
+        self.attrs["shape"] = [6, 12, 48, 24]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
+        result_dist_attrs = self.rule.infer_forward(
+            [self.x_dist_tensor_spec], self.attrs
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, -1, 0, 1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, 0, 1]
+        )
+
+        # shape: [6, 12, 48, 24] --> [72, 3, 16, 24]
+        # dims_mapping: [0, -1, 1, -1] --> [0, -1, 1, -1], [0, 1, -1, -1]
+        self.attrs["shape"] = [72, 3, 16, 24]
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1, 1, -1])
+        result_dist_attrs = self.rule.infer_forward(
+            [self.x_dist_tensor_spec], self.attrs
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+        )
+
+        # shape: [6, 12, 48, 24] --> [72, 3, 16, 24]
+        # dims_mapping: [1, -1, 0, -1] --> [1, -1, -1, -1], [1, -1, -1, -1]
+        self.attrs["shape"] = [72, 3, 16, 24]
+        self.x_dist_tensor_spec.set_dims_mapping([1, -1, 0, -1])
+        result_dist_attrs = self.rule.infer_forward(
+            [self.x_dist_tensor_spec], self.attrs
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
+        )
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
         )
 
         # shape: [6, 12, 48, 24] --> [3, 24, 6, -1, -1]

@@ -66,10 +66,10 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
     const std::vector<int64_t>& src_shape,
     const std::vector<int64_t>& tgt_shape) {
   std::vector<DimTrans*> ret;
-  int64_t src_size = std::accumulate(
+  int64_t total_elem_num_src = std::accumulate(
       src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
   std::vector<int64_t> inferred_tgt_shape =
-      InferTargetShape(tgt_shape, src_size);
+      InferTargetShape(tgt_shape, total_elem_num_src);
 
   int64_t src_idx = 0, tgt_idx = 0;
   int64_t s, t;
@@ -177,9 +177,10 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
 
   VLOG(4) << "Reshape: input_shape: [" << str_join(src_shape)
           << "] output_shape: [" << str_join(tgt_shape) << "]";
-  VLOG(4) << "Transformation:";
-  for (DimTrans* t : trans) {
-    VLOG(4) << t->to_string();
+  VLOG(4) << "Transformation from input to output:";
+  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+    DimTrans* t = trans[i];
+    VLOG(4) << "\tOutput axis " << i << ": " << t->to_string();
   }
   VLOG(4) << "input_dims_mapping: [" << str_join(dims_mapping_vec[0])
           << "] output_dims_mapping: [" << str_join(dims_mapping_vec[1])

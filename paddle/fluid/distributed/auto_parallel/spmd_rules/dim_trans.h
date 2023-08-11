@@ -120,8 +120,8 @@ class Split : public DimTrans {
 
   int64_t split_id() const;
 
-  // get the splitted shape of the split_id_ dimension
-  int64_t local_split_shape();
+  // get the splitted shape value of the split_id_ dimension
+  int64_t local_splitted_shape_value();
 
   std::string to_string() override;
 

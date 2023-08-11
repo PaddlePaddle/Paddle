@@ -118,7 +118,9 @@ void Split::set_input(DimTrans* dim) { input_dim_trans_ = dim; }
 
 int64_t Split::split_id() const { return split_id_; }
 
-int64_t Split::local_split_shape() { return splitted_shape_[split_id_]; }
+int64_t Split::local_splitted_shape_value() {
+  return splitted_shape_[split_id_];
+}
 
 std::string Split::to_string() {
   std::string ret_str("Split(");
@@ -180,24 +182,22 @@ void CleanUp() {
   std::vector<DimTrans*>().swap(all_dim_trans);
 }
 
-// Given a `dim_trans` of an output axis, get the size and
-// the input axis whose dim mapping should be propogated to
-// the output axis. If the returned input axis is none, the
-// output axis's dim mapping should be set to -1 (replicated).
-// For an axis that is flattened from input axes, return the
-// leftmost flattened input axis. For the split transformation,
+// Given a `dim_trans` of an output axis, get the input axis
+// whose dim mapping should be propogated to it.
+// If the returned input axis is none, the output axis's
+// dim mapping should be set to -1 (replicated). For an axis
+// that is flattened from input axes, return the leftmost
+// flattened input axis. For the split transformation,
 // only the leftmost split axis in output will return its input.
-std::pair<int64_t, DimTrans*> GetDimTransSize(
-    DimTrans* dim_trans,
-    std::vector<std::vector<bool>>* shardable,
-    std::set<int64_t>* seen_dims,
-    const std::vector<int64_t>& input_shape,
-    const std::vector<int64_t>& mesh_shape,
-    const std::vector<int64_t>& input_dims_mapping,
-    const std::set<int64_t>& sharded_input_dims) {
+DimTrans* GetDimTrans(DimTrans* dim_trans,
+                      std::vector<std::vector<bool>>* shardable,
+                      std::set<int64_t>* seen_dims,
+                      const std::vector<int64_t>& input_shape,
+                      const std::vector<int64_t>& mesh_shape,
+                      const std::vector<int64_t>& input_dims_mapping,
+                      const std::set<int64_t>& sharded_input_dims) {
   DimTrans::Type type = dim_trans->type();
   DimTrans* ret_dim_trans = nullptr;
-  int64_t ret_size = -1;
 
   if (type == DimTrans::Type::INPUTDIM) {
     InputDim* inputdim = dynamic_cast<InputDim*>(dim_trans);
@@ -207,31 +207,23 @@ std::pair<int64_t, DimTrans*> GetDimTransSize(
     if (sharded_input_dims.count(dim) > 0) {
       ret_dim_trans = dim_trans;
     }
-    ret_size = input_shape[dim];
   } else if (type == DimTrans::Type::FLATTEN) {
     Flatten* flatten = dynamic_cast<Flatten*>(dim_trans);
     const std::vector<DimTrans*>& inputs = flatten->inputs();
     int64_t nmesh = (*shardable)[0].size();
-    std::vector<int64_t> input_sizes;
     for (int64_t i = 1, n = inputs.size(); i < n; i++) {
       DimTrans* input = inputs[i];
       if (input->type() == DimTrans::Type::INPUTDIM) {
         (*shardable)[i].assign(nmesh, false);
       }
 
-      std::pair<int64_t, DimTrans*> dim_size =
-          GetDimTransSize(input,
-                          shardable,
-                          seen_dims,
-                          input_shape,
-                          mesh_shape,
-                          input_dims_mapping,
-                          sharded_input_dims);
-      input_sizes.emplace_back(dim_size.first);
-      ret_size = std::accumulate(input_sizes.begin(),
-                                 input_sizes.end(),
-                                 1,
-                                 std::multiplies<int64_t>());
+      GetDimTrans(input,
+                  shardable,
+                  seen_dims,
+                  input_shape,
+                  mesh_shape,
+                  input_dims_mapping,
+                  sharded_input_dims);
     }
 
     DimTrans* dim0 = inputs[0];
@@ -243,40 +235,38 @@ std::pair<int64_t, DimTrans*> GetDimTransSize(
     }
   } else if (type == DimTrans::Type::SPLIT) {
     Split* split = dynamic_cast<Split*>(dim_trans);
-    std::pair<int64_t, DimTrans*> dim_size =
-        GetDimTransSize(split->input(),
-                        shardable,
-                        seen_dims,
-                        input_shape,
-                        mesh_shape,
-                        input_dims_mapping,
-                        sharded_input_dims);
-    ret_size = split->local_split_shape();
+    DimTrans* dim = GetDimTrans(split->input(),
+                                shardable,
+                                seen_dims,
+                                input_shape,
+                                mesh_shape,
+                                input_dims_mapping,
+                                sharded_input_dims);
+    int64_t ret_size = split->local_splitted_shape_value();
 
     if (split->split_id() == 0) {
-      if (dim_size.second != nullptr) {
-        PADDLE_ENFORCE_EQ(dim_size.second->type(),
+      if (dim != nullptr) {
+        PADDLE_ENFORCE_EQ(dim->type(),
                           DimTrans::Type::INPUTDIM,
                           phi::errors::InvalidArgument(
                               "The returned dim_trans must be INPUTDIM."));
-        InputDim* inputdim = dynamic_cast<InputDim*>(dim_size.second);
+        InputDim* inputdim = dynamic_cast<InputDim*>(dim);
         int64_t nmesh = mesh_shape.size();
-        int64_t dim = inputdim->input_dim();
+        int64_t input_axis = inputdim->input_dim();
 
         // Check whether the sharded dim can be sharded on
-        // each mesh dimension. The input dimension should be
+        // each mesh dimension. The dimension should be
         // divisible by the mesh size that it is sharded on
         for (int64_t imesh = 0; imesh < nmesh; imesh++) {
-          (*shardable)[dim][imesh] = (ret_size % mesh_shape[imesh] == 0);
+          (*shardable)[input_axis][imesh] = (ret_size % mesh_shape[imesh] == 0);
         }
       }
-      ret_dim_trans = dim_size.second;
+      ret_dim_trans = dim;
     }
   } else if (type == DimTrans::Type::SINGLETON) {
-    ret_size = 1;
     ret_dim_trans = nullptr;
   }
-  return std::make_pair(ret_size, ret_dim_trans);
+  return ret_dim_trans;
 }
 
 void GetUsedInputDim(DimTrans* dim_trans, std::set<int64_t>* seen_dims) {
@@ -326,55 +316,34 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
     }
   }
 
-  // get the size of each output dimension, and get the
-  // map from sharded input dimensions to output dimensions.
+  // get the map from sharded input dimensions to output dimensions.
   std::vector<int64_t> dim_map_src2tgt(ndim, -1);
-  std::vector<int64_t> out_shape(dim_trans.size());
   for (int64_t i = 0, n = dim_trans.size(); i < n; i++) {
-    std::pair<int64_t, DimTrans*> dim_size =
-        GetDimTransSize(dim_trans[i],
-                        &shardable,
-                        &seen_input_dims,
-                        input_shape,
-                        mesh_shape,
-                        input_dims_mapping,
-                        sharded_input_dims);
-    out_shape[i] = dim_size.first;
-    if (dim_size.second != nullptr &&
-        dim_size.second->type() == DimTrans::Type::INPUTDIM) {
-      InputDim* inputdim = dynamic_cast<InputDim*>(dim_size.second);
+    DimTrans* dim = GetDimTrans(dim_trans[i],
+                                &shardable,
+                                &seen_input_dims,
+                                input_shape,
+                                mesh_shape,
+                                input_dims_mapping,
+                                sharded_input_dims);
+    if (dim != nullptr && dim->type() == DimTrans::Type::INPUTDIM) {
+      InputDim* inputdim = dynamic_cast<InputDim*>(dim);
       dim_map_src2tgt[inputdim->input_dim()] = i;
-    }
-  }
-
-  // if one input dimension is sharded on a
-  // unshardable mesh we need to reshard the input.
-  bool need_reshard = false;
-  for (int64_t i = 0; i < ndim; i++) {
-    int64_t mesh_dim = input_dims_mapping[i];
-    if (input_dims_mapping[i] > -1 && !shardable[i][mesh_dim]) {
-      need_reshard = true;
-      break;
     }
   }
 
   std::vector<int64_t> out_dims_mapping(dim_trans.size(), -1);
   std::vector<int64_t> new_input_dims_mapping(input_dims_mapping);
-  if (!need_reshard) {
-    for (int64_t i = 0; i < ndim; i++) {
-      if (input_dims_mapping[i] > -1 && dim_map_src2tgt[i] > -1) {
-        out_dims_mapping[dim_map_src2tgt[i]] = input_dims_mapping[i];
-      }
-    }
-  } else {
-    // set the unshardable input dimension to be replicate
-    for (int64_t i = 0; i < ndim; i++) {
-      int64_t mesh_dim = input_dims_mapping[i];
-      if (mesh_dim > -1 && shardable[i][mesh_dim] && dim_map_src2tgt[i] > -1) {
-        out_dims_mapping[dim_map_src2tgt[i]] = input_dims_mapping[i];
-      } else {
-        new_input_dims_mapping[i] = -1;
-      }
+
+  // set output dims mapping with corresponding input dimensions.
+  // if one input dimension is sharded on a unshardable mesh after
+  // splitting, we need to make it replicated.
+  for (int64_t i = 0; i < ndim; i++) {
+    int64_t mesh_dim = input_dims_mapping[i];
+    if (mesh_dim > -1 && shardable[i][mesh_dim] && dim_map_src2tgt[i] > -1) {
+      out_dims_mapping[dim_map_src2tgt[i]] = input_dims_mapping[i];
+    } else {
+      new_input_dims_mapping[i] = -1;
     }
   }
 
