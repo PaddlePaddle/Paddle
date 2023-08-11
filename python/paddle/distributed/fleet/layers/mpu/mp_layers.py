@@ -11,16 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 
 import paddle
 from paddle.autograd import PyLayer
 from paddle.fluid import core
 from paddle.nn import functional as F
 
+from ....communication.reduce import ReduceOp, _get_reduce_op
 from ...base import topology as tp
 from . import mp_ops
 from .random import get_rng_state_tracker
-from ....communication.reduce import ReduceOp, _get_reduce_op
 
 __all__ = []
 
@@ -296,7 +297,8 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
         self.linear = F.linear
 
-        if fuse_matmul_bias:
+        self.fuse_matmul_bias = fuse_matmul_bias
+        if self.fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
                 raise NotImplementedError(
                     "You set fuse_matmul_bias=True in ColumnParallelLinear, "
@@ -312,91 +314,142 @@ class ColumnParallelLinear(paddle.nn.Layer):
         # use inner api to process identity
 
         def _overlap_linear():
+            fuse_matmul_bias = self.fuse_matmul_bias
+
             class InnerOverlapLinear(paddle.autograd.PyLayer):
                 @staticmethod
-                def forward(ctx, input, weight, bias):
-                    ctx.save_for_backward(input, weight, bias)
-                    input = paddle._legacy_C_ops.c_identity(
-                        input,
-                        'use_calc_stream',
-                        True,
-                        'ring_id',
-                        self.model_parallel_group.id,
-                        'use_model_parallel',
-                        True,
-                    )
-                    # output_parallel = paddle._C_ops.linear(input_parallel, w, b)
-                    # return output_parallel
-                    return paddle._C_ops.linear(input, weight, bias)
+                def forward(ctx, x, weight, bias):
+                    ctx.save_for_backward(x, weight, bias)
+                    if (
+                        str(os.getenv("Flags_skip_mp_c_identity")).lower()
+                        != "true"
+                    ):
+                        x = paddle._legacy_C_ops.c_identity(
+                            x,
+                            'use_calc_stream',
+                            True,
+                            'ring_id',
+                            self.model_parallel_group.id,
+                            'use_model_parallel',
+                            True,
+                        )
+                    if not fuse_matmul_bias:
+                        return paddle._C_ops.linear(x, weight, bias)
+                    else:
+                        return paddle._legacy_C_ops.fused_gemm_epilogue(
+                            x, weight, bias
+                        )
 
                 @staticmethod
                 def backward(ctx, dy):
-                    input, weight, bias = ctx.saved_tensors
-                    # paddle.fluid.core.nvprof_nvtx_push("dx compute")
+                    x, weight, bias = ctx.saved_tensors
                     dx = paddle.matmul(dy, weight, transpose_y=True)
-                    # paddle.fluid.core.nvprof_nvtx_pop()
                     op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                    # paddle.fluid.core.nvprof_nvtx_push("dx all_reduce")
-                    task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(dx, op_type)
+                    task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(
+                        dx, op_type
+                    )
+                    # TODO(GhostScreaming): remove it in future.
                     tmp = paddle.ones([512])
-                    # task = self.model_parallel_group.process_group.all_reduce_on_calc_stream(dx, op_type)
-                    # paddle.fluid.core.nvprof_nvtx_pop()
-                    # paddle.fluid.core.nvprof_nvtx_push("dw compute")
 
-                    # dw = paddle.matmul(ctx.input.reshape([-1, ctx.input.shape[-1]]), dy.reshape([-1, dy.shape[-1]]), transpose_x=True)
+                    if (
+                        str(
+                            os.getenv("Flags_fused_linear_param_grad_add")
+                        ).lower()
+                        == "true"
+                    ):
+                        if not hasattr(
+                            paddle._C_ops, 'fused_linear_param_grad_add'
+                        ):
+                            raise NotImplementedError(
+                                "You set environment variable Flags_fused_linear_param_grad_add=True, "
+                                "however, the paddle you are using not support this operation. "
+                                "Please unset Flags_fused_linear_param_grad_add or use paddle compiled "
+                                "with cuda 11.6 or higher."
+                            )
 
-                    if bias is None:
-                        if hasattr(weight, "main_grad"):
-                            weight.main_grad, _ = paddle._C_ops.fused_linear_param_grad_add(input, dy, weight.main_grad, None, True, False)
-                            task.wait()
-                            return dx, None
-                        else:
-                            if weight.grad is not None:
-                                weight.grad, _ = paddle._C_ops.fused_linear_param_grad_add(input, dy, weight.grad, None, False, False)
+                        if bias is None:
+                            if hasattr(weight, "main_grad"):
+                                (
+                                    weight.main_grad,
+                                    _,
+                                ) = paddle._C_ops.fused_linear_param_grad_add(
+                                    x, dy, weight.main_grad, None, True, False
+                                )
                                 task.wait()
                                 return dx, None
                             else:
-                                dw, _ = paddle._C_ops.fused_linear_param_grad_add(input, dy, None, None, False, False)
-                                task.wait()                      
-                                return dx, dw
+                                if weight.grad is not None:
+                                    (
+                                        weight.grad,
+                                        _,
+                                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                                        x, dy, weight.grad, None, False, False
+                                    )
+                                    task.wait()
+                                    return dx, None
+                                else:
+                                    (
+                                        dw,
+                                        _,
+                                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                                        x, dy, None, None, False, False
+                                    )
+                                    task.wait()
+                                    return dx, dw
 
-                    if hasattr(weight, "main_grad") and hasattr(bias, "main_grad"):
-                        weight.main_grad, bias.main_grad = _C_ops.fused_linear_param_grad_add(
-                            input, dy, weight.main_grad, bias.main_grad, True, True
-                        )
-                        task.wait()
-                        return dx, None, None
-                    else:
-                        if weight.grad is not None:
-                            assert bias.grad is not None
-                            weight.grad, bias.grad = _C_ops.fused_linear_param_grad_add(input, dy, weight.grad, bias.grad, False, True)
+                        if hasattr(weight, "main_grad") and hasattr(
+                            bias, "main_grad"
+                        ):
+                            (
+                                weight.main_grad,
+                                bias.main_grad,
+                            ) = paddle._C_ops.fused_linear_param_grad_add(
+                                input,
+                                dy,
+                                weight.main_grad,
+                                bias.main_grad,
+                                True,
+                                True,
+                            )
                             task.wait()
                             return dx, None, None
                         else:
-                            dw, dbias = _C_ops.fused_linear_param_grad_add(input, dy, None, None, False, True)
+                            if weight.grad is not None:
+                                assert bias.grad is not None
+                                (
+                                    weight.grad,
+                                    bias.grad,
+                                ) = paddle._C_ops.fused_linear_param_grad_add(
+                                    x, dy, weight.grad, bias.grad, False, True
+                                )
+                                task.wait()
+                                return dx, None, None
+                            else:
+                                (
+                                    dw,
+                                    dbias,
+                                ) = paddle._C_ops.fused_linear_param_grad_add(
+                                    x, dy, None, None, False, True
+                                )
+                                task.wait()
+                                return dx, dw, dbias
+                    else:
+                        dw = paddle.matmul(
+                            x.reshape([-1, x.shape[-1]]),
+                            dy.reshape([-1, dy.shape[-1]]),
+                            transpose_x=True,
+                        )
+                        if bias is not None:
+                            task.wait()
+                            return dx, dw
+                        else:
+                            dbias = paddle.sum(dy, axis=0)
                             task.wait()
                             return dx, dw, dbias
 
-                    # paddle.fluid.core.nvprof_nvtx_pop()
-
-                    # print("dy shape: ", dy.shape)
-                    # print("dw shape: ", dw.shape)
-                    # print("dx shape: ", dx.shape)
-                    # print("ctx.weight shape: ", ctx.weight.shape)
-                    # print("ctx.input shape: ", ctx.input.shape)
-                    # print("****" * 20)
-
-                    # if not ctx.has_bias:
-                    #     task.wait()
-                    #     return dx, dw
-                    # else:
-                    #     dbias = paddle.sum(dy, axis=0)
-                    #     task.wait()
-                    #     return dx, dw, dbias
-
             return InnerOverlapLinear.apply(x, self.weight, self.bias)
-        
-        if True:
+
+        if str(os.getenv("Flags_mp_aysnc_allreduce")).lower() == "true":
             output_parallel = _overlap_linear()
         else:
             if self.is_mp:

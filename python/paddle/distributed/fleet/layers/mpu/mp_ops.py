@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle import _legacy_C_ops
 from paddle.distributed import collective
@@ -45,15 +47,18 @@ def _c_identity(tensor, group=None):
         class c_identity_eager(PyLayer):
             @staticmethod
             def forward(ctx, tensor):
-                return _legacy_C_ops.c_identity(
-                    tensor,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    group.id,
-                    'use_model_parallel',
-                    True,
-                )
+                if str(os.getenv("Flags_skip_mp_c_identity")).lower() == "true":
+                    return tensor
+                else:
+                    return _legacy_C_ops.c_identity(
+                        tensor,
+                        'use_calc_stream',
+                        True,
+                        'ring_id',
+                        group.id,
+                        'use_model_parallel',
+                        True,
+                    )
 
             @staticmethod
             def backward(ctx, dy):
@@ -256,15 +261,18 @@ def _mp_allreduce(
 
             @staticmethod
             def backward(ctx, dy):
-                return _legacy_C_ops.c_identity(
-                    dy,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    ctx.ring_id,
-                    'use_model_parallel',
-                    True,
-                )
+                if str(os.getenv("Flags_skip_mp_c_identity")).lower() == "true":
+                    return dy
+                else:
+                    return _legacy_C_ops.c_identity(
+                        dy,
+                        'use_calc_stream',
+                        True,
+                        'ring_id',
+                        ctx.ring_id,
+                        'use_model_parallel',
+                        True,
+                    )
 
         return mp_allreduce_eager.apply(
             tensor, group, use_calc_stream, use_model_parallel
