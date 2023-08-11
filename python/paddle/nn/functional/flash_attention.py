@@ -417,7 +417,7 @@ def scaled_dot_product_attention(
     dropout_p=0.0,
     is_causal=False,
     training=True,
-    name = None,
+    name=None,
 ):
     r"""
     The equation is:
@@ -463,6 +463,7 @@ def scaled_dot_product_attention(
 
     Examples:
         .. code-block:: python
+
             # required: skiptest
             >>> # xdoctest: +SKIP()
             >>> import paddle
