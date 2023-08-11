@@ -315,9 +315,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
             class InnerOverlapLinear(paddle.autograd.PyLayer):
                 @staticmethod
                 def forward(ctx, input, weight, bias):
-                    ctx.input = input
-                    ctx.weight = weight
-                    ctx.has_bias = (bias is not None)
+                    ctx.save_for_backward(input, weight, bias)
                     input = paddle._legacy_C_ops.c_identity(
                         input,
                         'use_calc_stream',
@@ -333,19 +331,53 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
                 @staticmethod
                 def backward(ctx, dy):
-                    paddle.fluid.core.nvprof_nvtx_push("dx compute")
-                    dx = paddle.matmul(dy, ctx.weight, transpose_y=True)
-                    paddle.fluid.core.nvprof_nvtx_pop()
+                    input, weight, bias = ctx.saved_tensors
+                    # paddle.fluid.core.nvprof_nvtx_push("dx compute")
+                    dx = paddle.matmul(dy, weight, transpose_y=True)
+                    # paddle.fluid.core.nvprof_nvtx_pop()
                     op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                    paddle.fluid.core.nvprof_nvtx_push("dx all_reduce")
+                    # paddle.fluid.core.nvprof_nvtx_push("dx all_reduce")
                     task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(dx, op_type)
-                    tmp = paddle.ones([16, 512])
+                    tmp = paddle.ones([512])
                     # task = self.model_parallel_group.process_group.all_reduce_on_calc_stream(dx, op_type)
-                    paddle.fluid.core.nvprof_nvtx_pop()
-                    paddle.fluid.core.nvprof_nvtx_push("dw compute")
+                    # paddle.fluid.core.nvprof_nvtx_pop()
+                    # paddle.fluid.core.nvprof_nvtx_push("dw compute")
 
-                    dw = paddle.matmul(ctx.input.reshape([-1, ctx.input.shape[-1]]), dy.reshape([-1, dy.shape[-1]]), transpose_x=True)
-                    paddle.fluid.core.nvprof_nvtx_pop()
+                    # dw = paddle.matmul(ctx.input.reshape([-1, ctx.input.shape[-1]]), dy.reshape([-1, dy.shape[-1]]), transpose_x=True)
+
+                    if bias is None:
+                        if hasattr(weight, "main_grad"):
+                            weight.main_grad, _ = paddle._C_ops.fused_linear_param_grad_add(input, dy, weight.main_grad, None, True, False)
+                            task.wait()
+                            return dx, None
+                        else:
+                            if weight.grad is not None:
+                                weight.grad, _ = paddle._C_ops.fused_linear_param_grad_add(input, dy, weight.grad, None, False, False)
+                                task.wait()
+                                return dx, None
+                            else:
+                                dw, _ = paddle._C_ops.fused_linear_param_grad_add(input, dy, None, None, False, False)
+                                task.wait()                      
+                                return dx, dw
+
+                    if hasattr(weight, "main_grad") and hasattr(bias, "main_grad"):
+                        weight.main_grad, bias.main_grad = _C_ops.fused_linear_param_grad_add(
+                            input, dy, weight.main_grad, bias.main_grad, True, True
+                        )
+                        task.wait()
+                        return dx, None, None
+                    else:
+                        if weight.grad is not None:
+                            assert bias.grad is not None
+                            weight.grad, bias.grad = _C_ops.fused_linear_param_grad_add(input, dy, weight.grad, bias.grad, False, True)
+                            task.wait()
+                            return dx, None, None
+                        else:
+                            dw, dbias = _C_ops.fused_linear_param_grad_add(input, dy, None, None, False, True)
+                            task.wait()
+                            return dx, dw, dbias
+
+                    # paddle.fluid.core.nvprof_nvtx_pop()
 
                     # print("dy shape: ", dy.shape)
                     # print("dw shape: ", dw.shape)
@@ -354,13 +386,13 @@ class ColumnParallelLinear(paddle.nn.Layer):
                     # print("ctx.input shape: ", ctx.input.shape)
                     # print("****" * 20)
 
-                    if not ctx.has_bias:
-                        task.wait()
-                        return dx, dw
-                    else:
-                        dbias = paddle.sum(dy, axis=0)
-                        task.wait()
-                        return dx, dw, dbias
+                    # if not ctx.has_bias:
+                    #     task.wait()
+                    #     return dx, dw
+                    # else:
+                    #     dbias = paddle.sum(dy, axis=0)
+                    #     task.wait()
+                    #     return dx, dw, dbias
 
             return InnerOverlapLinear.apply(x, self.weight, self.bias)
         
