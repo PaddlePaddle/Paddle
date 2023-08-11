@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -41,6 +42,14 @@ class PatternGraph {
   void UpdateTmpTensor(const id_type& tmp_tensor_id,
                        const id_type& new_tensor_id);
 
+  const std::unordered_set<id_type>& input_tensors() const {
+    return input_tensors_;
+  }
+
+  const std::unordered_set<id_type>& output_tensors() const {
+    return output_tensors_;
+  }
+
   size_t CountOfOpCalls() const;
 
   void Print() const;
@@ -50,6 +59,17 @@ class PatternGraph {
   std::vector<std::shared_ptr<OpCall>> owned_op_call_;
   std::unordered_set<id_type> input_tensors_;
   std::unordered_set<id_type> output_tensors_;
+};
+
+class GraphTopo {
+ public:
+  explicit GraphTopo(const PatternGraph* graph) : graph_(graph) {}
+
+  void WalkGraphNodesTopoOrder(
+      const std::function<void(const OpCall&)>& VisitNode) const {}
+
+ private:
+  const PatternGraph* graph_;
 };
 
 class SourcePatternGraph : public PatternGraph {

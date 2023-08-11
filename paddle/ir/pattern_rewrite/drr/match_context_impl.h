@@ -20,11 +20,12 @@
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_tensor.h"
+#include "paddle/ir/pattern_rewrite/drr/ir_value.h"
 
 namespace ir {
 namespace drr {
 
+class OpCall;
 template <class T>
 struct CppTypeToIrAttribute;
 
@@ -48,8 +49,8 @@ class MatchContextImpl final {
     return *tensor_map_.at(tensor_name);
   }
 
-  const IrOperation& Operation(const std::string& op_name) const {
-    return *operation_map_.at(op_name);
+  const IrOperation& Operation(const OpCall* op_call) const {
+    return *operation_map_.at(op_call);
   }
 
   template <typename T>
@@ -59,14 +60,23 @@ class MatchContextImpl final {
         .data();
   }
 
+  const IrValue& GetIrValue(const std::string& tensor_name) const {
+    return *tensor_map_.at(tensor_name);
+  }
+
+  const std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>&
+  operation_map() const {
+    return operation_map_;
+  }
+
   void BindIrValue(const std::string& value_name,
                    const std::shared_ptr<IrValue>& value) {
     tensor_map_.emplace(value_name, value);
   }
 
-  void BindIrOperation(const std::string& op_name,
+  void BindIrOperation(const OpCall* op_call,
                        const std::shared_ptr<IrOperation>& op) {
-    operation_map_.emplace(op_name, op);
+    operation_map_.emplace(op_call, op);
   }
 
   void BindIrAttr(const std::string& attr_name, ir::Attribute attr) {
@@ -75,7 +85,8 @@ class MatchContextImpl final {
 
  private:
   std::unordered_map<std::string, std::shared_ptr<IrValue>> tensor_map_;
-  std::unordered_map<std::string, std::shared_ptr<IrOperation>> operation_map_;
+  std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>
+      operation_map_;
   std::unordered_map<std::string, ir::Attribute> attr_map_;
 };
 

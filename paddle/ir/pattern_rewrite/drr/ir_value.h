@@ -47,17 +47,21 @@ class IrDtype {
 
 class IrValue : public TensorInterface {
  public:
-  explicit IrValue(const ir::Value* value)
-      : shape_(
-            &value->type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
-        dtype_(&value->type()
+  explicit IrValue(const ir::Value& value)
+      : value_(value),
+        shape_(
+            &value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims()),
+        dtype_(&value.type()
                     .dyn_cast<paddle::dialect::DenseTensorType>()
                     .dtype()) {}
 
   ShapeInterface Shape() const override { return ShapeInterface(&shape_); }
   DtypeInterface Dtype() const override { return DtypeInterface(&dtype_); }
 
+  const Value& get() const { return value_; }
+
  private:
+  const Value value_;
   const IrShape shape_;
   const IrDtype dtype_;
 };
