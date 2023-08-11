@@ -54,7 +54,7 @@ template <typename Tx, typename Ty = Tx>
 struct PowFunctor {
   HOSTDEVICE explicit inline PowFunctor(const Ty& _p_order)
       : p_order(_p_order) {}
-  HOSTDEVICE inline Tx operator()(const Tx& x) const {
+  HOSTDEVICE inline Tx operator()(const Tx x) const {
     return static_cast<Tx>(pow(static_cast<Ty>(x), p_order));
   }
   Ty p_order;
