@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 
 import paddle
 from paddle.autograd import PyLayer
@@ -21,6 +20,7 @@ from paddle.nn import functional as F
 from ....communication.reduce import ReduceOp, _get_reduce_op
 from ...base import topology as tp
 from . import mp_ops
+from .mp_ops import _get_mp_env_flag
 from .random import get_rng_state_tracker
 
 __all__ = []
@@ -32,6 +32,13 @@ __all__ = []
 
 def is_fused_matmul_bias_supported():
     return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
+
+
+def is_fused_linear_param_grad_add_supported():
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(paddle._C_ops, 'fused_linear_param_grad_add')
+    else:
+        return False
 
 
 class VocabParallelEmbedding(paddle.nn.Layer):
@@ -320,10 +327,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
                 @staticmethod
                 def forward(ctx, x, weight, bias):
                     ctx.save_for_backward(x, weight, bias)
-                    if (
-                        str(os.getenv("Flags_skip_mp_c_identity")).lower()
-                        != "true"
-                    ):
+                    if not _get_mp_env_flag("Flags_skip_mp_c_identity"):
                         x = paddle._legacy_C_ops.c_identity(
                             x,
                             'use_calc_stream',
@@ -342,7 +346,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
                 @staticmethod
                 def backward(ctx, dy):
-                    x, weight, bias = ctx.saved_tensors
+                    x, weight, bias = ctx.saved_tensor()
                     dx = paddle.matmul(dy, weight, transpose_y=True)
                     op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
                     task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(
@@ -351,15 +355,8 @@ class ColumnParallelLinear(paddle.nn.Layer):
                     # TODO(GhostScreaming): remove it in future.
                     tmp = paddle.ones([512])
 
-                    if (
-                        str(
-                            os.getenv("Flags_fused_linear_param_grad_add")
-                        ).lower()
-                        == "true"
-                    ):
-                        if not hasattr(
-                            paddle._C_ops, 'fused_linear_param_grad_add'
-                        ):
+                    if _get_mp_env_flag("Flags_fused_linear_param_grad_add"):
+                        if not is_fused_linear_param_grad_add_supported():
                             raise NotImplementedError(
                                 "You set environment variable Flags_fused_linear_param_grad_add=True, "
                                 "however, the paddle you are using not support this operation. "
@@ -449,7 +446,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
             return InnerOverlapLinear.apply(x, self.weight, self.bias)
 
-        if str(os.getenv("Flags_mp_aysnc_allreduce")).lower() == "true":
+        if _get_mp_env_flag("Flags_mp_aysnc_allreduce"):
             output_parallel = _overlap_linear()
         else:
             if self.is_mp:
