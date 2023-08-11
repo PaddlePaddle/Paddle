@@ -142,7 +142,7 @@ void DistKernel(const Context& dev_ctx,
     if (p == 0) {
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
+              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T, MT>());
       phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
           dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
     } else if (p == INFINITY) {
