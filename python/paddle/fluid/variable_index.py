@@ -913,7 +913,15 @@ def _setitem_static(x, indices, values):
             helper = paddle.fluid.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+            if helper.main_program.current_block_idx != 0:
+                # not in global block, we should create a global variable.
+                output = helper.create_global_variable_for_type_inference(
+                    dtype=var.dtype
+                )
+            else:
+                output = helper.create_variable_for_type_inference(
+                    dtype=var.dtype
+                )
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
@@ -979,7 +987,15 @@ def _setitem_static(x, indices, values):
             helper = paddle.fluid.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+            if helper.main_program.current_block_idx != 0:
+                # not in global block, we should create a global variable.
+                output = helper.create_global_variable_for_type_inference(
+                    dtype=var.dtype
+                )
+            else:
+                output = helper.create_variable_for_type_inference(
+                    dtype=var.dtype
+                )
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
