@@ -1180,9 +1180,9 @@ class GradScaler(AmpScaler):
 
             .. code-block:: python
 
-                >>> # doctest: +REQUIRES(env:GPU,XPU)
+                >>> # doctest: +REQUIRES(env:GPU, env:XPU)
                 >>> import paddle
-                >>> paddle.device.set_device('gpu')
+
                 >>> scaler = paddle.amp.GradScaler(enable=True,
                 ...                               init_loss_scaling=1024,
                 ...                               incr_ratio=2.0,

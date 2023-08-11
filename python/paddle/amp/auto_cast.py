@@ -801,8 +801,8 @@ def decorate(
 
         >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
         ...     output = model(data)
-        ...     print(output.dtype)
-        FP16
+        ...     assert output.dtype == paddle.float16
+
         >>> # doctest: +REQUIRES(env:GPU)
         >>> # Demo2: multi models and optimizers:
         >>> model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
@@ -815,10 +815,8 @@ def decorate(
         >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
         ...    output = models[0](data)
         ...    output2 = models[1](data)
-        ...    print(output.dtype)
-        ...    print(output2.dtype)
-        FP16
-        FP16
+        ...    assert output.dtype == paddle.float16
+        ...    assert output2.dtype == paddle.float16
 
         >>> # doctest: +REQUIRES(env:GPU)
         >>> # Demo3: optimizers is None:
@@ -831,8 +829,8 @@ def decorate(
 
         >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
         ...    output = model(data)
-        ...    print(output.dtype)
-        FP16
+        ...    assert output.dtype == paddle.float16
+
     """
     return amp_decorate(
         models,
