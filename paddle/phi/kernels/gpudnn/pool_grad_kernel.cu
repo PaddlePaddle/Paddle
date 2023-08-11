@@ -278,16 +278,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                                                               pool_workspace));
     PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
 #elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::mudnnPoolingBackward(handle,
-                                                             cudnn_pool_desc,
-                                                             &alpha,
-                                                             cudnn_output_desc,
-                                                             output_data,
-                                                             cudnn_output_desc,
-                                                             output_grad_data,
-                                                             cudnn_input_desc,
-                                                             input_data,
-                                                             &beta,
+
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnPoolingBackward(handle,
                                                              cudnn_pool_desc,

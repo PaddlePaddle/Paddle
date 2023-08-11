@@ -76,7 +76,7 @@ __global__ void SwapRepeatKernel(keyT* key_out_data,
   for (int i = repeat_size - 1; i > 0; i--) {
     uint32_t r = curand(&state) % (i + 1);
 #elif defined(__MUSACC__)
-  murandStatePhilox4_32_10_t state;
+  murand_state_philox4x32_10 state;
   murand_init(seed, idx, offset, &state);
   for (int i = repeat_size - 1; i > 0; i--) {
     uint32_t r = murand(&state) % (i + 1);

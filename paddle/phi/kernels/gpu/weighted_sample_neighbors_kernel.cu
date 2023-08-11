@@ -377,6 +377,8 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
   const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+  const auto& exec_policy = thrust::musa::par.on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
@@ -397,6 +399,18 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
                   cudaMemcpyDeviceToDevice,
                   dev_ctx.stream());
   cudaStreamSynchronize(dev_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpyAsync(&total_sample_size,
+                  sample_offset_ptr + bs,
+                  sizeof(int),
+                  musaMemcpyDeviceToHost,
+                  dev_ctx.stream());
+  musaMemcpyAsync(out_count_data,
+                  sample_count_ptr,
+                  sizeof(int) * bs,
+                  musaMemcpyDeviceToDevice,
+                  dev_ctx.stream());
+  musaStreamSynchronize(dev_ctx.stream());
 #else
   hipMemcpyAsync(&total_sample_size,
                  sample_offset_ptr + bs,

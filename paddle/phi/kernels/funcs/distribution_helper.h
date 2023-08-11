@@ -210,7 +210,7 @@ template <>
 struct uniform_distribution<double> {
   __device__ inline double2 operator()(
       murand_state_philox4x32_10 *state) const {
-    return murand_uniform_double2(state);
+    return murand_uniform2_double(state);
   }
   static constexpr int kReturnsCount = 2;
 };
@@ -248,7 +248,7 @@ template <>
 struct normal_distribution<double> {
   __device__ inline double2 operator()(
       murand_state_philox4x32_10 *state) const {
-    return murand_normal_double2(state);
+    return murand_normal2_double(state);
   }
   static constexpr int kReturnsCount = 2;
 };

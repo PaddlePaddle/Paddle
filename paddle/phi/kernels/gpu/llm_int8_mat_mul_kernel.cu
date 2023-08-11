@@ -16,7 +16,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#ifndef PADDLE_WITH_HIP
+#if !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/kernels/impl/llm_int8_mat_mul_kernel_impl.h"
 #endif
 

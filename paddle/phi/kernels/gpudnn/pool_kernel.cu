@@ -235,7 +235,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
     funcs::Transpose<Context, T, 5> trans5_v2;
     trans5_v2(ctx, transformed_output, output, axis);
   }
-#elif defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP)
   // MIOPEN not support NHWC data layout
   if (data_format == str_NHWC) {
     std::vector<int> axis{0, 2, 3, 1};
