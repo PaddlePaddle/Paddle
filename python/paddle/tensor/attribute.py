@@ -47,7 +47,7 @@ def rank(input):
             >>> input = paddle.rand((3, 100, 100))
             >>> rank = paddle.rank(input)
             >>> print(rank.numpy())
-            [3]
+            3
     """
     check_type(input, 'input', (Variable), 'input')
     ndims = len(input.shape)
