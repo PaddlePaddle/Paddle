@@ -62,8 +62,8 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
     def create_local_and_dist_tensor_pair(self, np_array):
         local_t = paddle.to_tensor(np_array, dtype='float32')
 
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=["x", None])
+        mesh = dist.ProcessMesh([0], dim_names=["x"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
         dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
 
         local_t.stop_gradient = False
