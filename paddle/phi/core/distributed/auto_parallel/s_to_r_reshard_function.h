@@ -13,32 +13,24 @@
 // limitations under the License.
 
 #pragma once
-#include <memory>
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 
 namespace phi {
-class DeviceContext;
-
 namespace distributed {
-namespace auto_parallel {
-class TensorDistAttr;
-}  // namespace auto_parallel
 
-class DistTensor;
-using auto_parallel::TensorDistAttr;
-
-class ReshardFunction {
+class SToRReshardFunction final : public ReshardFunction {
  public:
-  ReshardFunction() = default;
-  virtual ~ReshardFunction() = default;
+  SToRReshardFunction() = default;
+  ~SToRReshardFunction() = default;
 
-  virtual bool IsSuitable(
+  bool IsSuitable(
       const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
+      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
 
-  virtual std::shared_ptr<DistTensor> Eval(
+  std::shared_ptr<DistTensor> Eval(
       DeviceContext* dev_ctx,
       const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
+      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
 };
 
 }  // namespace distributed

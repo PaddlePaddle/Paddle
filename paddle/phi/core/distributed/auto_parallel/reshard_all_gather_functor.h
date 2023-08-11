@@ -13,33 +13,19 @@
 // limitations under the License.
 
 #pragma once
-#include <memory>
+
+#include <cstdint>
+#include <vector>
 
 namespace phi {
+class DenseTensor;
 class DeviceContext;
 
 namespace distributed {
-namespace auto_parallel {
-class TensorDistAttr;
-}  // namespace auto_parallel
 
-class DistTensor;
-using auto_parallel::TensorDistAttr;
-
-class ReshardFunction {
- public:
-  ReshardFunction() = default;
-  virtual ~ReshardFunction() = default;
-
-  virtual bool IsSuitable(
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
-
-  virtual std::shared_ptr<DistTensor> Eval(
-      DeviceContext* dev_ctx,
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
-};
+DenseTensor ReshardAllGatherFunctor(DeviceContext* dev_ctx,
+                                    const DenseTensor& input,
+                                    const std::vector<int64_t>& process_ids);
 
 }  // namespace distributed
 }  // namespace phi
