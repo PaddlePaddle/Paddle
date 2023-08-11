@@ -240,6 +240,41 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
             self.outputs = {'Out': -term1 - term2}
 
+    class TestSigmoidCrossEntropyWithLogitsOp7(
+        TestSigmoidCrossEntropyWithLogitsOp
+    ):
+        """Test sigmoid_cross_entropy_with_logit_op with binary label"""
+
+        def set_inputs(self):
+            batch_size = [10, 10]
+            num_classes = 20
+            self.inputs = {
+                'X': logit(
+                    np.random.uniform(
+                        0, 1, tuple(batch_size + [num_classes])
+                    ).astype(self.dtype)
+                ),
+                'Label': np.random.randint(
+                    0, 2, tuple(batch_size + [num_classes])
+                ).astype(self.dtype),
+                'pos_weight': np.random.uniform(
+                    0, 1, tuple(batch_size + [num_classes])
+                ).astype(self.dtype),
+            }
+            self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
+
+        def set_output(self):
+            # Fw Pass is implemented as elementwise sigmoid followed by
+            # elementwise logistic loss
+            # Label * -log(sigmoid(X)) + (1 - label) * -log(1 - sigmoid(X))
+            term1 = np.maximum(self.inputs['X'], 0)
+            term2 = self.inputs['X'] * self.inputs['Label']
+            term3 = (
+                np.log(1 + np.exp(-1 * np.abs(self.inputs['X'])))
+                * self.inputs['pos_weight']
+            )
+            self.outputs = {'Out': term1 - term2 + term3}
+
     class TestSigmoidCrossEntropyWithLogitsNorm(
         TestSigmoidCrossEntropyWithLogitsOp
     ):

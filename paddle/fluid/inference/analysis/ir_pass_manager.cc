@@ -133,7 +133,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "cudnn_placement_pass") {
       pass->Set("cudnn_enabled_op_types",
                 new std::unordered_set<std::string>());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     } else if (pass_name == "cpu_quantize_placement_pass") {
       pass->Set("quantize_enabled_op_types",
                 new std::unordered_set<std::string>(

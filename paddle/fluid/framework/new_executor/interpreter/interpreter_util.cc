@@ -37,7 +37,7 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -346,7 +346,7 @@ void CreateAllOps(const framework::BlockDesc& block,
         info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
@@ -527,7 +527,7 @@ void BuildOpFuncList(const platform::Place& place,
         main_program, block.ID(), ops_unique);
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::RegisterModelLayout(ops_unique, place);
 #endif
   // its elements will be moved to vec_func_list
@@ -977,10 +977,7 @@ void BuildOpFuncList(
         attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
+    if (GetSpecialOpNames().count(op_name)) {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -1169,6 +1166,18 @@ void SetDeviceCommContext(::ir::Operation* op,
               << ", ring_id: " << ring_id << ", get comm_context failed!";
     }
   }
+}
+
+std::unordered_set<std::string> GetSpecialOpNames() {
+  return {
+      "builtin.combine",
+      "builtin.slice",
+      "pd.feed",
+      "builtin.set_parameter",
+      "builtin.get_parameter",
+      "pd.data",
+      "pd.shadow_output",
+  };
 }
 
 }  // namespace interpreter

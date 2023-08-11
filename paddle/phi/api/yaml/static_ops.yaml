@@ -352,8 +352,6 @@
     func : linspace
     param: [start, stop, number, dtype]
     data_type : dtype
-  data_transform :
-    skip_transform : start, stop, number
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)

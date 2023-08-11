@@ -41,7 +41,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 #endif
@@ -197,7 +197,7 @@ struct Argument {
   // The cache capacity of different input shapes for mkldnn.
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,

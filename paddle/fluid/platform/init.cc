@@ -255,7 +255,7 @@ void InitDevices(const std::vector<int> devices) {
 #endif
   platform::DeviceContextPool::Init(places);
 
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 }
@@ -263,7 +263,7 @@ void InitDevices(const std::vector<int> devices) {
 #ifndef _WIN32
 // Description Quoted from
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
-const struct {
+const struct {  // NOLINT
   int signal_number;
   const char *name;
   const char *error_string;
@@ -348,7 +348,7 @@ void DisableSignalHandler() {
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;
-    sigaction(signal_number, &sig_action, NULL);
+    sigaction(signal_number, &sig_action, nullptr);
   }
 #endif
 }
@@ -367,10 +367,10 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
                                 GENERIC_WRITE,
                                 0,
-                                NULL,
+                                nullptr,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL,
-                                NULL);
+                                nullptr);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -384,8 +384,8 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                      hDumpFile,
                      MiniDumpWithPrivateReadWriteMemory,
                      &dumpInfo,
-                     NULL,
-                     NULL);
+                     nullptr,
+                     nullptr);
   CloseHandle(hDumpFile);
 }
 

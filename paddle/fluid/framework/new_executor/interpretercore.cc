@@ -125,5 +125,6 @@ const platform::Place& InterpreterCore::GetPlace() const {
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
+
 }  // namespace framework
 }  // namespace paddle

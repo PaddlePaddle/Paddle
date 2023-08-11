@@ -22,8 +22,11 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
+
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/block.h"
@@ -54,7 +57,46 @@ PyTypeObject *g_ir_opresult_pytype = nullptr;
 void BindOpsAPI(pybind11::module *module);
 
 void BindProgram(py::module *m) {
-  py::class_<Program> program(*m, "Program");
+  py::class_<Program> program(*m, "Program", R"DOC(
+    Create Python Program. Program is an abstraction of model structure, divided into
+    computational graphs and weights. The Program has a main block that stores the computational
+    graphs.
+
+    A set of Program usually contains startup program and main program.
+    A startup program is set to contain some initial work, eg. initialize the ``Parameter``, and the main
+    program will contain the network structure and vars for train.
+
+    A set of Program can be used for test or train, in train program ,
+    Paddle will contain all content to build a train network,  in test
+    program Paddle will prune some content which is irrelevant to test, eg.
+    backward ops and vars.
+
+    **Notes**:
+        **we have** :ref:`api_paddle_static_default_startup_program` **and** :ref:`api_paddle_static_default_main_program`
+        **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_static_default_startup_program` **only run once to initialize parameters,**
+        :ref:`api_paddle_static_default_main_program` **run in every mini batch and adjust the weights.**
+
+    Returns:
+        Program: An empty Program.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            main_program = static.Program()
+            startup_program = static.Program()
+            with static.program_guard(main_program=main_program, startup_program=startup_program):
+                x = static.data(name="x", shape=[-1, 784], dtype='float32')
+                y = static.data(name="y", shape=[-1, 1], dtype='int32')
+                z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
+
+            print("main program is: {}".format(main_program))
+            print("start up program is: {}".format(startup_program))
+  )DOC");
   program
       .def(
           "__init__",
@@ -75,26 +117,54 @@ void BindProgram(py::module *m) {
 }
 
 void BindBlock(py::module *m) {
-  py::class_<Block> block(*m, "Block");
+  py::class_<Block> block(*m, "Block", R"DOC(
+    In IR, a Block has a list of Operation and can represent a sub computational graph.
+
+    Notes:
+        The constructor of Block should not be invoked directly. You can
+        use `Program.block()` to get a block.
+  )DOC");
   block.def("front", &Block::front, return_value_policy::reference)
       .def("get_parent_program",
            [](Block &self) { return self.GetParentOp()->GetParentProgram(); })
-      .def("get_ops",
-           [](Block &self) -> py::list {
-             py::list op_list;
-             for (auto iter = self.begin(); iter != self.end(); iter++) {
-               op_list.append(*iter);
-             }
-             return op_list;
-           })
-      .def("remove_op", [](Block &self, Operation *op) {
-        auto op_iter = std::find(self.begin(), self.end(), op);
-        self.erase(op_iter);
-      });
+      .def_property_readonly(
+          "ops",
+          [](Block &self) -> py::list {
+            py::list op_list;
+            for (auto iter = self.begin(); iter != self.end(); iter++) {
+              op_list.append(*iter);
+            }
+            return op_list;
+          })
+      .def(
+          "remove_op",
+          [](Block &self, Operation *op) {
+            auto op_iter = std::find(self.begin(), self.end(), op);
+            self.erase(op_iter);
+          },
+          R"DOC(
+        Remove the specific position operator.
+
+        Args:
+            index(int): the position that the operator to insert.
+
+        Returns:
+            None
+
+      )DOC");
 }
 
 void BindOperation(py::module *m) {
-  py::class_<Operation> op(*m, "Operation");
+  py::class_<Operation> op(*m, "Operation", R"DOC(
+    In IR, all the operation are represented by Operation, and Operation
+    is regarded as a build in an instruction of a Block. Users can call
+    python api to describe their neural network.
+
+    Notes:
+        The constructor of operator should not be invoked directly. Use
+        python api, for example: paddle.mean for building mean operation.
+
+  )DOC");
   op.def("name", &Operation::name)
       .def("get_parent_block",
            py::overload_cast<>(&Operation::GetParent),
@@ -107,21 +177,16 @@ void BindOperation(py::module *m) {
       .def("operand", &Operation::operand)
       .def("result", &Operation::result)
       .def("operand_source", &Operation::operand_source)
-      .def("operands",
-           [](Operation &self) -> py::list {
-             py::list op_list;
-             for (uint32_t i = 0; i < self.num_operands(); i++) {
-               op_list.append(self.operand(i));
+      .def("operands", &Operation::operands)
+      .def("results", &Operation::results)
+      .def("attrs",
+           [](Operation &self) -> py::dict {
+             py::dict attrs_dict;
+             for (auto &pair : self.attributes()) {
+               attrs_dict[pair.first.c_str()] =
+                   paddle::dialect::GetAttributeData(pair.second);
              }
-             return op_list;
-           })
-      .def("results",
-           [](Operation &self) -> py::list {
-             py::list op_list;
-             for (uint32_t i = 0; i < self.num_results(); i++) {
-               op_list.append(self.result(i));
-             }
-             return op_list;
+             return attrs_dict;
            })
       .def("operands_source",
            [](Operation &self) -> py::list {
@@ -171,7 +236,15 @@ void BindOperation(py::module *m) {
 }
 
 void BindValue(py::module *m) {
-  py::class_<Value> value(*m, "Value");
+  py::class_<Value> value(*m, "Value", R"DOC(
+    Value class represents the SSA value in the IR system. It is a directed edge
+    and a base class.
+
+    Notes:
+        The constructor of Value should not be invoked directly. Value can be automatically constructed
+        when build network.
+
+  )DOC");
   value
       .def("get_defining_op",
            &Value::GetDefiningOp,
@@ -186,7 +259,16 @@ void BindValue(py::module *m) {
 }
 
 void BindOpOperand(py::module *m) {
-  py::class_<OpOperand> op_operand(*m, "OpOperand");
+  py::class_<OpOperand> op_operand(*m,
+                                   "OpOperand",
+                                   R"DOC(
+    OpOperand class represents the op_operand (input) of operation.
+
+    Notes:
+        The constructor of OpOperand should not be invoked directly. OpOperand can be automatically constructed
+        when build network.
+
+  )DOC");
   op_operand
       .def("source",
            [](OpOperand &self) { return self.source().dyn_cast<OpResult>(); })
@@ -195,57 +277,98 @@ void BindOpOperand(py::module *m) {
       });
 }
 
+bool GetStopGradient(const OpResult &self) {
+  auto *defining_op = self.owner();
+  if (defining_op->HasAttribute(kAttrStopGradients)) {
+    auto stop_gradients = defining_op->attribute(kAttrStopGradients)
+                              .dyn_cast<ir::ArrayAttribute>()
+                              .AsVector();
+    return stop_gradients[self.GetResultIndex()]
+        .dyn_cast<ir::BoolAttribute>()
+        .data();
+  } else {
+    return false;
+  }
+}
+
+void SetStopGradient(const OpResult &self, bool stop_gradient) {
+  auto *defining_op = self.owner();
+  std::vector<ir::Attribute> stop_gradients;
+  if (defining_op->HasAttribute(kAttrStopGradients)) {
+    stop_gradients = defining_op->attribute(kAttrStopGradients)
+                         .dyn_cast<ir::ArrayAttribute>()
+                         .AsVector();
+  } else {
+    stop_gradients = std::vector<ir::Attribute>(
+        defining_op->num_results(),
+        ir::BoolAttribute::get(ir::IrContext::Instance(), false));
+  }
+  stop_gradients[self.GetResultIndex()] =
+      ir::BoolAttribute::get(ir::IrContext::Instance(), stop_gradient);
+  defining_op->set_attribute(
+      kAttrStopGradients,
+      ir::ArrayAttribute::get(ir::IrContext::Instance(), stop_gradients));
+}
+
 void BindOpResult(py::module *m) {
-  py::class_<OpResult> op_result(*m, "OpResult");
+  py::class_<OpResult> op_result(*m, "OpResult", R"DOC(
+    OpResult class represents the value(output) defined by a result of operation.
+
+    Notes:
+        The constructor of OpResult should not be invoked directly. OpResult can be automatically constructed
+        when build network.
+  )DOC");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result
+  op_result.def("__eq__", &OpResult::operator==)
+      .def("__eq__",
+           [](OpResult &self, Value &other) {
+             return self.value_impl() == other.impl();
+           })
+      .def("__hash__",
+           [](OpResult &self) {
+             return std::hash<ir::Value>{}(self.dyn_cast<ir::Value>());
+           })
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
-      .def("set_stop_gradient",
-           [](OpResult &self, bool stop_gradient) {
-             auto *defining_op = self.owner();
-             std::vector<ir::Attribute> stop_gradients;
-             if (defining_op->HasAttribute(kAttrStopGradients)) {
-               stop_gradients = defining_op->attribute(kAttrStopGradients)
-                                    .dyn_cast<ir::ArrayAttribute>()
-                                    .AsVector();
-             } else {
-               stop_gradients = std::vector<ir::Attribute>(
-                   defining_op->num_results(),
-                   ir::BoolAttribute::get(ir::IrContext::Instance(), false));
-             }
-             stop_gradients[self.GetResultIndex()] = ir::BoolAttribute::get(
-                 ir::IrContext::Instance(), stop_gradient);
-             defining_op->set_attribute(
-                 kAttrStopGradients,
-                 ir::ArrayAttribute::get(ir::IrContext::Instance(),
-                                         stop_gradients));
-           })
-      .def("get_stop_gradient",
-           [](OpResult &self) {
-             auto *defining_op = self.owner();
-             if (defining_op->HasAttribute(kAttrStopGradients)) {
-               auto stop_gradients = defining_op->attribute(kAttrStopGradients)
-                                         .dyn_cast<ir::ArrayAttribute>()
-                                         .AsVector();
-               return stop_gradients[self.GetResultIndex()]
-                   .dyn_cast<ir::BoolAttribute>()
-                   .data();
-             } else {
-               return false;
-             }
-           })
-      .def("__eq__", &OpResult::operator==)
-      .def("__eq__",
-           [](OpResult &self, Value &other) {
-             return self.value_impl() == other.impl();
-           })
-      .def("__hash__", [](OpResult &self) {
-        return std::hash<ir::Value>{}(self.dyn_cast<ir::Value>());
-      });
+      .def_property(
+          "stop_gradient",
+          [](OpResult &self) { return GetStopGradient(self); },
+          [](OpResult &self, bool stop_gradient) {
+            SetStopGradient(self, stop_gradient);
+          })
+      .def_property(
+          "shape",
+          [](OpResult &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return phi::vectorize(
+                  self.type().dyn_cast<DenseTensorType>().dims());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get shape for dense tensor."));
+            }
+          },
+          [](OpResult &self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](OpResult &self) {
+            if (self.type().isa<DenseTensorType>()) {
+              return paddle::dialect::TransToPhiDataType(
+                  self.type().dyn_cast<DenseTensorType>().dtype());
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get dtype for dense tensor."));
+            }
+          },
+          [](OpResult &self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          });
 }
 
 void BindType(py::module *m) {
@@ -259,25 +382,6 @@ void BindType(py::module *m) {
 }
 
 void BindUtils(pybind11::module *m) {
-  m->def("get_op_result_shape", [](const OpResult &op_result) {
-    if (op_result.type().isa<DenseTensorType>()) {
-      return phi::vectorize(
-          op_result.type().dyn_cast<DenseTensorType>().dims());
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "get_op_result_shape currently only support op_result that is a "
-          "DenseTensorType"));
-    }
-  });
-  m->def("get_op_result_dtype", [](const OpResult &op_result) {
-    if (op_result.type().isa<DenseTensorType>()) {
-      return op_result.type().dyn_cast<DenseTensorType>().dtype();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "get_op_result_dtype currently only support op_result that is a "
-          "DenseTensorType"));
-    }
-  });
   m->def("set_global_program",
          [](Program *program) { APIBuilder::Instance().SetProgram(program); });
   m->def("set_insertion_point",
@@ -286,7 +390,42 @@ void BindUtils(pybind11::module *m) {
          []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
-  m->def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram);
+  m->def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram, R"DOC(
+        Convert Fluid Program to New IR Program.
+
+        Args:
+
+            legacy_program (ProgramDesc): The Fluid Program that will be converted.
+
+        Returns:
+            Program: The New IR Program
+
+        Raises:
+            PreconditionNotMet: If legacy_program has multi block will raise error.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle import ir
+                paddle.enable_static()
+
+                x = paddle.randn([4, 4])
+                main_program, start_program = (
+                    paddle.static.Program(),
+                    paddle.static.Program(),
+                )
+                with paddle.static.program_guard(main_program, start_program):
+                    x_s = paddle.static.data('x', [4, 4], x.dtype)
+                    x_s.stop_gradient = False
+                    y_s = paddle.matmul(x_s, x_s)
+                    z_s = paddle.add(y_s, y_s)
+                    k_s = paddle.tanh(z_s)
+                newir_program = ir.translate_to_new_ir(main_program.desc)
+
+                print(newir_program)
+
+      )DOC");
 }
 
 void BindNewIR(pybind11::module *module) {

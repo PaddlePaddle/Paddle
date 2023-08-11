@@ -149,8 +149,8 @@ def compute_acc(pred, label):
 
 
 def dynamic_train(model, dataloader):
-    optim = fluid.optimizer.Adam(
-        learning_rate=0.001, parameter_list=model.parameters()
+    optim = paddle.optimizer.Adam(
+        learning_rate=0.001, parameters=model.parameters()
     )
     model.train()
     for inputs, labels in dataloader:
@@ -280,8 +280,8 @@ class TestModel(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
-        optim_new = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=net.parameters()
+        optim_new = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=net.parameters()
         )
         model = Model(net, inputs=self.inputs, labels=self.labels)
         model.prepare(
@@ -346,8 +346,8 @@ class TestModel(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
-        optim_new = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=net.parameters()
+        optim_new = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=net.parameters()
         )
         model = Model(net, inputs=tuple(self.inputs), labels=tuple(self.labels))
         model.prepare(
@@ -497,8 +497,8 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(fluid.CPUPlace())
             self.set_seed()
             m = MyModel()
-            optim = fluid.optimizer.SGD(
-                learning_rate=0.001, parameter_list=m.parameters()
+            optim = paddle.optimizer.SGD(
+                learning_rate=0.001, parameters=m.parameters()
             )
             m.train()
             output = m(to_tensor(data))
@@ -517,8 +517,8 @@ class TestModelFunction(unittest.TestCase):
             self.set_seed()
 
             net = MyModel()
-            optim2 = fluid.optimizer.SGD(
-                learning_rate=0.001, parameter_list=net.parameters()
+            optim2 = paddle.optimizer.SGD(
+                learning_rate=0.001, parameters=net.parameters()
             )
 
             inputs = [InputSpec([None, dim], 'float32', 'x')]
@@ -566,8 +566,8 @@ class TestModelFunction(unittest.TestCase):
             net = MyModel()
             inputs = [InputSpec([None, 20], 'float32', 'x')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
-            optim = fluid.optimizer.SGD(
-                learning_rate=0.001, parameter_list=net.parameters()
+            optim = paddle.optimizer.SGD(
+                learning_rate=0.001, parameters=net.parameters()
             )
             model = Model(net, inputs, labels)
             model.prepare(
@@ -595,8 +595,8 @@ class TestModelFunction(unittest.TestCase):
                     learning_rate=0.001, parameters=net.parameters()
                 )
             else:
-                optim = fluid.optimizer.Adam(
-                    learning_rate=0.001, parameter_list=net.parameters()
+                optim = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=net.parameters()
                 )
             model = Model(net, inputs, labels)
             model.prepare(
@@ -618,8 +618,8 @@ class TestModelFunction(unittest.TestCase):
         device = paddle.set_device('cpu')
         fluid.enable_dygraph(device)
         model = Model(MyModel())
-        optim = fluid.optimizer.SGD(
-            learning_rate=0.001, parameter_list=model.parameters()
+        optim = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
         )
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(path)
@@ -628,8 +628,8 @@ class TestModelFunction(unittest.TestCase):
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(MyModel(), inputs, labels)
-        optim = fluid.optimizer.SGD(
-            learning_rate=0.001, parameter_list=model.parameters()
+        optim = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
         )
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.load(path)
@@ -644,8 +644,8 @@ class TestModelFunction(unittest.TestCase):
         net = MyModel()
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
-        optim = fluid.optimizer.SGD(
-            learning_rate=0.001, parameter_list=net.parameters()
+        optim = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=net.parameters()
         )
         model = Model(net, inputs, labels)
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
@@ -657,8 +657,8 @@ class TestModelFunction(unittest.TestCase):
         net = MyModel()
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
-        optim = fluid.optimizer.SGD(
-            learning_rate=0.001, parameter_list=net.parameters()
+        optim = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=net.parameters()
         )
         model = Model(net, inputs, labels)
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
@@ -881,8 +881,8 @@ class TestModelFunction(unittest.TestCase):
         for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
             net = LeNet()
             model = Model(net)
-            optim = fluid.optimizer.Adam(
-                learning_rate=0.001, parameter_list=model.parameters()
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=model.parameters()
             )
             model.prepare(
                 optimizer=optim, loss=CrossEntropyLoss(reduction="sum")
@@ -912,8 +912,8 @@ class TestModelFunction(unittest.TestCase):
         net = LeNet()
         inputs = InputSpec([None, 1, 28, 28], 'float32', 'x')
         model = Model(net, inputs)
-        optim = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters()
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=model.parameters()
         )
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
@@ -926,8 +926,8 @@ class TestModelFunction(unittest.TestCase):
         data = np.random.random(size=(4, dim)).astype(np.float32)
         label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
         net = MyModel()
-        optim = fluid.optimizer.SGD(
-            learning_rate=0.001, parameter_list=net.parameters()
+        optim = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=net.parameters()
         )
         inputs = [InputSpec([None, dim], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]

@@ -62,7 +62,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                     x, size=[10, 32], dtype='float32'
                 )
                 avg_cost = paddle.mean(emb, name='mean_loss')
-                optim = fluid.optimizer.SGD(learning_rate=0.001)
+                optim = paddle.optimizer.SGD(learning_rate=0.001)
                 optim.minimize(avg_cost)
 
                 exe = fluid.Executor(place)

@@ -117,7 +117,7 @@ void BindPaddleInferPredictor(py::module *m);
 void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
@@ -487,7 +487,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddleInferTensor(m);
   BindPaddlePassBuilder(m);
   BindPredictorPool(m);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   BindMkldnnQuantizerConfig(m);
 #endif
   m->def("create_paddle_predictor",
@@ -499,8 +499,7 @@ void BindInferenceApi(py::module *m) {
   m->def("create_predictor",
          [](const paddle_infer::Config &config)
              -> std::unique_ptr<paddle_infer::Predictor> {
-           auto pred = std::unique_ptr<paddle_infer::Predictor>(
-               new paddle_infer::Predictor(config));
+           auto pred = std::make_unique<paddle_infer::Predictor>(config);
            return pred;
          });
   m->def(
@@ -932,7 +931,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       .def("quantizer_config",
            &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
@@ -1047,7 +1046,7 @@ void BindXpuConfig(py::module *m) {
                      &XpuConfig::quant_post_dynamic_op_types);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m) {
   py::class_<MkldnnQuantizerConfig> quantizer_config(*m,
                                                      "MkldnnQuantizerConfig");

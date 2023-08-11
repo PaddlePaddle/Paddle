@@ -51,6 +51,7 @@ extern PyTypeObject* p_string_tensor_type;
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
@@ -638,6 +639,24 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
         "argument (position %d) must be "
         "one of core.VarDesc.VarType, "
         "but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return dtype;
+}
+
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos) {
+  paddle::DataType dtype;
+  if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
+    dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s: argument (position %d) must be "
+        "one of core.VarDesc.VarType, "
+        "but got %s",
+        op_type,
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
@@ -1448,6 +1467,63 @@ ir::OpResult CastPyArg2OpResult(const std::string& op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
+}
+
+std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(const std::string& op_type,
+                                                     PyObject* obj,
+                                                     size_t arg_pos) {
+  std::vector<ir::OpResult> result_list;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
+        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+      } else if (item == Py_None) {
+        continue;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "vector<OpResult>, but got vector<%s>",
+            op_type,
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)
+                ->tp_name));  // NOLINT
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
+        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+      } else if (item == Py_None) {
+        continue;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "vector<OpResult>, but got vector<%s>",
+            op_type,
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)
+                ->tp_name));  // NOLINT
+      }
+    }
+  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return {::pybind11::handle(obj).cast<ir::OpResult>()};
+  } else if (obj == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "Vector<>, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+  return result_list;
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,

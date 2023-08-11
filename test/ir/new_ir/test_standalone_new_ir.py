@@ -175,13 +175,7 @@ class TestNewIrDygraph(unittest.TestCase):
         z = func(x, y)
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
-        self.assertEqual(
-            np.array_equal(
-                z.numpy(),
-                gold_res,
-            ),
-            True,
-        )
+        np.testing.assert_array_equal(z.numpy(), gold_res)
 
 
 class TestNewIrBackwardDygraph(unittest.TestCase):
@@ -202,13 +196,35 @@ class TestNewIrBackwardDygraph(unittest.TestCase):
         loss = z.mean()
         loss.backward()
         gold_res = np.ones([2, 2], dtype="float32")
-        self.assertEqual(
-            np.array_equal(
-                z.numpy(),
-                gold_res,
-            ),
-            True,
-        )
+        np.testing.assert_array_equal(z.numpy(), gold_res)
+
+        gold_res = np.ones([2, 2], dtype="float32") * 0.25
+        np.testing.assert_array_equal(x.gradient(), gold_res)
+        np.testing.assert_array_equal(y.gradient(), gold_res)
+
+
+class TestNewIrReshapeBackwardDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.enable_inplace = False
+
+        @paddle.jit.to_static(build_strategy=build_strategy)
+        def func(x, y):
+            x = x.reshape([-1, 2, 2])
+            y = y.reshape([-1, 2, 2])
+            return x * y
+
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        x.stop_gradient = False
+        y.stop_gradient = False
+        z = func(x, y)
+        loss = z.mean()
+        loss.backward()
+        gold_res = np.ones([1, 2, 2], dtype="float32")
+
+        np.testing.assert_array_equal(z.numpy(), gold_res)
 
         gold_res = np.ones([2, 2], dtype="float32") * 0.25
         np.testing.assert_array_equal(x.gradient(), gold_res)
