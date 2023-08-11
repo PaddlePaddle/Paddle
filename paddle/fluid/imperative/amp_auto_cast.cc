@@ -52,12 +52,15 @@ OpSupportedInfos(const std::string& place,
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
       {"CUSTOM_DEVICE", &platform::is_custom_place},
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      {query_place, &platform::is_custom_place},
+#endif
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
                     platform::errors::InvalidArgument(
                         "The argument `place` should be 'GPU', 'CPU', 'XPU' or "
-                        "Custom Device, but got '%s'.",
+                        "other Custom Device, but got '%s'.",
                         place));
 
   std::unordered_set<std::string> all_ops;
