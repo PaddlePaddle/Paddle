@@ -358,6 +358,7 @@ class CrossEntropyLoss(Layer):
         axis=-1,
         use_softmax=True,
         name=None,
+        label_smoothing=0.0,
     ):
         super().__init__()
         self.weight = weight
@@ -367,6 +368,7 @@ class CrossEntropyLoss(Layer):
         self.axis = axis
         self.use_softmax = use_softmax
         self.name = name
+        self.label_smoothing = label_smoothing
 
     def forward(self, input, label):
         ret = paddle.nn.functional.cross_entropy(
@@ -379,6 +381,7 @@ class CrossEntropyLoss(Layer):
             axis=self.axis,
             use_softmax=self.use_softmax,
             name=self.name,
+            label_smoothing=self.label_smoothing,
         )
 
         return ret

@@ -2453,6 +2453,7 @@ def cross_entropy(
     axis=-1,
     use_softmax=True,
     name=None,
+    label_smoothing=0.0,
 ):
     r"""
 
@@ -2697,6 +2698,20 @@ def cross_entropy(
                 input_dims, label_dims
             )
         )
+
+    if soft_label is True:
+        # converting the label to one-hot encoding
+        # for 1d case, converting label's shape from [N] to [N, C]
+        # for 2d case, converting label's shape from [N, d_1, ..., d_k] to [N, d_1, ..., d_k, C]
+        if input_dims != label_dims and input_dims - 1 == label_dims:
+            label = paddle.squeeze(label, axis=axis)
+            label = paddle.nn.functional.one_hot(label, input.shape[-1])
+
+        label = paddle.nn.functional.label_smooth(
+            label, epsilon=label_smoothing
+        )
+        label = label.astype(input.dtype)
+        label_dims = len(list(label.shape))
 
     if in_dynamic_mode():
         if not soft_label:
