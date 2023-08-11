@@ -59,60 +59,52 @@ void SymbolicDim::Build(
 }
 
 std::string SymbolicDim::getSymName() {
-  return attributes().at("sym_name").dyn_cast<ir::StrAttribute>().AsString();
+  return attribute<ir::StrAttribute>("sym_name").AsString();
 }
 int64_t SymbolicDim::getValue() {
-  return attributes().at("value").dyn_cast<ir::Int64Attribute>().data();
+  return attribute<ir::Int64Attribute>("value").data();
 }
 bool SymbolicDim::getKnownNonNegative() {
-  return attributes()
-      .at("knownNonNegative")
-      .dyn_cast<ir::BoolAttribute>()
-      .data();
+  return attribute<ir::BoolAttribute>("knownNonNegative").data();
 }
 bool SymbolicDim::getKnownNegativeOne() {
-  return attributes()
-      .at("knownNegativeOne")
-      .dyn_cast<ir::BoolAttribute>()
-      .data();
+  return attribute<ir::BoolAttribute>("knownNegativeOne").data();
 }
 bool SymbolicDim::getKnownNonSizeOne() {
-  return attributes()
-      .at("knownNonSizeOne")
-      .dyn_cast<ir::BoolAttribute>()
-      .data();
+  return attribute<ir::BoolAttribute>("knownNonSizeOne").data();
 }
 bool SymbolicDim::getKnownNonSizeZero() {
-  return attributes()
-      .at("knownNonSizeZero")
-      .dyn_cast<ir::BoolAttribute>()
-      .data();
+  return attribute<ir::BoolAttribute>("knownNonSizeZero").data();
 }
 
 void SymbolicDim::updateSymName(std::string attrValue) {
-  attribute("sym_name") =
-      ir::StrAttribute::get(ir::IrContext::Instance(), attrValue);
+  operation()->set_attribute(
+      "sym_name", ir::StrAttribute::get(ir::IrContext::Instance(), attrValue));
 }
 void SymbolicDim::updateValue(int64_t attrValue) {
-  attribute("value") =
-      ir::Int64Attribute::get(ir::IrContext::Instance(), attrValue);
+  operation()->set_attribute(
+      "value", ir::Int64Attribute::get(ir::IrContext::Instance(), attrValue));
 }
 
 void SymbolicDim::updateKnownNonNegative(bool attrValue) {
-  attribute("knownNonNegative") =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue);
+  operation()->set_attribute(
+      "knownNonNegative",
+      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue));
 }
 void SymbolicDim::updateKnownNegativeOne(bool attrValue) {
-  attribute("knownNegativeOne") =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue);
+  operation()->set_attribute(
+      "knownNegativeOne",
+      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue));
 }
 void SymbolicDim::updateKnownNonSizeOne(bool attrValue) {
-  attribute("knownNonSizeOne") =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue);
+  operation()->set_attribute(
+      "knownNonSizeOne",
+      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue));
 }
 void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
-  attribute("knownNonSizeZero") =
-      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue);
+  operation()->set_attribute(
+      "knownNonSizeZero",
+      ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue));
 }
 
 }  // namespace dialect

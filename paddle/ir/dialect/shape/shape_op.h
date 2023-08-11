@@ -20,9 +20,6 @@
 namespace ir {
 namespace dialect {
 
-class Program;
-class Block;
-
 class IR_API SymbolicDim : public Op<SymbolicDim> {
  public:
   using Op::Op;
@@ -55,8 +52,6 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   void updateKnownNonSizeOne(bool attrValue);
   void updateKnownNonSizeZero(bool attrValue);
   void Verify() {}
-
-  // Attribute value() const;
 };
 
 }  // namespace dialect
