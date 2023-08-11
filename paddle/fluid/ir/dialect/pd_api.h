@@ -47,5 +47,10 @@ ir::OpResult mean_grad(ir::OpResult x,
                        const std::vector<int64_t>& axis = {},
                        bool keepdim = false,
                        bool reduce_all = false);
+
+std::tuple<ir::OpResult, ir::OpResult> add_grad(ir::OpResult x,
+                                                ir::OpResult y,
+                                                ir::OpResult out_grad,
+                                                int axis);
 }  // namespace dialect
 }  // namespace paddle

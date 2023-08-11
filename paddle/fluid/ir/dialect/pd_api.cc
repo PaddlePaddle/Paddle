@@ -81,5 +81,15 @@ ir::OpResult mean_grad(ir::OpResult x,
   return mean_grad_op.result(0);
 }
 
+std::tuple<ir::OpResult, ir::OpResult> add_grad(ir::OpResult x,
+                                                ir::OpResult y,
+                                                ir::OpResult out_grad,
+                                                int axis) {
+  paddle::dialect::AddGradOp add_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::AddGradOp>(
+          x, y, out_grad, axis);
+  return std::make_tuple(add_grad_op.result(0), add_grad_op.result(1));
+}
+
 }  // namespace dialect
 }  // namespace paddle
