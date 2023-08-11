@@ -53,7 +53,7 @@ std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(
     ir::Operation* op,
     const std::vector<std::vector<ir::OpResult>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients){{
-  {op_class_name} op_obj = op->dyn_cast<{op_calss_name}>();
+  {op_class_name} op_obj = op->dyn_cast<{op_class_name}>();
 
   VLOG(6) << "Prepare inputs of {op_grad_name}";
 
@@ -78,6 +78,7 @@ std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(
 def gen_op_vjp_str(
     op_class_name,
     op_grad_name,
+    op_phi_name,
     op_info,
     op_grad_info,
 ):
@@ -91,6 +92,7 @@ def gen_op_vjp_str(
     str = OP_VJP_DEFINE_TEMPLATE.format(
         op_class_name=op_class_name,
         op_grad_name=op_grad_name,
+        op_phi_name=op_phi_name,
         forward_input_code=forward_input_code,
         forward_output_code=forward_output_code,
         forward_output_grad_code=forward_output_grad_code,

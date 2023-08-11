@@ -687,12 +687,12 @@ def OpGenerator(
         op_info_items[op['name']] = OpInfoParser(
             op, op_compat_parser.get_compat(op['name'])
         )
-
+    print("op_info_items :", type(op_info_items))
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
     ops_defined_list = []  # all op class defined store in this list
-    for key, op_info in op_info_items:
+    for key, op_info in op_info_items.items():
         # get op inputs info
         op_input_name_list = op_info.input_name_list
         op_input_type_list = op_info.input_type_list
@@ -1040,11 +1040,11 @@ def OpGenerator(
 
             # TODO(chenzhiyang) add vjp gen code
             # if op_info.backward_name and op_info.op_phi_name[0] in vjp_interface_gen_op_list:
-
-            # op_vjp_str = gen_op_vjp_str(op_class_name,
-            #                             op_info.backward_name,
-            #                             op_info_items[op_phi_name],
-            #                             op_info_items[op_info.backward_name])
+            #     op_vjp_str = gen_op_vjp_str(op_class_name,
+            #                                 op_info.backward_name,
+            #                                 op_name,
+            #                                 op_info_items[op_info.op_phi_name[0]],
+            #                                 op_info_items[op_info.backward_name])
 
             ops_name_list.append(op_class_name)
             ops_declare_list.append(op_declare_str)
