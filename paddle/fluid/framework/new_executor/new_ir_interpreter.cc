@@ -1554,7 +1554,9 @@ void NewIRInterpreter::BuildInstruction() {
       VLOG(6) << "process " << op_name;
 
       if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
-          op_name == "pd.fused_softmax_mask_upper_triangle_grad") {
+          op_name == "pd.fused_softmax_mask_upper_triangle_grad" ||
+          op_name == "pd.fused_bn_add_activation_" ||
+          op_name == "pd.fused_bn_add_activation_grad") {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,

@@ -620,6 +620,10 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
       op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
   auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
 
+  if (fluid_op_name == "fused_bn_add_activation_") {
+    fluid_op_name = "fused_bn_add_activation";
+  }
+
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
   for (auto& name : vec_kernel_fn_tensor_params) {

@@ -168,8 +168,8 @@ def update_loss_scaling(
     else:
         attrs['stop_update'] = stop_update
 
-    helper.append_op(
-        type='update_loss_scaling', inputs=inputs, outputs=outputs, attrs=attrs
-    )
+    # helper.append_op(
+    #     type='update_loss_scaling', inputs=inputs, outputs=outputs, attrs=attrs
+    # )
 
     return x
