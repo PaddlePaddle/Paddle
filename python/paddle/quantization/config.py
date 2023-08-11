@@ -131,7 +131,7 @@ class QuantConfig:
              >>> print(q_config)
              Global config:
              None
-             Layer prefix config: 
+             Layer prefix config:
              {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680ee0>}
 
         """
@@ -180,7 +180,7 @@ class QuantConfig:
              >>> print(q_config)
              Global config:
              None
-             Layer prefix config: 
+             Layer prefix config:
              {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680fd0>}
 
         """
