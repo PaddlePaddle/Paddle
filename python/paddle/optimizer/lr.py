@@ -80,15 +80,15 @@ class LRScheduler:
             ...                 type(step_size))
             ...         if gamma >= 1.0:
             ...             raise ValueError('gamma should be < 1.0.')
-            ... 
+            ...
             ...         self.step_size = step_size
             ...         self.gamma = gamma
             ...         super().__init__(learning_rate, last_epoch, verbose)
-            ... 
+            ...
             ...     def get_lr(self):
             ...         i = self.last_epoch // self.step_size
             ...         return self.base_lr * (self.gamma**i)
-            ... 
+            ...
     """
 
     def __init__(self, learning_rate=0.1, last_epoch=-1, verbose=False):
@@ -286,7 +286,7 @@ class NoamDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -304,7 +304,7 @@ class NoamDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=100, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> np.random.seed(2023)
@@ -319,7 +319,7 @@ class NoamDecay(LRScheduler):
             ...             fetch_list=loss.name)
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
     """
 
     def __init__(
@@ -417,7 +417,7 @@ class PiecewiseDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[3, 6, 9], values=[0.1, 0.2, 0.3, 0.4], verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -494,7 +494,7 @@ class NaturalExpDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -512,7 +512,7 @@ class NaturalExpDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.NaturalExpDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> np.random.seed(2023)
@@ -584,7 +584,7 @@ class InverseTimeDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -602,7 +602,7 @@ class InverseTimeDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.InverseTimeDecay(learning_rate=0.5, gamma=0.1, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -616,7 +616,7 @@ class InverseTimeDecay(LRScheduler):
             ...             fetch_list=loss.name)
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
     """
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
@@ -687,7 +687,7 @@ class PolynomialDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -705,7 +705,7 @@ class PolynomialDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.PolynomialDecay(learning_rate=0.5, decay_steps=20, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -819,7 +819,7 @@ class LinearWarmup(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -838,7 +838,7 @@ class LinearWarmup(LRScheduler):
             ...         learning_rate=0.5, warmup_steps=20, start_lr=0, end_lr=0.5, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -958,7 +958,7 @@ class ExponentialDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -976,7 +976,7 @@ class ExponentialDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.5, gamma=0.9, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -1056,7 +1056,7 @@ class MultiStepDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1074,7 +1074,7 @@ class MultiStepDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.MultiStepDecay(learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -1170,7 +1170,7 @@ class StepDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1188,7 +1188,7 @@ class StepDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=5, gamma=0.8, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -1274,7 +1274,7 @@ class LambdaDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1292,7 +1292,7 @@ class LambdaDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.LambdaDecay(learning_rate=0.5, lr_lambda=lambda x:0.95**x, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -1306,7 +1306,7 @@ class LambdaDecay(LRScheduler):
             ...             fetch_list=loss.name)
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
     """
 
     def __init__(self, learning_rate, lr_lambda, last_epoch=-1, verbose=False):
@@ -1382,7 +1382,7 @@ class ReduceOnPlateau(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step(loss)    # If you update learning rate each step
             ...     # scheduler.step(loss)        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1400,7 +1400,7 @@ class ReduceOnPlateau(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.ReduceOnPlateau(learning_rate=1.0, factor=0.5, patience=5, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -1414,7 +1414,7 @@ class ReduceOnPlateau(LRScheduler):
             ...             fetch_list=loss.name)
             ...         scheduler.step(out[0])    # If you update learning rate each step
             ...     # scheduler.step(out[0])        # If you update learning rate each epoch
-            ... 
+            ...
     """
 
     def __init__(
@@ -1613,7 +1613,7 @@ class CosineAnnealingDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1631,7 +1631,7 @@ class CosineAnnealingDecay(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.CosineAnnealingDecay(learning_rate=0.5, T_max=10, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(20):
@@ -1735,7 +1735,7 @@ class MultiplicativeDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ... 
+            ...
     """
 
     def __init__(self, learning_rate, lr_lambda, last_epoch=-1, verbose=False):
@@ -1817,7 +1817,7 @@ class OneCycleLR(LRScheduler):
             ...         sgd.step()
             ...         sgd.clear_gradients()
             ...         scheduler.step()        # You should update learning rate each step
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1835,7 +1835,7 @@ class OneCycleLR(LRScheduler):
             ...     scheduler = paddle.optimizer.lr.OneCycleLR(max_learning_rate=1.0, total_steps=100, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(5):
@@ -1848,7 +1848,7 @@ class OneCycleLR(LRScheduler):
             ...             },
             ...             fetch_list=loss.name)
             ...         scheduler.step()    # You should update learning rate each step
-            ... 
+            ...
     """
 
     def __init__(
@@ -2067,7 +2067,7 @@ class CyclicLR(LRScheduler):
             ...         sgd.step()
             ...         sgd.clear_gradients()
             ...         scheduler.step()        # You should update learning rate each step
-            ... 
+            ...
         .. code-block:: python
             :name: code-example2
 
@@ -2086,7 +2086,7 @@ class CyclicLR(LRScheduler):
             ...         max_learning_rate=1.0, step_size_up=15, step_size_down=5, verbose=True)
             ...     sgd = paddle.optimizer.SGD(learning_rate=scheduler)
             ...     sgd.minimize(loss)
-            ... 
+            ...
             >>> exe = paddle.static.Executor()
             >>> exe.run(start_prog)
             >>> for epoch in range(5):
