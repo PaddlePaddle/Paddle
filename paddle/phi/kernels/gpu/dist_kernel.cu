@@ -55,9 +55,9 @@ struct PowFunctor {
   HOSTDEVICE explicit inline PowFunctor(const Ty& p_order)
       : p_order_(p_order) {}
   HOSTDEVICE inline Tx operator()(const Tx& x) const {
-    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order_));
+    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order));
   }
-  Ty p_order_;
+  Ty p_order;
 };
 
 template <typename T, typename Functor>
@@ -173,7 +173,7 @@ void DistKernel(const Context& dev_ctx,
       std::vector<DenseTensor*> outs = {out};
       MT p_order_ = static_cast<MT>(static_cast<MT>(1.) / p_order);
       phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, PowFunctor<T>(p_order_));
+          dev_ctx, ins, &outs, PowFunctor<T, MT>(p_order_));
     }
 
   } else {
