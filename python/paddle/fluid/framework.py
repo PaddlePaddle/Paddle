@@ -1016,32 +1016,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         dtype = np.dtype(np_dtype)
 
     if ir.core._use_new_ir_api():
-        if dtype == np.float32:
-            return core.DataType.FLOAT32
-        elif dtype == np.float64:
-            return core.DataType.FLOAT64
-        elif dtype == np.float16:
-            return core.DataType.FLOAT16
-        elif dtype == np.int32:
-            return core.DataType.INT32
-        elif dtype == np.int16:
-            return core.DataType.INT16
-        elif dtype == np.int64:
-            return core.DataType.INT64
-        elif dtype == np.bool_:
-            return core.DataType.BOOL
-        elif dtype == np.uint16:
-            # since there is still no support for bfloat16 in NumPy,
-            # uint16 is used for casting bfloat16
-            return core.DataType.UINT16
-        elif dtype == np.uint8:
-            return core.DataType.UINT8
-        elif dtype == np.int8:
-            return core.DataType.INT8
-        elif dtype == np.complex64:
-            return core.DataType.COMPLEX64
-        elif dtype == np.complex128:
-            return core.DataType.COMPLEX128
+        if dtype in ir.core.np_type_to_paddle_type.keys():
+            return ir.core.np_type_to_paddle_type[dtype]
         else:
             raise ValueError("Not supported numpy dtype %s" % dtype)
     else:
