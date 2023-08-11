@@ -384,7 +384,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       if (node->NodeType() == Node::Type::kOperation) {
         if (node->Op()->Outputs().count("Xshape")) continue;
         for (auto *x : node->outputs) {
-          if (std::count(params.begin(), params.end(), x->Name()) > 0) continue;
+          if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
+            continue;
           if (!output_tensor_name.empty() &&
               std::count(output_tensor_name.begin(),
                          output_tensor_name.end(),
