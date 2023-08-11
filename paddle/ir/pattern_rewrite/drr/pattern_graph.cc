@@ -15,7 +15,7 @@
 #include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 
 #include <iostream>
-
+#include <queue>
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
@@ -120,61 +120,65 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
-const OpCall *SourcePatternGraph::AnchorNode() const {
-  return id2owned_tensor_.at(*output_tensors_.begin())->producer();
-}
-
-void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall&)> &VisitNode) const{
+void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)> &VisitNode) const {
   // graph data
-  auto opcalls = graph_->owned_op_call();  // shallow copy
-  auto inputs_tensor = graph_->input_tensors();
-  auto id2owned_tensor = graph_->id2owend_tensor();
+  const std::unordered_set<ir::drr::PatternGraph::id_type> &inputs_tensor = graph_->input_tensors();
+  const std::unordered_map<ir::drr::PatternGraph::id_type,std::shared_ptr<ir::drr::Tensor>> &id2owned_tensor = graph_->id2owend_tensor();
 
-  // init visited_tensor
-  std::unordered_map<std::string, bool> visited_tensor;
-  
-  // find ingress node
-  for(auto& input_id : inputs_tensor){
-    std::string tensor_name = id2owned_tensor.at(input_id).get()->name();
-    visited_tensor[tensor_name] = true;
+  std::queue<const ir::drr::OpCall *> opcall_queue;
+  std::unordered_set<std::string> visited_tensor;
+
+  // init visited tensor
+  for (auto &tensor_id : inputs_tensor) {
+    std::string tensor_name = id2owned_tensor.at(tensor_id).get()->name();
+    visited_tensor.insert(tensor_name);
   }
 
-  while(!opcalls.empty()){
+  // init queue
+  for (const auto &tensor_id : inputs_tensor) {
 
-    for(auto opcall = opcalls.begin(); opcall != opcalls.end(); opcall++){
-      auto pre_dependents = (*opcall).get()->inputs();
+    const std::vector<const OpCall *> &comsumers = id2owned_tensor.at(tensor_id).get()->consumers();
+    for (const OpCall *comsumer : comsumers) {
+
       bool flag = true;
-
-      for(auto pre_tensor : pre_dependents){
-        // new tensor
-        if (visited_tensor.find(pre_tensor->name()) == visited_tensor.end()){ 
-          visited_tensor[pre_tensor->name()] = false;
-          flag = false;
-          break;
-        }
-        else{
-          flag  = flag && visited_tensor.at(pre_tensor->name());
-        }
+      for (const auto &pre_dependent_tensor : comsumer->inputs()){
+        flag = flag && visited_tensor.find(pre_dependent_tensor->name()) != visited_tensor.end();
       }
 
-      if(flag){
-        VisitNode(*(*opcall).get());
-        
-        // set op_call out_put
-        for(auto output_tensor : (*opcall).get()->inputs()){
-          visited_tensor[output_tensor->name()] = true;
-        }
-        opcalls.erase(opcall);
+      if (flag){ 
+        opcall_queue.push(comsumer); 
       }
-
-
     }
   }
 
-  return ;
+  while (!opcall_queue.empty()) {
+    const ir::drr::OpCall *opcall = opcall_queue.front();
+    opcall_queue.pop();
+    VisitNode(*opcall);
+
+    // update visited
+    for (const auto &output_tensor : opcall->outputs()) {
+      visited_tensor.insert(output_tensor->name());
+    }
+
+    // update queue
+    for (const auto &output_tensor : opcall->outputs()) {
+      for (const auto &candidate_opcall : output_tensor->consumers()) {
+
+        bool flag = true;
+        for (const auto &pre_dependent_tensor : candidate_opcall->inputs()) {
+          flag = flag && visited_tensor.find(pre_dependent_tensor->name()) != visited_tensor.end();
+        }
+
+        if (flag) {
+          opcall_queue.push(candidate_opcall);
+        }
+      }
+    }
+  }
+
+  return; 
 }
-
-
 
 }  // namespace drr
 }  // namespace ir
