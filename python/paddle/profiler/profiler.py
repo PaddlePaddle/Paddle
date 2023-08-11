@@ -862,9 +862,7 @@ class Profiler:
             .. code-block:: python
                 :name: code-example8
 
-                >>> # doctest: +REQUIRES(env:GPU)
-                >>> import paddle
-                >>> paddle.device.set_device('gpu')
+                # required: gpu
                 >>> import paddle.profiler as profiler
                 >>> prof = profiler.Profiler(
                 ...     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
