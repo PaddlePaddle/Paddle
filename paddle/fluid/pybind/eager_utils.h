@@ -79,6 +79,9 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
 ir::OpResult CastPyArg2OpResult(const std::string& op_type,
                                 PyObject* obj,
                                 size_t arg_pos);
+std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(const std::string& op_type,
+                                                     PyObject* obj,
+                                                     size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,

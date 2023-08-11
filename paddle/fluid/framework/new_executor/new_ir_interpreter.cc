@@ -29,7 +29,7 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
@@ -120,7 +120,8 @@ NewIRInterpreter::~NewIRInterpreter() {
   gc_.reset(nullptr);
   async_work_queue_.reset();
   VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
-#ifdef PADDLE_WITH_MKLDNN
+
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
@@ -163,7 +164,7 @@ FetchList NewIRInterpreter::Run(
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -206,7 +207,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -1536,7 +1537,12 @@ void NewIRInterpreter::BuildInstruction() {
   size_t op_idx = 0;
   for (auto& op : *ir_program_->block()) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
-    if (op->dialect()->name() == "pd_kernel") {
+    if (op->dialect()->name() == "builtin") {
+      if (interpreter::GetSpecialOpNames().count(op->name())) {
+        VLOG(6) << "skip process " << op->name();
+        continue;
+      }
+    } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
                          .dyn_cast<::ir::StrAttribute>()
@@ -1545,6 +1551,7 @@ void NewIRInterpreter::BuildInstruction() {
         VLOG(6) << "skip process " << op_name;
         continue;
       }
+      VLOG(6) << "process " << op_name;
 
       if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
           op_name == "pd.fused_softmax_mask_upper_triangle_grad") {
@@ -1570,7 +1577,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Now only support pd_kernel dialect."));
+          "Now only support pd or pd_kernel dialect."));
     }
   }
 }
@@ -1916,7 +1923,7 @@ FetchList NewIRInterpreter::BetaRun(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 

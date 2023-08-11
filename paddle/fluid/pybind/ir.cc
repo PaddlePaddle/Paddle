@@ -82,14 +82,15 @@ void BindBlock(py::module *m) {
   block.def("front", &Block::front, return_value_policy::reference)
       .def("get_parent_program",
            [](Block &self) { return self.GetParentOp()->GetParentProgram(); })
-      .def("get_ops",
-           [](Block &self) -> py::list {
-             py::list op_list;
-             for (auto iter = self.begin(); iter != self.end(); iter++) {
-               op_list.append(*iter);
-             }
-             return op_list;
-           })
+      .def_property_readonly(
+          "ops",
+          [](Block &self) -> py::list {
+            py::list op_list;
+            for (auto iter = self.begin(); iter != self.end(); iter++) {
+              op_list.append(*iter);
+            }
+            return op_list;
+          })
       .def("remove_op", [](Block &self, Operation *op) {
         auto op_iter = std::find(self.begin(), self.end(), op);
         self.erase(op_iter);

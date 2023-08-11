@@ -56,14 +56,13 @@ class Orthogonal(Initializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Orthogonal())
-            linear = paddle.nn.Linear(10, 15, weight_attr=weight_attr)
-            # linear.weight: X * X' = I
-
-            linear = paddle.nn.Linear(15, 10, weight_attr=weight_attr)
-            # linear.weight: X' * X = I
+            >>> weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Orthogonal())
+            >>> linear = paddle.nn.Linear(10, 15, weight_attr=weight_attr)
+            >>> # linear.weight: X * X' = I
+            >>> linear = paddle.nn.Linear(15, 10, weight_attr=weight_attr)
+            >>> # linear.weight: X' * X = I
     """
 
     def __init__(self, gain=1.0, name=None):

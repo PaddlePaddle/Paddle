@@ -121,7 +121,7 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_vis, profile) { profile(); }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
@@ -149,7 +149,7 @@ void compare(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_vis, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

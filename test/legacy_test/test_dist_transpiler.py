@@ -477,7 +477,7 @@ class TestLRDecayConditional(TranspilerTest):
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = paddle.optimizer.SGD(
-            learning_rate=fluid.layers.piecewise_decay(
+            learning_rate=paddle.optimizer.lr.piecewise_decay(
                 [10000, 20000], [1.0, 0.5, 1.0]
             )
         )
@@ -581,7 +581,7 @@ class TestL2DecayWithPiecewise(TranspilerTest):
         bd = [1, 10, 20, 30]
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
         sgd_optimizer = paddle.optimizer.Momentum(
-            learning_rate=fluid.layers.piecewise_decay(
+            learning_rate=paddle.optimizer.lr.piecewise_decay(
                 boundaries=bd, values=lr
             ),
             momentum=0.9,

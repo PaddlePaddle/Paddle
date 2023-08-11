@@ -37,7 +37,7 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -346,7 +346,7 @@ void CreateAllOps(const framework::BlockDesc& block,
         info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
@@ -527,7 +527,7 @@ void BuildOpFuncList(const platform::Place& place,
         main_program, block.ID(), ops_unique);
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::RegisterModelLayout(ops_unique, place);
 #endif
   // its elements will be moved to vec_func_list
