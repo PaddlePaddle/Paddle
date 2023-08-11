@@ -2740,6 +2740,7 @@ class Operator:
         'go',
         'rnn_memory_helper_grad',
         'conditional_block',
+        'static_pylayer',
         'while',
         'send',
         'recv',
@@ -4270,6 +4271,8 @@ class Block:
             ignore_ops = {
                 'conditional_block',
                 'conditional_block_grad',
+                'static_pylayer',
+                'static_pylayer_grad',
                 'recurrent',
                 'recurrent_grad',
                 'while',

@@ -39,6 +39,7 @@ class StaticPyLayerOp : public framework::OperatorBase {
   static const char kOutputs[];
   static const char kScope[];
   static const char kSkipEagerDeletionVars[];
+  static const char kBlocks[];
 
  protected:
   void CreateInterpreter(const platform::Place &dev_place,
@@ -62,10 +63,8 @@ class StaticPyLayerForwardOpProtoMaker
     // TODO(MarioLulab): Must Use std::vector here ?
     AddOutput(StaticPyLayerOp::kScope,
               "(std::vector<Scope*>) The scope of static pylayer block.");
-    AddAttr<framework::BlockDesc *>(
-        "forward_block", "The step block of conditional block operator");
-    AddAttr<framework::BlockDesc *>(
-        "backward_block", "The backward block of conditional block operator");
+    AddAttr<std::vector<framework::BlockDesc *>>(
+        "blocks", "The blocks of PyLayer operator");
     AddComment(R"DOC(StaticPyLayer operator
 
 TO-DO: added by luqi

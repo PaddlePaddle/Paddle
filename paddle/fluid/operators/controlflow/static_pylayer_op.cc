@@ -23,11 +23,16 @@
 namespace paddle {
 namespace operators {
 
+namespace {  // NOLINT
+enum class PyLayerBlockIndex { kFORWARD = 0, kBACKWARD = 1, kNONE = 2 };
+}  // namespace
+
 const char StaticPyLayerOp::kInputs[] = "Input";
 const char StaticPyLayerOp::kOutputs[] = "Out";
 const char StaticPyLayerOp::kScope[] = "Scope";
 const char StaticPyLayerOp::kSkipEagerDeletionVars[] =
     "skip_eager_deletion_vars";
+const char StaticPyLayerOp::kBlocks[] = "blocks";
 
 void StaticPyLayerOp::CreateInterpreter(
     const platform::Place &dev_place,
@@ -79,8 +84,18 @@ class StaticPyLayerForwardOp : public StaticPyLayerOp {
     scopes->front() = &scope.NewScope();
 
     auto &cur_scope = *scopes->front();
-    auto *block = Attr<framework::BlockDesc *>("forward_block");
-    VLOG(3) << "StaticPyLayer forward_block block.idx = " << block->ID()
+    auto &blocks =
+        Attr<std::vector<framework::BlockDesc *>>(StaticPyLayerOp::kBlocks);
+    PADDLE_ENFORCE_GT(
+        blocks.size(),
+        0,
+        platform::errors::InvalidArgument(
+            "Expect blocks contains at least 1 block, but got: %d",
+            blocks.size()));
+
+    framework::BlockDesc *forward_block =
+        blocks[static_cast<size_t>(PyLayerBlockIndex::kFORWARD)];
+    VLOG(3) << "StaticPyLayer forward_block block.idx = " << forward_block->ID()
             << ", scope = " << &cur_scope;
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
@@ -88,7 +103,7 @@ class StaticPyLayerForwardOp : public StaticPyLayerOp {
     LOG_FIRST_N(INFO, 1)
         << "[ControlFlow][StaticPyLayer] New Executor is Running.";
 
-    CreateInterpreter(dev_place, *block, &cur_scope, skip_vars);
+    CreateInterpreter(dev_place, *forward_block, &cur_scope, skip_vars);
     PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
     core_->Run({}, false);
   }
@@ -98,6 +113,40 @@ class StaticPyLayerForwardInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     // TODO(MarioLulab): do nothing.
+  }
+};
+
+template <typename T>
+class StaticPyLayerBackwardMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("static_pylayer_grad");
+    grad_op->SetInput(StaticPyLayerOp::kInputs,
+                      this->Input(StaticPyLayerOp::kInputs));
+    grad_op->SetInput(framework::GradVarName(StaticPyLayerOp::kOutputs),
+                      this->OutputGrad(StaticPyLayerOp::kOutputs));
+    grad_op->SetInput(StaticPyLayerOp::kScope,
+                      this->Output(StaticPyLayerOp::kScope));
+
+    auto fwd_inputs = this->InputGrad(StaticPyLayerOp::kInputs, false);
+    grad_op->SetOutput(framework::GradVarName(StaticPyLayerOp::kInputs),
+                       fwd_inputs);
+
+    const std::vector<framework::BlockDesc *> &blocks =
+        PADDLE_GET_CONST(std::vector<framework::BlockDesc *>,
+                         this->GetAttr(StaticPyLayerOp::kBlocks));
+    PADDLE_ENFORCE_GT(
+        blocks.size(),
+        static_cast<size_t>(PyLayerBlockIndex::kBACKWARD),
+        platform::errors::InvalidArgument(
+            "Expect blocks contains at least 2 block, but got: %d",
+            blocks.size()));
+    grad_op->SetBlockAttr(
+        "backward_block",
+        blocks[static_cast<size_t>(PyLayerBlockIndex::kBACKWARD)]);
   }
 };
 
@@ -136,14 +185,14 @@ class StaticPyLayerBackwardOp : public StaticPyLayerOp {
             scopes.size()));
     framework::Scope &cur_scope = *(scopes[0]);
 
-    auto *block = Attr<framework::BlockDesc *>("forward_block");
-    VLOG(3) << "Static PyLayer backward block.idx = " << block->ID()
+    auto *backward_block = Attr<framework::BlockDesc *>("backward_block");
+    VLOG(3) << "Static PyLayer backward block.idx = " << backward_block->ID()
             << ", scope = " << &cur_scope;
 
     LOG_FIRST_N(INFO, 1)
         << "[ControlFlow][StaticPyLayerBackwardOp] New Executor is Running.";
 
-    CreateInterpreter(dev_place, *block, &cur_scope, inside_grads);
+    CreateInterpreter(dev_place, *backward_block, &cur_scope, inside_grads);
     PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
 
     core_->Run({}, false);
@@ -223,30 +272,6 @@ class StaticPyLayerBackwardInferVarType : public framework::VarTypeInference {
                                framework::GradVarName(StaticPyLayerOp::kInputs),
                                i);
     }
-  }
-};
-
-template <typename T>
-class StaticPyLayerBackwardMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("static_pylayer_grad");
-    grad_op->SetInput(StaticPyLayerOp::kInputs,
-                      this->Input(StaticPyLayerOp::kInputs));
-    grad_op->SetInput(framework::GradVarName(StaticPyLayerOp::kOutputs),
-                      this->OutputGrad(StaticPyLayerOp::kOutputs));
-    grad_op->SetInput(StaticPyLayerOp::kScope,
-                      this->Output(StaticPyLayerOp::kScope));
-
-    auto fwd_inputs = this->InputGrad(StaticPyLayerOp::kInputs, false);
-    grad_op->SetOutput(framework::GradVarName(StaticPyLayerOp::kInputs),
-                       fwd_inputs);
-    grad_op->SetBlockAttr("forward_block",
-                          PADDLE_GET_CONST(framework::BlockDesc *,
-                                           this->GetAttr("backward_block")));
   }
 };
 

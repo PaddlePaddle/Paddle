@@ -101,6 +101,7 @@ class StaticPyLayerBlock:
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES
         )
+
         static_pylayer_op = parent_block.append_op(
             type='static_pylayer',
             inputs={
@@ -108,8 +109,7 @@ class StaticPyLayerBlock:
             },
             outputs={"Out": out_list, "Scope": [step_scope]},
             attrs={
-                'forward_block': inside_block,
-                'backward_block': inside_block,
+                'blocks': [inside_block],
             },
         )
         self.op_id = static_pylayer_op.idx
@@ -186,25 +186,16 @@ def do_static_pylayer(
         if origin_output is not None:
             output = map_structure(copy_to_parent_func, origin_output)
 
-    # copy 一份 `origin_output` or `output` 作为输入构建 backward block, 随后删掉
     current_block = helper.main_program.current_block()
-    static_pylayer_op = current_block.ops[-1]
-    no_grad_dict = set()
-    grad_op_descs, op_grad_to_var = core.get_grad_op_desc(
-        static_pylayer_op.desc,
-        no_grad_dict,
-        [helper.main_program.desc.block(static_pylayer_block.block_id)],
-    )
-    grad_op_desc = grad_op_descs[0]
+    forward_block_desc = current_block.program.block(
+        static_pylayer_block.block_id
+    ).desc
+
+    # 根据 op 的 output 构造 backward 的输入, 以此构建 backward block, 随后删掉
+    static_pylayer_op = current_block.ops[static_pylayer_block.op_index]
     grad_var_name_ins = [
-        var_name
-        for var_name in grad_op_desc.input_arg_names()
-        if core.grad_var_suffix() in var_name
-    ]
-    grad_var_name_outs = [
-        var_name
-        for var_name in grad_op_desc.output_arg_names()
-        if core.grad_var_suffix() in var_name
+        _append_grad_suffix_(var_name)
+        for var_name in static_pylayer_op.desc.output("Out")
     ]
 
     # push
@@ -265,9 +256,9 @@ def do_static_pylayer(
             op._rename_input(old_var_name, new_var_name)
             op._rename_output(old_var_name, new_var_name)
 
-    # set 'backward_block' attr to forward op
-    current_block.ops[static_pylayer_block.op_index].desc.set_block_attr(
-        "backward_block", backward_block_desc
+    # update 'blocks' attr to forward op
+    static_pylayer_op.desc.set_blocks_attr(
+        "blocks", [forward_block_desc, backward_block_desc]
     )
 
     if output is None:
