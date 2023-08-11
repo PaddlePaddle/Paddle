@@ -52,8 +52,8 @@ struct OtherOrderFunctor {
 
 template <typename Tx, typename Ty = Tx>
 struct PowFunctor {
-  HOSTDEVICE explicit inline PowFunctor(const Ty& p_order)
-      : p_order_(p_order) {}
+  HOSTDEVICE explicit inline PowFunctor(const Ty& _p_order)
+      : p_order(_p_order) {}
   HOSTDEVICE inline Tx operator()(const Tx& x) const {
     return static_cast<Tx>(pow(static_cast<Ty>(x), p_order));
   }
@@ -142,9 +142,9 @@ void DistKernel(const Context& dev_ctx,
     if (p == 0) {
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T, MT>());
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, x, out, kps::IdentityFunctor<T>(), reduce_axis);
+              x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
     } else if (p == INFINITY) {
       ReduceMaxWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
@@ -165,8 +165,8 @@ void DistKernel(const Context& dev_ctx,
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
 
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
