@@ -34,6 +34,13 @@ def tensor_copy_to_cuda(x):
     return y
 
 
+@paddle.jit.to_static
+def tensor_copy_to_cuda_with_warning(x, device_id=None, blocking=True):
+    x = paddle.to_tensor(x)
+    y = x.cuda(device_id, blocking)
+    return y
+
+
 class TestTensorCopyToCpuOnDefaultGPU(unittest.TestCase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
@@ -84,6 +91,42 @@ class TestTensorCopyToCUDAOnDefaultGPU(unittest.TestCase):
         self.assertTrue(static_x1_place.is_gpu_place())
         self.assertTrue(dygraph_place.is_gpu_place())
         self.assertTrue(static_place.is_gpu_place())
+
+
+class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
+    def _run(self, to_static):
+        paddle.jit.enable_to_static(to_static)
+        x1 = paddle.ones([1, 2, 3])
+        x2 = tensor_copy_to_cuda_with_warning(x1, device_id=1, blocking=False)
+        return x1.place, x2.place, x2.numpy()
+
+    def test_with_warning_on_gpu(self):
+        if paddle.fluid.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(
+                int(os.environ.get('FLAGS_selected_gpus', 0))
+            )
+        else:
+            return
+        paddle.fluid.framework._set_expected_place(place)
+
+        x1 = paddle.ones([1, 2, 3])
+        with self.assertWarns(UserWarning, msg="ignored") as cm:
+            x2 = tensor_copy_to_cuda_with_warning(
+                x1, device_id=1, blocking=True
+            )
+        self.assertIn('math_op_patch.py', cm.filename)
+
+        with self.assertWarns(UserWarning, msg="ignored") as cm:
+            x2 = tensor_copy_to_cuda_with_warning(
+                x1, device_id=None, blocking=False
+            )
+        self.assertIn('math_op_patch.py', cm.filename)
+
+        with self.assertWarns(UserWarning, msg="ignored") as cm:
+            x2 = tensor_copy_to_cuda_with_warning(
+                x1, device_id=2, blocking=False
+            )
+        self.assertIn('math_op_patch.py', cm.filename)
 
 
 if __name__ == '__main__':
