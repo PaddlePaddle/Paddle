@@ -365,7 +365,7 @@ void Instruction::Run(
   //   }
 }
 
-std::string Instruction::DumpInstruction() {
+std::string Instruction::DumpInstruction() const {
   std::stringstream ss;
   ss << "Instruction {" << std::endl;
   for (size_t i = 0; i < fn_names_.size(); ++i) {

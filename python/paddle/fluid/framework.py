@@ -7170,6 +7170,8 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         )
         self.trainable = kwargs.get('trainable', True)
 
+        self.stop_gradient = not self.trainable
+
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
