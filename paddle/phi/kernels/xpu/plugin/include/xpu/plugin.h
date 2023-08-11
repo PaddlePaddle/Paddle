@@ -31,6 +31,30 @@ DLL_EXPORT int fast_where(Context* ctx,
                           const T* y,
                           T* out,
                           int64_t len);
+template <typename T, typename TID>
+DLL_EXPORT int fast_gather_nd(Context* ctx,
+                              const T* x,
+                              const TID* index,
+                              T* y,
+                              const VectorParam<int64_t>& xshape,
+                              const std::vector<int64_t>& index_shape);
+template <typename T, typename TID>
+static inline int fast_gather_nd(Context* ctx,
+                                 const T* x,
+                                 const TID* index,
+                                 T* y,
+                                 const VectorParam<int>& xshape,
+                                 const std::vector<int>& index_shape) {
+  auto deleter = [](int64_t* ptr) { delete[] ptr; };
+  std::shared_ptr<int64_t> xshape_i64(new int64_t[xshape.len], deleter);
+  return fast_gather_nd(
+      ctx,
+      x,
+      index,
+      y,
+      vpi32_to_vpi64(xshape, xshape_i64.get()),
+      std::vector<int64_t>(index_shape.begin(), index_shape.end()));
+}
 
 }  // namespace plugin
 }  // namespace api

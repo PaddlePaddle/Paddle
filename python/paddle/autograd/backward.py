@@ -406,9 +406,9 @@ def append_backward_ops(
                 )
             else:
                 if input in no_grad_set:
-                    input_grad_stopgradient_list.append([1])
+                    input_grad_stopgradient_list.append([True])
                 else:
-                    input_grad_stopgradient_list.append([0])
+                    input_grad_stopgradient_list.append([False])
 
         return input_grad_stopgradient_list
 

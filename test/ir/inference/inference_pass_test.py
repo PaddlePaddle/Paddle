@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import os
 import random
 import tempfile
@@ -57,12 +58,35 @@ class InferencePassTest(unittest.TestCase):
         self, dirname, feeded_var_names, target_vars, executor, program, scope
     ):
         with fluid.scope_guard(scope):
-            # save models as combined to ensure that
-            # there won't be too many useless files
-            # after finishing a couple of tests.
-            fluid.io.save_inference_model(
-                dirname, feeded_var_names, target_vars, executor, program
+            # save models as combined but sometimes params is null
+            # To adapt to this situation, the path needs to be adjusted to the old version format.
+            feeded_vars = []
+            for var in program.list_vars():
+                if var.name in feeded_var_names:
+                    feeded_vars.append(var)
+
+            paddle.static.io.save_inference_model(
+                dirname,
+                feeded_vars,
+                target_vars,
+                executor,
+                program=program,
             )
+
+            # if the param save is null
+            # replace model_path to old version
+            param_file = dirname + ".pdiparams"
+            if not os.path.exists(param_file):
+                model_path = dirname + ".pdmodel"
+                try:
+                    save_dirname = os.path.normpath(dirname)
+                    os.makedirs(save_dirname)
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                model_path_old = os.path.join(save_dirname, "__model__")
+                if not os.path.exists(model_path_old):
+                    os.rename(model_path, model_path_old)
 
     def _get_paddle_outs(self, executor, program, scope):
         '''
@@ -109,7 +133,14 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig.
         '''
-        config = AnalysisConfig(self.path)
+        # To adapt to save_inference_model
+        param_file = self.path + ".pdiparams"
+        if not os.path.exists(param_file):
+            config = AnalysisConfig(self.path)
+        else:
+            config = AnalysisConfig(
+                self.path + ".pdmodel", self.path + ".pdiparams"
+            )
         config.disable_gpu()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
