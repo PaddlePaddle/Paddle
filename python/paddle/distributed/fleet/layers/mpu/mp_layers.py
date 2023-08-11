@@ -349,8 +349,8 @@ class ColumnParallelLinear(paddle.nn.Layer):
                     x, weight, bias = ctx.saved_tensor()
                     dx = paddle.matmul(dy, weight, transpose_y=True)
                     op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                    task = self.model_parallel_group.process_group.all_reduce_on_comm_stream(
-                        dx, op_type
+                    task = self.model_parallel_group.process_group.all_reduce(
+                        dx, op_type, sync_op=False
                     )
                     # TODO(GhostScreaming): remove it in future.
                     tmp = paddle.ones([512])
