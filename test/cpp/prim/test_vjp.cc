@@ -310,7 +310,6 @@ TEST(VJP, Add_BackwardTest) {
                            prefix_str + "_inner_var_3",
                            prefix_str + "_inner_var_4"});
   test_core.BetaRun({});
-  program.Print(std::cout);
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
