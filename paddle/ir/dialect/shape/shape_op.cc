@@ -14,10 +14,6 @@
 
 #include "paddle/ir/dialect/shape/shape_op.h"
 #include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/core/builtin_op.h"
-#include "paddle/ir/core/builtin_type.h"
-#include "paddle/ir/core/enforce.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace ir {
 namespace dialect {
@@ -32,7 +28,7 @@ const char *SymbolicDim::attributes_name[attributes_num] = {"knownNegativeOne",
 void SymbolicDim::Build(
     Builder &builder,
     OperationArgument &argument,
-    std::string sym_name,
+    const std::string &sym_name,
     int64_t value,  // TODO(zhangbo) value = ShapedType::kDynamic
     bool knownNonNegative,
     bool knownNegativeOne,

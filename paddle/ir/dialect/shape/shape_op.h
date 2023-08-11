@@ -31,7 +31,7 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   static void Build(
       Builder &builder,             // NOLINT
       OperationArgument &argument,  // NOLINT
-      std::string sym_name,
+      const std::string &sym_name,
       int64_t value = -100000,  // TODO(zhangbo): value = ShapedType::kDynamic
       bool knownNonNegative = false,
       bool knownNegativeOne = false,
