@@ -2692,8 +2692,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
-  static std::once_flag register_input_hook_flag;
-  std::call_once(register_input_hook_flag, [this] {
+  std::call_once(register_input_hook_flag_, [this] {
     executor_->RegisterInputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &input : op->Inputs()) {
@@ -2716,8 +2715,7 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
 
 void AnalysisPredictor::RegisterOutputHook(
     const OutputTensorHookFunc &hookfunc) {
-  static std::once_flag register_output_hook_flag;
-  std::call_once(register_output_hook_flag, [this] {
+  std::call_once(register_output_hook_flag_, [this] {
     executor_->RegisterOutputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &output : op->Outputs()) {
