@@ -463,7 +463,7 @@ def scaled_dot_product_attention(
 
     Examples:
         .. code-block:: python
-            # required: skiptest
+
             >>> # xdoctest: +SKIP()
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
