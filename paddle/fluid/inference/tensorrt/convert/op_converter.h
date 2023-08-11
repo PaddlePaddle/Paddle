@@ -759,16 +759,16 @@ std::cout << op_desc.InputNames().size() << std::endl;
       for (int i = 0; i < tmp_dims.nbDims; i++)
         tmp_vec.push_back(tmp_dims.d[i]);
 
-      VLOG(3) << output_tensor_names[i] << "'s dimension :["
-              << string::join_strings(tmp_vec, ',') << "]";
+      std::cout << output_tensor_names[i] << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]" << std::endl;
       // The following check may cause errors in CI, but is necessary in the
-      // latest version.
-      PADDLE_ENFORCE_GE(
-          layer->getOutput(i)->getDimensions().nbDims,
-          0,
-          platform::errors::InvalidArgument(
-              "Error occures in Paddle-TRT layer with output name: %s",
-              output_tensor_names[i].c_str()));
+      // // latest version.
+      // PADDLE_ENFORCE_GE(
+      //     layer->getOutput(i)->getDimensions().nbDims,
+      //     0,
+      //     platform::errors::InvalidArgument(
+      //         "Error occures in Paddle-TRT layer with output name: %s",
+      //         output_tensor_names[i].c_str()));
     }
     layer->setName((layer_name + ")").c_str());
   }

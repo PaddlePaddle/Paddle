@@ -20,7 +20,8 @@ limitations under the License. */
     if (op_desc.HasAttr(#attr_name__)) {                                    \
       vec_##attr_name__ = PADDLE_GET_CONST(std::vector<int64_t>,            \
                                            op_desc.GetAttr(#attr_name__));  \
-      if (vec_##attr_name__.size() > 0) attr_name__ = vec_##attr_name__[0]; \
+      if (vec_##attr_name__.size() > 0) {attr_name__ = vec_##attr_name__[0]; \
+      PADDLE_ENFORCE_EQ(vec_##attr_name__.size(), 1UL, platform::errors::InvalidArgument("attr axes/starst/ends/steps 's size in set_value must be one, but got %d", vec_##attr_name__.size()));  }      \
     }                                                                       \
   } while (0)
 
@@ -49,7 +50,7 @@ class SetValueConverter : public OpConverter {
     if (op_desc.Input("ValueTensor").size() > 0) {
       updates = engine_->GetITensor(op_desc.Input("ValueTensor")[0]);
     } else {
-      assert(PADDLE_GET_CONST(int, op_desc.GetAttr("dtype") == 5));
+      PADDLE_ENFORCE_EQ(PADDLE_GET_CONST(int, op_desc.GetAttr("dtype")), 5);
       float value = PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>, op_desc.GetAttr("values"))[0].to<int>();
       //std::cout << "属性values的值：" << value << std::endl;
       nvinfer1::Dims tmp_dim;
@@ -61,12 +62,8 @@ class SetValueConverter : public OpConverter {
 
     nvinfer1::Dims tmp_dims = inputs->getDimensions();
     for (int i = 0; i < tmp_dims.nbDims; i++) {
-      //std::cout << "输入dims值：" << tmp_dims.d[i] << std::endl;
-    }
-
-    tmp_dims = updates->getDimensions();
-    for (int i = 0; i < tmp_dims.nbDims; i++) {
-      //std::cout << "updates dims值：" << tmp_dims.d[i] << std::endl;
+      PADDLE_ENFORCE_GT(tmp_dims.d[i], 0);
+      std::cout << "输入dims值：" << tmp_dims.d[i] << std::endl;
     }
 
     const auto decrease_axes = PADDLE_GET_CONST(
@@ -75,16 +72,32 @@ class SetValueConverter : public OpConverter {
     auto value_rank = updates->getDimensions().nbDims;
     auto input_rank = inputs->getDimensions().nbDims;
 
-    // std::cout << "输入名字：" << op_desc.Input("Input")[0] << std::endl;
-    // std::cout << "value_rank: "  << value_rank << std::endl;
-    // std::cout << "input_rank: " << input_rank  << std::endl;
+    std::cout << "输入名字：" << op_desc.Input("Input")[0] << std::endl;
+    std::cout << "value_rank: "  << value_rank << std::endl;
+    std::cout << "input_rank: " << input_rank  << std::endl;
 
-    // for (auto i : decrease_axes) {
-    //   std::cout << "decrease_axes :" <<  i << std::endl;
-    // }
+    for (auto i : decrease_axes) {
+      std::cout << "decrease_axes :" <<  i << std::endl;
+    }
 
     if (decrease_axes.size() > 0 && value_rank != input_rank) {
       updates = Unsqueeze(updates, decr_axes);
+    }
+    
+    // if still < input_rank, means we need broadcast!
+    // value_rank = updates->getDimensions().nbDims;
+    // if (value_rank < input_rank) {
+    //   std::vector<int> axis (input_rank - value_rank, 0);
+    //   std::iota(axis.begin(), axis.end(), 0);
+    //   updates = Unsqueeze(updates, axis);
+    // }
+
+    
+
+    tmp_dims = updates->getDimensions();
+    for (int i = 0; i < tmp_dims.nbDims; i++) {
+      PADDLE_ENFORCE_GT(tmp_dims.d[i], 0);
+      std::cout << "updates dims值：" << tmp_dims.d[i] << std::endl;
     }
 
     int64_t axes = 0;
@@ -97,10 +110,10 @@ class SetValueConverter : public OpConverter {
     GET_ATTR_FROM_VECTOR(steps);
     GET_ATTR_FROM_VECTOR(ends);
 
-    // std::cout << "axes" <<  axes  << std::endl;
-    // std::cout << "starts" <<  starts  << std::endl;
-    // std::cout << "steps" <<  steps<< std::endl;
-    // std::cout << "ends" << ends  << std::endl;
+    std::cout << "axes" <<  axes  << std::endl;
+    std::cout << "starts" <<  starts  << std::endl;
+    std::cout << "steps" <<  steps<< std::endl;
+    std::cout << "ends" << ends  << std::endl;
 
     // calculate dims
     auto input_dims = inputs->getDimensions();
@@ -133,6 +146,13 @@ class SetValueConverter : public OpConverter {
       platform::errors::InvalidArgument("The update dim error, should be %d",
                                         (input_dims.d[axes] - starts) / steps);
     }
+
+    for(int i = 0; i < input_dims.nbDims; i++) {
+      if (i != axes) {
+        PADDLE_ENFORCE_EQ(input_dims.d[i], update_dims.d[i]);
+      } 
+    }
+
     if (engine_->with_dynamic_shape()) {
       // generate indice
       int post_size = 1;
