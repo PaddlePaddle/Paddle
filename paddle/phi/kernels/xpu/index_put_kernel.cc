@@ -19,7 +19,6 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/stack_kernel.h"
-#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 template <typename Context>
