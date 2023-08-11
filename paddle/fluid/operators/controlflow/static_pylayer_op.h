@@ -39,6 +39,15 @@ class StaticPyLayerOp : public framework::OperatorBase {
   static const char kOutputs[];
   static const char kScope[];
   static const char kSkipEagerDeletionVars[];
+
+ protected:
+  void CreateInterpreter(const platform::Place &dev_place,
+                         const framework::BlockDesc &block,
+                         framework::Scope *scope,
+                         const std::vector<std::string> &skip_vars) const;
+
+ protected:
+  mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
 };
 
 class StaticPyLayerForwardOpProtoMaker

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/controlflow/static_pylayer_op.h"
 
-#include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/phi/core/flags.h"
@@ -28,6 +28,33 @@ const char StaticPyLayerOp::kOutputs[] = "Out";
 const char StaticPyLayerOp::kScope[] = "Scope";
 const char StaticPyLayerOp::kSkipEagerDeletionVars[] =
     "skip_eager_deletion_vars";
+
+void StaticPyLayerOp::CreateInterpreter(
+    const platform::Place &dev_place,
+    const framework::BlockDesc &block,
+    framework::Scope *cur_scope,
+    const std::vector<std::string> &skip_vars) const {
+  if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+    VLOG(10) << "[interpreterCore cache]" << core_.get();
+    VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(), dev_place);
+
+    framework::interpreter::ExecutionConfig execution_config;
+    execution_config.create_local_scope = false;
+    execution_config.used_for_control_flow_op = true;
+    execution_config.skip_gc_vars =
+        std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+    core_.reset(new framework::InterpreterCore(
+        dev_place, block, cur_scope, execution_config));
+    VLOG(10) << "[interpreterCore] created:" << core_;
+  } else {
+    // NOTE: Borrowed from
+    // `paddle/fluid/operators/controlflow/control_flow_op_helper.h`
+    // TODO(MarioLulab): Add StaticPyLayer Helper ?
+    BuildScopeForControlFlowOp(*core_, block, cur_scope);
+    core_->reset_scope(cur_scope);
+  }
+}
 
 class StaticPyLayerForwardOp : public StaticPyLayerOp {
  public:
@@ -61,33 +88,10 @@ class StaticPyLayerForwardOp : public StaticPyLayerOp {
     LOG_FIRST_N(INFO, 1)
         << "[ControlFlow][StaticPyLayer] New Executor is Running.";
 
-    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-      VLOG(10) << "[interpreterCore cache]" << core_.get();
-      VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
-                                                    dev_place);
-
-      framework::interpreter::ExecutionConfig execution_config;
-      execution_config.create_local_scope = false;
-      execution_config.used_for_control_flow_op = true;
-      execution_config.skip_gc_vars =
-          std::set<std::string>(skip_vars.begin(), skip_vars.end());
-
-      core_.reset(new framework::InterpreterCore(
-          dev_place, *block, &cur_scope, execution_config));
-      VLOG(10) << "[interpreterCore] created:" << core_;
-    } else {
-      // NOTE: Borrowed from
-      // `paddle/fluid/operators/controlflow/control_flow_op_helper.h`
-      // TODO(MarioLulab): Add StaticPyLayer Helper ?
-      BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
-      core_->reset_scope(&cur_scope);
-    }
-
+    CreateInterpreter(dev_place, *block, &cur_scope, skip_vars);
+    PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
     core_->Run({}, false);
   }
-
- private:
-  mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
 };
 
 class StaticPyLayerForwardInferShape : public framework::InferShapeBase {
@@ -132,31 +136,16 @@ class StaticPyLayerBackwardOp : public StaticPyLayerOp {
             scopes.size()));
     framework::Scope &cur_scope = *(scopes[0]);
 
-    // auto *block = Attr<framework::BlockDesc *>("sub_block");
     auto *block = Attr<framework::BlockDesc *>("forward_block");
     VLOG(3) << "Static PyLayer backward block.idx = " << block->ID()
             << ", scope = " << &cur_scope;
 
     LOG_FIRST_N(INFO, 1)
         << "[ControlFlow][StaticPyLayerBackwardOp] New Executor is Running.";
-    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-      VLOG(10) << "[interpreterCore cache]" << core_.get();
-      VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
-                                                    dev_place);
 
-      framework::interpreter::ExecutionConfig execution_config;
-      execution_config.create_local_scope = false;
-      execution_config.used_for_control_flow_op = true;
-      execution_config.skip_gc_vars =
-          std::set<std::string>(inside_grads.begin(), inside_grads.end());
+    CreateInterpreter(dev_place, *block, &cur_scope, inside_grads);
+    PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
 
-      core_.reset(new framework::InterpreterCore(
-          dev_place, *block, &cur_scope, execution_config));
-      VLOG(10) << "[interpreterCore] created:" << core_;
-    } else {
-      BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
-      core_->reset_scope(&cur_scope);
-    }
     core_->Run({}, false);
 
     // NOTE: It's neccessary. The reason of associating `inside_grads` and
@@ -170,9 +159,6 @@ class StaticPyLayerBackwardOp : public StaticPyLayerOp {
     scope.DeleteScope(&cur_scope);
     return;
   }
-
- private:
-  mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
 
  private:
   void AssignLocalGradientToParentScope(
