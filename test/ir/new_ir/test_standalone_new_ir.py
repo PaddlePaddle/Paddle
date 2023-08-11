@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
 
 import numpy as np
@@ -297,6 +296,26 @@ class TestJitSaveOp(unittest.TestCase):
             linear,
             path,
             input_spec=[paddle.static.InputSpec([10, 10], 'float32', 'x')],
+        )
+
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+        exe = paddle.static.Executor(place)
+
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.fluid.io.load_inference_model(
+            "./example_model",
+            executor=exe,
+            model_filename="./example_model/linear.pdmodel",
+            params_filename="./example_model/linear.pdiparams",
         )
 
 
