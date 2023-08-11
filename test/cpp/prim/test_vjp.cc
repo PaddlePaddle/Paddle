@@ -245,7 +245,6 @@ TEST(VJP, AddBackwardTest) {
                            prefix_str + "_inner_var_4",
                            prefix_str + "_inner_var_5"});
   test_core.BetaRun({});
-  program.Print(std::cout);
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_2")->Get<phi::DenseTensor>()
@@ -291,14 +290,10 @@ TEST(VJP, Add_BackwardTest) {
   std::vector<std::vector<ir::OpResult>> out_grads{{op4.out()}};
 
   ir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd.add_");
-  auto add_vjp_interface_impl =
+  auto add_inplace_vjp_interface_impl =
       op3_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-  if (add_vjp_interface_impl) {
-    std::cout << "not null";
-  } else {
-    std::cout << "null";
-  }
-  add_vjp_interface_impl->vjp_(op3.operation(), out_grads, stop_gradients);
+  add_inplace_vjp_interface_impl->vjp_(
+      op3.operation(), out_grads, stop_gradients);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
