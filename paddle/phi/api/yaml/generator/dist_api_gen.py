@@ -39,7 +39,7 @@ PADDLE_THROW(phi::errors::Unimplemented(
           "The kernel of ({}) for input tensors is unimplemented, please check the type of input tensors."));
 """
 
-# TODO(chenweihang): add profle function code later
+# TODO(chenweihang): add profile function code later
 # TODO(chenweihang): add view support later
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
