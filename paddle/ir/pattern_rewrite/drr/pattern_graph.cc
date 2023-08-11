@@ -120,6 +120,12 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
+
+const OpCall *SourcePatternGraph::AnchorNode() const {
+  return id2owned_tensor_.at(*output_tensors_.begin())->producer();
+}
+
+
 void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)> &VisitNode) const {
   // graph data
   const std::unordered_set<ir::drr::PatternGraph::id_type> &inputs_tensor = graph_->input_tensors();
