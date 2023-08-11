@@ -81,7 +81,6 @@ def check_if_mkldnn_primitives_exist_in_bwd(
 def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
     test_case, var_dict, place, shape, data_layout
 ):
-
     var_names = [
         'x',
         'scale',

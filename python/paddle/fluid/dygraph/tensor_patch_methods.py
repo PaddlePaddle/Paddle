@@ -26,7 +26,8 @@ from .. import unique_name
 from ..framework import (
     Variable,
     Parameter,
-    _getitem_impl_,
+    _getitem_static,
+    _setitem_static,
     _setitem_impl_,
     EagerParamBase,
     in_dygraph_mode,
@@ -112,7 +113,16 @@ def monkey_patch_tensor():
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
-        attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
+        attr_not_need_keys = [
+            'grad',
+            'T',
+            'place',
+            '_place_str',
+            'data',
+            'grad_',
+            'strides',
+            'offset',
+        ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
             attr_kwargs = self.__dict__.copy()
@@ -409,7 +419,6 @@ def monkey_patch_tensor():
 
     @framework.dygraph_only
     def _to(self, device=None, dtype=None, blocking=None):
-
         if device is None and dtype is None and blocking is None:
             return self
 
@@ -718,47 +727,34 @@ def monkey_patch_tensor():
                     return True
         return False
 
-    def __getitem__(self, item):
-        def is_list_tuple(index, contain_type):
-            def _is_list_tuple(item):
-                if isinstance(item, (tuple, list)):
-                    for s in item:
-                        if not _is_list_tuple(s):
-                            return False
-                else:
-                    if type(item) != contain_type:
-                        return False
+    def contain_tensor_or_list(item):
+        if not isinstance(item, tuple):
+            item = (item,)
+
+        for slice_item in item:
+            if isinstance(slice_item, (list, np.ndarray, Variable)):
                 return True
+            elif isinstance(slice_item, slice):
+                if (
+                    isinstance(slice_item.start, Variable)
+                    or isinstance(slice_item.stop, Variable)
+                    or isinstance(slice_item.step, Variable)
+                ):
+                    return True
 
-            if not isinstance(index, (tuple, list)):
-                return False
-            for s in index:
-                if not _is_list_tuple(s):
-                    return False
-            return True
+        return False
 
-        if contain_tensor(item) or is_list_tuple(item, int):
+    def __getitem__(self, item):
+        if contain_tensor_or_list(item):
             # 1. Call _getitem_impl_ when item contains tensor.
             # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
-            return _getitem_impl_(self, item)
+            return _getitem_static(self, item)
 
         else:
             # 2. Call c++ func getitem_index_not_tensor to speedup.
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
-        def contain_tensor_or_list(item):
-            if not isinstance(item, tuple):
-                item = [item]
-
-            for slice_item in item:
-                if isinstance(slice_item, list):
-                    return True
-                elif isinstance(slice_item, Variable):
-                    return True
-
-            return False
-
         def is_combine_index(item):
             var_type = None
             item_type = None
@@ -780,10 +776,13 @@ def monkey_patch_tensor():
 
             return False
 
-        if contain_tensor_or_list(item) and not is_combine_index(item):
+        if contain_tensor_or_list(item):
+            if core.is_compiled_with_xpu() and not is_combine_index(item):
+                # (NOTE): Currently, there is no index_put_xpu kernel.
+                return _setitem_impl_(self, item, value)
             # To reuse code with static graph,
-            # Call _setitem_impl_ when item contains tensor or list.
-            return _setitem_impl_(self, item, value)
+            # Call _setitem_static when item contains tensor or list.
+            return _setitem_static(self, item, value)
 
         else:
             return self.__setitem_eager_tensor__(item, value)

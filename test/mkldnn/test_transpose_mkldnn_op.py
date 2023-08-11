@@ -15,8 +15,7 @@
 import unittest
 
 import numpy as np
-
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestTransposeMKLDNN(OpTest):

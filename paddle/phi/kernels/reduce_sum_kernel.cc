@@ -44,6 +44,7 @@ PD_REGISTER_KERNEL(sum,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int16_t,
                    int,
                    int64_t,
@@ -77,7 +78,7 @@ PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
 }
 #endif
 
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
     sum, OneDNN, ONEDNN, phi::SumKernel, float, phi::dtype::bfloat16) {}
 #endif

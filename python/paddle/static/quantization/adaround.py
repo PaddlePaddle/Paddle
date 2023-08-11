@@ -92,7 +92,6 @@ class AdaRoundLoss:
         return round_loss
 
     def compute_beta(self, max_iter, cur_iter, warm_start):
-
         #  Start and stop beta for annealing of rounding loss (start_beta, end_beta)
         start_beta, end_beta = self.default_beta_range
 

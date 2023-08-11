@@ -34,8 +34,7 @@ def get_all_paddle_file(rootPath):
 def get_all_uts(rootPath):
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
     os.system(
-        r'cd %s/build && ctest -N -V | grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > %s'
-        % (rootPath, all_uts_paddle)
+        fr'cd {rootPath}/build && ctest -N -V | grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > {all_uts_paddle}'
     )
 
 

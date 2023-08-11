@@ -154,7 +154,7 @@ std::string EventsWaiter::WaitEvent() {
   {
     triggered = trigger_event_;
     std::lock_guard<paddle::memory::SpinLock> guard(events_lock_);
-    if (deleted_events_.size() > 0) {
+    if (!deleted_events_.empty()) {
       for (auto evt : deleted_events_) {
         if (evt == triggered) {
           continue;

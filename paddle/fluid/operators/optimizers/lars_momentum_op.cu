@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
@@ -34,7 +34,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
 
 __device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
 __device__ __forceinline__ double Sqrt(double x) { return sqrt(x); }

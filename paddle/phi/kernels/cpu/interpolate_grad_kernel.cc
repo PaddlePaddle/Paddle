@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -190,11 +191,11 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
       int input_x = floorf(x_n);
       MT x_t = x_n - input_x;
 
-      MT x_coeffs[4];
-      MT y_coeffs[4];
+      std::array<MT, 4> x_coeffs;
+      std::array<MT, 4> y_coeffs;
 
-      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
-      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
+      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs.data(), x_t);
+      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs.data(), y_t);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -395,7 +396,7 @@ static void Interpolate1DCPUBwd(
             "should be greater than 0, but received value is %d.",
             scale_w));
   } else {
-    if (scale.size() > 0) {
+    if (!scale.empty()) {
       scale_w = scale[0];
       PADDLE_ENFORCE_EQ(
           scale_w > 0,
@@ -414,7 +415,7 @@ static void Interpolate1DCPUBwd(
         funcs::get_new_data_from_tensor<int>(out_size.get_ptr());
     out_w = out_size_data[0];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_w = new_size[0];
@@ -536,7 +537,7 @@ static void Interpolate2DCPUBwd(
     out_h = out_size_data[0];
     out_w = out_size_data[1];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_h = new_size[0];
@@ -716,7 +717,7 @@ static void Interpolate3DCPUBwd(
     out_h = out_size_data[1];
     out_w = out_size_data[2];
   }
-  if (size_tensor && size_tensor->size() > 0) {
+  if (size_tensor && !size_tensor->empty()) {
     // have size tensor
     auto new_size = funcs::get_new_shape(size_tensor.get());
     out_d = new_size[0];

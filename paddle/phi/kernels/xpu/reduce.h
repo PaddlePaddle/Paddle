@@ -78,7 +78,7 @@ int XPUReduce(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType*>(x_data),
                            reinterpret_cast<XPUType*>(y_data),
-                           x.numel() * sizeof(T));
+                           x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
@@ -100,7 +100,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
     int r = xpu::copy<XPUType>(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x_data),
                                reinterpret_cast<XPUType*>(y_data),
-                               input.numel() * sizeof(T));
+                               input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     Functor func;

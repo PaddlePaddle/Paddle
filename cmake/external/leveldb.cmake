@@ -14,6 +14,8 @@
 
 include(ExternalProject)
 
+set(LEVELDB_TAG v1.18)
+set(LEVELDB_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/leveldb)
 set(LEVELDB_PREFIX_DIR ${THIRD_PARTY_PATH}/leveldb)
 set(LEVELDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/leveldb)
 set(LEVELDB_INCLUDE_DIR
@@ -27,21 +29,43 @@ set(LEVELDN_CXXFLAGS "-fPIC")
 if(WITH_HETERPS AND WITH_PSLIB)
   set(LEVELDN_CXXFLAGS "${LEVELDN_CXXFLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
+
+file(GLOB LEVELDB_SOURCE_FILE_LIST ${LEVELDB_SOURCE_DIR})
+list(LENGTH LEVELDB_SOURCE_FILE_LIST RES_LEN)
+if(RES_LEN EQUAL 0)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} clone -b ${LEVELDB_TAG}
+            https://github.com/google/leveldb.git ${LEVELDB_SOURCE_DIR})
+else()
+  # check git tag
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
+    OUTPUT_VARIABLE VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
+    WORKING_DIRECTORY ${LEVELDB_SOURCE_DIR})
+  if(NOT ${VERSION} STREQUAL ${LEVELDB_TAG})
+    file(REMOVE_RECURSE ${LEVELDB_PREFIX_DIR})
+    file(REMOVE_RECURSE ${LEVELDB_INSTALL_DIR})
+    message(
+      WARNING "leveldb version is not ${VERSION}, checkout to ${LEVELDB_TAG}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${LEVELDB_TAG}
+                    WORKING_DIRECTORY ${LEVELDB_SOURCE_DIR})
+  endif()
+endif()
+
 ExternalProject_Add(
   extern_leveldb
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${LEVELDB_PREFIX_DIR}
-  GIT_REPOSITORY "https://github.com/google/leveldb"
-  GIT_TAG v1.18
+  SOURCE_DIR ${LEVELDB_SOURCE_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND export "CXXFLAGS=${LEVELDN_CXXFLAGS}" && make -j
                 ${NUM_OF_PROCESSOR} libleveldb.a
   INSTALL_COMMAND
     mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ && cp
-    ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
-    && cp -r ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/include
-    ${LEVELDB_INSTALL_DIR}/
+    ${LEVELDB_SOURCE_DIR}/libleveldb.a ${LEVELDB_LIBRARIES} && cp -r
+    ${LEVELDB_SOURCE_DIR}/include ${LEVELDB_INSTALL_DIR}/
   BUILD_IN_SOURCE 1
   BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES})
 add_dependencies(extern_leveldb snappy)

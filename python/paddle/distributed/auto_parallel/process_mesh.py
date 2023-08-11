@@ -82,8 +82,9 @@ class ProcessMesh(core.ProcessMesh):
         .. code-block:: python
 
             import paddle
+            import paddle.distributed as dist
 
-            mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
             assert mesh.shape == [2, 3]
             assert mesh.process_ids == [2, 4, 5, 0, 1, 3]
 
@@ -140,12 +141,12 @@ class ProcessMesh(core.ProcessMesh):
         )
 
         # Store all process meshes
-        from .dist_context import get_default_distributed_context
+        from .static.dist_context import get_default_distributed_context
 
         default_dist_cxt = get_default_distributed_context()
         default_dist_cxt.add_process_mesh(self)
         # Add new processes to process group 0
-        from .process_group import get_process_group
+        from .static.process_group import get_process_group
 
         pg0 = get_process_group(0)
         pg0.add_ranks(self.process_ids)
@@ -161,6 +162,13 @@ class ProcessMesh(core.ProcessMesh):
         Get the underlying mesh of ProcessMesh.
         """
         return self._mesh
+
+    @property
+    def dim_names(self):
+        """
+        Get the underlying dimension names of ProcessMesh.
+        """
+        return self._dim_names
 
     @property
     def unique_id(self):
@@ -204,14 +212,14 @@ class ProcessMesh(core.ProcessMesh):
         self._old_op_size = len(cur_block.ops)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        from .dist_op import DistributedOperator
-        from .dist_tensor import DistributedTensor
+        from .static.dist_op import DistributedOperator
+        from .static.dist_tensor import DistributedTensor
 
         default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         new_var_names = list(cur_block.vars.keys())
         new_op_size = len(cur_block.ops)
-        from .dist_context import get_default_distributed_context
+        from .static.dist_context import get_default_distributed_context
 
         default_dist_ctx = get_default_distributed_context()
         for name in new_var_names:

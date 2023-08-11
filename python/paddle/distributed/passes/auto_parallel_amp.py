@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+)
+from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
@@ -42,7 +44,7 @@ from paddle.static.amp.fp16_utils import (
 from paddle.utils import unique_name
 
 from ..auto_parallel.process_mesh import ProcessMesh
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_loss_grad_op,
@@ -229,7 +231,6 @@ class AMPState:
         return is_train
 
     def _mark_black_white_ops(self, op, ops, block):
-
         # ernie inference trick
         if op.type == "assign" and "array_" in op.input_arg_names[0]:
             self._op_fp16_dict[op.desc.original_id()] = False
@@ -812,7 +813,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _check_and_update_gradient(self):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 
@@ -914,7 +914,6 @@ class AMPPass(PassBase):
             )
 
     def _cast_loss(self):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 
@@ -926,7 +925,6 @@ class AMPPass(PassBase):
         )
 
         if loss.dtype != core.VarDesc.VarType.FP32:
-
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
             cast_loss = main_block.create_var(
                 name=tmp_name, dtype=core.VarDesc.VarType.FP32
@@ -1008,7 +1006,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _scale_loss(self):
-
         main_block = paddle.static.default_main_program().global_block()
         loss = self.get_attr("loss")
         assert loss is not None
@@ -1021,7 +1018,6 @@ class AMPPass(PassBase):
             self.get_attr("use_dynamic_loss_scaling")
             or self.get_attr("init_loss_scaling") != 1.0
         ):
-
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
 
             # forward
@@ -1121,7 +1117,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _update_loss_scaling(self, grads, found_inf):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 

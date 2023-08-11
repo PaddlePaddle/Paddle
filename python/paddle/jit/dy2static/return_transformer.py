@@ -130,9 +130,8 @@ class ReturnTransformer(BaseTransformer):
     SingleReturnTransformer don't care the nested function def.
     """
 
-    def __init__(self, wrapper_root):
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         pre_transformer = ReplaceReturnNoneTransformer(self.root)
         pre_transformer.transform()
 
@@ -339,7 +338,6 @@ class SingleReturnTransformer(BaseTransformer):
         max_return_length,
         parent_node_of_return,
     ):
-
         assert max_return_length >= 0, "Input illegal max_return_length"
         i = index_in_list(stmt_list, return_node)
         if i == -1:

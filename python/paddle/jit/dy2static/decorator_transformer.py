@@ -19,7 +19,6 @@ import warnings
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 from .utils import RE_PYMODULE, RE_PYNAME, ast_to_source_code
 
 __all__ = []
@@ -40,12 +39,8 @@ class DecoratorTransformer(BaseTransformer):
     Transform decorators.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(wrapper_root, AstNodeWrapper), (
-            "Type of input node should be AstNodeWrapper, but received %s ."
-            % type(wrapper_root)
-        )
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
         self.ancestor_nodes = []
 

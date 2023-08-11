@@ -302,7 +302,6 @@ class StaticAnalysisVisitor:
             if parent_node_wrapper and isinstance(
                 parent_node_wrapper.node, gast.arguments
             ):
-
                 return self._get_func_argument_type(parent_node_wrapper, node)
 
             return self.var_env.get_var_type(node.id)

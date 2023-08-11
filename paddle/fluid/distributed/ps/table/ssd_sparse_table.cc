@@ -88,7 +88,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
         _real_local_shard_num);
     for (size_t i = 0; i < num; ++i) {
       int shard_id = (keys[i] % _sparse_table_shard_num) % _avg_local_shard_num;
-      task_keys[shard_id].push_back({keys[i], i});
+      task_keys[shard_id].emplace_back(keys[i], i);
     }
 
     std::atomic<uint32_t> missed_keys{0};
@@ -202,8 +202,8 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
       auto itr = local_shard.find(key);
       if (itr == local_shard.end()) {
         cur_ctx->batch_index.push_back(i);
-        cur_ctx->batch_keys.push_back(rocksdb::Slice(
-            (char*)&(pull_keys[i]), sizeof(uint64_t)));  // NOLINT
+        cur_ctx->batch_keys.emplace_back(
+            reinterpret_cast<const char*>(&(pull_keys[i])), sizeof(uint64_t));
         if (cur_ctx->batch_keys.size() == 1024) {
           cur_ctx->batch_values.resize(cur_ctx->batch_keys.size());
           cur_ctx->status.resize(cur_ctx->batch_keys.size());
@@ -263,7 +263,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
         pull_values[i] = reinterpret_cast<char*>(ret);
       }
     }
-    if (cur_ctx->batch_keys.size() != 0) {
+    if (!cur_ctx->batch_keys.empty()) {
       cur_ctx->batch_values.resize(cur_ctx->batch_keys.size());
       cur_ctx->status.resize(cur_ctx->batch_keys.size());
       auto fut =
@@ -334,7 +334,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
         _real_local_shard_num);
     for (size_t i = 0; i < num; ++i) {
       int shard_id = (keys[i] % _sparse_table_shard_num) % _avg_local_shard_num;
-      task_keys[shard_id].push_back({keys[i], i});
+      task_keys[shard_id].emplace_back(keys[i], i);
     }
     for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
@@ -440,7 +440,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
         _real_local_shard_num);
     for (size_t i = 0; i < num; ++i) {
       int shard_id = (keys[i] % _sparse_table_shard_num) % _avg_local_shard_num;
-      task_keys[shard_id].push_back({keys[i], i});
+      task_keys[shard_id].emplace_back(keys[i], i);
     }
     for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
@@ -1541,7 +1541,7 @@ int32_t SSDSparseTable::Load(const std::string& path,
                  << " not equal to expect_shard_num:" << expect_shard_num;
     return -1;
   }
-  if (file_list.size() == 0) {
+  if (file_list.empty()) {
     LOG(WARNING) << "SSDSparseTable load file is empty, path:" << path;
     return -1;
   }
@@ -1658,11 +1658,10 @@ int32_t SSDSparseTable::LoadWithString(
         // ssd or mem
         if (_value_accesor->SaveSSD(data_buffer_ptr)) {
           tmp_key.emplace_back(key);
-          ssd_keys.emplace_back(std::make_pair(
-              reinterpret_cast<char*>(&tmp_key.back()), sizeof(uint64_t)));
-          ssd_values.emplace_back(
-              std::make_pair(reinterpret_cast<char*>(data_buffer_ptr),
-                             value_size * sizeof(float)));
+          ssd_keys.emplace_back(reinterpret_cast<char*>(&tmp_key.back()),
+                                sizeof(uint64_t));
+          ssd_values.emplace_back(reinterpret_cast<char*>(data_buffer_ptr),
+                                  value_size * sizeof(float));
           data_buffer_ptr += feature_value_size;
           if (static_cast<int>(ssd_keys.size()) ==
               FLAGS_pserver_load_batch_size) {
@@ -1692,7 +1691,7 @@ int32_t SSDSparseTable::LoadWithString(
       }
     }
     // last batch
-    if (ssd_keys.size() > 0) {
+    if (!ssd_keys.empty()) {
       _db->put_batch(local_shard_id, ssd_keys, ssd_values, ssd_keys.size());
     }
 
@@ -1928,7 +1927,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
   for (int shard_idx = 0; shard_idx < _real_local_shard_num; shard_idx++) {
     auto sst_filelist = _afs_client.list(paddle::string::format_string(
         "%s_%d/part-*", FLAGS_rocksdb_path.c_str(), shard_idx));
-    if (sst_filelist.size() > 0) {
+    if (!sst_filelist.empty()) {
       int ret = _db->ingest_externel_file(shard_idx, sst_filelist);
       if (ret) {
         VLOG(0) << "ingest file failed";
@@ -2032,7 +2031,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
             }
 
             // 必须做空判断，否则sst_writer.Finish会core掉
-            if (datas.size() != 0) {
+            if (!datas.empty()) {
               rocksdb::SstFileWriter sst_writer(rocksdb::EnvOptions(), options);
               std::string filename =
                   paddle::string::format_string("%s_%d/cache-%05d.sst",

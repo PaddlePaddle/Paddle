@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit.api import to_static
+from paddle.optimizer import SGD
 
 PRINT_STEP = 20
 SEED = 2020
@@ -185,7 +185,6 @@ class PtbModel(paddle.nn.Layer):
 
     @to_static
     def forward(self, input, label, init_hidden, init_cell):
-
         init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size]
         )
@@ -222,12 +221,10 @@ class PtbModel(paddle.nn.Layer):
         return loss, last_hidden, last_cell
 
     def debug_emb(self):
-
         np.save("emb_grad", self.x_emb.gradient())
 
 
 def train(place):
-
     num_layers = 1
     batch_size = 4
     hidden_size = 10
@@ -250,12 +247,9 @@ def train(place):
             dropout=dropout,
         )
 
-        sgd = SGDOptimizer(
-            learning_rate=1e-3, parameter_list=ptb_model.parameters()
-        )
+        sgd = SGD(learning_rate=1e-3, parameters=ptb_model.parameters())
 
         for epoch_id in range(max_epoch):
-
             total_loss = 0.0
             iters = 0.0
             total_sample = 0

@@ -26,6 +26,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
@@ -51,11 +52,13 @@ __global__ void bernoulli_cuda_kernel(
   for (size_t i = 4 * thread_idx; i < size; i += total_thread * 4) {
     funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 #pragma unroll
     for (size_t j = 0; j < 4; j++) {
       size_t idx = i + j;
       if (idx < size) {
-        out_data[idx] = static_cast<T>((&rand.x)[j] <= x_data[idx]);
+        out_data[idx] =
+            static_cast<T>((&rand.x)[j] <= static_cast<MPType>(x_data[idx]));
       }
     }
   }
@@ -85,5 +88,11 @@ void BernoulliKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    bernoulli, GPU, ALL_LAYOUT, phi::BernoulliKernel, float, double) {}
+PD_REGISTER_KERNEL(bernoulli,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BernoulliKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float,
+                   double) {}

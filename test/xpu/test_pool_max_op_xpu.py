@@ -30,7 +30,6 @@ paddle.enable_static()
 def max_pool2D_forward_naive(
     x, ksize, strides, paddings, global_pool=False, adaptive=False
 ):
-
     N, C, H, W = x.shape
     global_pool = global_pool or (adaptive or (ksize[0] * ksize[1] == 1))
     if global_pool:

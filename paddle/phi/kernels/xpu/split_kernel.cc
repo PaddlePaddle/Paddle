@@ -79,5 +79,6 @@ PD_REGISTER_KERNEL(split_with_num,
                    ALL_LAYOUT,
                    phi::SplitWithNumKernel,
                    float,
+                   int64_t,
                    int,
                    phi::dtype::float16) {}

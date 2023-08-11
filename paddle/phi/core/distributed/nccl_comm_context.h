@@ -38,13 +38,18 @@ class NCCLCommContext final : public CommContext {
                  int root,
                  gpuStream_t stream);
   void Send(const phi::DenseTensor& in_tensor,
+            const int64_t& count,
             const int& peer,
             gpuStream_t stream);
 
-  void Recv(phi::DenseTensor* out_tensor, const int& peer, gpuStream_t stream);
+  void Recv(phi::DenseTensor* out_tensor,
+            const int64_t& count,
+            const int& peer,
+            gpuStream_t stream);
 
   void ReduceScatter(phi::DenseTensor* out_tensor,
                      const phi::DenseTensor& in_tensor,
+                     ncclRedOp_t reduce_type,
                      gpuStream_t stream);
 
   void AllGather(phi::DenseTensor* out_tensor,
@@ -61,6 +66,10 @@ class NCCLCommContext final : public CommContext {
               ncclRedOp_t reduce_type,
               int root,
               gpuStream_t stream);
+
+  void GroupStart();
+
+  void GroupEnd();
 
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);

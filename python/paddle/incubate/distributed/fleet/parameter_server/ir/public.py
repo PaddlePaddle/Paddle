@@ -1304,7 +1304,6 @@ class CompileTimeStrategy:
         return sparse_param_grads, dense_param_grads
 
     def remove_var_pair_by_grad(self, var_name):
-
         for index, pair in enumerate(self.merged_variables_pairs):
             var = pair[0]
             var_grad = pair[1]
@@ -1410,8 +1409,6 @@ def _get_lr_scheduler_program(lr_scheduler, lr_param_dict, lr_decay_steps):
         InverseTimeDecay,
         NaturalExpDecay,
         NoamDecay,
-    )
-    from paddle.static.learning_rate_scheduler import (
         exponential_decay,
         inverse_time_decay,
         natural_exp_decay,

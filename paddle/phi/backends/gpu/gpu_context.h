@@ -15,7 +15,8 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU_KP)
 
 #include <array>
 #include <functional>
@@ -37,7 +38,7 @@ class DnnWorkspaceHandle {
  public:
   inline DnnWorkspaceHandle(Allocator* allocator, gpuStream_t stream)
       : allocator_(allocator), stream_(stream) {
-    mtx_.reset(new std::mutex());
+    mtx_ = std::make_unique<std::mutex>();
   }
 
   inline void RunFunc(const std::function<void(void*)>& cudnn_func,

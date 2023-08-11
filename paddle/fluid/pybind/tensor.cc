@@ -103,11 +103,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
+#include "paddle/fluid/pybind/graph.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -174,6 +174,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(use_shm_cache);
@@ -1019,6 +1022,17 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
             return tensor;
           }));
+#endif
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  using phi::distributed::DistTensor;
+  py::class_<DistTensor>(m, "DistTensor")
+      .def(
+          "get_tensor",
+          [](DistTensor &self) { return self.mutable_value(); },
+          py::return_value_policy::reference)
+      .def("numel",
+           [](DistTensor &self) -> int64_t { return self.value().numel(); });
 #endif
 
   py::class_<phi::SelectedRows>(m, "SelectedRows")

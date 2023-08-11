@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import signal
 import sys
@@ -36,6 +37,13 @@ class ControllerBase:
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
         signal.signal(signal.SIGINT, self.signal_handler)
+        if ctx.is_auto_tuner_mode():
+            if not ctx.run_best:
+                # set per task timeout
+                signal.signal(signal.SIGALRM, self.not_exit_signal_handler)
+                signal.alarm(ctx.max_time_per_task)
+            else:
+                signal.alarm(0)
 
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
@@ -54,7 +62,6 @@ class ControllerBase:
         self.join_server = None
 
     def deploy_pod(self):
-
         assert (
             len(self.pod.containers) + len(self.pod.init_containers) > 0
         ), "No container in the pod"
@@ -131,6 +138,11 @@ class ControllerBase:
                 self.ctx.status.is_restarting()
                 and self.master.get_status() != self.ctx.status.COMPLETED
             ):
+                # when peer failure, stop peer
+                if self.ctx.args.elastic_level == -1:
+                    self.pod.stop(timeout=3)
+                    return True
+
                 self.pod.stop(timeout=30)
                 return False
 
@@ -142,12 +154,13 @@ class ControllerBase:
         self.master.stop()
         self.pod.stop(timeout=30)
 
-    def finalize(self):
+    def finalize(self, exit=True):
         self.pod.join()
         self.master.stop()
 
         self.ctx.logger.info(f"Exit code {self.pod.exit_code}")
-        sys.exit(self.pod.exit_code)
+        if exit:
+            sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
         if hasattr(self, 'sigint'):
@@ -162,6 +175,18 @@ class ControllerBase:
         self.stop(sigint=sigint)
         self.ctx.logger.info(f"Exit with signal {sigint}")
         sys.exit(sigint)
+
+    def not_exit_signal_handler(self, sigint, frame):
+        if hasattr(self, 'sigint'):
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            self.pod.stop(timeout=10)
+
+        self.ctx.logger.info(f"Terminating with signal {sigint}")
+
+        self.sigint = sigint
+        self.ctx.status.done()
+        self.stop(sigint=sigint)
+        self.ctx.logger.info(f"Exit with signal {sigint}")
 
 
 class Controller(ControllerBase):
@@ -219,8 +244,9 @@ class Controller(ControllerBase):
         log_file=None,
         is_init=False,
     ):
-
         if not container:
+            envs = copy.deepcopy(envs)
+            envs['PADDLE_LOG_DIR'] = str(os.path.abspath(self.ctx.args.log_dir))
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
             )

@@ -270,7 +270,7 @@ static const T *GetInputTensorPtr(const DenseTensor *in_tensor,
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
       phi::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
-  if (in_tensor->IsInitialized()) {
+  if (in_tensor->initialized()) {
     if (numel) *numel = in_tensor->numel();
     return in_tensor->data<T>();
   } else {
@@ -286,7 +286,7 @@ static T *GetSameInOutTensorPtr(const Context &dev_ctx,
                                 const char *in_name,
                                 const char *out_name,
                                 int64_t *numel = nullptr) {
-  if (in_tensor == nullptr || !in_tensor->IsInitialized()) {
+  if (in_tensor == nullptr || !in_tensor->initialized()) {
     PADDLE_ENFORCE_EQ(
         AllowNotExist,
         true,
@@ -1160,7 +1160,7 @@ struct VisitDTypeFunctor {
 
 static std::string GetMinMaxStr(const phi::DenseTensor *x) {
   if (x == nullptr) return "null";
-  if (!x->IsInitialized()) return "not_inited";
+  if (!x->initialized()) return "not_inited";
   if (x->place().GetType() != phi::AllocationType::GPU) return "CPUTensor";
   std::string str;
   VisitDTypeFunctor functor(x, &str);
@@ -1354,9 +1354,7 @@ void DistributedFusedLambKernel(
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto stream = dev_ctx.stream();
   auto place = dev_ctx.GetPlace();
-
   found_inf->Resize({1});
-
   // Step 1: Get fp16 param and grad tensors
   int64_t fp16_numel;
   auto *fp16_param_data =
@@ -1374,7 +1372,6 @@ void DistributedFusedLambKernel(
   } else {
     fp16_param_data = nullptr;
   }
-
   // Step 2: Get fp32 param and grad tensors
   int64_t fp32_numel = 0;
   auto *fp32_param_data =
@@ -1389,7 +1386,6 @@ void DistributedFusedLambKernel(
                     phi::errors::InvalidArgument(
                         "The element number in FP32FusedParam should be not "
                         "less than FP16FusedParam."));
-
   fp32_numel -= fp16_numel;  // the FP32FusedParam contains fp32 param and
                              // fp16 master weight
   bool has_fp32_param = (fp32_numel > 0);
@@ -1404,7 +1400,6 @@ void DistributedFusedLambKernel(
         phi::errors::InvalidArgument(
             "Either FP32FusedGrad or FP16FusedGrad cannot be NULL."));
   }
-
   auto numel = fp32_numel + fp16_numel;
   VLOG(1) << "numel = " << numel << " , fp32_numel = " << fp32_numel
           << " , fp16_numel = " << fp16_numel;
@@ -1426,7 +1421,7 @@ void DistributedFusedLambKernel(
         acc_step,
         phi::errors::InvalidArgument(
             "Output(AccStep) cannot be nullptr when Attr(acc_steps) > 1."));
-    bool is_initialized = acc_step->IsInitialized();
+    bool is_initialized = acc_step->initialized();
     int64_t *acc_step_data;
     if (is_initialized) {
       acc_step_data = dev_ctx.template HostAlloc<int64_t>(acc_step);
@@ -1437,14 +1432,13 @@ void DistributedFusedLambKernel(
       *acc_step_data = 1;
     }
     int64_t rounded_step = (*acc_step_data) % acc_steps;
-
     float *fp32_acc_grad_data = nullptr;
     if (has_fp32_param) {
       PADDLE_ENFORCE_NOT_NULL(fp32_acc_grad,
                               phi::errors::InvalidArgument(
                                   "Output(FP32AccFusedGrad) cannot be nullptr "
                                   "when Attr(acc_steps) > 1."));
-      if (!fp32_acc_grad->IsInitialized()) {
+      if (!fp32_acc_grad->initialized()) {
         fp32_acc_grad->Resize({static_cast<int64_t>(fp32_numel)});
         fp32_acc_grad_data = dev_ctx.template Alloc<float>(fp32_acc_grad);
       } else {
@@ -1459,7 +1453,7 @@ void DistributedFusedLambKernel(
                               phi::errors::InvalidArgument(
                                   "Output(FP16AccFusedGrad) cannot be nullptr "
                                   "when Attr(acc_steps) > 1."));
-      if (!fp16_acc_grad->IsInitialized()) {
+      if (!fp16_acc_grad->initialized()) {
         auto acc_grad_size =
             use_master_acc_grad ? (3 * fp16_numel) : fp16_numel;
         fp16_acc_grad->Resize({static_cast<int64_t>(acc_grad_size)});
@@ -1544,11 +1538,9 @@ void DistributedFusedLambKernel(
         }
       }
     }
-
     stop_update->Resize({1});
     auto *stop_update_data = dev_ctx.template HostAlloc<bool>(stop_update);
     auto *found_inf_cpu = dev_ctx.template HostAlloc<bool>(found_inf);
-
     if (rounded_step != 0) {
       *stop_update_data = true;
       *found_inf_cpu = false;
@@ -1599,7 +1591,6 @@ void DistributedFusedLambKernel(
   int64_t partial_numel = 0;
   auto *moment1_data = GetSameInOutTensorPtr<float, Context>(
       dev_ctx, &moment1, moment1_out, "Moment1", "Moment1Out", &partial_numel);
-
   PADDLE_ENFORCE_EQ(numel % partial_numel,
                     0,
                     phi::errors::InvalidArgument(
@@ -1629,16 +1620,13 @@ void DistributedFusedLambKernel(
                         "exactly by the device number %d.",
                         fp16_numel,
                         num_devices));
-
   auto *moment2_data = GetSameInOutTensorPtr<float, Context>(
       dev_ctx, &moment2, moment2_out, "Moment2", "Moment2Out");
   auto *beta1_pow_data = GetSameInOutTensorPtr<float, Context>(
       dev_ctx, &beta1_pow, beta1_pow_out, "Beta1Pow", "Beta1PowOut");
   auto *beta2_pow_data = GetSameInOutTensorPtr<float, Context>(
       dev_ctx, &beta2_pow, beta2_pow_out, "Beta2Pow", "Beta2PowOut");
-
   auto *found_inf_data = dev_ctx.template Alloc<bool>(found_inf);
-
   // Step 5: Get attributes weight_decay, beta1, beta2, epsilon,
   // max_grad_norm, ring_id,
   // use_master_param_norm, is_grad_scaled_by_nranks
@@ -1668,7 +1656,6 @@ void DistributedFusedLambKernel(
         paddle::platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
     global_comm = nccl_comm_handle->comm();
     global_rank = nccl_comm_handle->rank();
-
     if (local_shard) {
       auto *local_nccl_comm_handle =
           paddle::platform::NCCLCommContext::Instance().Get(ring_ids[1], place);
@@ -1684,11 +1671,9 @@ void DistributedFusedLambKernel(
       local_rank = global_rank;
     }
   }
-
   memory_utils::Buffer grad_norm_square_buffer(place);
   auto *fp32_square_grad_norm = grad_norm_square_buffer.Alloc<float>(2);
   memory_utils::Buffer cub_tmp_buffer(place);
-
   memory_utils::Buffer sum_grad_buffer(place);
   float *fp32_sum_grad;
   dtype::float16 *fp16_sum_grad;
@@ -1721,7 +1706,6 @@ void DistributedFusedLambKernel(
     fp32_sum_grad = const_cast<float *>(fp32_grad_data);
     fp16_sum_grad = const_cast<dtype::float16 *>(fp16_grad_data);
   }
-
   float rescale_grad = 1.0f;
   if (!is_grad_scaled_by_nranks) {
     rescale_grad /= nranks;
@@ -1845,7 +1829,6 @@ void DistributedFusedLambKernel(
       } else {
         fp16_scale = cub_tmp_buffer.Alloc<dtype::float16>(1);
       }
-
       float clip_scale = 1.0f;
       if (is_grad_scaled_by_nranks) {
         clip_scale *= nranks;
@@ -1988,7 +1971,6 @@ void DistributedFusedLambKernel(
             external_comm,
             stream,
             dev_ctx);
-
         NCCLReduceScatterWithScale(
             fp16_grad_data,
             fp16_sum_grad + local_rank * fp16_numel_each_device,
@@ -2064,9 +2046,7 @@ void DistributedFusedLambKernel(
   auto *param_offsets_data = param_offsets.data<int>();
   const auto *fp32_partial_offsets_data = fp32_partial_offsets.data<int>();
   const auto *fp16_partial_offsets_data = fp16_partial_offsets.data<int>();
-
   auto *step_data = step->data<int64_t>();
-
   VLOG(1) << "FusedParamOffsets: "
           << FlattenToString(param_offsets_data,
                              param_offsets.numel(),
@@ -2079,7 +2059,6 @@ void DistributedFusedLambKernel(
           << FlattenToString(fp16_partial_offsets_data,
                              fp16_partial_offsets.numel(),
                              fp16_partial_offsets.place());
-
   memory_utils::Buffer trust_ratio_div_buffer(place);
   auto *trust_ratio_div = trust_ratio_div_buffer.Alloc<float>(partial_numel);
   auto fp32_offset = local_rank * fp32_numel_each_device;
@@ -2178,7 +2157,6 @@ void DistributedFusedLambKernel(
                       fp16_local_param_num,
                       param_square_norm + fp16_local_start_idx);
   }
-
   MultiTensorL2Norm(place,
                     stream,
                     trust_ratio_div,
@@ -2191,7 +2169,6 @@ void DistributedFusedLambKernel(
                     fp16_partial_offsets_data,
                     fp16_local_param_num,
                     trust_ratio_div_square_norm + fp16_local_start_idx);
-
   VLOG(1) << "TrustRatioDiv L2-Norm before allreduce: "
           << FlattenToString(trust_ratio_div_square_norm, param_num, place);
   if (num_devices > 1) {
@@ -2296,6 +2273,12 @@ PD_REGISTER_KERNEL(distributed_fused_lamb,
                    ALL_LAYOUT,
                    phi::fusion::DistributedFusedLambKernel,
                    float) {
+  kernel->InputAt(10).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(11).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(12).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(13).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(14).SetBackend(phi::Backend::CPU);
+
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT16);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

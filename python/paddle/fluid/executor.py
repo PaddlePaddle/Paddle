@@ -26,7 +26,7 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from . import set_flags
+from . import set_flags, get_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -414,6 +414,36 @@ def _add_feed_fetch_ops(
     return tmp_program
 
 
+def _set_micro_batch_fetch(plan):
+    if plan.micro_batch_num() <= 1:
+        return
+
+    valid_fetch_types = ["fetch", "fetch_v2"]
+    for job in plan.job_list():
+        idx_to_col_attr = {}
+        prog = plan.program(job.type())
+        for i in range(prog.block(0).op_size()):
+            op = prog.block(0).op(i)
+            if op.type() in valid_fetch_types:
+                idx_to_col_attr[i] = op.attr('col')
+
+        for idx, col in idx_to_col_attr.items():
+            job.set_col_attr_for_fetch_op(
+                idx, col * plan.micro_batch_num() + job.micro_batch_id()
+            )
+
+
+def _merge_tensors(tensor, micro_batch_num):
+    if micro_batch_num <= 1:
+        return tensor
+    assert len(tensor) % micro_batch_num == 0
+    chunk_tensor = [
+        tensor[i : i + micro_batch_num]
+        for i in range(0, len(tensor), micro_batch_num)
+    ]
+    return [np.array(chunk) for chunk in chunk_tensor]
+
+
 def _apply_inplace_addto_pass(
     program, enable_inplace, enable_addto, skip_var_names
 ):
@@ -495,8 +525,9 @@ def _to_name_str(var):
 
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
+    from ..distributed.backup_env import getenv_or_backup
 
-    trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
+    trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
     fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
     cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
@@ -511,9 +542,11 @@ def _prepare_fleet_executor():
     return fleet_exe
 
 
-def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
-    return program.desc.cached_hash_str() + _get_program_cache_key(
-        feed, fetch_list
+def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
+    return (
+        program.desc.cached_hash_str()
+        + str(scope.raw_address())
+        + _get_program_cache_key(feed, fetch_list)
     )
 
 
@@ -632,14 +665,14 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor:
-    def __init__(self, place, main_program, scope):
+    def __init__(self, place, plan, scope):
         self._place = core.Place()
         self._place.set_place(place)
-        self._main_program = main_program
+        self._plan = plan
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, scope, feed_names, fetch_list, return_numpy=True):
+    def run(self, feed_names, return_numpy=True):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -649,74 +682,21 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        fetch_list = self._check_fetch(fetch_list)
-
-        tensors = self._new_exe.run(
-            scope, feed_names, fetch_list
-        )._move_to_list()
+        tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
-            return as_numpy(tensors, copy=True)
+            tensors = as_numpy(tensors, copy=True)
+            return _merge_tensors(tensors, self._plan.micro_batch_num())
         else:
+            if self._plan.micro_batch_num() > 1:
+                raise RuntimeError(
+                    "`merge_tensor` does not support when return_numpy is False."
+                )
             return tensors
 
     def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(self._place, self._main_program.desc)
+        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
         return new_exe
-
-    def _update_feed(self, feed):
-        """
-        Update the feed dict, remove the feed item which is pruned in program.
-
-        Notes: This is a very low level API. Users should not use this API
-        directly.
-
-        Args:
-            feed(list|dict): feed dict or list.
-
-        Returns:
-            feed:(list|dict)  updated feed.
-        """
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        global_block = self._main_program.global_block()
-        for feed_name in list(feed.keys()):
-            if not global_block.has_var(feed_name):
-                feed.pop(feed_name)
-                warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % feed_name
-                )
-
-        return feed
-
-    def _check_fetch(self, fetch_list):
-        if fetch_list is None:
-            fetch_list = []
-
-        res = []
-        for fetch_var in fetch_list:
-            if isinstance(fetch_var, Variable):
-                fetch_var = fetch_var.name
-            elif not isinstance(fetch_var, str):
-                raise TypeError(
-                    "Required fetch_var shall be str|Variable, but received {}".format(
-                        type(fetch_var).__name__
-                    )
-                )
-
-            res.append(fetch_var)
-        return res
 
 
 class _ExecutorCache:
@@ -750,13 +730,16 @@ class _ExecutorCache:
                     ).to_program()
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program._program, feed, fetch_list
+                        self.program._program,
+                        self.scope,
+                        self.feed,
+                        self.fetch_list,
                     )
                 )
             else:
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program, feed, fetch_list
+                        self.program, self.scope, self.feed, self.fetch_list
                     )
                 )
 
@@ -873,11 +856,18 @@ class _ExecutorCache:
             if build_strategy is None or build_strategy.enable_inplace
             else False
         )
+
         enable_addto = (
             True
             if build_strategy is not None and build_strategy.enable_addto
             else False
         )
+
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+            # todo(phlrain), skip inplace add addto pass in new IR
+            enable_inplace = False
+            enable_addto = False
+
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
             skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
@@ -886,7 +876,27 @@ class _ExecutorCache:
             )
 
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(place, new_program, scope)
+        if (
+            new_program._pipeline_opt
+            and "standalone_opt" in new_program._pipeline_opt
+        ):
+            from paddle.distributed.passes.pipeline_scheduler_pass import (
+                apply_pass,
+            )
+
+            standalone_opt = new_program._pipeline_opt["standalone_opt"]
+            pass_name = standalone_opt["schedule_mode"]
+            plan = apply_pass(
+                new_program, new_program, pass_name, standalone_opt
+            )
+        else:
+            default_job = core.Job("default")
+            type_to_program = {"default": new_program.desc}
+            plan = core.Plan([default_job], type_to_program)
+
+        _set_micro_batch_fetch(plan)
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
 
@@ -1061,7 +1071,13 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+                new_ir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                if get_flags(new_ir_flag_name)[new_ir_flag_name]:
+                    core.set_feed_variable(
+                        scope, cur_feed, feed_target_name, idx
+                    )
+                else:
+                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
                 break
 
@@ -1458,16 +1474,18 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        if isinstance(program, Program) and program._pipeline_opt:
+        from paddle.distributed.auto_parallel.static.utils import (
+            use_new_executor,
+        )
+
+        if (
+            isinstance(program, Program)
+            and program._pipeline_opt
+            and not use_new_executor()
+        ):
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
-                    # Temporary manual enable standalone executor for fleet executor,
-                    # delete this code after the FLAGS is removed.
-                    if 'tasks' in program._pipeline_opt["fleet_opt"]:
-                        set_flags(
-                            {"FLAGS_fleet_executor_with_standalone": True}
-                        )
                     self._fleet_executor = _prepare_fleet_executor()
                 return self._run_using_fleet_executor(
                     program=program,
@@ -1584,7 +1602,6 @@ class Executor:
             return True
 
         if _can_use_interpreter_core(program, self.place):
-
             if feed is None:
                 feed = {}
             elif isinstance(feed, (list, tuple)):
@@ -1631,6 +1648,7 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
+
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
@@ -1655,9 +1673,7 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(
-                scope, list(feed.keys()), fetch_list, return_numpy
-            )
+            ret = new_exe.run(list(feed.keys()), return_numpy)
             set_flags(stored_flag)
             return ret
 

@@ -30,7 +30,7 @@ class LayerDict(Layer):
     Parameters:
         sublayers (LayerDict|OrderedDict|list[(key,Layer)...], optional): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
 
-    Examplex:
+    Examples:
         .. code-block:: python
 
             import paddle
@@ -97,7 +97,7 @@ class LayerDict(Layer):
         Parameters:
             None.
 
-        Examplex:
+        Examples:
             .. code-block:: python
 
                 import paddle

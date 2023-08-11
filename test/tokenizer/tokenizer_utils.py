@@ -924,7 +924,6 @@ class PretrainedTokenizer:
             len_ids + len_pair_ids + (self.num_special_tokens_to_add(pair=pair))
         )
         if max_seq_len and total_len > max_seq_len:
-
             ids, pair_ids, overflowing_tokens = self.truncate_sequences(
                 ids,
                 pair_ids=pair_ids,
@@ -1157,7 +1156,6 @@ class PretrainedTokenizer:
             )
 
             if stride > 0 and second_ids is not None:
-
                 max_len_for_pair = (
                     max_seq_len
                     - len(first_ids)

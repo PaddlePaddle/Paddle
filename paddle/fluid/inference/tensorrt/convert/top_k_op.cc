@@ -29,81 +29,75 @@ namespace tensorrt {
 
 class TopKOpConverter : public OpConverter {
  public:
-  TopKOpConverter() {}
+  TopKOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a top_k op to tensorrt TopK layer";
-    // Here the two nullptr looks strange, that's because the
-    // framework::OpDesc's constructor is strange.
+    VLOG(3) << "convert a top_k op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
 
     auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
-    const int k = op_desc.HasAttr("k")
-                      ? PADDLE_GET_CONST(int, op_desc.GetAttr("k"))
-                      : 1.0f;
-
-    nvinfer1::Dims input_dims = input_tensor->getDimensions();
-    int axis = input_dims.nbDims;
-    nvinfer1::ITopKLayer* layer =
-        TRT_ENGINE_ADD_LAYER(engine_,
-                             TopK,
-                             *input_tensor,
-                             nvinfer1::TopKOperation::kMAX,
-                             k,
-                             1 << (axis - 1));
-
-    std::vector<std::string> output_names;
-    output_names.push_back(op_desc.Output("Out").front());
-    output_names.push_back(op_desc.Output("Indices").front());
-
-    RreplenishLayerAndOutput(layer, "top_k", output_names, test_mode);
-  }
-};
-class TopKv2OpConverter : public OpConverter {
- public:
-  TopKv2OpConverter() {}
-  void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope,
-                  bool test_mode) override {
-    // Here the two nullptr looks strange, that's because the
-    // framework::OpDesc's constructor is strange.
-    framework::OpDesc op_desc(op, nullptr);
-
-    auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
-
-    const int k = op_desc.HasAttr("k")
-                      ? PADDLE_GET_CONST(int, op_desc.GetAttr("k"))
-                      : 1.0f;
-    const int axis = op_desc.HasAttr("axis")
-                         ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
-                         : 1.0f;
+    const int k =
+        op_desc.HasAttr("k") ? PADDLE_GET_CONST(int, op_desc.GetAttr("k")) : 1;
+    int axis = op_desc.HasAttr("axis")
+                   ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
+                   : -1;
     const bool largest =
         op_desc.HasAttr("largest")
             ? PADDLE_GET_CONST(bool, op_desc.GetAttr("largest"))
             : true;
     auto flag =
         largest ? nvinfer1::TopKOperation::kMAX : nvinfer1::TopKOperation::kMIN;
-    nvinfer1::ITopKLayer* layer = nullptr;
-    if (axis == -1) {
-      nvinfer1::Dims input_dims = input_tensor->getDimensions();
-      layer = TRT_ENGINE_ADD_LAYER(
-          engine_, TopK, *input_tensor, flag, k, 1 << (input_dims.nbDims - 1));
-    } else {
-      if (engine_->with_dynamic_shape()) {
-        layer = TRT_ENGINE_ADD_LAYER(
-            engine_, TopK, *input_tensor, flag, k, 1 << axis);
-      } else {
-        layer = TRT_ENGINE_ADD_LAYER(
-            engine_, TopK, *input_tensor, flag, k, 1 << (axis - 1));
-      }
-    }
-    std::vector<std::string> output_names;
-    output_names.push_back(op_desc.Output("Out").front());
-    output_names.push_back(op_desc.Output("Indices").front());
 
-    RreplenishLayerAndOutput(layer, "top_k_v2", output_names, test_mode);
+    auto input_dims = input_tensor->getDimensions();
+    auto input_rank = input_dims.nbDims;
+    // 1d needs expand to 2d
+    bool expand_to_2d = (input_rank == 1);
+    if (engine_->with_dynamic_shape() && expand_to_2d) {
+      input_tensor = Unsqueeze(input_tensor, std::vector<int32_t>{1});
+    }
+
+    // INT32 only, other data type should to casted to INT32.
+    nvinfer1::DataType type = input_tensor->getType();
+    bool cast = (type == nvinfer1::DataType::kINT32);
+    if (cast) {
+      input_tensor = Cast(input_tensor, nvinfer1::DataType::kFLOAT);
+    }
+
+    nvinfer1::ITopKLayer* layer = nullptr;
+    if (axis > 0 && !engine_->with_dynamic_shape()) {
+      axis -= 1;
+    }
+    if (axis < 0) axis += input_rank;
+
+    layer =
+        TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k, 1 << axis);
+
+    nvinfer1::ITensor* values = layer->getOutput(0);
+    nvinfer1::ITensor* indices = layer->getOutput(1);
+
+    // un-expand to 1d
+    if (engine_->with_dynamic_shape() && expand_to_2d) {
+      values = Squeeze(values, std::vector<int32_t>{1});
+      indices = Squeeze(indices, std::vector<int32_t>{1});
+    }
+
+    // cast back
+    if (cast) {
+      values = Cast(values, nvinfer1::DataType::kINT32);
+    }
+
+    auto out_name = op_desc.Output("Out").front();
+    auto indices_name = op_desc.Output("Indices").front();
+    values->setName(out_name.c_str());
+    engine_->SetITensor(out_name.c_str(), values);
+
+    indices->setName(indices_name.c_str());
+    engine_->SetITensor(indices_name.c_str(), indices);
+
+    layer->setName(
+        ("top_k (Output: " + out_name + "," + indices_name + ")").c_str());
   }
 };
 }  // namespace tensorrt
@@ -111,4 +105,4 @@ class TopKv2OpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(top_k, TopKOpConverter);
-REGISTER_TRT_OP_CONVERTER(top_k_v2, TopKv2OpConverter);
+REGISTER_TRT_OP_CONVERTER(top_k_v2, TopKOpConverter);

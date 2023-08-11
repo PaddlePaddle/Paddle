@@ -45,8 +45,8 @@ TEST(unroll_ops, fill_constant) {
 }
 
 TEST(unroll_ops, assign) {
-  const int a[] = {1, 2, 3, 4, 5};
-  int b[] = {0, 0, 0, 0, 0};
+  const int a[] = {1, 2, 3, 4, 5};  // NOLINT
+  int b[] = {0, 0, 0, 0, 0};        // NOLINT
   UnrollAssign<3>::Run(a, b);
   EXPECT_EQ(b[0], 1);
   EXPECT_EQ(b[1], 2);
@@ -56,7 +56,7 @@ TEST(unroll_ops, assign) {
 }
 
 TEST(unroll_ops, var_args_assign) {
-  int a[] = {0, 0, 0};
+  int a[] = {0, 0, 0};  // NOLINT
   UnrollVarArgsAssign<int>::Run(a, 1, 2);
   EXPECT_EQ(a[0], 1);
   EXPECT_EQ(a[1], 2);
@@ -64,8 +64,8 @@ TEST(unroll_ops, var_args_assign) {
 }
 
 TEST(unroll_ops, compare) {
-  int a[] = {1, 2, 3};
-  int b[] = {1, 2, 4};
+  int a[] = {1, 2, 3};  // NOLINT
+  int b[] = {1, 2, 4};  // NOLINT
   EXPECT_TRUE(UnrollCompare<2>::Run(a, b));
   EXPECT_FALSE(UnrollCompare<3>::Run(a, b));
 
@@ -75,7 +75,7 @@ TEST(unroll_ops, compare) {
 }
 
 TEST(unroll_ops, product) {
-  int a[] = {2, 3, 4};
+  int a[] = {2, 3, 4};  // NOLINT
   EXPECT_EQ(UnrollProduct<3>::Run(a), a[0] * a[1] * a[2]);
 }
 

@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/ir/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
@@ -164,13 +165,22 @@ struct OpFuncNode {
   std::map<std::string, std::vector<int>> output_index;
 
   // TODO(zhiqiu): Better make it unique_ptr
-  std::shared_ptr<OperatorBase> operator_base_;
+  std::shared_ptr<OperatorBase> operator_base_{nullptr};
   std::string execution_stream_{kDefaultStream};
 
   OpFuncType type_;
   OpKernelComputeFunc kernel_func_;
 
   SchedulingPriority scheduling_priority_{0};  // lower value, higher priority
+
+  // the next only for new IR
+  phi::KernelContext kernel_context_;
+  phi::InferMetaContext infer_meta_context_;
+  std::string phi_op_name_;
+  paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{nullptr};
+
+  bool fluid_op{false};
+  std::shared_ptr<RuntimeContext> runtime_ctx_{nullptr};
 };
 
 class Instruction {
@@ -234,6 +244,8 @@ class Instruction {
 
   OperatorBase* OpBase() const;
 
+  bool OpBaseValid() const;
+
   void AddGCCheckVar(size_t id);
 
   const std::vector<size_t>& GCCheckVars() const;
@@ -263,6 +275,10 @@ class Instruction {
     return op_func_node_.scheduling_priority_;
   }
 
+  bool PreDefineContext() const { return pre_define_context_; }
+
+  const OpFuncNode* OpFunc() const { return &op_func_node_; }
+
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.
@@ -285,6 +301,8 @@ class Instruction {
   std::vector<size_t> gc_check_vars_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
+
+  bool pre_define_context_{false};
 };
 
 namespace interpreter {
@@ -345,6 +363,8 @@ class OpDepInfo {
   bool CheckAndDecrease() {
     return static_dep_ == 1 || (dynamic_dep_.fetch_sub(1) == 1);
   }
+  size_t StaticDep() const { return static_dep_; }
+  size_t DynamicDep() const { return dynamic_dep_; }
 
  private:
   const size_t static_dep_;

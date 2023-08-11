@@ -52,13 +52,21 @@ if(WIN32)
     set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
   endif()
 
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     message("Copied phi.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/phi.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
       DEPENDS phi)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
+  endif()
+
+  if(WITH_SHARED_IR)
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/ir.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${eager_generator_path}
+      DEPENDS ir)
+    list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/ir.dll)
   endif()
 
   if(${CBLAS_PROVIDER} STREQUAL MKLML)

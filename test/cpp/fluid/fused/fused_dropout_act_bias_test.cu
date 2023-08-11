@@ -17,8 +17,8 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "test/cpp/fluid/fused/fused_dropout_test.h"
@@ -30,7 +30,6 @@ PD_DECLARE_KERNEL(dropout_grad, GPU, ALL_LAYOUT);
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace details = paddle::operators::details;
 
 /**
  * @brief the unittest of fused_dropout_act_bias
@@ -90,7 +89,7 @@ struct TestFusedDropoutActBias {
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
-  ~TestFusedDropoutActBias() {}
+  ~TestFusedDropoutActBias() = default;
 
   void SetUp() {
     const int n = rows * cols;

@@ -35,6 +35,10 @@ void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out);
 
+void CreateIntArrayInferMeta(const IntArray& data,
+                             DataType dtype,
+                             MetaTensor* out);
+
 void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out);
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
@@ -47,6 +51,10 @@ void EyeInferMeta(const Scalar& num_rows,
                   DataType dtype,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
+
+void FeedWithPlaceInferMeta(int64_t index,
+                            phi::DataType data_type,
+                            MetaTensor* out);
 
 void GaussianInferMeta(const IntArray& shape,
                        float mean,

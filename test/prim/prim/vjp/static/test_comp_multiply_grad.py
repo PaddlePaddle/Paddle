@@ -107,7 +107,6 @@ class TestMultiplyGradComp(unittest.TestCase):
         )
 
     def test_comp(self):
-
         core._set_prim_backward_enabled(True)
         actual = self.vjp()
 

@@ -176,7 +176,6 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
         def test_backward_downscale_in_infer(self):
             for place in self.places:
                 with fluid.dygraph.guard(place):
-
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
@@ -192,7 +191,6 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
         def test_backward_upscale_train(self):
             for place in self.places:
                 with fluid.dygraph.guard(place):
-
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
@@ -213,7 +211,6 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
         def test_backward_upscale_train_2(self):
             for place in self.places:
                 with fluid.dygraph.guard(place):
-
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False

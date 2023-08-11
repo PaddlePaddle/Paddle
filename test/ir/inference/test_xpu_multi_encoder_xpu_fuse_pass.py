@@ -294,9 +294,6 @@ class TestMultiEncoderXPUFusePass(PassAutoScanTest):
         qkv_add_3_bias_shape = [qkv_matmul_3_w_shape[1]]
         ln_1_bias_shape = [q_matmul_x_shape[2]]
 
-        # def generate_q_matmul_w():
-        #     return np.random.random(x_shape).astype(np.float32)
-
         program_config = ProgramConfig(
             ops=ops,
             weights={

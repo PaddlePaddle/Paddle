@@ -200,7 +200,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         batch_nums=10,
         onnx_format=False,
     ):
-
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         scope = paddle.static.global_scope()

@@ -60,7 +60,6 @@ DECLARE_SPARSE_UNARY_KERNEL(Log1p)
 DECLARE_SPARSE_UNARY_KERNEL(Abs)
 DECLARE_SPARSE_UNARY_KERNEL(Expm1)
 DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
-DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6Raw, threshold)
 DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
 
 template <typename T, typename Context>
@@ -224,6 +223,22 @@ SparseCsrTensor ReshapeCsr(const Context& dev_ctx,
   ReshapeCsrKernel<T, Context>(dev_ctx, x, shape, &csr);
   return csr;
 }
+
+template <typename T, typename Context>
+void SliceCooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SliceCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCsrTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

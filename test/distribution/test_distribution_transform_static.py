@@ -14,9 +14,9 @@
 
 import unittest
 
-import config
 import numpy as np
 import parameterize as param
+from distribution import config
 
 import paddle
 from paddle.distribution import transform, variable

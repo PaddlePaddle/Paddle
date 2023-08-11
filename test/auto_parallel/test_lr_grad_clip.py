@@ -84,12 +84,10 @@ class TestGradClipByGlobalNorm(TestEngineBase):
         )
 
     def test_grad_clip(self):
-
         self.engine.fit(self.dataset, batch_size=self.batch_size)
         self.check_program()
 
     def check_program(self):
-
         ops = self.engine.main_program.global_block().ops
         has_grad_clip = False
         for op in ops:

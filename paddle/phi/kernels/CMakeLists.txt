@@ -44,6 +44,10 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
 endif()
 
+if(NOT WITH_DGC)
+  list(REMOVE_ITEM kernel_cu "gpu/dgc_kernel.cu")
+endif()
+
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
@@ -65,6 +69,13 @@ if(WITH_CUTLASS)
       --cuda_arch "${NVCC_ARCH_BIN}"
     RESULT_VARIABLE memory_efficient_attention_gen_res)
 
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_variable_forward_kernels.py
+      --cuda_arch "${NVCC_ARCH_BIN}"
+    RESULT_VARIABLE memory_efficient_attention_gen_res)
+
   if(NOT memory_efficient_attention_gen_res EQUAL 0)
     message(
       FATAL_ERROR
@@ -75,52 +86,40 @@ if(WITH_CUTLASS)
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/cutlass/conv2d/generated/*.cu" "fusion/cutlass/conv2d/*.cu"
+    "fusion/cutlass/conv2d/generated/*.cu"
+    "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
-    "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
+    "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
+    "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
+set(cc_search_pattern
+    "*.cc"
+    "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
+    "selected_rows/*.cc"
+    "selected_rows/cpu/*.cc"
+    "sparse/*.cc"
+    "sparse/cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
+    "strings/*.cc"
+    "strings/cpu/*.cc"
+    "fusion/*.cc"
+    "stride/*.cc"
+    "fusion/cpu/*.cc")
+
 if(WITH_MKLDNN)
-  file(
-    GLOB kernel_cc
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "*.cc"
-    "cpu/*.cc"
-    "legacy/*.cc"
-    "legacy/cpu/*.cc"
-    "legacy/onednn/*.cc"
-    "selected_rows/*.cc"
-    "selected_rows/cpu/*.cc"
-    "sparse/*.cc"
-    "sparse/cpu/*.cc"
-    "legacy/*.cc"
-    "legacy/cpu/*.cc"
-    "strings/*.cc"
-    "strings/cpu/*.cc"
-    "onednn/*.cc"
-    "fusion/*.cc"
-    "fusion/onednn/*.cc"
-    "fusion/cpu/*.cc")
-else()
-  file(
-    GLOB kernel_cc
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "*.cc"
-    "cpu/*.cc"
-    "legacy/*.cc"
-    "legacy/cpu/*.cc"
-    "selected_rows/*.cc"
-    "selected_rows/cpu/*.cc"
-    "sparse/*.cc"
-    "sparse/cpu/*.cc"
-    "legacy/*.cc"
-    "legacy/cpu/*.cc"
-    "strings/*.cc"
-    "strings/cpu/*.cc"
-    "fusion/*.cc"
-    "fusion/cpu/*.cc")
+  set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"
+                        "fusion/onednn/*.cc")
 endif()
+
+file(
+  GLOB kernel_cc
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  ${cc_search_pattern})
 
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
@@ -149,19 +148,21 @@ if(WITH_XPU)
       file(RENAME ${kernel} "${CMAKE_CURRENT_BINARY_DIR}/kps/${name}.kps")
     endforeach()
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.kps")
+    collect_generated_srcs(kernels_srcs SRCS ${kernel_xpu_kps})
 
     foreach(kernel ${kernel_cc})
-      file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/${kernel}
-           DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/${kernel})
+      configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${kernel}
+                     ${CMAKE_CURRENT_BINARY_DIR}/${kernel} COPYONLY)
     endforeach()
     file(GLOB_RECURSE kernel_xpu_cc "${CMAKE_CURRENT_BINARY_DIR}/*.cc")
+    collect_generated_srcs(kernels_srcs SRCS ${kernel_xpu_cc})
+    set(kernel_cc "")
 
-    set(kernel_cc ${kernel_xpu_cc})
-    collect_generated_srcs(kernels_srcs SRCS ${kernel_xpu_kps})
   endif()
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})
   kernel_declare("${kernel_xpu}")
   kernel_declare("${kernel_xpu_kps}")
+  kernel_declare("${kernel_xpu_cc}")
 endif()
 
 collect_srcs(kernels_srcs SRCS ${kernel_cc})

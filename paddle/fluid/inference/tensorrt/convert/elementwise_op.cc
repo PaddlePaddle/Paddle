@@ -21,7 +21,7 @@ namespace tensorrt {
 
 class ElementwiseTensorOpConverter : public OpConverter {
  public:
-  ElementwiseTensorOpConverter() {}
+  ElementwiseTensorOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
@@ -30,7 +30,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::ITensor* Y = nullptr;
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
-    if (Y_v) {
+    if (Y_v && !engine_->with_dynamic_shape()) {
       // Y is weight
       auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
@@ -102,7 +102,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
     int right_one_num = dims_x.nbDims - axis - dims_y.nbDims;
     nvinfer1::IShuffleLayer* reshape_layer;
     nvinfer1::ITensor* reshape_y_tensor;
-    if (left_one_num > 0 || right_one_num > 0) {
+    if (dims_x.nbDims != dims_y.nbDims &&
+        (left_one_num > 0 || right_one_num > 0)) {
       if (engine_->with_dynamic_shape()) {
         auto* y_shape_tensor = Shape(Y);
         auto* new_y_shape_tensor = y_shape_tensor;
@@ -324,7 +325,7 @@ class ElementwiseTensorModOpConverter : public ElementwiseTensorOpConverter {
 // https://github.com/PaddlePaddle/Paddle/blob/release/2.4/python/paddle/tensor/math.py#L420
 class PowOpConverter : public OpConverter {
  public:
-  PowOpConverter() {}
+  PowOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {

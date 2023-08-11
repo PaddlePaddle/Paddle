@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -471,6 +472,19 @@ static inline void DisplayMemoryInfo(platform::Place place,
       << "MB], [cpu peak reserved memory: "
       << ToMegaBytes(paddle::memory::HostMemoryStatPeakValue("Reserved", 0))
       << "MB]";
+}
+
+static std::string Precision2String(AnalysisConfig::Precision precison) {
+  if (precison == AnalysisConfig::Precision::kFloat32)
+    return "fp32";
+  else if (precison == AnalysisConfig::Precision::kHalf)
+    return "fp16";
+  else if (precison == AnalysisConfig::Precision::kInt8)
+    return "int8";
+  else if (precison == AnalysisConfig::Precision::kBf16)
+    return "bf16";
+  else
+    return "none";
 }
 
 }  // namespace inference

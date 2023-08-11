@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import scipy.special
 import scipy.stats
-from config import ATOL, DEVICES, RTOL
+from distribution.config import ATOL, DEVICES, RTOL
 from parameterize import (
     TEST_CASE_NAME,
     parameterize_cls,
@@ -363,7 +363,6 @@ class CauchyTestFeature(CauchyTest):
     )
     def test_kl_divergence(self, loc, scale):
         with paddle.fluid.dygraph.guard(self.place):
-
             # convert loc/scale to paddle's dtype(float32/float64)
             rv_paddle_other = Cauchy(
                 loc=paddle.full((), loc, dtype=self.rv_paddle.loc.dtype),

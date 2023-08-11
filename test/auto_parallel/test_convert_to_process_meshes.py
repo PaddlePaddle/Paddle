@@ -18,7 +18,7 @@ import unittest
 class TestConvertToProcessMeshes(unittest.TestCase):
     def test_convert_to_process_meshes(self):
         device_meshes = [[1, 8], [4, 8], [15, 8]]
-        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+        from paddle.distributed.auto_parallel.static.tuner.rule_based_tuner import (
             convert_to_process_meshes,
         )
 

@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 
 import numpy as np
-
-sys.path.append('..')
-sys.path.append('../../python/paddle/fluid/tests/unittests')
-
 from eager_op_test import OpTest
 from get_test_cover_info import (
     get_xpu_op_support_types,
@@ -312,7 +307,6 @@ class XPUOpTest(OpTest):
             output_names = [output_names]
 
         if self.dtype not in mean_grad_op_types_np:
-
             prog = Program()
             block = prog.global_block()
             scope = core.Scope()

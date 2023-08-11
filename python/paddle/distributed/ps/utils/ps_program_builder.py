@@ -273,7 +273,6 @@ class GpuPsProgramBuilder(PsProgramBuilder):
         super().__init__(pass_ctx)
 
     def _build_trainer_programs(self):
-
         add_lr_decay_table_pass = new_pass(
             "add_lr_decay_table_pass", self.attrs
         )

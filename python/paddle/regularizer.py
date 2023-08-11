@@ -65,6 +65,7 @@ class L1Decay(WeightDecayRegularizer):
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             # Example1: set Regularizer in optimizer
             import paddle
@@ -83,6 +84,9 @@ class L1Decay(WeightDecayRegularizer):
             back = out.backward()
             momentum.step()
             momentum.clear_grad()
+
+        .. code-block:: python
+            :name: code-example2
 
             # Example2: set Regularizer in parameters
             # Set L1 regularization in parameters.
@@ -172,6 +176,7 @@ class L2Decay(WeightDecayRegularizer):
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
             # Example1: set Regularizer in optimizer
             import paddle
@@ -190,6 +195,8 @@ class L2Decay(WeightDecayRegularizer):
             momentum.step()
             momentum.clear_grad()
 
+        .. code-block:: python
+            :name: code-example2
             # Example2: set Regularizer in parameters
             # Set L2 regularization in parameters.
             # Global regularizer does not take effect on my_conv2d for this case.

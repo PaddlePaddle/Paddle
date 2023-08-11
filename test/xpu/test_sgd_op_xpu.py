@@ -20,12 +20,12 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op import Operator
 from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op import Operator
 
 
 class XPUTestSgdOp(XPUOpTestWrapper):
@@ -76,7 +76,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
         place = paddle.XPUPlace(0)

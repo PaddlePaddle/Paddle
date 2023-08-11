@@ -30,6 +30,7 @@ from paddle.fluid.core import (
     get_trt_runtime_version,
     get_num_bytes_of_data_type,
     PredictorPool,
+    XpuConfig,
 )
 
 __all__ = [  # noqa
@@ -47,4 +48,5 @@ __all__ = [  # noqa
     'get_trt_runtime_version',
     'get_num_bytes_of_data_type',
     'PredictorPool',
+    'XpuConfig',
 ]

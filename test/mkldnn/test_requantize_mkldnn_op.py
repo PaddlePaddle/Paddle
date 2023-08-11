@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 from mkldnn_op_test import format_reorder
 
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 class TestReQuantizeOp(OpTest):

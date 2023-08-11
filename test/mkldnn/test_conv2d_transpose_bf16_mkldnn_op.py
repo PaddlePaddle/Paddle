@@ -15,16 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
+from test_conv2d_transpose_op import conv2dtranspose_forward_naive
 
 from paddle import enable_static
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-)
-from paddle.fluid.tests.unittests.test_conv2d_transpose_op import (
-    conv2dtranspose_forward_naive,
-)
 
 
 def conv2d_bias_naive(out, bias):

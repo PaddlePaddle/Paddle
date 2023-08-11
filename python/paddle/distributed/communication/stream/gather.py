@@ -58,7 +58,6 @@ def gather(
     sync_op=True,
     use_calc_stream=False,
 ):
-
     """
 
     Gather tensors from all participators.
@@ -120,7 +119,6 @@ def gather(
             )
         gather_list = []
     else:
-
         assert (
             gather_list is not None
         ), "gather_list must not be none for dst rank"

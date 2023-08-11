@@ -1,7 +1,7 @@
 cc_test(
   test_egr_task_nan_inf_utils
   SRCS nan_inf_utils_test.cc
-  DEPS eager_nan_inf_utils)
+  DEPS eager_nan_inf_utils phi)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   cc_test(

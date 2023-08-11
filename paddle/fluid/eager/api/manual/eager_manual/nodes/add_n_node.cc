@@ -46,8 +46,8 @@ AddNGradNodeFinal::operator()(
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(1);
   for (int i = 0; i < 1; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
+    out_metas[i].empty() ? returns[i].resize(1)
+                         : returns[i].resize(out_metas[i].size());
   }
 
   std::vector<paddle::Tensor*> api_output_0;
@@ -63,8 +63,8 @@ AddNGradNodeFinal::operator()(
   VLOG(3) << "Final State Running: AddNGradNodeFinal";
 
   // dygraph function
-  for (size_t i = 0; i < returns[0].size(); i++) {
-    returns[0][i] = ::scale_ad_func(out_grad, phi::Scalar(1.0), 0.0, true);
+  for (auto& item : returns[0]) {
+    item = ::scale_ad_func(out_grad, phi::Scalar(1.0), 0.0, true);
   }
 
   // Check NaN and Inf id needed

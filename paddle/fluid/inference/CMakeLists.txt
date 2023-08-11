@@ -32,7 +32,9 @@ endif()
 
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-set(utils_modules pretty_log string_helper benchmark)
+get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
+set(utils_modules pretty_log string_helper benchmark utf8proc)
 
 add_subdirectory(api)
 
@@ -57,14 +59,20 @@ set(KERNEL_LIST
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
-                                   ${utils_modules})
+  cc_library(paddle_inference DEPS ${fluid_modules} ${ir_targets}
+                                   ${STATIC_INFERENCE_API} ${utils_modules})
 else()
   # message("${fluid_modules}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
-  create_static_lib(paddle_inference ${fluid_modules} ${STATIC_INFERENCE_API}
-                    ${utils_modules})
+  # message("${phi_modules}")
+  if(WIN32)
+    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                      ${STATIC_INFERENCE_API} ${utils_modules})
+  else()
+    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+  endif()
 endif()
 
 if(NOT APPLE)
@@ -94,8 +102,13 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
-                          ${utils_modules})
+if(WIN32)
+  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
+                            ${utils_modules})
+else()
+  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} ${ir_targets}
+                            analysis_predictor ${utils_modules})
+endif()
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
@@ -103,10 +116,6 @@ endif()
 
 if(WITH_PSCORE)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
-endif()
-
-if(WITH_INFERENCE_NVTX AND NOT WIN32)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} cuda_profiler)
 endif()
 
 if(WITH_ONNXRUNTIME)
@@ -138,13 +147,6 @@ if(NOT APPLE
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS
       "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
-
-  # temporarily fix brpc double link issue(52842)
-  if(WITH_INFERENCE_API_TEST
-     AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-     AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 10.4)
-    set(LINK_FLAGS "${LINK_FLAGS} -Wl,-Bsymbolic")
-  endif()
 
   set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
                                                            "${LINK_FLAGS}")

@@ -13,17 +13,14 @@
 # limitations under the License.
 
 import random
-import sys
 import unittest
 
 import numpy as np
 from get_gpt_model import FakeDataset, generate_model
+from test_sparse_addmm_op import get_cuda_version
 
 import paddle
 from paddle.distributed.fleet import auto
-
-sys.path.append("../../python/paddle/fluid/tests/unittests")
-from test_sparse_addmm_op import get_cuda_version
 
 
 def apply_pass(use_fused_passes=False, fused_passes_list=[]):

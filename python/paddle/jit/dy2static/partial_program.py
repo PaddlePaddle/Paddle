@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -230,6 +231,7 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs
         )
+        self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -583,10 +585,8 @@ class PartialProgramLayer:
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
-                        [
-                            out_arg == var_grad_name
-                            for out_arg in x[1].output_arg_names
-                        ]
+                        out_arg == var_grad_name
+                        for out_arg in x[1].output_arg_names
                     ),
                     enumerate(target_program.block(0).ops),
                 )
@@ -823,26 +823,28 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                forward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    forward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            _apply_pass(
-                backward_program,
-                empty_startup_program,
-                "buffer_shared_inplace_pass",
-                attrs,
-                attr_types,
-            )
+            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+                _apply_pass(
+                    backward_program,
+                    empty_startup_program,
+                    "buffer_shared_inplace_pass",
+                    attrs,
+                    attr_types,
+                )
 
     @LazyInitialized
     def _inout_var_names(self):
@@ -958,6 +960,17 @@ class PartialProgramLayer:
         )
         var.stop_gradient = True
         return var
+
+    def _update_stop_gradient(self, out_vars):
+        # Update stop_gradient for all outputs
+        def set_stop_gradient(var_id, eager_tensor):
+            var = self._outputs[var_id]
+            assert isinstance(var, framework.Variable)
+            eager_tensor.stop_gradient = var.stop_gradient
+            return None
+
+        for idx, var in zip(self._outputs.var_ids, out_vars):
+            set_stop_gradient(idx, var)
 
     def _restore_out(self, out_vars):
         """

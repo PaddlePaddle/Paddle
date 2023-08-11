@@ -36,7 +36,6 @@ from .ifelse_transformer import IfElseTransformer
 from .logical_transformer import LogicalTransformer
 from .loop_transformer import LoopTransformer
 from .return_transformer import ReturnTransformer
-from .static_analysis import StaticAnalysisVisitor
 from .tensor_shape_transformer import TensorShapeTransformer
 from .tensorhook_transformer import RegisterHookTransformer
 from .typehint_transformer import TypeHintTransformer
@@ -69,28 +68,25 @@ class DygraphToStaticAst(BaseTransformer):
         self.translator_logger = logging_utils.TranslatorLogger()
 
     def get_static_ast(self, root):
-        # save root for some analysis may need global AST
         self.root = root
-        self.static_analysis_visitor = StaticAnalysisVisitor(root)
-        self.static_analysis_root = (
-            self.static_analysis_visitor.get_node_wrapper_root()
-        )
         self.decorate_func_name = None
-        self.transfer_from_node_type(self.static_analysis_root)
-        return self.static_analysis_root
 
-    def _apply(self, transformer, node_wrapper, log_level):
-        transformer(node_wrapper).transform()
+        # inplace transfer
+        self.transfer_from_node_type(self.root)
+        return self.root
+
+    def _apply(self, transformer, node, log_level):
+        transformer(node).transform()
         self.translator_logger.log_transformed_code(
             log_level, self.root, transformer.__name__
         )
 
-    def transfer_from_node_type(self, node_wrapper):
+    def transfer_from_node_type(self, node):
         self.translator_logger.log(
             1, f"Source code: \n{ast_to_source_code(self.root)}"
         )
         # Generic transformation
-        self.visit(node_wrapper.node)
+        self.visit(node)
 
         transformers = [
             RegisterHookTransformer,
@@ -114,7 +110,7 @@ class DygraphToStaticAst(BaseTransformer):
         apply_optimization(transformers)
 
         for index, transformer in enumerate(transformers):
-            self._apply(transformer, node_wrapper, log_level=index + 1)
+            self._apply(transformer, node, log_level=index + 1)
 
         self.translator_logger.log_transformed_code(
             logging_utils.LOG_AllTransformer, self.root, "All Transformers"

@@ -187,7 +187,6 @@ def get_device_nodes(hostnode):
 
 def _build_layer_from_tree(nodetrees):
     def build_layer(node, depth=0):
-
         if "GradNode" in node.name:
             return [], 0
 
@@ -365,7 +364,6 @@ class TimeRangeSummary:
                 )
             )  # device_id/type/stream_id
             for hostnode in hostnodes[1:]:  # skip root node
-
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns)
                 )
@@ -452,10 +450,8 @@ class DistributedSummary:
 
                 # case 2: TracerEventType is Operator but is communication op
                 elif hostnode.type == TracerEventType.Operator and any(
-                    [
-                        name in hostnode.name.lower()
-                        for name in _CommunicationOpName
-                    ]
+                    name in hostnode.name.lower()
+                    for name in _CommunicationOpName
                 ):
                     self.cpu_communication_range.append(
                         (hostnode.start_ns, hostnode.end_ns)
@@ -886,7 +882,6 @@ def _build_table(
     max_src_column_width=75,
     views=None,
 ):
-
     from .profiler import SummaryView
 
     """Prints a summary of events."""
@@ -941,7 +936,6 @@ def _build_table(
     )
 
     if views is None or SummaryView.DeviceView in views:
-
         # ----- Print Device Summary ----- #
         headers = ['Device', 'Utilization (%)']
         name_column_width = 30
@@ -1132,7 +1126,6 @@ def _build_table(
         append('')
 
     if views is None or SummaryView.ModelView in views:
-
         # ----- Print Model Summary Report ----- #
         model_perspective_items = (
             statistic_data.event_summary.model_perspective_items
@@ -1253,7 +1246,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.DistributedView in views:
-
         # ----- Print Distribution Summary Report ----- #
         if statistic_data.distributed_summary.communication_range:
             headers = [
@@ -1333,7 +1325,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.OperatorView in views:
-
         # ----- Print Operator Summary Report ----- #
         if statistic_data.event_summary.items:
             all_row_values = []
@@ -1633,7 +1624,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.KernelView in views:
-
         # ----- Print Kernel Summary Report ----- #
         if statistic_data.event_summary.kernel_items:
             all_row_values = []
@@ -1734,7 +1724,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.MemoryManipulationView in views:
-
         # ----- Print Memory Manipulation Summary Report ----- #
         if statistic_data.event_summary.memory_manipulation_items:
             all_row_values = []
@@ -1820,7 +1809,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.UDFView in views:
-
         # ----- Print UserDefined Summary Report ----- #
         if statistic_data.event_summary.userdefined_items:
             all_row_values = []
@@ -1969,7 +1957,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.MemoryView in views:
-
         # ----- Print Memory Summary Report ----- #
         if (
             statistic_data.memory_summary.allocated_items

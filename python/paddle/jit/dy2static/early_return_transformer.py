@@ -15,7 +15,6 @@
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 
 __all__ = []
 
@@ -25,12 +24,8 @@ class EarlyReturnTransformer(BaseTransformer):
     Transform if/else return statement of Dygraph into Static Graph.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(wrapper_root, AstNodeWrapper), (
-            "Type of input node should be AstNodeWrapper, but received %s ."
-            % type(wrapper_root)
-        )
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         """

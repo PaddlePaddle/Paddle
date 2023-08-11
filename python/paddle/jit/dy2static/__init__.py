@@ -34,6 +34,6 @@ from .convert_operators import convert_shape_compare  # noqa: F401
 from .assert_transformer import AssertTransformer
 from .ast_transformer import DygraphToStaticAst
 from .program_translator import convert_to_static
-from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from .static_analysis import NodeVarType, StaticAnalysisVisitor
 
 __all__ = []

@@ -96,7 +96,6 @@ class Docstring:
         return self.d['Examples']
 
     def _arg_with_type(self):
-
         for t in self.d['Args']:
             m = re.search(r'([A-Za-z0-9_-]+)\s{0,4}(\(.+\))\s{0,4}:', t)
             if m:

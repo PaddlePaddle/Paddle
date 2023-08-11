@@ -15,8 +15,12 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,75 +28,6 @@ namespace operators {
 class CudnnLSTMOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
-
-    OP_INOUT_CHECK(ctx->HasOutput("Reserve"), "Output", "Reserve", "CudnnLSTM");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("StateOut"), "Output", "StateOut", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasOutput("LastH"), "Output", "LastH", "CudnnLSTM");
-    OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
-
-    auto in_dims = ctx->GetInputDim("Input");
-    auto init_h_dims = ctx->GetInputDim("InitH");
-    auto init_c_dims = ctx->GetInputDim("InitC");
-
-    PADDLE_ENFORCE_EQ(in_dims.size(),
-                      3,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input in CudnnLSTM  must be 3. But "
-                          "received Input's rank is %d.",
-                          in_dims.size()));
-    PADDLE_ENFORCE_EQ(init_h_dims.size(),
-                      3,
-                      platform::errors::InvalidArgument(
-                          "The rank of InitH in CudnnLSTM  must be 3. But "
-                          "received InitH's rank is %d.",
-                          init_h_dims.size()));
-
-    if (ctx->HasInput("SequenceLength")) {
-      auto seq_dims = ctx->GetInputDim("SequenceLength");
-      PADDLE_ENFORCE_EQ(
-          in_dims[1],
-          seq_dims[0],
-          platform::errors::InvalidArgument(
-              "The size of SequenceLength has to equal the batch_size. But "
-              "received batch_size is %d and the size of SequenceLength is %d.",
-              in_dims[1],
-              seq_dims[0]));
-    }
-
-    PADDLE_ENFORCE_EQ(
-        in_dims[1],
-        init_h_dims[1],
-        platform::errors::InvalidArgument(
-            "The in_dims[1] (Input dims) and init_h_dims[1] (InitH "
-            "dims) should be equal. But "
-            "received in_dims[1] is %d and init_h_dims[1] is %d.",
-            in_dims[1],
-            init_h_dims[1]));
-
-    PADDLE_ENFORCE_EQ(init_c_dims,
-                      init_h_dims,
-                      platform::errors::InvalidArgument(
-                          "The InitC dims and InitH "
-                          "dims should be equal. But "
-                          "received init_c_dims is %d and init_h_dims is %d.",
-                          init_c_dims,
-                          init_h_dims));
-
-    auto out_dims = in_dims;
-    auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
-    bool is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
-    out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("LastH", init_c_dims);
-    ctx->SetOutputDim("LastC", init_h_dims);
-  }
 
  protected:
   phi::KernelKey GetExpectedKernelType(
@@ -295,12 +230,18 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(cudnn_lstm,
+                            CudnnLSTMInferShapeFunctor,
+                            PD_INFER_META(phi::CudnnLSTMInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cudnn_lstm,
                   ops::CudnnLSTMOp,
                   ops::CudnnLSTMOpMaker,
                   ops::CudnnLSTMGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>,
+                  CudnnLSTMInferShapeFunctor);
+
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
 // TODO(Shixiaowei02) Add ModifyInput support

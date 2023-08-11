@@ -60,6 +60,7 @@ if(NOT APPLE AND NOT WIN32)
     EXTRA_DEPS
     reset_tensor_array
     paddle_inference_shared
+    python
     ARGS
     --inference_model_dir=${WORD2VEC_MODEL_DIR})
 elseif(WIN32)

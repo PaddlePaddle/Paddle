@@ -15,7 +15,7 @@
 # TODO: define statistical functions of a tensor
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _ir_ops, ir
 from paddle.framework import in_dynamic_mode
 
 from ..common_ops_import import Variable
@@ -82,6 +82,8 @@ def mean(x, axis=None, keepdim=False, name=None):
     if in_dynamic_mode():
         return _C_ops.mean(x, axis, keepdim)
     else:
+        if ir.core._use_new_ir_api():
+            return _ir_ops.mean(x, axis, keepdim)
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         check_variable_and_dtype(
             x,
@@ -255,7 +257,7 @@ def numel(x, name=None):
         return out
 
 
-def nanmedian(x, axis=None, keepdim=True, name=None):
+def nanmedian(x, axis=None, keepdim=False, name=None):
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -263,7 +265,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     the average value of both elements in the middle is calculated as the median.
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, float32, float64.
+        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, bfloat16, float32, float64.
         axis (None|int|list|tuple, optional):
             The axis along which to perform median calculations ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
@@ -273,7 +275,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
-            the output Tensor is squeezed in ``axis`` . Default is True.
+            the output Tensor is squeezed in ``axis`` . Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -287,16 +289,16 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
 
             y1 = x.nanmedian()
-            # y1 is [[2.]]
+            # y1 is 2.
 
             y2 = x.nanmedian(0)
-            # y2 is [[0.,  1.5, 2.5]]
+            # y2 is [0., 1.5, 2.5]
 
-            y3 = x.nanmedian(0, keepdim=False)
-            # y3 is [0.,  1.5, 2.5]
+            y3 = x.nanmedian(0, keepdim=True)
+            # y3 is [[0.,  1.5, 2.5]]
 
             y4 = x.nanmedian((0, 1))
-            # y4 is [[2.]]
+            # y4 is 2.
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
@@ -304,7 +306,6 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
         raise ValueError("Axis list should not be empty.")
 
-    dims = len(x.shape)
     if axis is None:
         axis = []
     elif isinstance(axis, tuple):
@@ -312,31 +313,13 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     elif isinstance(axis, int):
         axis = [axis]
 
-    if not isinstance(axis, list):
-        raise ValueError(
-            "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-        )
-
-    for i in range(len(axis)):
-        if not isinstance(axis[i], int) or not (
-            axis[i] < dims and axis[i] >= -dims
-        ):
-            raise ValueError(
-                "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-            )
-        if axis[i] < 0:
-            axis[i] += dims
-
-    if len(axis) != len(set(axis)):
-        raise ValueError("Axis has duplicated elements.")
-
     if in_dynamic_mode():
         return _C_ops.nanmedian(x, axis, keepdim)
     else:
         check_variable_and_dtype(
             x,
             'X',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            ['int32', 'int64', 'float16', 'float32', 'float64', 'uint16'],
             'nanmedian',
         )
 

@@ -75,7 +75,7 @@ def train(fetch):
         initializer_range=0.02,
     )
     loss = paddle.nn.CrossEntropyLoss()
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
+    optimizer = paddle.optimizer.Adam(
         learning_rate=0.00001,
         beta1=0.9,
         beta2=0.999,
@@ -85,6 +85,9 @@ def train(fetch):
 
     dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
+    # dp optimization config
+    dp_optimization = dist_strategy.dp_optimization
+    dp_optimization.enable = True
     # sharding config
     sharding = dist_strategy.sharding
     sharding.enable = True

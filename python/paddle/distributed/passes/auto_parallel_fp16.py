@@ -16,11 +16,13 @@ from collections import defaultdict
 
 import paddle
 from paddle.common_ops_import import check_type, check_variable_and_dtype
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+)
+from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
@@ -192,12 +194,10 @@ class FP16State:
         return self.is_train
 
     def _mark_op(self, op):
-
         if op.type in __amp_skip_ops__:
             return
 
         if is_forward_op(op):
-
             # ernie inference trick
             if op.type == "assign" and "array_" in op.input_arg_names[0]:
                 self._op_fp16_dict[op.desc.original_id()] = False
@@ -225,7 +225,6 @@ class FP16State:
                 self.forward_non_leaf_tensors[var_name] = op.desc.id()
 
         elif is_backward_op(op) == int(OpRole.Backward):
-
             if op.desc.original_id() in self.grad_op_to_op_map:
                 fwd_op_id = self.grad_op_to_op_map[op.desc.original_id()]
                 assert fwd_op_id in self._op_fp16_dict, f"{str(op)}"
@@ -257,7 +256,6 @@ class FP16State:
             var.desc.set_dtype(__target_dtype__)
 
     def resolute_tensor_dtype(self, block):
-
         for op in block.ops:
             if is_forward_op(op):
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
@@ -380,7 +378,6 @@ class FP16State:
     def _insert_forward_cast_ops(
         self, op, idx, block, src_dtype, dst_dtype, dist_context
     ):
-
         num_cast_ops = 0
 
         for in_name in op.input_names:
@@ -468,7 +465,6 @@ class FP16State:
     def _insert_backward_cast_ops(
         self, op, idx, block, src_dtype, dst_dtype, dist_context
     ):
-
         num_cast_ops = 0
         op_id = op.desc.id()
         original_id = op.desc.original_id()
@@ -493,11 +489,9 @@ class FP16State:
             src_dtype,
             slot_name,
         ) in self.forward_input_cast_ops[forward_op_id]:
-
             # rename input
             # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
             if slot_name in op.input_names:
-
                 assert src_name in op.input(
                     slot_name
                 ), "var: {} not in op's {}. {}".format(
@@ -565,7 +559,6 @@ class FP16State:
 
 
 def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
-
     main_block = paddle.static.default_main_program().global_block()
     main_block._sync_with_cpp()
 
@@ -924,7 +917,7 @@ class FP16Pass(AMPPass):
 
             if self.target_dtype == "fp16":
                 if isinstance(
-                    base_opt, (paddle.static.Adam, paddle.optimizer.AdamW)
+                    base_opt, (paddle.optimizer.Adam, paddle.optimizer.AdamW)
                 ):
                     with main_program._optimized_guard([]):
                         # found_inf = paddle.tensor.creation._memcpy(

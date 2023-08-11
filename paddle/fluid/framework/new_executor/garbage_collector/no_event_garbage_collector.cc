@@ -27,13 +27,18 @@ InterpreterCoreNoEventGarbageCollector::
 }
 
 InterpreterCoreNoEventGarbageCollector::
-    ~InterpreterCoreNoEventGarbageCollector() {
+    ~InterpreterCoreNoEventGarbageCollector() {  // NOLINT
   queue_.reset(nullptr);
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
                                                  const Instruction& instr) {
   Add(var, &instr.DeviceContext());
+}
+
+void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
+                                                 const InstructionBase* instr) {
+  Add(var, &instr->DeviceContext());
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(

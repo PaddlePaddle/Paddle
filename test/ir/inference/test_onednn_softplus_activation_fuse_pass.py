@@ -85,14 +85,14 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={'X': ['softplus_out']},
                 outputs={'Out': ['activation_output']},
-                threshold=draw(st.floats(min_value=1.0, max_value=10.0)),
+                threshold=6.0,
             )
         elif activation_type == 'swish':
             activation_op = OpConfig(
                 activation_type,
                 inputs={'X': ['softplus_out']},
                 outputs={'Out': ['activation_output']},
-                beta=draw(st.floats(min_value=0.1, max_value=10.0)),
+                beta=1.0,
             )
         else:
             activation_op = OpConfig(

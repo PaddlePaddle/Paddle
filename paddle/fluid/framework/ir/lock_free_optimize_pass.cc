@@ -25,10 +25,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-const char kSumGradOpName[] = "sum";
+const char kSumGradOpName[] = "sum";  // NOLINT
 // TODO(minqiyang): only support sgd at current time, please add
 // other optimizers later.
-const char kOptimizerType[] = "sgd";
+const char kOptimizerType[] = "sgd";  // NOLINT
 
 void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -372,7 +372,7 @@ ir::Node* LockFreeOptimizePass::FindForwardOpViaBackwardOp(
 
   for (ir::Node* node : graph->Nodes()) {
     if (node->Name() == forward_op_name) {
-      if (node->outputs.size() == 0u) {
+      if (node->outputs.empty()) {
         // if forward_node has no output, then it has NO grad op
         continue;
       }

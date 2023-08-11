@@ -75,8 +75,8 @@ class AmpScaler:
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         model = paddle.nn.Conv2D(3, 2, 3)
-        optimizer = paddle.optimizer.SGDOptimizer(
-                learning_rate=0.01, parameter_list=model.parameters())
+        optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=model.parameters())
         scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
         data = paddle.to_tensor(data)
         with paddle.amp.amp_guard():
@@ -98,7 +98,6 @@ class AmpScaler:
         decr_every_n_nan_or_inf=1,
         use_dynamic_loss_scaling=True,
     ):
-
         tracer = _dygraph_tracer()
         if not tracer:
             raise ValueError(
@@ -169,8 +168,8 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 model = paddle.nn.Conv2D(3, 2, 3)
-                optimizer = paddle.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
+                optimizer = paddle.optimizer.SGD(
+                        learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 data = paddle.to_tensor(data)
                 with paddle.amp.amp_guard():
@@ -222,8 +221,8 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 model = paddle.nn.Conv2D(3, 2, 3)
-                optimizer = paddle.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
+                optimizer = paddle.optimizer.SGD(
+                        learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 data = paddle.to_tensor(data)
                 with paddle.amp.amp_guard():
@@ -592,15 +591,15 @@ class GradScaler(AmpScaler):
 
     Args:
         enable(bool, optional): Enable loss scaling or not. Default is True.
-        init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
+        init_loss_scaling (float, optional): The initial loss scaling factor. Default is 65536.0.
         incr_ratio(float, optional): The multiplier to use when increasing the loss
                         scaling. Default is 2.0.
         decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing
                         the loss scaling. Default is 0.5.
         incr_every_n_steps(int, optional): Increases loss scaling every n consecutive
-                                steps with finite gradients. Default is 1000.
+                                steps with finite gradients. Default is 2000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
-                                    accumulated steps with nan or inf gradients. Default is 2.
+                                    accumulated steps with nan or inf gradients. Default is 1.
         use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
     Returns:
         An GradScaler object.
@@ -629,11 +628,11 @@ class GradScaler(AmpScaler):
     def __init__(
         self,
         enable=True,
-        init_loss_scaling=2.0**15,
+        init_loss_scaling=2.0**16,
         incr_ratio=2.0,
         decr_ratio=0.5,
-        incr_every_n_steps=1000,
-        decr_every_n_nan_or_inf=2,
+        incr_every_n_steps=2000,
+        decr_every_n_nan_or_inf=1,
         use_dynamic_loss_scaling=True,
     ):
         super().__init__(

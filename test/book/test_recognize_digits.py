@@ -19,6 +19,10 @@ import unittest
 
 import numpy
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
 from paddle.fluid import core
@@ -45,7 +49,7 @@ def mlp(img, label):
 
 
 def conv_net(img, label):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
@@ -54,7 +58,7 @@ def conv_net(img, label):
         act="relu",
     )
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
@@ -92,7 +96,7 @@ def train(
 
     test_program = fluid.default_main_program().clone(for_test=True)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer = paddle.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -133,23 +137,18 @@ def train(
                     if float(acc_val) > 0.2 or pass_id == (PASS_NUM - 1):
                         # Smaller value to increase CI speed
                         if save_dirname is not None:
-                            fluid.io.save_inference_model(
+                            paddle.static.io.save_inference_model(
                                 save_dirname,
-                                ["img"],
+                                img,
                                 [prediction],
                                 exe,
-                                model_filename=model_filename,
-                                params_filename=params_filename,
                             )
                         if save_full_dirname is not None:
-                            fluid.io.save_inference_model(
+                            paddle.static.save_inference_model(
                                 save_full_dirname,
                                 [],
                                 [],
                                 exe,
-                                model_filename=model_filename,
-                                params_filename=params_filename,
-                                export_for_deployment=False,
                             )
                         return
                     else:
@@ -202,7 +201,7 @@ def infer(
 
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be feeded
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -210,8 +209,9 @@ def infer(
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            save_dirname, exe, model_filename, params_filename
+        ] = paddle.static.io.load_inference_model(
+            save_dirname,
+            exe,
         )
 
         # The input's dimension of conv should be 4-D or 5-D.
@@ -237,11 +237,13 @@ def main(use_cuda, parallel, nn_type, combine):
     model_filename = None
     params_filename = None
     if not use_cuda and not parallel:
-        save_dirname = "recognize_digits_" + nn_type + ".inference.model"
-        save_full_dirname = "recognize_digits_" + nn_type + ".train.model"
+        save_dirname = "recognize_digits_" + nn_type + "_inference_model"
+        save_full_dirname = "recognize_digits_" + nn_type + "_train_model"
         if combine:
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
+            save_dirname = save_dirname + model_filename
+            save_full_dirname = params_filename + params_filename
 
     # call train() with is_local argument to run distributed train
     train(

@@ -15,9 +15,9 @@
 import paddle
 from paddle import static
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost import CostEstimator
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.cost import CostEstimator
+from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
 
@@ -38,7 +38,7 @@ def train():
         train_program, start_program
     )
 
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
+    optimizer = paddle.optimizer.Adam(
         learning_rate=0.00001,
         beta1=0.9,
         beta2=0.999,

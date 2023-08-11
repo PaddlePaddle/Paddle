@@ -470,7 +470,7 @@ PHI_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";  // NOLINT
 PHI_DEFINE_EXPORTED_string(
     allocator_strategy,
     kDefaultAllocatorStrategy,
@@ -542,7 +542,7 @@ PHI_DEFINE_EXPORTED_double(
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
 
 /**
  * Memory related FLAG
@@ -1044,17 +1044,29 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
                          false,
                          "Use CUDA Graph in new executor");
 
+/*
+ * Executor related FLAG
+ * Name: FLAGS_executor_log_deps_every_microseconds
+ * Since Version: 2.5
+ * Value Range: uint64, default=0
+ * Example: FLAGS_executor_log_deps_every_microseconds=n (n>0) would
+ * allow new executor log deps every n microseconds.
+ */
+PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microseconds,
+                           0,
+                           "Enable new executor log deps every n microseconds");
+
 DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
-DEFINE_bool(enable_slotpool_wait_release,
+DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
             false,
             "enable slotrecord object wait release, default false");
-DEFINE_bool(enable_slotrecord_reset_shrink,
+DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
             false,
             "enable slotrecord object reset shrink memory, default false");
-DEFINE_bool(enable_ins_parser_file,
+DEFINE_bool(enable_ins_parser_file,  // NOLINT
             false,
             "enable parser ins file, default false");
 PHI_DEFINE_EXPORTED_bool(
@@ -1244,3 +1256,52 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
 PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
+                         false,
+                         "Enable new IR in executor");
+
+/**
+ * Using new IR API in Python
+ * Name: enable_new_ir_api
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, New IR API will be used in Python
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
+                         false,
+                         "Enable new IR API in Python");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor_beta_run
+ * Since Version: 2.6.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If Ture, executor will use new IR and run in beta version.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_beta_run,
+                         true,
+                         "Enable new IR in executor");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor_loop_run
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR and run in beta version by for loop
+ * version.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_loop_run,
+                         false,
+                         "Enable new IR in executor");

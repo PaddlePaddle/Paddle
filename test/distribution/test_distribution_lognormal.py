@@ -15,9 +15,9 @@
 import math
 import unittest
 
-import config
 import numpy as np
 import scipy.stats
+from distribution import config
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 from test_distribution import DistributionNumpy
 

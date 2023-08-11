@@ -132,7 +132,7 @@ void MultinomialKernel(const Context& dev_ctx,
                        const Scalar& num_samples,
                        bool replacement,
                        DenseTensor* out) {
-  using MT = typename kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   auto int_num_samples = num_samples.to<int>();
   auto* in_data = x.data<T>();

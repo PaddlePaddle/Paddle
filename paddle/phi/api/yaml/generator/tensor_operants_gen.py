@@ -493,10 +493,9 @@ class OperantsAPI(ForwardAPI):
         )
         first_input_type = " ".join(declare_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
-        assert first_input_type == "const Tensor&", (
-            "Error! The first argument of Tensor Api %s must be Tensor, but received %s"
-            % (func_name, first_input_type)
-        )
+        assert (
+            first_input_type == "const Tensor&"
+        ), f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
         for name in self.attrs['names']:
             default_value = ''
             if self.attrs['attr_info'][name][1] is not None:
@@ -515,10 +514,9 @@ class OperantsAPI(ForwardAPI):
         )
         first_input_type = " ".join(define_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
-        assert first_input_type == "const Tensor&", (
-            "Error! The first argument of Tensor Api %s must be Tensor, but received %s"
-            % (func_name, first_input_type)
-        )
+        assert (
+            first_input_type == "const Tensor&"
+        ), f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
         for name in self.attrs['names']:
             define_args.append(self.attrs['attr_info'][name][0] + ' ' + name)
         # remove first Tensor argument

@@ -175,7 +175,6 @@ class BuildCINNPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         assert (
             'FLAGS_allow_cinn_ops' in core.globals()
         ), "PaddlePaddle is not compiled with CINN support"
@@ -201,7 +200,6 @@ class BuildCINNPass(CPPPassWrapper):
                 )
 
             else:
-
                 tmp_main_program = Executor._add_fetch_ops(
                     main_program, fetch_list, 'fetch'
                 )

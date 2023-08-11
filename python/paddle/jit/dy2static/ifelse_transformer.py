@@ -16,7 +16,6 @@ import copy
 from collections import defaultdict
 
 from paddle.fluid import unique_name
-from paddle.jit.dy2static.static_analysis import AstNodeWrapper
 from paddle.jit.dy2static.utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
@@ -57,12 +56,8 @@ class IfElseTransformer(BaseTransformer):
     Transform if/else statement of Dygraph into Static Graph.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(wrapper_root, AstNodeWrapper), (
-            "Type of input node should be AstNodeWrapper, but received %s ."
-            % type(wrapper_root)
-        )
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         FunctionNameLivenessAnalysis(
             self.root
         )  # name analysis of current ast tree.

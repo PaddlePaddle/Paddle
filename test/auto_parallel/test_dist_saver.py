@@ -63,7 +63,6 @@ class MLPLayer(nn.Layer):
 
 class TestDistSaver(unittest.TestCase):
     def test_dist_saver(self):
-
         mlp = MLPLayer()
         loss = paddle.nn.CrossEntropyLoss()
         optimizer = paddle.optimizer.Adam(

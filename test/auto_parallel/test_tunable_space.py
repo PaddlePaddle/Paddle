@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.tuner import tunable_space as ts
+from paddle.distributed.auto_parallel.static.tuner import tunable_space as ts
 
 
 class TestTunableSpace(unittest.TestCase):

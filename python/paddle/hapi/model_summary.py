@@ -332,7 +332,6 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             and not isinstance(layer, nn.LayerList)
             and (not (layer == model) or depth < 1)
         ):
-
             hooks.append(layer.register_forward_post_hook(hook))
         # For rnn, gru and lstm layer
         elif hasattr(layer, 'could_use_cudnn') and layer.could_use_cudnn:

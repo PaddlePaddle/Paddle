@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/generator.h"
 

@@ -347,7 +347,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    // conv_weight fp32 --> fp16
+    // conv_weight fp16 --> fp32
     auto* conv_weight_tensor =
         scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
@@ -367,7 +367,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                         input_names.end() &&
-                    conv->Op()->Input("Bias").size() > 0;
+                    !conv->Op()->Input("Bias").empty();
     bool mkldnn_with_bias = is_mkldnn && has_bias;
 
     // Create eltwise_y (conv bias) variable
@@ -756,7 +756,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_conv_bn_count);
 }
 
-ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
+ConvTransposeBNFusePass::ConvTransposeBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -800,7 +800,8 @@ ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
       .End();
 }
 
-ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
+ConvTransposeEltwiseAddBNFusePass::
+    ConvTransposeEltwiseAddBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -844,7 +845,7 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
       .End();
 }
 
-DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {
+DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("depthwise_conv2d"))
       .AddInput("Input")
       .IsTensor()

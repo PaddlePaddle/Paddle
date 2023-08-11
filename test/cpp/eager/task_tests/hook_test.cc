@@ -64,12 +64,12 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
 
   // Create Target Tensor
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 
@@ -140,12 +140,12 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 
   // Create Target Tensor
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 

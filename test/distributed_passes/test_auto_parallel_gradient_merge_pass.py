@@ -14,12 +14,9 @@
 
 import logging
 import random
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../legacy_test")
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
@@ -186,7 +183,7 @@ class TestGradientMergePass(AutoPallelPassTestBase):
 
             loss = mlp_forward(input, label, hidden_size)
 
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer)
         (
             _,

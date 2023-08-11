@@ -238,11 +238,12 @@ def try_load_model_vars(
             dump_prog_fn = program_type_trans(
                 dump_dir, dump_prog_fn, is_text_dump_program
             )
-        (
+
+        [
             inference_program,
             feed_target_names,
             fetch_targets,
-        ) = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             dump_dir,
             exe,
             model_filename=dump_prog_fn,
@@ -321,7 +322,7 @@ def try_load_model_vars(
                 global_block._remove_op(index)
 
         # if fetch_list have lod tensor
-        return_numpy = all([v.lod_level == 0 for v in fetch_list])
+        return_numpy = all(v.lod_level == 0 for v in fetch_list)
 
         # try dump fetch_targets
         feed_tensors = []

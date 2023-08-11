@@ -23,21 +23,25 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, utils
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.cost import (
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.cost import (
     AllreduceSumOpCost,
     _g_op_cost_factory,
 )
-from paddle.distributed.auto_parallel.cost.base_cost import (
+from paddle.distributed.auto_parallel.static.cost.base_cost import (
     build_comm_costs_from_descs,
     build_comm_desc_from_dist_op,
     build_comp_costs_from_descs,
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.parallelizer import (
+    AutoParallelizer,
+)
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()
@@ -97,10 +101,9 @@ def mlp_forward(train_program, start_program):
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32'
         )
-
-        fill_constant_out = paddle.fluid.layers.fill_constant_batch_size_like(
-            input=input, shape=[batch_size], value=1, dtype="int32"
-        )
+        fill_shape = [batch_size]
+        fill_shape[0] = input.shape[0]
+        fill_constant_out = paddle.full(fill_shape, 1, dtype="int32")
         embedding = paddle.nn.Embedding(10, hidden_size, sparse=True)
         embedding_out = embedding(fill_constant_out)
 
@@ -128,7 +131,7 @@ def get_prog(train_program, startup_program, dist_context, rank_id):
     )
 
     fleet._user_defined_strategy = fleet.DistributedStrategy()
-    fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    fleet.user_defined_optimizer = paddle.optimizer.Adam()
     parallelizer = AutoParallelizer(fleet)
     parallelizer._dist_context = dist_context
 

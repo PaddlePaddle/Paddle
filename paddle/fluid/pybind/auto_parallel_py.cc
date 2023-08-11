@@ -18,18 +18,31 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
+#include "paddle/utils/pybind.h"
+
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
+#endif
 
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
 
+using paddle::distributed::auto_parallel::DistTensorSpec;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
+using paddle::distributed::auto_parallel::SPMDRuleBase;
+using paddle::distributed::auto_parallel::SPMDRuleMap;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
 using phi::distributed::auto_parallel::Device;
@@ -42,6 +55,8 @@ using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
 using phi::distributed::auto_parallel::ProcessMesh;
 using phi::distributed::auto_parallel::TensorDistAttr;
+
+PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
@@ -99,6 +114,47 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 }
 
 void BindAutoParallel(py::module *m) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  auto ReshardFunction =
+      py::class_<phi::distributed::ReshardFunction>(*m, "ReshardFunction")
+          .def(
+              "is_suitable",
+              [](phi::distributed::ReshardFunction &self,
+                 py::handle py_tensor,
+                 const std::shared_ptr<phi::distributed::TensorDistAttr>
+                     &dist_attr) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto p_dist =
+                    std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                        tensor.impl());
+                return self.IsSuitable(*p_dist, dist_attr);
+              },
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "eval",
+              [](phi::distributed::ReshardFunction &self,
+                 phi::DeviceContext *dev_ctx,
+                 py::handle py_tensor,
+                 const std::shared_ptr<phi::distributed::TensorDistAttr>
+                     &dist_attr) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto p_dist =
+                    std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                        tensor.impl());
+                auto res_dist = self.Eval(dev_ctx, *p_dist, dist_attr);
+                return paddle::Tensor(res_dist);
+              },
+              py::call_guard<py::gil_scoped_release>());
+
+  py::class_<phi::distributed::RToSReshardFunction>(
+      *m, "RToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToRReshardFunction>(
+      *m, "SToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+#endif
+
   py::class_<ProcessMesh>(*m, "ProcessMesh")
       .def(py::init<>())
       .def(py::init<const std::vector<int64_t> &,
@@ -225,8 +281,11 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::class_<TensorDistAttr>(*m, "TensorDistAttr")
-      .def(py::init<>())
+  py::class_<TensorDistAttr, std::shared_ptr<TensorDistAttr>> py_dist_attr(
+      *m, "TensorDistAttr");
+  g_tensor_dist_attr_pytype =
+      reinterpret_cast<PyTypeObject *>(py_dist_attr.ptr());
+  py_dist_attr.def(py::init<>())
       .def(py::init([](const VarDesc &var_desc) {
         auto shape =
             paddle::distributed::auto_parallel::get_tensor_shape(&var_desc);
@@ -274,7 +333,34 @@ void BindAutoParallel(py::module *m) {
             return TensorDistAttr(self);
           },
           py::arg("memo"))
-      .def("__str__", &TensorDistAttr::to_string);
+      .def("__str__", &TensorDistAttr::to_string)
+      .def("_is_partial", &TensorDistAttr::is_partial)
+      .def("_partial_dims", &TensorDistAttr::partial_dims)
+      .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
+      .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
+
+  py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
+      .def("infer_forward", &SPMDRuleBase::InferForward)
+      .def("infer_backward", &SPMDRuleBase::InferBackward);
+
+  py::class_<DistTensorSpec>(*m, "DistTensorSpec")
+      .def(py::init<>())
+      .def(py::init<const DistTensorSpec &>())
+      .def(py::init<const std::vector<int64_t> &, const TensorDistAttr &>())
+      .def("dims_mapping", &DistTensorSpec::dims_mapping)
+      .def("set_dims_mapping", &DistTensorSpec::set_dims_mapping)
+      .def("process_mesh", &DistTensorSpec::process_mesh)
+      .def("set_process_mesh", &DistTensorSpec::set_process_mesh)
+      .def_property("shape", &DistTensorSpec::shape, &DistTensorSpec::set_shape)
+      .def("__str__", &DistTensorSpec::to_string)
+      .def("__copy__",
+           [](const DistTensorSpec &self) { return DistTensorSpec(self); })
+      .def(
+          "__deepcopy__",
+          [](const DistTensorSpec &self, py::dict) {
+            return DistTensorSpec(self);
+          },
+          py::arg("memo"));
 
   py::class_<OperatorDistAttr>(*m, "OperatorDistAttr")
       .def(py::init<>())
@@ -378,6 +464,13 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &OperatorDistAttr::to_string);
+
+  m->def(
+      "get_spmd_rule",
+      [](const std::string op_type) {
+        return SPMDRuleMap::Instance().Get(op_type);
+      },
+      py::return_value_policy::reference);
 
   // TODO(liuzhenhai): DistributedMapper is not used for now, but
   // dist_mapper_test need the symbols forch DistributedMapper to be linked,

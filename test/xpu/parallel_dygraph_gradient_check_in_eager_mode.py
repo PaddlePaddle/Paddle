@@ -64,7 +64,7 @@ class SimpleNet(paddle.nn.Layer):
         return self.share_net(tmp)
 
 
-class TestDistTraning(unittest.TestCase):
+class TestDistTraining(unittest.TestCase):
     def test_multiple_xpus(self):
         self.trainer_id = dist.get_rank()
         self.pg = dist.init_parallel_env()
@@ -121,8 +121,8 @@ class TestDistTraning(unittest.TestCase):
 
     def check_acc(self, grad, grad_sum, acc_grad):
         if grad is not None:
-            grad_sum = grad_sum + grad.numpy()
-            acc_grad = acc_grad.numpy() if acc_grad is not None else None
+            grad_sum = grad_sum + grad.numpy(False)
+            acc_grad = acc_grad.numpy(False) if acc_grad is not None else None
             np.testing.assert_allclose(grad_sum, acc_grad, rtol=1e-6)
         return grad_sum
 
@@ -141,7 +141,9 @@ class TestDistTraning(unittest.TestCase):
                 grad = param.grad
                 other_grad = self.broadcast_param(grad, root=1)
                 if self.trainer_id == 0:
-                    np.testing.assert_allclose(other_grad.numpy(), grad.numpy())
+                    np.testing.assert_allclose(
+                        other_grad.numpy(False), grad.numpy(False)
+                    )
 
 
 if __name__ == '__main__':

@@ -362,6 +362,27 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         )
 
 
+def dist_tensor_to_string(tensor, prefix='Tensor'):
+    # TODO(dev): Complete tensor will be printed after reshard
+    # is ready.
+    indent = len(prefix) + 1
+    dtype = convert_dtype(tensor.dtype)
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, dist_attr={dist_attr},\n{indent}{data})"
+    return _template.format(
+        prefix=prefix,
+        shape=tensor.shape,
+        dtype=dtype,
+        place=tensor._place_str,
+        stop_gradient=tensor.stop_gradient,
+        dist_attr=tensor.dist_attr,
+        indent=' ' * indent,
+        data=None,
+    )
+
+
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
@@ -373,6 +394,9 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
+
+    if tensor.is_dist():
+        return dist_tensor_to_string(tensor, prefix)
 
     if not tensor._is_dense_tensor_hold_allocation():
         return "Tensor(Not initialized)"

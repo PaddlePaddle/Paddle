@@ -164,7 +164,6 @@ class BertEmbeddings(nn.Layer):
         position_ids: Optional[Tensor] = None,
         past_key_values_length: Optional[int] = None,
     ):
-
         if position_ids is None:
             ones = paddle.ones_like(input_ids, dtype="int64")
             seq_length = paddle.cumsum(ones, axis=-1)
@@ -275,7 +274,6 @@ class BertModel(nn.Layer):
         output_attentions: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ):
-
         return_dict = (
             return_dict
             if return_dict is not None
@@ -811,7 +809,6 @@ class PretrainingDataset(Dataset):
         return len(self.inputs[0])
 
     def __getitem__(self, index):
-
         [
             input_ids,
             input_mask,

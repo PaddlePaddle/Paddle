@@ -15,12 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
+from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 from paddle import enable_static
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_transpose_op import (
-    TestConv2DTransposeOp,
-)
 
 
 def conv2d_bias_naive(out, bias):
@@ -64,7 +62,6 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
         self.dtype = np.float32
 
     def setUp(self):
-
         TestConv2DTransposeOp.setUp(self)
 
         output = self.outputs['Output']

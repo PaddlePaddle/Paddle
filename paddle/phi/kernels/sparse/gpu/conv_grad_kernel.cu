@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
 
@@ -57,9 +57,12 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                             SparseCooTensor* x_grad,
                             DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
-  const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
+  const bool is2D = kernel_dims.size() == 4 ? true : false;
+  const int kernel_size =
+      is2D ? kernel_dims[0] * kernel_dims[1]
+           : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
+  const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
 
   int rulebook_len = 0;
   const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
@@ -134,7 +137,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemsetAsync(
       out_index_ptr, 0, sizeof(int) * x.nnz() * 2, dev_ctx.stream());
 
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
 
@@ -177,7 +180,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                     out_channels,
                     out_grad_features_ptr);
 
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
   }
 #endif
   const T* kernel_ptr = kernel.data<T>();
@@ -195,7 +198,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
     T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
     T* tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
 
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
     if (cutlass) {
       const IntT* gather_x_indices = rulebook_ptr + offsets[i];
       const IntT* scatter_x_indices = rulebook_ptr + offsets[i];
@@ -266,13 +269,13 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                 tmp_kernel_ptr,
                 static_cast<T>(0),
                 tmp_d_x_ptr);
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
     }
 #endif
   }
 
   // 4. scatter
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
   if (!cutlass) {
 #endif
     phi::funcs::sparse::ScatterV2<T>(dev_ctx,
@@ -284,7 +287,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                      in_channels,
                                      2,
                                      x_grad_values_ptr);
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
   }
 #endif
 }
@@ -324,7 +327,6 @@ void Conv3dCooGradKernel(const Context& dev_ctx,
                                           kernel_grad);
       }));
 }
-
 }  // namespace sparse
 }  // namespace phi
 

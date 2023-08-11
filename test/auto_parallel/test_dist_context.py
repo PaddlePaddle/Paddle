@@ -21,7 +21,9 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, static
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()

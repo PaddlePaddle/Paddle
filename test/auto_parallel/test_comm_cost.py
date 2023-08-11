@@ -20,8 +20,8 @@ import unittest
 from test_cluster import cluster_json, multi_cluster_json
 
 import paddle
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost import (
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.cost import (
     AllgatherOpCost,
     AllreduceSumOpCost,
     BroadcastOpCost,

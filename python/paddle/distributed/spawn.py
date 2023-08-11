@@ -211,9 +211,10 @@ def _get_subprocess_env_list(nprocs, options):
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
                     raise ValueError(
-                        "The selected gpu card %s cannot found in "
-                        "CUDA_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
+                        "The selected gpu card {} cannot found in "
+                        "CUDA_VISIBLE_DEVICES ({}).".format(
+                            card_id, ",".join(env_devices_list)
+                        )
                     )
 
     elif options['backend'] == 'bkcl':
@@ -251,9 +252,10 @@ def _get_subprocess_env_list(nprocs, options):
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
                     raise ValueError(
-                        "The selected xpu card %s cannot found in "
-                        "XPU_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
+                        "The selected xpu card {} cannot found in "
+                        "XPU_VISIBLE_DEVICES ({}).".format(
+                            card_id, ",".join(env_devices_list)
+                        )
                     )
     elif options['backend'] == 'gloo':
         # TODO check gpu / xpu flag must not exist

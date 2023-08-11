@@ -83,7 +83,7 @@ struct MatrixBandPartFunctor {
         handle, uplo, n, A, lda, &workspace_size));                      \
     auto workspace = phi::memory_utils::Alloc(                           \
         dev_ctx.GetPlace(),                                              \
-        workspace_size,                                                  \
+        workspace_size * sizeof(T),                                      \
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))); \
     T* workspace_ptr = reinterpret_cast<T*>(workspace->ptr());           \
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDn##C##potrf(            \

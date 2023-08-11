@@ -71,7 +71,6 @@ class DNNLayer(nn.Layer):
                 self._mlp_layers.append(act)
 
     def forward(self, sparse_inputs, dense_inputs):
-
         sparse_embs = []
         for s_input in sparse_inputs:
             if self.sync_mode == "gpubox":

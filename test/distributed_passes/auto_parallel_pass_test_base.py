@@ -24,7 +24,7 @@ import paddle
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 
-sys.path.append("..")
+sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
@@ -222,7 +222,7 @@ class AutoPallelPassTestBase(DistPassTestBase):
 
         clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
         if kwargs.get('optimizer', None) == "LarsMomentum":
-            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+            optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9
             )
         else:

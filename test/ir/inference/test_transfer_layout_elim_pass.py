@@ -46,7 +46,6 @@ class TestTransferElimPass0(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-
         transfer_layout0 = OpConfig(
             "transfer_layout",
             inputs={"X": ["input0"]},
@@ -122,7 +121,6 @@ class TestTransferElimPass1(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-
         transfer_layout0 = OpConfig(
             "transfer_layout",
             inputs={"X": ["input0"]},

@@ -19,18 +19,21 @@ import numpy as np
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
-from ..auto_parallel.operators.common import (
+from ..auto_parallel.process_mesh import ProcessMesh
+from ..auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
+from ..auto_parallel.static.operators.common import (
     SyncMode,
     is_data_parallel_reduce_op,
 )
-from ..auto_parallel.process_group import (
+from ..auto_parallel.static.process_group import (
     get_all_process_groups,
     get_world_process_group,
 )
-from ..auto_parallel.process_mesh import ProcessMesh
-from ..auto_parallel.reshard import Resharder
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.reshard import Resharder
+from ..auto_parallel.static.utils import (
     _get_comm_group,
     insert_dependencies_for_vars,
     is_gradient_clip_op,
@@ -324,7 +327,6 @@ class ClipGradByGloblNormPass(PassBase):
         self._remove_no_need_ops_vars(block)
 
     def _remove_no_need_ops_vars(self, block):
-
         removed_op_out_type = [
             'squared_l2_norm',
             'square',
@@ -460,7 +462,6 @@ class ClipGradByGloblNormPass(PassBase):
                     self.clip_helper._init_dist_attr(allreduce_op)
 
                     if insert_leaf_fill_constant_node:
-
                         # NOTE add naive deps for global norm sync in graph exe
                         j = idx - 1
                         prior_op = None

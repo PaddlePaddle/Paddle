@@ -30,6 +30,8 @@ from paddle.jit.dy2static.program_translator import (
 from paddle.nn import Layer
 from paddle.static import InputSpec
 
+os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
+
 
 class SimpleNet(Layer):
     def __init__(self):
@@ -97,7 +99,7 @@ class TestStaticFunctionInstance(unittest.TestCase):
             self.assertNotEqual(net_1.forward, net_2.forward)
 
             # convert layer into static progam of net_1
-            net_1.forward.concrete_program
+            net_1.forward.concrete_program  # noqa: B018
             self.assertTrue(len(net_1.forward.program_cache) == 1)
             # check no conversion applid with net_2
             self.assertTrue(len(net_2.forward.program_cache) == 0)
@@ -256,7 +258,6 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             self.assertTrue(first_program == recent_program)
 
     def test_get_concrete_program(self):
-
         foo = to_static(foo_func)
 
         # 1. specific InputSpec for `x`/`y`
@@ -298,7 +299,6 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
     def test_concrete_program(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
-
             # usage 1
             foo_1 = paddle.jit.to_static(
                 foo_func,
@@ -317,7 +317,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             # raise error
             foo_3 = paddle.jit.to_static(foo_func)
             with self.assertRaises(ValueError):
-                foo_3.concrete_program
+                foo_3.concrete_program  # noqa: B018
 
 
 class TestInputDefaultName(unittest.TestCase):
@@ -397,17 +397,17 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
-            net.forward.concrete_program
+            net.forward.concrete_program  # noqa: B018
 
         with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
-            net.forward.inputs
+            net.forward.inputs  # noqa: B018
 
         with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
-            net.forward.outputs
+            net.forward.outputs  # noqa: B018
 
 
 class CallNonForwardFuncNet(paddle.nn.Layer):

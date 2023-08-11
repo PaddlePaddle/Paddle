@@ -134,6 +134,22 @@ struct Layers {
     return out;
   }
 
+  VarDesc* squeeze2(VarDesc* x,
+                    const std::vector<int> axes = {-1},
+                    bool with_xshape = false) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("squeeze2");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axes", axes);
+    if (with_xshape) {
+      VarDesc* xshape = lod_tensor(unique_name());
+      op->SetOutput("XShape", {xshape->Name()});
+    }
+    return out;
+  }
+
   VarDesc* unsqueeze2(VarDesc* x, const std::vector<int> axes = {-1}) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
@@ -361,20 +377,31 @@ struct Layers {
     return outs;
   }
 
-  std::vector<VarDesc*> split(VarDesc* x, int num_or_section, int axis = 0) {
-    std::vector<VarDesc*> outs(num_or_section);
-    for (int i = 0; i < num_or_section; i++) {
+  std::vector<VarDesc*> split(VarDesc* x,
+                              int num_or_section = 0,
+                              int axis = 0,
+                              std::vector<int> sections = {-1}) {
+    int out_num = num_or_section;
+    if (num_or_section == 0) {
+      out_num = sections.size();
+    }
+    std::vector<VarDesc*> outs(out_num);
+    for (int i = 0; i < out_num; i++) {
       outs[i] = lod_tensor(unique_name());
     }
-    std::vector<std::string> out_names(num_or_section);
-    for (int i = 0; i < num_or_section; i++) {
+    std::vector<std::string> out_names(out_num);
+    for (int i = 0; i < out_num; i++) {
       out_names[i] = outs[i]->Name();
     }
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("split");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", out_names);
-    op->SetAttr("num_or_section", num_or_section);
+    if (num_or_section == 0) {
+      op->SetAttr("sections", sections);
+    } else {
+      op->SetAttr("num_or_section", num_or_section);
+    }
     op->SetAttr("axis", axis);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
@@ -406,6 +433,17 @@ struct Layers {
     op->SetAttr("transpose_X", transpose_x);
     op->SetAttr("transpose_Y", transpose_y);
     op->SetAttr("alpha", 1.0f);
+    return out;
+  }
+
+  VarDesc* clip(VarDesc* x, VarDesc* min, VarDesc* max) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("clip");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Min", {min->Name()});
+    op->SetInput("Max", {max->Name()});
+    op->SetOutput("Out", {out->Name()});
     return out;
   }
 

@@ -791,14 +791,15 @@ def binary_cross_entropy_with_logits(
             logit.dtype,
             _current_expected_place(),
         )
-        out = _C_ops.sigmoid_cross_entropy_with_logits(
-            logit, label, False, -100
-        )
+
         if pos_weight is not None:
-            log_weight = _C_ops.add(
+            pos_weight = _C_ops.add(
                 _C_ops.multiply(label, _C_ops.subtract(pos_weight, one)), one
             )
-            out = _C_ops.multiply(out, log_weight)
+        out = _C_ops.sigmoid_cross_entropy_with_logits(
+            logit, label, pos_weight, False, -100
+        )
+
         if weight is not None:
             out = _C_ops.multiply(out, weight)
 
@@ -829,13 +830,6 @@ def binary_cross_entropy_with_logits(
 
         out = helper.create_variable_for_type_inference(dtype=logit.dtype)
 
-        helper.append_op(
-            type="sigmoid_cross_entropy_with_logits",
-            inputs={"X": logit, "Label": label},
-            attrs={"ignore_index": kIgnoreIndex, 'normalize': False},
-            outputs={"Out": out},
-        )
-
         one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)
         if pos_weight is not None:
             check_variable_and_dtype(
@@ -844,13 +838,16 @@ def binary_cross_entropy_with_logits(
                 ['float32', 'float64'],
                 'binary_cross_entropy_with_logits',
             )
-            log_weight = paddle.add(
+            pos_weight = paddle.add(
                 paddle.multiply(label, paddle.subtract(pos_weight, one)), one
             )
-            pos_weight_name = (
-                name if reduction == 'none' and weight is None else None
-            )
-            out = paddle.multiply(out, log_weight, name=pos_weight_name)
+
+        helper.append_op(
+            type="sigmoid_cross_entropy_with_logits",
+            inputs={"X": logit, "Label": label, "pos_weight": pos_weight},
+            attrs={"ignore_index": kIgnoreIndex, 'normalize': False},
+            outputs={"Out": out},
+        )
 
         if weight is not None:
             check_variable_and_dtype(
@@ -977,7 +974,6 @@ def hsigmoid_loss(
         )
         return out
     else:
-
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'hsigmoid_loss'
         )
@@ -1614,7 +1610,10 @@ def kl_div(input, label, reduction='mean', name=None):
             import paddle.nn.functional as F
 
             shape = (5, 20)
-            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+
+            # input(x) should be a distribution in the log space
+            x = F.log_softmax(paddle.randn(shape), axis=1).astype('float32')
+
             target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [], who is 0-D Tensor
@@ -2709,7 +2708,6 @@ def cross_entropy(
         )
 
         if weight is not None:
-
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label:
                 # chajchaj:
@@ -3063,7 +3061,7 @@ def sigmoid_focal_loss(
         one = _C_ops.full(logit.shape, float(1.0), logit.dtype, place)
 
         loss = _C_ops.sigmoid_cross_entropy_with_logits(
-            logit, label, False, -100
+            logit, label, None, False, -100
         )
 
         pred = _C_ops.sigmoid(logit)
@@ -3110,7 +3108,7 @@ def sigmoid_focal_loss(
         if reduction == 'none' and normalizer is None:
             bce_name = name
         loss = paddle.nn.functional.binary_cross_entropy_with_logits(
-            logit, label, reduction='none', name=bce_name
+            logit, label, None, reduction='none', name=bce_name
         )
 
         pred = paddle.nn.functional.sigmoid(logit)

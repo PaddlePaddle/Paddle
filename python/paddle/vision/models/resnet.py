@@ -127,7 +127,6 @@ class BasicBlock(nn.Layer):
 
 
 class BottleneckBlock(nn.Layer):
-
     expansion = 4
 
     def __init__(

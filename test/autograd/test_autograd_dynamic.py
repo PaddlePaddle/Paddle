@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import collections
+import sys
 import typing
 import unittest
+
+sys.path.insert(0, '.')
 
 import config
 import numpy as np

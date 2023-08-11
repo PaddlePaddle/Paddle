@@ -19,10 +19,12 @@
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
 namespace framework {
@@ -31,35 +33,25 @@ class InterpreterCore;
 
 class StandaloneExecutor {
  public:
-  StandaloneExecutor(const platform::Place& place, const ProgramDesc& prog);
+  StandaloneExecutor(const platform::Place& place,
+                     const interpreter::Plan& plan_,
+                     Scope* scope);
 
   ~StandaloneExecutor() {}
 
-  // NOTE(zhiqiu): feed_names are only used for caching interpretercore.
-  // fetch_names are used for caching interpretercore and inserting fetch ops,
-  // the latter can be moved to python side.
-  paddle::framework::FetchList Run(Scope* scope,
-                                   const std::vector<std::string>& feed_names,
-                                   const std::vector<std::string>& fetch_names);
-
-  framework::interpreter::CostInfo DryRun(
-      Scope* scope,
-      const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors);
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
  private:
-  std::shared_ptr<InterpreterCore> GetInterpreterCore(
-      Scope* scope,
-      const ProgramDesc& prog,
-      const std::vector<std::string>& feed_names,
-      const std::vector<std::string>& fetch_names,
-      bool add_fetch_op);
+  bool is_interpretercore_build_result_shared_{false};
+  const platform::Place place_;
+  const interpreter::Plan plan_;
 
-  platform::Place place_;
-  const ProgramDesc& prog_;
+  std::vector<framework::Scope*> micro_batch_scopes_;
+  std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 
-  std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
-      interpretercores_;
+  Scope* scope_;
+
+  std::vector<std::string> fetch_var_names_;
 };
 
 }  // namespace framework

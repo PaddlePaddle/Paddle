@@ -118,7 +118,7 @@ class RegisterPassHelper:
                     conditions.append(element._condition)
                 _add_element_conditions(conditions, element._elements)
 
-        for (pattern, replace) in zip(patterns, replaces):
+        for pattern, replace in zip(patterns, replaces):
             # Convert maps of inputs and outputs.
             var_map = desc.var_maps.add()
             var_map.pattern_var = pattern.name
@@ -159,7 +159,7 @@ class RegisterPassHelper:
         multi_pass_desc.pass_type = self._pass_type
         # Traverse all pass pairs and convert them to PassDesc data.
         # Here need to add cache in the future.
-        for (pattern, replace) in self._pass_pairs:
+        for pattern, replace in self._pass_pairs:
             pass_desc = multi_pass_desc.pass_descs.add()
             # Convert ProgramDescs of pattern and replace subgraphs.
             pattern_vars, pattern_ops = self._func_to_program_desc(
@@ -314,6 +314,36 @@ class PassDesc:
             return attr
 
     class OpHelper:
+        def _to_readable_code(self, skip_op_callstack=True):
+            assert isinstance(
+                skip_op_callstack, bool
+            ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
+                type(skip_op_callstack)
+            )
+            outputs_str = "{"
+            outputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._outputs.items()]
+            )
+            outputs_str += "}"
+
+            inputs_str = "{"
+            inputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._inputs.items()]
+            )
+            inputs_str += "}"
+
+            attrs_str = "{"
+            attrs_str += ", ".join([f"{k}={v}" for k, v in self._attrs.items()])
+            attrs_str += "}"
+
+            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".format(
+                outputs=outputs_str,
+                op_type=self._type,
+                inputs=inputs_str,
+                attrs=attrs_str,
+            )
+            return op_str
+
         def __init__(self, type=None):
             self._type = type
 
@@ -327,7 +357,7 @@ class PassDesc:
                 raise ValueError(
                     "Each input argument needs to specify a parameter name."
                 )
-            for (in_name, in_args) in kwargs.items():
+            for in_name, in_args in kwargs.items():
                 op_input = self._inputs.get(in_name)
                 if op_input is None:
                     raise ValueError(

@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
 
 namespace paddle {
 namespace framework {

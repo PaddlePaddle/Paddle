@@ -70,33 +70,35 @@ endif()
 if(WITH_GPU)
   nv_library(
     nan_inf_utils
-    SRCS nan_inf_utils_detail.cc nan_inf_utils_detail.cu
-    DEPS framework_proto scope place)
+    SRCS nan_inf_utils_detail.cc
+    DEPS framework_proto scope place phi)
   nv_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS variable_visitor
+         op_handle_base
          scope
          lod_tensor
          phi
          memory
-         dynload_cuda
-         variable_visitor)
+         dynload_cuda)
   nv_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS all_reduce_op_handle
+         variable_visitor
+         op_handle_base
          scope
          lod_tensor
          phi
          memory
          dynload_cuda
-         variable_visitor
          place)
   nv_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS fused_all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          phi
@@ -104,8 +106,7 @@ if(WITH_GPU)
          dynload_cuda
          variable_visitor
          place
-         all_reduce_op_handle
-         fused_all_reduce_op_handle)
+         all_reduce_op_handle)
 
   if(WITH_DGC)
     nv_library(
@@ -144,8 +145,8 @@ if(WITH_GPU)
 elseif(WITH_ROCM)
   hip_library(
     nan_inf_utils
-    SRCS nan_inf_utils_detail.cc nan_inf_utils_detail.cu
-    DEPS framework_proto scope place)
+    SRCS nan_inf_utils_detail.cc
+    DEPS framework_proto scope place phi)
   hip_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
@@ -159,18 +160,20 @@ elseif(WITH_ROCM)
   hip_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS all_reduce_op_handle
+         op_handle_base
+         variable_visitor
          scope
          lod_tensor
          phi
          memory
          dynload_cuda
-         variable_visitor
          place)
   hip_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS fused_all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          phi
@@ -178,8 +181,7 @@ elseif(WITH_ROCM)
          dynload_cuda
          variable_visitor
          place
-         all_reduce_op_handle
-         fused_all_reduce_op_handle)
+         all_reduce_op_handle)
 
   if(WITH_DISTRIBUTE)
     hip_library(
@@ -204,7 +206,7 @@ else()
   cc_library(
     nan_inf_utils
     SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place)
+    DEPS framework_proto scope place phi)
   cc_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
@@ -212,7 +214,8 @@ else()
   cc_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          phi
@@ -222,15 +225,15 @@ else()
   cc_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS fused_all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          phi
          memory
          variable_visitor
          place
-         all_reduce_op_handle
-         fused_all_reduce_op_handle)
+         all_reduce_op_handle)
   if(WITH_DISTRIBUTE)
     cc_library(
       reduce_op_handle

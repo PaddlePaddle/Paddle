@@ -16,6 +16,7 @@ import logging
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 import paddle.jit.dy2static as _jst
@@ -252,6 +253,7 @@ class TestNotToConvert(TestRecursiveCall2):
         )
 
 
+@dy2static_unittest
 class TestNotToConvert2(TestRecursiveCall2):
     def set_func(self):
         self.net = NotToStaticHelper()
@@ -264,7 +266,9 @@ class TestNotToConvert2(TestRecursiveCall2):
         self.assertIsNotNone(options)
         self.assertTrue(options.not_convert)
 
+    @ast_only_test
     def test_code(self):
+        self.dygraph_func = paddle.jit.to_static(self.net.sum)
         # check 'if statement' is not converted
         self.assertIn("if x.shape[0] > 1", self.dygraph_func.code)
 
@@ -277,19 +281,23 @@ def forward(self, x):
     return x
 
 
+@dy2static_unittest
 class TestConvertPaddleAPI(unittest.TestCase):
+    @ast_only_test
     def test_functional_api(self):
         func = paddle.nn.functional.relu
         func = paddle.jit.to_static(func)
         self.assertNotIn("_jst.IfElse", func.code)
         self.assertIn("if in_dynamic_mode()", func.code)
 
+    @ast_only_test
     def test_class_api(self):
         bn = paddle.nn.SyncBatchNorm(2)
         paddle.jit.to_static(bn)
         self.assertNotIn("_jst.IfElse", bn.forward.code)
         self.assertIn("if in_dynamic_mode()", bn.forward.code)
 
+    @ast_only_test
     def test_class_patch_api(self):
         paddle.nn.SyncBatchNorm.forward = forward
         bn = paddle.nn.SyncBatchNorm(2)

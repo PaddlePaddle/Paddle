@@ -44,7 +44,6 @@ class Command:
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Elastic Command')
     parser.add_argument(
         "--elastic_server", type=str, help="etcd server host:port"

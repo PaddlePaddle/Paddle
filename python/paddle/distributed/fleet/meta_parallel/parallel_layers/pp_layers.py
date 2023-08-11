@@ -109,7 +109,6 @@ class SegmentLayers:
         ), "layer number should be greater than number of segments"
 
     def do_segment(self):
-
         if isinstance(self.method, list):
             seg_method = self.method[:]
             source_num_parts = len(seg_method) - 1
@@ -638,6 +637,13 @@ class PipelineLayer(nn.Layer):
                 logger.info(f"loss: {self._loss_fn.__class__.__name__}")
 
     def _build_layer_with_interleave(self):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
+
+        orig_rng_state = paddle.get_rng_state()
+        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         for i in range(len(self._start_poss)):
             start = self._start_poss[i]
             end = self._end_poss[i]
@@ -648,10 +654,23 @@ class PipelineLayer(nn.Layer):
             self._model_chunks.append(chunk)
             self.add_sublayer(str(start), chunk)
 
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
+
     def _build_layer(self):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
+
+        orig_rng_state = paddle.get_rng_state()
+        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         start = self._start_pos
         end = self._end_pos
         self.run_function = self._build_layer_impl(start, end)
+
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
 
     def _build_layer_impl(self, start, end):
         if self._num_virtual_pipeline_stages > 1:
@@ -660,13 +679,6 @@ class PipelineLayer(nn.Layer):
         else:
             # For 1f1b scheduler, just use run_function list
             run_function = self.run_function
-
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
-            get_rng_state_tracker,
-        )
-
-        orig_rng_state = paddle.get_rng_state()
-        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
@@ -703,6 +715,14 @@ class PipelineLayer(nn.Layer):
                             self.shared_layers[layer.layer_name],
                         )
                     )
+                    # Note: the PipelineLayerChunk won't add the partial function to the sub layer,
+                    # will introduce error when calling chunk.parameters(). Have to manually add
+                    # this layer to the chunk's sub layer.
+                    if self._num_virtual_pipeline_stages > 1:
+                        run_function.add_sublayer(
+                            layer.layer_name,
+                            self.shared_layers[layer.layer_name],
+                        )
 
             elif isinstance(layer, LayerDesc):
                 model = layer.build_layer()
@@ -713,9 +733,6 @@ class PipelineLayer(nn.Layer):
                     self.add_sublayer(str(layer_index), model)
             else:
                 run_function.append(layer)
-
-        paddle.set_rng_state(orig_rng_state)
-        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
         return run_function
 
     def forward_function(self, start, end):

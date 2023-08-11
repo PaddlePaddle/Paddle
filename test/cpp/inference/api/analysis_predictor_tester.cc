@@ -341,7 +341,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.SwitchIrOptim(true);
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
   else
@@ -365,14 +365,12 @@ TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
   ASSERT_EQ(passes.size(), (size_t)0);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableMKLDNN();
   const std::vector<std::string> fc_passes_to_erase(
-      {"fc_mkldnn_pass",
-       "fc_act_mkldnn_fuse_pass",
-       "fc_elementwise_add_mkldnn_fuse_pass"});
+      {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
   for (const auto& pass : fc_passes_to_erase) {
     ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
@@ -389,7 +387,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMKLDNN();
   config.DisableMkldnnFcPasses();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   ASSERT_TRUE(config.mkldnn_fc_passes_disabled());
 #else
   ASSERT_FALSE(config.mkldnn_fc_passes_disabled());
@@ -667,10 +665,12 @@ TEST(Predictor, Streams) {
 }
 #endif
 
-TEST(AnalysisPredictor, OutputHookFunc) {
+TEST(AnalysisPredictor, OutputTensorHookFunc) {
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
-                     const Tensor& tensor) { LOG(INFO) << "in hook function"; };
+                     const paddle::Tensor& tensor) {
+    LOG(INFO) << "in hook function";
+  };
 
   {
     Config config;

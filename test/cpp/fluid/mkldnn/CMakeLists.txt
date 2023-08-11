@@ -1,14 +1,14 @@
 cc_test(
   test_mkldnn_op_inplace
   SRCS test_mkldnn_op_inplace.cc
-  DEPS op_registry
+  DEPS executor
+       op_registry
        elementwise_add_op
        activation_op
        phi
        scope
        device_context
        enforce
-       executor
        generated_static_op)
 
 set(TEST_MKLDNN_CACHING_DEPS
@@ -16,7 +16,6 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_mul_op
     elementwise_add_op
     activation_op
-    conv_op
     phi
     scope
     device_context
@@ -30,22 +29,54 @@ cc_test(
   test_mkldnn_caching
   SRCS test_mkldnn_caching.cc
   DEPS ${TEST_MKLDNN_CACHING_DEPS})
-
-cc_test_old(
-  test_mkldnn_op_nhwc
-  SRCS
-  test_mkldnn_op_nhwc.cc
-  DEPS
-  op_registry
-  pool_op
-  shape_op
-  crop_op
-  activation_op
-  generated_op
-  phi
-  transpose_op
-  fused_transpose_op
-  scope
-  device_context
-  enforce
-  executor)
+if(WITH_CINN)
+  cc_test_old(
+    test_mkldnn_op_nhwc
+    SRCS
+    test_mkldnn_op_nhwc.cc
+    DEPS
+    fleet_executor
+    conditional_block_op
+    standalone_executor
+    executor
+    recurrent_op_helper
+    cinn_compiler
+    recurrent_op
+    op_registry
+    generated_static_op
+    crop_op
+    activation_op
+    generated_op
+    generated_static_op
+    phi
+    transpose_op
+    fused_transpose_op
+    scope
+    device_context
+    enforce
+    python)
+else()
+  cc_test_old(
+    test_mkldnn_op_nhwc
+    SRCS
+    test_mkldnn_op_nhwc.cc
+    DEPS
+    fleet_executor
+    conditional_block_op
+    standalone_executor
+    executor
+    recurrent_op_helper
+    recurrent_op
+    op_registry
+    generated_static_op
+    crop_op
+    activation_op
+    generated_op
+    generated_static_op
+    phi
+    transpose_op
+    fused_transpose_op
+    scope
+    device_context
+    enforce)
+endif()

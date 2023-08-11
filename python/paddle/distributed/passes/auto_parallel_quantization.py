@@ -26,8 +26,11 @@ from paddle.static.quantization import (
     quant_config,
 )
 
-from ..auto_parallel.converter import Converter
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
+from ..auto_parallel.static.converter import Converter
+from ..auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
 from .pass_base import PassBase, register_pass
 
 TRANSFORM_PASS_OP_TYPES = list(
@@ -62,7 +65,6 @@ class QuantizationPass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
         mode = self.get_attr("mode")
