@@ -234,6 +234,7 @@ void HandleForSpecialOp(
                     ->Var(fetch_var_name);
     var->GetMutable<phi::DenseTensor>();
     auto value = op->result(0);
+
     AddNewData(value,
                fetch_var_name,
                var,

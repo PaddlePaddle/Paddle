@@ -761,11 +761,11 @@ struct IncrementOpTranscriber : public OpTranscriber {
 // python/paddle/tensor/creation.py::assign(x, output)
 struct AssignValueOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    std::string target_op_name = "pd.assign_value_";
+    std::string target_op_name = "pd.assign_value";
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW(
-          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+          "Op assign_value should have corresponding OpInfo pd.assign_value");
     }
 
     return op_info;
@@ -836,20 +836,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
 
     VLOG(10) << "[op assign_value] attribute translation done";
 
-    std::vector<int> src_shape =
-        paddle::get<std::vector<int>>(op_desc.GetAttr("shape"));
-    std::vector<int64_t> target_shape(src_shape.begin(), src_shape.end());
-
-    ir::Builder builder(ctx, program->block());
-    dialect::FullOp full_op = builder.Build<dialect::FullOp>(
-        target_shape,
-        0.0f,
-        attr_dtype.dyn_cast<dialect::DataTypeAttribute>().data(),
-        phi::CPUPlace());
-
-    std::vector<ir::OpResult> op_inputs = {full_op->result(0)};
-
-    VLOG(10) << "[op assign_value] insert a full op to get input";
+    std::vector<ir::OpResult> op_inputs = {};
 
     OpOutputMapping arg_to_idx;
     OpOutputTypeList op_output_types;
