@@ -48,7 +48,7 @@ bool RToSReshardFunction::IsSuitable(
 }
 
 std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
-    const phi::DeviceContext& dev_ctx,
+    phi::DeviceContext* dev_ctx,
     const DistTensor& in,
     const std::shared_ptr<TensorDistAttr>& out_dist_attr) {
   const auto& out_dims_mapping = out_dist_attr->dims_mapping();
@@ -85,7 +85,7 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
       num_of_process, in.dims()[split_axis] / num_of_process));
 
   std::vector<DenseTensor> split_out_vec = ReshardSplitFunctor(
-      dev_ctx, in_physical_tensor_cur_rank, sections, split_axis);
+      *dev_ctx, in_physical_tensor_cur_rank, sections, split_axis);
 
   VLOG(3) << "The current process will remain the idx "
           << coord_in_mesh[mesh_axis] << " piece of tensor";

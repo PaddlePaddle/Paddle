@@ -118,7 +118,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_cpu_1d_mesh) {
 
   RToSReshardFunction r_to_s_func;
   std::shared_ptr<DistTensor> output =
-      r_to_s_func.Eval(*context, *input, out_dist_attr);
+      r_to_s_func.Eval(context, *input, out_dist_attr);
 
   CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), true);
   CHECK_EQ(output->numel(), 12);
@@ -140,7 +140,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_gpu_1d_mesh) {
 
   std::shared_ptr<TensorDistAttr> out_dist_attr =
       std::make_shared<TensorDistAttr>(tensor_shape);
-  std::vector<int64_t> out_dims_mapping = {0, -1};
+  std::vector<int64_t> out_dims_mapping = {0, -1, -1};
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(mesh);
 
@@ -149,7 +149,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_gpu_1d_mesh) {
 
   RToSReshardFunction r_to_s_func;
   std::shared_ptr<DistTensor> output =
-      r_to_s_func.Eval(*context, *input, out_dist_attr);
+      r_to_s_func.Eval(context, *input, out_dist_attr);
 
   CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), true);
   CHECK_EQ(output->numel(), 32);

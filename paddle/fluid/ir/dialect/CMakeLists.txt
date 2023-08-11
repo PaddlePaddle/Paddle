@@ -52,8 +52,7 @@ file(GLOB PD_DIALECT_SRCS "*.cc")
 cc_library(
   pd_dialect
   SRCS ${PD_DIALECT_SRCS} ${op_source_file}
-  DEPS framework_proto
-       phi
+  DEPS phi
        phi_utils
        pd_interface
        pd_trait

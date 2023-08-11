@@ -34,6 +34,7 @@ void BuiltinDialect::initialize() {
                 Int16Type,
                 Int32Type,
                 Int64Type,
+                IndexType,
                 BoolType,
                 Complex64Type,
                 Complex128Type,
