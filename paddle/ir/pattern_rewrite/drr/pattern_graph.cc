@@ -124,5 +124,57 @@ const OpCall *SourcePatternGraph::AnchorNode() const {
   return id2owned_tensor_.at(*output_tensors_.begin())->producer();
 }
 
+void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall&)> &VisitNode) const{
+  // graph data
+  auto opcalls = graph_->owned_op_call();  // shallow copy
+  auto inputs_tensor = graph_->input_tensors();
+  auto id2owned_tensor = graph_->id2owend_tensor();
+
+  // init visited_tensor
+  std::unordered_map<std::string, bool> visited_tensor;
+  
+  // find ingress node
+  for(auto& input_id : inputs_tensor){
+    std::string tensor_name = id2owned_tensor.at(input_id).get()->name();
+    visited_tensor[tensor_name] = true;
+  }
+
+  while(!opcalls.empty()){
+
+    for(auto opcall = opcalls.begin(); opcall != opcalls.end(); opcall++){
+      auto pre_dependents = (*opcall).get()->inputs();
+      bool flag = true;
+
+      for(auto pre_tensor : pre_dependents){
+        // new tensor
+        if (visited_tensor.find(pre_tensor->name()) == visited_tensor.end()){ 
+          visited_tensor[pre_tensor->name()] = false;
+          flag = false;
+          break;
+        }
+        else{
+          flag  = flag && visited_tensor.at(pre_tensor->name());
+        }
+      }
+
+      if(flag){
+        VisitNode(*(*opcall).get());
+        
+        // set op_call out_put
+        for(auto output_tensor : (*opcall).get()->inputs()){
+          visited_tensor[output_tensor->name()] = true;
+        }
+        opcalls.erase(opcall);
+      }
+
+
+    }
+  }
+
+  return ;
+}
+
+
+
 }  // namespace drr
 }  // namespace ir
