@@ -743,7 +743,7 @@ EOF
                             done
                         rm -f $tmp_dir/*
                         failed_test_lists=''
-                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests
                         exec_times=$[$exec_times+1]
                     done
@@ -930,6 +930,7 @@ set -ex
 
 function get_precision_ut_mac() {
     on_precision=0
+    serial_list="test_resnet|test_resnet_v2|test_concat_op|test_paddle_save_load"
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precision_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
