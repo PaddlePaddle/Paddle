@@ -190,6 +190,7 @@ def sync_params_buffers(
 
 class DataParallel(layers.Layer):
     """
+    TODO(megemini): just for test
     Run the dygraph module with data parallelism.
 
     Currently, DataParallel class only supports to run the dynamic graph
@@ -358,6 +359,8 @@ class DataParallel(layers.Layer):
         find_unused_parameters=False,
         group=None,
     ):
+        #     TODO(megemini): just for test
+
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
