@@ -418,7 +418,7 @@ def append_backward_ops(
                 update_input_grad_map(None, combine_op, input_grad_list[i])
             else:
                 input_grad = input_grad_list[i]
-                if input_grad is list:
+                if isinstance(input_grad, list):
                     state.value_to_valuegrad[input].append(input_grad)
                 else:
                     state.value_to_valuegrad[input].append([input_grad])
@@ -431,14 +431,17 @@ def append_backward_ops(
     # einsum has twp vectorType outputs, special pattern
 
     pattern_effective_op_list = []
-    for idx, op in effective_forward_op:
+    for idx, op in enumerate(effective_forward_op):
         if op.name() == "builtin.combine":
             pattern_effective_op_list.append([op])
             pattern_effective_op_list[-1].append(effective_forward_op[idx + 1])
         elif op.name() == "builtin.slice":
             pattern_effective_op_list[-1].append(op)
         else:
-            if op not in pattern_effective_op_list[-1]:
+            if (
+                not pattern_effective_op_list
+                or op not in pattern_effective_op_list[-1]
+            ):
                 pattern_effective_op_list.append([op])
 
     for op_pattern in pattern_effective_op_list:
@@ -594,6 +597,8 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         remove_op(block, bwd_op, state)
 
     input_grad_map = state.value_to_valuegrad
+
+    state.turn_map()
     return input_grad_map
 
 
