@@ -50,7 +50,7 @@ struct OtherOrderFunctor {
   Ty p_order_;
 };
 
-template <typename Tx typename Ty = Tx>
+template <typename Tx, typename Ty = Tx>
 struct PowFunctor {
   HOSTDEVICE explicit inline PowFunctor(const Ty& p_order)
       : p_order_(p_order) {}
