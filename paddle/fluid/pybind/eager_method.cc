@@ -271,6 +271,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+    phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
 #endif
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
@@ -340,6 +341,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (self->tensor.is_custom_device()) {
     eager_gil_scoped_release guard;
+    phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
