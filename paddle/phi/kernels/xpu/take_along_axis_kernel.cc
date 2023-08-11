@@ -54,10 +54,15 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
     idxshape[i] = index.dims()[i];
   }
 
+  if (xshape.size() <= 1 && idxshape.size() <= 1) {
+    for (int i = xshape.size(); i < 2; ++i) {
+      xshape.push_back(1);
+      idxshape.push_back(1);
+    }
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
-
   int r = XPU_SUCCESS;
-
 #ifndef PADDLE_WITH_XPU_PLUGIN
   LOG(WARNING) << "Add -DWITH_XPU_PLUGIN=ON to build "
                   "xpu::plugin::take_along_axis(), or use "
