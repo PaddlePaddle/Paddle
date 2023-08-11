@@ -57,6 +57,7 @@ static inline int fast_gather_nd(Context* ctx,
       std::vector<int64_t>(index_shape.begin(), index_shape.end()));
 }
 
+template <typename T, typename TID>
 DLL_EXPORT int take_along_axis(Context* ctx,
                                const T* x,
                                const TID* index,
