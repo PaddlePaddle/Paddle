@@ -140,11 +140,11 @@ __global__ void SoftmaxMaskFuseUpperTriangleGPUKernel(const T* src,
 template <typename T, typename Context>
 void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
                                              const DenseTensor& x,
-                                             DenseTensor* y) {
+                                             DenseTensor* out) {
   auto* x_ptr = &x;
 
   auto* x_data = x_ptr->data<T>();
-  auto* y_data = dev_ctx.template Alloc<T>(y);
+  auto* y_data = dev_ctx.template Alloc<T>(out);
 
   auto x_dim = x_ptr->dims();
   auto batches = x_dim[0];
