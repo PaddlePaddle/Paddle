@@ -56,6 +56,7 @@ NewIRInterpreter::NewIRInterpreter(
     const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
+      var_scope_(scope),
       scope_(scope),
       ir_program_(std::move(ir_prog)),
       ir_stream_analyzer_(place),
@@ -82,6 +83,8 @@ NewIRInterpreter::NewIRInterpreter(
             << "; local scope: " << local_scope_;
   }
   // TODO(zhangbo): delete var_scope
+  var_scope_.SetLocalScope(local_scope_);
+
   execution_config_.AnalyzeThreadPoolConfig(place,
                                             ir_program_->block()->size());
   execution_config_.Log(/*log_level=*/8);
@@ -155,13 +158,23 @@ const std::set<std::string>& NewIRInterpreter::JitInputVars() const {
 }
 
 const VariableScope* NewIRInterpreter::GetVariableScope() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetVariableScope is not implemented in NewIRInterpreter."));
+  return &var_scope_;
 }
 
 void NewIRInterpreter::reset_scope(Scope* new_scope) {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "reset_scope is not implemented in NewIRInterpreter."));
+  var_scope_.SetScope(new_scope);
+  scope_ = new_scope;
+  for (size_t i = 0; i < variable_list_.size(); i++) {
+    const auto& var_name = GetNameById(i);
+    variable_list_[i] = new_scope->FindVar(var_name);
+  }
+  // The index should be assured valid, cause the InterpreterCore may not be
+  // fully built, but was still cached and used. For example, see unit test
+  // `test_assert.py`, it may exit before `NewIRInterpreter::Convert`,
+  // but still was cached and used by later tests.
+  for (size_t i = 0; i < std::min(refs_.size(), variable_list_.size()); i++) {
+    refs_[i]->ResetVariable(variable_list_[i]);
+  }
 }
 
 const Scope* NewIRInterpreter::local_scope() const {

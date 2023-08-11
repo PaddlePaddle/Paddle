@@ -127,6 +127,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   ExecutionConfig execution_config_;
 
+  VariableScope var_scope_;
   Scope* scope_{nullptr};
   Scope* local_scope_{nullptr};  // not owned
 
