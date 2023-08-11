@@ -47,7 +47,7 @@ struct OtherOrderFunctor {
   }
 
  private:
-  Ty p_order_;
+  Ty p_order;
 };
 
 template <typename Tx, typename Ty = Tx>
