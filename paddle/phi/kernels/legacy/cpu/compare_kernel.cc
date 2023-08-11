@@ -30,22 +30,13 @@ inline void CompareRawKernelImpl(const Context& ctx,
                                  const DenseTensor& y,
                                  int axis,
                                  DenseTensor* out) {
-  if (!out->IsSharedWith(x)) {
-    ctx.template Alloc<bool>(out);
-    if (x.dims().size() >= y.dims().size()) {
-      funcs::ElementwiseCompute<Functor, T, bool>(
-          ctx, x, y, Functor(), out, axis);
-    } else {
-      funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-          ctx, x, y, InverseFunctor(), out, axis);
-    }
+  ctx.template Alloc<bool>(out);
+  if (x.dims().size() >= y.dims().size()) {
+    funcs::ElementwiseCompute<Functor, T, bool>(
+        ctx, x, y, Functor(), out, axis);
   } else {
-    if (x.dims().size() >= y.dims().size()) {
-      funcs::ElementwiseCompute<Functor, T, T>(ctx, x, y, Functor(), out, axis);
-    } else {
-      funcs::ElementwiseCompute<InverseFunctor, T, T>(
-          ctx, x, y, InverseFunctor(), out, axis);
-    }
+    funcs::ElementwiseCompute<InverseFunctor, T, bool>(
+        ctx, x, y, InverseFunctor(), out, axis);
   }
 }
 

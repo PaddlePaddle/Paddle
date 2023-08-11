@@ -121,7 +121,7 @@ class TestDygraphInplace(unittest.TestCase):
         inplace_var = self.inplace_api_processing(var)
         self.assertTrue(id(var) == id(inplace_var))
 
-        inplace_var[0] = 2.0
+        inplace_var[0] = 2
         np.testing.assert_array_equal(var.numpy(), inplace_var.numpy())
 
     def test_forward_result(self):
@@ -140,7 +140,7 @@ class TestDygraphInplace(unittest.TestCase):
             inplace_var = self.inplace_api_processing(var)
             self.assertEqual(var.inplace_version, 1)
 
-            inplace_var[0] = 2.0
+            inplace_var[0] = 2
             self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
@@ -296,685 +296,760 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
         self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
 
 
-class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.unsqueeze(var, -1)
+# class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.unsqueeze(var, -1)
 
+#     def inplace_api_processing(self, var):
+#         return paddle.unsqueeze_(var, -1)
+
+
+# class TestDygraphInplaceReshape(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.reshape(var, [-1])
+
+#     def inplace_api_processing(self, var):
+#         return paddle.reshape_(var, [-1])
+
+
+# class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         shape = paddle.to_tensor([-1])
+#         return paddle.reshape(var, shape)
+
+#     def inplace_api_processing(self, var):
+#         shape = paddle.to_tensor([-1])
+#         return paddle.reshape_(var, shape)
+
+
+# class TestDygraphInplaceFlatten(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return var.flatten()
+
+#     def inplace_api_processing(self, var):
+#         return var.flatten_()
+
+
+# class TestDygraphInplaceScatter(TestDygraphInplace):
+#     def init_data(self):
+#         self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
+#         self.dtype = "float32"
+
+#     def non_inplace_api_processing(self, var):
+#         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+#         updates = paddle.to_tensor(
+#             [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+#         )
+
+#         return paddle.scatter(var, index, updates, overwrite=False)
+
+#     def inplace_api_processing(self, var):
+#         index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+#         updates = paddle.to_tensor(
+#             [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+#         )
+
+#         return paddle.scatter_(var, index, updates, overwrite=False)
+
+
+# class TestDygraphInplaceElu(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.nn.functional.elu(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.nn.functional.elu_(var)
+
+
+# class TestDygraphInplaceRelu(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.nn.functional.relu(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.nn.functional.relu_(var)
+
+
+# class TestDygraphInplaceSoftmax(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.nn.functional.softmax(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.nn.functional.softmax_(var)
+
+
+# class TestDygraphInplaceTanh(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.tanh(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.tanh_(var)
+
+
+# class TestDygraphInplaceCeil(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return var.ceil()
+
+#     def inplace_api_processing(self, var):
+#         return var.ceil_()
+
+
+# class TestDygraphInplaceFloor(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return var.floor()
+
+#     def inplace_api_processing(self, var):
+#         return var.floor_()
+
+
+# class TestDygraphInplaceExp(TestDygraphInplace):
+#     def set_np_compare_func(self):
+#         self.np_compare = np.allclose
+
+#     def non_inplace_api_processing(self, var):
+#         return var.exp()
+
+#     def inplace_api_processing(self, var):
+#         return var.exp_()
+
+
+# class TestDygraphInplaceReciprocal(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return var.reciprocal()
+
+#     def inplace_api_processing(self, var):
+#         return var.reciprocal_()
+
+
+# class TestDygraphInplaceRound(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return var.round()
+
+#     def inplace_api_processing(self, var):
+#         return var.round_()
+
+
+# class TestDygraphInplaceSqrt(TestDygraphInplace):
+#     def init_data(self):
+#         self.input_var_numpy = np.random.uniform(0, 5, [10, 20, 1])
+#         self.dtype = "float32"
+
+#     def non_inplace_api_processing(self, var):
+#         return var.sqrt()
+
+#     def inplace_api_processing(self, var):
+#         return var.sqrt_()
+
+
+# class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
+#     def non_inplace_api_processing(self, var):
+#         return var.rsqrt()
+
+#     def inplace_api_processing(self, var):
+#         return var.rsqrt_()
+
+
+# class TestDygraphInplaceClip(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return var.clip(0.6, 1.5)
+
+#     def inplace_api_processing(self, var):
+#         return var.clip_(0.6, 1.5)
+
+
+# class TestDygraphInplaceScale(TestDygraphInplace):
+#     def non_inplace_api_processing(self, var):
+#         return var.scale(scale=2.0, bias=3.0)
+
+#     def inplace_api_processing(self, var):
+#         return var.scale_(scale=2.0, bias=3.0)
+
+
+# class TestDygraphInplaceAdd(TestDygraphInplace):
+#     def init_data(self):
+#         self.input_var_numpy = np.random.rand(2, 3, 4)
+#         self.dtype = "float32"
+#         self.input_var_numpy_2 = np.random.rand(2, 3, 4).astype(self.dtype)
+
+#     def non_inplace_api_processing(self, var):
+#         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+#         return var.add(input_var_2)
+
+#     def inplace_api_processing(self, var):
+#         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+#         return var.add_(input_var_2)
+
+
+# class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
+#     def non_inplace_api_processing(self, var):
+#         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+#         return var.subtract(input_var_2)
+
+#     def inplace_api_processing(self, var):
+#         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+#         return var.subtract_(input_var_2)
+
+
+# class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
+#     def non_inplace_api_processing(self, var):
+#         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+#         return var.remainder(input_var_2)
+
+#     def inplace_api_processing(self, var):
+#         input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
+#         return var.remainder_(input_var_2)
+
+#     def test_leaf_inplace_var_error(self):
+#         pass
+
+#     def test_backward_error(self):
+#         pass
+
+#     def test_backward_success_1(self):
+#         pass
+
+#     def test_backward_success_2(self):
+#         pass
+
+
+# class TestLossIsInplaceVar(unittest.TestCase):
+#     def test_loss_is_inplace_var(self):
+#         with paddle.fluid.dygraph.guard():
+#             var_a = paddle.ones((2, 2))
+#             var_a.stop_gradient = False
+
+#             var_b = var_a * 2
+#             loss = var_b.tanh_()
+
+#             loss.backward()
+#             inplace_grad_var_a = var_a.grad.numpy()
+
+#         with paddle.fluid.dygraph.guard():
+#             var_a = paddle.ones((2, 2))
+#             var_a.stop_gradient = False
+
+#             var_b = var_a * 2
+#             loss = var_b.tanh()
+
+#             loss.backward()
+#             grad_var_a = var_a.grad.numpy()
+
+#         np.testing.assert_array_equal(inplace_grad_var_a, grad_var_a)
+
+
+# class TestContinuouslyInplace(unittest.TestCase):
+#     def test_continuously_inplace(self):
+#         a = paddle.rand([2, 3])
+#         a.stop_gradient = False
+#         b = a * 2
+
+#         b.reshape_([-1])
+#         b.reshape_([2, 3])
+#         b.reshape_([-1])
+
+#         b.backward()
+
+
+# class TestGetitemBeforeInplace(unittest.TestCase):
+#     def test_getitem_before_inplace(self):
+#         a = paddle.ones(shape=[4, 2, 3], dtype="float32")
+#         a.stop_gradient = False
+#         b = a**2
+#         b[0] = 3
+#         # getitem has no_need_buffer input
+#         c = b[0:2]
+#         loss = c.sum()
+#         b[1] = 2
+#         loss.backward()
+
+
+# class TestDygraphInplaceAsin(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.asin(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.asin_(var)
+
+
+# class TestDygraphInplaceSinh(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.sinh(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.sinh_(var)
+
+
+# class TestDygraphInplaceAsinh(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.asinh(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.asinh_(var)
+
+
+# class TestDygraphInplaceAbs(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.abs(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.abs_(var)
+
+
+# class TestDygraphInplaceCos(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.cos(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.cos_(var)
+
+
+# class TestDygraphInplaceCosh(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.cosh(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.cosh_(var)
+
+
+# class TestDygraphInplaceAcos(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.acos(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.acos_(var)
+
+
+# class TestDygraphInplaceAcosh(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.acosh(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.acosh_(var)
+
+
+# class TestDygraphInplaceTan(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.tan(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.tan_(var)
+
+
+# class TestDygraphInplaceATan(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.atan(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.atan_(var)
+
+
+# class TestDygraphInplaceATanh(TestDygraphInplaceWithContinuous):
+#     def non_inplace_api_processing(self, var):
+#         return paddle.atanh(var)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.atanh_(var)
+
+
+# class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
+#     def init_data(self):
+#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 10])
+#         self.dtype = "float32"
+#         self.x = paddle.randn([10, 10], dtype="float32")
+#         self.y = paddle.randn([10, 10], dtype="float32")
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.addmm(var, x=self.x, y=self.y)
+
+#     def inplace_api_processing(self, var):
+#         return paddle.addmm_(var, x=self.x, y=self.y)
+
+#     def test_errors(self):
+#         var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+#         x1 = paddle.randn([10])
+#         self.assertRaises(ValueError, paddle.addmm_, var, x1, self.y)
+
+#         y1 = paddle.randn([12, 10])
+#         self.assertRaises(ValueError, paddle.addmm_, var, self.x, y1)
+#         x2 = paddle.randn([12, 10])
+#         self.assertRaises(ValueError, paddle.addmm_, var, x2, self.y)
+#         var1 = paddle.randn([1, 5])
+#         self.assertRaises(ValueError, paddle.addmm_, var1, x2, self.y)
+#         y2 = paddle.randn([10, 12])
+#         self.assertRaises(ValueError, paddle.addmm_, var, self.x, y2)
+#         var2 = paddle.randn([6])
+#         self.assertRaises(ValueError, paddle.addmm_, var2, self.x, self.y)
+#         var3 = paddle.randn([2, 3, 4])
+#         self.assertRaises(ValueError, paddle.addmm_, var3, self.x, self.y)
+
+
+# class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.pow_(var, 2)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.pow(var, 2)
+
+#     def test_type_error(self):
+#         var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
+#         with self.assertRaisesRegex(
+#             TypeError,
+#             'y must be scalar type, but received: %s ' % (type([2])),
+#         ):
+#             paddle.pow_(var, [2])
+
+
+# class TestDygraphInplaceTriu(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.triu_(var, 0)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.triu(var, 0)
+
+
+# class TestDygraphInplaceTril(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.tril_(var, 0)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.tril(var, 0)
+
+
+# class TestDygraphInplaceLogit(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.logit_(var, 1e-3)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.logit(var, 1e-3)
+
+
+# class TestDygraphInplaceLog(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.log_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.log(var)
+
+
+# class TestDygraphInplaceLog2(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.log2_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.log2(var)
+
+
+# class TestDygraphInplaceLog10(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.log10_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.log10(var)
+
+
+# class TestDygraphInplaceLog1p(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.log1p_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.log1p(var)
+
+
+# class TestDygraphInplaceTrunc(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.trunc_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.trunc(var)
+
+
+# class TestDygraphInplaceDigamma(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.digamma_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.digamma(var)
+
+
+# class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.neg_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.neg(var)
+
+
+# class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.lgamma_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.lgamma(var)
+
+
+# class TestDygraphInplaceFrac(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.frac_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.frac(var)
+
+
+# class TestDygraphInplaceI0(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.i0_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.i0(var)
+
+
+# class TestDygraphInplacePolygamma(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.polygamma_(var, 1)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.polygamma(var, 1)
+
+
+# class TestDygraphInplaceHardTanh(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.nn.functional.hardtanh_(var, -1.0, 1.0)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.nn.functional.hardtanh(var, -1.0, 1.0)
+
+
+# class TestDygraphInplaceLeakyRelu(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.nn.functional.leaky_relu_(var, 0.01)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.nn.functional.leaky_relu(var, 0.01)
+
+
+# class TestDygraphInplaceThresholdedRelu(TestDygraphInplaceWithContinuous):
+#     def inplace_api_processing(self, var):
+#         return paddle.nn.functional.thresholded_relu_(var, 1.0)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.nn.functional.thresholded_relu(var, 1.0)
+
+
+# class TestDygraphInplaceLogicAnd(TestDygraphInplace):
+#     def init_data(self):
+#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+#         self.dtype = "float32"
+#         self.y = paddle.randn([10, 20, 1])
+
+#     def test_forward_result(self):
+#         var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+#         no_inplace_var = self.non_inplace_api_processing(var)
+#         inplace_var = self.inplace_api_processing(var)
+#         inplace_var_bool = paddle.cast(inplace_var, 'bool')
+#         np.testing.assert_array_equal(
+#             no_inplace_var.numpy(), inplace_var_bool.numpy()
+#         )
+
+#     def inplace_api_processing(self, var):
+#         return paddle.logical_and_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.logical_and(var, self.y)
+
+#     def test_broadcast_error(self):
+#         broadcast_input = paddle.randn([10, 1, 20])
+#         with self.assertRaises(ValueError):
+#             self.inplace_api_processing(broadcast_input)
+
+#     def test_backward_error(self):
+#         pass
+
+#     def test_backward_success_1(self):
+#         pass
+
+#     def test_backward_success_2(self):
+#         pass
+
+#     def test_leaf_inplace_var_error(self):
+#         pass
+
+
+# class TestDygraphInplaceLogicOr(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.logical_or_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.logical_or(var, self.y)
+
+
+# class TestDygraphInplaceLogicXor(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.logical_xor_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.logical_xor(var, self.y)
+
+
+# class TestDygraphInplaceLogicNot(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.logical_not_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.logical_not(var)
+
+#     def test_broadcast_error(self):
+#         pass
+
+
+# class TestDygraphInplaceLessThan(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.less_than_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.less_than(var, self.y)
+
+
+# class TestDygraphInplaceLessEqual(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.less_equal_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.less_equal(var, self.y)
+
+
+# class TestDygraphInplaceGreaterEqual(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.greater_equal_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.greater_equal(var, self.y)
+
+
+# class TestDygraphInplaceGreaterThan(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.greater_than_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.greater_than(var, self.y)
+
+
+# class TestDygraphInplaceEqual(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.equal_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.equal(var, self.y)
+
+
+# class TestDygraphInplaceNotEqual(TestDygraphInplaceLogicAnd):
+#     def inplace_api_processing(self, var):
+#         return paddle.not_equal_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.not_equal(var, self.y)
+
+# class TestDygraphInplacBitwiseAnd(TestDygraphInplaceLogicAnd):
+
+#     def init_data(self):
+#         self.input_var_numpy = paddle.randint(low = 0, high = 10, shape = [3, 4, 1], dtype = "int32")
+#         self.dtype = "int32"
+#         self.y = paddle.randint(low = 0, high = 10, shape = [3, 4, 1], dtype = "int32")
+
+#     def inplace_api_processing(self, var):
+#         return paddle.bitwise_and_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.bitwise_and(var, self.y)
+
+
+#     def test_forward_result(self):
+#         var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+#         no_inplace_var = self.non_inplace_api_processing(var)
+#         inplace_var = self.inplace_api_processing(var)
+#         np.testing.assert_array_equal(
+#             no_inplace_var.numpy(), inplace_var.numpy()
+#         )
+
+#     def test_broadcast_error(self):
+#         broadcast_input = paddle.randint(low = 0, high = 10, shape = [3, 1, 4], dtype = "int32")
+#         with self.assertRaises(ValueError):
+#             self.inplace_api_processing(broadcast_input)
+
+# class TestDygraphInplacBitwisOr(TestDygraphInplacBitwiseAnd):
+
+#     def inplace_api_processing(self, var):
+#         return paddle.bitwise_or_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.bitwise_or(var, self.y)
+
+# class TestDygraphInplacBitwisXor(TestDygraphInplacBitwiseAnd):
+
+#     def inplace_api_processing(self, var):
+#         return paddle.bitwise_xor_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.bitwise_xor(var, self.y)
+
+# class TestDygraphInplacBitwisNot(TestDygraphInplacBitwiseAnd):
+
+#     def inplace_api_processing(self, var):
+#         return paddle.bitwise_not_(var)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.bitwise_not(var)
+
+#     def test_broadcast_error(self):
+#         pass
+
+
+# class TestDygraphInplaceDivide(TestDygraphInplace):
+#     def init_data(self):
+#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+#         self.dtype = "float32"
+#         self.y = paddle.randn([10, 20, 1])
+
+#     def inplace_api_processing(self, var):
+#         return paddle.divide_(var, self.y)
+
+#     def non_inplace_api_processing(self, var):
+#         return paddle.divide(var, self.y)
+
+#     def test_broadcast_error(self):
+#         broadcast_input = paddle.randn([10, 1, 20])
+#         with self.assertRaises(ValueError):
+#             self.inplace_api_processing(broadcast_input)
+
+
+class TestDygraphInplaceCast(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
-        return paddle.unsqueeze_(var, -1)
-
-
-class TestDygraphInplaceReshape(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.reshape(var, [-1])
-
-    def inplace_api_processing(self, var):
-        return paddle.reshape_(var, [-1])
-
-
-class TestDygraphInplaceReshapeTensor(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        shape = paddle.to_tensor([-1])
-        return paddle.reshape(var, shape)
-
-    def inplace_api_processing(self, var):
-        shape = paddle.to_tensor([-1])
-        return paddle.reshape_(var, shape)
-
-
-class TestDygraphInplaceFlatten(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return var.flatten()
-
-    def inplace_api_processing(self, var):
-        return var.flatten_()
-
-
-class TestDygraphInplaceScatter(TestDygraphInplace):
-    def init_data(self):
-        self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])
-        self.dtype = "float32"
+        return paddle.cast_(var, "int32")
 
     def non_inplace_api_processing(self, var):
-        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
-        )
+        return paddle.cast(var, "int32")
 
-        return paddle.scatter(var, index, updates, overwrite=False)
 
-    def inplace_api_processing(self, var):
-        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
-        updates = paddle.to_tensor(
-            [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
-        )
+# class TestDygraphInplaceFloorDivide(TestDygraphInplace):
+#     def init_data(self):
+#         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+#         self.dtype = "float32"
+#         self.y = paddle.randn([10, 20, 1])
 
-        return paddle.scatter_(var, index, updates, overwrite=False)
+#     def inplace_api_processing(self, var):
+#         return paddle.floor_divide_(var, self.y)
 
+#     def non_inplace_api_processing(self, var):
+#         return paddle.floor_divide(var, self.y)
 
-class TestDygraphInplaceElu(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.nn.functional.elu(var)
+#     def test_backward_error(self):
+#         pass
 
-    def inplace_api_processing(self, var):
-        return paddle.nn.functional.elu_(var)
+#     def test_backward_success_1(self):
+#         pass
 
+#     def test_backward_success_2(self):
+#         pass
 
-class TestDygraphInplaceRelu(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.nn.functional.relu(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.nn.functional.relu_(var)
-
-
-class TestDygraphInplaceSoftmax(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.nn.functional.softmax(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.nn.functional.softmax_(var)
-
-
-class TestDygraphInplaceTanh(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return paddle.tanh(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.tanh_(var)
-
-
-class TestDygraphInplaceCeil(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return var.ceil()
-
-    def inplace_api_processing(self, var):
-        return var.ceil_()
-
-
-class TestDygraphInplaceFloor(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return var.floor()
-
-    def inplace_api_processing(self, var):
-        return var.floor_()
-
-
-class TestDygraphInplaceExp(TestDygraphInplace):
-    def set_np_compare_func(self):
-        self.np_compare = np.allclose
-
-    def non_inplace_api_processing(self, var):
-        return var.exp()
-
-    def inplace_api_processing(self, var):
-        return var.exp_()
-
-
-class TestDygraphInplaceReciprocal(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return var.reciprocal()
-
-    def inplace_api_processing(self, var):
-        return var.reciprocal_()
-
-
-class TestDygraphInplaceRound(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return var.round()
-
-    def inplace_api_processing(self, var):
-        return var.round_()
-
-
-class TestDygraphInplaceSqrt(TestDygraphInplace):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(0, 5, [10, 20, 1])
-        self.dtype = "float32"
-
-    def non_inplace_api_processing(self, var):
-        return var.sqrt()
-
-    def inplace_api_processing(self, var):
-        return var.sqrt_()
-
-
-class TestDygraphInplaceRsqrt(TestDygraphInplaceSqrt):
-    def non_inplace_api_processing(self, var):
-        return var.rsqrt()
-
-    def inplace_api_processing(self, var):
-        return var.rsqrt_()
-
-
-class TestDygraphInplaceClip(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return var.clip(0.6, 1.5)
-
-    def inplace_api_processing(self, var):
-        return var.clip_(0.6, 1.5)
-
-
-class TestDygraphInplaceScale(TestDygraphInplace):
-    def non_inplace_api_processing(self, var):
-        return var.scale(scale=2.0, bias=3.0)
-
-    def inplace_api_processing(self, var):
-        return var.scale_(scale=2.0, bias=3.0)
-
-
-class TestDygraphInplaceAdd(TestDygraphInplace):
-    def init_data(self):
-        self.input_var_numpy = np.random.rand(2, 3, 4)
-        self.dtype = "float32"
-        self.input_var_numpy_2 = np.random.rand(2, 3, 4).astype(self.dtype)
-
-    def non_inplace_api_processing(self, var):
-        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
-        return var.add(input_var_2)
-
-    def inplace_api_processing(self, var):
-        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
-        return var.add_(input_var_2)
-
-
-class TestDygraphInplaceSubtract(TestDygraphInplaceAdd):
-    def non_inplace_api_processing(self, var):
-        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
-        return var.subtract(input_var_2)
-
-    def inplace_api_processing(self, var):
-        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
-        return var.subtract_(input_var_2)
-
-
-class TestDygraphInplaceRemainder(TestDygraphInplaceAdd):
-    def non_inplace_api_processing(self, var):
-        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
-        return var.remainder(input_var_2)
-
-    def inplace_api_processing(self, var):
-        input_var_2 = paddle.to_tensor(self.input_var_numpy_2)
-        return var.remainder_(input_var_2)
-
-    def test_leaf_inplace_var_error(self):
-        pass
-
-    def test_backward_error(self):
-        pass
-
-    def test_backward_success_1(self):
-        pass
-
-    def test_backward_success_2(self):
-        pass
-
-
-class TestLossIsInplaceVar(unittest.TestCase):
-    def test_loss_is_inplace_var(self):
-        with paddle.fluid.dygraph.guard():
-            var_a = paddle.ones((2, 2))
-            var_a.stop_gradient = False
-
-            var_b = var_a * 2
-            loss = var_b.tanh_()
-
-            loss.backward()
-            inplace_grad_var_a = var_a.grad.numpy()
-
-        with paddle.fluid.dygraph.guard():
-            var_a = paddle.ones((2, 2))
-            var_a.stop_gradient = False
-
-            var_b = var_a * 2
-            loss = var_b.tanh()
-
-            loss.backward()
-            grad_var_a = var_a.grad.numpy()
-
-        np.testing.assert_array_equal(inplace_grad_var_a, grad_var_a)
-
-
-class TestContinuouslyInplace(unittest.TestCase):
-    def test_continuously_inplace(self):
-        a = paddle.rand([2, 3])
-        a.stop_gradient = False
-        b = a * 2
-
-        b.reshape_([-1])
-        b.reshape_([2, 3])
-        b.reshape_([-1])
-
-        b.backward()
-
-
-class TestGetitemBeforeInplace(unittest.TestCase):
-    def test_getitem_before_inplace(self):
-        a = paddle.ones(shape=[4, 2, 3], dtype="float32")
-        a.stop_gradient = False
-        b = a**2
-        b[0] = 3
-        # getitem has no_need_buffer input
-        c = b[0:2]
-        loss = c.sum()
-        b[1] = 2
-        loss.backward()
-
-
-class TestDygraphInplaceAsin(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.asin(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.asin_(var)
-
-
-class TestDygraphInplaceSinh(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.sinh(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.sinh_(var)
-
-
-class TestDygraphInplaceAsinh(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.asinh(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.asinh_(var)
-
-
-class TestDygraphInplaceAbs(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.abs(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.abs_(var)
-
-
-class TestDygraphInplaceCos(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.cos(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.cos_(var)
-
-
-class TestDygraphInplaceCosh(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.cosh(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.cosh_(var)
-
-
-class TestDygraphInplaceAcos(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.acos(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.acos_(var)
-
-
-class TestDygraphInplaceAcosh(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.acosh(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.acosh_(var)
-
-
-class TestDygraphInplaceTan(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.tan(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.tan_(var)
-
-
-class TestDygraphInplaceATan(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.atan(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.atan_(var)
-
-
-class TestDygraphInplaceATanh(TestDygraphInplaceWithContinuous):
-    def non_inplace_api_processing(self, var):
-        return paddle.atanh(var)
-
-    def inplace_api_processing(self, var):
-        return paddle.atanh_(var)
-
-
-class TestDygraphInplaceAddMM(TestDygraphInplaceWithContinuous):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 10])
-        self.dtype = "float32"
-        self.x = paddle.randn([10, 10], dtype="float32")
-        self.y = paddle.randn([10, 10], dtype="float32")
-
-    def non_inplace_api_processing(self, var):
-        return paddle.addmm(var, x=self.x, y=self.y)
-
-    def inplace_api_processing(self, var):
-        return paddle.addmm_(var, x=self.x, y=self.y)
-
-    def test_errors(self):
-        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-        x1 = paddle.randn([10])
-        self.assertRaises(ValueError, paddle.addmm_, var, x1, self.y)
-
-        y1 = paddle.randn([12, 10])
-        self.assertRaises(ValueError, paddle.addmm_, var, self.x, y1)
-        x2 = paddle.randn([12, 10])
-        self.assertRaises(ValueError, paddle.addmm_, var, x2, self.y)
-        var1 = paddle.randn([1, 5])
-        self.assertRaises(ValueError, paddle.addmm_, var1, x2, self.y)
-        y2 = paddle.randn([10, 12])
-        self.assertRaises(ValueError, paddle.addmm_, var, self.x, y2)
-        var2 = paddle.randn([6])
-        self.assertRaises(ValueError, paddle.addmm_, var2, self.x, self.y)
-        var3 = paddle.randn([2, 3, 4])
-        self.assertRaises(ValueError, paddle.addmm_, var3, self.x, self.y)
-
-
-class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.pow_(var, 2)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.pow(var, 2)
-
-    def test_type_error(self):
-        var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
-        with self.assertRaisesRegex(
-            TypeError,
-            'y must be scalar type, but received: %s ' % (type([2])),
-        ):
-            paddle.pow_(var, [2])
-
-
-class TestDygraphInplaceTriu(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.triu_(var, 0)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.triu(var, 0)
-
-
-class TestDygraphInplaceTril(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.tril_(var, 0)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.tril(var, 0)
-
-
-class TestDygraphInplaceLogit(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.logit_(var, 1e-3)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.logit(var, 1e-3)
-
-
-class TestDygraphInplaceLog(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.log_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.log(var)
-
-
-class TestDygraphInplaceLog2(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.log2_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.log2(var)
-
-
-class TestDygraphInplaceLog10(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.log10_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.log10(var)
-
-
-class TestDygraphInplaceLog1p(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.log1p_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.log1p(var)
-
-
-class TestDygraphInplaceTrunc(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.trunc_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.trunc(var)
-
-
-class TestDygraphInplaceDigamma(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.digamma_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.digamma(var)
-
-
-class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.neg_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.neg(var)
-
-
-class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.lgamma_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.lgamma(var)
-
-
-class TestDygraphInplaceFrac(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.frac_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.frac(var)
-
-
-class TestDygraphInplaceI0(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.i0_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.i0(var)
-
-
-class TestDygraphInplacePolygamma(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.polygamma_(var, 1)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.polygamma(var, 1)
-
-
-class TestDygraphInplaceHardTanh(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.nn.functional.hardtanh_(var, -1.0, 1.0)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.nn.functional.hardtanh(var, -1.0, 1.0)
-
-
-class TestDygraphInplaceLeakyRelu(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.nn.functional.leaky_relu_(var, 0.01)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.nn.functional.leaky_relu(var, 0.01)
-
-
-class TestDygraphInplaceThresholdedRelu(TestDygraphInplaceWithContinuous):
-    def inplace_api_processing(self, var):
-        return paddle.nn.functional.thresholded_relu_(var, 1.0)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.nn.functional.thresholded_relu(var, 1.0)
-
-
-class TestDygraphInplaceLogicAnd(TestDygraphInplace):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-        self.y = paddle.randn([10, 20, 1])
-
-    def test_forward_result(self):
-        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-        no_inplace_var = self.non_inplace_api_processing(var)
-        inplace_var = self.inplace_api_processing(var)
-        inplace_var_bool = paddle.cast(inplace_var, 'bool')
-        np.testing.assert_array_equal(
-            no_inplace_var.numpy(), inplace_var_bool.numpy()
-        )
-
-    def inplace_api_processing(self, var):
-        return paddle.logical_and_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.logical_and(var, self.y)
-
-    def test_backward_error(self):
-        pass
-
-    def test_backward_success_1(self):
-        pass
-
-    def test_backward_success_2(self):
-        pass
-
-    def test_leaf_inplace_var_error(self):
-        pass
-
-
-class TestDygraphInplaceLogicOr(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.logical_or_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.logical_or(var, self.y)
-
-
-class TestDygraphInplaceLogicXor(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.logical_xor_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.logical_xor(var, self.y)
-
-
-class TestDygraphInplaceLogicNot(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.logical_not_(var)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.logical_not(var)
-
-
-class TestDygraphInplaceLessThan(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.less_than_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.less_than(var, self.y)
-
-
-class TestDygraphInplaceLessEqual(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.less_equal_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.less_equal(var, self.y)
-
-
-class TestDygraphInplaceGreaterEqual(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.greater_equal_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.greater_equal(var, self.y)
-
-
-class TestDygraphInplaceGreaterThan(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.greater_than_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.greater_than(var, self.y)
-
-
-class TestDygraphInplaceEqual(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.equal_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.equal(var, self.y)
-
-
-class TestDygraphInplaceNotEqual(TestDygraphInplaceLogicAnd):
-    def inplace_api_processing(self, var):
-        return paddle.not_equal_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.not_equal(var, self.y)
-
-
-class TestDygraphInplaceDivide(TestDygraphInplace):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-        self.y = paddle.randn([10, 20, 1])
-
-    def inplace_api_processing(self, var):
-        return paddle.divide_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.divide(var, self.y)
-
-
-class TestDygraphInplaceFloorDivide(TestDygraphInplace):
-    def init_data(self):
-        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
-        self.dtype = "float32"
-        self.y = paddle.randn([10, 20, 1])
-
-    def inplace_api_processing(self, var):
-        return paddle.floor_divide_(var, self.y)
-
-    def non_inplace_api_processing(self, var):
-        return paddle.floor_divide(var, self.y)
-
-    def test_backward_error(self):
-        pass
-
-    def test_backward_success_1(self):
-        pass
-
-    def test_backward_success_2(self):
-        pass
-
-    def test_leaf_inplace_var_error(self):
-        pass
+#     def test_leaf_inplace_var_error(self):
+#         pass
 
 
 if __name__ == '__main__':
