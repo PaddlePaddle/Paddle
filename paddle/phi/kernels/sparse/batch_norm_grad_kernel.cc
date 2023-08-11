@@ -88,7 +88,7 @@ PD_REGISTER_KERNEL(batch_norm_coo_grad,
 }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSAAA)
+#if defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(batch_norm_coo_grad,
                    GPU,
                    ALL_LAYOUT,
