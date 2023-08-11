@@ -144,7 +144,7 @@ def _strong_wolfe(
                 a_lo = aj;
         end(repeat)
 
-    referance: https://github.com/pytorch/pytorch
+    reference: https://github.com/pytorch/pytorch
     """
 
     d_norm = d.abs().max()
