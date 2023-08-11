@@ -787,7 +787,6 @@ function(musa_library TARGET_NAME)
     cmake_parse_arguments(musa_library "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     if(musa_library_SRCS)
-      # TODO(MTAI): enable compiling static library
       if(musa_library_SHARED OR musa_library_shared) # build *.so
         musa_add_library(${TARGET_NAME} SHARED ${musa_library_SRCS})
       else()
@@ -839,9 +838,25 @@ function(musa_binary TARGET_NAME)
   endif()
 endfunction()
 
-# TODO(@caizhi): enable musa_test
-#function(musa_test TARGET_NAME)
-#endfunction()
+function(musa_test TARGET_NAME)
+  if(WITH_MUSA AND WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(musa_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    add_executable(${TARGET_NAME} ${musa_test_SRCS})
+    get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+    target_link_libraries(${TARGET_NAME} ${musa_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main phi)
+    add_dependencies(${TARGET_NAME} ${musa_test_DEPS} paddle_gtest_main)
+    common_link(${TARGET_NAME})
+    add_test(${TARGET_NAME} ${TARGET_NAME})
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
+                                              FLAGS_cpu_deterministic=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
+                                              FLAGS_init_allocated_mem=true)
+  endif()
+endfunction()
 
 function(xpu_library TARGET_NAME)
   if(WITH_XPU_KP)
@@ -1339,6 +1354,11 @@ function(math_library TARGET)
       DEPS ${math_library_DEPS} ${math_common_deps})
   elseif(WITH_ROCM)
     hip_library(
+      ${TARGET}
+      SRCS ${cc_srcs} ${cu_srcs}
+      DEPS ${math_library_DEPS} ${math_common_deps})
+  elseif(WITH_MUSA)
+    musa_library(
       ${TARGET}
       SRCS ${cc_srcs} ${cu_srcs}
       DEPS ${math_library_DEPS} ${math_common_deps})

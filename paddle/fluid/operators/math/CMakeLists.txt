@@ -21,5 +21,6 @@ endif()
 
 math_library(unpooling)
 math_library(prelu)
-math_library(bert_encoder_functor)
+# TODO(@caizhi): enable it
+#math_library(bert_encoder_functor)
 math_library(tree2col DEPS phi)

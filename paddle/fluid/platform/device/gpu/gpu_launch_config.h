@@ -20,6 +20,8 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#elif defined(PADDLE_WITH_MUSA)
+#include <musa_runtime.h>
 #else
 #include <hip/hip_runtime.h>
 #endif

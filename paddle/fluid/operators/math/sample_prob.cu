@@ -164,7 +164,7 @@ void GPUSampleWithProb<T>::operator()(const phi::GPUContext& context,
   PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpy(samples_data + num_true,
                                         s_data,
                                         sizeof(int64_t) * num_samples,
-                                        hipMemcpyHostToDevice));
+                                        musaMemcpyHostToDevice));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(samples_data + num_true,
                                         s_data,

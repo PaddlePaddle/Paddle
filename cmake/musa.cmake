@@ -15,16 +15,73 @@ set(CMAKE_MODULE_PATH "${MUSA_PATH}/cmake" ${CMAKE_MODULE_PATH})
 
 find_package(MUSA REQUIRED)
 include_directories(${MUSA_PATH}/include)
-include_directories(/usr/lib/llvm-11/include/openmp/)
 
-# TODO(@caizhi): enable finding musa version
-#macro(find_musa_version version_file)
-#endmacro()
-#find_musa_version(${MUSA_PATH}/version.h)
+# set openmp include directory
+set(llvm_search_list)
+foreach(item RANGE 6 20 1)
+  list(APPEND llvm_search_list /usr/lib/llvm-${item}/include/openmp/)
+endforeach()
+
+find_path(
+  OPENMP_INCLUDE_DIR omp.h
+  PATHS ${llvm_search_list}
+  REQUIRED
+  NO_DEFAULT_PATH)
+include_directories(${OPENMP_INCLUDE_DIR})
+
+macro(find_musa_version musa_version_file)
+  set(python_file ${PROJECT_BINARY_DIR}/get_version.py)
+  set(MUSA_VERSION "None" CACHE STRING "musa version" FORCE)
+  file(
+    WRITE ${python_file}
+    ""
+    "import json\n"
+    "import sys\n"
+    "with open(sys.argv[1], 'r') as f:\n"
+    "    data = json.load(f)\n"
+    "    print(data[\"MUSA_RUNTIME\"][\"version\"])"
+    "")
+
+  execute_process(
+    COMMAND "python" "${python_file}" ${musa_version_file}
+    WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
+    RESULT_VARIABLE python_res
+    OUTPUT_VARIABLE python_out
+    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if(python_res EQUAL 0)
+    set(MUSA_VERSION ${python_out})
+  endif()
+  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\1" MUSA_MAJOR_VERSION "${MUSA_VERSION}")
+  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\2" MUSA_MINOR_VERSION "${MUSA_VERSION}")
+  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\3" MUSA_PATCH_VERSION "${MUSA_VERSION}")
+
+  if(NOT MUSA_MAJOR_VERSION)
+    set(MUSA_VERSION "???")
+    message(
+      WARNING "Cannot find MUSA version in ${MUSA_PATH}/version.json"
+    )
+  else()
+    math(
+      EXPR
+      MUSA_VERSION
+      "${MUSA_MAJOR_VERSION} * 10000 + ${MUSA_MINOR_VERSION} * 100   + ${MUSA_PATCH_VERSION}"
+    )
+    message(
+      STATUS
+        "Current MUSA version file is ${MUSA_PATH}/version.json.")
+    message(
+      STATUS
+	"Current MUSA version is v${MUSA_MAJOR_VERSION}.${MUSA_MINOR_VERSION}.${MUSA_PATCH_VERSION} ")
+  endif()
+endmacro()
+find_musa_version(${MUSA_PATH}/version.json)
 
 list(APPEND MUSA_MCC_FLAGS -Wno-unknown-warning-option)
 list(APPEND MUSA_MCC_FLAGS -Wno-macro-redefined)
 list(APPEND MUSA_MCC_FLAGS -Wno-unused-variable)
+list(APPEND MUSA_MCC_FLAGS -Wno-deprecated-copy-with-user-provided-copy)
+list(APPEND MUSA_MCC_FLAGS -Wno-pragma-once-outside-header)
 list(APPEND MUSA_MCC_FLAGS -Wno-return-type)
 list(APPEND MUSA_MCC_FLAGS -Wno-sign-compare)
 list(APPEND MUSA_MCC_FLAGS -Wno-mismatched-tags)
