@@ -42,7 +42,7 @@ Tensor tanh_grad<DescTensor>(const Tensor& out, const Tensor& grad_out) {
 template <>
 Tensor mean_grad<DescTensor>(const Tensor& x,
                              const Tensor& out_grad,
-                             std::vector<int64_t> axis,
+                             const IntArray& axis,
                              bool keepdim,
                              bool reduce_all) {
   ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
@@ -54,7 +54,7 @@ Tensor mean_grad<DescTensor>(const Tensor& x,
           .dyn_cast<ir::OpResult>();
 
   ir::OpResult op_res = paddle::dialect::mean_grad(
-      x_res, out_grad_res, axis, keepdim, reduce_all);
+      x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
 
   return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
 }

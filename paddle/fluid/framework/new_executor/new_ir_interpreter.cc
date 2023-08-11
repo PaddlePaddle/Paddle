@@ -427,6 +427,7 @@ void NewIRInterpreter::BuildInstruction() {
         VLOG(6) << "skip process " << op_name;
         continue;
       }
+      VLOG(6) << "process " << op_name;
 
       if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
           op_name == "pd.fused_softmax_mask_upper_triangle_grad") {
@@ -452,7 +453,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Now only support pd_kernel dialect."));
+          "Now only support pd or pd_kernel dialect."));
     }
   }
 }
