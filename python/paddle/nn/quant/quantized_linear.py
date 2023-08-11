@@ -90,8 +90,9 @@ def weight_only_linear(
             weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
             scale = paddle.randn([32], dtype='float32')
             bias = paddle.cast(paddle.randn([32]), dtype='float16')
-            out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
-            print(out.shape) # [1, 2, 32]
+            if paddle.device.cuda.get_device_capability()[0] >= 8:
+                out = weight_only_linear(x, weight, bias=bias, weight_scale=scale, weight_dtype='int8')
+                print(out.shape) # [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
@@ -155,8 +156,9 @@ def llm_int8_linear(
             weight = paddle.cast(paddle.randint(0, 127, [32, 64]), dtype='int8')
             scale = paddle.randn([32], dtype='float32')
             bias = paddle.cast(paddle.randn([32]), dtype='float16')
-            out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
-            print(out.shape) # [1, 2, 32]
+            if paddle.device.cuda.get_device_capability()[0] >= 8:
+                out = llm_int8_linear(x, weight, bias=bias, weight_scale=scale, threshold=6.0)
+                print(out.shape) # [1, 2, 32]
     """
     if in_dynamic_mode():
         out = _C_ops.llm_int8_linear(x, weight, bias, weight_scale, threshold)
