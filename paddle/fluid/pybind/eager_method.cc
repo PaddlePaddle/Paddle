@@ -101,7 +101,8 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
   }
 }
 
-PyDoc_STRVAR(tensor_method_numpy__doc__, R"DOC(numpy($self, /)
+PyDoc_STRVAR(tensor_method_numpy__doc__,  // NOLINT
+             R"DOC(numpy($self, /)
 --
 
 Returns a numpy array shows the value of current Tensor.
@@ -128,8 +129,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   EAGER_TRY
   auto& api = pybind11::detail::npy_api::get();
   if (!self->tensor.impl()) {
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -148,8 +149,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   auto tensor_dims = self->tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
-  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
-  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
+  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
   if (py_rank == 0) {
@@ -417,8 +418,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   if (!self->tensor.impl() || !self->tensor.impl()->initialized()) {
     VLOG(6) << "The StringTensor is uninitialized. Return the empty string "
                "numpy array.";
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -595,7 +596,8 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method_clone__doc__, R"DOC(clone($self, /)
+PyDoc_STRVAR(tensor_method_clone__doc__,  // NOLINT
+             R"DOC(clone($self, /)
 --
 
 Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
@@ -670,7 +672,7 @@ static PyObject* tensor_retain_grads(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_clear_gradient__doc__,
+PyDoc_STRVAR(tensor_clear_gradient__doc__,  // NOLINT
              R"DOC(clear_gradient($self, set_to_zero=True, /)
 --
 
@@ -893,7 +895,8 @@ static PyObject* tensor__is_shared_underline_tensor_with(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method_detach__doc__, R"DOC(detach($self, /)
+PyDoc_STRVAR(tensor_method_detach__doc__,  // NOLINT
+             R"DOC(detach($self, /)
 --
 
 Returns a new Tensor, detached from the current graph.
@@ -1289,8 +1292,8 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   if (tensor.dtype() == proto_type) {                                        \
     auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);                   \
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];                  \
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];               \
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];    /* NOLINT */  \
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank]; /* NOLINT */  \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \
@@ -1636,7 +1639,7 @@ static PyObject* tensor_inplace_assign(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method__register_reduce_hook__doc__,
+PyDoc_STRVAR(tensor_method__register_reduce_hook__doc__,  // NOLINT
              R"DOC(_register_backward_hook($self, hook, /)
 --
 
@@ -2025,7 +2028,8 @@ static PyObject* tensor__inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method_element_size__doc__, R"DOC(element_size($self, /)
+PyDoc_STRVAR(tensor_method_element_size__doc__,  // NOLINT
+             R"DOC(element_size($self, /)
 --
 
 Returns the size in bytes of an element in the Tensor.
@@ -2064,7 +2068,7 @@ static PyObject* tensor_method_element_size(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method__bump_inplace_version__doc__,
+PyDoc_STRVAR(tensor_method__bump_inplace_version__doc__,  // NOLINT
              R"DOC(_bump_inplace_version($self, /)
 --
 
@@ -2366,7 +2370,7 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef variable_methods[] = {
+PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS,
@@ -2628,7 +2632,7 @@ PyMethodDef variable_methods[] = {
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
-PyMethodDef string_tensor_variable_methods[] = {
+PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS,
