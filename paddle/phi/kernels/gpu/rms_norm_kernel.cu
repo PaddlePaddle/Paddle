@@ -177,9 +177,7 @@ typename std::enable_if<HasCanPackAs<T>::value == false, bool>::type CanPackAs(
 
 template <typename T, int N>
 struct alignas(sizeof(T) * N) Pack {
-  __device__ Pack() {
-    // do nothing
-  }
+  __device__ Pack() = default;
   T elem[N];
 };
 

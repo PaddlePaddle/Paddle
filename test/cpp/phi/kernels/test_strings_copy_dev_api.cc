@@ -46,7 +46,7 @@ TEST(DEV_API, strings_copy) {
   StringTensor string_dst(alloc, meta);
 
   // 2. Assign input text
-  const char* input[] = {"A Short Pstring.",
+  const char* input[] = {"A Short Pstring.",  // NOLINT
                          "A Large Pstring Whose Length Is Longer Than 22.",
                          "abc",
                          "defg",

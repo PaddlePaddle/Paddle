@@ -27,7 +27,7 @@ template <class T>
 class Point_ {
  public:
   // default constructor
-  Point_() {}
+  Point_() = default;
   Point_(T _x, T _y) {}
   Point_(const Point_& pt UNUSED) {}
 

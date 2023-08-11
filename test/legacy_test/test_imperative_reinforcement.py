@@ -21,7 +21,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
 
 
 class Policy(paddle.nn.Layer):
@@ -81,8 +80,8 @@ class TestImperativeMnist(unittest.TestCase):
             loss_probs = paddle.multiply(dy_reward, loss_probs)
             loss = paddle.sum(loss_probs)
 
-            sgd = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=policy.parameters()
+            sgd = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=policy.parameters()
             )
 
             dy_param_init_value = {}
@@ -124,7 +123,7 @@ class TestImperativeMnist(unittest.TestCase):
 
             policy = Policy(input_size=4)
 
-            st_sgd = SGDOptimizer(learning_rate=1e-3)
+            st_sgd = paddle.optimizer.SGD(learning_rate=1e-3)
 
             st_state = paddle.static.data(
                 name='st_state', shape=[-1, 4], dtype='float32'

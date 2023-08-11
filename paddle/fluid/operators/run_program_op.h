@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
@@ -390,7 +390,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     }
     VLOG(2) << "The number of sub scopes after forward: "
             << target_scope->kids().size();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) platform::DontClearMKLDNNCache(ctx.GetPlace());
 #endif
     return pe_and_graph;

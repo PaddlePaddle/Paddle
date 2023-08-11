@@ -33,7 +33,7 @@ namespace paddle {
 namespace operators {
 namespace benchmark {
 
-DEFINE_string(op_config_list, "", "Path of op config file.");
+DEFINE_string(op_config_list, "", "Path of op config file.");  // NOLINT
 DEFINE_int32(specified_config_id, -1, "Test the specified op config.");
 
 void OpTester::Init(const std::string &filename) {
@@ -63,7 +63,7 @@ void OpTester::Init(const OpTesterConfig &config) {
   }
 
   framework::InitDevices();
-  scope_.reset(new paddle::framework::Scope());
+  scope_ = std::make_unique<paddle::framework::Scope>();
 
   op_ = framework::OpRegistry::CreateOp(op_desc_);
   CreateVariables(scope_.get());

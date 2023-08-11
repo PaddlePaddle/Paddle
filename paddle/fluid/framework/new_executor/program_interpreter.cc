@@ -25,7 +25,7 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
@@ -87,7 +87,7 @@ ProgramInterpreter::~ProgramInterpreter() {
   async_work_queue_.reset();
   VLOG(4) << "~ProgramInterpreter(): " << this << " on " << place_;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
@@ -127,7 +127,7 @@ FetchList ProgramInterpreter::Run(
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -165,7 +165,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -1503,6 +1503,20 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ss << "trace order: ";
+    for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+      ss << vec_instruction_[trace_execute_order_[idx]]
+                .OpFunc()
+                ->operator_base_->Type()
+         << "[" << trace_execute_order_[idx] << "]"
+         << " -> ";
+    }
+    ss << "end\n";
+    VLOG(6) << ss.str();
+  }
 }
 
 }  // namespace framework
