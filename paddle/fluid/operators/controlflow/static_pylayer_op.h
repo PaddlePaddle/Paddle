@@ -19,8 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 

@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/operators/controlflow/static_pylayer_op.h"
 
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/phi/core/flags.h"
