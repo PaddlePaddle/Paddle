@@ -54,7 +54,9 @@ std::shared_ptr<DistTensor> ConstructReplicatedDistCPU(
   dist_attr->set_process_mesh(mesh);
 
   return std::make_shared<DistTensor>(
-      std::make_shared<DenseTensor>(input_dense), dist_attr);
+      std::make_shared<DenseTensor>(input_dense),
+      input_dense.meta(),
+      dist_attr);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -87,7 +89,9 @@ std::shared_ptr<DistTensor> ConstructReplicatedDistGPU(
   dist_attr->set_process_mesh(mesh);
 
   return std::make_shared<DistTensor>(
-      std::make_shared<DenseTensor>(input_dense_gpu), dist_attr);
+      std::make_shared<DenseTensor>(input_dense_gpu),
+      input_dense_gpu.meta(),
+      dist_attr);
 }
 #endif
 

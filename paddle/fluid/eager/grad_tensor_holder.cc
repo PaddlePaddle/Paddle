@@ -18,10 +18,12 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 namespace egr {
 
@@ -92,8 +94,11 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
         // TODO(chenweihang): replace by valid dist_attr later
         auto temp =
             paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+        auto dense_temp =
+            std::dynamic_pointer_cast<phi::DenseTensor>(temp.impl());
         auto dist_tensor = std::make_shared<phi::distributed::DistTensor>(
-            std::dynamic_pointer_cast<phi::DenseTensor>(temp.impl()),
+            dense_temp,
+            dense_temp->meta(),
             std::make_shared<
                 phi::distributed::auto_parallel::TensorDistAttr>());
         temp.set_impl(dist_tensor);

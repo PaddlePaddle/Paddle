@@ -236,14 +236,12 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   bool is_selected_rows = phi::SelectedRows::classof(tensor_);
   bool is_sparse_coo = phi::SparseCooTensor::classof(tensor_);
   bool is_sparse_csr = phi::SparseCsrTensor::classof(tensor_);
+  bool is_dist_tensor = false;
 #ifdef PADDLE_WITH_DISTRIBUTE
-  bool is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
+  is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
 #endif
-  if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr
-#ifdef PADDLE_WITH_DISTRIBUTE
-      || is_dist_tensor
-#endif
-  ) {
+  if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr ||
+      is_dist_tensor) {
     if (is_selected_rows) {
       const auto in_tensor_base = meta_tensor.tensor();
       PADDLE_ENFORCE_EQ(
