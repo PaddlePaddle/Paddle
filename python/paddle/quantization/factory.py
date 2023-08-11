@@ -87,7 +87,7 @@ def quanter(class_name):
             >>> from paddle.quantization import quanter
             >>> from paddle.quantization import BaseQuanter
             >>> @quanter("CustomizedQuanter")
-            ... class CustomizedQuanterLayer(BaseQuanter):
+            >>> class CustomizedQuanterLayer(BaseQuanter):
             ...     def __init__(self, arg1, kwarg1=None):
             ...         pass
 
