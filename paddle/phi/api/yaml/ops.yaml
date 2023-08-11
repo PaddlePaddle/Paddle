@@ -1765,6 +1765,15 @@
     func : slogdet
   backward : slogdet_grad
 
+- op : smp_matmul
+  args : (Tensor x, Tensor y, bool x_row_shard, bool y_row_shard, bool out_row_shard, int smp_rank, int smp_ranks, bool transpose_y = false)
+  output : Tensor
+  infer_meta :
+    func : SMPMatmulInferMeta
+  kernel :
+    func : smp_matmul
+  # backward : smp_matmul_grad
+
 - op : softplus
   args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
   output : Tensor
