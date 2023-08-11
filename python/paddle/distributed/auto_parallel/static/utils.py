@@ -697,7 +697,7 @@ def load_checkpoint_into_program(
         .. code-block:: python
 
             >>> from paddle.distributed.auto_parallel.static.utils import load_checkpoint_into_program
-            
+
             >>> exe.run(startup_program)
             >>> ckpt_path = ['./model_state_rank0.pdmodel',
             ...                 './model_state_rank1.pdmodel']
