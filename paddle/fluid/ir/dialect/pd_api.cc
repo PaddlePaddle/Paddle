@@ -65,6 +65,27 @@ ir::OpResult full(const std::vector<int64_t>& shape,
   return full_op.out();
 }
 
+ir::OpResult reshape(ir::OpResult x, std::vector<int64_t> shape) {
+  paddle::dialect::ReshapeOp reshape_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ReshapeOp>(
+          x, shape);
+  return reshape_op.out();
+}
+
+ir::OpResult expand(ir::OpResult x, std::vector<int64_t> shape) {
+  paddle::dialect::ExpandOp expand_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ExpandOp>(
+          x, shape);
+  return expand_op.out();
+}
+
+ir::OpResult tile(ir::OpResult x, std::vector<int64_t> repeat_times) {
+  paddle::dialect::TileOp tile_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::TileOp>(
+          x, repeat_times);
+  return tile_op.out();
+}
+
 ir::OpResult tanh_grad(ir::OpResult out, ir::OpResult grad_out) {
   paddle::dialect::TanhGradOp tanh_grad_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::TanhGradOp>(

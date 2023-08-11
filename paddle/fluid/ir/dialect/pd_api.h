@@ -35,6 +35,12 @@ ir::OpResult sum(ir::OpResult x,
 
 ir::OpResult divide(ir::OpResult x, ir::OpResult y);
 
+ir::OpResult reshape(ir::OpResult x, std::vector<int64_t> shape);
+
+ir::OpResult expand(ir::OpResult x, std::vector<int64_t> shape = {});
+
+ir::OpResult tile(ir::OpResult x, std::vector<int64_t> repeat_times = {});
+
 ir::OpResult full(const std::vector<int64_t>& shape,
                   float value,
                   phi::DataType dtype = phi::DataType::FLOAT32,

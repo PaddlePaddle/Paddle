@@ -59,6 +59,68 @@ Tensor mean_grad<DescTensor>(const Tensor& x,
   return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
 }
 
+template <>
+Tensor divide<DescTensor>(const Tensor& x, const Tensor& y) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult y_res = std::static_pointer_cast<DescTensor>(y.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::divide(x_res, y_res);
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor sum<DescTensor>(const Tensor& x,
+                       const IntArray& axis,
+                       phi::DataType dtype,
+                       bool keepdim) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res =
+      paddle::dialect::sum(x_res, axis.GetData(), dtype, keepdim);
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor full<DescTensor>(const IntArray& shape,
+                        const Scalar& value,
+                        phi::DataType dtype,
+                        phi::Place place) {
+  ir::OpResult op_res =
+      paddle::dialect::full(shape.GetData(), value.to<float>(), dtype, place);
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::reshape(x_res, shape.GetData());
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::expand(x_res, shape.GetData());
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor tile<DescTensor>(const Tensor& x, const IntArray& repeat_times) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::tile(x_res, repeat_times.GetData());
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive
