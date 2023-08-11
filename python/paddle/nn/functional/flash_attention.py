@@ -466,7 +466,9 @@ def scaled_dot_product_attention(
 
             # required: skiptest
             import paddle
+
             q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
+
             output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             print(output)
     """
