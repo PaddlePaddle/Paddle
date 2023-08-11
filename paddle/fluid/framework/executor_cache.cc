@@ -438,6 +438,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   program_translator.Translate();
 
+  program->Print(std::cout);
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
   return ir_res;

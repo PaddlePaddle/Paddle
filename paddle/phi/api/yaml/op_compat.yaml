@@ -1167,6 +1167,22 @@
       data_type : float
       support_tensor : true
 
+- op : fused_bn_add_activation
+  backward : fused_bn_add_activation_grad
+  inputs:
+    x : X
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
+
 - op : fused_conv2d
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,

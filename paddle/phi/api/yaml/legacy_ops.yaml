@@ -396,6 +396,30 @@
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
+- op : fused_batch_norm_act
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str act_type)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta:
+    func : FusedBatchNormActInferMeta
+    param : [x, scale, bias, mean, variance]
+  kernel :
+    func : fused_batch_norm_act
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
+  backward : fused_batch_norm_act_grad
+
+- op : fused_bn_add_activation
+  args : (Tensor x, Tensor z, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str act_type)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta:
+    func : FusedBatchNormActInferMeta
+    param : [x, scale, bias, mean, variance]
+  kernel :
+    func : fused_bn_add_activation
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
+  backward : fused_bn_add_activation_grad
+
 - op : fused_softmax_mask_upper_triangle
   args : (Tensor X)
   output : Tensor(Out)

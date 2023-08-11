@@ -1374,6 +1374,36 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
   sequencenum->set_dtype(DataType::FLOAT32);
 }
 
+void FusedBatchNormActInferMeta(const MetaTensor& x,
+                                const MetaTensor& scale,
+                                const MetaTensor& bias,
+                                const MetaTensor& mean,
+                                const MetaTensor& variance,
+                                MetaTensor* y,
+                                MetaTensor* mean_out,
+                                MetaTensor* variance_out,
+                                MetaTensor* saved_mean,
+                                MetaTensor* saved_variance,
+                                MetaTensor* reserve_space) {
+  BatchNormInferMeta(x,
+                     mean,
+                     variance,
+                     scale,
+                     bias,
+                     false,
+                     0.0,
+                     0.0,
+                     "NHWC",
+                     false,
+                     false,
+                     y,
+                     mean_out,
+                     variance_out,
+                     saved_mean,
+                     saved_variance,
+                     reserve_space);
+}
+
 void FusedBiasActInferMeta(const MetaTensor& x,
                            const MetaTensor& bias,
                            const MetaTensor& dequant_scales,
