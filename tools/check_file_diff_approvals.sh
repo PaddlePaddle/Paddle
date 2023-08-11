@@ -278,6 +278,12 @@ if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg heavyrain-lzy
 fi
 
+HAS_MODIFIED_AUTOGRAD_BACKWARD=`git diff --name-only upstream/$BRANCH | grep -E "python/paddle/autograd/backward.py|python/paddle/autograd/backward_utils.py" || true`
+if [ "${HAS_MODIFIED_AUTOGRAD_BACKWARD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/backward.py or python/paddle/autograd/backward_utils.py changes.\n"
+    check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
+fi
+
 HAS_MODIFIED_FRAMEWORK_EXECUTOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/new_executor" || true`
 if [ "${HAS_MODIFIED_FRAMEWORK_EXECUTOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (From00, zhangbo9674) approval for file changes in paddle/fluid/framework/new_executor.\n"
