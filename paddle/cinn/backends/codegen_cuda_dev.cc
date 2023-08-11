@@ -62,6 +62,7 @@ void CodeGenCUDA_Dev::Compile(const ir::Module &module,
   CodeGenC::inline_builtin_codes_ = false;
   if (!outputs.c_header_name.empty()) {
     auto source = Compile(module, OutputKind::CHeader);
+    str_ = "";
     std::ofstream file(outputs.c_header_name);
     CHECK(file.is_open()) << "failed to open file " << outputs.c_header_name;
     file << source;
@@ -71,6 +72,7 @@ void CodeGenCUDA_Dev::Compile(const ir::Module &module,
 
   if (!outputs.cuda_source_name.empty()) {
     auto source = Compile(module, OutputKind::CImpl);
+    str_ = "";
     std::ofstream file(outputs.cuda_source_name);
     CHECK(file.is_open()) << "failed to open file " << outputs.cuda_source_name;
     file << source;
@@ -79,9 +81,8 @@ void CodeGenCUDA_Dev::Compile(const ir::Module &module,
   }
 }
 
-std::string CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
-  Print(Expr(func));
-  return ss_.str();
+void CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
+  IrPrinter::Visit(Expr(func));
 }
 
 std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(
@@ -117,10 +118,10 @@ std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(
 void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
-  os() << "__global__\n";
+  str_ += "__global__\n";
 
   PrintFunctionDeclaration(op);
-  os() << "\n";
+  str_ += "\n";
 
   DoIndent();
 
@@ -145,15 +146,16 @@ void CodeGenCUDA_Dev::Visit(const ir::_LoweredFunc_ *op) {
   if (!func_body.As<ir::Block>()) {
     func_body = ir::Block::Make({func_body});
   }
-  Print(func_body);
+  IrPrinter::Visit(func_body);
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::_Var_ *op) {
   if (utils::Startswith(op->name, "threadIdx") ||
       utils::Startswith(op->name, "blockIdx")) {
-    os() << "(int)" + op->name;
+    str_ += "(int)";
+    str_ += op->name;
   } else {
-    os() << op->name;
+    str_ += op->name;
   }
 }
 
@@ -163,58 +165,63 @@ void CodeGenCUDA_Dev::Visit(const ir::Alloc *op) {
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::Min *op) {
-  os() << "min(";
-  Print(op->a());
-  os() << ", ";
-  Print(op->b());
-  os() << ")";
+  str_ += "min(";
+  IrPrinter::Visit(op->a());
+  str_ += ", ";
+  IrPrinter::Visit(op->b());
+  str_ += ")";
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::Max *op) {
-  os() << "max(";
-  Print(op->a());
-  os() << ", ";
-  Print(op->b());
-  os() << ")";
+  str_ += "max(";
+  IrPrinter::Visit(op->a());
+  str_ += ", ";
+  IrPrinter::Visit(op->b());
+  str_ += ")";
 }
 
 void CodeGenCUDA_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
-  os() << "void ";
+  str_ += "void ";
   if (op->cuda_axis_info.valid()) {
     int thread_num = 1;
     for (int i = 0; i < 3; i++) {
       thread_num *= op->cuda_axis_info.block_dim(i);
     }
-    os() << "__launch_bounds__(" << thread_num << ") ";
+    str_ += "__launch_bounds__(";
+    str_ += std::to_string(thread_num);
+    str_ += ") ";
   }
 
-  os() << op->name << "(";
+  str_ += op->name;
+  str_ += "(";
   for (int i = 0; i < op->args.size() - 1; i++) {
     auto &arg = op->args[i];
     PrintFuncArg(arg);
-    os() << ", ";
+    str_ += ", ";
   }
   if (!op->args.empty()) {
     PrintFuncArg(op->args.back());
   }
-  os() << ")";
+  str_ += ")";
 }
 
 void CodeGenCUDA_Dev::PrintFuncArg(const ir::Argument &arg) {
   if (arg.is_buffer()) {
     // In CUDA kernel, only primitive type is supported, so we replace the
     // buffer with T*j
-    if (arg.is_input()) os() << "const ";
-    os() << GetTypeRepr(arg.buffer_arg()->dtype);
-    os() << "* ";
-    os() << kCKeywordRestrict << " ";
-    os() << ir::BufferGetTensorName(arg.buffer_arg().As<ir::_Buffer_>());
+    if (arg.is_input()) str_ += "const ";
+    str_ += GetTypeRepr(arg.buffer_arg()->dtype);
+    str_ += "* ";
+    str_ += kCKeywordRestrict;
+    str_ += " ";
+    str_ += ir::BufferGetTensorName(arg.buffer_arg().As<ir::_Buffer_>());
   } else if (arg.is_var()) {
     if (arg.var_arg()->type().is_cpp_handle()) {
-      os() << kCKeywordRestrict;
+      str_ += kCKeywordRestrict;
     }
-    os() << GetTypeRepr(arg.type()) << " ";
-    os() << arg.name();
+    str_ += GetTypeRepr(arg.type());
+    str_ += " ";
+    str_ += arg.name();
   } else {
     CINN_NOT_IMPLEMENTED
   }
@@ -230,7 +237,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
     PrintIncludes();
 
     if (for_nvrtc_) {
-      os() << "\nextern \"C\" {\n\n";
+      str_ += "\nextern \"C\" {\n\n";
     }
 
     PrintBuiltinCodes();
@@ -243,27 +250,30 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
   }
 
   if (for_nvrtc_) {
-    os() << "\n\n}";
+    str_ += "\n\n}";
   }
-
-  return ss_.str();
+  return str_;
 }
 
-void CodeGenCUDA_Dev::PrintIncludes() { os() << GetSourceHeader(); }
+void CodeGenCUDA_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
   CHECK_NE(buffer->type(), Void());
   auto print_gpu_memory = [&](const std::string &mark) {
-    os() << mark << GetTypeRepr(buffer->dtype) << " " << buffer->name << " ";
+    str_ += mark;
+    str_ += GetTypeRepr(buffer->dtype);
+    str_ += " ";
+    str_ += buffer->name;
+    str_ += " ";
 
-    os() << "[ ";
+    str_ += "[ ";
     Expr buffer_size(1);
     for (int i = 0; i < buffer->shape.size(); i++) {
       buffer_size = buffer_size * buffer->shape[i];
     }
     optim::Simplify(&buffer_size);
-    Print(buffer_size);
-    os() << " ]";
+    IrPrinter::Visit(buffer_size);
+    str_ += " ]";
   };
   switch (buffer->memory_type) {
     case ir::MemoryType::GPUShared:
@@ -281,46 +291,47 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::Call *op) {
-  os() << op->name + "(";
+  str_ += op->name;
+  str_ += "(";
 
   if (!op->read_args.empty()) {
     for (int i = 0; i < op->read_args.size() - 1; i++) {
       auto &arg = op->read_args[i];
       if (arg.as_tensor()) {
-        os() << arg.as_tensor()->name;
-        os() << ", ";
+        str_ += arg.as_tensor()->name;
+        str_ += ", ";
       } else {
-        Print(arg);
-        os() << ", ";
+        IrPrinter::Visit(arg);
+        str_ += ", ";
       }
     }
     if (op->read_args.back().as_tensor()) {
-      os() << op->read_args.back().as_tensor()->name;
+      str_ += op->read_args.back().as_tensor()->name;
     } else {
-      Print(op->read_args.back());
+      IrPrinter::Visit(op->read_args.back());
     }
   }
 
   if (!op->write_args.empty()) {
-    os() << ", ";
+    str_ += ", ";
     for (int i = 0; i < op->write_args.size() - 1; i++) {
       auto &arg = op->write_args[i];
       if (arg.as_tensor()) {
-        os() << arg.as_tensor()->name;
-        os() << ", ";
+        str_ += arg.as_tensor()->name;
+        str_ += ", ";
       } else {
-        Print(arg);
-        os() << ", ";
+        IrPrinter::Visit(arg);
+        str_ += ", ";
       }
     }
     if (op->write_args.back().as_tensor()) {
-      os() << op->write_args.back().as_tensor()->name;
+      str_ += op->write_args.back().as_tensor()->name;
     } else {
-      Print(op->write_args.back());
+      IrPrinter::Visit(op->write_args.back());
     }
   }
 
-  os() << ")";
+  str_ += ")";
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
@@ -331,20 +342,21 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
   if (op->type().is_customized() &&
       utils::Startswith(op->type().customized_type(),
                         common::customized_type::kcuda_builtin_vector_t)) {
-    os() << GetTypeRepr(op->type());
+    str_ += GetTypeRepr(op->type());
     if (op->type().is_cpp_handle()) {
-      os() << " " << kCKeywordRestrict;
+      str_ += " ";
+      str_ += kCKeywordRestrict;
     }
-    os() << " ";
-    Print(op->symbol);
+    str_ += " ";
+    IrPrinter::Visit(op->symbol);
     vectorized_tensor_names_.insert(utils::GetStreamCnt(op->symbol));
     // skip "=0" in "half8 temp = 0;" sincethe operator= of half8 may not
     // overloaded.
     if (op->body.As<ir::IntImm>() && op->body.As<ir::IntImm>()->value == 0) {
       return;
     }
-    os() << " = ";
-    Print(op->body);
+    str_ += " = ";
+    IrPrinter::Visit(op->body);
   } else {
     CodeGenC::Visit(op);
   }
@@ -374,10 +386,14 @@ bool CodeGenCUDA_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
     return false;
   }
   if (is_store && tensor->type().is_cpp_handle()) {
-    os() << tensor->name << "[" << index << "]";
+    str_ += tensor->name;
+    str_ += "[";
+    str_ += std::to_string(index);
+    str_ += "]";
   } else {
-    os() << tensor->name << (tensor->type().is_cpp_handle() ? "->" : ".")
-         << index2suffix[index];
+    str_ += tensor->name;
+    str_ += (tensor->type().is_cpp_handle() ? "->" : ".");
+    str_ += index2suffix[index];
   }
   return true;
 }
@@ -396,8 +412,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
   // accesses element at a cuda built-in vector, others still resolve to
   // CodeGenC
   if (PrintBuiltinVectorAccess(op, op->index(), true)) {
-    os() << " = ";
-    Print(op->value);
+    str_ += " = ";
+    IrPrinter::Visit(op->value);
   } else {
     CodeGenC::Visit(op);
   }

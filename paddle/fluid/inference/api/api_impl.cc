@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_bool(profile, false, "Turn on profiler for fluid");
+DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
 
 namespace paddle {
 namespace {
@@ -95,10 +95,10 @@ bool NativePaddlePredictor::Init(
     paddle::framework::InitMemoryMethod();
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
-    scope_.reset(new paddle::framework::Scope());
+    scope_ = std::make_unique<paddle::framework::Scope>();
   }
 
-  executor_.reset(new paddle::framework::Executor(place_));
+  executor_ = std::make_unique<paddle::framework::Executor>(place_);
 
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
@@ -373,7 +373,7 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummpy");
+      flags.emplace_back("dummpy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          num2str<float>(config.fraction_of_gpu_memory);
       flags.push_back(flag);

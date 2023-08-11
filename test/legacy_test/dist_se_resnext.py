@@ -218,7 +218,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         model = SE_ResNeXt(layers=50)
         out = model.net(input=image, class_dim=102)
         cost = paddle.nn.functional.cross_entropy(
-            input=out, label=label, reduction='none', use_softmax=False
+            input=out, label=label, reduction='none', use_softmax=True
         )
 
         avg_cost = paddle.mean(x=cost)
@@ -238,17 +238,17 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
         if not use_dgc:
-            optimizer = fluid.optimizer.Momentum(
-                learning_rate=fluid.layers.piecewise_decay(
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=paddle.optimizer.lr.PiecewiseDecay(
                     boundaries=bd, values=lr
                 ),
                 momentum=0.9,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
         else:
             optimizer = (
                 paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
-                    learning_rate=fluid.layers.piecewise_decay(
+                    learning_rate=paddle.optimizer.lr.piecewise_decay(
                         boundaries=bd, values=lr
                     ),
                     momentum=0.9,

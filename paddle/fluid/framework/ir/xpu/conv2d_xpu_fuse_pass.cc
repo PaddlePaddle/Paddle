@@ -562,12 +562,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     conv2d_xpu_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
     conv2d_xpu_op_desc.SetAttr("act_param", act_param_);
-    std::vector<int> conv_bias;
-    if (has_bias) {
-      conv_bias.push_back(1);
-    } else {
-      conv_bias.push_back(0);
-    }
     conv2d_xpu_op_desc.SetAttr(
         "padding_algorithm",
         conv->Op()->GetAttrIfExists<std::string>("padding_algorithm"));

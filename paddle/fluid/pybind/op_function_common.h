@@ -194,20 +194,6 @@ void ConstructAttrMapFromPyArgs(
     ssize_t attr_end,
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
-std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
-    const std::string& op_type,
-    const std::string& arg_name,
-    PyObject* args,
-    ssize_t arg_idx,
-    bool dispensable = false);
-
-std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseListFromArgs(
-    const std::string& op_type,
-    const std::string& arg_name,
-    PyObject* args,
-    ssize_t arg_idx,
-    bool dispensable = false);
-
 unsigned long GetUnsignedLongFromArgs(  // NOLINT
     const std::string& op_type,
     const std::string& arg_name,

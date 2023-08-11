@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import optimizer
 from paddle.fluid.backward import _append_grad_suffix_
 
 paddle.enable_static()
@@ -151,7 +150,7 @@ class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
         self._init_config()
-        self.optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+        self.optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         self.attr = {}
 
     def _init_config(self):
@@ -254,57 +253,6 @@ class TestSGDOptimizer(TestOptimizer):
             ValueError, "var param_y not in this block"
         ):
             self._check_grads(use_bf16=True)
-
-
-class TestAdamOptimizer(TestOptimizer):
-    """
-    inherit TestOptimizer and shall override two functions as follows:
-        setUp(): to set config info of optimizer, including Optimizer and its hyper-parameter.
-        _apply_gradient(): to implement the way of updating grad.
-    """
-
-    def setUp(self):
-        self._init_config()
-        beta1, beta2, epsilon = 0.9, 0.999, 1e-8
-        self.optimizer = optimizer.AdamOptimizer(
-            learning_rate=0.01, beta1=beta1, beta2=beta2, epsilon=epsilon
-        )
-        self.attr = {
-            "beta1": beta1,
-            "beta2": beta2,
-            "beta1_pow": beta1,
-            "beta2_pow": beta2,
-            "moment1": np.zeros(SHAPE).astype("float32"),
-            "moment2": np.zeros(SHAPE).astype("float32"),
-            "epsilon": epsilon,
-        }
-
-    def _apply_gradient(self, param, grad, name):
-        """
-        The way of updating grad in AdamOptimizer
-        """
-        attr = self.param_attr[name]
-        beta1, beta2 = attr["beta1"], attr["beta2"]
-        moment1, moment2 = attr['moment1'], attr['moment2']
-        beta1_pow, beta2_pow = attr['beta1_pow'], attr['beta2_pow']
-        epsilon = attr['epsilon']
-
-        moment1_out = beta1 * moment1 + (1.0 - beta1) * grad
-        moment2_out = beta2 * moment2 + (1.0 - beta2) * np.square(grad)
-
-        lr = attr['lr'] * np.sqrt(1.0 - beta2_pow) / (1.0 - beta1_pow)
-        param_out = param - lr * (
-            moment1_out
-            / (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow))
-        )
-
-        # update hyper-parameter of optimizer
-        self.param_attr[name]['beta1_pow'] = beta1_pow * beta1
-        self.param_attr[name]['beta2_pow'] = beta2_pow * beta2
-        self.param_attr[name]['moment1'] = moment1_out
-        self.param_attr[name]['moment2'] = moment2_out
-
-        return param_out
 
 
 if __name__ == '__main__':

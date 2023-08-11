@@ -35,7 +35,7 @@ namespace tensorrt {
 
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
-  SimpleOpTypeSetTeller() {
+  SimpleOpTypeSetTeller() {  // NOLINT
 #if IS_TRT_VERSION_GE(7130)
     // use TensorRT plugin
     teller_set.insert("group_norm");
@@ -2797,6 +2797,18 @@ if (dtype ==  framework::proto::VarType::BOOL)
 #endif
     }
 
+    if (op_type == "flip") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the flip does not support "
+                   "static shape yet";
+        return false;
+      }
+#if !IS_TRT_VERSION_GE(7220)
+      VLOG(3) << "flip is not supported when TensorRT below 7.2.2";
+      return false;
+#endif
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2967,7 +2979,8 @@ if (dtype ==  framework::proto::VarType::BOOL)
       "grid_sampler",
       "cumsum",
       "unbind",
-      "assign"};
+      "assign",
+      "flip"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3131,12 +3144,13 @@ if (dtype ==  framework::proto::VarType::BOOL)
       "grid_sampler",
       "cumsum",
       "unbind",
-      "assign"};
+      "assign",
+      "flip"};
 };
 
 struct GenericPluginTeller : public Teller {
  public:
-  GenericPluginTeller() {}
+  GenericPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false) override {
@@ -3178,7 +3192,7 @@ struct GenericPluginTeller : public Teller {
 
 struct CustomPluginTeller : public Teller {
  public:
-  CustomPluginTeller() {}
+  CustomPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false) override {
@@ -3231,7 +3245,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   return false;
 }
 
-OpTeller::OpTeller() {
+OpTeller::OpTeller() {  // NOLINT
   tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);

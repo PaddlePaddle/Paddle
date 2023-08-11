@@ -23,7 +23,7 @@ namespace tensorrt {
 
 class ExprWrapper {
  public:
-  ExprWrapper() {}
+  ExprWrapper() = default;
   ExprWrapper(const nvinfer1::IDimensionExpr* expr,
               nvinfer1::IExprBuilder* expr_builder) {
     this->expr = expr;
@@ -122,7 +122,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
 ) {
   std::vector<ExprWrapper> x_dims_wrap;
   for (int i = 0; i < x_dims.nbDims; i++) {
-    x_dims_wrap.push_back(ExprWrapper(x_dims.d[i], &expr_builder));
+    x_dims_wrap.emplace_back(x_dims.d[i], &expr_builder);
   }
   return x_dims_wrap;
 }
@@ -643,7 +643,7 @@ nvinfer1::DimsExprs Conv2dFusionInferMeta(
 
   std::vector<ExprWrapper> paddings_wrap;
   for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings_wrap.emplace_back(ExprWrapper(paddings[i], &expr_builder));
+    paddings_wrap.emplace_back(paddings[i], &expr_builder);
   }
 
   UpdatePaddingAndDilation(&paddings_wrap,

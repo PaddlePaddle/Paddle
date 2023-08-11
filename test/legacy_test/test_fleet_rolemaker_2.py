@@ -73,7 +73,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = paddle.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
             adam.minimize([cost], [scope])
             fleet.run_server()

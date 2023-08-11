@@ -44,13 +44,19 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : adagrad_
+- op : adadelta_ (adadelta)
+  inputs :
+    {param : Param, grad: Grad, avg_squared_grad : AvgSquaredGrad, avg_squared_update : AvgSquaredUpdate, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    {param_out : ParamOut, moment_out : AvgSquaredGradOut, inf_norm_out : AvgSquaredUpdateOut, master_param_out : MasterParamOut}
+
+- op : adagrad_ (adagrad)
   inputs :
     { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
-- op : adam_
+- op : adam_ (adam)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -67,13 +73,13 @@
       tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
-- op : adamax_
+- op : adamax_ (adamax)
   inputs :
     {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
 
-- op : adamw_
+- op : adamw_ (adamw)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -213,7 +219,6 @@
 - op : argmax(arg_max)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -224,7 +229,6 @@
 - op : argmin(arg_min)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -650,18 +654,6 @@
   outputs :
     {softmax : Softmax, loss : Loss}
 
-- op : cummax
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
-
-- op : cummin
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
-
 - op : cumprod
   backward : cumprod_grad
   inputs :
@@ -1030,9 +1022,6 @@
 - op : feed
   outputs: {out: Out}
 
-- op : feed_with_place
-  outputs: {out: out}
-
 - op : fft_c2c
   inputs: {x: X}
   outputs: {out: Out}
@@ -1349,30 +1338,6 @@
   outputs :
     {out : Out, residual : Residual}
 
-- op : i0
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i0e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
 - op : imag
   backward : imag_grad
   inputs :
@@ -1495,7 +1460,7 @@
   outputs :
     out : Out
 
-- op : lamb_
+- op : lamb_ (lamb)
   inputs :
     {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
   outputs :
@@ -1900,7 +1865,7 @@
   outputs :
     {out : Out, indices : Indices}
 
-- op : momentum_
+- op : momentum_ (momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -1980,12 +1945,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : nextafter
-  inputs :
-    {x : x, y : y}
-  outputs :
-    out : out
 
 - op : nll_loss
   backward : nll_loss_grad
@@ -2090,12 +2049,6 @@
     x : X
   outputs :
     out : Out
-
-- op : polygamma
-  inputs :
-    x : x
-  outputs :
-    out : out
 
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
@@ -2317,7 +2270,7 @@
       support_tensor : true
   manual_signature : [reverse]
 
-- op : rmsprop_
+- op : rmsprop_ (rmsprop)
   inputs :
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
   outputs :
@@ -2455,7 +2408,7 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
-- op : sgd_
+- op : sgd_ (sgd)
   inputs :
     {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
   outputs :
@@ -2465,7 +2418,7 @@
   extra :
     attrs : [bool use_mkldnn=false]
 
-- op : shaddow_output
+- op : shadow_output
   inputs: {x: x}
   outputs: {out: out}
 
@@ -2575,7 +2528,7 @@
     softmax : GetSoftmaxExpectedKernelType
     softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
@@ -2856,10 +2809,6 @@
   outputs :
     out : Out
 
-- op : tril_indices
-  outputs :
-    out : out
-
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2875,10 +2824,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : triu_indices
-  outputs :
-    out : out
 
 - op : trunc
   inputs :
@@ -3005,12 +2950,6 @@
   outputs :
     {warpctcgrad : WarpCTCGrad, loss : Loss}
 
-- op : warprnnt
-  inputs :
-    {input : input, label : label,  input_lengths : input_lengths, label_lengths : label_lengths}
-  outputs :
-    {loss : loss, warprnntgrad : warprnntgrad}
-
 - op : where
   backward : where_grad
   inputs :
@@ -3085,7 +3024,7 @@
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label, pos_weight : pos_weight}
+    {x: X, label: Label}
   outputs :
     out : Out
 
