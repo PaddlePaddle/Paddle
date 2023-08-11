@@ -26,7 +26,6 @@
 namespace phi {
 
 #define FULL_MASK 0xffffffff
-using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
 template <typename Tx, typename Ty = Tx>
 struct ZeroOrderFunctor {
@@ -64,6 +63,7 @@ struct PowFunctor {
 template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT sum_val(0.0);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
@@ -82,6 +82,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT max_val = std::numeric_limits<MT>::min();
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
@@ -100,6 +101,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT min_val = std::numeric_limits<MT>::max();
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
@@ -119,6 +121,7 @@ void DistKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 float p,
                 DenseTensor* out) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor intermediate;
   const T* x_ptr = x.data<T>();
   const T* y_ptr = y.data<T>();
