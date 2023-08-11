@@ -16,7 +16,12 @@
 
 #include <cstdlib>
 #include "glog/logging.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace phi {
 namespace distributed {
@@ -109,6 +114,21 @@ std::string GetMasterEndpoint() {
   return master_endpoint;
 }
 
+std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
+  std::string unique_comm_key = "ReshardGroup";
+  for (const auto& id : process_ids) {
+    unique_comm_key += "/" + std::to_string(id);
+  }
+  return unique_comm_key;
+}
+
+int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids) {
+  int64_t cur_global_rank = GetCurGlobalRank();
+  auto iter =
+      std::find(process_ids.begin(), process_ids.end(), cur_global_rank);
+  return iter - process_ids.begin();
+}
+
 }  // namespace
 
 std::string GetMasterAddr() {
@@ -131,6 +151,42 @@ std::shared_ptr<TCPStore> CreateOrGetGlobalTCPStore() {
   static std::shared_ptr<TCPStore> store =
       std::make_shared<TCPStore>(host, port, is_master, world_size);
   return store;
+}
+
+CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
+                                    const std::vector<int64_t>& process_ids) {
+  std::string unique_comm_key = GenUniqueCommKey(process_ids);
+
+  if (!CommContextManager::GetInstance().Has(unique_comm_key)) {
+    int64_t world_size = process_ids.size();
+    int64_t rank = GetLocalRankInParticipate(process_ids);
+    VLOG(3) << "local world size: " << world_size << " local rank: " << rank;
+
+    auto store = CreateOrGetGlobalTCPStore();
+    if (phi::CPUContext::classof(&dev_ctx)) {
+#if defined(PADDLE_WITH_GLOO)
+      CommContextManager::CreateGlooCommContext(
+          store, unique_comm_key, rank, world_size);
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
+#endif
+    } else {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      if (phi::GPUContext::classof(&dev_ctx)) {
+        CommContextManager::CreateNCCLCommContext(
+            store, unique_comm_key, rank, world_size);
+      }
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "CommContext is only supported on CPU and GPU for now, other devices "
+          "will be supported later."));
+#endif
+    }
+  }
+
+  auto* comm_context = CommContextManager::GetInstance().Get(unique_comm_key);
+  return comm_context;
 }
 
 }  // namespace distributed
