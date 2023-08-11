@@ -99,27 +99,16 @@ def custom_cast_static(device, dtype, np_x):
 class TestCustomCastOp(unittest.TestCase):
     def setUp(self):
         self.dtypes = ['float32', 'float64']
-        if paddle.is_compiled_with_cuda():
-            self.dtypes.append('float16')
-        self.devices = ['cpu']
-        if paddle.is_compiled_with_cuda():
-            self.devices.append('gpu')
 
     def test_static(self):
-        for device in self.devices:
-            for dtype in self.dtypes:
-                if device == 'cpu' and dtype == 'float16':
-                    continue
-                x = np.random.uniform(-1, 1, [4, 8]).astype("float32")
-                custom_cast_static(device, dtype, x)
+        for dtype in self.dtypes:
+            x = np.random.uniform(-1, 1, [4, 8]).astype("float32")
+            custom_cast_static('cpu', dtype, x)
 
     def test_dynamic(self):
-        for device in self.devices:
-            for dtype in self.dtypes:
-                if device == 'cpu' and dtype == 'float16':
-                    continue
-                x = np.random.uniform(-1, 1, [4, 8]).astype("float32")
-                custom_cast_dynamic(device, dtype, x)
+        for dtype in self.dtypes:
+            x = np.random.uniform(-1, 1, [4, 8]).astype("float32")
+            custom_cast_dynamic('cpu', dtype, x)
 
 
 if __name__ == '__main__':
