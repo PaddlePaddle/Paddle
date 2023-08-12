@@ -5,7 +5,7 @@ Checks: '
 -bugprone-bad-signal-to-kill-thread,
 -bugprone-bool-pointer-implicit-conversion,
 -bugprone-branch-clone,
--bugprone-copy-constructor-init,
+bugprone-copy-constructor-init,
 -bugprone-dangling-handle,
 -bugprone-dynamic-static-initializers,
 -bugprone-exception-escape,
