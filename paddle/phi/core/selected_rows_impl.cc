@@ -165,7 +165,7 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
 void SelectedRowsImpl::SyncIndex() {
   rwlock_->WRLock();
   id_to_index_.clear();
-  for (int i = 0; i < rows_.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(rows_.size()); ++i) {
     id_to_index_[rows_[i]] = i;
   }
   rwlock_->UNLock();

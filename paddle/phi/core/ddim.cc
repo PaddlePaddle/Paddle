@@ -186,7 +186,7 @@ DDim stride_numel(const DDim& ddim) {
 DDim DDim::reshape(std::vector<int>& shape) const {
   const DDim& in_dims = *this;
 
-  for (int i = 0; i < shape.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(shape.size()); ++i) {
     if (shape[i] == 0) {
       shape[i] = static_cast<int>(in_dims.at(i));
     }
@@ -208,7 +208,7 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
   const DDim& in_dims = *this;
 
   DDim out_dims(in_dims);
-  for (int i = 0; i < axis.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axis.size()); i++) {
     out_dims[i] = in_dims[axis[i]];
   }
   return out_dims;
