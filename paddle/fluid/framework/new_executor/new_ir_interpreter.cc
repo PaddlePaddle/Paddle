@@ -177,10 +177,7 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   }
 }
 
-const Scope* NewIRInterpreter::local_scope() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "local_scope is not implemented in NewIRInterpreter."));
-}
+const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
 
 std::string NewIRInterpreter::GetNameById(int id) const {
   // NOTE(zhiqiu): do not use vec_meta_info_[id].vardesc_->Name() since
