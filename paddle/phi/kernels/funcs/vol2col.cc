@@ -47,17 +47,17 @@ class Vol2ColFunctor<phi::CPUContext, T> {
                           "The dimension of col should be 7, but received %d.",
                           col->dims().size()));
 
-    int input_channels =
-        (data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
+    int input_channels = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
     int64_t input_depth =
         (data_layout != DataLayout::kNHWC ? vol.dims()[1] : vol.dims()[0]);
     int64_t input_height =
         (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
     int64_t input_width =
         (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
-    int filter_depth = col->dims()[1];
-    int filter_height = col->dims()[2];
-    int filter_width = col->dims()[3];
+    int filter_depth = static_cast<int>(col->dims()[1]);
+    int filter_height = static_cast<int>(col->dims()[2]);
+    int filter_width = static_cast<int>(col->dims()[3]);
     int64_t output_depth = col->dims()[4];
     int64_t output_height = col->dims()[5];
     int64_t output_width = col->dims()[6];
@@ -173,20 +173,20 @@ class Col2VolFunctor<phi::CPUContext, T> {
                           "The dimension of col  should be 7, but received %d.",
                           col.dims().size()));
 
-    int input_channels =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);
-    int input_depth =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[1] : vol->dims()[0]);
-    int input_height =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
-    int input_width =
-        (data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
-    int filter_depth = col.dims()[1];
-    int filter_height = col.dims()[2];
-    int filter_width = col.dims()[3];
-    int output_depth = col.dims()[4];
-    int output_height = col.dims()[5];
-    int output_width = col.dims()[6];
+    int input_channels = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);
+    int input_depth = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? vol->dims()[1] : vol->dims()[0]);
+    int input_height = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
+    int input_width = static_cast<int>(
+        data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
+    int filter_depth = static_cast<int>(col.dims()[1]);
+    int filter_height = static_cast<int>(col.dims()[2]);
+    int filter_width = static_cast<int>(col.dims()[3]);
+    int output_depth = static_cast<int>(col.dims()[4]);
+    int output_height = static_cast<int>(col.dims()[5]);
+    int output_width = static_cast<int>(col.dims()[6]);
     int channels_col =
         input_channels * filter_depth * filter_height * filter_width;
 

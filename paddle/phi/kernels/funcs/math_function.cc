@@ -102,7 +102,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
-  const int rank = axis.size();
+  const uint rank = axis.size();
   auto in_stride = phi::stride(in.dims());
   auto out_stride = phi::stride(out->dims());
   const T* in_ptr = in.data<T>();

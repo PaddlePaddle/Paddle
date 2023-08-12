@@ -148,7 +148,8 @@ struct SelectedRowsAddTensor<phi::CPUContext, T> {
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    int64_t in1_row_numel =
+        static_cast<int64_t>(in1_value.numel() / in1_rows.size());
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2.numel() / in1_height,
@@ -309,7 +310,8 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    int64_t in1_row_numel =
+        static_cast<int64_t>(in1_value.numel() / in1_rows.size());
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
@@ -580,7 +582,7 @@ struct MergeAddImpl {
                            in_place,
                            in_data,
                            in_numel * sizeof(T));
-        copied_numel += in_numel;
+        copied_numel += static_cast<int64_t>(in_numel);
       }
     } else {
       std::vector<int64_t> merge_rows(merged_row_set.begin(),
@@ -944,7 +946,8 @@ struct UpdateToTensor<phi::CPUContext, T> {
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    int64_t in1_row_numel =
+        static_cast<int64_t>(in1_value.numel() / in1_rows.size());
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,

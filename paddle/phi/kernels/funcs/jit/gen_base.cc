@@ -39,7 +39,8 @@ void GenBase::dumpCode(const unsigned char* code) const {
     counter++;
     std::ofstream fout(filename.str(), std::ios::out);
     if (fout.is_open()) {
-      fout.write(reinterpret_cast<const char*>(code), this->getSize());
+      fout.write(reinterpret_cast<const char*>(code),
+                 static_cast<int>(this->getSize()));
       fout.close();
     }
   }

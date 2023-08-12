@@ -42,7 +42,7 @@ bool IsDimsMappingReplicated(const std::vector<int64_t>& dims_mapping) {
 std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   const auto& process_shape = process_mesh.shape();
   const auto& process_ids = process_mesh.process_ids();
-  int64_t ndims_mesh = process_shape.size();
+  int64_t ndims_mesh = static_cast<int64_t>(process_shape.size());
   int64_t cur_global_rank = GetCurGlobalRank();
 
   VLOG(3) << "Searching current global rank " << cur_global_rank
@@ -158,7 +158,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   std::string unique_comm_key = GenUniqueCommKey(process_ids);
 
   if (!CommContextManager::GetInstance().Has(unique_comm_key)) {
-    int64_t world_size = process_ids.size();
+    int64_t world_size = static_cast<int64_t>(process_ids.size());
     int64_t rank = GetLocalRankInParticipate(process_ids);
     VLOG(3) << "local world size: " << world_size << " local rank: " << rank;
 

@@ -147,7 +147,7 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
 }
 
 int32_t SparseCooTensor::sparse_dim() const {
-  return non_zero_indices_.dims()[0];
+  return static_cast<int32_t>(non_zero_indices_.dims()[0]);
 }
 
 int32_t SparseCooTensor::dense_dim() const {

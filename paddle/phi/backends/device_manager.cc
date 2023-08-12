@@ -474,7 +474,7 @@ std::vector<size_t> DeviceManager::GetSelectedDeviceList(
       devices.push_back(atoi(id.c_str()));
     }
   } else {
-    int count = DeviceManager::GetDeviceCount(device_type);
+    int count = static_cast<int>(DeviceManager::GetDeviceCount(device_type));
     for (int i = 0; i < count; ++i) {
       devices.push_back(i);
     }
