@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_identity_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -86,13 +86,3 @@ REGISTER_OPERATOR(c_identity,
                   ops::CIdentityOpGradMaker<paddle::framework::OpDesc>,
                   ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
                   ops::CIdentityOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(c_identity,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CIdentityOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}

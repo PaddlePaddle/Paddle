@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,21 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_identity_op.h"
+#include "paddle/phi/kernels/c_identity_kernel.h"
+#include "paddle/phi/kernels/impl/c_identity_kernel_impl.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_STRUCT_KERNEL(c_identity,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CIdentityOpKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
+PD_REGISTER_KERNEL(c_identity,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CIdentityKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                   phi::dtype::bfloat16,
 #endif
-                          plat::float16) {
+                   phi::dtype::float16) {
 }
