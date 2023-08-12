@@ -38,8 +38,10 @@ void DiagonalGradKernel(const Context& dev_ctx,
   auto dx_dim_size = dx_dim.size();
 
   const int64_t offset_ = offset;
-  int64_t axis1_ = axis1 < 0 ? dx_dim_size + axis1 : axis1;
-  int64_t axis2_ = axis2 < 0 ? dx_dim_size + axis2 : axis2;
+  int64_t axis1_ =
+      static_cast<int64_t>(axis1 < 0 ? dx_dim_size + axis1 : axis1);
+  int64_t axis2_ =
+      static_cast<int64_t>(axis2 < 0 ? dx_dim_size + axis2 : axis2);
 
   std::vector<int64_t> dout_stride = funcs::ComputeDimStride(dout_dim);
   std::vector<int64_t> dx_stride = funcs::ComputeDimStride(dx_dim);

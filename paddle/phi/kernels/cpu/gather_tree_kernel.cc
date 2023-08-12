@@ -30,7 +30,7 @@ void GatherTreeKernel(const Context &dev_ctx,
   T *out_data = dev_ctx.template Alloc<T>(out);
 
   auto &ids_dims = ids.dims();
-  auto max_length = ids_dims[0];
+  int64_t max_length = ids_dims[0];
   auto batch_size = ids_dims[1];
   auto beam_size = ids_dims[2];
 
@@ -49,7 +49,7 @@ void GatherTreeKernel(const Context &dev_ctx,
           (max_length - 1) * batch_size * beam_size + batch * beam_size + beam;
       out_data[idx] = ids_data[idx];
       auto parent = parents_data[idx];
-      for (int step = max_length - 2; step >= 0; step--) {
+      for (int64_t step = max_length - 2; step >= 0; step--) {
         PADDLE_ENFORCE_LT(
             parent,
             beam_size,

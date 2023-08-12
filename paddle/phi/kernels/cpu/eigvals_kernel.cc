@@ -81,7 +81,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
   w.Resize(make_ddim({n_dim << 1}));
   T* w_data = ctx.template Alloc<T>(&w);
 
-  int64_t work_mem = work->memory_size();
+  int64_t work_mem = static_cast<int64_t>(work->memory_size());
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
   PADDLE_ENFORCE_GE(
       work_mem,
@@ -132,7 +132,7 @@ LapackEigvals(const Context& ctx,
   DenseTensor a;  // will be overwritten when lapackEig exit
   Copy(ctx, input, input.place(), /*blocking=*/true, &a);
 
-  int64_t work_mem = work->memory_size();
+  int64_t work_mem = static_cast<int64_t>(work->memory_size());
   int64_t n_dim = input.dims()[1];
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
   PADDLE_ENFORCE_GE(
@@ -145,7 +145,7 @@ LapackEigvals(const Context& ctx,
           required_work_mem,
           work_mem));
 
-  int64_t rwork_mem = rwork->memory_size();
+  int64_t rwork_mem = static_cast<int64_t>(rwork->memory_size());
   int64_t required_rwork_mem = (n_dim << 1) * sizeof(dtype::Real<T>);
   PADDLE_ENFORCE_GE(
       rwork_mem,
@@ -185,7 +185,7 @@ void SpiltBatchSquareMatrix(const DenseTensor& input,
                             std::vector<DenseTensor>* output) {
   DDim input_dims = input.dims();
   int last_dim = input_dims.size() - 1;
-  int n_dim = input_dims[last_dim];
+  int n_dim = static_cast<int>(input_dims[last_dim]);
 
   DDim flattened_input_dims, flattened_output_dims;
   if (input_dims.size() > 2) {
@@ -209,7 +209,7 @@ void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   SpiltBatchSquareMatrix(x, /*->*/ &x_matrices);
 
   int64_t n_dim = x_matrices[0].dims()[1];
-  int64_t n_batch = x_matrices.size();
+  int64_t n_batch = static_cast<int64_t>(x_matrices.size());
   DDim out_dims = out->dims();
   out->Resize(make_ddim({n_batch, n_dim}));
   std::vector<DenseTensor> out_vectors = out->Split(1, 0);

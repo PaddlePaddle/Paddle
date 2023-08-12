@@ -80,7 +80,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   if (!fix_seed) {
     std::random_device rnd;
-    seed = rnd();
+    seed = static_cast<int>(rnd());
   }
   std::uniform_int_distribution<T> dist(0, num_classes - 1);
   std::shared_ptr<std::mt19937_64> engine;

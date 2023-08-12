@@ -117,8 +117,10 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const std::vector<int>& dilation,
                                const int deformable_group,
                                T* grad_im) {
-  int channel_per_deformable_group = im_shape[0] / deformable_group;
-  int num_kernels = col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
+  int channel_per_deformable_group =
+      static_cast<int>(im_shape[0] / deformable_group);
+  int num_kernels = static_cast<int>(col_shape[0] * col_shape[1] *
+                                     col_shape[2] * col_shape[3]);
 
   ModulatedDeformableCol2imCPUKernel(num_kernels,
                                      data_col,
@@ -275,9 +277,11 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                                     const int deformable_groups,
                                     T* grad_offset,
                                     T* grad_mask) {
-  int num_kernels = 2 * kernel_shape[2] * kernel_shape[3] * col_shape[1] *
-                    col_shape[2] * col_shape[3] * deformable_groups;
-  int channel_per_deformable_group = col_shape[0] / deformable_groups;
+  int num_kernels =
+      static_cast<int>(2 * kernel_shape[2] * kernel_shape[3] * col_shape[1] *
+                       col_shape[2] * col_shape[3] * deformable_groups);
+  int channel_per_deformable_group =
+      static_cast<int>(col_shape[0] / deformable_groups);
 
   ModulatedDeformableCol2imCoordCPUKernel(
       num_kernels,

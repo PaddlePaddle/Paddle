@@ -32,7 +32,7 @@ void EigGradKernel(const Context& dev_ctx,
   phi::DDim dim_origin = dims;
   int num_dims = dim_origin.size();
   int batch_count = BatchCount(out_v);
-  const int order = dim_origin[num_dims - 1];
+  const int order = static_cast<int>(dim_origin[num_dims - 1]);
 
   ComputeBackwardForComplexInput<phi::dtype::Complex<T>, Context>(
       out_w, out_v, dout_w, dout_v, dx_data, batch_count, order, dev_ctx);

@@ -45,8 +45,8 @@ void GroupNormKernel(const Context& dev_ctx,
   const auto bias_ptr = bias.get_ptr();
 
   const auto x_dims = x.dims();
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
   const int group_size = C / groups;
 
   dev_ctx.template Alloc<T>(y);
@@ -66,11 +66,11 @@ void GroupNormKernel(const Context& dev_ctx,
   int imsize = 1;
   if (data_layout == DataLayout::kNCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
-      imsize *= x_dims[i];
+      imsize *= static_cast<int>(x_dims[i]);
     }
   } else {
     for (int i = 1; i < x_dims.size() - 1; ++i) {
-      imsize *= x_dims[i];
+      imsize *= static_cast<int>(x_dims[i]);
     }
   }
   auto* iter_x_data = x_data;
