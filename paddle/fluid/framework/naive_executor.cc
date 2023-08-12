@@ -118,6 +118,13 @@ if(nvtx && 0){
       op->SetOutputHooks(output_hookfuncs_);
     }
 
+#ifdef PADDLE_WITH_NVTX
+if(nvtx)
+    platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
+                                platform::NvtxRangeColor::Green);
+#endif
+
+
     // std::cout << op->Type() << "run" << std::endl;
     // paddle::platform::DeviceContextPool &pool =
     //     paddle::platform::DeviceContextPool::Instance();
@@ -131,6 +138,14 @@ if(nvtx && 0){
     // }
 
     op->Run(*scope_, place_);
+
+
+
+
+
+
+
+    
     // std::cout << op->OutputVars(true).front() << std::endl;
     // success = cudaStreamSynchronize(dev_ctx->stream());
     // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
@@ -190,12 +205,7 @@ if(nvtx && 0){
       }
     }
 
-#ifdef PADDLE_WITH_NVTX
-if(nvtx)
-    platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
-                                platform::NvtxRangeColor::Green);
-#endif
-    op->Run(*scope_, place_);
+
 #ifdef PADDLE_WITH_NVTX
 if(nvtx)
     platform::CudaNvtxRangePop();
