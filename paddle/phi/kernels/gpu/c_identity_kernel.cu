@@ -26,8 +26,5 @@ PD_REGISTER_KERNEL(c_identity,
                    double,
                    int,
                    int64_t,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                    phi::dtype::bfloat16,
-#endif
-                   phi::dtype::float16) {
-}
+                   phi::dtype::float16) {}
