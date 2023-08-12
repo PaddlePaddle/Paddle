@@ -37,15 +37,9 @@ if os.name == 'nt' and os.path.isfile(file):
     cmd = f'del {file}'
     run_cmd(cmd, True)
 
-# Compile and load custom op Just-In-Time.
-# custom_relu_op_dup.cc is only used for multi ops test,
-# not a new op, if you want to test only one op, remove this
-# source file
-sources = ['custom_cast_op.cc']
-
 custom_module = load(
     name='custom_cast_module_jit',
-    sources=sources,
+    sources=['custom_cast_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_library_paths=paddle_libraries,
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
