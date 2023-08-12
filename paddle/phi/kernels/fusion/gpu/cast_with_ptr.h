@@ -21,7 +21,6 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
-namespace fusion {
 
 template <typename InT, typename OutT>
 struct CastFunctor {
@@ -68,5 +67,4 @@ static void LaunchCastKernel(const Context &ctx,
   }
 }
 
-}  // namespace fusion
 }  // namespace phi

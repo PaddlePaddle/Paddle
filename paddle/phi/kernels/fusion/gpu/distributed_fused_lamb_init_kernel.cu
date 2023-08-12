@@ -210,7 +210,7 @@ static DenseTensor CastDataForInitedTensor(const Context &dev_ctx,
   auto *dst = fused_out->data<float>() + numel_offset;
   auto *src = origin->data<dtype::float16>();
   auto numel = origin->numel();
-  phi::fusion::LaunchCastKernel(dev_ctx, src, dst, numel);
+  phi::LaunchCastKernel(dev_ctx, src, dst, numel);
   VLOG(10) << "Cast from FP32 -> FP16, range: [" << numel_offset << ", "
            << numel_offset + numel << ")"
            << " , total: [0, " << fused_out->numel() << ")";
@@ -292,7 +292,7 @@ static void CopyVectorToCPUTensor(const Context &dev_ctx,
                                   const std::vector<T> &src,
                                   DenseTensor *dst) {
   dst->Resize({static_cast<int64_t>(src.size())});
-  T *dst_ptr = dev_ctx.template Alloc<T>(dst);
+  T *dst_ptr = dev_ctx.template HostAlloc<T>(dst);
   const T *src_ptr = src.data();
   auto nbytes = src.size() * sizeof(T);
   std::memcpy(dst_ptr, src_ptr, nbytes);
@@ -362,6 +362,10 @@ void DistributedFusedLambInitOpKernel(
     std::vector<DenseTensor *> grad_out,
     DenseTensor *global_scale,
     DenseTensor *step) {
+  LOG_FIRST_N(INFO, 1) << "step1 start"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
   VLOG(10) << "starts to run DistributedFusedLambInitOp";
   auto place = dev_ctx.GetPlace();
   auto stream = dev_ctx.stream();
@@ -388,12 +392,23 @@ void DistributedFusedLambInitOpKernel(
             "Input(Grad) and Output(GradOut) should have the same number."));
     size_t n = param.size();
     VLOG(10) << "parameter number: " << n;
+    LOG_FIRST_N(INFO, 1)
+        << "step1.1"
+           "____________________________________________________"
+           "____________________________________________________"
+           "_________________________________________.";
     for (size_t i = 0; i < n; ++i) {
       auto *p = param[i];
       auto *g = grad[i];
       auto *p_out = param_out[i];
       auto *g_out = grad_out[i];
-
+      p_out->Resize(p->dims());
+      g_out->Resize(g->dims());
+      LOG_FIRST_N(INFO, 1)
+          << "step1.2 start"
+             "____________________________________________________"
+             "____________________________________________________"
+             "_________________________________________.";
       PADDLE_ENFORCE_NOT_NULL(
           p,
           errors::InvalidArgument("The %d-th parameter should not be nullptr.",
@@ -429,7 +444,11 @@ void DistributedFusedLambInitOpKernel(
           numel,
           0,
           errors::InvalidArgument("The %d-th Input(Param) have no elements."));
-
+      LOG_FIRST_N(INFO, 1)
+          << "step1.3 start"
+             "____________________________________________________"
+             "____________________________________________________"
+             "_________________________________________.";
       void *g_data = nullptr;
       if (g->IsInitialized()) {
         PADDLE_ENFORCE_EQ(g->dtype(),
@@ -447,7 +466,11 @@ void DistributedFusedLambInitOpKernel(
                               i));
         g_data = g_out->data();
       }
-
+      LOG_FIRST_N(INFO, 1)
+          << "step1.4 start"
+             "____________________________________________________"
+             "____________________________________________________"
+             "_________________________________________.";
       ParamGradInfo *info;
       if (dtype == phi::DataType::FLOAT32) {
         fp32_infos.emplace_back();
@@ -464,7 +487,11 @@ void DistributedFusedLambInitOpKernel(
                << p_out->dims() << "] numel=" << numel
                << " grad.IsInitialized()="
                << (g_out->IsInitialized() ? "true" : "false");
-
+      LOG_FIRST_N(INFO, 1)
+          << "step1.5 start"
+             "____________________________________________________"
+             "____________________________________________________"
+             "_________________________________________.";
       info->param_t = p_out;
       info->grad_t = g_out;
       info->idx = i;
@@ -477,19 +504,34 @@ void DistributedFusedLambInitOpKernel(
       ReorderParamGradInfoList(apply_weight_decay, &fp32_infos);
   size_t fp16_wd_end_idx =
       ReorderParamGradInfoList(apply_weight_decay, &fp16_infos);
-
   auto param_num = fp32_infos.size() + fp16_infos.size();
   param_order->Resize({static_cast<int16_t>(param_num)});
-  auto *param_order_t = dev_ctx.template Alloc<int>(param_order);
+  int *param_order_t = dev_ctx.template HostAlloc<int>(param_order);
+  LOG_FIRST_N(INFO, 1) << "param_num: " << param_num;
+  LOG_FIRST_N(INFO, 1) << "fp32_infos.size: " << fp32_infos.size();
+  LOG_FIRST_N(INFO, 1) << "fp16_infos.size: " << fp16_infos.size();
+  LOG_FIRST_N(INFO, 1) << "fp16_infos[0]: " << fp32_infos[0].idx;
   for (size_t i = 0; i < fp32_infos.size(); ++i) {
+    LOG_FIRST_N(INFO, 1) << i;
     param_order_t[i] = static_cast<int>(fp32_infos[i].idx);
   }
+  LOG_FIRST_N(INFO, 1) << "step1.6.4 start"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
   for (size_t i = 0; i < fp16_infos.size(); ++i) {
     param_order_t[i + fp32_infos.size()] = static_cast<int>(fp16_infos[i].idx);
   }
+  LOG_FIRST_N(INFO, 1) << "step1.6.5 start"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
 
   VLOG(10) << "Fill ParamGradInfo ends";
-
+  LOG_FIRST_N(INFO, 1) << "step2 start"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
   // Step 2: determine the numel_with_padding and numel_offset
   VLOG(10) << "rank = " << rank << ", nranks = " << nranks
            << " , alignment = " << alignment;
@@ -535,7 +577,10 @@ void DistributedFusedLambInitOpKernel(
            << ", fp32_numel = " << fp32_numel << ", fp16_numel = " << fp16_numel
            << ", fp32_numel_each_device = " << fp32_numel_each_device
            << ", fp16_numel_each_device = " << fp16_numel_each_device;
-
+  LOG_FIRST_N(INFO, 1) << "step3 start"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
   // Step 3: allocate output tensor and do initialization
   float *fused_fp32_param = nullptr, *fused_fp32_grad = nullptr;
   dtype::float16 *fused_fp16_param = nullptr, *fused_fp16_grad = nullptr;
@@ -580,7 +625,7 @@ void DistributedFusedLambInitOpKernel(
         dev_ctx, info.param_t, fp32_p_t, info.numel_offset);
     master_param_out[info.idx]->Resize(info.param_t->dims());
     master_param_out[info.idx]->ShareBufferWith(sliced_tensor);
-
+    dev_ctx.template Alloc<float>(master_param_out[info.idx]);
     // PADDLE_ENFORCE_EQ(
     //     (dev_ctx.template Alloc<float>(master_param_out[info.idx])),
     //     sliced_tensor.data<float>(),
@@ -610,6 +655,7 @@ void DistributedFusedLambInitOpKernel(
 
     CopyAndShareBufferForInitedTensor(
         dev_ctx, info.param_t, fp16_p_t, info.numel_offset);
+    dev_ctx.template Alloc<float>(master_param_out[info.idx]);
     // PADDLE_ENFORCE_EQ(
     //     dev_ctx.template Alloc<float>(master_param_out[info.idx]),
     //     sliced_tensor.data<float>(),
@@ -624,16 +670,22 @@ void DistributedFusedLambInitOpKernel(
     }
   }
   VLOG(10) << "Copy/share data for Param/Grad ends";
-
+  LOG_FIRST_N(INFO, 1) << "step4 start"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
   // Step 4: For Moment1, Moment2, Beta1Pow, Beta2Pow, just fill constant
   TensorFillConstant<float>(
       dev_ctx, moment1, {static_cast<int64_t>(numel_each_device)}, 0.0f);
   TensorFillConstant<float>(
       dev_ctx, moment2, {static_cast<int64_t>(numel_each_device)}, 0.0f);
-  TensorFillConstant<float>(dev_ctx, beta2_pow, {1}, beta1);
+  TensorFillConstant<float>(dev_ctx, beta1_pow, {1}, beta1);
   TensorFillConstant<float>(dev_ctx, beta2_pow, {1}, beta2);
   VLOG(10) << "Init Moment and BetaPow ends";
-
+  LOG_FIRST_N(INFO, 1) << "step5 start"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
   // Step 5: Do sharding
   size_t fp32_start_idx, fp32_end_idx, fp32_start_numel_offset,
       fp32_end_numel_offset;
@@ -661,7 +713,7 @@ void DistributedFusedLambInitOpKernel(
   VLOG(10) << "Found the sharding arguments";
 
   param_info->Resize({8});
-  auto *param_info_t = dev_ctx.template Alloc<int>(param_info);
+  auto *param_info_t = dev_ctx.template HostAlloc<int>(param_info);
   param_info_t[0] = static_cast<int>(fp32_start_idx);
   param_info_t[1] = static_cast<int>(fp32_local_param_num);
   param_info_t[2] = static_cast<int>(fp32_infos.size());
@@ -767,6 +819,10 @@ void DistributedFusedLambInitOpKernel(
 
   dev_ctx.Wait();
   VLOG(10) << "Wait for H2D copy";
+  LOG_FIRST_N(INFO, 1) << "step5 end"
+                          "____________________________________________________"
+                          "____________________________________________________"
+                          "_________________________________________.";
 }
 }  // namespace fusion
 }  // namespace phi
