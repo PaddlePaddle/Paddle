@@ -58,8 +58,8 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
     std::vector<std::vector<std::vector<size_t>>> run_type_info(
         instr_num,
         std::vector<std::vector<size_t>>(
-            /*number_of_run_type = */ 2));  // instr_id -> run_type ->
-                                            // next_instr_id
+            /*number_of_run_type = */ 2));  // NOLINT
+    // instr_id -> run_type -> next_instr_id
     AnalyseAllRunType(
         cross_step_merged_instructions_ptr, downstream_map, &run_type_info);
 
