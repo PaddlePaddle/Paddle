@@ -94,6 +94,7 @@ def quanter(class_name):
             >>> # Used in ./test.py
             >>> # from .customized_quanter import CustomizedQuanter
             >>> from paddle.quantization import QuantConfig
+            >>> # doctest: +SKIP
             >>> arg1_value = "test"
             >>> kwarg1_value = 20
             >>> quanter = CustomizedQuanter(arg1_value, kwarg1=kwarg1_value)
