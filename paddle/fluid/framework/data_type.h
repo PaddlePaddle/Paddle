@@ -130,6 +130,7 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
 #define VisitDataTypeCallback(cpp_type, proto_type) \
   do {                                              \
     if (type == proto_type) {                       \
+      visitor.template apply<cpp_type>();           \
       return;                                       \
     }                                               \
   } while (0)

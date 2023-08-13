@@ -500,6 +500,11 @@ void CheckNumericsKernel(const Context& ctx,
                          const std::string& output_dir,
                          DenseTensor* stats,
                          DenseTensor* values) {
+#ifdef PADDLE_WITH_MUSA
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "OP check_numerics is unsupported for MUSA backend now!"));
+return;
+#else
   int dev_id = tensor.place().device;
   VLOG(6) << "op_type=" << op_type << ", var_name=" << var_name
           << ", dev_id=gpu:" << dev_id << ", numel=" << tensor.numel()
@@ -597,6 +602,7 @@ void CheckNumericsKernel(const Context& ctx,
   if (check_nan_inf_level == 0 && stack_height_limit > 0) {
     PrintStack<T>(ctx, *stats, op_type, var_name, dev_id);
   }
+#endif
 #endif
 }
 
