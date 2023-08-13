@@ -46,11 +46,12 @@
 
 namespace ir {
 
-const std::unordered_set<std::string> KernelOpBaseAttrNames = {
-    "op_name",
-    "kernel_key",
-    "kernel_name",
-};
+const std::unordered_set<std::string> KernelOpBaseAttrNames = {"op_name",
+                                                               "kernel_key",
+                                                               "kernel_name",
+                                                               "is_inplace",
+                                                               "is_persisable",
+                                                               "stop_gradient"};
 
 void AddNewData(ir::Value value,
                 std::string name,
