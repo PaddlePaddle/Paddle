@@ -133,20 +133,18 @@ std::string get_version() {
   return ss.str();
 }
 
-std::string UpdateDllFlag(const char *name, const char *value) {
+void UpdateDllFlag(const char *name, const char *value) {
   std::string ret;
   LOG(WARNING)
       << "The function \"UpdateDllFlag\" is only used to update the flag "
          "on the Windows shared library";
-  ret = paddle::flags::SetFlagValue(name, value);
+  bool success = paddle::flags::SetFlagValue(name, value);
 
   PADDLE_ENFORCE_EQ(
-      ret.empty(),
-      false,
+      success,
+      true,
       platform::errors::InvalidArgument(
           "Fail to update flag: %s, please make sure the flag exists.", name));
-  LOG(INFO) << ret;
-  return ret;
 }
 
 #ifdef PADDLE_WITH_CRYPTO
