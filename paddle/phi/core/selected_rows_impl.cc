@@ -136,7 +136,7 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
     }
     auto write_iter = id_to_index_.find(key);
     if (write_iter == id_to_index_.end()) {
-      uint row_num = rows_.size();
+      int row_num = static_cast<int>(rows_.size());
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
         PADDLE_THROW(phi::errors::InvalidArgument(
