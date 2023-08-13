@@ -1799,13 +1799,13 @@ def ctc_loss(
             >>> import paddle.nn.functional as F
             >>> import paddle
 
-            # length of the longest logit sequence
+            >>> # length of the longest logit sequence
             >>> max_seq_length = 4
-            #length of the longest label sequence
+            >>> # length of the longest label sequence
             >>> max_label_length = 3
-            # number of logit sequences
+            >>> # number of logit sequences
             >>> batch_size = 2
-            # class num
+            >>> # class num
             >>> class_num = 3
 
             >>> log_probs = paddle.to_tensor([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
@@ -2090,8 +2090,8 @@ def margin_cross_entropy(
     .. code-block:: python
         :name: code-example1
 
-        # required: gpu
-        # Single GPU
+        >>> # doctest: +REQUIRES(env: GPU)
+        >>> # Single GPU
         >>> import paddle
         >>> m1 = 1.0
         >>> m2 = 0.5
@@ -2138,8 +2138,8 @@ def margin_cross_entropy(
     .. code-block:: python
         :name: code-example2
 
-        # required: distributed
-        # Multi GPU, test_margin_cross_entropy.py
+        >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+        >>> # Multi GPU, test_margin_cross_entropy.py
         >>> import paddle
         >>> import paddle.distributed as dist
         >>> strategy = dist.fleet.DistributedStrategy()
@@ -2595,12 +2595,12 @@ def cross_entropy(
                                         input,
                                         label)
             >>> print(dy_ret)
-            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                    5.34043430)
 
         .. code-block:: python
 
-            # soft labels
+            >>> # soft labels
             >>> import paddle
             >>> paddle.seed(99999)
             >>> axis = -1
@@ -2621,8 +2621,8 @@ def cross_entropy(
             ...                                                         weight=weight,
             ...                                                         reduction=reduction)
             >>> print(paddle_loss_mean)
-            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-                   1.11043464)
+            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [1.12801195])
 
     """
 
@@ -3261,7 +3261,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             >>> import paddle.nn.functional as F
 
             >>> input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
-            # label elements in {1., -1.}
+            >>> # label elements in {1., -1.}
             >>> label = paddle.to_tensor([[-1, 1, -1], [1, 1, 1], [1, -1, 1]], dtype=paddle.float32)
 
             >>> loss = F.hinge_embedding_loss(input, label, margin=1.0, reduction='none')
