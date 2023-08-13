@@ -33,7 +33,7 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"

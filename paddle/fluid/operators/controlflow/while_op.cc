@@ -22,9 +22,9 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     cache_inference_while_scope,
     false,
     "Cache the scope of the while op to avoid repeated creation of the scope "

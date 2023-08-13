@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/flags.h"
-PADDLE_DEFINE_EXPORTED_bool(
+#include "paddle/phi/core/flags.h"
+PHI_DEFINE_EXPORTED_bool(
     benchmark,
     false,
     "Doing memory benchmark. It will make deleting scope synchronized, "

@@ -18,14 +18,14 @@
 #include "paddle/fluid/distributed/common/local_random.h"
 #include "paddle/fluid/distributed/common/topk_calculator.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
 DECLARE_bool(pserver_print_missed_key_num_every_push);
 DECLARE_bool(pserver_create_value_when_push);
 DECLARE_bool(pserver_enable_create_feasign_randomly);
 DEFINE_bool(pserver_open_strict_check, false, "pserver_open_strict_check");
 DEFINE_int32(pserver_load_batch_size, 5000, "load batch size for ssd");
-PADDLE_DEFINE_EXPORTED_string(rocksdb_path,
+PHI_DEFINE_EXPORTED_string(rocksdb_path,
                               "database",
                               "path of sparse table rocksdb file");
 

@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/prim/utils/utils.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 
-PADDLE_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
+PHI_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
 namespace paddle {
 namespace prim {
 bool PrimCommonUtils::IsBwdPrimEnabled() {

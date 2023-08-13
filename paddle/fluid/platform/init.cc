@@ -54,7 +54,7 @@ limitations under the License. */
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
@@ -62,7 +62,7 @@ limitations under the License. */
 #include "paddle/phi/core/custom_kernel.h"
 
 PHI_DECLARE_int32(paddle_num_threads);
-PADDLE_DEFINE_EXPORTED_int32(
+PHI_DEFINE_EXPORTED_int32(
     multiple_of_cupti_buffer_size,
     1,
     "Multiple of the CUPTI device buffer size. If the timestamps have "

@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -52,11 +52,11 @@ PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PHI_DECLARE_bool(enable_cublas_tensor_op_math);
 PHI_DECLARE_uint64(gpu_memory_limit_mb);
 
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
                             false,
                             "Whether to print the message of gpu memory usage "
                             "at exit, mainly used for UT and CI.");
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
                             true,
                             "Whether to print the message of gpu memory usage "
                             "MB as a unit of measurement.");

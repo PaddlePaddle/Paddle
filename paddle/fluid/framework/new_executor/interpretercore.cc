@@ -19,18 +19,18 @@
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     new_executor_static_build,
     false,
     "Build the interpreterCore statically without running kernels.");
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
+PHI_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
+PHI_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");

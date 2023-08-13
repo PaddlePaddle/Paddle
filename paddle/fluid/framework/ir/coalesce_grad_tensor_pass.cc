@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 namespace paddle {
 namespace framework {
 class ProgramDesc;
@@ -27,7 +27,7 @@ class VarDesc;
 }  // namespace framework
 }  // namespace paddle
 
-PADDLE_DEFINE_EXPORTED_double(
+PHI_DEFINE_EXPORTED_double(
     fuse_parameter_memory_size,
     -1.0,  // MBytes
     "fuse_parameter_memory_size is up limited memory size(MB)"
@@ -35,7 +35,7 @@ PADDLE_DEFINE_EXPORTED_double(
     "of communication calling(e.g NCCLAllReduce). "
     "The default value is 0, it means that "
     "not set group according to memory_size.");
-PADDLE_DEFINE_EXPORTED_int32(
+PHI_DEFINE_EXPORTED_int32(
     fuse_parameter_groups_size,
     1,
     "fuse_parameter_groups_size is the up limited size of one group "

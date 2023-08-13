@@ -64,32 +64,32 @@
 #include "paddle/fluid/memory/allocation/stream_safe_custom_device_allocator.h"
 #endif
 
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
-PADDLE_DEFINE_EXPORTED_int64(
+PHI_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time,
     10000,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     use_system_allocator,
     false,
     "Whether to use system allocator to allocate CPU and GPU memory. "
     "Only used for unittests.");
 
-PADDLE_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
+PHI_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
                             false,
                             "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
 // NOTE(Ruibiao): This FLAGS is just to be compatibled with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
-PADDLE_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator,
+PHI_DEFINE_EXPORTED_bool(use_stream_safe_cuda_allocator,
                             true,
                             "Enable StreamSafeCUDAAllocator");
 
-PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
+PHI_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             false,
                             "Whether to use CUDAManagedAllocator to allocate "
                             "managed memory, only available for auto_growth "

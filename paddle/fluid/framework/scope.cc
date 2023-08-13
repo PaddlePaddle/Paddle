@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 DECLARE_bool(benchmark);
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     eager_delete_scope,
     true,
     "Delete local scope eagerly. It will reduce GPU memory usage but "
