@@ -41,7 +41,7 @@ class AdamW(Optimizer):
 
         moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
 
-        moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
+        moment\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
         learning\_rate & = learning\_rate *
             \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
