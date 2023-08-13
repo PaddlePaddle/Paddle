@@ -120,7 +120,7 @@ class RMSProp(Optimizer):
                 >>> rmsprop.step()
                 >>> rmsprop.clear_grad()
 
-                >>> #Note that the learning_rate of linear_2 is 0.01.
+                >>> # Note that the learning_rate of linear_2 is 0.01.
                 >>> linear_1 = paddle.nn.Linear(10, 10)
                 >>> linear_2 = paddle.nn.Linear(10, 10)
                 >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
@@ -136,7 +136,8 @@ class RMSProp(Optimizer):
                 ...         'weight_decay': 0.001,
                 ...         'learning_rate': 0.1
                 ...     }],
-                ...     weight_decay=0.01)
+                ...     weight_decay=0.01
+                ... )
                 >>> out.backward()
                 >>> rmsprop.step()
                 >>> rmsprop.clear_grad()
