@@ -46,12 +46,6 @@
 
 namespace ir {
 
-const std::unordered_set<std::string> KernelOpBaseAttrNames = {
-    "op_name",
-    "kernel_key",
-    "kernel_name",
-};
-
 void AddNewData(ir::Value value,
                 std::string name,
                 paddle::framework::Variable* var,
@@ -589,6 +583,8 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    std::cerr << "legacy attr name " << legacy_attr_name << "\t"
+              << fluid_op_name << "\t" << name << std::endl;
 
     runtime_ctx->inputs[legacy_attr_name].push_back(var);
   }
@@ -666,25 +662,24 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
   // build attribute
   auto& op_attr_map = op->attributes();
-  for (auto& attr : op_attr_map) {
-    if (KernelOpBaseAttrNames.count(attr.first)) {
-      continue;
-    }
-
-    auto& val = attr.second;
+  auto attr_name_list = op_yaml_info.AttrParams(true);
+  std::cerr << "attr name lsit " << attr_name_list.size() << std::endl;
+  for (auto& name : attr_name_list) {
+    std::cerr << " aattr name " << name << std::endl;
+    auto& val = op_attr_map.at(name);
 
     if (val.isa<ir::StrAttribute>()) {
-      attr_map[attr.first] = val.dyn_cast<ir::StrAttribute>().AsString();
+      attr_map[name] = val.dyn_cast<ir::StrAttribute>().AsString();
     } else if (val.isa<ir::Int32Attribute>()) {
-      attr_map[attr.first] = val.dyn_cast<ir::Int32Attribute>().data();
+      attr_map[name] = val.dyn_cast<ir::Int32Attribute>().data();
     } else if (val.isa<ir::BoolAttribute>()) {
-      attr_map[attr.first] = val.dyn_cast<ir::BoolAttribute>().data();
+      attr_map[name] = val.dyn_cast<ir::BoolAttribute>().data();
     } else if (val.isa<ir::FloatAttribute>()) {
-      attr_map[attr.first] = val.dyn_cast<ir::FloatAttribute>().data();
+      attr_map[name] = val.dyn_cast<ir::FloatAttribute>().data();
     } else if (val.isa<ir::DoubleAttribute>()) {
-      attr_map[attr.first] = val.dyn_cast<ir::DoubleAttribute>().data();
+      attr_map[name] = val.dyn_cast<ir::DoubleAttribute>().data();
     } else if (val.isa<ir::Int64Attribute>()) {
-      attr_map[attr.first] = val.dyn_cast<ir::Int64Attribute>().data();
+      attr_map[name] = val.dyn_cast<ir::Int64Attribute>().data();
     } else {
       std::stringstream ss;
       val.Print(ss);

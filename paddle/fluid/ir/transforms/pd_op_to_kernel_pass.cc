@@ -62,7 +62,8 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
 const std::unordered_set<std::string> LegacyOpList = {
     "pd.fused_softmax_mask_upper_triangle",
     "pd.fused_softmax_mask_upper_triangle_grad",
-    "pd.load_combine"};
+    "pd.load_combine",
+    "pd.c_concat"};
 
 bool NeedFallBackCpu(const ir::Operation* op,
                      const std::string& kernel_fn_name,

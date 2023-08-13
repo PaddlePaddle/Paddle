@@ -1548,7 +1548,7 @@ void NewIRInterpreter::BuildInstruction() {
 
       if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
           op_name == "pd.fused_softmax_mask_upper_triangle_grad" ||
-          op_name == "pd.load_combine") {
+          op_name == "pd.load_combine" || op_name == "pd.c_concat") {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,
