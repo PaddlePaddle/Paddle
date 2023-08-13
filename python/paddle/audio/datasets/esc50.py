@@ -57,7 +57,12 @@ class ESC50(AudioClassificationDataset):
             ...     # do something with audio, label
             ...     print(audio.shape, label)
             ...     # [audio_data_length] , label_id
-            ...
+            [220500] 0
+            [220500] 14
+            [220500] 36
+            [220500] 36
+            [220500] 19
+
             >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
             ...                                         feat_type='mfcc',
             ...                                         n_mfcc=40)
@@ -66,6 +71,12 @@ class ESC50(AudioClassificationDataset):
             ...     # do something with mfcc feature, label
             ...     print(audio.shape, label)
             ...     # [feature_dim, length] , label_id
+            [40, 1723] 0
+            [40, 1723] 14
+            [40, 1723] 36
+            [40, 1723] 36
+            [40, 1723] 19
+
     """
 
     archive = {

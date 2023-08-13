@@ -54,7 +54,9 @@ def list_available_backends() -> List[str]:
             >>> wav_path = "./test.wav"
 
             >>> current_backend = paddle.audio.backends.get_current_backend()
-            >>> print(current_backend) # wave_backend, the default backend.
+            >>> print(current_backend)
+            wave_backend
+
             >>> backends = paddle.audio.backends.list_available_backends()
             >>> # default backends is ['wave_backend']
             >>> # backends is ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
@@ -111,7 +113,9 @@ def get_current_backend() -> str:
             >>> wav_path = "./test.wav"
 
             >>> current_backend = paddle.audio.backends.get_current_backend()
-            >>> print(current_backend) # wave_backend, the default backend.
+            >>> print(current_backend)
+            wave_backend
+
             >>> backends = paddle.audio.backends.list_available_backends()
             >>> # default backends is ['wave_backend']
             >>> # backends is ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
@@ -155,7 +159,9 @@ def set_backend(backend_name: str):
             >>> wav_path = "./test.wav"
 
             >>> current_backend = paddle.audio.backends.get_current_backend()
-            >>> print(current_backend) # wave_backend, the default backend.
+            >>> print(current_backend)
+            wave_backend
+
             >>> backends = paddle.audio.backends.list_available_backends()
             >>> # default backends is ['wave_backend']
             >>> # backends is ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
