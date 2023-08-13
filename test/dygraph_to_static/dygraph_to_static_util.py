@@ -35,7 +35,7 @@ def enable_fallback_guard(enable):
 
 def to_ast(func):
     """
-    convet run fall_back to ast
+    convert run fall_back to ast
     """
 
     def impl(*args, **kwargs):
@@ -47,7 +47,7 @@ def to_ast(func):
 
 def to_sot(func):
     """
-    convet run fall_back to ast
+    convert run fall_back to ast
     """
     enable_sot = os.environ.get("ENABLE_SOT", "False") == "True"
 
@@ -65,11 +65,12 @@ def dy2static_unittest(cls):
     """
     dy2static unittest must be decorated to each Dy2static Unittests.
     run both in Fallback and Ast mode.
-    Usage like:
 
-    @dy2static_unittest
-    class TestA (unittest.TestCase):
-        ...
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ...     ...
     """
     for key in dir(cls):
         if key.startswith("test"):
@@ -84,16 +85,18 @@ def dy2static_unittest(cls):
 def ast_only_test(func):
     """
     run this test function in ast only mode.
-    Usage:
 
-    class TestA (unittest.TestCase):
-        @ast_only_test
-        def test_ast_only(self):
-            pass
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ...     @ast_only_test
+        ...     def test_ast_only(self):
+        ...         pass
     """
 
     def impl(*args, **kwargs):
-        if os.environ.get("ENABLE_FALL_BACK", "True") == "False":
+        if os.environ.get("ENABLE_FALL_BACK", "False") == "False":
             func(*args, **kwargs)
 
     return impl
@@ -102,16 +105,18 @@ def ast_only_test(func):
 def sot_only_test(func):
     """
     run this test function in ast only mode.
-    Usage:
 
-    class TestA (unittest.TestCase):
-        @ast_only_test
-        def test_ast_only(self):
-            pass
+    Examples:
+
+        >>> @dy2static_unittest
+        ... class TestA(unittest.TestCase):
+        ...     @sot_only_test
+        ...     def test_sot_only(self):
+        ...         pass
     """
 
     def impl(*args, **kwargs):
-        if os.environ.get("ENABLE_FALL_BACK", "True") == "True":
+        if os.environ.get("ENABLE_FALL_BACK", "False") == "True":
             func(*args, **kwargs)
 
     return impl

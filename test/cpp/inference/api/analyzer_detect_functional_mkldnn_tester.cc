@@ -74,7 +74,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
   (*inputs).emplace_back(input_slots);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 int GetNumCachedObjects() {
   auto &pool = platform::DeviceContextPool::Instance();
   phi::CPUPlace place;

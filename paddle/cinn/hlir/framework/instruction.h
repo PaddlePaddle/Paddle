@@ -132,13 +132,17 @@ class Instruction {
 
   int size() { return fn_ptrs_.size(); }
 
-  std::string DumpInstruction();
+  std::string DumpInstruction() const;
 
-  std::vector<std::vector<std::string>> GetInArgs() { return in_args_; }
-  std::vector<std::vector<std::string>> GetOutArgs() { return out_args_; }
+  const std::vector<std::vector<std::string>>& GetInArgs() const {
+    return in_args_;
+  }
+  const std::vector<std::vector<std::string>>& GetOutArgs() const {
+    return out_args_;
+  }
   void ClearInArgs() { in_args_.clear(); }
   void ClearOutArgs() { out_args_.clear(); }
-  std::vector<std::string> GetFnNames() { return fn_names_; }
+  const std::vector<std::string>& GetFnNames() const { return fn_names_; }
   void AddInArgs(const std::vector<std::string>& in_args) {
     in_args_.push_back(in_args);
   }

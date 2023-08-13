@@ -49,21 +49,21 @@ class TestPybind(unittest.TestCase):
     def test_block(self):
         newir_program = get_ir_program()
         block = newir_program.block()
-        ops = block.get_ops()
+        ops = block.ops
         self.assertEqual(
             len(ops), 4
         )  # ir program add "builtin.get_parameter" by default, so size is 4
         block.remove_op(ops[3])
-        self.assertEqual(len(block.get_ops()), 3)
+        self.assertEqual(len(block.ops), 3)
 
     def test_operation(self):
         newir_program = get_ir_program()
-        ops = newir_program.block().get_ops()
-        matmul_op = newir_program.block().get_ops()[1]
-        add_op = newir_program.block().get_ops()[2]
-        tanh_op = newir_program.block().get_ops()[3]
+        ops = newir_program.block().ops
+        matmul_op = newir_program.block().ops[1]
+        add_op = newir_program.block().ops[2]
+        tanh_op = newir_program.block().ops[3]
         parent_block = tanh_op.get_parent_block()
-        parent_ops_num = len(parent_block.get_ops())
+        parent_ops_num = len(parent_block.ops)
         self.assertEqual(parent_ops_num, 4)
         self.assertEqual(tanh_op.num_results(), 1)
         self.assertEqual(len(matmul_op.get_input_names()), 2)
@@ -72,9 +72,9 @@ class TestPybind(unittest.TestCase):
 
     def test_value(self):
         newir_program = get_ir_program()
-        matmul_op = newir_program.block().get_ops()[1]
-        add_op = newir_program.block().get_ops()[2]
-        tanh_op = newir_program.block().get_ops()[3]
+        matmul_op = newir_program.block().ops[1]
+        add_op = newir_program.block().ops[2]
+        tanh_op = newir_program.block().ops[3]
 
         self.assertEqual(
             matmul_op.result(0).dtype, paddle.fluid.core.DataType.FLOAT32
@@ -123,8 +123,8 @@ class TestPybind(unittest.TestCase):
 
     def test_type(self):
         newir_program = get_ir_program()
-        matmul_op = newir_program.block().get_ops()[1]
-        add_op = newir_program.block().get_ops()[2]
+        matmul_op = newir_program.block().ops[1]
+        add_op = newir_program.block().ops[2]
         print(matmul_op.result(0).type())
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
@@ -152,8 +152,8 @@ class TestPybind(unittest.TestCase):
 
         newir_program = ir.translate_to_new_ir(main_program.desc)
         print(newir_program)
-        conv_attr = newir_program.block().get_ops()[3].attrs()
-        full_attr = newir_program.block().get_ops()[8].attrs()
+        conv_attr = newir_program.block().ops[3].attrs()
+        full_attr = newir_program.block().ops[8].attrs()
         self.assertEqual(conv_attr["stop_gradient"], [False])
         self.assertEqual(conv_attr["dilations"], [1, 1])
         self.assertEqual(conv_attr["data_format"], "NCHW")
@@ -166,13 +166,13 @@ class TestPybind(unittest.TestCase):
 
     def test_operands(self):
         newir_program = get_ir_program()
-        matmul_op = newir_program.block().get_ops()[1]
+        matmul_op = newir_program.block().ops[1]
         operands = matmul_op.operands()
         self.assertEqual(len(operands), 2)
 
     def test_results(self):
         newir_program = get_ir_program()
-        matmul_op = newir_program.block().get_ops()[1]
+        matmul_op = newir_program.block().ops[1]
         results = matmul_op.results()
         self.assertEqual(len(results), 1)
 

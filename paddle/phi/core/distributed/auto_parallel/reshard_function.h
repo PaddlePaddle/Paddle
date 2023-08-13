@@ -36,7 +36,7 @@ class ReshardFunction {
       const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
 
   virtual std::shared_ptr<DistTensor> Eval(
-      const DeviceContext& dev_ctx,
+      DeviceContext* dev_ctx,
       const DistTensor& in,
       const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
 };

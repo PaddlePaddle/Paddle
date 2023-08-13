@@ -1137,7 +1137,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 is_sparse=is_sparse,
             )
             if sync:
-                lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
+                lr_decay = paddle.optimizer.lr.noam_decay(
                     ModelHyperParams.d_model, TrainTaskConfig.warmup_steps
                 )
                 with fluid.default_main_program()._lr_schedule_guard():
