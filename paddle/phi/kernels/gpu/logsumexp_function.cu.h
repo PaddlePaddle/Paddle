@@ -78,7 +78,7 @@ inline void GetNumBlocks(int64_t block_size,
   PADDLE_ENFORCE_GPU_SUCCESS(musaGetDevice(&dev));
   int sm_count;
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaDeviceGetAttribute(&sm_count, musaDevAttrMultiProcessorCount, dev));
+      musaDeviceGetAttribute(&sm_count, musaDevAttrMultiProcessorCount, dev));
   int tpm;
   PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceGetAttribute(
       &tpm, musaDevAttrMaxThreadsPerMultiProcessor, dev));
@@ -306,6 +306,13 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_col,
                           const SourceType* in,
                           SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+typename std::enable_if<VecSize == 1, musaError_t>::type
+DispatchLogsumexpWarpCols(const Context& dev_ctx,
+                          const int64_t num_row,
+                          const int64_t num_col,
+                          const SourceType* in,
+                          SourceType* out) {
 #else
 typename std::enable_if<VecSize == 1, cudaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
@@ -414,6 +421,13 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_col,
                           const SourceType* in,
                           SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+typename std::enable_if<VecSize == 2, musaError_t>::type
+DispatchLogsumexpWarpCols(const Context& dev_ctx,
+                          const int64_t num_row,
+                          const int64_t num_col,
+                          const SourceType* in,
+                          SourceType* out) {
 #else
 typename std::enable_if<VecSize == 2, cudaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
@@ -505,6 +519,12 @@ inline hipError_t DispatchLogsumexpWarp(const Context& dev_ctx,
                                         const int64_t num_col,
                                         const SourceType* in,
                                         SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+inline musaError_t DispatchLogsumexpWarp(const Context& dev_ctx,
+                                         const int64_t num_row,
+                                         const int64_t num_col,
+                                         const SourceType* in,
+                                         SourceType* out) {
 #else
 inline cudaError_t DispatchLogsumexpWarp(const Context& dev_ctx,
                                          const int64_t num_row,

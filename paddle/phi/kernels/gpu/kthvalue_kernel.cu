@@ -93,6 +93,13 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                << hipGetErrorString(err);
     return false;
   }
+#elif defined(__MUSACC__)
+  if (err != musaSuccess) {
+    LOG(ERROR) << "KthvalueOP failed as could not launch "
+                  "cub::DeviceSegmentedRadixSort::SortPairs, status: "
+               << musaGetErrorString(err);
+    return false;
+  }
 #else
   if (err != cudaSuccess) {
     LOG(ERROR) << "KthvalueOP failed as could not launch "
@@ -123,6 +130,13 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
     LOG(ERROR) << "KthvalueOP failed as could not launch "
                   "hipcub::DeviceSegmentedRadixSort::SortPairs, "
                << temp_storage_bytes << ", status: " << hipGetErrorString(err);
+    return false;
+  }
+#elif defined(__MUSACC__)
+  if (err != musaSuccess) {
+    LOG(ERROR) << "KthvalueOP failed as could not launch "
+                  "cub::DeviceSegmentedRadixSort::SortPairs, "
+               << temp_storage_bytes << ", status: " << musaGetErrorString(err);
     return false;
   }
 #else

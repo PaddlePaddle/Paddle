@@ -7,7 +7,6 @@ if(WIN32)
   return()
 endif()
 
-# FIXME(MTAI): please make sure that we can find MCCL successfully
 if(WITH_MCCL)
   set(MCCL_ROOT
       "/usr/local/musa/"

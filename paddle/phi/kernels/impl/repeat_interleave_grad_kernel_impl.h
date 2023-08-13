@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
-#elif defined(__NVCC__)
+#elif defined(__MUSACC__)
 #include "cub/cub.cuh"
 #else
 #include <hipcub/hipcub.hpp>

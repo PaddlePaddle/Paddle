@@ -31,8 +31,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #elif defined(PADDLE_WITH_MUSA)
-#include "paddle/phi/backends/gpu/rocm/mudnn_helper.h"
-#include "paddle/phi/kernels/gpudnn/conv_mudnn_helper.h"
+
 #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"

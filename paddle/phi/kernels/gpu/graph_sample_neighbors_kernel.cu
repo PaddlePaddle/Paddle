@@ -230,7 +230,7 @@ __global__ void FisherYatesSampleKernel(const uint64_t rand_seed,
   hiprand_init(
       rand_seed * gridDim.x + blockIdx.x, threadIdx.y + threadIdx.x, 0, &rng);
 #elif defined(PADDLE_WITH_MUSA)
-  murand_state_philox4_32_10 rng;
+  murand_state_philox4x32_10 rng;
   murand_init(
       rand_seed * gridDim.x + blockIdx.x, threadIdx.y + threadIdx.x, 0, &rng);
 #else

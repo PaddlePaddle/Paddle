@@ -43,7 +43,7 @@ using COMPAT_RANDSTATEPHILOX4_32_10_T = hiprandStatePhilox4_32_10_t;
 #define COMPAT_RAND_UNIFORM hiprand_uniform
 #define COMPAT_RAND_NORMAL hiprand_normal
 #elif defined(PADDLE_WITH_MUSA)
-using COMPAT_RANDSTATEPHILOX4_32_10_T = murand_state_philox4x32_10_t;
+using COMPAT_RANDSTATEPHILOX4_32_10_T = murand_state_philox4x32_10;
 #define COMPAT_RAND_INIT murand_init
 #define COMPAT_RAND_UNIFORM murand_uniform
 #define COMPAT_RAND_NORMAL murand_normal

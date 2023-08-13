@@ -425,10 +425,6 @@ function(cc_binary TARGET_NAME)
   if(WITH_ROCM)
     target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
   endif()
-  # TODO(@caizhi): enable target_link_libraries for MUSA
-  #if(WITH_MUSA)
-  #  target_link_libraries(${TARGET_NAME} ${MUSA_LIB})
-  #endif()
 
   check_coverage_opt(${TARGET_NAME} ${cc_binary_SRCS})
 

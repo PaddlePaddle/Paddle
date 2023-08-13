@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
+#if !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
+// HIP and MUSA not support cusolver
 
 #include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
 

@@ -17,14 +17,14 @@ find_package(MUSA REQUIRED)
 include_directories(${MUSA_PATH}/include)
 
 # set openmp include directory
-set(llvm_search_list)
+set(llvm_openmp_search_list)
 foreach(item RANGE 6 20 1)
-  list(APPEND llvm_search_list /usr/lib/llvm-${item}/include/openmp/)
+  list(APPEND llvm_openmp_search_list /usr/lib/llvm-${item}/include/openmp/)
 endforeach()
 
 find_path(
   OPENMP_INCLUDE_DIR omp.h
-  PATHS ${llvm_search_list}
+  PATHS ${llvm_openmp_search_list}
   REQUIRED
   NO_DEFAULT_PATH)
 include_directories(${OPENMP_INCLUDE_DIR})
@@ -77,9 +77,7 @@ macro(find_musa_version musa_version_file)
 endmacro()
 find_musa_version(${MUSA_PATH}/version.json)
 
-list(APPEND MUSA_MCC_FLAGS -Wno-unknown-warning-option)
 list(APPEND MUSA_MCC_FLAGS -Wno-macro-redefined)
-list(APPEND MUSA_MCC_FLAGS -Wno-unused-variable)
 list(APPEND MUSA_MCC_FLAGS -Wno-deprecated-copy-with-user-provided-copy)
 list(APPEND MUSA_MCC_FLAGS -Wno-pragma-once-outside-header)
 list(APPEND MUSA_MCC_FLAGS -Wno-return-type)
@@ -89,7 +87,12 @@ list(APPEND MUSA_MCC_FLAGS -Wno-pessimizing-move)
 list(APPEND MUSA_MCC_FLAGS -Wno-unused-but-set-variable)
 list(APPEND MUSA_MCC_FLAGS -Wno-bitwise-instead-of-logical)
 list(APPEND MUSA_MCC_FLAGS -Wno-format)
+list(APPEND MUSA_MCC_FLAGS -Wno-self-assign)
+list(APPEND MUSA_MCC_FLAGS -Wno-literal-conversion)
+list(APPEND MUSA_MCC_FLAGS -Wno-unknown-warning-option)
+list(APPEND MUSA_MCC_FLAGS -Wno-unused-variable)
 list(APPEND MUSA_MCC_FLAGS -Wno-unused-local-typedef)
+list(APPEND MUSA_MCC_FLAGS -Wno-unused-lambda-capture)
 list(APPEND MUSA_MCC_FLAGS -Wno-reorder-ctor)
 list(APPEND MUSA_MCC_FLAGS -Wno-braced-scalar-init)
 list(APPEND MUSA_MCC_FLAGS -Wno-pass-failed)
