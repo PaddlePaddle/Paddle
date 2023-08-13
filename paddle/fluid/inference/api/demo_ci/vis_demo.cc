@@ -81,7 +81,7 @@ void Main(bool use_gpu) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
   if (FLAGS_use_gpu) {
     paddle::demo::Main(true /*use_gpu*/);
   } else {

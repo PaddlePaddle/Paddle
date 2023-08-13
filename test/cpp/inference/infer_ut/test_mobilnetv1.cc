@@ -81,6 +81,6 @@ TEST(tensorrt_tester_mobilenetv1, tuned_dynamic_trt_fp32_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
   return RUN_ALL_TESTS();
 }

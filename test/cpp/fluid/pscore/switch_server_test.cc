@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
   framework::ProgramDesc program;
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
 
   std::string switch_a_endpoint(FLAGS_switch_addr_inner);
   std::string switch_a_endpoint_inter(FLAGS_switch_addr_heter);

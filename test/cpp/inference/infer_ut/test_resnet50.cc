@@ -242,6 +242,6 @@ TEST(DISABLED_tensorrt_tester_resnet50, profile_multi_thread_trt_fp32) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
   return RUN_ALL_TESTS();
 }

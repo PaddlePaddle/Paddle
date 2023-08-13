@@ -101,8 +101,8 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
-    ::GFLAGS_NAMESPACE::AllowCommandLineReparsing();
-    ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
+    paddle::flags::AllowUndefinedFlags();
+    paddle::flags::ParseCommandLineFlags(&argc, &arr);
     successed = true;
 
     VLOG(1) << "After Parse: argc is " << argc;

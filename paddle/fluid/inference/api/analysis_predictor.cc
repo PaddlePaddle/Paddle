@@ -1696,7 +1696,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 
   auto SetGflags = [](const AnalysisConfig &config) {
     auto SetGflag = [](const char *name, const char *value) {
-      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      std::string ret = paddle::flags::SetFlagValue(name, value);
       PADDLE_ENFORCE_EQ(
           ret.empty(),
           false,

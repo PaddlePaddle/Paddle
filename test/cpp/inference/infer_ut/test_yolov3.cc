@@ -154,6 +154,6 @@ TEST(test_yolov3, multi_thread4_mkl_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
   return RUN_ALL_TESTS();
 }

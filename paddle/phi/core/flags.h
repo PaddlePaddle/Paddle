@@ -20,9 +20,9 @@
 #include <string>
 #include <type_traits>
 
-#include "gflags/gflags.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/utils/flags.h"
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/utils/variant.h"
 
 #if defined(_WIN32)
@@ -33,6 +33,7 @@
 #define PHI_IMPORT_FLAG
 #endif  // _WIN32
 
+#ifdef PADDLE_WITH_GFLAGS
 // We redefine the gflags' macro for exporting global variable
 
 // ----------------------------DECLARE FLAGS----------------------------
@@ -127,6 +128,23 @@
   clstring& FLAGS_##name = *FLAGS_no##name;                        \
   } /* NOLINT */                                                   \
   using fLS::FLAGS_##name
+#else  // PADDLE_WITH_GFLAGS
+#define PHI_DEFINE_bool(name, val, txt) PD_DEFINE_bool(name, val, txt)
+#define PHI_DEFINE_int32(name, val, txt) PD_DEFINE_int32(name, val, txt)
+#define PHI_DEFINE_uint32(name, val, txt) PD_DEFINE_uint32(name, val, txt)
+#define PHI_DEFINE_int64(name, val, txt) PD_DEFINE_int64(name, val, txt)
+#define PHI_DEFINE_uint64(name, val, txt) PD_DEFINE_uint64(name, val, txt)
+#define PHI_DEFINE_double(name, val, txt) PD_DEFINE_double(name, val, txt)
+#define PHI_DEFINE_string(name, val, txt) PD_DEFINE_string(name, val, txt)
+
+#define PHI_DECLARE_bool(name) PD_DECLARE_bool(name)
+#define PHI_DECLARE_int32(name) PD_DECLARE_int32(name)
+#define PHI_DECLARE_uint32(name) PD_DECLARE_uint32(name)
+#define PHI_DECLARE_int64(name) PD_DECLARE_int64(name)
+#define PHI_DECLARE_uint64(name) PD_DECLARE_uint64(name)
+#define PHI_DECLARE_double(name) PD_DECLARE_double(name)
+#define PHI_DECLARE_string(name) PD_DECLARE_string(name)
+#endif
 
 namespace phi {
 
