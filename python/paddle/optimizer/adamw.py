@@ -55,7 +55,7 @@ class AdamW(Optimizer):
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
-            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
@@ -68,15 +68,15 @@ class AdamW(Optimizer):
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
         lr_ratio (function|None, optional): If it is not None,
-            the learning rate will be updated with layerwise learning rate ratio.
+            the learning rate will be updated with layer-wise learning rate ratio.
             Otherwise, the learning rate is the original.
             Default: None.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
             will be updated with weight decay. It only works when we want to specify tensors.
             Default: None.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
@@ -110,7 +110,8 @@ class AdamW(Optimizer):
             ...         parameters=linear.parameters(),
             ...         beta1=beta1,
             ...         beta2=beta2,
-            ...         weight_decay=0.01)
+            ...         weight_decay=0.01
+            ... )
             >>> loss.backward()
             >>> opt.step()
             >>> opt.clear_grad()
@@ -134,7 +135,8 @@ class AdamW(Optimizer):
             ...         'beta1': 0.8
             ...     }],
             ...     weight_decay=0.01,
-            ...     beta1=0.9)
+            ...     beta1=0.9
+            ... )
             >>> loss.backward()
             >>> opt.step()
             >>> opt.clear_grad()
