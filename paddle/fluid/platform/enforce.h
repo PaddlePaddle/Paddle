@@ -42,9 +42,8 @@ limitations under the License. */
 #include <mublas.h>
 #include <mudnn.h>
 #include <mufft.h>
-// TODO(@caizhi): 
-//#include <murand.h>
-//#include <musparse.h>
+#include <murand.h>
+#include <musparse.h>
 #include <thrust/system/musa/error.h>
 #include <thrust/system_error.h>
 #endif  // PADDLE_WITH_MUSA

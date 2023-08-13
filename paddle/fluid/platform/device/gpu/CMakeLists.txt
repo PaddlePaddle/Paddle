@@ -27,7 +27,6 @@ elseif(WITH_MUSA)
     gpu_info
     SRCS gpu_info.cc
     DEPS phi glog enforce monitor dynload_cuda)
-
 endif()
 
 cc_library(

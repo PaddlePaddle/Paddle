@@ -655,7 +655,7 @@ class AllocatorFacadePrivate {
     auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
     VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
             << FLAGS_auto_growth_chunk_size_in_mb;
-#if defined(PADDLE_WITH_HIP) ||  defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     auto cuda_allocator = CreateCUDAAllocator(p);
     cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
         cuda_allocator,

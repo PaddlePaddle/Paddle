@@ -26,9 +26,6 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#ifdef __MUSACC__
-//TODO
-#endif
 
 #include <algorithm>
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"

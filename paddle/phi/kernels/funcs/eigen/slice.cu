@@ -39,7 +39,7 @@ struct EigenSlice<Eigen::GpuDevice, T, Rank> {
                    const InType& in,
                    const Array& offsets,
                    const Array& extents) {
-    //out.device(dev) = in.slice(offsets, extents);
+    out.device(dev) = in.slice(offsets, extents);
   }
 
   static void Eval(const Eigen::GpuDevice& dev,
@@ -47,7 +47,7 @@ struct EigenSlice<Eigen::GpuDevice, T, Rank> {
                    const InType32BitIndex& in,
                    const Array32Bit& offsets,
                    const Array32Bit& extents) {
-    //out.device(dev) = in.slice(offsets, extents);
+    out.device(dev) = in.slice(offsets, extents);
   }
 };
 

@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
+#elif defined(PADDLE_WITH_MCCL)
+#include "paddle/fluid/platform/dynload/mccl.h"
 #else
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
