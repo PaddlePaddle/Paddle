@@ -623,6 +623,16 @@ class Optimizer:
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.01
                 ...     adam.step()
+                Learning rate of step0: 0.01
+                Learning rate of step1: 0.01
+                Learning rate of step2: 0.01
+                Learning rate of step3: 0.01
+                Learning rate of step4: 0.01
+                Learning rate of step5: 0.01
+                Learning rate of step6: 0.01
+                Learning rate of step7: 0.01
+                Learning rate of step8: 0.01
+                Learning rate of step9: 0.01
 
                 >>> ## example2: StepDecay is used, return the scheduled learning rate
                 >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
@@ -634,6 +644,16 @@ class Optimizer:
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05...
                 ...     adam.step()
                 ...     scheduler.step()
+                Learning rate of step0: 0.5
+                Learning rate of step1: 0.5
+                Learning rate of step2: 0.05
+                Learning rate of step3: 0.05
+                Learning rate of step4: 0.005000000000000001
+                Learning rate of step5: 0.005000000000000001
+                Learning rate of step6: 0.0005000000000000001
+                Learning rate of step7: 0.0005000000000000001
+                Learning rate of step8: 5.000000000000001e-05
+                Learning rate of step9: 5.000000000000001e-05
 
                 >>> # train on static graph mode
                 >>> paddle.enable_static()
@@ -653,7 +673,16 @@ class Optimizer:
                 ...     print("Learning rate of step{}: {}", adam.get_lr())     # 0.5->0.05->0.005...
                 ...     out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
                 ...     scheduler.step()
-
+                Learning rate of step{}: {} 0.5
+                Learning rate of step{}: {} 0.5
+                Learning rate of step{}: {} 0.05
+                Learning rate of step{}: {} 0.05
+                Learning rate of step{}: {} 0.005000000000000001
+                Learning rate of step{}: {} 0.005000000000000001
+                Learning rate of step{}: {} 0.0005000000000000001
+                Learning rate of step{}: {} 0.0005000000000000001
+                Learning rate of step{}: {} 5.000000000000001e-05
+                Learning rate of step{}: {} 5.000000000000001e-05
         """
         if isinstance(self._learning_rate, float):
             return self._learning_rate

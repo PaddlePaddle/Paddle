@@ -83,6 +83,7 @@ def quanter(class_name):
     Examples:
        .. code-block:: python
 
+            >>> # doctest: +SKIP
             >>> # Given codes in ./customized_quanter.py
             >>> from paddle.quantization import quanter
             >>> from paddle.quantization import BaseQuanter
@@ -94,7 +95,6 @@ def quanter(class_name):
             >>> # Used in ./test.py
             >>> # from .customized_quanter import CustomizedQuanter
             >>> from paddle.quantization import QuantConfig
-            >>> # doctest: +SKIP
             >>> arg1_value = "test"
             >>> kwarg1_value = 20
             >>> quanter = CustomizedQuanter(arg1_value, kwarg1=kwarg1_value)
