@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -22,6 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/flags.h"
 
 DECLARE_bool(cudnn_deterministic);
 

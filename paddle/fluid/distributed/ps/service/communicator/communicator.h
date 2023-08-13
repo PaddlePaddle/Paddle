@@ -29,7 +29,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
@@ -45,6 +44,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {

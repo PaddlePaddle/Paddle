@@ -24,10 +24,10 @@
 #include <thread>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/include/paddle_inference_api.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace test {

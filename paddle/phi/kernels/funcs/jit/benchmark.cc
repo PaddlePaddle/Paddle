@@ -15,13 +15,13 @@
 #include <iostream>
 #include <random>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
+#include "paddle/utils/flags.h"
 
 DEFINE_int32(burning, 10, "Burning times.");
 DEFINE_int32(repeat, 3000, "Repeat times.");

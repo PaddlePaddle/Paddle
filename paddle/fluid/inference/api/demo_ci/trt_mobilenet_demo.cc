@@ -17,7 +17,7 @@ limitations under the License. */
  */
 
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "utils.h"  // NOLINT
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");

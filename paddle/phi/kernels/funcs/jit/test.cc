@@ -16,13 +16,13 @@ limitations under the License. */
 #include <iostream>
 #include <random>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
+#include "paddle/utils/flags.h"
 
 DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
 

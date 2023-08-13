@@ -22,7 +22,6 @@
 #include <string>
 #include <unordered_map>
 
-#include "gflags/gflags.h"
 #include "paddle/cinn/auto_schedule/auto_tuner.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/target.h"
@@ -51,6 +50,7 @@
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
 PHI_DECLARE_bool(enable_cinn_auto_tune);

@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/common/bfloat16.h"

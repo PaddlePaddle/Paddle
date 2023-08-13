@@ -329,7 +329,7 @@ def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_gen_utils.h"

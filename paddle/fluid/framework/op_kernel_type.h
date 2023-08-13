@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <string>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
@@ -25,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/utils/flags.h"
 
 DECLARE_bool(use_stride_kernel);
 

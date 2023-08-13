@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/backends/dynload/rocblas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

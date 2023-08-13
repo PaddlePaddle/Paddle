@@ -15,8 +15,8 @@
 
 #include <set>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/diagonal_kernel.h"

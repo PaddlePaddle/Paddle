@@ -15,7 +15,7 @@
 #pragma once
 
 #ifdef PADDLE_WITH_GFLAGS
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #else
 #include "paddle/utils/flags_native.h"
 #endif

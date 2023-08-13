@@ -21,7 +21,7 @@ limitations under the License. */
 #include <numeric>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "utils.h"  // NOLINT
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");

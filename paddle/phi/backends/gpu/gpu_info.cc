@@ -17,8 +17,8 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/common/memory_utils.h"
 

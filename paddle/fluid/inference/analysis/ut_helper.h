@@ -18,9 +18,9 @@ limitations under the License. */
 #include <fstream>
 #include <string>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace inference {

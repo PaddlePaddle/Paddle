@@ -16,9 +16,9 @@
 
 #include <thread>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
 DECLARE_int32(dist_threadpool_size);
 DEFINE_int32(io_threadpool_size,

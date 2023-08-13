@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "paddle_inference_api.h"  // NOLINT
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");

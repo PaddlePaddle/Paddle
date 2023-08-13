@@ -22,7 +22,7 @@ limitations under the License. */
 #include <memory>
 #include <thread>  //NOLINT
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "utils.h"  // NOLINT
 
 DEFINE_string(dirname, "", "Directory of the inference model.");

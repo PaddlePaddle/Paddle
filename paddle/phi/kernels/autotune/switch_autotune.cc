@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 DECLARE_bool(use_autotune);
 
