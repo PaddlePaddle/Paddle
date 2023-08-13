@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-DECLARE_bool(enable_cudnn_frontend);
+PD_DECLARE_bool(enable_cudnn_frontend);
 
 // Redirect the CUDNN APIs in the cudnn_frontend namespace to
 // the functions in phi::dynload

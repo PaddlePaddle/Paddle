@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/memory_utils.h"
 
-DECLARE_string(selected_gpus);
+PD_DECLARE_string(selected_gpus);
 
 namespace phi {
 namespace backends {

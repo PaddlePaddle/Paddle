@@ -21,7 +21,7 @@
 #include "paddle/utils/flags.h"
 #include "paddle/utils/string/printf.h"
 
-DECLARE_bool(color);
+PD_DECLARE_bool(color);
 
 namespace paddle {
 

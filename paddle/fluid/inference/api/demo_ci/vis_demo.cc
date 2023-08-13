@@ -21,15 +21,15 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 #include "utils.h"  // NOLINT
 
-DEFINE_string(modeldir, "", "Directory of the inference model.");
-DEFINE_string(refer, "", "path to reference result for comparison.");
-DEFINE_string(data,
-              "",
-              "path of data; each line is a record, format is "
-              "'<space split floats as data>\t<space split ints as shape'");
-DEFINE_bool(use_gpu, false, "Whether use gpu.");
+PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
+PD_DEFINE_string(refer, "", "path to reference result for comparison.");
+PD_DEFINE_string(data,
+                 "",
+                 "path of data; each line is a record, format is "
+                 "'<space split floats as data>\t<space split ints as shape'");
+PD_DEFINE_bool(use_gpu, false, "Whether use gpu.");
 #ifdef PADDLE_WITH_SHARED_LIB
-DECLARE_bool(profile);
+PD_DECLARE_bool(profile);
 #endif
 
 namespace paddle {

@@ -18,9 +18,9 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(initial_gpu_memory_in_mb);
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PD_DECLARE_double(fraction_of_gpu_memory_to_use);
+PD_DECLARE_uint64(initial_gpu_memory_in_mb);
+PD_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 

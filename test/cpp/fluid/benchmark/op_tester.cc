@@ -33,8 +33,8 @@ namespace paddle {
 namespace operators {
 namespace benchmark {
 
-DEFINE_string(op_config_list, "", "Path of op config file.");  // NOLINT
-DEFINE_int32(specified_config_id, -1, "Test the specified op config.");
+PD_DEFINE_string(op_config_list, "", "Path of op config file.");  // NOLINT
+PD_DEFINE_int32(specified_config_id, -1, "Test the specified op config.");
 
 void OpTester::Init(const std::string &filename) {
   Init(OpTesterConfig(filename));

@@ -34,9 +34,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Whether to use strdie kernel if op support stride.");
 
-DECLARE_int32(low_precision_op_list);
-DECLARE_bool(enable_api_kernel_fallback);
-DECLARE_bool(run_kp_kernel);
+PD_DECLARE_int32(low_precision_op_list);
+PD_DECLARE_bool(enable_api_kernel_fallback);
+PD_DECLARE_bool(run_kp_kernel);
 namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT

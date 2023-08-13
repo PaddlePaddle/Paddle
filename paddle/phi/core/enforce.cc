@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/core/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
-DECLARE_int32(call_stack_level);
+PD_DECLARE_int32(call_stack_level);
 
 namespace egr {
 class EagerVariable;

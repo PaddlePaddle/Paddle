@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_bool(use_stride_kernel);
+PD_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace experimental {

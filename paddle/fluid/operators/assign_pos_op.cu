@@ -26,7 +26,7 @@ We retain the following license from the original files:
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
-DECLARE_bool(avoid_op_randomness);
+PD_DECLARE_bool(avoid_op_randomness);
 
 namespace paddle {
 namespace operators {

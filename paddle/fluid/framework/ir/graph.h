@@ -28,7 +28,7 @@ limitations under the License. */
 
 #include "paddle/utils/any.h"
 
-DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(convert_all_blocks);
 
 namespace paddle {
 namespace framework {

@@ -24,7 +24,7 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_bool(use_system_allocator);
+PD_DECLARE_bool(use_system_allocator);
 
 namespace paddle {
 namespace framework {

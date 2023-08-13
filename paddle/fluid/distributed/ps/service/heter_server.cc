@@ -18,8 +18,8 @@
 
 namespace paddle {
 namespace distributed {
-// DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
-// DEFINE_string(key_path, "./key.pem", "key.pem path");
+// PD_DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
+// PD_DEFINE_string(key_path, "./key.pem", "key.pem path");
 std::shared_ptr<HeterServer> HeterServer::s_instance_ = nullptr;
 std::mutex HeterServer::mtx_;
 

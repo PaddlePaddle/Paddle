@@ -15,9 +15,11 @@
 #include "test_helper.h"  // NOLINT
 #include "test_suite.h"   // NOLINT
 
-DEFINE_string(modeldir, "", "Directory of the inference model.");
-DEFINE_string(datadir, "", "dataset.");
-DEFINE_string(truth_data, "", "Directory of the inference data truth result");
+PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
+PD_DEFINE_string(datadir, "", "dataset.");
+PD_DEFINE_string(truth_data,
+                 "",
+                 "Directory of the inference data truth result");
 
 namespace paddle_infer {
 

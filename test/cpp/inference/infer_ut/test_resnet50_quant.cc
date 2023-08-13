@@ -14,9 +14,9 @@
 
 #include "test_suite.h"  // NOLINT
 
-DEFINE_string(modeldir, "", "Directory of the inference model.");
-DEFINE_string(int8dir, "", "Directory of the quant inference model.");
-DEFINE_string(datadir, "", "Directory of the infer data.");
+PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
+PD_DEFINE_string(int8dir, "", "Directory of the quant inference model.");
+PD_DEFINE_string(datadir, "", "Directory of the infer data.");
 
 namespace paddle_infer {
 

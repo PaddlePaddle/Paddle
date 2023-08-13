@@ -20,23 +20,23 @@
 #include "paddle/utils/flags_native.h"
 #endif
 
-#ifndef PADDLE_WITH_GFLAGS
+#ifdef PADDLE_WITH_GFLAGS
 
-#define DEFINE_bool(name, val, txt) PD_DEFINE_bool(name, val, txt)
-#define DEFINE_int32(name, val, txt) PD_DEFINE_int32(name, val, txt)
-#define DEFINE_uint32(name, val, txt) PD_DEFINE_uint32(name, val, txt)
-#define DEFINE_int64(name, val, txt) PD_DEFINE_int64(name, val, txt)
-#define DEFINE_uint64(name, val, txt) PD_DEFINE_uint64(name, val, txt)
-#define DEFINE_double(name, val, txt) PD_DEFINE_double(name, val, txt)
-#define DEFINE_string(name, val, txt) PD_DEFINE_string(name, val, txt)
+#define PD_DEFINE_bool(name, val, txt) DEFINE_bool(name, val, txt)
+#define PD_DEFINE_int32(name, val, txt) DEFINE_int32(name, val, txt)
+#define PD_DEFINE_uint32(name, val, txt) DEFINE_uint32(name, val, txt)
+#define PD_DEFINE_int64(name, val, txt) DEFINE_int64(name, val, txt)
+#define PD_DEFINE_uint64(name, val, txt) DEFINE_uint64(name, val, txt)
+#define PD_DEFINE_double(name, val, txt) DEFINE_double(name, val, txt)
+#define PD_DEFINE_string(name, val, txt) DEFINE_string(name, val, txt)
 
-#define DECLARE_bool(name) PD_DECLARE_bool(name)
-#define DECLARE_int32(name) PD_DECLARE_int32(name)
-#define DECLARE_uint32(name) PD_DECLARE_uint32(name)
-#define DECLARE_int64(name) PD_DECLARE_int64(name)
-#define DECLARE_uint64(name) PD_DECLARE_uint64(name)
-#define DECLARE_double(name) PD_DECLARE_double(name)
-#define DECLARE_string(name) PD_DECLARE_string(name)
+#define PD_DECLARE_bool(name) DECLARE_bool(name)
+#define PD_DECLARE_int32(name) DECLARE_int32(name)
+#define PD_DECLARE_uint32(name) DECLARE_uint32(name)
+#define PD_DECLARE_int64(name) DECLARE_int64(name)
+#define PD_DECLARE_uint64(name) DECLARE_uint64(name)
+#define PD_DECLARE_double(name) DECLARE_double(name)
+#define PD_DECLARE_string(name) DECLARE_string(name)
 
 #endif
 

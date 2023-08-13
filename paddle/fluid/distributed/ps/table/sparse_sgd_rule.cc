@@ -18,7 +18,7 @@
 
 #include "glog/logging.h"
 
-DEFINE_bool(enable_show_scale_gradient, true, "enable show scale gradient");
+PD_DEFINE_bool(enable_show_scale_gradient, true, "enable show scale gradient");
 
 namespace paddle {
 namespace distributed {

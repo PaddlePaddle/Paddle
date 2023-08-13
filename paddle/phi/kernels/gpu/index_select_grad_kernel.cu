@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 

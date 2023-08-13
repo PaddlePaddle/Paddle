@@ -27,7 +27,7 @@
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_int64(embedding_deterministic);
+PD_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 

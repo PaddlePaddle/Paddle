@@ -22,7 +22,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 

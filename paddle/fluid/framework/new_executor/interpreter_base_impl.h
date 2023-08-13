@@ -38,14 +38,14 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/device_manager.h"
 
-DECLARE_bool(new_executor_serial_run);
-DECLARE_bool(new_executor_static_build);
-DECLARE_bool(new_executor_use_inplace);
-DECLARE_bool(new_executor_use_local_scope);
+PD_DECLARE_bool(new_executor_serial_run);
+PD_DECLARE_bool(new_executor_static_build);
+PD_DECLARE_bool(new_executor_use_inplace);
+PD_DECLARE_bool(new_executor_use_local_scope);
 
 PHI_DECLARE_bool(check_nan_inf);
-DECLARE_bool(benchmark);
-DECLARE_uint64(executor_log_deps_every_microseconds);
+PD_DECLARE_bool(benchmark);
+PD_DECLARE_uint64(executor_log_deps_every_microseconds);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

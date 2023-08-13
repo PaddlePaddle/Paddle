@@ -28,10 +28,10 @@ limitations under the License. */
 #define ACC_DIFF 1e-3
 #endif
 
-DEFINE_string(word2vec_dirname,
-              "",
-              "Directory of the word2vec inference model.");
-DEFINE_string(book_dirname, "", "Directory of the book inference model.");
+PD_DEFINE_string(word2vec_dirname,
+                 "",
+                 "Directory of the word2vec inference model.");
+PD_DEFINE_string(book_dirname, "", "Directory of the book inference model.");
 
 namespace paddle {
 

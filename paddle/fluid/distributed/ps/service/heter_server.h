@@ -57,9 +57,9 @@ PHI_DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-DECLARE_int32(pserver_timeout_ms);
-DECLARE_int32(heter_world_size);
-DECLARE_int32(switch_send_recv_timeout_s);
+PD_DECLARE_int32(pserver_timeout_ms);
+PD_DECLARE_int32(heter_world_size);
+PD_DECLARE_int32(switch_send_recv_timeout_s);
 
 using MultiVarMsg = MultiVariableMessage;
 using VarMsg = VariableMessage;

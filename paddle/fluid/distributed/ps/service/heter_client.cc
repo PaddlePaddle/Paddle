@@ -19,8 +19,8 @@
 
 namespace paddle {
 namespace distributed {
-DEFINE_int32(heter_world_size, 100, "group size");  // group max size
-DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
+PD_DEFINE_int32(heter_world_size, 100, "group size");  // group max size
+PD_DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 
 std::shared_ptr<HeterClient> HeterClient::s_instance_ = nullptr;
 std::mutex HeterClient::mtx_;

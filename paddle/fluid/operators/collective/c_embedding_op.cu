@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
 
-DECLARE_int64(embedding_deterministic);
+PD_DECLARE_int64(embedding_deterministic);
 
 namespace paddle {
 namespace operators {

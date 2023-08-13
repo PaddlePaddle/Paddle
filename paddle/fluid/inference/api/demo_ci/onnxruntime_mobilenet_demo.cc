@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 #include "utils.h"  // NOLINT
 
-DEFINE_string(modeldir, "", "Directory of the inference model.");
-DEFINE_string(data, "", "path of data");
+PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
+PD_DEFINE_string(data, "", "path of data");
 
 namespace paddle {
 namespace demo {

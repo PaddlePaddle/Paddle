@@ -30,7 +30,7 @@ extern void ReadBinaryFile(const std::string& filename, std::string* contents);
 
 namespace analysis {
 
-DEFINE_string(inference_model_dir, "", "inference test model dir");
+PD_DEFINE_string(inference_model_dir, "", "inference test model dir");
 
 }  // namespace analysis
 }  // namespace inference

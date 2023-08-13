@@ -27,7 +27,7 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/utils/string/string_helper.h"
 
-DECLARE_bool(einsum_opt);
+PD_DECLARE_bool(einsum_opt);
 
 namespace phi {
 

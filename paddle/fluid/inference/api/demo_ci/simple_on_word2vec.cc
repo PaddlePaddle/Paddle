@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 #include "utils.h"  // NOLINT
 
-DEFINE_string(dirname, "", "Directory of the inference model.");
-DEFINE_bool(use_gpu, false, "Whether use gpu.");
+PD_DEFINE_string(dirname, "", "Directory of the inference model.");
+PD_DEFINE_bool(use_gpu, false, "Whether use gpu.");
 
 namespace paddle {
 namespace demo {

@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/utils/flags.h"
 
-DEFINE_string(infer_model, "", "Directory of the inference model.");
+PD_DEFINE_string(infer_model, "", "Directory of the inference model.");
 
 using paddle_infer::Config;
 using paddle_infer::CreatePredictor;

@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 #include "paddle/utils/optional.h"
 
-DECLARE_int64(cublaslt_exhaustive_search_times);
+PD_DECLARE_int64(cublaslt_exhaustive_search_times);
 
 namespace phi {
 namespace funcs {

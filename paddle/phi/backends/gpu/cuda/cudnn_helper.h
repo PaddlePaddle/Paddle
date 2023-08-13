@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace backends {

@@ -14,7 +14,7 @@
 
 #include "test_suite.h"  // NOLINT
 
-DEFINE_string(modeldir, "", "Directory of the inference model.");
+PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
 
 namespace paddle_infer {
 

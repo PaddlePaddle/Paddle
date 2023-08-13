@@ -41,8 +41,8 @@ PADDLE_FORCE_LINK_FLAG(free_when_no_cache_hit);
 
 // NOTE: where are these 2 flags from?
 #ifdef PADDLE_WITH_DISTRIBUTE
-DECLARE_int32(rpc_get_thread_num);
-DECLARE_int32(rpc_prefetch_thread_num);
+PD_DECLARE_int32(rpc_get_thread_num);
+PD_DECLARE_int32(rpc_prefetch_thread_num);
 #endif
 
 namespace paddle {

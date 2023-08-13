@@ -22,7 +22,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
-DECLARE_bool(new_executor_serial_run);
+PD_DECLARE_bool(new_executor_serial_run);
 
 namespace paddle {
 namespace framework {

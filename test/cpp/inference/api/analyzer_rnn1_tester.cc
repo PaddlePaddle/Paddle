@@ -14,7 +14,7 @@
 
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_bool(with_precision_check, true, "turn on test");
+PD_DEFINE_bool(with_precision_check, true, "turn on test");
 
 namespace paddle {
 namespace inference {

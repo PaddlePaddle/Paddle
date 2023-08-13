@@ -26,16 +26,18 @@
 // #include "boost/lexical_cast.hpp"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_bool(pserver_print_missed_key_num_every_push,
-            false,
-            "pserver_print_missed_key_num_every_push");
-DEFINE_bool(pserver_create_value_when_push,
-            true,
-            "pserver create value when push");
-DEFINE_bool(pserver_enable_create_feasign_randomly,
-            false,
-            "pserver_enable_create_feasign_randomly");
-DEFINE_int32(pserver_table_save_max_retry, 3, "pserver_table_save_max_retry");
+PD_DEFINE_bool(pserver_print_missed_key_num_every_push,
+               false,
+               "pserver_print_missed_key_num_every_push");
+PD_DEFINE_bool(pserver_create_value_when_push,
+               true,
+               "pserver create value when push");
+PD_DEFINE_bool(pserver_enable_create_feasign_randomly,
+               false,
+               "pserver_enable_create_feasign_randomly");
+PD_DEFINE_int32(pserver_table_save_max_retry,
+                3,
+                "pserver_table_save_max_retry");
 
 namespace paddle {
 namespace distributed {

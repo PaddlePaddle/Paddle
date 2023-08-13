@@ -18,8 +18,8 @@
 #include "test/cpp/inference/api/tester_helper.h"
 
 // Here add missing commands
-DEFINE_string(infer_model2, "", "model path");
-DEFINE_string(infer_model3, "", "model path");
+PD_DEFINE_string(infer_model2, "", "model path");
+PD_DEFINE_string(infer_model3, "", "model path");
 
 namespace paddle {
 namespace inference {

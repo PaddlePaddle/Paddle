@@ -30,15 +30,15 @@ class RpcController;
 }  // namespace protobuf
 }  // namespace google
 
-DEFINE_int32(pserver_timeout_ms_s2s,
-             10000,
-             "pserver request server timeout_ms");
-DEFINE_int32(pserver_connect_timeout_ms_s2s,
-             10000,
-             "pserver connect server timeout_ms");
-DEFINE_string(pserver_connection_type_s2s,
-              "pooled",
-              "pserver connection_type[pooled:single]");
+PD_DEFINE_int32(pserver_timeout_ms_s2s,
+                10000,
+                "pserver request server timeout_ms");
+PD_DEFINE_int32(pserver_connect_timeout_ms_s2s,
+                10000,
+                "pserver connect server timeout_ms");
+PD_DEFINE_string(pserver_connection_type_s2s,
+                 "pooled",
+                 "pserver connection_type[pooled:single]");
 
 namespace paddle {
 namespace distributed {

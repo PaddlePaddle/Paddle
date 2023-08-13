@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_bool(use_fast_math);
+PD_DECLARE_bool(use_fast_math);
 
 namespace phi {
 

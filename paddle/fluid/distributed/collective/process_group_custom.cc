@@ -24,7 +24,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 
-DECLARE_bool(xccl_blocking_wait);
+PD_DECLARE_bool(xccl_blocking_wait);
 
 constexpr int64_t kWaitBlockTImeout = 10;
 

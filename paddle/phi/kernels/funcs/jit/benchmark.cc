@@ -23,10 +23,10 @@
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/utils/flags.h"
 
-DEFINE_int32(burning, 10, "Burning times.");
-DEFINE_int32(repeat, 3000, "Repeat times.");
-DEFINE_int32(max_size, 1000, "The Max size would be tested.");
-DEFINE_string(filter, "", "The Benchmark name would be run.");  // NOLINT
+PD_DEFINE_int32(burning, 10, "Burning times.");
+PD_DEFINE_int32(repeat, 3000, "Repeat times.");
+PD_DEFINE_int32(max_size, 1000, "The Max size would be tested.");
+PD_DEFINE_string(filter, "", "The Benchmark name would be run.");  // NOLINT
 
 class BenchJITKernel {
  public:

@@ -17,7 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/utils/flags.h"
 
-DECLARE_bool(use_autotune);
+PD_DECLARE_bool(use_autotune);
 
 namespace phi {
 namespace autotune {

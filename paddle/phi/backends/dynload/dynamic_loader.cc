@@ -102,7 +102,7 @@ PHI_DEFINE_string(rccl_dir,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
+PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
 
 namespace phi {

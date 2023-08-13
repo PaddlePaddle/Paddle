@@ -34,10 +34,10 @@
 namespace paddle {
 namespace distributed {
 
-DECLARE_int32(pserver_timeout_ms);
-DECLARE_int32(pserver_connect_timeout_ms);
-DECLARE_uint64(total_fl_client_size);
-DECLARE_uint32(coordinator_wait_all_clients_max_time);
+PD_DECLARE_int32(pserver_timeout_ms);
+PD_DECLARE_int32(pserver_connect_timeout_ms);
+PD_DECLARE_uint64(total_fl_client_size);
+PD_DECLARE_uint32(coordinator_wait_all_clients_max_time);
 
 using CoordinatorServiceFunc =
     std::function<int32_t(const CoordinatorReqMessage& request,

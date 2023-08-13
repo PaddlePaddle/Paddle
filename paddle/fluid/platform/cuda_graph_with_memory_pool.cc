@@ -19,7 +19,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle {

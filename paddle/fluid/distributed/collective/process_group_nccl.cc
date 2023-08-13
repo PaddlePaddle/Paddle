@@ -29,7 +29,7 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 PHI_DECLARE_bool(nccl_blocking_wait);
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;

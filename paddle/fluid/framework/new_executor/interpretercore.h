@@ -15,7 +15,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
-DECLARE_bool(new_executor_use_local_scope);
+PD_DECLARE_bool(new_executor_use_local_scope);
 
 namespace ir {
 class Program;
