@@ -231,23 +231,21 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr,
 
 // NOTE(zhangbo): cuda do not have atomicCAS for __nv_bfloat16.
 inline static __device__ uint32_t bf16_add_to_low_half(uint32_t val, float x) {
-  return 0;
-  //phi::dtype::bfloat16 low_half;
-  //// the bfloat16 in lower 16bits
-  //low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
-  //low_half =
-  //    static_cast<phi::dtype::bfloat16>(static_cast<float>(low_half) + x);
-  //return (val & 0xFFFF0000u) | low_half.x;
+  phi::dtype::bfloat16 low_half;
+  // the bfloat16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half =
+      static_cast<phi::dtype::bfloat16>(static_cast<float>(low_half) + x);
+  return (val & 0xFFFF0000u) | low_half.x;
 }
 
 inline static __device__ uint32_t bf16_add_to_high_half(uint32_t val, float x) {
-  return 0;
-  //phi::dtype::bfloat16 high_half;
-  //// the bfloat16 in higher 16bits
-  //high_half.x = static_cast<uint16_t>(val >> 16);
-  //high_half =
-  //    static_cast<phi::dtype::bfloat16>(static_cast<float>(high_half) + x);
-  //return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+  phi::dtype::bfloat16 high_half;
+  // the bfloat16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half =
+      static_cast<phi::dtype::bfloat16>(static_cast<float>(high_half) + x);
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
 #if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
@@ -451,23 +449,21 @@ CUDA_ATOMIC_WRAPPER(Max, phi::dtype::float16) {
 #endif
 
 inline static __device__ uint32_t bf16_max_to_low_half(uint32_t val, float x) {
-  return 0;
-  //phi::dtype::bfloat16 low_half;
-  //// The bfloat16 in lower 16bits
-  //low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
-  //low_half =
-  //    static_cast<phi::dtype::bfloat16>(max(static_cast<float>(low_half), x));
-  //return (val & 0xFFFF0000u) | low_half.x;
+  phi::dtype::bfloat16 low_half;
+  // The bfloat16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half =
+      static_cast<phi::dtype::bfloat16>(max(static_cast<float>(low_half), x));
+  return (val & 0xFFFF0000u) | low_half.x;
 }
 
 inline static __device__ uint32_t bf16_max_to_high_half(uint32_t val, float x) {
-  return 0;
-  //phi::dtype::bfloat16 high_half;
-  //// The bfloat16 in higher 16bits
-  //high_half.x = static_cast<uint16_t>(val >> 16);
-  //high_half =
-  //    static_cast<phi::dtype::bfloat16>(max(static_cast<float>(high_half), x));
-  //return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+  phi::dtype::bfloat16 high_half;
+  // The bfloat16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half =
+      static_cast<phi::dtype::bfloat16>(max(static_cast<float>(high_half), x));
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
 CUDA_ATOMIC_WRAPPER(Max, phi::dtype::bfloat16) {
@@ -639,23 +635,21 @@ CUDA_ATOMIC_WRAPPER(Min, phi::dtype::float16) {
 #endif
 
 inline static __device__ uint32_t bf16_min_to_low_half(uint32_t val, float x) {
-  return 0;
-  //phi::dtype::bfloat16 low_half;
-  //// The bfloat16 in lower 16bits
-  //low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
-  //low_half =
-  //    static_cast<phi::dtype::bfloat16>(min(static_cast<float>(low_half), x));
-  //return (val & 0xFFFF0000u) | low_half.x;
+  phi::dtype::bfloat16 low_half;
+  // The bfloat16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half =
+      static_cast<phi::dtype::bfloat16>(min(static_cast<float>(low_half), x));
+  return (val & 0xFFFF0000u) | low_half.x;
 }
 
 inline static __device__ uint32_t bf16_min_to_high_half(uint32_t val, float x) {
-  return 0;
-  //phi::dtype::bfloat16 high_half;
-  //// The bfloat16 in higher 16bits
-  //high_half.x = static_cast<uint16_t>(val >> 16);
-  //high_half =
-  //    static_cast<phi::dtype::bfloat16>(min(static_cast<float>(high_half), x));
-  //return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+  phi::dtype::bfloat16 high_half;
+  // The bfloat16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half =
+      static_cast<phi::dtype::bfloat16>(min(static_cast<float>(high_half), x));
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
 CUDA_ATOMIC_WRAPPER(Min, phi::dtype::bfloat16) {

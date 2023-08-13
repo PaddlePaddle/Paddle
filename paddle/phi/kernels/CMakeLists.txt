@@ -48,7 +48,6 @@ if(WITH_MUSA)
        "fusion/gpu/fused_softmax_mask_kernel.cu"
        "gpu/batch_norm_grad_kernel.cu"
        "gpu/batch_norm_kernel.cu"
-       "gpu/check_numerics_kernel.cu"
        "gpu/cholesky_grad_kernel.cu"
        "gpu/cholesky_solve_grad_kernel.cu"
        "gpu/conv_grad_kernel.cu"
