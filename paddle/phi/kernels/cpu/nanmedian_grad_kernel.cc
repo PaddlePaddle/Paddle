@@ -38,7 +38,7 @@ void CalcMedianGradKernel(const Context& dev_ctx,
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t rank = x_dim.size();
-  int64_t stride = x_dim[rank - 1];
+  int64_t stride = x_dim[static_cast<int>(rank - 1)];
   int64_t pre_dim = numel / stride;
 
   int64_t i = 0;
