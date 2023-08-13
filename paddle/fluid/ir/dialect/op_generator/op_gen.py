@@ -258,12 +258,12 @@ class OpInfoParser:
                 'ir::ArrayAttribute<ir::BoolAttribute>',
                 'const std::vecot<bool>&',
             ],
-            'str': ['ir::StrAttribute', 'std::string'],
+            'str': ['ir::StrAttribute', 'const std::string&'],
             'str[]': [
                 'ir::ArrayAttribute<ir::StrAttribute>',
                 'const std::vector<std::string>&',
             ],
-            'Place': ['paddle::dialect::PlaceAttribute', 'Place'],
+            'Place': ['paddle::dialect::PlaceAttribute', 'const Place&'],
             'DataLayout': [
                 'paddle::dialect::DataLayoutAttribute',
                 'DataLayout',
@@ -577,7 +577,7 @@ class OpInfoParser:
                     temp_type = attribute_info['data_type']
             if 'IntArray' in temp_type:
                 if 'data_type' in attribute_info:
-                    temp_type = attribute_info['data_type']
+                    temp_type = "const " + attribute_info['data_type'] + "&"
             type_list.append(self.get_phi_dtype_name(temp_type))
         return type_list
 
