@@ -232,10 +232,8 @@ def cast(x, dtype):
 
 @inplace_apis_in_dygraph_only
 def cast_(x, dtype):
-    if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
-        return _C_ops.cast_(x, dtype)
+    paddle.assign(paddle.cast(x, dtype), x)
+    return x
 
 
 def slice(input, axes, starts, ends):

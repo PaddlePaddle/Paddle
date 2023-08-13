@@ -132,7 +132,6 @@
     func : cast
     param : [x, dtype]
     data_type : x
-  inplace: (x -> out)
   backward : cast_grad
 
 - op : channel_shuffle
