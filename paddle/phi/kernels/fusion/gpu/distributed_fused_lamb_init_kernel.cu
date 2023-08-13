@@ -255,8 +255,9 @@ static DenseTensor CopyAndShareBufferForInitedTensor(const Context &dev_ctx,
   auto fused_out_numel = fused_out->numel();
   auto sliced_tensor = fused_out->Resize({fused_out_numel})
                            .Slice(numel_offset, numel + numel_offset);
-
+  DDim origin_dim = origin->dims();
   phi::Copy(dev_ctx, sliced_tensor, dev_ctx.GetPlace(), false, origin);
+  origin->Resize(origin_dim);
   origin->ShareBufferWith(sliced_tensor);
   fused_out->Resize(fused_out_dim);
   VLOG(10) << "Copy and share buffer, range: [" << numel_offset << ", "
