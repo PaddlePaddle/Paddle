@@ -117,7 +117,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     trans.emplace_back(axis);
     DDim trans_dims(out_dims);
     DDim trans_in_dims(in_dims);
-    for (int i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = out_dims[trans[i]];
       trans_in_dims[i] = in_dims[trans[i]];
     }

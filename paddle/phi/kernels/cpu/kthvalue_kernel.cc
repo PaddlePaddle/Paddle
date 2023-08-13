@@ -136,7 +136,7 @@ void KthvalueKernel(const Context& dev_ctx,
     DDim trans_dims(in_dims);
     DDim trans_out_dims(in_dims);
 
-    for (int i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
       trans_out_dims[i] = in_dims[trans[i]];
     }
