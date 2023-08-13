@@ -18,16 +18,20 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
+#include "paddle/utils/pybind.h"
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
 #endif
 
 namespace py = pybind11;
@@ -111,7 +115,43 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 
 void BindAutoParallel(py::module *m) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  py::class_<phi::distributed::RToSReshardFunction>(*m, "RToSReshardFunction")
+  auto ReshardFunction =
+      py::class_<phi::distributed::ReshardFunction>(*m, "ReshardFunction")
+          .def(
+              "is_suitable",
+              [](phi::distributed::ReshardFunction &self,
+                 py::handle py_tensor,
+                 const std::shared_ptr<phi::distributed::TensorDistAttr>
+                     &dist_attr) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto p_dist =
+                    std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                        tensor.impl());
+                return self.IsSuitable(*p_dist, dist_attr);
+              },
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "eval",
+              [](phi::distributed::ReshardFunction &self,
+                 phi::DeviceContext *dev_ctx,
+                 py::handle py_tensor,
+                 const std::shared_ptr<phi::distributed::TensorDistAttr>
+                     &dist_attr) {
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto p_dist =
+                    std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                        tensor.impl());
+                auto res_dist = self.Eval(dev_ctx, *p_dist, dist_attr);
+                return paddle::Tensor(res_dist);
+              },
+              py::call_guard<py::gil_scoped_release>());
+
+  py::class_<phi::distributed::RToSReshardFunction>(
+      *m, "RToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToRReshardFunction>(
+      *m, "SToRReshardFunction", ReshardFunction)
       .def(py::init<>());
 #endif
 
