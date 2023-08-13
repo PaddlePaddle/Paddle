@@ -17,7 +17,7 @@
 namespace phi {
 
 void KernelContext::EmplaceBackInput(const TensorBase* input) {
-  uint index = inputs_.size();
+  int index = static_cast<int>(inputs_.size());
   inputs_.emplace_back(input);
   // Record the start and end index of the input
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
