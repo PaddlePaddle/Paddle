@@ -25,9 +25,7 @@ static void StreamCallbackFunc(gpuStream_t stream,
                                void *user_data)
 #endif
 #ifdef PADDLE_WITH_MUSA
-static void StreamCallbackFunc(gpuStream_t stream,
-                               gpuError_t status,
-                               void *user_data)
+static void MUSART_CB StreamCallbackFunc(void *user_data)
 #endif
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
@@ -65,8 +63,7 @@ void StreamCallbackManager<Stream>::AddCallback(
 #endif
 #ifdef PADDLE_WITH_MUSA
   PADDLE_ENFORCE_GPU_SUCCESS(
-      musaStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
-      //musaLaunchHostFunc(stream_, StreamCallbackFunc, func));
+      musaLaunchHostFunc(stream_, StreamCallbackFunc, func));
 #endif
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000

@@ -109,8 +109,7 @@ static bool CheckCUDADriverResult(MUresult result,
                                   std::string kernel_name = "") {
   if (result != MUSA_SUCCESS) {
     const char* error = nullptr;
-    // TODO(@caizhi): enable dynload module
-    // dynload::muGetErrorString(result, &error);
+    dynload::muGetErrorString(result, &error);
 #else
 static bool CheckCUDADriverResult(CUresult result,
                                   std::string caller,
@@ -153,10 +152,8 @@ void GPUDeviceCode::CheckAvailableStatus() {
   hipError_t driver_result = dynload::hipDriverGetVersion(&driver_version);
   if (driver_result == hipSuccess) {
 #elif defined(PADDLE_WITH_MUSA)
-  // TODO(@caizhi): enable dynload module
-  // MUresult driver_result = dynload::muDriverGetVersion(&driver_version);
-  // if (driver_result == MUSA_SUCCESS) {
-  if (true) {
+  MUresult driver_result = dynload::muDriverGetVersion(&driver_version);
+  if (driver_result == MUSA_SUCCESS) {
 #else
   CUresult driver_result = dynload::cuDriverGetVersion(&driver_version);
   if (driver_result == CUDA_SUCCESS) {
@@ -184,11 +181,8 @@ void GPUDeviceCode::CheckAvailableStatus() {
   if (CheckCUDADriverResult(dynload::hipGetDeviceCount(&count),
                             "hipGetDeviceCount")) {
 #elif defined(PADDLE_WITH_MUSA)
-	  (void)count;
-  // TODO(@caizhi): enable dynload module
-  // if (CheckCUDADriverResult(dynload::muDeviceGetCount(&count),
-  //                           "muDeviceGetCount")) {
-  if (true) {
+  if (CheckCUDADriverResult(dynload::muDeviceGetCount(&count),
+                            "muDeviceGetCount")) {
 #else
   if (CheckCUDADriverResult(dynload::cuDeviceGetCount(&count),
                             "cuDeviceGetCount")) {
@@ -473,24 +467,21 @@ void GPUDeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
       errors::External("Fail to launch kernel %s (in hipModuleLaunchKernel.)",
                        name_.c_str()));
 #elif defined(PADDLE_WITH_MUSA)
-  (void)num_blocks;
-  (void)dev_ctx;
-  // TODO(@caizhi): enable dynload module
-  // PADDLE_ENFORCE_EQ(
-  //     dynload::muLaunchKernel(function_,
-  //                             num_blocks,
-  //                             1,
-  //                             1,  // grid dim
-  //                             num_threads_,
-  //                             1,
-  //                             1,                  // block dim
-  //                             0,                  // shared memory
-  //                             dev_ctx->stream(),  // stream
-  //                             args->data(),       // arguments
-  //                             nullptr),
-  //     MUSA_SUCCESS,
-  //     errors::External("Fail to launch kernel %s (in muLaunchKernel.)",
-  //                      name_.c_str()));
+  PADDLE_ENFORCE_EQ(
+      dynload::muLaunchKernel(function_,
+                              num_blocks,
+                              1,
+                              1,  // grid dim
+                              num_threads_,
+                              1,
+                              1,                  // block dim
+                              0,                  // shared memory
+                              dev_ctx->stream(),  // stream
+                              args->data(),       // arguments
+                              nullptr),
+      MUSA_SUCCESS,
+      errors::External("Fail to launch kernel %s (in muLaunchKernel.)",
+                       name_.c_str()));
 #else
   PADDLE_ENFORCE_EQ(
       dynload::cuLaunchKernel(function_,
