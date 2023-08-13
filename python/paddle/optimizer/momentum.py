@@ -93,7 +93,7 @@ class Momentum(Optimizer):
             >>> momentum.step()
             >>> momentum.clear_grad()
 
-            >>> #Note that the learning_rate of linear_2 is 0.01.
+            >>> # Note that the learning_rate of linear_2 is 0.01.
             >>> linear_1 = paddle.nn.Linear(10, 10)
             >>> linear_2 = paddle.nn.Linear(10, 10)
             >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
