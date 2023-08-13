@@ -175,18 +175,17 @@ class QuantizationTransformPass:
 
         Examples:
         .. code-block:: python
-            # The original graph will be rewrite.
-            import paddle.static as static
-            from paddle.static.quantization \
-                import QuantizationTransformPass
-            from paddle.fluid.framework import IrGraph
-            from paddle.framework import core
 
-            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
-            place = paddle.CPUPlace()
-            transform_pass = QuantizationTransformPass(static.global_scope(),
-            place)
-            transform_pass.apply(graph)
+            >>> # The original graph will be rewrite.
+            >>> import paddle.static as static
+            >>> from paddle.static.quantization import QuantizationTransformPass
+            >>> from paddle.fluid.framework import IrGraph
+            >>> from paddle.framework import core
+
+            >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+            >>> place = paddle.CPUPlace()
+            >>> transform_pass = QuantizationTransformPass(static.global_scope(), place)
+            >>> transform_pass.apply(graph)
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -2436,7 +2435,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 preprocess method works or not. The function's input is non-quantized
                 activation and function returns processed activation to be quantized.
                 If None, the activation will be quantized directly. Default is None.
-            optimizer_func(function): Fuction return a optimizer. When 'is_test' is
+            optimizer_func(function): Function return a optimizer. When 'is_test' is
                 False and user want to use self-defined quantization function and
                 preprocess function, this function must be set. Default is None.
             executor(paddle.Executor): If user want to use self-defined quantization
@@ -2445,18 +2444,19 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
 
         Examples:
         .. code-block:: python
-            # The original graph will be rewrite.
-            import paddle
-            from paddle.static.quantization \
-                import QuantizationTransformPassV2
-            from paddle.fluid.framework import IrGraph
-            from paddle.framework import core
 
-            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
-            place = paddle.CPUPlace()
-            scope = paddle.static.global_scope()
-            transform_pass = QuantizationTransformPassV2(scope, place)
-            transform_pass.apply(graph)
+            >>> # The original graph will be rewrite.
+            >>> import paddle
+            >>> import paddle.static as static
+            >>> from paddle.static.quantization import QuantizationTransformPassV2
+            >>> from paddle.fluid.framework import IrGraph
+            >>> from paddle.framework import core
+
+            >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+            >>> place = paddle.CPUPlace()
+            >>> scope = paddle.static.global_scope()
+            >>> transform_pass = QuantizationTransformPassV2(scope, place)
+            >>> transform_pass.apply(graph)
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -2837,18 +2837,19 @@ class AddQuantDequantPassV2:
 
         Examples:
         .. code-block:: python
-            # The original graph will be rewrite.
-            import paddle
-            from paddle.static.quantization \
-                import AddQuantDequantPassV2
-            from paddle.fluid.framework import IrGraph
-            from paddle.framework import core
 
-            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
-            place = paddle.CPUPlace()
-            scope = paddle.static.global_scope()
-            add_quant_dequant_pass = AddQuantDequantPassV2(scope, place)
-            add_quant_dequant_pass.apply(graph)
+            >>> # The original graph will be rewrite.
+            >>> import paddle
+            >>> import paddle.static as static
+            >>> from paddle.static.quantization import AddQuantDequantPassV2
+            >>> from paddle.fluid.framework import IrGraph
+            >>> from paddle.framework import core
+
+            >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+            >>> place = paddle.CPUPlace()
+            >>> scope = paddle.static.global_scope()
+            >>> add_quant_dequant_pass = AddQuantDequantPassV2(scope, place)
+            >>> add_quant_dequant_pass.apply(graph)
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -3019,18 +3020,19 @@ class ReplaceFakeQuantDequantPass:
 
         Examples:
         .. code-block:: python
-            # The original graph will be rewrite.
-            import paddle
-            from paddle.static.quantization \
-                import ReplaceFakeQuantDequantPass
-            from paddle.fluid.framework import IrGraph
-            from paddle.framework import core
 
-            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
-            place = paddle.CPUPlace()
-            scope = paddle.static.global_scope()
-            replace_pass = ReplaceFakeQuantDequantPass(scope, place)
-            replace_pass.apply(graph)
+            >>> # The original graph will be rewrite.
+            >>> import paddle
+            >>> import paddle.static as static
+            >>> from paddle.static.quantization import ReplaceFakeQuantDequantPass
+            >>> from paddle.fluid.framework import IrGraph
+            >>> from paddle.framework import core
+
+            >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+            >>> place = paddle.CPUPlace()
+            >>> scope = paddle.static.global_scope()
+            >>> replace_pass = ReplaceFakeQuantDequantPass(scope, place)
+            >>> replace_pass.apply(graph)
         """
         self._place = _get_paddle_place(place)
         self._scope = scope
@@ -3175,18 +3177,19 @@ class QuantWeightPass:
 
     Examples:
         .. code-block:: python
-            # The original graph will be rewrite.
-            import paddle
-            from paddle.static.quantization \
-                import QuantWeightPass
-            from paddle.fluid.framework import IrGraph
-            from paddle.framework import core
 
-            graph = IrGraph(core.Graph(paddle.static.Program().desc), for_test=False)
-            place = paddle.CPUPlace()
-            scope = paddle.static.global_scope()
-            quant_weight_pass = QuantWeightPass(scope, place)
-            quant_weight_pass.apply(graph)
+            >>> # The original graph will be rewrite.
+            >>> import paddle
+            >>> import paddle.static as static
+            >>> from paddle.static.quantization import QuantWeightPass
+            >>> from paddle.fluid.framework import IrGraph
+            >>> from paddle.framework import core
+
+            >>> graph = IrGraph(core.Graph(paddle.static.Program().desc), for_test=False)
+            >>> place = paddle.CPUPlace()
+            >>> scope = paddle.static.global_scope()
+            >>> quant_weight_pass = QuantWeightPass(scope, place)
+            >>> quant_weight_pass.apply(graph)
     """
 
     def __init__(
