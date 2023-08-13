@@ -42,7 +42,7 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
 

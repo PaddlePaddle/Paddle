@@ -51,7 +51,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
 
@@ -87,7 +87,7 @@ def all_gather_object(object_list, obj, group=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
 
@@ -99,7 +99,7 @@ def all_gather_object(object_list, obj, group=None):
             ...     obj = {"bar": [4, 5, 6]}
             >>> dist.all_gather_object(object_list, obj)
             >>> print(object_list)
-            # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
+            [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
     """
     assert (
         framework.in_dynamic_mode()

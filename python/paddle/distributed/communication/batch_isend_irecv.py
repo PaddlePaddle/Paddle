@@ -51,8 +51,8 @@ class P2POp:
             >>> world_size = dist.get_world_size()
 
             >>> send_t = paddle.arange(2) + rank
-            # paddle.tensor([0, 1])  # Rank-0
-            # paddle.tensor([1, 2])  # Rank-1
+            >>> # paddle.tensor([0, 1])  # Rank-0
+            >>> # paddle.tensor([1, 2])  # Rank-1
 
             >>> recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
 
@@ -127,7 +127,7 @@ def batch_isend_irecv(p2p_op_list):
     Examples:
         .. code-block:: python
 
-            # required: distributed
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -137,8 +137,8 @@ def batch_isend_irecv(p2p_op_list):
             >>> world_size = dist.get_world_size()
 
             >>> send_t = paddle.arange(2) + rank
-            # paddle.tensor([0, 1])  # Rank-0
-            # paddle.tensor([1, 2])  # Rank-1
+            >>> # paddle.tensor([0, 1])  # Rank-0
+            >>> # paddle.tensor([1, 2])  # Rank-1
 
             >>> recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
 
@@ -151,8 +151,8 @@ def batch_isend_irecv(p2p_op_list):
             ...     task.wait()
 
             >>> print(recv_t)
-            # paddle.tensor([1, 2])     # Rank-0
-            # paddle.tensor([0, 1])     # Rank-1
+            >>> # paddle.tensor([1, 2])     # Rank-0
+            >>> # paddle.tensor([0, 1])     # Rank-1
     """
     _check_p2p_op_list(p2p_op_list)
     group = p2p_op_list[0].group
