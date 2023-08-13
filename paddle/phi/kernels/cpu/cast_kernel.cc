@@ -26,7 +26,7 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                       CastKernelImpl<T, data_t>(dev_ctx, x, out_dtype, out);
+                       CastKernelImpl<T, data_t>(dev_ctx, x, out);
                      }));
 }
 

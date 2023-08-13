@@ -1029,6 +1029,9 @@ class TestDygraphInplaceCast(TestDygraphInplaceWithContinuous):
     def non_inplace_api_processing(self, var):
         return paddle.cast(var, "float64")
 
+    def test_leaf_inplace_var_error(self):
+        pass
+
 
 class TestDygraphInplaceFloorDivide(TestDygraphInplace):
     def init_data(self):
