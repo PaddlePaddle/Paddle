@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/operators/collective/c_concat_op.h"
-#include "paddle/fluid/operators/collective/c_identity_op.h"
 #include "paddle/fluid/operators/load_combine_op.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
