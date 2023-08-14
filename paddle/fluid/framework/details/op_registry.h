@@ -63,6 +63,7 @@ using OpRegistryClasses = std::tuple<                                // NOLINT
     TypePair<OperatorBase, kOperator>,                               // NOLINT
     TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
     TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
+    TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
     TypePair<prim::CompositeGradOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
     TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
     TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
