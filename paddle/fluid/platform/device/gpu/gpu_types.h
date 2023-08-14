@@ -25,10 +25,8 @@
 
 #elif defined(PADDLE_WITH_MUSA)
 #include <musa_runtime.h>
-#include <mublas.h>
-#include <mudnn.h>
+#include "paddle/fluid/platform/dynload/mublas.h"
 using mudnnHandle_t = class Handle*;
-//TODO(Xiaokang Shang)
 #else
 #include <cuda_runtime.h>
 
@@ -58,13 +56,27 @@ DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t, musaEvent_t);
 DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind, musaMemcpyKind);
 DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t, musaDeviceProp);
 
+DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
+DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle, mublasHandle_t);
+
+using CUDAGraphID = unsigned long long;  // NOLINT
+
+#undef DECLARE_TYPE_FOR_GPU
+
 // TODO(Xiaokang Shang): confirm mudnn type
-#if 0
-DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t, mudnnDataType_t);
+#ifndef PADDLE_WITH_MUSA
+#ifdef PADDLE_WITH_HIP
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+  using GPU_TYPE = ROCM_TYPE;
+#elif defined(PADDLE_WITH_CUDA)
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+  using GPU_TYPE = CUDA_TYPE;
+#endif
+
+DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
 DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
                      cudnnActivationStruct,
-                     miopenActivationDescriptor,
-                     mudnnActivationStruct);
+                     miopenActivationDescriptor);
 DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      cudnnActivationMode_t,
                      miopenActivationMode_t);
@@ -93,19 +105,11 @@ DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
 DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
                      cudnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
-#endif
-
-DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle, mublasHandle_t); // TODO(MTAI)
-DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
-DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle, mublasHandle_t);
-
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
-//DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
-
-using CUDAGraphID = unsigned long long;  // NOLINT
-
+DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 #undef DECLARE_TYPE_FOR_GPU
+#endif
 
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \

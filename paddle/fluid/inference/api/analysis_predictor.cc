@@ -131,7 +131,9 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
   gpu_context->SetBlasTF32Handle(
       gpu_resource->GetBlasTF32TensorCoreHandleCreator());
   gpu_context->SetDnnHandle(gpu_resource->GetDnnHandleCreator());
+#ifndef PADDLE_WITH_MUSA
   gpu_context->SetSolverHandle(gpu_resource->GetSolverDnHandleCreator());
+#endif
   gpu_context->SetSparseHandle(gpu_resource->GetSparseHandleCreator());
   gpu_context->SetEigenDevice(gpu_resource->GetGpuEigenDevice());
 

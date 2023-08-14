@@ -296,6 +296,7 @@ void DestroyBlasHandle(blasHandle_t handle) {
 #endif  // PADDLE_WITH_HIP
 }
 
+#ifndef PADDLE_WITH_MUSA
 void InitBlasLtHandle(blasLtHandle_t* blaslt_handle) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
   phi::dynload::cublasLtCreate(blaslt_handle);
@@ -310,6 +311,7 @@ void DestroyBlasLtHandle(blasLtHandle_t handle) {
   }
 #endif
 }
+#endif
 
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
   if (phi::dynload::HasCUDNN()) {
@@ -377,6 +379,7 @@ void DestroyDnnHandle(dnnHandle_t handle) {
 #endif  // PADDLE_WITH_HIP
 }
 
+#ifndef PADDLE_WITH_MUSA
 void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream) {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusolverDnCreate(handle));
@@ -392,6 +395,7 @@ void DestroySolverHandle(solverHandle_t solver_handle) {
   }
 #endif
 }
+#endif
 
 void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
 // ROCM is not yet supported
