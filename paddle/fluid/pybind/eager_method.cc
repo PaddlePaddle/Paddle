@@ -1846,6 +1846,32 @@ static PyObject* tensor_method_get_map_tensor(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_nnz__doc__,
+             R"DOC(nnz($self, /)
+--
+
+Note:
+    **This API is only available for SparseCooTensor or SparseCsrTensor.**
+
+Returns the total number of non zero elements in input SparseCooTensor/SparseCsrTensor.
+
+Returns:
+    int
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        indices = [[0, 1, 2], [1, 2, 0]]
+        values = [1.0, 2.0, 3.0]
+        dense_shape = [3, 3]
+        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        coo.nnz()
+        # 3
+
+)DOC");
+
 static PyObject* tensor_method_get_non_zero_nums(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
@@ -1867,6 +1893,34 @@ static PyObject* tensor_method_get_non_zero_nums(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_indices__doc__,
+             R"DOC(indices($self, /)
+--
+
+Note:
+    **This API is only available for SparseCooTensor.**
+
+Returns the indices of non zero elements in input SparseCooTensor.
+
+Returns:
+    DenseTesnor
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        indices = [[0, 1, 2], [1, 2, 0]]
+        values = [1.0, 2.0, 3.0]
+        dense_shape = [3, 3]
+        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        coo.indices()
+        # Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+        #        [[0, 1, 2],
+        #         [1, 2, 0]])
+
+)DOC");
+
 static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -1881,6 +1935,33 @@ static PyObject* tensor_method_get_non_zero_indices(TensorObject* self,
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_values__doc__,
+             R"DOC(values($self, /)
+--
+
+Note:
+    **This API is only available for SparseCooTensor or SparseCsrTensor.**
+
+Returns the values of non zero elements in input SparseCooTensor.
+
+Returns:
+    DenseTesnor
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        indices = [[0, 1, 2], [1, 2, 0]]
+        values = [1.0, 2.0, 3.0]
+        dense_shape = [3, 3]
+        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        coo.values()
+        # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+        #        [1., 2., 3.])
+
+)DOC");
 
 static PyObject* tensor_method_get_non_zero_elements(TensorObject* self,
                                                      PyObject* args,
@@ -1907,6 +1988,34 @@ static PyObject* tensor_method_get_non_zero_elements(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_crows__doc__,
+             R"DOC(crows($self, /)
+--
+
+Note:
+    **This API is only available for SparseCsrTensor.**
+
+Returns the compressed row index of non zero elements in input SparseCsrTensor.
+
+Returns:
+    DenseTesnor
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        crows = [0, 2, 3, 5]
+        cols = [1, 3, 2, 0, 1]
+        values = [1, 2, 3, 4, 5]
+        dense_shape = [3, 4]
+        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+        csr.crows()
+        # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+        #        [0, 2, 3, 5])
+
+)DOC");
+
 static PyObject* tensor_method_get_non_zero_crows(TensorObject* self,
                                                   PyObject* args,
                                                   PyObject* kwargs) {
@@ -1921,6 +2030,34 @@ static PyObject* tensor_method_get_non_zero_crows(TensorObject* self,
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_cols__doc__,
+             R"DOC(cols($self, /)
+--
+
+Note:
+    **This API is only available for SparseCsrTensor.**
+
+Returns the column index of non zero elements in input SparseCsrTensor.
+
+Returns:
+    DenseTesnor
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        crows = [0, 2, 3, 5]
+        cols = [1, 3, 2, 0, 1]
+        values = [1, 2, 3, 4, 5]
+        dense_shape = [3, 4]
+        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+        csr.cols()
+        # Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+        #        [1, 3, 2, 0, 1])
+
+)DOC");
 
 static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
                                                  PyObject* args,
@@ -1959,6 +2096,31 @@ static PyObject* tensor_method_is_dist(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_sparse__doc__,
+             R"DOC(is_sparse($self, /)
+--
+
+Returns whether the input Tensor is SparseCooTensor or SparseCsrTensor.
+
+When input is SparseCooTensor/SparseCsrTensor, will return True. When input is DenseTensor, will return False.
+
+Returns:
+    bool
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        indices = [[0, 1, 2], [1, 2, 0]]
+        values = [1.0, 2.0, 3.0]
+        dense_shape = [3, 3]
+        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        coo.is_sparse()
+        # True
+
+)DOC");
+
 static PyObject* tensor_method_is_sparse(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1971,6 +2133,31 @@ static PyObject* tensor_method_is_sparse(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_sparse_coo__doc__,
+             R"DOC(is_sparse_coo($self, /)
+--
+
+Returns whether the input Tensor is SparseCooTensor.
+
+When input is SparseCooTensor, will return True. When input is DenseTensor/SparseCsrTensor, will return False.
+
+Returns:
+    bool
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        indices = [[0, 1, 2], [1, 2, 0]]
+        values = [1.0, 2.0, 3.0]
+        dense_shape = [3, 3]
+        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        coo.is_sparse_coo()
+        # True
+
+)DOC");
+
 static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
@@ -1982,6 +2169,32 @@ static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_sparse_csr__doc__,
+             R"DOC(is_sparse_csr($self, /)
+--
+
+Returns whether the input Tensor is SparseCsrTensor.
+
+When input is SparseCsrTensor, will return True. When input is DenseTensor/SparseCooTensor, will return False.
+
+Returns:
+    bool
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        crows = [0, 2, 3, 5]
+        cols = [1, 3, 2, 0, 1]
+        values = [1, 2, 3, 4, 5]
+        dense_shape = [3, 4]
+        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+        csr.is_sparse_csr()
+        # True
+
+)DOC");
+
 static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
@@ -1992,6 +2205,37 @@ static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
   return ToPyObject(self->tensor.is_sparse_csr_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_to_sparse_csr__doc__,
+             R"DOC(to_sparse_csr($self, /)
+--
+
+Note:
+    **This API is only available for DenseTensor or SparseCooTensor.**
+
+Convert input Tensor to SparseCsrTensor.
+
+When input is SparseCooTensor, will convert `COO` to `CSR` . When input is DenseTensor, will convert `Dense` to `CSR` .
+
+Returns:
+    SparseCsrTensor
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        indices = [[0, 1, 2], [1, 2, 0]]
+        values = [1.0, 2.0, 3.0]
+        dense_shape = [3, 3]
+        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        coo.to_sparse_csr()
+        # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+        #        crows=[0, 1, 2, 3],
+        #        cols=[1, 2, 0],
+        #        values=[1., 2., 3.])
+
+)DOC");
 
 static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2007,6 +2251,38 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   return ToPyObject(csr_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_is_same_shape__doc__,
+             R"DOC(is_same_shape($self, y, /)
+--
+
+Return the results of shape comparison between two Tensors, check whether x.shape equal to y.shape.
+Any two type Tensor among DenseTensor/SparseCooTensor/SparseCsrTensor are supported.
+
+Args:
+    x (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
+    y (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
+
+Returns:
+    bool: True for same shape and False for different shape.
+
+Examples:
+
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.rand([2, 3, 8])
+        y = paddle.rand([2, 3, 8])
+        y = y.to_sparse_csr()
+        z = paddle.rand([2, 5])
+
+        x.is_same_shape(y)
+        # True
+        x.is_same_shape(z)
+        # False
+
+)DOC");
 
 static PyObject* tensor_method_is_same_shape(TensorObject* self,
                                              PyObject* args,
@@ -2070,9 +2346,10 @@ PyDoc_STRVAR(tensor_method__bump_inplace_version__doc__,
              R"DOC(_bump_inplace_version($self, /)
 --
 
-**Notes**:
+Note:
     **This API is ONLY available in Dygraph mode.**
     **This is a very low level API. Users should not use it directly. **
+
   Bump the version whenever the Tensor is modified through an inplace operation.
 )DOC");
 static PyObject* tensor__bump_inplace_version(TensorObject* self,
@@ -2519,48 +2796,48 @@ PyMethodDef variable_methods[] = {
     {"nnz",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_nums,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_nnz__doc__},
     {"indices",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_indices,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_indices__doc__},
     {"values",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_elements,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_values__doc__},
     {"crows",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_crows,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_crows__doc__},
     {"cols",
      (PyCFunction)(void (*)())tensor_method_get_non_zero_cols,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_cols__doc__},
     {"is_sparse",
      (PyCFunction)(void (*)())tensor_method_is_sparse,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_is_sparse__doc__},
     {"is_sparse_coo",
      (PyCFunction)(void (*)())tensor_method_is_sparse_coo,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_is_sparse_coo__doc__},
     {"is_sparse_csr",
      (PyCFunction)(void (*)())tensor_method_is_sparse_csr,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_is_sparse_csr__doc__},
     {"is_same_shape",
      (PyCFunction)(void (*)())tensor_method_is_same_shape,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_is_same_shape__doc__},
     {"to_sparse_csr",
      (PyCFunction)(void (*)())tensor_method_to_sparse_csr,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_to_sparse_csr__doc__},
+    /***the method of sparse tensor****/
     {"element_size",
      (PyCFunction)(void (*)())tensor_method_element_size,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_element_size__doc__},
-    /***the method of sparse tensor****/
     {"_inplace_version",
      (PyCFunction)(void (*)())tensor__inplace_version,
      METH_VARARGS | METH_KEYWORDS,
