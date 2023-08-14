@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
+#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -50,11 +53,6 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(
-        nranks,
-        comm->nranks(),
-        platform::errors::InvalidArgument(
-            "nranks: %s should equal to %s", nranks, comm->nranks()));
 
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
@@ -76,11 +74,16 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm_ctx->GetStream();
       VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {  // old comm_context
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
+      PADDLE_ENFORCE_EQ(
+          nranks,
+          comm->nranks(),
+          platform::errors::InvalidArgument(
+              "nranks: %s should equal to %s", nranks, comm->nranks()));
       if (ctx.Attr<bool>("use_calc_stream")) {
         // should ExecutionContext for calc stream.
         stream = ctx.cuda_device_context().stream();
       } else {
-        comm = platform::NCCLCommContext::Instance().Get(rid, place);
         stream = comm->stream();
       }
       VLOG(3) << "old NCCLCommContext has rid " << rid;

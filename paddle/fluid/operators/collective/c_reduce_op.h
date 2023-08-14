@@ -19,11 +19,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
@@ -32,7 +34,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -239,11 +241,11 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm_ctx->GetStream();
       VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {  // old comm_context
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (ctx.Attr<bool>("use_calc_stream")) {
         // should ExecutionContext for calc stream.
         stream = ctx.cuda_device_context().stream();
       } else {
-        comm = platform::NCCLCommContext::Instance().Get(rid, place);
         stream = comm->stream();
       }
       VLOG(3) << "old NCCLCommContext has rid " << rid;

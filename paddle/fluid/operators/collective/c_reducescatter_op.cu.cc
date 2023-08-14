@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
+#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 namespace paddle {
@@ -33,14 +36,15 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
 
+    auto out_dims = in->dims();
     gpuStream_t stream = nullptr;
     platform::NCCLComm* comm = nullptr;
     phi::distributed::NCCLCommContext* comm_ctx = nullptr;
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(std::to_string(ring_id))) {
+    if (comm_context_manager.Has(std::to_string(rid))) {
       comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
+          comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
                         platform::errors::Unavailable(
@@ -55,9 +59,9 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
                             comm_ctx->GetSize()));
 
       stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has ring_id " << ring_id;
+      VLOG(3) << "new comm_context_manager has ring_id " << rid;
     } else {  // old comm_context
-      comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
       PADDLE_ENFORCE_EQ(out_dims[0] % comm->nranks(),
                         0,
                         platform::errors::InvalidArgument(
@@ -72,11 +76,10 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
       } else {
         stream = comm->stream();
       }
-      VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
+      VLOG(3) << "old NCCLCommContext has ring_id " << rid;
     }
 
-    int nranks = comm_ctx ? comm_ctx->nranks() : comm->nranks();
-    auto out_dims = in->dims();
+    int nranks = comm_ctx ? comm_ctx->GetSize() : comm->nranks();
     PADDLE_ENFORCE_EQ(out_dims[0] % nranks,
                       0,
                       platform::errors::InvalidArgument(

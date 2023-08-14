@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_scatter_op.h"
+#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 namespace paddle {
@@ -25,7 +28,7 @@ namespace operators {
 template <typename T, typename DeviceContext>
 class CScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const overring_ide {
+  void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
@@ -64,7 +67,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       PADDLE_ENFORCE_EQ(nranks,
-                        comm_ctx->GetSize()(),
+                        comm_ctx->GetSize(),
                         platform::errors::InvalidArgument(
                             "The number of ranks (%d) you set of must "
                             "be equal to comm_ctx->GetSize() (%d).",
@@ -99,7 +102,8 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     if (comm_ctx) {
       if (root_id == comm_ctx->GetRank()) {
-        comm_ctx->Broadcast(x, *x, root_id, stream);
+        comm_ctx->Broadcast(
+            const_cast<phi::DenseTensor*>(x), *x, root_id, stream);
         framework::TensorCopy(
             *static_cast<const phi::DenseTensor*>(x),
             place,
