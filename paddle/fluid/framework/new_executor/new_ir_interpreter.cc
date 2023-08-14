@@ -201,7 +201,7 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  auto& impl = dynamic_cast<NewIRInterpreter&>(src);
+  const NewIRInterpreter& impl = dynamic_cast<const NewIRInterpreter&>(src);
   if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
     return;
   }

@@ -287,17 +287,17 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  auto& impl = dynamic_cast<ProgramInterpreter&>(src);
-  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+  const ProgramInterpreter& impl = dynamic_cast<const ProgramInterpreter&>(src);
+  if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
     return;
   }
   // share op dependency
-  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
-  dependecy_count_ = src.GetDependencyCount();
+  dependency_builder_.ShareDependencyFrom(impl.GetDependencyBuilder());
+  dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  stream_analyzer_.ShareEventInfoFrom(src.GetStreamAnalyzer());
+  stream_analyzer_.ShareEventInfoFrom(impl.GetStreamAnalyzer());
   is_shared_results_build_ = true;
-  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 

@@ -190,11 +190,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void SolvePersisableVarNames();
 
-  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
-      const override;
+  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder() const;
 
-  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
-      const override;
+  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer() const;
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
