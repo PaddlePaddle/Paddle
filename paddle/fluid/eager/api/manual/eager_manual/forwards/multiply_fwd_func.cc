@@ -261,6 +261,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
     input_str += input_y_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
+  auto x_backup = paddle::experimental::assign(x);
 
   // Forward API Call
   auto& api_result = paddle::experimental::multiply_(x, y);
@@ -306,7 +307,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
     // SetAttributes if needed
     grad_node->SetAttributeaxis(-1);
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperx(x);
+    grad_node->SetTensorWrapperx(x_backup);
     grad_node->SetTensorWrappery(y);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);

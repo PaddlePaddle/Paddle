@@ -94,6 +94,7 @@ from .logic import isclose  # noqa: F401
 from .logic import equal_all  # noqa: F401
 from .logic import is_tensor  # noqa: F401
 from .manipulation import cast  # noqa: F401
+from .manipulation import cast_  # noqa: F401
 from .manipulation import concat  # noqa: F401
 from .manipulation import expand  # noqa: F401
 from .manipulation import broadcast_to  # noqa: F401
@@ -271,7 +272,9 @@ from .math import erfinv_  # noqa: F401
 from .math import rad2deg  # noqa: F401
 from .math import deg2rad  # noqa: F401
 from .math import gcd  # noqa: F401
+from .math import gcd_  # noqa: F401
 from .math import lcm  # noqa: F401
+from .math import lcm_  # noqa: F401
 from .math import diff  # noqa: F401
 from .math import angle  # noqa: F401
 from .math import fmax  # noqa: F401
@@ -285,6 +288,7 @@ from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
 from .math import ldexp  # noqa: F401
+from .math import ldexp_  # noqa: F401
 from .math import trapezoid  # noqa: F401
 from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
@@ -318,6 +322,7 @@ from .search import searchsorted  # noqa: F401
 from .search import bucketize  # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
+from .search import where_  # noqa: F401
 from .search import index_select  # noqa: F401
 from .search import nonzero  # noqa: F401
 from .search import sort  # noqa: F401
@@ -535,6 +540,7 @@ tensor_method_func = [  # noqa
     'masked_select',
     'topk',
     'where',
+    'where_',
     'index_select',
     'nonzero',
     'sort',
@@ -583,7 +589,9 @@ tensor_method_func = [  # noqa
     'rad2deg',
     'deg2rad',
     'gcd',
+    'gcd_',
     'lcm',
+    'lcm_',
     'diff',
     "mode",
     'lerp',
@@ -607,6 +615,7 @@ tensor_method_func = [  # noqa
     'sgn',
     'frexp',
     'ldexp',
+    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',

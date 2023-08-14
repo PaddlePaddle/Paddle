@@ -125,13 +125,14 @@
 
 - op : cast
   args : (Tensor x, DataType dtype)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CastInferMeta
   kernel :
     func : cast
     param : [x, dtype]
     data_type : x
+  inplace : (x -> out)
   backward : cast_grad
 
 - op : channel_shuffle
