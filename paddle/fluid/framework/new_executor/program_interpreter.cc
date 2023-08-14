@@ -222,11 +222,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
-FetchList ProgramInterpreter::BetaRun(
-    const std::vector<std::string>& feed_names, bool need_fetch) {
-  return {};
-}
-
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }
@@ -346,6 +341,18 @@ std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
 const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
     const {
   return stream_analyzer_;
+}
+
+const interpreter::NewIrDependencyBuilder&
+ProgramInterpreter::GetNewIrDependencyBuilder() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
+}
+
+const interpreter::NewIrStreamAnalyzer&
+ProgramInterpreter::GetNewIrStreamAnalyzer() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
 }
 
 bool ProgramInterpreter::IsSharedResultsBuild() const {
