@@ -70,7 +70,7 @@ static int64_t GetMemorySize(
          std::accumulate(dims.begin(),
                          dims.end(),
                          static_cast<int64_t>(1),
-                         std::multiplies<int64_t>());
+                         std::multiplies<int64_t>());  // NOLINE
 }
 
 // Split all variables in the graph into phi::DenseTensor and

@@ -21,10 +21,11 @@ namespace operators {
 // Shape of bitmask
 static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
-  int64_t nhw =
-      std::accumulate(
-          out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) /
-      c;
+  int64_t nhw = std::accumulate(out_shape.begin(),
+                                out_shape.end(),
+                                1,
+                                std::multiplies<int>()) /  // NOLINE
+                c;
   int32_t c_int32_elems = ((c + 63) & ~63) / 32;
   int32_t nhw_int32_elems = ((nhw + 31) & ~31);
   std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
