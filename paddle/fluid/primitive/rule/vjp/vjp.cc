@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <math.h>
-#include <vector>
-
+#include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/fluid/primitive/backend/static_backend.h"
-#include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/primitive/type/desc_tensor.h"
 #include "paddle/ir/core/operation.h"
 // TODO(wanghao107):
@@ -26,10 +23,11 @@
 namespace paddle {
 namespace primitive {
 namespace experimental {
+
 std::vector<std::vector<paddle::Tensor>> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
-    const std::vector<std::vector<int>>& stop_gradients) {
+    const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       1, std::vector<paddle::Tensor>(1));
   // get tanh_grad res.
@@ -71,10 +69,10 @@ std::vector<std::vector<paddle::Tensor>> tanh_vjp(
 std::vector<std::vector<paddle::Tensor>> mean_vjp(
     const Tensor& x,
     const Tensor& out_grad,
-    std::vector<int64_t> axis,
+    const IntArray& axis,
     bool keepdim,
     bool reduce_all,
-    const std::vector<std::vector<int>>& stop_gradients) {
+    const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       1, std::vector<paddle::Tensor>(1));
   // get mean_grad res.
