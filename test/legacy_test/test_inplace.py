@@ -697,6 +697,63 @@ class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
             paddle.pow_(var, [2])
 
 
+class TestDygraphInplaceGcd(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        super().init_data()
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.gcd_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gcd(var)
+
+
+class TestDygraphInplaceLcm(TestDygraphInplace):
+    def init_data(self):
+        super().init_data()
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.lcm_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.lcm(var, self.y)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        super().init_data()
+        self.y = paddle.to_tensor([2], dtype="int32")
+
+    def inplace_api_processing(self, var):
+        return paddle.ldexp_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.ldexp(var, self.y)
+
+
+class TestDygraphInplaceWhere(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        super().init_data()
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.where_(var > self.y, var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.where(var > self.y, var, self.y)
+
+
 class TestDygraphInplaceTriu(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.triu_(var, 0)
