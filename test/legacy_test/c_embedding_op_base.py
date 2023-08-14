@@ -66,10 +66,10 @@ class TestCEmbeddingCPU(OpTest):
         if core.is_compiled_with_xpu():
             self.__class__.use_xpu = True
 
-    def test_check_cpu(self):
+    def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
-    def test_check_cpu_grad(self):
+    def test_check_grad(self):
         self.check_grad_with_place(core.CPUPlace(), ['W'], 'Out')
 
     def init_dtype(self):
