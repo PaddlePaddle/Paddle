@@ -687,7 +687,6 @@ def OpGenerator(
         op_info_items[op['name']] = OpInfoParser(
             op, op_compat_parser.get_compat(op['name'])
         )
-    print("op_info_items :", type(op_info_items))
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
