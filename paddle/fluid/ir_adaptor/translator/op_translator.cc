@@ -1379,6 +1379,19 @@ struct ElementwiseTranscriber : public OpTranscriber {
   }
 };
 
+struct GradAddOpTranscriber : public ElementwiseTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    const std::string& target_op_name = "pd.add";
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+    }
+
+    return op_info;
+  }
+};
+
 struct ElementwiseGradTranscriber : public OpTranscriber {
   void RecordOpResultMapping(ir::IrContext* ctx,
                              TranslationContext* param_map,
@@ -1450,6 +1463,7 @@ OpTranslator::OpTranslator() {
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
