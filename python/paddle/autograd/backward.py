@@ -181,7 +181,6 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
 
     '''
     relevant_op_flags = [True] * len(total_ops)
-
     # from input to output
     if inputs_set:
         for i, op in enumerate(total_ops):
@@ -192,7 +191,6 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
                 for value in op.results():
                     if value not in no_grad_set:
                         inputs_set.add(value)
-
             else:
                 relevant_op_flags[i] = False
 
@@ -383,8 +381,14 @@ def append_backward_ops(
                 # so more than one bwd_op create input_grad,
                 # need add sum op to accumulate gradient
 
-                paddle.add_n(list(state.value_to_valuegrad[value]))
+                paddle.add_n(
+                    [item[0] for item in state.value_to_valuegrad[value]]
+                )
+                combineop = block.ops[len(block.ops) - 2]
                 sumop = block.ops[len(block.ops) - 1]
+                update_bwdop_structure(
+                    backward_ops, state.op_to_opgrad[op], combineop
+                )
                 update_bwdop_structure(
                     backward_ops, state.op_to_opgrad[op], sumop
                 )
@@ -498,8 +502,17 @@ def append_backward_ops(
                 for value in op.results():
                     if len(state.value_to_valuegrad[value]) > 1:
                         # need add sum op
-                        paddle.add_n(list(state.value_to_valuegrad[value]))
+                        paddle.add_n(
+                            [
+                                item[0]
+                                for item in state.value_to_valuegrad[value]
+                            ]
+                        )
+                        combineop = block.ops[len(block.ops) - 2]
                         sumop = block.ops[len(block.ops) - 1]
+                        update_bwdop_structure(
+                            backward_ops, state.op_to_opgrad[op], combineop
+                        )
                         update_bwdop_structure(
                             backward_ops, state.op_to_opgrad[op], sumop
                         )
@@ -531,7 +544,7 @@ def create_backward_purne_set(inputs, outputs, no_grad_set, state):
 
     for key in state.value_to_sumvaluegrad:
         if key in no_grad_set:
-            for item in state.value_to_valuegrad[key][0]:
+            for item in state.value_to_sumvaluegrad[key][0]:
                 no_gradvar_set.add(item)
 
     return outputs_set, inputs_set, no_gradvar_set
@@ -547,10 +560,14 @@ def remove_op(block, op, state):
         state.op_to_opgrad[fwd_op].remove(op)
 
     for valuegrad in op.results():
-        value = state.valuegrad_to_value[valuegrad][0]
-        state.value_to_valuegrad[value] = []
-        if value in state.sumvaluegrad_to_value:
-            raise ValueError('input_grad in [%s] is value which need to sum ')
+        if state.valuegrad_to_value[valuegrad] != []:
+            value = state.valuegrad_to_value[valuegrad][0]
+            state.value_to_valuegrad[value] = []
+
+            if value in state.sumvaluegrad_to_value:
+                raise ValueError(
+                    'input_grad in [%s] is value which need to sum ', op.name()
+                )
 
 
 def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
@@ -590,7 +607,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     _, remove_ops = prune_ops(
         backward_ops, inputs_set, outputs_set, no_gradvar_set
     )
-
     state.turn_map()
 
     for bwd_op in inverse_sort_op(remove_ops):

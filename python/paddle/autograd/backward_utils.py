@@ -37,6 +37,10 @@ class State:
         self.opgrad_to_op = collections.defaultdict(list)
 
     def turn_map(self) -> None:
+        self.valuegrad_to_value = collections.defaultdict(list)
+        self.sumvaluegrad_to_value = collections.defaultdict(list)
+        self.opgrad_to_op = collections.defaultdict(list)
+
         for k, v in self.value_to_valuegrad.items():
             if v != []:
                 for value in v[0]:
