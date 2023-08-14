@@ -36,7 +36,7 @@ endif()
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
-    gflags
+    ${flags_dep}
     glog
     warpctc
     warprnnt
@@ -65,10 +65,6 @@ endif()
 
 if(WITH_MKLDNN)
   list(APPEND PHI_DEPS mkldnn)
-endif()
-
-if(NOT WITH_GFLAGS)
-  list(APPEND PHI_DEPS paddle_flags)
 endif()
 
 if(WITH_GLOO)

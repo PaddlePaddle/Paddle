@@ -150,11 +150,13 @@ function(copy_part_of_thrid_party TARGET DST)
       DSTS ${dst_dir}/include ${dst_dir})
   endif()
 
-  set(dst_dir "${DST}/third_party/install/gflags")
-  copy(
-    ${TARGET}
-    SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
-    DSTS ${dst_dir} ${dst_dir}/lib)
+  if(WITH_GFLAGS)
+    set(dst_dir "${DST}/third_party/install/gflags")
+    copy(
+      ${TARGET}
+      SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
+      DSTS ${dst_dir} ${dst_dir}/lib)
+  endif()
 
   set(dst_dir "${DST}/third_party/install/glog")
   copy(
@@ -335,6 +337,14 @@ copy(
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags_native.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
