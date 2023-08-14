@@ -130,29 +130,27 @@ void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)
   // graph data
   const std::unordered_set<ir::drr::PatternGraph::id_type> &inputs_tensor = graph_->input_tensors();
   const std::unordered_map<ir::drr::PatternGraph::id_type,std::shared_ptr<ir::drr::Tensor>> &id2owned_tensor = graph_->id2owend_tensor();
+  const std::vector<std::shared_ptr<OpCall>> &owend_opcall = graph_->owned_op_call();
 
   std::queue<const ir::drr::OpCall *> opcall_queue;
-  std::unordered_set<std::string> visited_tensor;
-
-  // init visited tensor
-  for (auto &tensor_id : inputs_tensor) {
-    std::string tensor_name = id2owned_tensor.at(tensor_id).get()->name();
-    visited_tensor.insert(tensor_name);
+  std::unordered_map<const ir::drr::OpCall *, std::unordered_set<std::string>> opcall_dependent; 
+  
+  // init opcall_dependent;
+  for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall){
+    for(const auto &pre_depd_tensor : opcall_sptr.get()->inputs()){
+      opcall_dependent[opcall_sptr.get()].insert(pre_depd_tensor->name());
+    }
   }
 
   // init queue
   for (const auto &tensor_id : inputs_tensor) {
+    const std::string& tensor_name = id2owned_tensor.at(tensor_id).get()->name();
 
-    const std::vector<const OpCall *> &comsumers = id2owned_tensor.at(tensor_id).get()->consumers();
-    for (const OpCall *comsumer : comsumers) {
+    for(const auto &tensor_comsumer : id2owned_tensor.at(tensor_id).get()->consumers()){
 
-      bool flag = true;
-      for (const auto &pre_dependent_tensor : comsumer->inputs()){
-        flag = flag && visited_tensor.find(pre_dependent_tensor->name()) != visited_tensor.end();
-      }
-
-      if (flag){ 
-        opcall_queue.push(comsumer); 
+      opcall_dependent[tensor_comsumer].erase(tensor_name);
+      if (opcall_dependent[tensor_comsumer].empty()){
+        opcall_queue.push(tensor_comsumer);
       }
     }
   }
@@ -162,24 +160,17 @@ void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)
     opcall_queue.pop();
     VisitNode(*opcall);
 
-    // update visited
+    // update opcall_dependent
     for (const auto &output_tensor : opcall->outputs()) {
-      visited_tensor.insert(output_tensor->name());
-    }
 
-    // update queue
-    for (const auto &output_tensor : opcall->outputs()) {
-      for (const auto &candidate_opcall : output_tensor->consumers()) {
+      for (const auto &tensor_comsumer : output_tensor->consumers()){
 
-        bool flag = true;
-        for (const auto &pre_dependent_tensor : candidate_opcall->inputs()) {
-          flag = flag && visited_tensor.find(pre_dependent_tensor->name()) != visited_tensor.end();
-        }
-
-        if (flag) {
-          opcall_queue.push(candidate_opcall);
+        opcall_dependent[tensor_comsumer].erase(output_tensor->name());
+        if (opcall_dependent[tensor_comsumer].empty()){
+          opcall_queue.push(tensor_comsumer);
         }
       }
+
     }
   }
 
