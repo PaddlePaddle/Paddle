@@ -79,8 +79,9 @@ Expr Optimize(Expr e,
   Simplify(&copied);
   VLOG(10) << "After Optimize Simplify:" << copied;
 
-  IfSimplify(&copied);
-  VLOG(10) << "After Optimize IfSimplify:" << copied;
+  // TODO(LiuYang): I attends to remove this part code, I integate it into
+  // ifthenelse part IfSimplify(&copied); VLOG(10) << "After Optimize
+  // IfSimplify:" << copied;
 
   if (runtime_debug_info) {
     LOG(WARNING) << "Turn on runtime debug information output";
