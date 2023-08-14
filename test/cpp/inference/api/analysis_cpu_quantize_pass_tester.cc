@@ -92,7 +92,7 @@ const std::vector<std::string> PreGraphPasses({
    "cpu_quantize_squash_pass",
    "quant_transpose2_dequant_onednn_fuse_pass"
 });
-TEST(cpuQuantizePass, basic) {
+TEST(cpuQuantizePass, ConvReLU6) {
   paddle::framework::ProgramDesc prog;
   auto* block = prog.MutableBlock(0);
 
