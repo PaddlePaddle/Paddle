@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -106,6 +107,41 @@ class TestMPBroadcastObj(TestDistMPTraining):
             model_b,
             optimizer_b,
         ) = self.build_model_optimizer()
+
+        for _ in range(5):
+            img = np.random.randint(
+                0,
+                vocab_size,
+                (
+                    batch_size,
+                    seq_length,
+                ),
+            )
+            text = [
+                random.sample('zyxwvutsrqponmlkjihgfedcba', 5)
+                for i in range(batch_size)
+            ]
+            batch = (img, text)
+
+            loss_a = self.train_batch(batch, model_a, optimizer_a, True)
+            loss_b = self.train_batch(batch, model_b, optimizer_b, False)
+
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6
+            )
+
+    def test_mp_model_async_allreduce(self):
+        (
+            model_a,
+            optimizer_a,
+            model_b,
+            optimizer_b,
+        ) = self.build_model_optimizer()
+
+        os.environ['Flags_mp_aysnc_allreduce'] = "True"
+        os.environ['Flags_skip_mp_c_identity'] = "True"
+        if paddle.version.cuda() >= '11.6':
+            os.environ['Flags_fused_linear_param_grad_add'] = "True"
 
         for _ in range(5):
             img = np.random.randint(
