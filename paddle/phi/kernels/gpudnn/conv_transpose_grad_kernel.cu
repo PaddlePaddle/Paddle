@@ -613,7 +613,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 
   int iwo_group = groups;
   int c_group = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
   iwo_group = 1;
   c_group = groups;
   groups = 1;
@@ -670,12 +670,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
-#elif defined(PADDLE_WITH_MUSA)
-  SearchResult<mudnnConvBwdDataAlgorithm_t> bwd_result1;
-  SearchResult<mudnnConvBwdDataAlgorithm_t> bwd_result2;
-  SearchResult<mudnnConvBwdWeightsAlgorithm_t> filter_result;
-  SearchResult<mudnnConvFwdAlgorithm_t> fwd_result;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result1;
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result2;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;

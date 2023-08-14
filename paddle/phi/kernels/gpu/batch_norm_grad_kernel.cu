@@ -568,7 +568,7 @@ void BatchNormGradRawKernel(const Context &ctx,
           scale.dims()[0]));
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -650,8 +650,7 @@ void BatchNormGradRawKernel(const Context &ctx,
 //     platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
-#elif defined(PADDLE_WITH_MUSA)
-#else
+#elif defined(PADDLE_WITH_CUDA)
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_;
@@ -697,16 +696,7 @@ void BatchNormGradRawKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDeriveBNTensorDescriptor(bn_param_desc_,
 //                                                       data_desc_, mode_));
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSetTensorNdDescriptor(
-        data_desc_,
-        CudnnDataType<T>::type,
-        x_dims.size() > 3 ? x_dims.size() : 4,
-        dims.data(),
-        strides.data()));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDeriveBNTensorDescriptor(
-        bn_param_desc_, data_desc_, mode_));
-#else
+#elif defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
         data_desc_,
         CudnnDataType<T>::type,
@@ -789,9 +779,7 @@ void BatchNormGradRawKernel(const Context &ctx,
 //         d_bias->template mutable_data<BatchNormParamType<T>>(
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
-#elif defined(PADDLE_WITH_MUSA)
-
-#else
+#elif defined(PADDLE_WITH_CUDA)
     }
     // CUDNN only support small batch size
     bool use_native_nhwc =
@@ -1127,12 +1115,7 @@ void BatchNormGradRawKernel(const Context &ctx,
 //     platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
-#elif defined(PADDLE_WITH_MUSA)
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::mudnnDestroyTensorDescriptor(data_desc_));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::mudnnDestroyTensorDescriptor(bn_param_desc_));
-#else
+#elif defined(PADDLE_WITH_CUDA)
     // clean when exit.
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
@@ -1392,21 +1375,7 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    phi::BatchNormGradRawKernel,
                    float,
                    phi::dtype::float16) {}
-#elif defined(PADDLE_WITH_MUSA)
-PD_REGISTER_KERNEL(batch_norm_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   phi::dtype::float16) {}
-#else
+#elif defined(PADDLE_WITH_CUDA)
 #if CUDNN_VERSION_MIN(8, 1, 0)
 
 PD_REGISTER_KERNEL(batch_norm_grad,
@@ -1440,7 +1409,7 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-#else // CUDA & MUSA
+#else // CUDA 
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,

@@ -554,7 +554,7 @@ void BatchNormKernel(const Context &ctx,
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -597,6 +597,7 @@ void BatchNormKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #elif defined(PADDLE_WITH_MUSA)
+
 #else
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t bn_param_desc_;
@@ -615,9 +616,11 @@ void BatchNormKernel(const Context &ctx,
   }
   epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) 
+#ifdef PADDLE_WITH_HIP
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // mode_ = miopenBNSpatial;
+#elif defined(PADDLE_WITH_MUSA)
+
 #elif CUDNN_VERSION_MIN(7, 0, 1)
   if (FLAGS_cudnn_batchnorm_spatial_persistent) {
     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
@@ -1210,12 +1213,7 @@ void BatchNormKernel(const Context &ctx,
 //     platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDestroyTensorDescriptor(bn_param_desc_));
-#elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnDestroyTensorDescriptor(data_desc_));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::mudnnDestroyTensorDescriptor(bn_param_desc_));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   // clean when exit.
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));

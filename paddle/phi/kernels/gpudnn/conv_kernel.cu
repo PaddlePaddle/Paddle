@@ -153,12 +153,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   workspace_size = search::GetWorkspaceSize(args);
   fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
-#elif defined(PADDLE_WITH_MUSA)
-  SearchResult<mudnnConvolutionFwdAlgo_t> fwd_result;
-  using search = SearchAlgorithm<ConvKind::kForward>;
-  fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
-  workspace_size = fwd_result.workspace_size;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search = SearchAlgorithm<ConvKind::kForward>;
   fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
@@ -370,7 +365,7 @@ void ConvCudnnKernel(const Context& ctx,
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP)
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = phi::backends::gpu::DataLayout::kNCHW;
 #else

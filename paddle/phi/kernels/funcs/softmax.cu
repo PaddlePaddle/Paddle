@@ -21,6 +21,7 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
+
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
 using DataLayout = phi::backends::gpu::DataLayout;
 template <typename T>
@@ -117,8 +118,6 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
                                              MIOPEN_SOFTMAX_ACCURATE,
                                              MIOPEN_SOFTMAX_MODE_INSTANCE));
 #elif defined(PADDLE_WITH_MUSA)
-  // TODO
-#else
   cudnnTensorDescriptor_t cudnn_y_desc =
       yDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_xgrad_desc =
@@ -154,6 +153,7 @@ template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
 template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
+
 template class SoftmaxFunctor<phi::GPUContext, phi::dtype::float16>;
 template class SoftmaxFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 template class SoftmaxFunctor<phi::GPUContext, float>;

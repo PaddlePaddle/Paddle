@@ -155,9 +155,10 @@ void InitGpuProperties(Place place,
            "version.";
   }
 #elif defined(PADDLE_WITH_MUSA)
-  // TODO(@caizhi): enable dynload module
+  // TODO(@caizhi): mudnnGetVersion is not supported for MUSA now.
+  // Requests have been submitted to Mudnn.
   // size_t mudnn_dso_ver = dynload::mudnnGetVersion();
-  size_t mudnn_dso_ver = 0;
+  size_t mudnn_dso_ver = 1100;
   LOG_FIRST_N(WARNING, 1) << "device: " << static_cast<int>(place.device)
                           << ", muDNN Version: " << mudnn_dso_ver / 1000 << "."
                           << (mudnn_dso_ver % 1000) / 100 << ".";
@@ -168,21 +169,20 @@ void InitGpuProperties(Place place,
   auto compile_musa_version =
       (MUSA_VERSION / 1000) * 10 + (MUSA_VERSION % 100) / 10;
 #if defined(__linux__)
-  // TODO(@caizhi): enable dynload module
-  //PADDLE_ENFORCE_EQ(
-  //    (local_musa_version / 10 < compile_musa_version / 10) &&
-  //        (mudnn_dso_ver / 1000 < MUDNN_VERSION / 1000),
-  //    false,
-  //    phi::errors::InvalidArgument(
-  //        "The installed Paddle is compiled with MUDA%d/muDNN%d,"
-  //        "but MUSA/muDNN version in your machine is MUSA%d/muDNN%d. "
-  //        "which will cause serious incompatible bug. "
-  //        "Please recompile or reinstall Paddle with compatible MUSA/muDNN "
-  //        "version.",
-  //        compile_musa_version / 10,
-  //        MUDNN_VERSION / 1000,
-  //        local_musa_version / 10,
-  //        mudnn_dso_ver / 1000));
+  PADDLE_ENFORCE_EQ(
+      (local_musa_version / 10 < compile_musa_version / 10) &&
+          (mudnn_dso_ver / 1000 < MUDNN_VERSION / 1000),
+      false,
+      phi::errors::InvalidArgument(
+          "The installed Paddle is compiled with MUDA%d/muDNN%d,"
+          "but MUSA/muDNN version in your machine is MUSA%d/muDNN%d. "
+          "which will cause serious incompatible bug. "
+          "Please recompile or reinstall Paddle with compatible MUSA/muDNN "
+          "version.",
+          compile_musa_version / 10,
+          MUDNN_VERSION / 1000,
+          local_musa_version / 10,
+          mudnn_dso_ver / 1000));
 #endif
   if (local_musa_version < compile_musa_version) {
     LOG_FIRST_N(WARNING, 1)
@@ -335,9 +335,7 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreate(handle));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetStream(*handle, stream));
-#elif defined(PADDLE_WITH_MUSA)
-
-#else
+#elif defined(PADDLE_WITH_CUDA)
     auto local_cudnn_version = phi::dynload::cudnnGetVersion() / 100;
     auto compile_cudnn_version = CUDNN_VERSION / 100;
     if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
