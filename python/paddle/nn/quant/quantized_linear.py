@@ -36,11 +36,11 @@ def weight_quantize(x, algo="weight_only_int8"):
             from paddle.nn.quant import weight_quantize
 
             paddle.device.set_device("cpu")
-            x = np.random.randn(32, 64).astype('float16')
+            x = np.random.randn(64, 32).astype('float16')
             x = paddle.to_tensor(x, dtype=paddle.float16, place=paddle.CPUPlace())
             out, scale = weight_quantize(x, algo='weight_only_int8')
-            print(out.shape) # [64, 32]
-            print(scale.shape) # [64]
+            print(out.shape) # [32, 64]
+            print(scale.shape) # [32]
     """
 
     if in_dynamic_mode():

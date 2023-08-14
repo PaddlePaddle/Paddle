@@ -5041,10 +5041,10 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
   PADDLE_ENFORCE_EQ(
-      x_dims[0] % 16,
+      x_dims[0] % 64,
       0,
       phi::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 16, but got[%d]",
+          "The first dimension of input must be divisible by 64, but got[%d]",
           x_dims[0]));
   PADDLE_ENFORCE_EQ(
       x_dims[1] % 16,
