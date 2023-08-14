@@ -149,6 +149,7 @@ class LRScheduler:
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> value = paddle.arange(26, dtype='float32')
                 >>> a = paddle.reshape(value, [2, 13])
@@ -293,7 +294,6 @@ class NoamDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -403,7 +403,6 @@ class PiecewiseDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -498,7 +497,6 @@ class NaturalExpDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -690,7 +688,6 @@ class PolynomialDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -822,7 +819,6 @@ class LinearWarmup(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -961,7 +957,6 @@ class ExponentialDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1059,7 +1054,6 @@ class MultiStepDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1277,7 +1271,6 @@ class LambdaDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1385,7 +1378,6 @@ class ReduceOnPlateau(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step(loss)    # If you update learning rate each step
             ...     # scheduler.step(loss)        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1616,7 +1608,6 @@ class CosineAnnealingDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -1820,7 +1811,6 @@ class OneCycleLR(LRScheduler):
             ...         sgd.step()
             ...         sgd.clear_gradients()
             ...         scheduler.step()        # You should update learning rate each step
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -2070,7 +2060,6 @@ class CyclicLR(LRScheduler):
             ...         sgd.step()
             ...         sgd.clear_gradients()
             ...         scheduler.step()        # You should update learning rate each step
-            ...
         .. code-block:: python
             :name: code-example2
 
@@ -2305,7 +2294,6 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
 
     .. code-block:: python
 
-        >>> import paddle.fluid as fluid
         >>> import numpy as np
         >>> # set hyper parameters
         >>> base_lr = 0.01
@@ -2316,7 +2304,6 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         >>> lr_value = base_lr * np.power(d_model, -0.5) * np.min([
         ...                         np.power(current_steps, -0.5),
         ...                         np.power(warmup_steps, -1.5) * current_steps])
-        ...
     Please reference `attention is all you need
     <https://arxiv.org/pdf/1706.03762.pdf>`_.
 
@@ -2645,8 +2632,6 @@ def piecewise_decay(boundaries, values):
                 ...     momentum=0.9,
                 ...     learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
                 ...     weight_decay=paddle.regularizer.L2Decay(1e-4))
-                ...
-                ...
     """
     with default_main_program()._lr_schedule_guard():
         if len(values) - len(boundaries) != 1:
