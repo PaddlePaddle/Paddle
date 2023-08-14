@@ -54,7 +54,7 @@ Tensor mean_grad<DescTensor>(const Tensor& x,
           .dyn_cast<ir::OpResult>();
 
   ir::OpResult op_res = paddle::dialect::mean_grad(
-      x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
+      x_res, out_grad_res, axis, keepdim, reduce_all);
 
   return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
 }
@@ -68,6 +68,55 @@ Tensor divide<DescTensor>(const Tensor& x, const Tensor& y) {
                            ->getValue()
                            .dyn_cast<ir::OpResult>();
   ir::OpResult op_res = paddle::dialect::divide(x_res, y_res);
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor add<DescTensor>(const Tensor& x, const Tensor& y) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult y_res = std::static_pointer_cast<DescTensor>(y.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::add(x_res, y_res);
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor multiply<DescTensor>(const Tensor& x, const Tensor& y) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult y_res = std::static_pointer_cast<DescTensor>(y.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::multiply(x_res, y_res);
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor elementwise_pow<DescTensor>(const Tensor& x, const Tensor& y) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult y_res = std::static_pointer_cast<DescTensor>(y.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::elementwise_pow(x_res, y_res);
+  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+}
+
+template <>
+Tensor scale<DescTensor>(const Tensor& x,
+                         const Scalar& scale,
+                         float bias,
+                         bool bias_after_scale) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res =
+      paddle::dialect::scale(x_res, scale.to<float>(), bias, bias_after_scale);
   return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
 }
 

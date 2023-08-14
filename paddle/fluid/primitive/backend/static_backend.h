@@ -42,6 +42,21 @@ template <typename T>
 Tensor divide(const Tensor& x, const Tensor& y);
 
 template <typename T>
+Tensor add(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor multiply(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor elementwise_pow(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor scale(const Tensor& x,
+             const Scalar& scale = 1.0,
+             float bias = 0.0,
+             bool bias_after_scale = true);
+
+template <typename T>
 Tensor sum(const Tensor& x,
            const IntArray& axis = {},
            phi::DataType dtype = phi::DataType::UNDEFINED,

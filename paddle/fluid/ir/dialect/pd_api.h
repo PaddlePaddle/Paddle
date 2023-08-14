@@ -33,7 +33,18 @@ ir::OpResult sum(ir::OpResult x,
                  phi::DataType dtype = phi::DataType::UNDEFINED,
                  bool keepdim = false);
 
+ir::OpResult add(ir::OpResult x, ir::OpResult y);
+
 ir::OpResult divide(ir::OpResult x, ir::OpResult y);
+
+ir::OpResult multiply(ir::OpResult x, ir::OpResult y);
+
+ir::OpResult elementwise_pow(ir::OpResult x, ir::OpResult y);
+
+ir::OpResult scale(ir::OpResult x,
+                   float scale = 1.0,
+                   float bias = 0.0,
+                   bool bias_after_scale = true);
 
 ir::OpResult reshape(ir::OpResult x, std::vector<int64_t> shape);
 
@@ -41,7 +52,7 @@ ir::OpResult expand(ir::OpResult x, std::vector<int64_t> shape = {});
 
 ir::OpResult tile(ir::OpResult x, std::vector<int64_t> repeat_times = {});
 
-ir::OpResult full(const std::vector<int64_t>& shape,
+ir::OpResult full(std::vector<int64_t> shape,
                   float value,
                   phi::DataType dtype = phi::DataType::FLOAT32,
                   const phi::Place& place = phi::CPUPlace());

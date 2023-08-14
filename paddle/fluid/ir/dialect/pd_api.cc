@@ -55,6 +55,37 @@ ir::OpResult divide(ir::OpResult x, ir::OpResult y) {
   return divide_op.out();
 }
 
+ir::OpResult add(ir::OpResult x, ir::OpResult y) {
+  paddle::dialect::AddOp add_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::AddOp>(x, y);
+  return add_op.out();
+}
+
+ir::OpResult multiply(ir::OpResult x, ir::OpResult y) {
+  paddle::dialect::MultiplyOp multiply_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::MultiplyOp>(
+          x, y);
+  return multiply_op.out();
+}
+
+ir::OpResult elementwise_pow(ir::OpResult x, ir::OpResult y) {
+  paddle::dialect::ElementwisePowOp elementwise_pow_op =
+      APIBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::ElementwisePowOp>(x, y);
+  return elementwise_pow_op.out();
+}
+
+ir::OpResult scale(ir::OpResult x,
+                   float scale,
+                   float bias,
+                   bool bias_after_scale) {
+  paddle::dialect::ScaleOp scale_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ScaleOp>(
+          x, scale, bias, bias_after_scale);
+  return scale_op.out();
+}
+
 ir::OpResult full(const std::vector<int64_t>& shape,
                   float value,
                   phi::DataType dtype,
