@@ -49,7 +49,7 @@ class QuantInt8MkldnnPass:
             >>> import paddle
             >>> import paddle.static as static
             >>> from paddle.static.quantization import QuantInt8MkldnnPass
-            >>> from paddle.fluid.framework import IrGraph
+            >>> from paddle.framework import IrGraph
             >>> from paddle.framework import core
 
             >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
