@@ -31,11 +31,11 @@ def weight_quantize(x, algo="weight_only_int8"):
     Examples:
         .. code-block:: python
 
-            # required: cpu
             import paddle
             import numpy as np
             from paddle.nn.quant import weight_quantize
 
+            paddle.device.set_device("cpu")
             x = np.random.randn(32, 64).astype('float16')
             x = paddle.to_tensor(x, dtype=paddle.float16, place=paddle.CPUPlace())
             out, scale = weight_quantize(x, algo='weight_only_int8')
