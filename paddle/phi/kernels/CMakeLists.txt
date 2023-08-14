@@ -88,6 +88,8 @@ if(WITH_MUSA)
        "gpu/rnn_grad_kernel.cu.cc"
        "gpu/rnn_kernel.cu.cc"
        "gpu/slogdeterminant_grad_kernel.cu"
+       "gpu/softmax_grad_kernel.cu"
+       "gpu/softmax_kernel.cu"
        "gpu/solve_grad_kernel.cu"
        "gpu/solve_kernel.cu"
        "gpu/spectral_norm_grad_kernel.cu"

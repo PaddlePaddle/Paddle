@@ -20,7 +20,8 @@ endif()
 if(WITH_MUSA)
   list(REMOVE_ITEM func_cu_srcs
       "cross_entropy.cu"
-      "gru_compute.cu")
+      "gru_compute.cu"
+      "softmax.cu")
 endif()
 
 collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})
