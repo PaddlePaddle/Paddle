@@ -168,7 +168,6 @@ class ImperativeQuantAware:
                 ...         paddle.static.InputSpec(
                 ...         shape=[None, 3, 224, 224], dtype='float32')])
 
-        Examples:
             .. code-block:: python
 
                 >>> import paddle
