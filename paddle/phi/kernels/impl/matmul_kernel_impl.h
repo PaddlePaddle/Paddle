@@ -128,17 +128,16 @@ void MatMulFunctionImplWithBlas(
     VLOG(3) << "MatMul's case 1";
     Out->Resize(phi::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
-    // TODO(@caizhi): enable it
-    //blas.GEMM(CblasNoTrans,
-    //          CblasTrans,
-    //          1,
-    //          1,
-    //          M,
-    //          static_cast<T>(1),
-    //          y_data,
-    //          x_data,
-    //          static_cast<T>(flag),
-    //          dev_ctx.template Alloc<T>(Out));
+    blas.GEMM(CblasNoTrans,
+              CblasTrans,
+              1,
+              1,
+              M,
+              static_cast<T>(1),
+              y_data,
+              x_data,
+              static_cast<T>(flag),
+              dev_ctx.template Alloc<T>(Out));
     return;
   }
 
@@ -179,45 +178,42 @@ void MatMulFunctionImplWithBlas(
     if (trans_y) {
       const int M = Y.numel() / N;
       VLOG(3) << "MatMul's case 2";
-      // TODO(@caizhi): enable it
-      //blas.GEMV(false,
-      //          M,
-      //          N,
-      //          static_cast<T>(1),
-      //          y_data,
-      //          x_data,
-      //          static_cast<T>(flag),
-      //          dev_ctx.template Alloc<T>(Out));
+      blas.GEMV(false,
+                M,
+                N,
+                static_cast<T>(1),
+                y_data,
+                x_data,
+                static_cast<T>(flag),
+                dev_ctx.template Alloc<T>(Out));
     } else {
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 3";
-        // TODO(@caizhi): enable it
-        //blas.GEMV(true,
-        //          N,
-        //          M,
-        //          static_cast<T>(1),
-        //          y_data,
-        //          x_data,
-        //          static_cast<T>(flag),
-        //          dev_ctx.template Alloc<T>(Out));
+        blas.GEMV(true,
+                  N,
+                  M,
+                  static_cast<T>(1),
+                  y_data,
+                  x_data,
+                  static_cast<T>(flag),
+                  dev_ctx.template Alloc<T>(Out));
       } else {
         VLOG(3) << "MatMul's case 4";
-        // TODO(@caizhi): enable it
-        //blas.BatchedGEMM(CblasTrans,
-        //                 CblasNoTrans,
-        //                 M,
-        //                 1,
-        //                 N,
-        //                 static_cast<T>(1),
-        //                 y_data,
-        //                 x_data,
-        //                 static_cast<T>(flag),
-        //                 dev_ctx.template Alloc<T>(Out),
-        //                 batch_size,
-        //                 M * N,
-        //                 0);
+        blas.BatchedGEMM(CblasTrans,
+                         CblasNoTrans,
+                         M,
+                         1,
+                         N,
+                         static_cast<T>(1),
+                         y_data,
+                         x_data,
+                         static_cast<T>(flag),
+                         dev_ctx.template Alloc<T>(Out),
+                         batch_size,
+                         M * N,
+                         0);
       }
     }
     return;
@@ -263,44 +259,41 @@ void MatMulFunctionImplWithBlas(
       const int batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 5";
-        // TODO(@caizhi): enable it
-        //blas.GEMV(true,
-        //          N,
-        //          M,
-        //          static_cast<T>(1),
-        //          x_data,
-        //          y_data,
-        //          static_cast<T>(flag),
-        //          dev_ctx.template Alloc<T>(Out));
+        blas.GEMV(true,
+                  N,
+                  M,
+                  static_cast<T>(1),
+                  x_data,
+                  y_data,
+                  static_cast<T>(flag),
+                  dev_ctx.template Alloc<T>(Out));
       } else {
         VLOG(3) << "MatMul's case 6";
-        // TODO(@caizhi): enable it
-        //blas.BatchedGEMM(CblasTrans,
-        //                 CblasNoTrans,
-        //                 M,
-        //                 1,
-        //                 N,
-        //                 static_cast<T>(1),
-        //                 x_data,
-        //                 y_data,
-        //                 static_cast<T>(flag),
-        //                 dev_ctx.template Alloc<T>(Out),
-        //                 batch_size,
-        //                 M * N,
-        //                 0);
+        blas.BatchedGEMM(CblasTrans,
+                         CblasNoTrans,
+                         M,
+                         1,
+                         N,
+                         static_cast<T>(1),
+                         x_data,
+                         y_data,
+                         static_cast<T>(flag),
+                         dev_ctx.template Alloc<T>(Out),
+                         batch_size,
+                         M * N,
+                         0);
       }
     } else {
       const int M = X.numel() / N;
       VLOG(3) << "MatMul's case 7";
-      // TODO(@caizhi): enable it
-      //blas.GEMV(false,
-      //          M,
-      //          N,
-      //          static_cast<T>(1),
-      //          x_data,
-      //          y_data,
-      //          static_cast<T>(flag),
-      //          dev_ctx.template Alloc<T>(Out));
+      blas.GEMV(false,
+                M,
+                N,
+                static_cast<T>(1),
+                x_data,
+                y_data,
+                static_cast<T>(flag),
+                dev_ctx.template Alloc<T>(Out));
     }
     return;
   }
@@ -374,93 +367,87 @@ void MatMulFunctionImplWithBlas(
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
-    // TODO(@caizhi): enable it
-    //blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
-    //          trans_y ? CblasTrans : CblasNoTrans,
-    //          M,
-    //          N,
-    //          K,
-    //          static_cast<T>(1),
-    //          x_data,
-    //          y_data,
-    //          static_cast<T>(flag),
-    //          dev_ctx.template Alloc<T>(Out));
+    blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
+              trans_y ? CblasTrans : CblasNoTrans,
+              M,
+              N,
+              K,
+              static_cast<T>(1),
+              x_data,
+              y_data,
+              static_cast<T>(flag),
+              dev_ctx.template Alloc<T>(Out));
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
-      // TODO(@caizhi): enable it
-      //blas.GEMV(false,
-      //          y_batch_size * N,
-      //          K,
-      //          static_cast<T>(1),
-      //          y_data,
-      //          x_data,
-      //          static_cast<T>(flag),
-      //          dev_ctx.template Alloc<T>(Out));
+      blas.GEMV(false,
+                y_batch_size * N,
+                K,
+                static_cast<T>(1),
+                y_data,
+                x_data,
+                static_cast<T>(flag),
+                dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 10";
-      // TODO(@caizhi): enable it
-      //blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-      //                 trans_y ? CblasTrans : CblasNoTrans,
-      //                 M,
-      //                 N,
-      //                 K,
-      //                 static_cast<T>(1),
-      //                 x_data,
-      //                 y_data,
-      //                 static_cast<T>(flag),
-      //                 dev_ctx.template Alloc<T>(Out),
-      //                 out_batch_size,
-      //                 0,
-      //                 K * N);
+      blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                       trans_y ? CblasTrans : CblasNoTrans,
+                       M,
+                       N,
+                       K,
+                       static_cast<T>(1),
+                       x_data,
+                       y_data,
+                       static_cast<T>(flag),
+                       dev_ctx.template Alloc<T>(Out),
+                       out_batch_size,
+                       0,
+                       K * N);
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 11";
-      // TODO(@caizhi): enable it
-      //blas.GEMM(CblasNoTrans,
-      //          trans_y ? CblasTrans : CblasNoTrans,
-      //          x_batch_size * M,
-      //          N,
-      //          K,
-      //          static_cast<T>(1),
-      //          x_data,
-      //          y_data,
-      //          static_cast<T>(flag),
-      //          dev_ctx.template Alloc<T>(Out));
+      blas.GEMM(CblasNoTrans,
+                trans_y ? CblasTrans : CblasNoTrans,
+                x_batch_size * M,
+                N,
+                K,
+                static_cast<T>(1),
+                x_data,
+                y_data,
+                static_cast<T>(flag),
+                dev_ctx.template Alloc<T>(Out));
     } else {
       VLOG(3) << "MatMul's case 12";
-      // TODO(@caizhi): enable it
-      //blas.BatchedGEMM(CblasTrans,
-      //                 trans_y ? CblasTrans : CblasNoTrans,
-      //                 M,
-      //                 N,
-      //                 K,
-      //                 static_cast<T>(1),
-      //                 x_data,
-      //                 y_data,
-      //                 static_cast<T>(flag),
-      //                 dev_ctx.template Alloc<T>(Out),
-      //                 out_batch_size,
-      //                 M * K,
-      //                 0);
+      blas.BatchedGEMM(CblasTrans,
+                       trans_y ? CblasTrans : CblasNoTrans,
+                       M,
+                       N,
+                       K,
+                       static_cast<T>(1),
+                       x_data,
+                       y_data,
+                       static_cast<T>(flag),
+                       dev_ctx.template Alloc<T>(Out),
+                       out_batch_size,
+                       M * K,
+                       0);
     }
   } else if (!is_broadcast_dims) {
     VLOG(3) << "MatMul's case 13";
-    // TODO(@caizhi): enable it
-    //blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-    //                 trans_y ? CblasTrans : CblasNoTrans,
-    //                 M,
-    //                 N,
-    //                 K,
-    //                 static_cast<T>(1),
-    //                 x_data,
-    //                 y_data,
-    //                 static_cast<T>(flag),
-    //                 dev_ctx.template Alloc<T>(Out),
-    //                 out_batch_size,
-    //                 M * K,
-    //                 K * N);
+    blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                     trans_y ? CblasTrans : CblasNoTrans,
+                     M,
+                     N,
+                     K,
+                     static_cast<T>(1),
+                     x_data,
+                     y_data,
+                     static_cast<T>(flag),
+                     dev_ctx.template Alloc<T>(Out),
+                     out_batch_size,
+                     M * K,
+                     K * N);
   } else {
     // in the case, can't use stridedgemm
     std::vector<const T*> x_ptr(out_batch_size);
@@ -480,18 +467,17 @@ void MatMulFunctionImplWithBlas(
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
     VLOG(3) << "MatMul's case 14";
-    // TODO(@caizhi): enable it
-    //blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
-    //                 trans_y ? CblasTrans : CblasNoTrans,
-    //                 M,
-    //                 N,
-    //                 K,
-    //                 static_cast<T>(1),
-    //                 x_ptr.data(),
-    //                 y_ptr.data(),
-    //                 static_cast<T>(flag),
-    //                 out_ptr.data(),
-    //                 out_batch_size);
+    blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
+                     trans_y ? CblasTrans : CblasNoTrans,
+                     M,
+                     N,
+                     K,
+                     static_cast<T>(1),
+                     x_ptr.data(),
+                     y_ptr.data(),
+                     static_cast<T>(flag),
+                     out_ptr.data(),
+                     out_batch_size);
   }
 }
 
@@ -913,8 +899,8 @@ struct MatMulDispatcher {
                   bool trans_x,
                   bool trans_y,
                   bool flag = false) {
-    //MatMulFunctionImplWithBlas<Context, T>(
-    //    ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
+    MatMulFunctionImplWithBlas<Context, T>(
+        ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
   }
 };
 
@@ -997,9 +983,8 @@ void MatmulKernel(const Context& ctx,
                                    " but reviced dims size is 0. "));
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
-  // TODO(@caizhi): enable it
-  //MatMulFunction<Context, T>(
-  //    ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+  MatMulFunction<Context, T>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }
 
 template <typename T, typename Context>
@@ -1022,9 +1007,7 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
  
-  (void)blas;
-  // TODO(@caizhi): enable it
-  //blas.MatMul(x_matrix, y_matrix, out);
+  blas.MatMul(x_matrix, y_matrix, out);
   if (z_dim.size() != 2) {
     out->Resize(z_dim);
   }

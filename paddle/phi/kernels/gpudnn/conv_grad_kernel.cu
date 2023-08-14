@@ -140,10 +140,7 @@ void ConvCudnnGradKernelImplV7(
 #ifdef PADDLE_WITH_HIP
   SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
-#elif defined(PADDLE_WITH_MUSA)
-  SearchResult<mudnnConvBwdDataAlgorithm_t> bwd_result;
-  SearchResult<mudnnConvBwdWeightsAlgorithm_t> filter_result;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif
@@ -151,7 +148,7 @@ void ConvCudnnGradKernelImplV7(
   int iwo_groups = groups;
   int c_groups = 1;
 
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -1009,7 +1006,7 @@ void ConvCudnnGradGradKernel(
 
   int iwo_group = groups;
   int c_group = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
   iwo_group = 1;
   c_group = groups;
   groups = 1;
@@ -1066,12 +1063,7 @@ void ConvCudnnGradGradKernel(
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result2;
   SearchResult<miopenConvBwdDataAlgorithm_t> data_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
-#elif defined(PADDLE_WITH_MUSA)
-  SearchResult<mudnnConvFwdAlgorithm_t> fwd_result1;
-  SearchResult<mudnnConvFwdAlgorithm_t> fwd_result2;
-  SearchResult<mudnnConvBwdDataAlgorithm_t> data_result;
-  SearchResult<mudnnConvBwdWeightsAlgorithm_t> filter_result;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result1;
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result2;
   SearchResult<cudnnConvolutionBwdDataAlgo_t> data_result;

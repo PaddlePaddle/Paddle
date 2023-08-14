@@ -430,16 +430,15 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
 
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  // TODO(@caizhi): enable blas modules
-  //phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
-  //    true,
-  //    static_cast<int>(in_dims[0]),
-  //    static_cast<int>(in_dims[1]),
-  //    1.0,
-  //    input.data<double>(),
-  //    one.data<double>(),
-  //    0.0,
-  //    vector->data<double>());
+  phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
+      true,
+      static_cast<int>(in_dims[0]),
+      static_cast<int>(in_dims[1]),
+      1.0,
+      input.data<double>(),
+      one.data<double>(),
+      0.0,
+      vector->data<double>());
 }
 
 template struct RowwiseSum<phi::GPUContext, float>;
@@ -469,16 +468,15 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
 
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  // TODO(@caizhi): enable blas modules
-  //phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
-  //    true,
-  //    static_cast<int>(in_dims[1]),
-  //    static_cast<int>(in_dims[0]),
-  //    1.0,
-  //    one.data<double>(),
-  //    input.data<double>(),
-  //    0.0,
-  //    vector->data<double>());
+  phi::funcs::GetBlas<phi::GPUContext, double>(context).GEMV(
+      true,
+      static_cast<int>(in_dims[1]),
+      static_cast<int>(in_dims[0]),
+      1.0,
+      one.data<double>(),
+      input.data<double>(),
+      0.0,
+      vector->data<double>());
 }
 
 template struct RowwiseMean<phi::GPUContext, float>;

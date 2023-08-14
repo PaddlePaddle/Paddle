@@ -63,13 +63,9 @@ void RNNInferece(bool has_seq_length,
                                                 last_c_data,
                                                 workspace_data->data<uint8_t>(),
                                                 workspace_size));
-#else
+#elif defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(
-#ifdef PADDLE_WITH_MUSA
-        phi::dynload::mudnnRNNForwardInference(handle,
-#else
         phi::dynload::cudnnRNNForwardInference(handle,
-#endif
                                                rnn->rnn_desc(),
                                                seq_length,
                                                rnn->x_descs(),
@@ -158,17 +154,7 @@ void RnnKernel(const Context &dev_ctx,
     rnn_mode = miopenRNNRELU;
   else if (mode == "RNN_TANH")
     rnn_mode = miopenRNNTANH;
-#elif defined(PADDLE_WITH_MUSA)
-  gpuRNNMode_t rnn_mode = MUDNN_LSTM;
-  if (mode == "LSTM")
-    rnn_mode = MUDNN_LSTM;
-  else if (mode == "GRU")
-    rnn_mode = MUDNN_GRU;
-  else if (mode == "RNN_RELU")
-    rnn_mode = MUDNN_RNN_RELU;
-  else if (mode == "RNN_TANH")
-    rnn_mode = MUDNN_RNN_TANH;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   gpuRNNMode_t rnn_mode = CUDNN_LSTM;
   if (mode == "LSTM")
     rnn_mode = CUDNN_LSTM;
@@ -202,9 +188,7 @@ void RnnKernel(const Context &dev_ctx,
   T *last_c_data = nullptr;
 #ifdef PADDLE_WITH_HIP
   if (rnn_mode == miopenLSTM) {
-#elif defined(PADDLE_WITH_MUSA)
-  if (rnn_mode == MUDNN_LSTM) {
-#else
+#elif defined(PADDLE_WITH_CUDA)
   if (rnn_mode == CUDNN_LSTM) {
 #endif
     init_c_data = pre_state[1]->data<T>();
@@ -347,13 +331,9 @@ void RnnKernel(const Context &dev_ctx,
           workspace_size,
           reserve_data,
           reserve_size));
-#else
+#elif defined(PADDLE_WITH_CUDA)
       PADDLE_ENFORCE_GPU_SUCCESS(
-#ifdef PADDLE_WITH_MUSA
-          phi::dynload::mudnnRNNForwardTraining(handle,
-#else
           phi::dynload::cudnnRNNForwardTraining(handle,
-#endif
                                                 rnn.rnn_desc(),
                                                 seq_length,
                                                 rnn.x_descs(),

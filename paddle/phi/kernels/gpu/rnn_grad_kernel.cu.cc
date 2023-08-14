@@ -105,17 +105,7 @@ void RnnGradKernel(const Context &dev_ctx,
     rnn_mode = miopenRNNRELU;
   else if (mode == "RNN_TANH")
     rnn_mode = miopenRNNTANH;
-#elif defined(PADDLE_WITH_MUSA)
-  mudnnRNNMode_t rnn_mode = MUDNN_LSTM;
-  if (mode == "LSTM")
-    rnn_mode = MUDNN_LSTM;
-  else if (mode == "GRU")
-    rnn_mode = MUDNN_GRU;
-  else if (mode == "RNN_RELU")
-    rnn_mode = MUDNN_RNN_RELU;
-  else if (mode == "RNN_TANH")
-    rnn_mode = MUDNN_RNN_TANH;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnRNNMode_t rnn_mode = CUDNN_LSTM;
   if (mode == "LSTM")
     rnn_mode = CUDNN_LSTM;
@@ -205,9 +195,7 @@ void RnnGradKernel(const Context &dev_ctx,
   T *init_c_grad_data = nullptr;
 #ifdef PADDLE_WITH_HIP
   if (rnn_mode == miopenLSTM) {
-#elif defined(PADDLE_WITH_MUSA)
-  if (rnn_mode == MUDNN_LSTM)
-#else
+#elif defined(PADDLE_WITH_CUDA)
   if (rnn_mode == CUDNN_LSTM) {
 #endif
     init_c_data = pre_state[1]->data<T>();
@@ -353,12 +341,8 @@ void RnnGradKernel(const Context &dev_ctx,
       // permute weight grad list from weight grad tensor
       TensorToPermutedWeight<T>(
           place, stream, weight_grad, &weight_grad_list, rnn_mode, is_bidirec);
-#else
-#ifdef PADDLE_WITH_MUSA
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnRNNBackwardWeights(
-#else
+#elif defined(PADDLE_WITH_CUDA)
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardWeights(
-#endif
           handle,
           rnn.rnn_desc(),
           seq_length,
