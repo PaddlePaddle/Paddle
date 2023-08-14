@@ -91,7 +91,6 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
 
-        print(newir_program)
         self.assertEqual(newir_program.block().ops[-3].name(), "pd.full")
         self.assertEqual(input_grad[0].get_defining_op().name(), "pd.tanh_grad")
         self.assertEqual(
