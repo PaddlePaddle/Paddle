@@ -24,11 +24,11 @@ namespace cinn::frontend {
 
 TEST(Interpreter, basic) {
   Interpreter executor({"A"}, {{1, 30}});
-  executor.LoadPaddleModel(FLAGS_model_dir, common::DefaultTarget());
+  executor.LoadPaddleModel(FLAGS_model_dir, common::DefaultTarget(), true);
   executor.Run();
   // fc_0.tmp_2 is eliminated by OpFusion, so here
   // change to get tenor of the out variable
-  executor.GetTensor("fc_0.tmp_2");
+  executor.GetTensor("save_infer_model/scale_0.tmp_0");
 }
 
 }  // namespace cinn::frontend

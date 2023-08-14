@@ -38,7 +38,7 @@ class DnnWorkspaceHandle {
  public:
   inline DnnWorkspaceHandle(Allocator* allocator, gpuStream_t stream)
       : allocator_(allocator), stream_(stream) {
-    mtx_.reset(new std::mutex());
+    mtx_ = std::make_unique<std::mutex>();
   }
 
   inline void RunFunc(const std::function<void(void*)>& cudnn_func,

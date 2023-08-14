@@ -248,11 +248,11 @@ class GPUBuddyAllocatorList {
 
     std::call_once(*init_flags_[pos], [this, pos] {
       platform::SetDeviceId(devices_[pos]);
-      allocators_[pos].reset(
-          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
-                                 new detail::GPUAllocator(devices_[pos])),
-                             platform::GpuMinChunkSize(),
-                             platform::GpuMaxChunkSize()));
+      allocators_[pos] = std::make_unique<BuddyAllocator>(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::GPUAllocator(devices_[pos])),
+          platform::GpuMinChunkSize(),
+          platform::GpuMaxChunkSize());
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
@@ -430,7 +430,7 @@ class BuddyAllocatorList {
       : device_type_(device_type) {
     auto devices = phi::DeviceManager::GetSelectedDeviceList(device_type);
     for (auto dev_id : devices) {
-      init_flags_[dev_id].reset(new std::once_flag());
+      init_flags_[dev_id] = std::make_unique<std::once_flag>();
     }
   }
 
@@ -460,13 +460,13 @@ class BuddyAllocatorList {
       phi::DeviceManager::SetDevice(device_type_, dev_id);
       platform::CustomPlace place(device_type_, dev_id);
 
-      allocators_[dev_id].reset(new BuddyAllocator(
+      allocators_[dev_id] = std::make_unique<BuddyAllocator>(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::CustomAllocator(device_type_, dev_id)),
           phi::DeviceManager::GetMinChunkSize(place),
           phi::DeviceManager::GetMaxChunkSize(place),
           phi::DeviceManager::GetExtraPaddingSize(place),
-          device_type_));
+          device_type_);
     });
 
     return allocators_[dev_id].get();

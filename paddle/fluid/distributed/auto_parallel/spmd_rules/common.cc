@@ -203,8 +203,7 @@ GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
   std::vector<std::pair<std::string, std::vector<int64_t>>> res;
   size_t ntensor = specs.size();
   for (size_t i = 0; i < ntensor; ++i) {
-    res.emplace_back(std::pair<std::string, std::vector<int64_t>>(
-        tensor_axes[i], specs[i].dims_mapping()));
+    res.emplace_back(tensor_axes[i], specs[i].dims_mapping());
   }
   return res;
 }

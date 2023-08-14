@@ -51,7 +51,7 @@ struct ConstantFolding : public PatternBase {
 };
 }  // namespace patterns
 
-ConstantFoldingPass::ConstantFoldingPass() {}
+ConstantFoldingPass::ConstantFoldingPass() = default;
 
 void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(

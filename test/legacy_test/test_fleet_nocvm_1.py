@@ -62,7 +62,7 @@ class TestFleet1(unittest.TestCase):
                 dtype="int64",
                 lod_level=1,
             )
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=show,
                 size=[1, 1],
                 is_sparse=True,
@@ -79,7 +79,7 @@ class TestFleet1(unittest.TestCase):
             label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = paddle.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(
                 adam,
                 strategy={
