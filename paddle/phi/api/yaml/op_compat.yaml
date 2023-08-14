@@ -2988,6 +2988,12 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_broadcast
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: channel_shuffle
   inputs:
     {x: X}
