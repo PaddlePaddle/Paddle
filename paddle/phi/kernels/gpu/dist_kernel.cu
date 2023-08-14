@@ -54,7 +54,7 @@ template <typename Tx, typename Ty = Tx>
 struct PowFunctor {
   HOSTDEVICE explicit inline PowFunctor(const Ty& p_order)
       : p_order_(p_order) {}
-  HOSTDEVICE inline Tx operator()(const Tx& x) const {
+  HOSTDEVICE inline Tx operator()(const Tx x) const {
     return static_cast<Tx>(pow(static_cast<Ty>(x), p_order_));
   }
   Ty p_order_;
@@ -190,4 +190,5 @@ PD_REGISTER_KERNEL(dist,
                    phi::DistKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
