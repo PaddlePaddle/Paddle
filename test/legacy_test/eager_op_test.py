@@ -1232,8 +1232,15 @@ class OpTest(unittest.TestCase):
             assert len(outs) == len(
                 ir_outs
             ), "Fetch result should have same length when executed in new ir"
+
+            check_method = np.testing.assert_array_equal
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+                check_method = lambda x, y, z: np.testing.assert_allclose(
+                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
+                )
+
             for i in range(len(outs)):
-                np.testing.assert_array_equal(
+                check_method(
                     outs[i],
                     ir_outs[i],
                     err_msg='Operator Check ('
@@ -2915,8 +2922,14 @@ class OpTest(unittest.TestCase):
                 )
             )
 
+            check_method = np.testing.assert_array_equal
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+                check_method = lambda x, y, z: np.testing.assert_allclose(
+                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
+                )
+
             for i in range(len(new_gradients)):
-                np.testing.assert_array_equal(
+                check_method(
                     gradients[i],
                     new_gradients[i],
                     err_msg='Operator GradCheck ('

@@ -54,12 +54,6 @@ OLD_HTTP_PROXY=$http_proxy &> /dev/null
 OLD_HTTPS_PROXY=$https_proxy &> /dev/null
 set -x
 
-function proxy_off {
-  set +x
-  unset http_proxy &> /dev/null
-  unset https_proxy &> /dev/null
-  set -x
-}
 function proxy_on {
   set +x
   export http_proxy=$OLD_HTTP_PROXY &> /dev/null
@@ -70,10 +64,6 @@ function proxy_on {
 function prepare_ci {
   cd $workspace
   proxy_on
-  if [[ ! -z ${PULL_ID} ]]; then
-    # in ci environment, we use aliyun ubuntu mirror, thus turn off proxy
-    proxy_off
-  fi
 
   if [[ $(command -v python) == $build_dir/ci-env/bin/python ]]; then
     return
@@ -97,7 +87,6 @@ function prepare_ci {
 
 
 function cmake_ {
-    proxy_off
     mkdir -p $build_dir
     cd $build_dir
     set -x
@@ -109,7 +98,6 @@ function cmake_ {
 }
 
 function _download_and_untar {
-    proxy_off
     local tar_file=$1
     if [[ ! -f $tar_file ]]; then
         wget https://paddle-inference-dist.bj.bcebos.com/CINN/$tar_file
@@ -118,7 +106,6 @@ function _download_and_untar {
 }
 
 function prepare_model {
-    proxy_off
     cd $build_dir/third_party
 
     _download_and_untar ResNet18.tar.gz
@@ -203,7 +190,6 @@ function CINNRT {
 
     prepare_ci
 
-    proxy_off
     mkdir -p $build_dir
     cd $build_dir
     set -x

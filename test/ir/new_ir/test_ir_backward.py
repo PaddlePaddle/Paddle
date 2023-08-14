@@ -88,6 +88,16 @@ class TesBackward(unittest.TestCase):
 
         print(newir_program)
         self.assertEqual(newir_program.block().ops[-3].name(), "pd.full")
+        self.assertEqual(input_grad[0].get_defining_op().name(), "pd.tanh_grad")
+        self.assertEqual(
+            input_grad[0]
+            .get_defining_op()
+            .operands()[1]
+            .source()
+            .get_defining_op()
+            .name(),
+            "pd.mean_grad",
+        )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
     # TODO(Ruting) test add_n op when add_n api and add_grad finished

@@ -23,7 +23,11 @@
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace phi {
+class DeviceContext;
+
 namespace distributed {
+class CommContext;
+
 namespace auto_parallel {
 
 class ProcessMesh;
@@ -47,6 +51,13 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh);
 // For example, if dims_mapping is [-1, 1, -1, 0], will return {1: 1, 3: 0}.
 std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping);
+
+// Create a comm context of the input process_ids. Once the newly comm context
+// created, it will be cached in the global instance, and get from the global
+// cache later. If the input dev_ctx is GPU, then nccl comm context will be
+// created. If the input dev_ctx is CPU, then gloo comm context will be created.
+CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
+                                    const std::vector<int64_t>& process_ids);
 
 int64_t GetCurGlobalRank();
 
