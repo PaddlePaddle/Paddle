@@ -436,7 +436,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
                             dy.reshape([-1, dy.shape[-1]]),
                             transpose_x=True,
                         )
-                        if bias is not None:
+                        if bias is None:
                             task.wait()
                             return dx, dw
                         else:

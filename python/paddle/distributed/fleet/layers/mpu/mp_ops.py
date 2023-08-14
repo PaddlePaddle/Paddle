@@ -34,7 +34,7 @@ def _get_mp_env_flag(flag):
         "Flags_mp_aysnc_allreduce",
         "Flags_fused_linear_param_grad_add",
         "Flags_skip_mp_c_identity",
-    ], "Only support set Flags_mp_aysnc_allreduce (support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear), Flags_fused_linear_param_grad_add (support fused_linear_param_grad_add in ColumnParallelLinear) and Flags_skip_mp_c_identity (support skip c_identity in ColumnParallelLinear and RowParallelLinear)"
+    ], "Only support set Flags_mp_aysnc_allreduce (support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear), Flags_fused_linear_param_grad_add (support fused_linear_param_grad_add in ColumnParallelLinear) and Flags_skip_mp_c_identity (support skip c_identity in ColumnParallelLinear with Flags_mp_aysnc_allreduce=True, and skip c_identity in RowParallelLinear)"
     return str(os.getenv(flag)).lower() in ["true", "1"]
 
 
@@ -60,7 +60,9 @@ def _c_identity(tensor, group=None):
         class c_identity_eager(PyLayer):
             @staticmethod
             def forward(ctx, tensor):
-                if _get_mp_env_flag("Flags_skip_mp_c_identity"):
+                if _get_mp_env_flag(
+                    "Flags_skip_mp_c_identity"
+                ) and _get_mp_env_flag("Flags_mp_aysnc_allreduce"):
                     return tensor
                 else:
                     return _legacy_C_ops.c_identity(
