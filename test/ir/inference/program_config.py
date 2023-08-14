@@ -432,7 +432,7 @@ def create_quant_model(
         inference_program,
         feed_target_names,
         fetch_targets,
-    ] = paddle.static.load_inference_model(
+    ] = paddle.static.io.load_inference_model(
         path_prefix=None,
         executor=exe,
         model_filename=model,
@@ -596,18 +596,19 @@ def create_quant_model(
             tensor = scope.var(var_name).get_tensor()
             tensor.set(np.ones(tensor.shape(), dtype=np.float32), place)
 
-    if save:
-        fluid.io.save_inference_model(
-            'test_inference_model',
-            feed_target_names,
-            fetch_targets,
-            exe,
-            main_program=main_program,
-        )
-
     feed_vars = [
         main_program.global_block().var(name) for name in feed_target_names
     ]
+
+    if save:
+        paddle.static.io.save_inference_model(
+            'test_inference_model',
+            feed_vars,
+            fetch_targets,
+            exe,
+            program=main_program,
+        )
+
     serialized_program = paddle.static.serialize_program(
         feed_vars, fetch_targets, program=main_program
     )

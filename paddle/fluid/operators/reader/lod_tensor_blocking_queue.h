@@ -108,7 +108,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
       queues_.resize(dev_cnt);
       for (auto& item : queues_) {
         auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
-        item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
+        item = std::make_unique<LoDTensorBlockingQueue>(cap, speed_test_mode_);
       }
     }
     cv_.notify_all();
@@ -158,7 +158,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
     auto dev_cnt = queues_.size();
     for (auto& item : queues_) {
       auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
-      item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
+      item = std::make_unique<LoDTensorBlockingQueue>(cap, speed_test_mode_);
     }
     data_index_ = 0;
   }
@@ -211,7 +211,8 @@ class LoDTensorBlockingQueueHolder {
         nullptr,
         platform::errors::AlreadyExists("LoDTensorBlockingQueueHolder::"
                                         "InitOnce() can only be called once"));
-    queue_.reset(new LoDTensorBlockingQueue(capacity, speed_test_mode));
+    queue_ =
+        std::make_unique<LoDTensorBlockingQueue>(capacity, speed_test_mode);
   }
 
   inline const std::shared_ptr<LoDTensorBlockingQueue>& GetQueue() const {
@@ -230,8 +231,8 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder {
                       platform::errors::AlreadyExists(
                           "OrderedMultiDeviceLoDTensorBlockingQueueHolder::"
                           "InitOnce() can only be called once"));
-    queue_.reset(new OrderedMultiDeviceLoDTensorBlockingQueue(capacity,
-                                                              speed_test_mode));
+    queue_ = std::make_unique<OrderedMultiDeviceLoDTensorBlockingQueue>(
+        capacity, speed_test_mode);
   }
 
   inline const std::shared_ptr<OrderedMultiDeviceLoDTensorBlockingQueue>&

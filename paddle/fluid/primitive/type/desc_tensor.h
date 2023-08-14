@@ -43,14 +43,11 @@ class DescTensor : public phi::ExtendedTensor,
 
   ir::Value getValue() const { return value_; }
 
-  const phi::Place& place() const override { return place_; }
-
   bool initialized() const override { return value_.impl() != nullptr; }
 
  private:
   ir::Value value_;
   mutable phi::DDim dims_;
-  phi::Place place_;
 };
 
 }  // namespace experimental

@@ -23,12 +23,12 @@ class VjpInterface : public ir::OpInterfaceBase<VjpInterface> {
     explicit Concept(std::vector<std::vector<ir::OpResult>> (*vjp)(
         ir::Operation* op,
         const std::vector<std::vector<ir::OpResult>>& out_grads,
-        const std::vector<std::vector<int>>& stop_gradients))
+        const std::vector<std::vector<bool>>& stop_gradients))
         : vjp_(vjp) {}
     std::vector<std::vector<ir::OpResult>> (*vjp_)(
         ir::Operation* op,
         const std::vector<std::vector<ir::OpResult>>& out_grads,
-        const std::vector<std::vector<int>>& stop_gradients);
+        const std::vector<std::vector<bool>>& stop_gradients);
   };
 
   template <class ConcreteOp>
@@ -36,7 +36,7 @@ class VjpInterface : public ir::OpInterfaceBase<VjpInterface> {
     static std::vector<std::vector<ir::OpResult>> Vjp(
         ir::Operation* op,
         const std::vector<std::vector<ir::OpResult>>& out_grads,
-        const std::vector<std::vector<int>>& stop_gradients) {
+        const std::vector<std::vector<bool>>& stop_gradients) {
       return ConcreteOp::Vjp(op, out_grads, stop_gradients);
     }
 
@@ -49,7 +49,7 @@ class VjpInterface : public ir::OpInterfaceBase<VjpInterface> {
   std::vector<std::vector<ir::OpResult>> Vjp(
       ir::Operation* op,
       const std::vector<std::vector<ir::OpResult>>& out_grads,
-      const std::vector<std::vector<int>>& stop_gradients) {
+      const std::vector<std::vector<bool>>& stop_gradients) {
     return impl_->vjp_(op, out_grads, stop_gradients);
   }
 

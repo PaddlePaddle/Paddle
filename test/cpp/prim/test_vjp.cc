@@ -55,7 +55,7 @@ TEST(VJP, TanhBackwardTest) {
   paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
 
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh");
@@ -76,7 +76,7 @@ TEST(VJP, TanhBackwardTest) {
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
       {prefix_str + "_inner_var_1", prefix_str + "_inner_var_3"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_1")->Get<phi::DenseTensor>()
@@ -109,7 +109,7 @@ TEST(VJP, Tanh_BackwardTest) {
   paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
 
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh_");
@@ -130,7 +130,7 @@ TEST(VJP, Tanh_BackwardTest) {
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
       {prefix_str + "_inner_var_0", prefix_str + "_inner_var_2"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
@@ -163,7 +163,7 @@ TEST(VJP, MeanBackwardTest) {
   paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
 
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.mean");
@@ -184,7 +184,7 @@ TEST(VJP, MeanBackwardTest) {
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
       {prefix_str + "_inner_var_1", prefix_str + "_inner_var_3"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_1")->Get<phi::DenseTensor>()

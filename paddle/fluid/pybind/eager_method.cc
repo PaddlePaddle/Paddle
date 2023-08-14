@@ -63,6 +63,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/pybind.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #endif
@@ -271,6 +272,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+    phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
 #endif
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
@@ -340,6 +342,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (self->tensor.is_custom_device()) {
     eager_gil_scoped_release guard;
+    phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -1623,6 +1626,18 @@ static PyObject* tensor_remove_grad_hook(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_inplace_assign(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << "inplace assign for tensor:" << self->tensor.name();
+  PyObject* other = PyTuple_GET_ITEM(args, 0);
+  PyObject* self_obj = reinterpret_cast<PyObject*>(self);
+  ShareTensor(self_obj, other);
+  RETURN_PY_NONE;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyDoc_STRVAR(tensor_method__register_reduce_hook__doc__,
              R"DOC(_register_backward_hook($self, hook, /)
 --
@@ -2453,6 +2468,10 @@ PyMethodDef variable_methods[] = {
      nullptr},
     {"_register_grad_hook",
      (PyCFunction)(void (*)())tensor_register_grad_hook,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_inplace_assign",  // NOTE(xiongkun03): only used in sot.
+     (PyCFunction)(void (*)())tensor_inplace_assign,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_remove_grad_hook",
