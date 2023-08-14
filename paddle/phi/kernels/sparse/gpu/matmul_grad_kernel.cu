@@ -86,8 +86,8 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
                                  "ROCM 4.3.0"));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_THROW(phi::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
-      "MUSA xxx"));
+      "backward of 'sparse.matmul' use musparseSDDMM, which is supported from "
+      "MUSA"));
 #endif
 #endif
 }
@@ -141,8 +141,8 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                                  "ROCM 4.3.0"));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_THROW(phi::errors::Unimplemented(
-      "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
-      "MUSA xxx"));
+      "backward of 'sparse.matmul' use musparseSDDMM, which is supported from "
+      "MUSA"));
 #endif
 #endif
 }

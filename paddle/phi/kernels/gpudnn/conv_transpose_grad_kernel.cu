@@ -32,9 +32,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
-#elif defined(PADDLE_WITH_MUSA)
-
-#else
+#elif defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
@@ -169,7 +167,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -202,10 +200,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
-#elif defined(PADDLE_WITH_MUSA)
-  SearchResult<mudnnConvFwdAlgorithm_t> fwd_result;
-  SearchResult<mudnnConvBwdWeightsAlgorithm_t> filter_result;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif

@@ -491,9 +491,7 @@ struct GPUContext::Impl {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDestroy(dnn_handle_));
       dnn_handle_ = nullptr;
     }
-#elif defined(PADDLE_WITH_MUSA)
-
-#else
+#elif defined(PADDLE_WITH_CUDA)
     if (owned_ && dnn_handle_ != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroy(dnn_handle_));
       dnn_handle_ = nullptr;
@@ -756,13 +754,8 @@ struct GPUContext::Impl {
 #endif
 
 #ifdef PADDLE_WITH_MUSA
-#if MUSA_VERSION >= 10000
     PADDLE_ENFORCE_GPU_SUCCESS(
         musaLaunchHostFunc(stream(), internal::StreamCallbackFunc, func));
-#else
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        musaStreamAddCallback(stream(), internal::StreamCallbackFunc, func, 0));
-#endif
 #endif
   }
 

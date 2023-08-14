@@ -30,9 +30,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
-#elif defined(PADDLE_WITH_MUSA)
-
-#else
+#elif defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
@@ -178,7 +176,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WTIH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -193,9 +191,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   size_t workspace_size = 0;
 #ifdef PADDLE_WITH_HIP
   miopenConvBwdDataAlgorithm_t algo{};
-#elif defined(PADDLE_WITH_MUSA)
-  mudnnConvBwdDataAlgorithm_t algo{};
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnConvolutionBwdDataAlgo_t algo{};
 #endif
   // ------------------- cudnn conv algorithm ---------------------
@@ -231,13 +227,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
-#elif defined(PADDLE_WITH_MUSA)
-  SearchResult<mudnnConvBwdDataAlgorithm_t> bwd_result;
-  using search = SearchAlgorithm<mudnnConvBwdDataAlgorithm_t>;
-  workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
-  bwd_result.algo =
-      search::Find<T>(args, false, deterministic, workspace_size, ctx);
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
