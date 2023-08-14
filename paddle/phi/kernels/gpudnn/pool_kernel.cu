@@ -111,8 +111,8 @@ void PoolRawGPUDNNKernel(const Context& ctx,
     out_dims_vec[3] = output->dims()[2];
     out_dims_vec[4] = output->dims()[3];
     transformed_output.Resize(make_ddim(out_dims_vec));
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
-    // MIOPEN and MUDNN not support NHWC data layout
+#if defined(PADDLE_WITH_HIP)
+    // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
     layout = GPUDNNDataLayout::kNCHW;
 
@@ -155,12 +155,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
       layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
       layout, vectorize<int>(transformed_output.dims()));
-#elif defined(PADDLE_WITH_MUSA)
-  mudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, vectorize<int>(transformed_input.dims()));
-  mudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, vectorize<int>(transformed_output.dims()));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
       layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
@@ -177,10 +172,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   miopenPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
-#elif defined(PADDLE_WITH_MUSA)
-  mudnnPoolingDescriptor_t cudnn_pool_desc =
-      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
 #endif
@@ -208,17 +200,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                                     pool_workspace,
                                     pool_workernel_size_));
   PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
-#elif defined(PADDLE_WITH_MUSA)
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::mudnnPoolingForward(handle,
-                                   cudnn_pool_desc,
-                                   &alpha,
-                                   cudnn_input_desc,
-                                   tranformed_input_data,
-                                   &beta,
-                                   cudnn_output_desc,
-                                   tranformed_output_data));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::cudnnPoolingForward(handle,
                                    cudnn_pool_desc,
@@ -235,7 +217,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
     funcs::Transpose<Context, T, 5> trans5_v2;
     trans5_v2(ctx, transformed_output, output, axis);
   }
-#if defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_HIP
   // MIOPEN not support NHWC data layout
   if (data_format == str_NHWC) {
     std::vector<int> axis{0, 2, 3, 1};

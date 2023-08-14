@@ -43,6 +43,7 @@ limitations under the License. */
 #include <musparse.h>
 #include <thrust/system/musa/error.h>
 #include <thrust/system_error.h>
+using mudnnStatus_t = ::musa::dnn::Status;
 #endif  // PADDLE_WITH_MUSA
 
 #ifdef PADDLE_WITH_HIP
@@ -881,13 +882,12 @@ struct ExternalApiType {};
   }
 
 DEFINE_EXTERNAL_API_TYPE(musaError_t, musaSuccess);
-//DEFINE_EXTERNAL_API_TYPE(murandStatus_t, MURAND_STATUS_SUCCESS);
-//DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(murandStatus_t, MURAND_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(mudnnStatus_t, ::musa::dnn::Status::SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(mublasStatus_t, MUBLAS_STATUS_SUCCESS);
-//DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS);
-//DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
-//DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS);
-//DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(musparseStatus_t, MUSPARSE_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(mufftResult_t, MUFFT_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(MUresult, MUSA_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
 DEFINE_EXTERNAL_API_TYPE(mcclResult_t, mcclSuccess);
@@ -904,38 +904,132 @@ inline std::string build_musa_error_msg(musaError_t e) {
   return sout.str();
 }
 
-///*************** MURAND ERROR ***************/
-//inline bool is_error(murandStatus_t stat) {
-//  return stat != MURAND_STATUS_SUCCESS;
-//}
-//
-//inline std::string build_musa_error_msg(murandStatus_t stat) {
-//  std::ostringstream sout;
-//  sout << "MURAND error(" << stat << "). " << GetExternalErrorMsg(stat);
-//  return sout.str();
-//}
+/*************** MURAND ERROR ***************/
+inline bool is_error(murandStatus_t stat) {
+  return stat != MURAND_STATUS_SUCCESS;
+}
+
+inline const char* murandGetErrorString(murandStatus_t stat) {
+  switch (stat) {
+    case MURAND_STATUS_SUCCESS:
+      return "MURAND_STATUS_SUCCESS";
+    case MURAND_STATUS_VERSION_MISMATCH:
+      return "MURAND_STATUS_VERSION_MISMATCH";
+    case MURAND_STATUS_NOT_CREATED:
+      return "MURAND_STATUS_NOT_CREATED";
+    case MURAND_STATUS_ALLOCATION_FAILED:
+      return "MURAND_STATUS_ALLOCATION_FAILED";
+    case MURAND_STATUS_TYPE_ERROR:
+      return "MURAND_STATUS_TYPE_ERROR";
+    case MURAND_STATUS_OUT_OF_RANGE:
+      return "MURAND_STATUS_OUT_OF_RANGE";
+    case MURAND_STATUS_LENGTH_NOT_MULTIPLE:
+      return "MURAND_STATUS_LENGTH_NOT_MULTIPLE";
+    case MURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
+      return "MURAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+    case MURAND_STATUS_LAUNCH_FAILURE:
+      return "MURAND_STATUS_LAUNCH_FAILURE";
+    case MURAND_STATUS_INTERNAL_ERROR:
+      return "MURAND_STATUS_INTERNAL_ERROR";
+    case MURAND_STATUS_NOT_IMPLEMENTED:
+      return "MURAND_STATUS_NOT_IMPLEMENTED";
+    default:
+      return "Unknown murand status";
+  }
+}
+
+inline std::string build_musa_error_msg(murandStatus_t stat) {
+  std::ostringstream sout;
+  sout << "MURAND error: " << murandGetErrorString(stat) << ".";
+  return sout.str();
+}
 
 /*************** MUBLAS ERROR ***************/
 inline bool is_error(mublasStatus_t stat) {
   return stat != MUBLAS_STATUS_SUCCESS;
 }
 
+inline const char* mublasGetErrorString(mublasStatus_t stat) {
+  switch (stat) {
+    case MUBLAS_STATUS_SUCCESS:
+      return "MUBLAS_STATUS_SUCCESS";
+    case MUBLAS_STATUS_INVALID_HANDLE:
+      return "MUBLAS_STATUS_INVALID_HANDLE";
+    case MUBLAS_STATUS_NOT_IMPLEMENTED:
+      return "MUBLAS_STATUS_NOT_IMPLEMENTED";
+    case MUBLAS_STATUS_INVALID_POINTER:
+      return "MUBLAS_STATUS_INVALID_POINTER";
+    case MUBLAS_STATUS_INVALID_SIZE:
+      return "MUBLAS_STATUS_INVALID_SIZE";
+    case MUBLAS_STATUS_MEMORY_ERROR:
+      return "MUBLAS_STATUS_MEMORY_ERROR";
+    case MUBLAS_STATUS_INTERNAL_ERROR:
+      return "MUBLAS_STATUS_INTERNAL_ERROR";
+    case MUBLAS_STATUS_PERF_DEGRADED:
+      return "MUBLAS_STATUS_PERF_DEGRADED";
+    case MUBLAS_STATUS_SIZE_QUERY_MISMATCH:
+      return "MUBLAS_STATUS_SIZE_QUERY_MISMATCH";
+    case MUBLAS_STATUS_SIZE_INCREASED:
+      return "MUBLAS_STATUS_SIZE_INCREASED";
+    case MUBLAS_STATUS_SIZE_UNCHANGED:
+      return "MUBLAS_STATUS_SIZE_UNCHANGED";
+    case MUBLAS_STATUS_INVALID_VALUE:
+      return "MUBLAS_STATUS_INVALID_VALUE";
+    case MUBLAS_STATUS_CONTINUE:
+      return "MUBLAS_STATUS_CONTINUE";
+    default:
+      return "Unknown mublas status";
+  }
+}
 inline std::string build_musa_error_msg(mublasStatus_t stat) {
   std::ostringstream sout;
-  sout << "MUBLAS error(" << stat << "). ";
+  sout << "MUBLAS error: " << mublasGetErrorString(stat) << ".";
   return sout.str();
 }
 
-///*************** CUSPARSE ERROR ***************/
-//inline bool is_error(cusparseStatus_t stat) {
-//  return stat != CUSPARSE_STATUS_SUCCESS;
-//}
-//
-//inline std::string build_musa_error_msg(cusparseStatus_t stat) {
-//  std::ostringstream sout;
-//  sout << "CUSparse error(" << stat << "). " << GetExternalErrorMsg(stat);
-//  return sout.str();
-//}
+/*************** MUSPARSE ERROR ***************/
+inline bool is_error(musparseStatus_t stat) {
+  return stat != MUSPARSE_STATUS_SUCCESS;
+}
+
+inline const char* musparseGetErrorString(musparseStatus_t stat) {
+  switch (stat) {
+    case MUSPARSE_STATUS_SUCCESS:
+      return "MUSPARSE_STATUS_SUCCESSS";
+    case MUSPARSE_STATUS_INVALID_HANDLE:
+      return "MUSPARSE_STATUS_INVALID_HANDLE";
+    case MUSPARSE_STATUS_NOT_IMPLEMENTED:
+      return "MUSPARSE_STATUS_NOT_IMPLEMENTED";
+    case MUSPARSE_STATUS_INVALID_POINTER:
+      return "MUSPARSE_STATUS_INVALID_POINTER";
+    case MUSPARSE_STATUS_INVALID_SIZE:
+      return "MUSPARSE_STATUS_INVALID_SIZE";
+    case MUSPARSE_STATUS_MEMORY_ERROR:
+      return "MUSPARSE_STATUS_MEMORY_ERROR";
+    case MUSPARSE_STATUS_INTERNAL_ERROR:
+      return "MUSPARSE_STATUS_INTERNAL_ERROR";
+    case MUSPARSE_STATUS_INVALID_VALUE:
+      return "MUSPARSE_STATUS_INVALID_VALUE";
+    case MUSPARSE_STATUS_ARCH_MISMATCH:
+      return "MUSPARSE_STATUS_ARCH_MISMATCH";
+    case MUSPARSE_STATUS_ZERO_PIVOT:
+      return "MUSPARSE_STATUS_ZERO_PIVOT";
+    case MUSPARSE_STATUS_NOT_INITIALIZED:
+      return "MUSPARSE_STATUS_NOT_INITIALIZED";
+    case MUSPARSE_STATUS_TYPE_MISMATCH:
+      return "MUSPARSE_STATUS_TYPE_MISMATCH";
+    case MUSPARSE_STATUS_REQUIRES_SORTED_STORAGE:
+      return "MUSPARSE_STATUS_REQUIRES_SORTED_STORAGE";
+    default:
+      return "Unknown musparse status";
+  }
+}
+
+inline std::string build_musa_error_msg(musparseStatus_t stat) {
+  std::ostringstream sout;
+  sout << "MUSparse error: " << musparseGetErrorString(stat) << ".";
+  return sout.str();
+}
 
 /**************** MCCL ERROR ****************/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)

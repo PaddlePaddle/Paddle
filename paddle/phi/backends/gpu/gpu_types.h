@@ -25,7 +25,6 @@
 #elif defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/dynload/mublas.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
-#include <musa_runtime.h>
 #else  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
@@ -49,17 +48,29 @@ namespace phi {
 DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t, musaError_t);
 DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind, musaMemcpyKind);
 DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t, musaDeviceProp);
-// TODO(@caizhi): 
-// DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
-// DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
-// DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
-//                      cudnnTensorFormat_t,
-//                      miopenTensorFormat_t);
-// DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
-//                      cudnnActivationMode_t,
-//                      miopenActivationMode_t);
-
 #undef DECLARE_TYPE_FOR_GPU
+
+#ifndef PADDLE_WITH_MUSA
+#ifdef PADDLE_WITH_HIP
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+  using GPU_TYPE = ROCM_TYPE;
+
+#else  // PADDLE_WITH_MUSA
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+  using GPU_TYPE = CUDA_TYPE;
+#endif  // PADDLE_WITH_CUDA
+
+DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
+DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
+DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
+                     cudnnTensorFormat_t,
+                     miopenTensorFormat_t);
+DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
+                     cudnnActivationMode_t,
+                     miopenActivationMode_t);
+#undef DECLARE_TYPE_FOR_GPU
+#endif
+
 
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \

@@ -154,7 +154,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
     // input grad
     transformed_input_grad.Resize(make_ddim(in_dims_vec));
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
     layout = GPUDNNDataLayout::kNCHW;
@@ -217,12 +217,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
       layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
       layout, vectorize<int>(transformed_output.dims()));
-#elif defined(PADDLE_WITH_MUSA)
-  mudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, vectorize<int>(transformed_input.dims()));
-  mudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, vectorize<int>(transformed_output.dims()));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
       layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
@@ -243,10 +238,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   miopenPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
-#elif defined(PADDLE_WITH_MUSA)
-  mudnnPoolingDescriptor_t cudnn_pool_desc =
-      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
 #endif
@@ -277,9 +269,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                                                               input_grad_data,
                                                               pool_workspace));
     PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
-#elif defined(PADDLE_WITH_MUSA)
-
-#else
+#elif defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnPoolingBackward(handle,
                                                              cudnn_pool_desc,
                                                              &alpha,
@@ -299,7 +289,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
       funcs::Transpose<Context, T, 5> trans5_v4;
       trans5_v4(ctx, transformed_input_grad, input_grad, axis);
     }
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
     if (data_format == str_NHWC) {
       std::vector<int> axis{0, 2, 3, 1};
