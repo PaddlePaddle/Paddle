@@ -66,7 +66,7 @@ def runtime_main():
                 "sharding_degree": 2,
             }
 
-            optimizer = paddle.fluid.optimizer.Momentum(
+            optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.01, momentum=0.9
             )
             optimizer = fleet.distributed_optimizer(

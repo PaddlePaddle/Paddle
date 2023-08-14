@@ -910,9 +910,9 @@
   backward : fill_diagonal_tensor_grad
 
 - op : flash_attn
-  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
-  optional : fixed_seed_offset
+  optional : fixed_seed_offset, attn_mask
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
@@ -923,9 +923,9 @@
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
-  optional : fixed_seed_offset
+  optional :  fixed_seed_offset , attn_mask
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
@@ -1016,6 +1016,16 @@
     param : [value, dtype]
     data_type : dtype
     backend : place
+
+- op : fused_bias_residual_layernorm
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : FusedLayerNormInferMeta
+  kernel :
+    func : fused_bias_residual_layernorm
+    data_type : x
+  optional : bias, residual, norm_weight, norm_bias, residual_out
 
 - op : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
@@ -2062,14 +2072,14 @@
   backward : reverse_grad
 
 - op : rms_norm
-  args : (Tensor x, Tensor weight, Tensor bias, float epsilon, int begin_norm_axis)
-  output : Tensor(out)
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out)
   infer_meta :
     func : RmsNormInferMeta
   kernel :
     func : rms_norm
     data_type : x
-  optional : bias
+  optional : bias, residual, norm_bias, residual_out
 
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)
@@ -2672,6 +2682,16 @@
   data_transform :
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
+
+- op : variable_length_memory_efficient_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal)
+  output : Tensor
+  infer_meta :
+    func : VariableLengthMemoryEfficientAttentionInferMeta
+  kernel :
+    func : variable_length_memory_efficient_attention
+    data_type : query
+  optional : mask
 
 - op : view_dtype
   args : (Tensor input, DataType dtype)

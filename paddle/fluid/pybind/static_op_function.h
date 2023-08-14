@@ -24,6 +24,7 @@
 namespace paddle {
 namespace pybind {
 
+PyObject *static_api_add_n(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_mean(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_sum(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_divide(PyObject *self, PyObject *args, PyObject *kwargs);
