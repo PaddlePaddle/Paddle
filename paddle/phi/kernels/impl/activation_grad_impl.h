@@ -189,11 +189,11 @@ void TanhTripleGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(d_dout);
   }
   if (d_out_new) {
-    d_dout->Resize(out.dims());
+    d_out_new->Resize(out.dims());
     dev_ctx.template Alloc<T>(d_out_new);
   }
   if (d_ddx) {
-    d_dout->Resize(ddx.dims());
+    d_ddx->Resize(ddx.dims());
     dev_ctx.template Alloc<T>(d_ddx);
   }
   funcs::TanhTripleGradFunctor<T> functor;

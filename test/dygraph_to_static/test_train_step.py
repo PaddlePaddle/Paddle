@@ -17,7 +17,10 @@ import unittest
 from functools import partial
 
 import numpy as np
-from dygraph_to_static_util import enable_fallback_guard
+from dygraph_to_static_util import (
+    enable_fallback_guard,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -77,6 +80,7 @@ class TestTrainStepTinyModel(unittest.TestCase):
             losses.append(loss)
         return losses
 
+    @test_and_compare_with_new_ir(False)
     def test_train_step(self):
         reset_seed()
         dygraph_losses = self.get_train_step_losses(

@@ -48,10 +48,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
-  paddle::framework::FetchList BetaRun(
-      const std::vector<std::string>& feed_names,
-      bool need_fetch = true) override;
-
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
@@ -62,6 +58,12 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
   const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
+
+  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
+      const override;
+
+  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
+      const override;
 
   bool IsSharedResultsBuild() const override;
 
