@@ -53,12 +53,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
 
-  // op dependences
-  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
-
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
-
-  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
 
   bool IsSharedResultsBuild() const override;
 

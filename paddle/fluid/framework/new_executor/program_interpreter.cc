@@ -287,6 +287,7 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
+  auto& impl = dynamic_cast<ProgramInterpreter&>(src);
   if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
     return;
   }
@@ -341,18 +342,6 @@ std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
 const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
     const {
   return stream_analyzer_;
-}
-
-const interpreter::NewIrDependencyBuilder&
-ProgramInterpreter::GetNewIrDependencyBuilder() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
-}
-
-const interpreter::NewIrStreamAnalyzer&
-ProgramInterpreter::GetNewIrStreamAnalyzer() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
 }
 
 bool ProgramInterpreter::IsSharedResultsBuild() const {
