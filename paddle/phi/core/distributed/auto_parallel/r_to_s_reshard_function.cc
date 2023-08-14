@@ -78,11 +78,9 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
           << " There will have " << num_of_process
           << " process participate in.";
 
-  // TODO(liyurui): Consider the tensor can not be balanced split,
-  // for example, the shape of tensor is {6} but want to split it by 4
-  // process.
-  IntArray sections(std::vector<int64_t>(
-      num_of_process, in.dims()[split_axis] / num_of_process));
+  std::vector<int64_t> split_num_vec =
+      BalancedSplit(in.dims()[split_axis], num_of_process);
+  IntArray sections(split_num_vec);
 
   std::vector<DenseTensor> split_out_vec = ReshardSplitFunctor(
       *dev_ctx, in_physical_tensor_cur_rank, sections, split_axis);
@@ -90,6 +88,8 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
   VLOG(3) << "The current process will remain the idx "
           << coord_in_mesh[mesh_axis] << " piece of tensor";
   out_physical_tensor_cur_rank = split_out_vec[coord_in_mesh[mesh_axis]];
+  VLOG(3) << "The shape of physical tensor after split is "
+          << out_physical_tensor_cur_rank.dims();
 
   return std::make_shared<DistTensor>(
       std::make_shared<DenseTensor>(out_physical_tensor_cur_rank),
