@@ -232,8 +232,14 @@ def cast(x, dtype):
 
 @inplace_apis_in_dygraph_only
 def cast_(x, dtype):
-    paddle.assign(paddle.cast(x, dtype), x)
-    return x
+    """
+    Inplace version of ``cast`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cast`.
+    """
+    if in_dynamic_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.cast_(x, dtype)
 
 
 def slice(input, axes, starts, ends):
