@@ -657,10 +657,14 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
 
             >>> from paddle.distributed.auto_parallel.static.utils import load_distributed_checkpoint
 
-            >>> ckpt_path = ['./model_state_rank0.pdmodel',
-            ...                 './model_state_rank1.pdmodel']
-            >>> dist_attr_path = ['./dist_attr_rank0.pdattr',
-            ...                     './dist_attr_rank1.pdattr']
+            >>> ckpt_path = [
+            ...     './model_state_rank0.pdmodel',
+            ...     './model_state_rank1.pdmodel',
+            ... ]
+            >>> dist_attr_path = [
+            ...     './dist_attr_rank0.pdattr',
+            ...     './dist_attr_rank1.pdattr',
+            ... ]
             >>> param_dict, dist_attr, add_info = load_distributed_checkpoint(ckpt_path, dist_attr_path)
     """
     assert _check_valid_path(
@@ -699,10 +703,14 @@ def load_checkpoint_into_program(
             >>> from paddle.distributed.auto_parallel.static.utils import load_checkpoint_into_program
 
             >>> exe.run(startup_program)
-            >>> ckpt_path = ['./model_state_rank0.pdmodel',
-            ...                 './model_state_rank1.pdmodel']
-            >>> dist_attr_path = ['./dist_attr_rank0.pdattr',
-            ...                     './dist_attr_rank1.pdattr']
+            >>> ckpt_path = [
+            ...     './model_state_rank0.pdmodel',
+            ...     './model_state_rank1.pdmodel',
+            ... ]
+            >>> dist_attr_path = [
+            ...     './dist_attr_rank0.pdattr',
+            ...     './dist_attr_rank1.pdattr',
+            ... ]
             >>> load_checkpoint_into_program(ckpt_path, dist_attr_path, main_program)
     """
     from .dist_context import get_default_distributed_context
