@@ -12,12 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/backends/dynload/musartc.h"
 
 namespace phi {
 namespace dynload {
 
+std::once_flag musartc_dso_flag;
+void* musartc_dso_handle = nullptr;
+
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
+
+MUSARTC_ROUTINE_EACH(DEFINE_WRAP);
+
 bool HasNVRTC() {
-  return false;
+  std::call_once(musartc_dso_flag,
+                 []() { musartc_dso_handle = GetNVRTCDsoHandle(); });
+  return musartc_dso_handle != nullptr;
 }
 
 }  // namespace dynload

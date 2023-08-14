@@ -73,7 +73,7 @@ class GPUDeviceCode : public DeviceCode {
 #ifdef PADDLE_WITH_HIP
   bool CheckNVRTCResult(hiprtcResult result, std::string function);
 #elif defined(PADDLE_WITH_MUSA)
-
+  bool CheckNVRTCResult(mtrtcResult result, std::string function);
 #else
   bool CheckNVRTCResult(nvrtcResult result, std::string function);
 #endif
