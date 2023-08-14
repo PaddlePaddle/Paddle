@@ -255,10 +255,8 @@ def cast_(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
-        return _C_ops.cast_(x, dtype)
+    paddle.assign(paddle.cast(x, dtype), x)
+    return x
 
 
 def slice(input, axes, starts, ends):

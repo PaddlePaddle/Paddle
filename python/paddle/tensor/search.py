@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ..framework import (
@@ -706,6 +707,55 @@ def where(condition, x=None, y=None, name=None):
         )
 
         return out
+
+
+@inplace_apis_in_dygraph_only
+def where_(condition, x=None, y=None, name=None):
+    r"""
+    Inplace version of ``where`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_where`.
+    """
+    if np.isscalar(x):
+        x = paddle.full([1], x, np.array([x]).dtype.name)
+
+    if np.isscalar(y):
+        y = paddle.full([1], y, np.array([y]).dtype.name)
+
+    if x is None and y is None:
+        return nonzero(condition, as_tuple=True)
+
+    if x is None or y is None:
+        raise ValueError("either both or neither of x and y should be given")
+
+    condition_shape = list(condition.shape)
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if x_shape == y_shape and condition_shape == x_shape:
+        broadcast_condition = condition
+        broadcast_x = x
+        broadcast_y = y
+    else:
+        zeros_like_x = paddle.zeros_like(x)
+        zeros_like_y = paddle.zeros_like(y)
+        zeros_like_condition = paddle.zeros_like(condition)
+        zeros_like_condition = paddle.cast(zeros_like_condition, x.dtype)
+        cast_cond = paddle.cast(condition, x.dtype)
+
+        broadcast_zeros = paddle.add(zeros_like_x, zeros_like_y)
+        broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_condition)
+        broadcast_x = paddle.add_(x, broadcast_zeros)
+        if broadcast_x.shape != x.shape:
+            raise ValueError(
+                "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                    broadcast_x.shape, x.shape
+                )
+            )
+        broadcast_y = paddle.add(y, broadcast_zeros)
+        broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
+        broadcast_condition = paddle.cast(broadcast_condition, 'bool')
+
+    if in_dynamic_mode():
+        return _C_ops.where_(broadcast_condition, broadcast_x, broadcast_y)
 
 
 def index_sample(x, index):

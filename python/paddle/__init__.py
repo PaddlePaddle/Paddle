@@ -127,10 +127,8 @@ from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
-from .tensor.linalg import transpose_  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
-from .tensor.linalg import t_  # noqa: F401
 from .tensor.linalg import cdist  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
@@ -341,6 +339,7 @@ from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
 from .tensor.math import ldexp  # noqa: F401
+from .tensor.math import ldexp_  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
@@ -474,7 +473,6 @@ __all__ = [  # noqa
     'allclose',
     'isclose',
     't',
-    't_',
     'add',
     'subtract',
     'diag',
@@ -686,7 +684,6 @@ __all__ = [  # noqa
     'tanh',
     'tanh_',
     'transpose',
-    'transpose_',
     'randn',
     'strided_slice',
     'unique',
@@ -772,6 +769,7 @@ __all__ = [  # noqa
     'take',
     'frexp',
     'ldexp',
+    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',

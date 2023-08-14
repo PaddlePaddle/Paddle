@@ -908,7 +908,6 @@
     func : TransposeInferMeta
   kernel :
     func : transpose
-  inplace : (x -> out)
   backward : transpose_grad
 
 - op : tril
