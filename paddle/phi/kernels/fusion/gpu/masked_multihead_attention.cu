@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fusion/gpu/masked_multihead_attention.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

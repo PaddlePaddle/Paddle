@@ -67,9 +67,6 @@ namespace phi {
 namespace fusion {
 
 namespace {  // NOLINT
-namespace plat = paddle::platform;
-using float16 = plat::float16;
-using bfloat16 = plat::bfloat16;
 
 struct Float8_ {
   float2 x;

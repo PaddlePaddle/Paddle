@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/impl/masked_multihead_attention_impl.h"
+#include "paddle/phi/kernels/fusion/gpu/masked_multihead_attention_utils.h"
 
 namespace phi {
 namespace fusion {

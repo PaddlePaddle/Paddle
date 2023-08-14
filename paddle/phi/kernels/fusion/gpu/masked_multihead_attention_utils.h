@@ -305,9 +305,9 @@ inline __device__ void convert_from_float(float4 &dst, float4 src) {  // NOLINT
   dst = src;
 }
 
-inline __device__ void convert_from_float(plat::float16 &dst,  // NOLINT
+inline __device__ void convert_from_float(phi::float16 &dst,  // NOLINT
                                           float src) {
-  dst = static_cast<plat::float16>(src);
+  dst = static_cast<phi::float16>(src);
 }
 
 inline __device__ void convert_from_float(uint4 &dst, Float8_ src) {  // NOLINT
@@ -1008,8 +1008,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
           params, dev_ctx.stream(), load_func, store_func);
       break;
     default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Dim_head = %d is unsupport!", dim_head));
+      PADDLE_THROW(
+          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
 }
 
