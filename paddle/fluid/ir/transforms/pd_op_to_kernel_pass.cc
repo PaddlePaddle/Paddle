@@ -59,12 +59,6 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.get_parameter",
     "pd.shadow_output"};
 
-const std::unordered_set<std::string> LegacyOpList = {
-    "pd.fused_softmax_mask_upper_triangle",
-    "pd.fused_softmax_mask_upper_triangle_grad",
-    "pd.load_combine",
-    "pd.c_concat"};
-
 bool NeedFallBackCpu(const ir::Operation* op,
                      const std::string& kernel_fn_name,
                      const phi::KernelKey& kernel_key) {
@@ -576,7 +570,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       auto args_def = phi_kernel.args_def();
       auto output_defs = args_def.output_defs();
       if (!UnchangeOutputOps.count(op_item->name()) &&
-          !LegacyOpList.count(op_item->name())) {
+          !IsLegacyOp(op_item->name())) {
         PADDLE_ENFORCE_EQ(
             op_item->num_results(),
             output_defs.size(),
@@ -588,7 +582,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       for (size_t i = 0; i < op_item->num_results(); ++i) {
         phi::Place out_place;
         if ((!UnchangeOutputOps.count(op_item->name())) &&
-            (!LegacyOpList.count(op_item->name())) && phi_kernel.IsValid()) {
+            (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
           out_place = phi::TransToPhiPlace(output_defs[i].backend);
         } else {
           out_place = phi::TransToPhiPlace(kernel_key.backend());

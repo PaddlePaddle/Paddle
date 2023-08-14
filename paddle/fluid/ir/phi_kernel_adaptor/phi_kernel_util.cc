@@ -663,9 +663,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
   // build attribute
   auto& op_attr_map = op->attributes();
   auto attr_name_list = op_yaml_info.AttrParams(true);
-  std::cerr << "attr name lsit " << attr_name_list.size() << std::endl;
   for (auto& name : attr_name_list) {
-    std::cerr << " aattr name " << name << std::endl;
     auto& val = op_attr_map.at(name);
 
     if (val.isa<ir::StrAttribute>()) {

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -286,11 +288,18 @@ class TestNewIrPrint(unittest.TestCase):
 
 
 class TestJitSaveOp(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, "new_ir_save_load")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_with_new_ir(self):
         paddle.disable_static()
 
         linear = paddle.nn.Linear(10, 10)
-        path = "example_model/linear"
+        path = os.path.join(self.model_path, "linear")
 
         paddle.jit.save(
             linear,
@@ -311,11 +320,11 @@ class TestJitSaveOp(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = paddle.fluid.io.load_inference_model(
-            "./example_model",
+        ] = paddle.static.io.load_inference_model(
+            self.model_path,
             executor=exe,
-            model_filename="./example_model/linear.pdmodel",
-            params_filename="./example_model/linear.pdiparams",
+            model_filename="linear.pdmodel",
+            params_filename="linear.pdiparams",
         )
 
 
