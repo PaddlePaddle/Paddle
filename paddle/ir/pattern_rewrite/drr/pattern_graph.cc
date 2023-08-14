@@ -137,8 +137,14 @@ void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)
   
   // init opcall_dependent;
   for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall){
-    for(const auto &pre_depd_tensor : opcall_sptr.get()->inputs()){
-      opcall_dependent[opcall_sptr.get()].insert(pre_depd_tensor->name());
+
+    if (opcall_sptr.get()->inputs().empty()){ // opcall inputs is empty
+      opcall_queue.push(opcall_sptr.get());
+    }
+    else{
+      for(const auto &pre_depd_tensor : opcall_sptr.get()->inputs()){
+        opcall_dependent[opcall_sptr.get()].insert(pre_depd_tensor->name());
+      }
     }
   }
 
