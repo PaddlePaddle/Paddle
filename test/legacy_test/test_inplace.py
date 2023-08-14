@@ -1058,5 +1058,21 @@ class TestDygraphInplaceFloorDivide(TestDygraphInplace):
         pass
 
 
+class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.cumsum_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.cumsum(var)
+
+
+class TestDygraphInplaceCumprod(TestDygraphInplace):
+    def inplace_api_processing(self, var):
+        return paddle.cumprod_(var, -1)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.cumprod(var, -1)
+
+
 if __name__ == '__main__':
     unittest.main()
