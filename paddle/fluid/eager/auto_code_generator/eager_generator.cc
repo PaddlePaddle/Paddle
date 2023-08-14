@@ -3145,6 +3145,10 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       continue;
     }
 
+    if (!legacy_op_list.count(op_type)) {
+      continue;
+    }
+
     // Skip the sparse op
     if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
         op_type != "sparse_attention") {

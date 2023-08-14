@@ -410,6 +410,11 @@ GenerateOpFunctions() {
       continue;
     }
     auto& op_type = op_proto->type();
+
+    if (!legacy_op_list.count(op_type)) {
+      continue;
+    }
+
     // Skip operators that will be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
       continue;

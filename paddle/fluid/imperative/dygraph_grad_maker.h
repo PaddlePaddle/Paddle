@@ -42,6 +42,176 @@ class TracedVarList : public std::vector<std::shared_ptr<T>> {
   using BaseClass::BaseClass;
 };
 
+class GradOpBaseMakerBase {
+ public:
+  explicit GradOpBaseMakerBase(
+      const std::string& type,
+      const NameVarBaseMap& var_base_map_in,
+      const NameVarBaseMap& var_base_map_out,
+      const framework::AttributeMap& attrs,
+      const std::map<std::string, std::string>& inplace_map)
+      : type_(type),
+        var_base_map_in_(var_base_map_in),
+        var_base_map_out_(var_base_map_out),
+        attrs_(attrs),
+        inplace_map_(inplace_map) {}
+
+  virtual ~GradOpBaseMakerBase() = default;
+
+  virtual std::shared_ptr<GradOpNode> operator()() const = 0;
+
+  TracedVarList<VarBase, TracedVarRole::kBackward> InputGrad(
+      const std::string& name, bool drop_empty_grad UNUSED = true) const {
+    return GetVarBaseList<TracedVarRole::kBackward>(name, /*is_input=*/true);
+  }
+
+  TracedVarList<VarBase, TracedVarRole::kBackward> OutputGrad(
+      const std::string& name) const {
+    return GetVarBaseList<TracedVarRole::kBackward>(name, /*is_input=*/false);
+  }
+
+  TracedVarList<VarBase, TracedVarRole::kForward> Input(
+      const std::string& name) const {
+    return GetVarBaseList<TracedVarRole::kForward>(name, /*is_input=*/true);
+  }
+
+  TracedVarList<VarBase, TracedVarRole::kForward> Output(
+      const std::string& name) const {
+    return GetVarBaseList<TracedVarRole::kForward>(name, /*is_input=*/false);
+  }
+
+  static TracedVarList<VarBase, TracedVarRole::kForward> EmptyInput() {
+    return {};
+  }
+
+  static TracedVarList<VarBase, TracedVarRole::kForward> EmptyOutput() {
+    return {};
+  }
+
+  static TracedVarList<VarBase, TracedVarRole::kBackward> EmptyOutputGrad() {
+    return {};
+  }
+
+  static TracedVarList<VarBase, TracedVarRole::kBackward> EmptyInputGrad() {
+    return {};
+  }
+
+  std::vector<std::string> InputNames() const {
+    std::vector<std::string> vec_temp;
+    vec_temp.reserve(var_base_map_in_.size());
+    for (auto& it : var_base_map_in_) {
+      vec_temp.emplace_back(it.first);
+    }
+    return vec_temp;
+  }
+
+  std::vector<std::string> OutputNames() const {
+    std::vector<std::string> vec_temp;
+    vec_temp.reserve(var_base_map_out_.size());
+    for (auto& it : var_base_map_out_) {
+      vec_temp.emplace_back(it.first);
+    }
+    return vec_temp;
+  }
+
+  // Only for dygraph
+  void SetDygraphDefaultAttrsMap(const framework::AttributeMap& default_attrs) {
+    default_attrs_ = &default_attrs;
+  }
+
+  const framework::AttributeMap& DefaultAttrsMap() const {
+    return *default_attrs_;
+  }
+
+  const framework::AttributeMap& Attrs() const { return attrs_; }
+
+  virtual const framework::Attribute& GetAttr(const std::string& name) const {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE_EQ(
+        it != attrs_.end(),
+        true,
+        platform::errors::NotFound(
+            "Cannot find attribute [%s] in operator [%s]", name, type_));
+    return it->second;
+  }
+
+  template <typename T>
+  inline const T& Attr(const std::string& name) const {
+    return PADDLE_GET_CONST(T, GetAttr(name));
+  }
+
+  const std::string& ForwardOpType() const { return type_; }
+
+ protected:
+  bool HasInput(const std::string& name) const {
+    return var_base_map_in_.count(name) > 0;
+  }
+
+  bool HasOutput(const std::string& name) const {
+    return var_base_map_out_.count(name) > 0;
+  }
+
+  static std::shared_ptr<GradOpNode> NewGradNode() {
+    return std::make_shared<GradOpNode>();
+  }
+
+  const std::map<std::string, std::string>& GetInplaceMap() const {
+    return inplace_map_;
+  }
+
+ private:
+  template <TracedVarRole kRole>
+  TracedVarList<VarBase, kRole> GetVarBaseList(const std::string& name,
+                                               bool is_input) const {
+    const auto& data_map = is_input ? var_base_map_in_ : var_base_map_out_;
+    auto iterator = data_map.find(name);
+    TracedVarList<VarBase, kRole> vec_temp;
+    if (iterator != data_map.end()) {
+      vec_temp.reserve(iterator->second.size());
+
+      bool is_valid = false;
+      for (auto& var_base_temp : iterator->second) {
+        if (!var_base_temp) {
+          vec_temp.emplace_back();
+          continue;
+        }
+
+        if (kRole == TracedVarRole::kBackward) {
+          if (!var_base_temp->HasGradVar()) {
+            VLOG(6) << "GradVarBase of var " << var_base_temp->Name()
+                    << " in OP " << type_ << " is null";
+            var_base_temp->MutableGradVarBase();
+          }
+          auto grad_var_base_tmp = var_base_temp->GradVarBase();
+
+          if (!is_input) {
+            auto* tensor =
+                grad_var_base_tmp->MutableVar()->GetMutable<phi::DenseTensor>();
+            tensor->Resize(var_base_temp->Var().Get<phi::DenseTensor>().dims());
+          }
+          vec_temp.emplace_back(grad_var_base_tmp);
+        } else {
+          vec_temp.emplace_back(var_base_temp);
+        }
+        is_valid = true;
+      }
+
+      if (!is_valid) {
+        vec_temp.clear();
+      }
+    }
+
+    return vec_temp;
+  }
+
+ private:
+  const std::string& type_;
+  const NameVarBaseMap& var_base_map_in_;
+  const NameVarBaseMap& var_base_map_out_;
+  const framework::AttributeMap& attrs_;
+  const framework::AttributeMap* default_attrs_ = nullptr;
+  const std::map<std::string, std::string>& inplace_map_;
+};
 class TracedGradOp {
   DISABLE_COPY_AND_ASSIGN(TracedGradOp);
 
