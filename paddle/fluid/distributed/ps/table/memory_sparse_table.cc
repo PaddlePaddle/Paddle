@@ -335,7 +335,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
   TopkCalculator tk(_real_local_shard_num, tk_size);
 
   std::string table_path = TableDir(dirname);
-  _afs_client.remove(paddle::string::format_string(
+  _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   std::atomic<uint32_t> feasign_size_all{0};
 
@@ -352,15 +352,15 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
     FsChannelConfig channel_config;
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
       channel_config.path =
-          paddle::string::format_string("%s/part-%03d-%05d.gz",
-                                        table_path.c_str(),
-                                        _shard_idx,
-                                        file_start_idx + i);
+          ::paddle::string::format_string("%s/part-%03d-%05d.gz",
+                                          table_path.c_str(),
+                                          _shard_idx,
+                                          file_start_idx + i);
     } else {
-      channel_config.path = paddle::string::format_string("%s/part-%03d-%05d",
-                                                          table_path.c_str(),
-                                                          _shard_idx,
-                                                          file_start_idx + i);
+      channel_config.path = ::paddle::string::format_string("%s/part-%03d-%05d",
+                                                            table_path.c_str(),
+                                                            _shard_idx,
+                                                            file_start_idx + i);
     }
     channel_config.converter = _value_accesor->Converter(save_param).converter;
     channel_config.deconverter =
@@ -387,7 +387,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
         if (_value_accesor->Save(it.value().data(), save_param)) {
           std::string format_value = _value_accesor->ParseToString(
               it.value().data(), it.value().size());
-          if (0 != write_channel->write_line(paddle::string::format_string(
+          if (0 != write_channel->write_line(::paddle::string::format_string(
                        "%lu %s", it.key(), format_value.c_str()))) {
             ++retry_num;
             is_write_failed = true;
@@ -434,7 +434,7 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
   }
   size_t file_start_idx = _m_avg_local_shard_num * _shard_idx;
   std::string table_path = TableDir(path);
-  _afs_client.remove(paddle::string::format_string(
+  _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d-*", table_path.c_str(), _shard_idx));
   int thread_num = _m_real_local_shard_num < 20 ? _m_real_local_shard_num : 20;
 
@@ -444,10 +444,10 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _m_real_local_shard_num; ++i) {
     FsChannelConfig channel_config;
-    channel_config.path = paddle::string::format_string("%s/part-%03d-%05d",
-                                                        table_path.c_str(),
-                                                        _shard_idx,
-                                                        file_start_idx + i);
+    channel_config.path = ::paddle::string::format_string("%s/part-%03d-%05d",
+                                                          table_path.c_str(),
+                                                          _shard_idx,
+                                                          file_start_idx + i);
 
     channel_config.converter = _value_accesor->Converter(save_param).converter;
     channel_config.deconverter =
@@ -471,8 +471,9 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
             if (_value_accesor->Save(it.value().data(), save_param)) {
               std::string format_value = _value_accesor->ParseToString(
                   it.value().data(), it.value().size());
-              if (0 != write_channel->write_line(paddle::string::format_string(
-                           "%lu %s", it.key(), format_value.c_str()))) {
+              if (0 !=
+                  write_channel->write_line(::paddle::string::format_string(
+                      "%lu %s", it.key(), format_value.c_str()))) {
                 ++retry_num;
                 is_write_failed = true;
                 LOG(ERROR) << "MemorySparseTable save failed, retry it! path:"
@@ -505,10 +506,10 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
     feasign_size_all += feasign_size;
   }
   LOG(INFO) << "MemorySparseTable save patch success, path:"
-            << paddle::string::format_string("%s/%03d/part-%03d-",
-                                             path.c_str(),
-                                             _config.table_id(),
-                                             _shard_idx)
+            << ::paddle::string::format_string("%s/%03d/part-%03d-",
+                                               path.c_str(),
+                                               _config.table_id(),
+                                               _shard_idx)
             << " from " << file_start_idx << " to "
             << file_start_idx + _m_real_local_shard_num - 1
             << ", feasign size: " << feasign_size_all;
@@ -521,7 +522,7 @@ int64_t MemorySparseTable::CacheShuffle(
     double cache_threshold,
     std::function<std::future<int32_t>(
         int msg_type, int to_pserver_id, std::string &msg)> send_msg_func,
-    paddle::framework::Channel<std::pair<uint64_t, std::string>>
+    ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
         &shuffled_channel,
     const std::vector<Table *> &table_ptrs) {
   LOG(INFO) << "cache shuffle with cache threshold: " << cache_threshold;
@@ -538,24 +539,24 @@ int64_t MemorySparseTable::CacheShuffle(
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 
   std::vector<
-      paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>>
+      ::paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>>
       writers(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, std::string>>> datas(
       _real_local_shard_num);
 
   int feasign_size = 0;
-  std::vector<paddle::framework::Channel<std::pair<uint64_t, std::string>>>
+  std::vector<::paddle::framework::Channel<std::pair<uint64_t, std::string>>>
       tmp_channels;
   for (int i = 0; i < _real_local_shard_num; ++i) {
     tmp_channels.push_back(
-        paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>());
+        ::paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>());
   }
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>> &writer =
-        writers[i];
+    ::paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>
+        &writer = writers[i];
     writer.Reset(tmp_channels[i].get());
 
     for (auto table_ptr : table_ptrs) {
@@ -581,15 +582,15 @@ int64_t MemorySparseTable::CacheShuffle(
   // shard num: " << _real_local_shard_num;
   std::vector<std::pair<uint64_t, std::string>> local_datas;
   for (int idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
-    paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>> &writer =
-        writers[idx_shard];
+    ::paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>
+        &writer = writers[idx_shard];
     auto channel = writer.channel();
     std::vector<std::pair<uint64_t, std::string>> &data = datas[idx_shard];
-    std::vector<paddle::framework::BinaryArchive> ars(shuffle_node_num);
+    std::vector<::paddle::framework::BinaryArchive> ars(shuffle_node_num);
     while (channel->Read(data)) {
       for (auto &t : data) {
         auto pserver_id =
-            paddle::distributed::local_random_engine()() % shuffle_node_num;
+            ::paddle::distributed::local_random_engine()() % shuffle_node_num;
         if (pserver_id != _shard_idx) {
           ars[pserver_id] << t;
         } else {
@@ -620,7 +621,7 @@ int64_t MemorySparseTable::CacheShuffle(
         t.wait();
       }
       ars.clear();
-      ars = std::vector<paddle::framework::BinaryArchive>(shuffle_node_num);
+      ars = std::vector<::paddle::framework::BinaryArchive>(shuffle_node_num);
       data = std::vector<std::pair<uint64_t, std::string>>();
     }
   }
@@ -631,20 +632,20 @@ int64_t MemorySparseTable::CacheShuffle(
 int32_t MemorySparseTable::SaveCache(
     const std::string &path,
     const std::string &param,
-    paddle::framework::Channel<std::pair<uint64_t, std::string>>
+    ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
         &shuffled_channel) {
   if (_shard_idx >= _config.sparse_table_cache_file_num()) {
     return 0;
   }
   int save_param = atoi(param.c_str());  // batch_model:0  xbox:1
-  std::string table_path = paddle::string::format_string(
+  std::string table_path = ::paddle::string::format_string(
       "%s/%03d_cache/", path.c_str(), _config.table_id());
-  _afs_client.remove(paddle::string::format_string(
+  _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d", table_path.c_str(), _shard_idx));
   uint32_t feasign_size = 0;
   FsChannelConfig channel_config;
   // not compress cache model
-  channel_config.path = paddle::string::format_string(
+  channel_config.path = ::paddle::string::format_string(
       "%s/part-%03d", table_path.c_str(), _shard_idx);
   channel_config.converter = _value_accesor->Converter(save_param).converter;
   channel_config.deconverter =
@@ -656,7 +657,7 @@ int32_t MemorySparseTable::SaveCache(
   while (shuffled_channel->Read(data)) {
     for (auto &t : data) {
       ++feasign_size;
-      if (0 != write_channel->write_line(paddle::string::format_string(
+      if (0 != write_channel->write_line(::paddle::string::format_string(
                    "%lu %s", t.first, t.second.c_str()))) {
         LOG(ERROR) << "Cache Table save failed, "
                       "path:"

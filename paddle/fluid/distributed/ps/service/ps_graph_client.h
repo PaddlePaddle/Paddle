@@ -27,7 +27,7 @@ struct RpcMessageHead;
 };
 
 struct SparsePassValues {
-  paddle::framework::WaitGroup wg;
+  ::paddle::framework::WaitGroup wg;
   SparseShardValues *values;
 };
 class PsGraphClient : public PsLocalClient {
@@ -56,7 +56,7 @@ class PsGraphClient : public PsLocalClient {
 
  public:
   void request_handler(const simple::RpcMessageHead &head,
-                       paddle::framework::BinaryArchive &iar);  // NOLINT
+                       ::paddle::framework::BinaryArchive &iar);  // NOLINT
   SparseTableInfo &get_table_info(const size_t &table_id);
 
  private:
@@ -66,7 +66,7 @@ class PsGraphClient : public PsLocalClient {
   int _rank_num = 0;
   std::vector<std::shared_ptr<framework::ThreadPool>> _thread_pools;
   std::vector<std::vector<uint64_t>> _local_shard_keys;
-  std::vector<std::vector<paddle::framework::BinaryArchive>> _shard_ars;
+  std::vector<std::vector<::paddle::framework::BinaryArchive>> _shard_ars;
 };
 }  // namespace distributed
 }  // namespace paddle

@@ -410,8 +410,8 @@ class Communicator {
   }
 
   void InitGFlag(const std::string &gflags);
-  paddle::distributed::PSParameter _ps_param;
-  paddle::distributed::PaddlePSEnvironment _ps_env;
+  ::paddle::distributed::PSParameter _ps_param;
+  ::paddle::distributed::PaddlePSEnvironment _ps_env;
   int servers_ = 0;
   int trainers_;
   int trainer_id_ = 0;
@@ -661,7 +661,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   std::unordered_map<
       std::string,
-      paddle::framework::Channel<std::shared_ptr<std::vector<int64_t>>>>
+      ::paddle::framework::Channel<std::shared_ptr<std::vector<int64_t>>>>
       sparse_id_queues_;
 };
 

@@ -62,10 +62,10 @@ int32_t CoordinatorClient::Initialize(
     const std::vector<std::string>& trainer_endpoints) {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
-  options.timeout_ms = paddle::distributed::FLAGS_pserver_timeout_ms;
+  options.timeout_ms = ::paddle::distributed::FLAGS_pserver_timeout_ms;
   options.connection_type = "pooled";
   options.connect_timeout_ms =
-      paddle::distributed::FLAGS_pserver_connect_timeout_ms;
+      ::paddle::distributed::FLAGS_pserver_connect_timeout_ms;
   options.max_retry = 3;
 
   std::string server_ip_port;
@@ -109,7 +109,7 @@ int32_t CoordinatorClient::Initialize(
   }
   for (size_t i = 0; i < trainer_endpoints.size(); i++) {
     std::vector<std::string> addr =
-        paddle::string::Split(trainer_endpoints[i], ':');
+        ::paddle::string::Split(trainer_endpoints[i], ':');
     fl_client_list[i].ip = addr[0];
     fl_client_list[i].port = std::stol(addr[1]);
     fl_client_list[i].rank = i;  // TO CHECK
@@ -152,7 +152,7 @@ int32_t CoordinatorClient::StartClientService() {
     LOG(ERROR) << "fl-ps > coordinator server endpoint not set";
     return -1;
   }
-  auto addr = paddle::string::Split(_endpoint, ':');
+  auto addr = ::paddle::string::Split(_endpoint, ':');
   std::string ip = addr[0];
   std::string port = addr[1];
   std::string rank = addr[2];

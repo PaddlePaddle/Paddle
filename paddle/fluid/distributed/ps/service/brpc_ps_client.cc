@@ -144,7 +144,7 @@ int32_t BrpcPsClient::StartFlClientService(const std::string &self_endpoint) {
 
   if (_fl_server.Start(self_endpoint.c_str(), &options) != 0) {
     VLOG(0) << "fl-ps > StartFlClientService failed. Try again.";
-    auto ip_port = paddle::string::Split(self_endpoint, ':');
+    auto ip_port = ::paddle::string::Split(self_endpoint, ':');
     std::string ip = ip_port[0];
     int port = std::stoi(ip_port[1]);
     std::string int_ip_port = GetIntTypeEndpoint(ip, port);
@@ -206,8 +206,7 @@ int32_t BrpcPsClient::InitializeFlWorker(const std::string &self_endpoint) {
   options.protocol = "baidu_std";
   options.timeout_ms = FLAGS_pserver_timeout_ms;
   options.connection_type = "pooled";
-  options.connect_timeout_ms =
-      paddle::distributed::FLAGS_pserver_connect_timeout_ms;
+  options.connect_timeout_ms = FLAGS_pserver_connect_timeout_ms;
   options.max_retry = 3;
   // 获取 coordinator 列表，并连接
   std::string coordinator_ip_port;
@@ -340,11 +339,11 @@ int32_t BrpcPsClient::Initialize() {
     auto table_id = worker_param.downpour_table_param(i).table_id();
     if (type == PS_DENSE_TABLE) {
       _push_dense_task_queue_map[table_id] =
-          paddle::framework::MakeChannel<DenseAsyncTask *>();
+          ::paddle::framework::MakeChannel<DenseAsyncTask *>();
     }
     if (type == PS_SPARSE_TABLE) {
       _push_sparse_task_queue_map[table_id] =
-          paddle::framework::MakeChannel<SparseAsyncTask *>();
+          ::paddle::framework::MakeChannel<SparseAsyncTask *>();
       _push_sparse_merge_count_map[table_id] = 0;
     }
   }
@@ -450,7 +449,7 @@ std::future<int32_t> BrpcPsClient::PrintTableStat(uint32_t table_id) {
         int ret = 0;
         uint64_t feasign_size = 0;
         uint64_t mf_size = 0;
-        paddle::framework::BinaryArchive ar;
+        ::paddle::framework::BinaryArchive ar;
         auto *closure = reinterpret_cast<DownpourBrpcClosure *>(done);
         for (size_t i = 0; i < request_call_num; ++i) {
           if (closure->check_response(i, PS_PRINT_TABLE_STAT) != 0) {

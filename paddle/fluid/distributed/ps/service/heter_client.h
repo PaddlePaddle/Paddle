@@ -116,7 +116,7 @@ class HeterClient {
       if ((*client_channels)[i]->Init(node_list[i].c_str(), "", &options) !=
           0) {
         VLOG(0) << "client channel init failed! try again";
-        auto ip_port = paddle::string::Split(node_list[i], ':');
+        auto ip_port = ::paddle::string::Split(node_list[i], ':');
         std::string ip = ip_port[0];
         int port = std::stoi(ip_port[1]);
         std::string int_ip_port = GetIntTypeEndpoint(ip, port);

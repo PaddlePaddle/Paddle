@@ -447,7 +447,7 @@ class GraphSampler {
   GraphSampler() {
     status = GraphSamplerStatus::waiting;
     thread_pool.reset(new ::ThreadPool(1));
-    callback = [](std::vector<paddle::framework::GpuPsCommGraph> &res) {
+    callback = [](std::vector<::paddle::framework::GpuPsCommGraph> &res) {
       return;
     };
   }
@@ -471,7 +471,7 @@ class GraphSampler {
   virtual void init(size_t gpu_num, GraphTable *graph_table,
                     std::vector<std::string> args) = 0;
   virtual void set_graph_sample_callback(
-      std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
+      std::function<void(std::vector<::paddle::framework::GpuPsCommGraph> &)>
           callback) {
     this->callback = callback;
   }
@@ -486,12 +486,12 @@ class GraphSampler {
   virtual GraphSamplerStatus get_graph_sampler_status() { return status; }
 
  protected:
-  std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
+  std::function<void(std::vector<::paddle::framework::GpuPsCommGraph> &)>
       callback;
   std::shared_ptr<::ThreadPool> thread_pool;
   GraphSamplerStatus status;
   std::future<int> graph_sample_task_over;
-  std::vector<paddle::framework::GpuPsCommGraph> sample_res;
+  std::vector<::paddle::framework::GpuPsCommGraph> sample_res;
 };
 #endif
 */
@@ -697,7 +697,7 @@ class GraphTable : public Table {
   //   return this->graph_sampler->end_graph_sampling();
   // }
   // virtual int32_t set_graph_sample_callback(
-  //     std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
+  //     std::function<void(std::vector<::paddle::framework::GpuPsCommGraph> &)>
   //         callback) {
   //   graph_sampler->set_graph_sample_callback(callback);
   //   return 0;
@@ -712,9 +712,9 @@ class GraphTable : public Table {
       int &actual_size);  // NOLINT
   virtual int32_t add_node_to_ssd(
       int type_id, int idx, uint64_t src_id, char *data, int len);
-  virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
+  virtual ::paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
       int idx, const std::vector<uint64_t> &ids);
-  virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
+  virtual ::paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);  // NOLINT
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx,
@@ -785,8 +785,8 @@ class GraphTable : public Table {
   bool is_load_reverse_edge = false;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
-  // paddle::framework::GpuPsGraphTable gpu_graph_table;
-  paddle::distributed::RocksDBHandler *_db;
+  // ::paddle::framework::GpuPsGraphTable gpu_graph_table;
+  ::paddle::distributed::RocksDBHandler *_db;
   // std::shared_ptr<::ThreadPool> graph_sample_pool;
   // std::shared_ptr<GraphSampler> graph_sampler;
   // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
@@ -811,7 +811,7 @@ class CompleteGraphSampler : public GraphSampler {
 
  protected:
   GraphTable *graph_table;
-  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
+  std::vector<std::vector<::paddle::framework::GpuPsGraphNode>> sample_nodes;
   std::vector<std::vector<uint64_t>> sample_neighbors;
   // std::vector<GpuPsCommGraph> sample_res;
   // std::shared_ptr<std::mt19937_64> random;
@@ -830,7 +830,7 @@ class BasicBfsGraphSampler : public GraphSampler {
  protected:
   GraphTable *graph_table;
   // std::vector<std::vector<GpuPsGraphNode>> sample_nodes;
-  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
+  std::vector<std::vector<::paddle::framework::GpuPsGraphNode>> sample_nodes;
   std::vector<std::vector<uint64_t>> sample_neighbors;
   size_t gpu_num;
   int init_search_size, node_num_for_each_shard, edge_num_for_each_node;
@@ -847,8 +847,8 @@ class BasicBfsGraphSampler : public GraphSampler {
 namespace std {
 
 template <>
-struct hash<paddle::distributed::SampleKey> {
-  size_t operator()(const paddle::distributed::SampleKey &s) const {
+struct hash<::paddle::distributed::SampleKey> {
+  size_t operator()(const ::paddle::distributed::SampleKey &s) const {
     return s.idx ^ s.node_key ^ s.sample_size;
   }
 };

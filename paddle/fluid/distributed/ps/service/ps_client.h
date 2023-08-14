@@ -33,8 +33,8 @@
 namespace paddle {
 namespace distributed {
 
-using paddle::distributed::PsRequestMessage;
-using paddle::distributed::PsResponseMessage;
+using ::paddle::distributed::PsRequestMessage;
+using ::paddle::distributed::PsResponseMessage;
 
 typedef std::function<void(void *)> PSClientCallBack;
 class PSClientClosure : public google::protobuf::Closure {
@@ -70,7 +70,7 @@ class PSClient {
 
   virtual int32_t Configure(  // NOLINT
       const PSParameter &config,
-      const std::map<uint64_t, std::vector<paddle::distributed::Region>>
+      const std::map<uint64_t, std::vector<::paddle::distributed::Region>>
           &regions,
       PSEnvironment &_env,  // NOLINT
       size_t client_id);
@@ -345,7 +345,7 @@ class PSClient {
  protected:
   virtual int32_t Initialize() = 0;
   PSParameter _config;
-  std::map<uint64_t, std::vector<paddle::distributed::Region>>
+  std::map<uint64_t, std::vector<::paddle::distributed::Region>>
       _dense_pull_regions;
   std::unordered_map<uint32_t, std::shared_ptr<ValueAccessor>> _table_accessors;
   std::unordered_map<int32_t, MsgHandlerFunc>

@@ -124,13 +124,13 @@ class TruncatedGaussianInitializer : public Initializer {
   }
 
   float GetValue() override {
-    paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
+    ::paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
     float value = truncated_normal(dist_(*random_engine_));
     return value;
   }
 
   void GetValue(float *value, int numel) {
-    paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
+    ::paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
     for (int x = 0; x < numel; ++x) {
       value[x] = truncated_normal(dist_(*random_engine_));
     }

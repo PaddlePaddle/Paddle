@@ -85,7 +85,7 @@ void HeterClient::CreateClient2XpuConnection() {
     xpu_channels_[i].reset(new brpc::Channel());
     if (xpu_channels_[i]->Init(xpu_list_[i].c_str(), "", &options) != 0) {
       VLOG(0) << "HeterClient channel init fail. Try Again";
-      auto ip_port = paddle::string::Split(xpu_list_[i], ':');
+      auto ip_port = ::paddle::string::Split(xpu_list_[i], ':');
       std::string ip = ip_port[0];
       int port = std::stoi(ip_port[1]);
       std::string int_ip_port = GetIntTypeEndpoint(ip, port);
@@ -100,7 +100,7 @@ void HeterClient::CreateClient2XpuConnection() {
     if (previous_xpu_channels_[i]->Init(
             previous_xpu_list_[i].c_str(), "", &options) != 0) {
       VLOG(0) << "HeterClient channel init fail. Try Again";
-      auto ip_port = paddle::string::Split(previous_xpu_list_[i], ':');
+      auto ip_port = ::paddle::string::Split(previous_xpu_list_[i], ':');
       std::string ip = ip_port[0];
       int port = std::stoi(ip_port[1]);
       std::string int_ip_port = GetIntTypeEndpoint(ip, port);
@@ -181,11 +181,11 @@ void HeterClient::SendAndRecvAsync(
 std::future<int32_t> HeterClient::SendCmd(
     uint32_t table_id, int cmd_id, const std::vector<std::string>& params) {
   size_t request_call_num = xpu_channels_.size();
-  paddle::distributed::DownpourBrpcClosure* closure =
-      new paddle::distributed::DownpourBrpcClosure(
+  ::paddle::distributed::DownpourBrpcClosure* closure =
+      new ::paddle::distributed::DownpourBrpcClosure(
           request_call_num, [request_call_num, cmd_id](void* done) {
             int ret = 0;
-            auto* closure = (paddle::distributed::DownpourBrpcClosure*)done;
+            auto* closure = (::paddle::distributed::DownpourBrpcClosure*)done;
             for (size_t i = 0; i < request_call_num; ++i) {
               if (closure->check_response(i, cmd_id) != 0) {
                 ret = -1;

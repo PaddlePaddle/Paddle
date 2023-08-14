@@ -109,25 +109,25 @@ void GraphPyService::set_up(std::string ips_str,
     server_list.push_back(ip_and_port[0]);
     port_list.push_back(ip_and_port[1]);
     uint32_t port = stoul(ip_and_port[1]);
-    auto ph_host = paddle::distributed::PSHost(ip_and_port[0], port, index);
+    auto ph_host = ::paddle::distributed::PSHost(ip_and_port[0], port, index);
     host_sign_list.push_back(ph_host.SerializeToString());
     index++;
   }
   VLOG(0) << "build server done";
 }
 void GraphPyClient::start_client() {
-  std::map<uint64_t, std::vector<paddle::distributed::Region>> dense_regions;
+  std::map<uint64_t, std::vector<::paddle::distributed::Region>> dense_regions;
   dense_regions.insert(
-      std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
+      std::pair<uint64_t, std::vector<::paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
   ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
-  paddle::distributed::PaddlePSEnvironment _ps_env;
+  ::paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list.size();
-  _ps_env = paddle::distributed::PaddlePSEnvironment();
+  _ps_env = ::paddle::distributed::PaddlePSEnvironment();
   _ps_env.SetPsServers(&host_sign_list, servers_);
-  worker_ptr = std::shared_ptr<paddle::distributed::GraphBrpcClient>(
-      (paddle::distributed::GraphBrpcClient*)
-          paddle::distributed::PSClientFactory::Create(worker_proto));
+  worker_ptr = std::shared_ptr<::paddle::distributed::GraphBrpcClient>(
+      (::paddle::distributed::GraphBrpcClient*)::paddle::distributed::
+          PSClientFactory::Create(worker_proto));
   worker_ptr->Configure(worker_proto, dense_regions, _ps_env, client_id);
   worker_ptr->set_shard_num(get_shard_num());
 }
@@ -136,12 +136,12 @@ void GraphPyServer::start_server(bool block) {
   uint32_t port = std::stoul(port_list[rank]);
   ::paddle::distributed::PSParameter server_proto = this->GetServerProto();
 
-  auto _ps_env = paddle::distributed::PaddlePSEnvironment();
+  auto _ps_env = ::paddle::distributed::PaddlePSEnvironment();
   _ps_env.SetPsServers(&this->host_sign_list,
                        this->host_sign_list.size());  // test
-  pserver_ptr = std::shared_ptr<paddle::distributed::GraphBrpcServer>(
-      (paddle::distributed::GraphBrpcServer*)
-          paddle::distributed::PSServerFactory::Create(server_proto));
+  pserver_ptr = std::shared_ptr<::paddle::distributed::GraphBrpcServer>(
+      (::paddle::distributed::GraphBrpcServer*)::paddle::distributed::
+          PSServerFactory::Create(server_proto));
   VLOG(0) << "pserver-ptr created ";
   std::vector<framework::ProgramDesc> empty_vec;
   framework::ProgramDesc empty_prog;

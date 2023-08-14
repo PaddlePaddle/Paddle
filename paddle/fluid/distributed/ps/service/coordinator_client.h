@@ -91,10 +91,9 @@ class CoordinatorServiceHandle {
     timeline.Start();
     auto f = [&]() -> bool {
       while (query_wait_time <
-             paddle::distributed::
-                 FLAGS_coordinator_wait_all_clients_max_time) {  // in case that
-                                                                 // some
-                                                                 // clients down
+             FLAGS_coordinator_wait_all_clients_max_time) {  // in case that
+                                                             // some
+                                                             // clients down
         if (_is_all_clients_info_collected == true) {
           // LOG(INFO) << "fl-ps > _is_all_clients_info_collected";
           return true;

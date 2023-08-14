@@ -97,7 +97,7 @@ class SSDSparseTable : public MemorySparseTable {
   int32_t SaveCache(
       const std::string& path,
       const std::string& param,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>&
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel) override;
   double GetCacheThreshold() override { return _local_show_threshold; }
   int64_t CacheShuffle(
@@ -106,7 +106,7 @@ class SSDSparseTable : public MemorySparseTable {
       double cache_threshold,
       std::function<std::future<int32_t>(
           int msg_type, int to_pserver_id, std::string& msg)> send_msg_func,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>&
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
       const std::vector<Table*>& table_ptrs) override;
   // 加载path目录下数据
@@ -126,7 +126,7 @@ class SSDSparseTable : public MemorySparseTable {
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
   double _local_show_threshold{0.0};
-  std::vector<paddle::framework::Channel<std::string>> _fs_channel;
+  std::vector<::paddle::framework::Channel<std::string>> _fs_channel;
   std::mutex _table_mutex;
 };
 

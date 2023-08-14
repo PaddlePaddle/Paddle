@@ -23,12 +23,12 @@ namespace paddle {
 namespace distributed {
 PsGraphClient::PsGraphClient() {
   simple::global_rpc_server().initialize();
-  auto gloo = paddle::framework::GlooWrapper::GetInstance();
+  auto gloo = ::paddle::framework::GlooWrapper::GetInstance();
   _rank_id = gloo->Rank();
   _rank_num = gloo->Size();
   _service = simple::global_rpc_server().add_service(
       [this](const simple::RpcMessageHead &head,
-             paddle::framework::BinaryArchive &iar) {
+             ::paddle::framework::BinaryArchive &iar) {
         request_handler(head, iar);
       });
 }
@@ -47,7 +47,8 @@ int32_t PsGraphClient::Initialize() {
     }
   }
   for (uint32_t k = 0; k < max_shard_num; ++k) {
-    _thread_pools.push_back(std::make_shared<paddle::framework::ThreadPool>(1));
+    _thread_pools.push_back(
+        std::make_shared<::paddle::framework::ThreadPool>(1));
   }
   _local_shard_keys.resize(max_shard_num);
   _shard_ars.resize(max_shard_num);
@@ -78,7 +79,7 @@ void PsGraphClient::FinalizeWorker() {
   platform::Timer timeline;
   timeline.Start();
   // ps_gpu_wrapper
-  auto ps_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+  auto ps_wrapper = ::paddle::framework::PSGPUWrapper::GetInstance();
 
   std::vector<uint64_t> &local_keys = _local_shard_keys[shard_id];
   local_keys.clear();
@@ -98,7 +99,7 @@ void PsGraphClient::FinalizeWorker() {
       ars[rank].PutRaw(k);
     }
   }
-  paddle::framework::WaitGroup wg;
+  ::paddle::framework::WaitGroup wg;
   wg.add(_rank_num);
 
   uint32_t id = DIM_PASS_ID(dim_id, pass_id);
@@ -150,7 +151,7 @@ void PsGraphClient::FinalizeWorker() {
 }
 // server pull remote keys values
 void PsGraphClient::request_handler(const simple::RpcMessageHead &head,
-                                    paddle::framework::BinaryArchive &iar) {
+                                    ::paddle::framework::BinaryArchive &iar) {
   size_t table_id = head.consumer_id;
   uint32_t id = 0;
   iar.ReadBack(&id, sizeof(uint32_t));
@@ -219,7 +220,7 @@ void PsGraphClient::request_handler(const simple::RpcMessageHead &head,
     pass_refered->wg.done();
   }
   // send response
-  paddle::framework::BinaryArchive oar;
+  ::paddle::framework::BinaryArchive oar;
   simple::global_rpc_server().send_response(head, oar);
 }
 // get shard num
