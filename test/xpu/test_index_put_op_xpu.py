@@ -167,9 +167,7 @@ class XPUTestIndexPut(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            self.check_grad_with_place(
-                self.place, self.get_indices_names() + ["value"], "out"
-            )
+            self.check_grad_with_place(self.place, ["x", "value"], "out")
 
     class TestXPUIndexPut1(TestXPUIndexPutOp):
         def set_case(self):
