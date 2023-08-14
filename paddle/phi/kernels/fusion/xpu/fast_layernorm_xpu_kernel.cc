@@ -39,7 +39,12 @@ void FastLayerNormXPUKernel(const Context& ctx,
   const float* scale_data_fp32 = nullptr;
   const auto* scale_ptr = scale.get_ptr();
   if (scale_ptr == nullptr) {
-    // no scale, do nothing
+    float* scale_data_temp =
+        RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
+    int r = xpu::constant<float>(
+        ctx.x_context(), scale_data_temp, scale_ptr->numel(), 1.0f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    scale_data_fp32 = scale_data_temp;
   } else if (scale_ptr->dtype() ==
              phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
     float* scale_data_temp =
@@ -60,7 +65,11 @@ void FastLayerNormXPUKernel(const Context& ctx,
   const float* bias_data_fp32 = nullptr;
   const auto* bias_ptr = bias.get_ptr();
   if (bias_ptr == nullptr) {
-    // no bias, do nothing
+    float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
+    int r = xpu::constant<float>(
+        ctx.x_context(), bias_data_temp, bias_ptr->numel(), 0.0f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    bias_data_fp32 = bias_data_temp;
   } else if (bias_ptr->dtype() ==
              phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
     float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());

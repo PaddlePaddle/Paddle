@@ -84,20 +84,6 @@ static int xpu2_wrapper(Context* ctx,
                         float eps,
                         const float* scale,
                         const float* bias) {
-  ctx_guard RAII_GUARD(ctx);
-  if (scale == nullptr && bias != nullptr) {
-    scale = RAII_GUARD.alloc<float>(n);
-    WRAPPER_ASSERT_WORKSPACE(ctx, scale);
-    int ret = constant<float>(ctx, const_cast<float*>(scale), n, 1.0f);
-    WRAPPER_ASSERT_SUCCESS(ctx, ret);
-  }
-  if (bias == nullptr && scale != nullptr) {
-    bias = RAII_GUARD.alloc<float>(n);
-    WRAPPER_ASSERT_WORKSPACE(ctx, bias);
-    int ret = constant<float>(ctx, const_cast<float*>(bias), n, 0.0f);
-    WRAPPER_ASSERT_SUCCESS(ctx, ret);
-  }
-
   if (n % 32 == 0) {
     xpu2::plugin::fast_layer_norm_tiny_align32<T>
         <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
