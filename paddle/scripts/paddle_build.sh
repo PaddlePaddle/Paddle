@@ -697,13 +697,13 @@ EOF
         echo "========================================="
         if [[ "$on_precision" == "0" ]];then
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
-            ctest -E "${single_list}" --output-on-failure -j 2 | tee $tmpfile
+            ctest -R "${single_list}" --output-on-failure -j 1 | tee $tmpfile
         else
             ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
             ctest -R "($UT_list_prec_1)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
-            ctest -E "${single_list}" --output-on-failure -j 2 | tee $tmpfile
+            ctest -R "${single_list}" --output-on-failure -j 1 | tee $tmpfile
         fi
         failed_test_lists=''
         collect_failed_tests
