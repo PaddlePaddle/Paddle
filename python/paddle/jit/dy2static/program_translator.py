@@ -1132,6 +1132,7 @@ class ConcreteProgram:
         "startup_program",
         "parameters",
         "function",
+        "name_generator",
         'kwargs',
     ]
 
@@ -1141,6 +1142,7 @@ class ConcreteProgram:
         outputs,
         parameters,
         function,
+        name_generator,
         main_program,
         startup_program=None,
         **kwargs,
@@ -1151,6 +1153,7 @@ class ConcreteProgram:
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
+        self.name_generator = name_generator
         self.kwargs = kwargs
 
     @staticmethod
@@ -1186,7 +1189,7 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        new_name_generator = UniqueNameGenerator()
+        new_name_generator = UniqueNameGenerator("_jst.")
 
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(
@@ -1246,6 +1249,7 @@ class ConcreteProgram:
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
+            name_generator=new_name_generator,
             main_program=main_program,
             startup_program=startup_program,
             **kwargs,

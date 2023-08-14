@@ -25,6 +25,7 @@ from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
+from paddle.fluid.unique_name import guard as UniqueNameGuard
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -170,12 +171,19 @@ class PartialProgramLayer:
     """
 
     def __init__(
-        self, main_program, inputs, outputs, parameters=None, **kwargs
+        self,
+        main_program,
+        inputs,
+        outputs,
+        name_generator,
+        parameters=None,
+        **kwargs
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
+        self._name_generator = name_generator
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
@@ -214,34 +222,35 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars, in_var_names, resume_name_record = self._prepare(
-            inputs
-        )
-        self._cast_fp16_if_pure_fp16(in_vars)
-        attrs = self._prepare_attributes()
-        attrs.extend(["x_names", in_var_names])
+        with UniqueNameGuard(self._name_generator):
+            in_vars, out_vars, in_var_names, resume_name_record = self._prepare(
+                inputs
+            )
+            self._cast_fp16_if_pure_fp16(in_vars)
+            attrs = self._prepare_attributes()
+            attrs.extend(["x_names", in_var_names])
 
-        self._sync_lr_value_with_scheduler()
+            self._sync_lr_value_with_scheduler()
 
-        _legacy_C_ops.run_program(
-            self._valid_vars(in_vars),
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                program_id=self.program_id, use_scope_cache=True
-            ),
-            self._double_grads,
-            self._cuda_graph_vec,
-            *attrs
-        )
+            _legacy_C_ops.run_program(
+                self._valid_vars(in_vars),
+                self._valid_vars(self._params),
+                self._valid_vars(out_vars),
+                self._create_scope_vec(
+                    program_id=self.program_id, use_scope_cache=True
+                ),
+                self._double_grads,
+                self._cuda_graph_vec,
+                *attrs
+            )
 
-        for var in in_vars:
-            if var.name in resume_name_record:
-                var.name = resume_name_record[var.name]
+            for var in in_vars:
+                if var.name in resume_name_record:
+                    var.name = resume_name_record[var.name]
 
-        self._update_stop_gradient(out_vars)
-        restored_nest_out = self._restore_out(out_vars)
-        return self._remove_no_value(restored_nest_out)
+            self._update_stop_gradient(out_vars)
+            restored_nest_out = self._restore_out(out_vars)
+            return self._remove_no_value(restored_nest_out)
 
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""
@@ -1118,6 +1127,7 @@ def partial_program_from(concrete_program, from_method=False):
         concrete_program.main_program,
         inputs,
         concrete_program.outputs,
+        concrete_program.name_generator,
         concrete_program.parameters,
         **concrete_program.kwargs
     )
