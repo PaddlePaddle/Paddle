@@ -47,7 +47,7 @@ class QuantInt8MkldnnPass:
 
             >>> # The original graph will be rewrite.
             >>> import paddle
-            >>> import paddle.static as static
+            >>> from paddle import static
             >>> from paddle.static.quantization import QuantInt8MkldnnPass
             >>> from paddle.framework import IrGraph
             >>> from paddle.framework import core
