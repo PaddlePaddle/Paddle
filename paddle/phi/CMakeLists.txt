@@ -67,6 +67,10 @@ if(WITH_MKLDNN)
   list(APPEND PHI_DEPS mkldnn)
 endif()
 
+if(NOT WITH_GFLAGS)
+  list(APPEND PHI_DEPS paddle_flags)
+endif()
+
 if(WITH_GLOO)
   list(APPEND PHI_DEPS gloo)
 endif()

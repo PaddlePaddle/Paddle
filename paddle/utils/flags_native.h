@@ -123,7 +123,7 @@ class FlagRegisterer {
   static const type FLAGS_##name##_default = default_value;                  \
   PD_EXPORT_FLAG type FLAGS_##name = default_value;                          \
   /* Register FLAG */                                                        \
-  static FlagRegisterer flag_##name##_registerer(                            \
+  static ::paddle::flags::FlagRegisterer flag_##name##_registerer(           \
       #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name); \
   }                                                                          \
   }                                                                          \

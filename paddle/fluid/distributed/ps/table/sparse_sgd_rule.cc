@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
 
-#include <gflags/gflags.h>
-
 #include "glog/logging.h"
+
+#include "paddle/utils/flags.h"
 
 PD_DEFINE_bool(enable_show_scale_gradient, true, "enable show scale gradient");
 

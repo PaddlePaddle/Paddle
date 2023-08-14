@@ -57,13 +57,13 @@ void OpTester::Init(const OpTesterConfig &config) {
   }
 
   if (config_.device_id >= 0) {
-    place_ = paddle::platform::CUDAPlace(config_.device_id);
+    place_ = ::paddle::platform::CUDAPlace(config_.device_id);
   } else {
-    place_ = paddle::platform::CPUPlace();
+    place_ = ::paddle::platform::CPUPlace();
   }
 
   framework::InitDevices();
-  scope_ = std::make_unique<paddle::framework::Scope>();
+  scope_ = std::make_unique<::paddle::framework::Scope>();
 
   op_ = framework::OpRegistry::CreateOp(op_desc_);
   CreateVariables(scope_.get());
@@ -318,7 +318,7 @@ void OpTester::SetupTensor(phi::DenseTensor *tensor,
   }
 
   if (!platform::is_cpu_place(place_)) {
-    paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
+    ::paddle::framework::TensorCopySync(cpu_tensor, place_, tensor);
   }
 }
 

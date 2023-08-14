@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <gflags/gflags.h>
-
 #include <map>
 #include <memory>
 #include <string>
@@ -27,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/utils/any.h"
+#include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
 
