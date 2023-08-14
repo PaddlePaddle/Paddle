@@ -274,5 +274,31 @@ class TestIndexPutOpTranscriber(unittest.TestCase):
         _ = ir.translate_to_new_ir(main_program.desc)
 
 
+class TestGradAddOpTranscriber(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x_data = np.random.rand(100, 2, 3)
+                y_data = np.random.rand(100, 1, 1)
+                x = paddle.to_tensor(x_data, dtype='float32')
+                x.stop_gradient = False
+                y = paddle.to_tensor(y_data, dtype='float32')
+
+                helper = LayerHelper('grad_add')
+                out = helper.create_variable_for_type_inference("float")
+                helper.append_op(
+                    type="grad_add",
+                    inputs={"X": x, "Y": y},
+                    outputs={"Out": out},
+                    attrs={"axis": -1},
+                )
+
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+
 if __name__ == "__main__":
     unittest.main()

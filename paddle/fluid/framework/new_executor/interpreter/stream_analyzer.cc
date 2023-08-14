@@ -684,7 +684,7 @@ platform::DeviceType NewIrStreamAnalyzer::GetWaiterType(
   }
 }
 
-void NewIrStreamAnalyzer::ShareEventInfoFrom(const StreamAnalyzer& src) {
+void NewIrStreamAnalyzer::ShareEventInfoFrom(const NewIrStreamAnalyzer& src) {
   event_info_ = src.GetEventInfo();
   is_event_info_build_ = true;
 }
