@@ -213,11 +213,10 @@ class CodeGen:
     def _gen_out_combine(self):
         return ''
 
-    def _gen_return_result(self, op_name, op_inst_name):
-        if op_name.endswith('grad'):
-            return f'return {op_inst_name}.result(0);'
-        else:
-            return f'return {op_inst_name}.out();'
+    def _gen_return_result(self, op_info, op_inst_name):
+        output_name_list = op_info.output_name_list
+        assert len(output_name_list) == 1
+        return f'return {op_inst_name}.result(0);'
 
     def _gen_one_impl(self, op_info, op_name):
         in_combine, in_combine_op_list = self._gen_in_combine(op_info)
@@ -233,7 +232,7 @@ class CodeGen:
             compute_op=compute_op,
             out_slice=self._gen_out_slice(),
             out_combine=self._gen_out_combine(),
-            return_result=self._gen_return_result(op_name, op_inst_name),
+            return_result=self._gen_return_result(op_info, op_inst_name),
         ).replace('    \n', '')
 
     def _gen_cpp_file(self, op_info_items, namespaces, cpp_file_path):
