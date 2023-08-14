@@ -143,7 +143,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter || is_unseen_variable;
+        bool need_get_parameter_op = is_parameter && is_unseen_variable;
         if (need_get_parameter_op) {
           ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
