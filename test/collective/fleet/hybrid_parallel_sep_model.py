@@ -18,9 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 from paddle.distributed import fleet
-
 
 
 class TestDistMPTraining(unittest.TestCase):
@@ -47,6 +45,7 @@ class TestDistMPTraining(unittest.TestCase):
         assert hcg.get_sep_parallel_group() is not None
         assert hcg.get_dp_sep_parallel_group() is not None
         assert hcg.get_pp_mp_parallel_group() is not None
+
 
 if __name__ == "__main__":
     unittest.main()
