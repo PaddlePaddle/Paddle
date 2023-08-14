@@ -38,26 +38,26 @@ struct ZeroOrderFunctor {
 
 template <typename Tx, typename Ty = Tx>
 struct OtherOrderFunctor {
-  HOSTDEVICE explicit inline OtherOrderFunctor(const Ty& _p_order)
-      : p_order(_p_order) {}
+  HOSTDEVICE explicit inline OtherOrderFunctor(const Ty& p_order)
+      : p_order_(p_order) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
     return static_cast<Ty>(
-        pow(abs(static_cast<Ty>(x) - static_cast<Ty>(y)), p_order));
+        pow(abs(static_cast<Ty>(x) - static_cast<Ty>(y)), p_order_));
   }
 
  private:
-  Ty p_order;
+  Ty p_order_;
 };
 
 template <typename Tx, typename Ty = Tx>
 struct PowFunctor {
-  HOSTDEVICE explicit inline PowFunctor(const Ty& _p_order)
-      : p_order(_p_order) {}
-  HOSTDEVICE inline Tx operator()(const Tx x) const {
-    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order));
+  HOSTDEVICE explicit inline PowFunctor(const Ty& p_order)
+      : p_order_(p_order) {}
+  HOSTDEVICE inline Tx operator()(const Tx& x) const {
+    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order_));
   }
-  Ty p_order;
+  Ty p_order_;
 };
 
 template <typename T, typename Functor>
