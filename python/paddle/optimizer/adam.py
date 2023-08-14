@@ -99,7 +99,6 @@ class Adam(Optimizer):
             :name: code-example1
 
             >>> import paddle
-            >>> paddle.seed(2023)
 
             >>> linear = paddle.nn.Linear(10, 10)
             >>> inp = paddle.rand([10,10], dtype="float32")
@@ -116,7 +115,6 @@ class Adam(Optimizer):
 
             >>> # Adam with beta1/beta2 as Tensor and weight_decay as float
             >>> import paddle
-            >>> paddle.seed(2023)
 
             >>> linear = paddle.nn.Linear(10, 10)
             >>> inp = paddle.rand([10,10], dtype="float32")
@@ -132,6 +130,7 @@ class Adam(Optimizer):
             >>> loss.backward()
             >>> adam.step()
             >>> adam.clear_grad()
+
             >>> # Note that the learning_rate of linear_2 is 0.01.
             >>> linear_1 = paddle.nn.Linear(10, 10)
             >>> linear_2 = paddle.nn.Linear(10, 10)

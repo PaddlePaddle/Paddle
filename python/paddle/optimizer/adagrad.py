@@ -71,7 +71,6 @@ class Adagrad(Optimizer):
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.seed(2023)
 
             >>> inp = paddle.rand(shape=[10, 10])
             >>> linear = paddle.nn.Linear(10, 10)
