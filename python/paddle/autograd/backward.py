@@ -319,7 +319,7 @@ def append_backward_ops(
 
         v1 is inside python api, we don't describe it in backward process(state)
         so v1_grad is inside vjp, we don't describe it in backward process(state)
-        [[v11_g, v12_g], v2_g] = call_vjp(op3, [v3_g], [[v11_stopgradient, v12_stopgradient], v2_stop_gradient)
+        [[v11_g, v12_g], v2_g] = call_vjp(combine_op, [v3_g], [[v11_stopgradient, v12_stopgradient], v2_stop_gradient)
 
 
         op_vjp is:
@@ -483,8 +483,9 @@ def append_backward_ops(
 
             # create grad_op
             before_ops_num = len(block.ops)
+            first_op = op if combine_op is None else combine_op
             input_grad_list = paddle.framework.core.call_vjp(
-                op, output_grad_list, input_grad_stopgradient_list
+                first_op, output_grad_list, input_grad_stopgradient_list
             )
             after_ops_num = len(block.ops)
 
