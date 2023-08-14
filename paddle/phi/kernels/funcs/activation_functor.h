@@ -1629,6 +1629,24 @@ struct TanhShrinkFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct TanhShrinkGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        static_cast<ComplexType<T>>(1) -
+        dout *
+            (static_cast<ComplexType<T>>(1) - out * out).unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
             typename X,
