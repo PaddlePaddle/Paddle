@@ -201,9 +201,11 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
     A range profiler interface (not public yet).
     Examples:
         .. code-block:: python
+
+            >>> import paddle.profiler as profiler
             >>> model = Model()
             >>> for i in range(max_iter):
-            ...     paddle.fluid.profiler._nvprof_range(i, 10, 20):
+            ...     profiler._nvprof_range(i, 10, 20):
             ...         out = model(in)
     '''
     if start >= end:
