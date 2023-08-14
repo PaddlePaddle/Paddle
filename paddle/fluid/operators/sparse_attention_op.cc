@@ -206,7 +206,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(sparse_attention,
                   ops::SparseAttentionOp,
                   ops::SparseAttentionOpMaker,
-                  ops::SpaceToDepthGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SpaceToDepthGradOpMaker<paddle::imperative::OpBase>);
+                  ops::SparseAttentionGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SparseAttentionGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(sparse_attention_grad, ops::SparseAttentionOpGrad);
