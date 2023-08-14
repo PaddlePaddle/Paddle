@@ -96,8 +96,7 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               const MetaTensor& scale,
                               const MetaTensor& bias,
-                              int64_t m,
-                              int64_t n,
+                              int begin_norm_axis,
                               float epsilon,
                               MetaTensor* out,
                               MetaTensor* mean,
@@ -106,12 +105,16 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   int axis = -1;
   auto x_dims = x.dims();
   auto y_dims = y.dims();
+  auto out_dims = x_dims;
   if (x_dims != y_dims) {
-    auto out_dims = BroadCastInferShape(x_dims, y_dims, axis);
+    out_dims = BroadCastInferShape(x_dims, y_dims, axis);
     out->set_dims(out_dims);
   } else {
-    out->set_dims(x_dims);
+    out->set_dims(out_dims);
   }
+  auto layer_norm_x_mat_dims = phi::flatten_to_2d(out_dims, begin_norm_axis);
+  int64_t m = layer_norm_x_mat_dims[0];
+  int64_t n = layer_norm_x_mat_dims[1];
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
@@ -139,6 +142,99 @@ inline int ConvOutSize(int input_size,
   return output_size;
 }
 
+void Conv1dXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const MetaTensor& branch,
+                        const MetaTensor& branch_max,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        int dilations,
+                        int strides,
+                        int groups,
+                        int act_type,
+                        float act_param,
+                        MetaTensor* out,
+                        MetaTensor* out_max) {
+  auto in_dims = x.dims();
+  auto filter_dims = filter.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      3,
+      phi::errors::InvalidArgument(
+          "The input of Op(Conv_xpu) should be a 3-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      filter_dims.size(),
+      phi::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(Conv_xpu) should be equal. But received: the input's shape is "
+          "[%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims,
+          in_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  const auto input_channels = in_dims[1];
+
+  PADDLE_ENFORCE_GT(
+      dilations,
+      0,
+      phi::errors::InvalidArgument(
+          "The dilation of Op(Conv) should be larget than 0, but received "
+          "dilation is %d.",
+          dilations));
+
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(Conv_xpu). But received: the input's channels is "
+          "%d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d. ",
+          input_channels,
+          in_dims,
+          filter_dims[1],
+          filter_dims,
+          groups));
+
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output's channels (filter's first dimension) of "
+          "Op(Conv) should be divided by groups. But received: "
+          "the output channels is %d, the filter's shape is [%s], "
+          "the groups is %d.",
+          filter_dims[0],
+          filter_dims,
+          groups));
+
+  std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
+  out_shape.push_back(ConvOutSize(in_dims[2],
+                                  filter_dims[2],
+                                  dilations,
+                                  paddings[0],
+                                  paddings[1],
+                                  strides));
+  // set output and output max dims
+  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out_max->set_dims(phi::make_ddim({6}));
+}
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -151,10 +247,9 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const std::vector<int>& strides,
                         const std::string& padding_algorithm,
                         int groups,
-                        bool has_bias,
-                        bool has_branch,
                         int act_type,
                         float act_param,
+                        DataType out_dtype,
                         MetaTensor* out,
                         MetaTensor* out_max) {
   auto in_dims = x.dims();
@@ -264,6 +359,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out_max->set_dims(phi::make_ddim({6}));
+  out->set_dtype(out_dtype);
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
@@ -302,6 +398,7 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
+                    DataType out_dtype,
                     MetaTensor* out,
                     MetaTensor* out_max) {
   std::vector<int> out_shape(in_num_col_dims + 1);
@@ -310,7 +407,7 @@ void FcXPUInferMeta(const MetaTensor& x,
   }
   out_shape[in_num_col_dims] = w.dims()[0];
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
-  out->set_dtype(x.dtype());
+  out->set_dtype(out_dtype);
   out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
   out_max->set_dtype(x.dtype());
@@ -425,7 +522,7 @@ void FusedMultiTransformerXpuInferMeta(
           "shape of input x = [%s], and the shape of input qkv_weight = [%s]",
           x_dim,
           y_dim));
-  if (cache_kv.size() > 0) {
+  if (!cache_kv.empty()) {
     const auto& c_dim = cache_kv[0]->dims();
     PADDLE_ENFORCE_EQ(
         c_dim.size(),
@@ -614,14 +711,14 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims,
           strides.size()));
-  if (output_size.size())
+  if (!output_size.empty())
     PADDLE_ENFORCE_EQ(
         output_size.size(),
         strides.size(),
         errors::InvalidArgument(
             "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-  if (output_padding.size())
+  if (!output_padding.empty())
     PADDLE_ENFORCE_EQ(
         output_padding.size(),
         strides.size(),
@@ -669,9 +766,9 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
                                  paddings_[2 * i] - paddings_[2 * i + 1] +
                                  filter_extent
                            : -1;
-    if (output_size.size()) {
+    if (!output_size.empty()) {
       output_shape.push_back(output_size[i]);
-    } else if (output_padding.size()) {
+    } else if (!output_padding.empty()) {
       output_shape.push_back((infer_shape + output_padding[i]));
     } else {
       output_shape.push_back(infer_shape);
@@ -718,6 +815,14 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                             data_format,
                             out,
                             out_max);
+}
+
+void FastWhereXPUInferMeta(const MetaTensor& condition,
+                           const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi

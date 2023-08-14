@@ -59,7 +59,7 @@ void TransposeKernel(const Context& dev_ctx,
       AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
-  if (axis.size() == 1 || axis.size() == 0) {
+  if (axis.size() == 1 || axis.empty()) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
     out->set_mem_desc(x.mem_desc());
     return;
@@ -73,8 +73,8 @@ void TransposeKernel(const Context& dev_ctx,
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
 
   auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
-  auto dst_md =
-      dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
+  auto dst_md = dnnl::memory::desc(
+      x_vec_dims, x.mem_desc().get_data_type(), fake_strides);
   auto reorder_dst_memory_p =
       reorder_handler.AcquireDstMemory(out, dst_md, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,

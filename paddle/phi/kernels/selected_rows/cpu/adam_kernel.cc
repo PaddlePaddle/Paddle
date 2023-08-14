@@ -103,7 +103,7 @@ void AdamDenseParamSparseGradKernel(
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  if (grad.rows().size() == 0) {
+  if (grad.rows().empty()) {
     VLOG(3) << "grad row size is 0!!";
     return;
   }
@@ -229,7 +229,7 @@ void AdamDenseParamSparseGradKernel(
         }
       }));
     }
-    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+    for (auto& item : fs) item.wait();
   }
 #endif    // !_WIN32
   else {  // NOLINT

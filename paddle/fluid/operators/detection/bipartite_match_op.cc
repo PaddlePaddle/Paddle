@@ -113,7 +113,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       for (int i = 0; i < row; ++i) {
         row_pool.push_back(i);
       }
-      while (row_pool.size() > 0) {
+      while (!row_pool.empty()) {
         int max_idx = -1;
         int max_row_idx = -1;
         T max_dist = -1;
@@ -121,8 +121,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
           if (match_indices[j] != -1) {
             continue;
           }
-          for (size_t k = 0; k < row_pool.size(); ++k) {
-            int m = row_pool[k];
+          for (auto m : row_pool) {
             // distance is 0 between m-th row and j-th column
             if (dist_data[m * col + j] < kEPS) {
               continue;
@@ -202,10 +201,10 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
 
     auto col = dist_mat->dims()[1];
 
-    int64_t n = dist_mat->lod().size() == 0UL
+    int64_t n = dist_mat->lod().empty()
                     ? 1
                     : static_cast<int64_t>(dist_mat->lod().back().size() - 1);
-    if (dist_mat->lod().size()) {
+    if (!dist_mat->lod().empty()) {
       PADDLE_ENFORCE_EQ(
           dist_mat->lod().size(),
           1UL,

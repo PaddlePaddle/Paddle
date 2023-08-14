@@ -101,18 +101,18 @@ class DeleteRepeatedOpsPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void DeleteRepeatedOps(
-      ir::Graph* graph,
-      const std::string& op_type,
-      std::function<std::string(OpDesc*)> gen_op_key_fn) const;
+  void DeleteRepeatedOps(ir::Graph* graph,
+                         const std::string& op_type,
+                         std::function<std::string(Node*)> gen_op_key_fn) const;
 
   const std::string name_scope_{"delete_repeated_ops_pass"};
+  mutable int delete_op_count{0};
 };
 
 void DeleteRepeatedOpsPass::DeleteRepeatedOps(
     ir::Graph* graph,
     const std::string& op_type,
-    std::function<std::string(OpDesc*)> gen_op_key_fn) const {
+    std::function<std::string(Node*)> gen_op_key_fn) const {
   GraphPatternDetector gpd;
   patterns::VarWithRepeatedOpsPattern pattern(
       gpd.mutable_pattern(), name_scope_, op_type);
@@ -140,7 +140,7 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
         }
       }
       if (out_op_is_invalid) continue;
-      auto attr_key = gen_op_key_fn(op->Op());
+      auto attr_key = gen_op_key_fn(op);
       ops_map[attr_key].push_back(op);
     }
     for (auto iter = ops_map.begin(); iter != ops_map.end();) {
@@ -173,16 +173,18 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
   };
 
   gpd(graph, handler);
+  delete_op_count += delete_counts;
   if (delete_counts > 0) {
     LOG(INFO) << "--- delete " << delete_counts << " repeated " << op_type
               << " ops";
   }
 }
 
-std::string GenShapeAttrKey(OpDesc* slice_op_desc) { return ""; }
+std::string GenShapeAttrKey(Node* shape_op_node) { return ""; }
 
-std::string GenSliceAttrKey(OpDesc* slice_op_desc) {
+std::string GenSliceAttrKey(Node* slice_op_node) {
   std::string attr_key;
+  auto slice_op_desc = slice_op_node->Op();
   auto starts = slice_op_desc->GetAttrIfExists<std::vector<int>>("starts");
   auto ends = slice_op_desc->GetAttrIfExists<std::vector<int>>("ends");
   auto axes = slice_op_desc->GetAttrIfExists<std::vector<int>>("axes");
@@ -207,21 +209,35 @@ std::string GenSliceAttrKey(OpDesc* slice_op_desc) {
   return attr_key;
 }
 
-std::string GenCastAttrKey(OpDesc* cast_op_desc) {
+std::string GenCastAttrKey(Node* cast_op_node) {
+  auto cast_op_desc = cast_op_node->Op();
   auto in_dtype = cast_op_desc->GetAttrIfExists<int>("in_dtype");
   auto out_dtype = cast_op_desc->GetAttrIfExists<int>("out_dtype");
   return "in_dtype_" + std::to_string(in_dtype) + "_out_dtype_" +
          std::to_string(out_dtype);
 }
 
-std::string GenAddAttrKey(OpDesc* add_op_desc) {
+std::string GenAddAttrKey(Node* add_op_node) {
+  auto add_op_desc = add_op_node->Op();
   std::string x_name = add_op_desc->Input("X")[0];
   std::string y_name = add_op_desc->Input("Y")[0];
   auto axis = add_op_desc->GetAttrIfExists<int>("axis");
   return x_name + "_" + y_name + "_axis_" + std::to_string(axis);
 }
 
-std::string GenScaleAttrKey(OpDesc* scale_op_desc) {
+std::string GenTranspose2AttrKey(Node* transpose_op_node) {
+  auto transpose_op_desc = transpose_op_node->Op();
+  auto axis = transpose_op_desc->GetAttrIfExists<std::vector<int>>("axis");
+  std::string attr_key;
+  attr_key += "axis_";
+  for (auto x : axis) {
+    attr_key += std::to_string(x) + "_";
+  }
+  return attr_key;
+}
+
+std::string GenScaleAttrKey(Node* scale_op_node) {
+  auto scale_op_desc = scale_op_node->Op();
   auto scale = scale_op_desc->GetAttrIfExists<float>("scale");
   auto bias = scale_op_desc->GetAttrIfExists<float>("bias");
   auto bias_after_scale =
@@ -230,17 +246,54 @@ std::string GenScaleAttrKey(OpDesc* scale_op_desc) {
          "_bias_after_scale_" + std::to_string(bias_after_scale);
 }
 
+std::string GenGatherAttrKey(Node* gather_op_node) {
+  std::string input_names{""};
+  for (auto input_var : gather_op_node->inputs) {
+    input_names += input_var->Var()->Name();
+  }
+  auto gather_op_desc = gather_op_node->Op();
+  auto axis = gather_op_desc->GetAttrIfExists<int>("axis");
+  return "axis_" + std::to_string(axis) + "_input_names_" + input_names;
+}
+
+std::string GenSqueeze2AttrKey(Node* squeeze2_op_node) {
+  auto squeeze2_op_desc = squeeze2_op_node->Op();
+  auto axes = squeeze2_op_desc->GetAttrIfExists<std::vector<int>>("axes");
+  std::string attr_key{""};
+  attr_key += "axes_";
+  for (auto axis : axes) {
+    attr_key += std::to_string(axis) + "_";
+  }
+  return attr_key;
+}
+
 void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-
-  DeleteRepeatedOps(graph, "shape", GenShapeAttrKey);
-  DeleteRepeatedOps(graph, "slice", GenSliceAttrKey);
-  DeleteRepeatedOps(graph, "cast", GenCastAttrKey);
-  DeleteRepeatedOps(graph, "elementwise_add", GenAddAttrKey);
-  DeleteRepeatedOps(graph, "scale", GenScaleAttrKey);
-  DeleteRepeatedOps(graph, "cast", GenCastAttrKey);
+  int repeat_time = 0;
+  int total_delete_op_count = 0;
+  // This pass needs to loop run until there are no nodes in the graph that need
+  // to be deleted.
+  while (true) {
+    delete_op_count = 0;
+    DeleteRepeatedOps(graph, "shape", GenShapeAttrKey);
+    DeleteRepeatedOps(graph, "slice", GenSliceAttrKey);
+    DeleteRepeatedOps(graph, "cast", GenCastAttrKey);
+    DeleteRepeatedOps(graph, "elementwise_add", GenAddAttrKey);
+    DeleteRepeatedOps(graph, "scale", GenScaleAttrKey);
+    DeleteRepeatedOps(graph, "gather", GenGatherAttrKey);
+    DeleteRepeatedOps(graph, "squeeze2", GenSqueeze2AttrKey);
+    DeleteRepeatedOps(graph, "unsqueeze2", GenSqueeze2AttrKey);
+    DeleteRepeatedOps(graph, "transpose2", GenTranspose2AttrKey);
+    LOG(INFO) << "Round " << repeat_time++
+              << ": delete op counts: " << delete_op_count;
+    total_delete_op_count += delete_op_count;
+    if (delete_op_count == 0) {
+      break;  // No node need to delete.
+    }
+  }
+  LOG(INFO) << "Total delete op counts: " << total_delete_op_count;
 }
 
 }  // namespace ir

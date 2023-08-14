@@ -20,7 +20,10 @@ cc_library(
   paddle_infer_contrib
   SRCS paddle_infer_contrib.cc
   DEPS zero_copy_tensor)
-cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
+cc_library(
+  paddle_pass_builder
+  SRCS paddle_pass_builder.cc
+  DEPS framework_proto)
 
 set(paddle_inference_api_deps
     reset_tensor_array
@@ -54,8 +57,8 @@ endif()
 cc_library(
   analysis_config
   SRCS analysis_config.cc
-  DEPS ${mkldnn_quantizer_cfg} paddle_inference_api lod_tensor
-       paddle_pass_builder table_printer utf8proc)
+  DEPS ${mkldnn_quantizer_cfg} paddle_inference_api paddle_pass_builder
+       table_printer utf8proc)
 
 if(WIN32)
   target_link_libraries(paddle_inference_api phi)

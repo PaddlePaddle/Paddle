@@ -77,7 +77,7 @@ class SPMDRuleBase {
     PADDLE_ENFORCE_NE(iter,
                       attrs.end(),
                       paddle::platform::errors::NotFound(
-                          "(%s) is not found in AttributeMap."));
+                          "(%s) is not found in AttributeMap.", name));
     return iter->second;
   }
 };
@@ -86,7 +86,8 @@ class SPMDRuleBase {
 // The same axes of different tensors will be merged.
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        tensor_axes_to_dim_pairs);
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts = true);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A repicated dimension could be merged by any sharded dimension.
@@ -124,14 +125,14 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
 TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr);
 
 // Check whether the given DistTensorSpec objects are valid. For each
-// DistTensorSpec, the rank of its dimsmapping must be equal to the rank of its
+// DistTensorSpec, the rank of its dims mapping must be equal to the rank of its
 // corresponding tensor shape. the parameter op_name is used for logging error
 // message.
 void VerifySpecs(const std::vector<DistTensorSpec>& specs,
                  const std::string& op_name);
 
-// Get dimsmapping for the given tensors. Return the pair of each
-// tensor's einsum notation and the corresponding dimsmapping.
+// Get dims mapping for the given tensors. Return the pair of each
+// tensor's einsum notation and the corresponding dims mapping.
 std::vector<std::pair<std::string, std::vector<int64_t>>>
 GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
                        const std::vector<DistTensorSpec>& specs);

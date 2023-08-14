@@ -64,7 +64,7 @@ def net(batch_size=4, lr=0.01):
 
         # build dnn model
         dnn_layer_dims = [2, 1]
-        dnn_embedding = fluid.layers.embedding(
+        dnn_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
@@ -80,7 +80,7 @@ def net(batch_size=4, lr=0.01):
         dnn_out = dnn_pool
 
         # build lr model
-        lr_embedding = fluid.layers.embedding(
+        lr_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
@@ -121,7 +121,7 @@ def net(batch_size=4, lr=0.01):
 
 
 '''
-optimizer = fluid.optimizer.Adam(learning_rate=0.01)
+optimizer = paddle.optimizer.Adam(learning_rate=0.01)
 
 role = role_maker.PaddleCloudRoleMaker()
 fleet.init(role)

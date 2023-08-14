@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/hlir/pass/use_general_pass.h"
 
 CINN_USE_REGISTER(InferShape)
 CINN_USE_REGISTER(OpFusion)
@@ -25,6 +26,7 @@ CINN_USE_REGISTER(DCE)
 CINN_USE_REGISTER(DotMerger)
 CINN_USE_REGISTER(OpFusionPass)
 CINN_USE_REGISTER(FusionMergePass)
+CINN_USE_REGISTER(GeneralFusionMergePass)
 CINN_USE_REGISTER(CheckFusionAccuracyPass)
 
 CINN_USE_REGISTER(CommonSubexpressionEliminationPass)

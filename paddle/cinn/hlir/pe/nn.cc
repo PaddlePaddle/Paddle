@@ -28,10 +28,10 @@
 #include "paddle/cinn/hlir/pe/elementwise.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace hlir {
@@ -646,7 +646,7 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
   return {packed_out, input_pad};
 }
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
 std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
                                            const ir::Tensor &weights,
                                            int pad_h,
@@ -1014,7 +1014,7 @@ std::vector<ir::Tensor> Softmax(const ir::Tensor &A,
   return {out, temp};
 }
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
 std::vector<ir::Tensor> SoftmaxMKLDNN(const ir::Tensor &A,
                                       int axis,
                                       const std::string &output_name) {

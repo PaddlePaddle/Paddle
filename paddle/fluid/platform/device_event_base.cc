@@ -20,13 +20,15 @@
 namespace paddle {
 namespace platform {
 
-EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
-EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
-EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
-EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
-EventSetFinishedFunction DeviceEvent::event_finished_setter_[MaxDeviceTypes];
-EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
-EventResetFunction DeviceEvent::event_resetter_[MaxDeviceTypes];
+EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];   // NOLINT
+EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];  // NOLINT
+EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];    // NOLINT
+EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];  // NOLINT
+EventSetFinishedFunction                                           // NOLINT
+    DeviceEvent::event_finished_setter_[MaxDeviceTypes];
+EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes]  // NOLINT
+                                            [MaxDeviceTypes];
+EventResetFunction DeviceEvent::event_resetter_[MaxDeviceTypes];  // NOLINT
 
 /*
  * Generate flag used to create event on all sorts of equipment.

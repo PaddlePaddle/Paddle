@@ -23,7 +23,7 @@
 #include "paddle/cinn/hlir/pe/broadcast.h"
 #include "paddle/cinn/hlir/pe/elementwise.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
-#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"

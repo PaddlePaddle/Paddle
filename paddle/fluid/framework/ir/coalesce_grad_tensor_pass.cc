@@ -69,7 +69,7 @@ double GetFuseParameterMemorySize() { return FLAGS_fuse_parameter_memory_size; }
 
 class CoalesceGradTensorPass : public ir::Pass {
  protected:
-  void ApplyImpl(ir::Graph *graph) const {
+  void ApplyImpl(ir::Graph *graph) const override {
     if (Get<size_t>(details::kNRanks) <= 1) {
       VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
               << ", there doesn't need apply FuseAllReduceOpPass.";
@@ -87,7 +87,7 @@ class CoalesceGradTensorPass : public ir::Pass {
         details::kGroupParamsAndDenseGrads, &result);
 
     VLOG(10) << "The number of params and grads is:" << params_grads.size();
-    if (params_grads.size() == 0) {
+    if (params_grads.empty()) {
       return;
     }
 
@@ -107,7 +107,7 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     VLOG(10) << "Dense grads: " << p_g_dense_grad.size()
              << ", Sparse grads: " << p_g_sparse_grad.size();
-    if (p_g_dense_grad.size() == 0) {
+    if (p_g_dense_grad.empty()) {
       return;
     }
 
@@ -288,14 +288,14 @@ class CoalesceGradTensorPass : public ir::Pass {
       details::GroupParamsAndGrads *group_params_grads) const {
     std::map<std::string, size_t> var_idx;
 
-    for (size_t i = 0; i < params_grads.size(); ++i) {
-      auto pos = params_grads[i].first.find_first_of(".");
+    for (const auto &params_grad : params_grads) {
+      auto pos = params_grad.first.find_first_of(".");
 
       std::string var_key;
       if (pos == std::string::npos) {
-        var_key = params_grads[i].first;
+        var_key = params_grad.first;
       } else {
-        var_key = params_grads[i].first.substr(0, pos);
+        var_key = params_grad.first.substr(0, pos);
       }
 
       size_t idx = 0;
@@ -309,7 +309,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
       auto &local_group_params_grads = group_params_grads->at(idx);
       local_group_params_grads.emplace_back(
-          std::make_pair(params_grads[i].first, params_grads[i].second));
+          std::make_pair(params_grad.first, params_grad.second));
     }
 
     if (VLOG_IS_ON(10)) {

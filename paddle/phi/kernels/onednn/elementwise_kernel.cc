@@ -110,10 +110,19 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
 
   auto& astream = OneDNNContext::tls().get_stream();
 
-  const std::unordered_map<int, dnnl::memory> args = {
-      {DNNL_ARG_SRC_0, *src_x_memory},
-      {DNNL_ARG_SRC_1, *src_y_memory},
-      {DNNL_ARG_DST, *dst_memory}};
+  std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC_0, *src_x_memory},
+                                                {DNNL_ARG_SRC_1, *src_y_memory},
+                                                {DNNL_ARG_DST, *dst_memory}};
+
+  if (handler.Has_SRC_0_Scale()) {
+    args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0,
+                 handler.Get_SRC_0_Scale_Memory()});
+  }
+
+  if (handler.Has_SRC_1_Scale()) {
+    args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
+                 handler.Get_SRC_1_Scale_Memory()});
+  }
 
   binary_prim->execute(astream, args);
   astream.wait();
@@ -121,7 +130,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   auto out_md = dst_memory->get_desc();
 
   if (handler.use_broadcasting_hack) {
-    auto dims = out_md.dims();
+    auto dims = out_md.get_dims();
     dims.insert(dims.begin(), non_const_x->dims()[0]);
     dims[1] /= dims[0];
     out_md = out_md.reshape(dims);

@@ -26,7 +26,7 @@ def same_cfgs_beside(attr, cur_cfg, history_cfgs):
         for key in cur_cfg:
             if key == attr:
                 continue
-            if key not in history_cfgs or history_cfgs[key] != cur_cfg[key]:
+            if key not in cfg or cfg[key] != cur_cfg[key]:
                 same = False
                 break
         if same:
@@ -56,7 +56,7 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
     hidden_size = tuner_cfg["model_cfg"].get("hidden_size", None)
     vocab_size = tuner_cfg["model_cfg"].get("vocab_size", None)
 
-    if not mp_degree:
+    if mp_degree is None:
         return False
 
     if hidden_size and hidden_size % mp_degree != 0:
@@ -93,7 +93,7 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
     num_layers = tuner_cfg["model_cfg"].get("num_layers", None)
     num_nodes = tuner_cfg.get("num_nodes", 1)
 
-    if not pp_degree:
+    if pp_degree is None:
         return False
 
     if num_layers:
@@ -128,12 +128,15 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
             // cur_cfg["dp_degree"]
             // cur_cfg["sharding_degree"]
         )
+        if local_batch_size == 0:
+            return True
+
     mbs_candidates = tuner_cfg.get("micro_batch_size", None)
 
     if mbs_candidates == "auto":
         mbs_candidates = tuner_cfg["candidates"]["micro_batch_size"]
 
-    if not micro_batch_size:
+    if micro_batch_size is None:
         return False
 
     if local_batch_size:
@@ -222,7 +225,7 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
     """
     recompute_granularity = cur_cfg.get("recompute_granularity", None)
     use_recompute = cur_cfg.get("use_recompute", None)
-    if not use_recompute:
+    if use_recompute is None:
         return False
 
     recompute_granularity_candidates = tuner_cfg["candidates"].get(
@@ -253,10 +256,11 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
             ):
                 return True
 
-    if use_recompute is False:
+    if not use_recompute:
         cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
         if cfgs:
             return True
+
     return False
 
 

@@ -221,7 +221,7 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
     if (i == 0) {
       fc_input_var_0 = pattern->NewNode(
           [=](Node* x) {
-            if (x->outputs.size() <= 0 || x->inputs.size() <= 0U) {
+            if (x->outputs.empty() || x->inputs.empty()) {
               return false;
             }
             if (x->IsVar() && x->Var() && x->Var()->GetShape().size() > 2) {
@@ -275,8 +275,8 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
             return false;
           }
           x = before_var_of_part(x);
-          if (i == 0 && x->outputs.size() > 0U) {
-            if (x->inputs.size() <= 0U) {
+          if (i == 0 && !x->outputs.empty()) {
+            if (x->inputs.empty()) {
               return false;
             }
             int fc_idx = FindFCIdx(x);
@@ -291,7 +291,7 @@ void BuildRepeatedFCReluPattern(PDPattern* pattern,
             }
           } else {
             return var_next_is_fc_act_repeated_n_times(x, num_fc - i, "relu") &&
-                   x->inputs.size() > 0 &&
+                   !x->inputs.empty() &&
                    var_before_is_fc_act_repeated_n_times(x, i, "relu");
           }
         },
@@ -405,8 +405,8 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
       IR_NODE_LINK_TO(weights_vars[i], op);
       IR_NODE_LINK_TO(bias_vars[i], op);
     }
-    for (size_t i = 0; i < relu_vars.size(); ++i) {
-      IR_NODE_LINK_TO(op, relu_vars[i]);
+    for (auto& relu_var : relu_vars) {
+      IR_NODE_LINK_TO(op, relu_var);
     }
     IR_NODE_LINK_TO(op, last_out_var);
 
@@ -418,8 +418,8 @@ int RepeatedFCReluFusePass::BuildFusion(Graph* graph,
       marked_nodes.erase(weights_vars[i]);
       marked_nodes.erase(bias_vars[i]);
     }
-    for (size_t i = 0; i < relu_vars.size(); ++i) {
-      marked_nodes.erase(relu_vars[i]);
+    for (auto& relu_var : relu_vars) {
+      marked_nodes.erase(relu_var);
     }
     marked_nodes.erase(input_var);
     marked_nodes.erase(last_out_var);

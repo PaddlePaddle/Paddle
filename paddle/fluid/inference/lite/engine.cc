@@ -30,7 +30,7 @@ namespace paddle {
 namespace inference {
 namespace lite {
 
-bool EngineManager::Empty() const { return engines_.size() == 0; }
+bool EngineManager::Empty() const { return engines_.empty(); }
 
 bool EngineManager::Has(const std::string& name) const {
   if (engines_.count(name) == 0) {

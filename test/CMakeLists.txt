@@ -127,6 +127,7 @@ if(WITH_TESTING)
     add_subdirectory(ipu)
   endif()
   add_subdirectory(ir)
+  add_subdirectory(indexing)
   add_subdirectory(legacy_test)
   if(WITH_MKLDNN)
     add_subdirectory(mkldnn)
@@ -224,14 +225,6 @@ if(TARGET standalone_executor_test)
   set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
   if(NOT WIN32)
     add_dependencies(standalone_executor_test download_program)
-  endif()
-endif()
-
-if(TARGET standalone_executor_new_ir_test)
-  if(NOT WIN32)
-    set_tests_properties(
-      standalone_executor_new_ir_test
-      PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
   endif()
 endif()
 

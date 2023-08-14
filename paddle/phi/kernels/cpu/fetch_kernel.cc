@@ -16,16 +16,8 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/fetch_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void FetchKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 DenseTensor* out) {
-  phi::Copy(dev_ctx, x, phi::CPUPlace(), true, out);
-}
-}  // namespace phi
 PD_REGISTER_KERNEL(fetch,
                    CPU,
                    ALL_LAYOUT,

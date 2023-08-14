@@ -37,7 +37,7 @@ void RollKernel(const Context& dev_ctx,
   auto dims = axis;
 
   // axis = none, reshape to 1-D tensor
-  if (dims.size() == 0) {
+  if (dims.empty()) {
     dims.push_back(0l);
     input_dim = phi::Dim<1>(out_vec.size());
   }

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import signal
 import sys
@@ -36,6 +37,13 @@ class ControllerBase:
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
         signal.signal(signal.SIGINT, self.signal_handler)
+        if ctx.is_auto_tuner_mode():
+            if not ctx.run_best:
+                # set per task timeout
+                signal.signal(signal.SIGALRM, self.not_exit_signal_handler)
+                signal.alarm(ctx.max_time_per_task)
+            else:
+                signal.alarm(0)
 
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
@@ -237,6 +245,8 @@ class Controller(ControllerBase):
         is_init=False,
     ):
         if not container:
+            envs = copy.deepcopy(envs)
+            envs['PADDLE_LOG_DIR'] = str(os.path.abspath(self.ctx.args.log_dir))
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
             )

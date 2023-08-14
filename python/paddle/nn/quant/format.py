@@ -59,14 +59,14 @@ class LinearQuanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             return _C_ops.quantize_linear(
-                input,
+                input.cast('float32'),
                 self._scales,
                 self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
@@ -109,14 +109,14 @@ class LinearDequanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             return _C_ops.dequantize_linear(
-                input,
+                input.cast('float32'),
                 self._scales,
                 self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
@@ -149,29 +149,31 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
     It defines some functions to convert quantizers and observers to quantize
     or dequantize operators that maintain the quantization parameters used
     during inference.
+
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            # Given codes in ./customized_quanter.py
-            class CustomizedQuantedLayer(ConvertibleQuantedLayer):
-                def __init__(self):
-                    super().__init__()
-                    self.weight_a = paddle.create_parameter(shape=[1], dtype='float32')
-                    self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
-                    self.quanter_for_weight_a = None
-                    self.activation_weight = None
-                def forward(self, input):
-                    qweight_a = self.quanter_for_weight_a(self.weight_a)
-                    weight_b = self.weight_b
-                    qinput = self.activation_weight(input)
-                    // compute with qweight_a, weight_b and qinput.
-                    return qweight * qinput + weight_b
-
-                def weights_to_quanters(self):
-                    return [('weight_a', 'quanter_for_weight_a')]
-
-                def activation_quanters(self):
-                    return ['activation_weight']
+            >>> # Given codes in ./customized_quanter.py
+            >>> class CustomizedQuantedLayer(ConvertibleQuantedLayer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.weight_a = paddle.create_parameter(shape=[1], dtype='float32')
+            ...         self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
+            ...         self.quanter_for_weight_a = None
+            ...         self.activation_weight = None
+            ...
+            ...     def forward(self, input):
+            ...         qweight_a = self.quanter_for_weight_a(self.weight_a)
+            ...         weight_b = self.weight_b
+            ...         qinput = self.activation_weight(input)
+            ...         # compute with qweight_a, weight_b and qinput.
+            ...         return qweight * qinput + weight_b
+            ...
+            ...     def weights_to_quanters(self):
+            ...         return [('weight_a', 'quanter_for_weight_a')]
+            ...
+            ...     def activation_quanters(self):
+            ...         return ['activation_weight']
     """
 
     def __init__(self):
