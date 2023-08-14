@@ -32,10 +32,10 @@ class AbsmaxObserver(ObserverFactory):
     Examples:
         .. code-block:: python
 
-            >> from paddle.quantization import QuantConfig
-            >> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            >> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
-            >> q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
     """
 
     def __init__(self, quant_bits=8):
