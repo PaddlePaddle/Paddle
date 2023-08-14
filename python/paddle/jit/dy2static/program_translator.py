@@ -1189,7 +1189,7 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        new_name_generator = UniqueNameGenerator("_jst.")
+        new_name_generator = UniqueNameGenerator()
 
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(
