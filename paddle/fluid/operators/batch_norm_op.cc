@@ -618,11 +618,13 @@ REGISTER_OPERATOR(batch_norm,
                   ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::BatchNormGradMaker<paddle::framework::OpDesc>,
+                  ops::BatchNormGradMaker<paddle::imperative::OpBase>,
                   ops::BatchNormCompositeGradOpMaker);
 
 REGISTER_OPERATOR(batch_norm_grad,
                   ops::BatchNormGradOp,
-                  ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>);
+                  ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::BatchNormDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(batch_norm_grad_grad,
                   ops::BatchNormDoubleGradOp,
                   ops::BatchNormDoubleGradOpInplaceInferer);

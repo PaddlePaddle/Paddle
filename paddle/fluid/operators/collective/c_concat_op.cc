@@ -110,6 +110,7 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_concat,
                   ops::CConcatOp,
                   ops::CConcatOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CConcatOpGradMaker<paddle::imperative::OpBase>,
                   ops::CConcatOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(c_concat,

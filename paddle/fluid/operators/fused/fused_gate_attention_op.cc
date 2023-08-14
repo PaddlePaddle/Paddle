@@ -373,5 +373,6 @@ REGISTER_OPERATOR(
     fused_gate_attention,
     ops::FusedGateAttentionOp,
     ops::FusedGateAttentionOpMaker,
-    ops::FusedGateAttentionGradOpMaker<paddle::framework::OpDesc>);
+    ops::FusedGateAttentionGradOpMaker<paddle::framework::OpDesc>,
+    ops::FusedGateAttentionGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_gate_attention_grad, ops::FusedGateAttentionGradOp);

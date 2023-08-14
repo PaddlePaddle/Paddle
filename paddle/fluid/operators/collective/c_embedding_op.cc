@@ -176,7 +176,8 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(c_embedding,
                   ops::CEmbeddingOp,
                   ops::CEmbeddingOpMaker,
-                  ops::CEmbeddingGradOpMaker<paddle::framework::OpDesc>);
+                  ops::CEmbeddingGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CEmbeddingGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(c_embedding_grad,
                   ops::CEmbeddingOpGrad,

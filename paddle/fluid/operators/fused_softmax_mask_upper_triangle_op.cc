@@ -98,7 +98,8 @@ REGISTER_OPERATOR(
     fused_softmax_mask_upper_triangle,
     ops::SoftmaxMaskFuseUpperTriangleOp,
     ops::SoftmaxMaskFuseUpperTriangleOpMaker,
-    ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::framework::OpDesc>);
+    ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::framework::OpDesc>,
+    ops::SoftmaxMaskFuseUpperTriangleGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_softmax_mask_upper_triangle_grad,
                   ops::SoftmaxMaskFuseUpperTriangleOpGrad);
 

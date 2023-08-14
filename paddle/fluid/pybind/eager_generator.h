@@ -644,4 +644,5 @@ std::set<std::string> legacy_op_list = {
     "sum",
     "top_k_v2",
     "unpool",
-    "unpool3d"};
+    "unpool3d",
+    "set_value"};

@@ -514,4 +514,5 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseTripleGradNoBufVarsInferer,
                     ::paddle::operators::Elementwise##op_name##OpMaker, \
                     ::paddle::operators::ElementwiseOpInferVarType,     \
                     op_type##GradMaker<::paddle::framework::OpDesc>,    \
+                    op_type##GradMaker<::paddle::imperative::OpBase>,   \
                     ::paddle::operators::ElementwiseOpInplaceInferer);

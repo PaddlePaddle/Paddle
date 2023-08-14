@@ -108,7 +108,8 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(global_gather,
                   ops::GlobalGatherOp,
                   ops::GlobalGatherOpMaker,
-                  ops::GlobalGatherOpGradMaker<paddle::framework::OpDesc>)
+                  ops::GlobalGatherOpGradMaker<paddle::framework::OpDesc>,
+                  ops::GlobalGatherOpGradMaker<paddle::imperative::OpBase>)
 
 PD_REGISTER_STRUCT_KERNEL(global_gather,
                           CPU,

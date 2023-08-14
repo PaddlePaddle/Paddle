@@ -206,17 +206,21 @@ REGISTER_OPERATOR(elementwise_mul,
                   ops::ElementwiseMulOpMaker,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
                   ops::ElementwiseMulCompositeGradOpMaker);
-REGISTER_OPERATOR(elementwise_mul_grad,
-                  ops::ElementwiseOpGrad,
-                  ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseMulCompositeDoubleGradOpMaker);
+REGISTER_OPERATOR(
+    elementwise_mul_grad,
+    ops::ElementwiseOpGrad,
+    ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>,
+    ops::ElementwiseMulCompositeDoubleGradOpMaker);
 
 REGISTER_OPERATOR(
     elementwise_mul_grad_grad,
     ops::ElementwiseOpDoubleGrad,
     ops::ElementwiseDoubleGradOpInplaceInferer,
-    ops::ElementwiseMulTripleGradMaker<paddle::framework::OpDesc>);
+    ops::ElementwiseMulTripleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseMulTripleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_mul_triple_grad, ops::ElementwiseOpTripleGrad);
 

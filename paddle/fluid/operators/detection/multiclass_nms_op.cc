@@ -618,7 +618,8 @@ REGISTER_OPERATOR(
     multiclass_nms,
     ops::MultiClassNMSOp,
     ops::MultiClassNMSOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 PD_REGISTER_STRUCT_KERNEL(
     multiclass_nms, CPU, ALL_LAYOUT, ops::MultiClassNMSKernel, float, double) {}
 
@@ -626,7 +627,8 @@ REGISTER_OPERATOR(
     multiclass_nms2,
     ops::MultiClassNMS2Op,
     ops::MultiClassNMS2OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 PD_REGISTER_STRUCT_KERNEL(multiclass_nms2,
                           CPU,
                           ALL_LAYOUT,

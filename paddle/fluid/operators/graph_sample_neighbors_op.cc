@@ -79,4 +79,5 @@ REGISTER_OPERATOR(
     ops::GraphSampleNeighborsOP,
     ops::GraphSampleNeighborsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     GraphSampleNeighborsInferShapeFunctor);

@@ -302,7 +302,8 @@ REGISTER_OPERATOR(
     fused_multi_transformer,
     ops::FusedMultiTransformerOp,
     ops::FusedMultiTransformerOpOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_VERSION(fused_multi_transformer)
     .AddCheckpoint(

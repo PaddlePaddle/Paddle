@@ -112,7 +112,8 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(global_scatter,
                   ops::GlobalScatterOp,
                   ops::GlobalScatterOpMaker,
-                  ops::GlobalScatterOpGradMaker<paddle::framework::OpDesc>)
+                  ops::GlobalScatterOpGradMaker<paddle::framework::OpDesc>,
+                  ops::GlobalScatterOpGradMaker<paddle::imperative::OpBase>)
 
 PD_REGISTER_STRUCT_KERNEL(global_scatter,
                           CPU,

@@ -95,4 +95,5 @@ REGISTER_OPERATOR(
     ops::RandomRoutingOp,
     ops::RandomRoutingOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::RandomRoutingInplaceInferer)

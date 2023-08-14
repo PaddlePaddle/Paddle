@@ -375,4 +375,5 @@ REGISTER_OPERATOR(
     fused_multi_transformer_int8,
     ops::FusedMultiTransformerINT8Op,
     ops::FusedMultiTransformerINT8OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>);
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

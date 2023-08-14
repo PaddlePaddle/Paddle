@@ -88,6 +88,7 @@ REGISTER_OPERATOR(fused_softmax_mask,
                   ops::SoftmaxMaskFuseOp,
                   ops::SoftmaxMaskFuseOpMaker,
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SoftmaxMaskFuseGradOpMaker<paddle::imperative::OpBase>,
                   SoftmaxMaskFuseInferShapeFunctor);
 REGISTER_OPERATOR(fused_softmax_mask_grad,
                   ops::SoftmaxMaskFuseOpGrad,

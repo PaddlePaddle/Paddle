@@ -196,6 +196,7 @@ REGISTER_OPERATOR(
     ops::CSoftmaxWithCrossEntropyOp,
     ops::CSoftmaxWithCrossEntropyOpMaker,
     ops::CSoftmaxWithCrossEntropyOpGradMaker<paddle::framework::OpDesc>,
+    ops::CSoftmaxWithCrossEntropyOpGradMaker<paddle::imperative::OpBase>,
     ops::CSoftmaxWithCrossEntropyInplaceInferer);
 
 REGISTER_OPERATOR(c_softmax_with_cross_entropy_grad,

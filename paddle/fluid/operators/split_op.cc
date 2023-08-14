@@ -254,4 +254,5 @@ REGISTER_OPERATOR(split,
                   ops::SplitOpMaker,
                   ops::SplitCompositeGradOpMaker,
                   ops::SplitInferVarType,
-                  ops::SplitGradMaker<paddle::framework::OpDesc>);
+                  ops::SplitGradMaker<paddle::framework::OpDesc>,
+                  ops::SplitGradMaker<paddle::imperative::OpBase>);

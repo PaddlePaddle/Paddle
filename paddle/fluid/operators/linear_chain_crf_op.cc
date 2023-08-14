@@ -390,7 +390,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(linear_chain_crf,
                   ops::LinearChainCRFOp,
                   ops::LinearChainCRFOpMaker,
-                  ops::LinearChainCRFGradMaker<paddle::framework::OpDesc>);
+                  ops::LinearChainCRFGradMaker<paddle::framework::OpDesc>,
+                  ops::LinearChainCRFGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(linear_chain_crf_grad,
                   ops::LinearChainCRFGradOp,
                   ops::LinearChainCRFGradNoNeedBufferVarsInferer);

@@ -367,10 +367,12 @@ class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_gemm_epilogue,
-                  ops::FusedGemmEpilogueOp,
-                  ops::FusedGemmEpilogueOpMaker,
-                  ops::FusedGemmEpilogueOpGradMaker<paddle::framework::OpDesc>);
+REGISTER_OPERATOR(
+    fused_gemm_epilogue,
+    ops::FusedGemmEpilogueOp,
+    ops::FusedGemmEpilogueOpMaker,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::framework::OpDesc>,
+    ops::FusedGemmEpilogueOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_gemm_epilogue_grad,
                   ops::FusedGemmEpilogueGradOp,
                   ops::FusedGemmEpilogueGradOpMaker);

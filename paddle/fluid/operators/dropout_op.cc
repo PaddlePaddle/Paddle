@@ -219,6 +219,7 @@ REGISTER_OPERATOR(dropout,
                   ops::DropoutOpMaker,
                   ops::DropoutCompositeGradOpMaker,
                   ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
+                  ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
                   DropoutInferShapeFunctor);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 
@@ -229,5 +230,6 @@ REGISTER_OPERATOR(dropout_nd,
                   ops::DropoutOp,
                   ops::DropoutNdOpMaker,
                   ops::DropoutNdGradOpMaker<paddle::framework::OpDesc>,
+                  ops::DropoutNdGradOpMaker<paddle::imperative::OpBase>,
                   DropoutNdInferShapeFunctor);
 REGISTER_OPERATOR(dropout_nd_grad, ops::DropoutOpGrad);

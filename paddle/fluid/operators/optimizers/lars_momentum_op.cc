@@ -231,6 +231,7 @@ REGISTER_OPERATOR(
     ops::LarsMomentumOp,
     ops::LarsMomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::LarsMomentumOpVarTypeInference);
 
 PD_REGISTER_STRUCT_KERNEL(

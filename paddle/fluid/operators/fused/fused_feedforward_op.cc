@@ -437,7 +437,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_feedforward,
                   ops::FusedFeedForwardOp,
                   ops::FusedFeedForwardOpMaker,
-                  ops::FusedFeedForwardOpGradMaker<paddle::framework::OpDesc>);
+                  ops::FusedFeedForwardOpGradMaker<paddle::framework::OpDesc>,
+                  ops::FusedFeedForwardOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_feedforward_grad, ops::FusedFeedForwardOpGrad);
 
 REGISTER_OP_VERSION(fused_feedforward)

@@ -98,6 +98,7 @@ REGISTER_OPERATOR(identity_loss,
                   ops::IdentityLossOp,
                   ops::IdentityLossOpMaker,
                   ops::IdentityLossGradMaker<paddle::framework::OpDesc>,
+                  ops::IdentityLossGradMaker<paddle::imperative::OpBase>,
                   ops::IdentityLossInplaceInferer,
                   IdentityLossInferShapeFunctor);
 

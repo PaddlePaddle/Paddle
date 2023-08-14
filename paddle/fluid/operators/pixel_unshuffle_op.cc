@@ -93,6 +93,7 @@ REGISTER_OPERATOR(pixel_unshuffle,
                   ops::PixelUnshuffleOp,
                   ops::PixelUnshuffleOpMaker,
                   ops::PixelUnshuffleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PixelUnshuffleGradOpMaker<paddle::imperative::OpBase>,
                   PixelUnshuffleInferShapeFunctor);
 
 DECLARE_INFER_SHAPE_FUNCTOR(pixel_unshuffle_grad,

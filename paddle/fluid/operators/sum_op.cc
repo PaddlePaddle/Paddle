@@ -73,7 +73,7 @@ class SumOp : public framework::OperatorWithKernel {
 
       auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
 
-      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
       if (!((data_type == framework::proto::VarType::FP32 ||
              data_type == framework::proto::VarType::BF16) &&
             ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
@@ -85,7 +85,7 @@ class SumOp : public framework::OperatorWithKernel {
                               })) {
         this->SetDnnFallback(true);
       }
-      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
       return phi::KernelKey(data_type, ctx.GetPlace());
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
@@ -211,6 +211,33 @@ class SumGradDescMaker : public framework::GradOpDescMakerBase {
   }
 };
 
+class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
+ public:
+  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
+    auto x_grads = InputGrad("X", false);
+    using InputGradsType = decltype(x_grads);
+
+    if (!x_grads.empty()) {
+      auto node = this->NewGradNode();
+      node->reserve(x_grads.size());
+      auto og = OutputGrad("Out");
+      for (auto& x_grad : x_grads) {
+        imperative::TracedGradOp op(node);
+        op.SetType("scale");
+        op.SetInput("X", og);
+        op.SetOutput("Out", InputGradsType{x_grad});
+        op.SetAttr("scale", 1.0f);
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
+      }
+      return node;
+    } else {
+      return nullptr;
+    }
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
@@ -227,6 +254,7 @@ REGISTER_OPERATOR(sum,
                   ops::SumOp,
                   ops::SumOpMaker,
                   ops::SumGradDescMaker,
+                  ops::SumGradOpBaseMaker,
                   ops::SumOpVarTypeInference,
                   ops::SumInplaceInferer,
                   AddNInferShapeFunctor);
