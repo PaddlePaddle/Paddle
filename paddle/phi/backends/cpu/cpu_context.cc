@@ -65,9 +65,9 @@ CPUContext::CPUContext(const Place& place)
 
 CPUContext::~CPUContext() = default;
 
-CPUContext::CPUContext(CPUContext&&) = default;
+CPUContext::CPUContext(CPUContext&&) noexcept = default;
 
-CPUContext& CPUContext::operator=(CPUContext&&) = default;
+CPUContext& CPUContext::operator=(CPUContext&&) noexcept = default;
 
 Eigen::DefaultDevice* CPUContext::eigen_device() const {
   return impl_->GetEigenDevice();

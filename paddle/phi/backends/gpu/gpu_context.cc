@@ -814,9 +814,9 @@ struct GPUContext::Impl {
 
 thread_local AttributeMap GPUContext::Impl::dnn_attrs_ = {};
 
-GPUContext::GPUContext(GPUContext&&) = default;
+GPUContext::GPUContext(GPUContext&&) noexcept = default;
 
-GPUContext& GPUContext::operator=(GPUContext&&) = default;
+GPUContext& GPUContext::operator=(GPUContext&&) noexcept = default;
 
 GPUContext::GPUContext(const GPUPlace& place, bool init, int stream_priority)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
