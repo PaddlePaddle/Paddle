@@ -32,6 +32,7 @@ DLL_EXPORT int fast_where(Context* ctx,
                           T* out,
                           int64_t len);
 template <typename T, typename TID>
+
 DLL_EXPORT int fast_gather_nd(Context* ctx,
                               const T* x,
                               const TID* index,
@@ -55,6 +56,15 @@ static inline int fast_gather_nd(Context* ctx,
       vpi32_to_vpi64(xshape, xshape_i64.get()),
       std::vector<int64_t>(index_shape.begin(), index_shape.end()));
 }
+
+template <typename T, typename TID>
+DLL_EXPORT int take_along_axis(Context* ctx,
+                               const T* x,
+                               const TID* index,
+                               T* y,
+                               const std::vector<int64_t>& xshape,
+                               const std::vector<int64_t>& idxshape,
+                               int64_t axis);
 
 }  // namespace plugin
 }  // namespace api

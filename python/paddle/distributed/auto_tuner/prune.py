@@ -122,6 +122,8 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     """
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
     global_batch_size = tuner_cfg["model_cfg"].get("global_batch_size", None)
+    if global_batch_size == "auto":
+        global_batch_size = cur_cfg["global_batch_size"]
     if global_batch_size:
         local_batch_size = (
             global_batch_size
