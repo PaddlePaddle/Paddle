@@ -2358,6 +2358,24 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_data_ptr__doc__,
+             R"DOC(data_ptr($self, /)
+--
+
+Returns the address of the first element of current Tensor.
+
+Returns:
+    int, The address of the first element of current Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        print(x.data_ptr())
+)DOC");
+
 static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* args,
                                  PyObject* kwargs) {
@@ -2387,6 +2405,25 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_get_strides__doc__,
+             R"DOC(get_strides($self, /)
+--
+
+Returns the strides of current Tensor.
+
+Returns:
+    List, the strides of current Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        y = x[1]
+        print(y.get_strides())
+)DOC");
+
 static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
@@ -2404,6 +2441,27 @@ static PyObject* tensor_method_strides(TensorObject* self,
   return ToPyObject(value);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_contiguous__doc__,
+             R"DOC(contiguous($self, /)
+--
+
+Returns a contiguous in memory tensor containing the same data as current Tensor.
+If self tensor is already contiguous, this function returns the current Tensor.
+
+Returns:
+    Tensor, The contiguous Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        y = x[1]
+        y = y.contiguous()
+        print(y)
+)DOC");
 
 static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
@@ -2429,6 +2487,24 @@ static PyObject* tensor_contiguous(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_contiguous__doc__,
+             R"DOC(is_contiguous($self, /)
+--
+
+Whether the Tensor is contiguous.
+
+Returns:
+    Bool, Whether the Tensor is contiguous.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        y = x[1]
+        print(y.is_contiguous())
+)DOC");
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
@@ -2717,7 +2793,7 @@ PyMethodDef variable_methods[] = {
     {"data_ptr",
      (PyCFunction)(void (*)())tensor_data_ptr,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_data_ptr__doc__},
     {"_grad_ivar",
      (PyCFunction)(void (*)())tensor__grad_ivar,
      METH_VARARGS | METH_KEYWORDS,
@@ -2725,15 +2801,15 @@ PyMethodDef variable_methods[] = {
     {"contiguous",
      (PyCFunction)(void (*)(void))tensor_contiguous,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_contiguous__doc__},
     {"is_contiguous",
      (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_is_contiguous__doc__},
     {"get_strides",
      (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_get_strides__doc__},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
