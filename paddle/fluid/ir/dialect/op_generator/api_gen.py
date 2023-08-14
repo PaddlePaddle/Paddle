@@ -153,8 +153,6 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 if op_name not in API_LIST:
                     continue
-                # if op_name == 'add_n':
-                #     breakpoint()
                 declare_str += self._gen_one_declare(op_info, op_name)
         body = declare_str
         for namespace in reversed(namespaces):
@@ -241,10 +239,7 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 if op_name not in API_LIST:
                     continue
-                # if op_name == 'add_n':
-                #     breakpoint()
                 impl_str += self._gen_one_impl(op_info, op_name)
-        # breakpoint()
         body = impl_str
         for namespace in reversed(namespaces):
             body = NAMESPACE_TEMPLATE.format(namespace=namespace, body=body)
