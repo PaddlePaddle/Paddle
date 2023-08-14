@@ -77,7 +77,7 @@ TEST(VJP, TanhBackwardTest) {
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
       {prefix_str + "_inner_var_1", prefix_str + "_inner_var_3"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_1")->Get<phi::DenseTensor>()
@@ -131,7 +131,7 @@ TEST(VJP, Tanh_BackwardTest) {
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
       {prefix_str + "_inner_var_0", prefix_str + "_inner_var_2"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
@@ -185,7 +185,7 @@ TEST(VJP, MeanBackwardTest) {
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
       {prefix_str + "_inner_var_1", prefix_str + "_inner_var_3"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_1")->Get<phi::DenseTensor>()
@@ -244,7 +244,7 @@ TEST(VJP, AddBackwardTest) {
   test_core.SetSkipGcVars({prefix_str + "_inner_var_2",
                            prefix_str + "_inner_var_4",
                            prefix_str + "_inner_var_5"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_2")->Get<phi::DenseTensor>()
@@ -309,7 +309,7 @@ TEST(VJP, Add_BackwardTest) {
   test_core.SetSkipGcVars({prefix_str + "_inner_var_0",
                            prefix_str + "_inner_var_3",
                            prefix_str + "_inner_var_4"});
-  test_core.BetaRun({});
+  test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
