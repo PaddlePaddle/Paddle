@@ -448,7 +448,6 @@ def scaled_dot_product_attention(
                         The dtype can be float61 or bfloat16.
         attn_mask(Tensor,optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
-                        not supported yet.
         dropout_p(float): The dropout ratio.
         is_causal(bool): Whether enable causal mode.
         training(bool): Whether it is in the training phase.
