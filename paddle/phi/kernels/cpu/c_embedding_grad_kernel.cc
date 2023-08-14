@@ -48,6 +48,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int64_t start_index,
                           DenseTensor* w_grad) {
+  w_grad->Resize(w.dims());
   T* table_grad_data = dev_ctx.template Alloc<T>(w_grad);
 
   size_t table_t_mem_size = w.numel() * sizeof(w_grad->dtype());

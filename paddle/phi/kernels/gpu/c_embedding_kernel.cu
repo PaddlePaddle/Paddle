@@ -59,7 +59,7 @@ __global__ void CEmbedding(T* out,
 }
 
 template <typename T, typename Context>
-void CEmbeddingKernel(const Context& dev_ctx,
+void CEmbeddingKernel(const Context& ctx,
                       const DenseTensor& w,
                       const DenseTensor& ids,
                       int64_t start_index,
@@ -71,7 +71,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
   const int64_t end_idx = start_index + N;
 
   auto* table = w.data<T>();
-  auto* output = dev_ctx.template Alloc<T>(out);
+  auto* output = ctx.template Alloc<T>(out);
 
   auto limit = K * D;
   int blocks = NumBlocks(limit);
@@ -80,27 +80,27 @@ void CEmbeddingKernel(const Context& dev_ctx,
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32) {
     CEmbedding<T, int32_t>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(output,
-                                                   table,
-                                                   ids.data<int32_t>(),
-                                                   K,
-                                                   D,
-                                                   N,
-                                                   start_index,
-                                                   end_idx,
-                                                   limit);
+        <<<blocks, threads, 0, ctx.stream()>>>(output,
+                                               table,
+                                               ids.data<int32_t>(),
+                                               K,
+                                               D,
+                                               N,
+                                               start_index,
+                                               end_idx,
+                                               limit);
 
   } else if (index_type == phi::DataType::INT64) {
     CEmbedding<T, int64_t>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(output,
-                                                   table,
-                                                   ids.data<int64_t>(),
-                                                   K,
-                                                   D,
-                                                   N,
-                                                   start_index,
-                                                   end_idx,
-                                                   limit);
+        <<<blocks, threads, 0, ctx.stream()>>>(output,
+                                               table,
+                                               ids.data<int64_t>(),
+                                               K,
+                                               D,
+                                               N,
+                                               start_index,
+                                               end_idx,
+                                               limit);
   } else {
     PADDLE_THROW(phi::errors::Unavailable(
         "GPU c_embedding ids only support int32 or int64."));
