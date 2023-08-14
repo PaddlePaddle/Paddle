@@ -17,7 +17,11 @@ import os
 
 import yaml
 from op_build_gen import gen_build_func_str
-from op_interface_gen import gen_exclusive_interface_str, gen_op_infer_meta_str
+from op_interface_gen import (
+    gen_exclusive_interface_str,
+    gen_op_infer_meta_str,
+    vjp_interface_gen_op_list,
+)
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
 
@@ -43,9 +47,11 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/ir/interface/vjp.h"
 #include "paddle/fluid/ir/trait/inplace.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/fluid/ir/dialect/pd_manual_op.h"
 
 {input}
 
@@ -145,6 +151,8 @@ scalar_type_maps = {
     'dobule': 'ir::DoubleAttribute',
     'bool': 'ir::BoolAttribute',
 }
+
+_NO_NEED_GEN_OPS = {'add_n'}
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -250,12 +258,12 @@ class OpInfoParser:
                 'ir::ArrayAttribute<ir::BoolAttribute>',
                 'const std::vecot<bool>&',
             ],
-            'str': ['ir::StrAttribute', 'std::string'],
+            'str': ['ir::StrAttribute', 'const std::string&'],
             'str[]': [
                 'ir::ArrayAttribute<ir::StrAttribute>',
                 'const std::vector<std::string>&',
             ],
-            'Place': ['paddle::dialect::PlaceAttribute', 'Place'],
+            'Place': ['paddle::dialect::PlaceAttribute', 'const Place&'],
             'DataLayout': [
                 'paddle::dialect::DataLayoutAttribute',
                 'DataLayout',
@@ -302,6 +310,9 @@ class OpInfoParser:
             self.infer_meta_func = self.op_yaml_item['infer_meta']["func"]
         else:
             self.infer_meta_func = None
+
+        # parse backward name
+        self.backward_name = self.parse_backward_name()
 
         # parse inplace && view
         self.inplace_map = self.parse_op_inplace_info()
@@ -566,7 +577,7 @@ class OpInfoParser:
                     temp_type = attribute_info['data_type']
             if 'IntArray' in temp_type:
                 if 'data_type' in attribute_info:
-                    temp_type = attribute_info['data_type']
+                    temp_type = "const " + attribute_info['data_type'] + "&"
             type_list.append(self.get_phi_dtype_name(temp_type))
         return type_list
 
@@ -609,6 +620,12 @@ class OpInfoParser:
     def parse_kernel_map(self):
         if 'kernel' in self.op_yaml_item:
             return self.op_yaml_item['kernel']
+        else:
+            return None
+
+    def parse_backward_name(self):
+        if 'backward' in self.op_yaml_item:
+            return self.op_yaml_item['backward']
         else:
             return None
 
@@ -720,10 +737,17 @@ def OpGenerator(
         if op_info.infer_meta_func:
             op_interfaces += ["InferMetaInterface"]
 
+        if (
+            op_info.backward_name
+            and op_info.op_phi_name[0] in vjp_interface_gen_op_list
+        ):
+            op_interfaces += ["VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
+            if op_name in _NO_NEED_GEN_OPS:
+                continue
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
 

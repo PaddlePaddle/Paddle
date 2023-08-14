@@ -125,8 +125,8 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& ctx,
     dims_[0] = out_size;
   }
   out->Resize(phi::make_ddim(dims_));
-  for (size_t i = 0; i < dims_.size(); i++) {
-    memset_size *= dims_[i];
+  for (auto dim : dims_) {
+    memset_size *= dim;
   }
 
   ctx.template Alloc<T>(out);

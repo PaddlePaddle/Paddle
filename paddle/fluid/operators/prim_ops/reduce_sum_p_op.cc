@@ -68,13 +68,13 @@ class ReduceSumPrimOpShapeInference : public framework::InferShapeBase {
     auto axis = ctx->Attrs().Get<std::vector<int64_t>>("axis");
     auto keepdim = ctx->Attrs().Get<bool>("keepdim");
     if (keepdim) {
-      for (size_t i = 0; i < axis.size(); ++i) {
-        x_shape[axis[i]] = 1;
+      for (auto item : axis) {
+        x_shape[item] = 1;
       }
     } else {
       const int kDelFlag = -2;
-      for (size_t i = 0; i < axis.size(); ++i) {
-        x_shape[axis[i]] = kDelFlag;
+      for (auto item : axis) {
+        x_shape[item] = kDelFlag;
       }
       x_shape.erase(remove(x_shape.begin(), x_shape.end(), kDelFlag),
                     x_shape.end());

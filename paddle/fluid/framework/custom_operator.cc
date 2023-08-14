@@ -270,8 +270,8 @@ static void RunKernelFunc(
 
     FLAGS_tensor_operants_mode = "phi";
     if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-      paddle::OperantsManager::Instance().phi_operants.reset(
-          new paddle::operants::PhiTensorOperants());
+      paddle::OperantsManager::Instance().phi_operants =
+          std::make_unique<paddle::operants::PhiTensorOperants>();
       VLOG(4) << "Initialize phi tensor operants successfully";
     }
 
@@ -534,8 +534,7 @@ static void RunInferShapeFunc(
       << inplace_map.size()
       << ", output_shapes.size() = " << output_shapes.size();
   size_t output_shape_idx = 0;
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    auto out_name = outputs[i];
+  for (auto out_name : outputs) {
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
@@ -742,8 +741,7 @@ static void RunInferDtypeFunc(
       << inplace_map.size()
       << ", output_dtypes.size() = " << output_dtypes.size();
   size_t output_dtype_idx = 0;
-  for (size_t i = 0; i < outputs.size(); ++i) {
-    auto out_name = outputs[i];
+  for (auto out_name : outputs) {
     if (detail::IsDuplicableVar(out_name)) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
