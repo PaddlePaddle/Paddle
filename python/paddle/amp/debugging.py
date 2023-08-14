@@ -608,7 +608,7 @@ def disable_tensor_checker():
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: python
 
             >>> import paddle
 

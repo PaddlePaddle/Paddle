@@ -860,7 +860,6 @@ class Profiler:
 
         Examples:
             .. code-block:: python
-                :name: code-example8
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
