@@ -291,7 +291,9 @@ struct GPUContext::Impl {
       phi::DestroyBlasHandle(blas_handle_);
       phi::DestroyBlasHandle(blas_tensor_core_handle_);
       phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
+#ifndef PADDLE_WITH_MUSA
       phi::DestroyBlasLtHandle(blaslt_handle_);
+#endif
     }
     if (stream_owned_ && stream_) {
       delete stream_;
@@ -452,6 +454,7 @@ struct GPUContext::Impl {
     blas_tf32_tensor_core_handle_creator_ = std::move(handle_creator);
   }
 
+#ifndef PADDLE_WITH_MUSA
   void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
 
   void SetBlasLtHandle(std::function<blasLtHandle_t()>&& handle_creator) {
@@ -470,6 +473,7 @@ struct GPUContext::Impl {
     PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
     return blaslt_handle_;
   }
+#endif
 
   dnnHandle_t GetDnnHandle() {
     std::call_once(flag_dnn_, [&]() {
@@ -819,8 +823,10 @@ struct GPUContext::Impl {
   std::function<blasHandle_t()> blas_tensor_core_handle_creator_{nullptr};
   blasHandle_t blas_tf32_tensor_core_handle_{nullptr};
   std::function<blasHandle_t()> blas_tf32_tensor_core_handle_creator_{nullptr};
+#ifndef PADDLE_WITH_MUSA
   blasLtHandle_t blaslt_handle_{nullptr};
   std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
+#endif
   dnnHandle_t dnn_handle_{nullptr};
   std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
   solverHandle_t solver_handle_{nullptr};
@@ -894,9 +900,11 @@ blasHandle_t GPUContext::cublas_handle() const {
   return impl_->GetBlasHandle();
 }
 
+#ifndef PADDLE_WITH_MUSA
 blasLtHandle_t GPUContext::cublaslt_handle() const {
   return impl_->GetBlasLtHandle();
 }
+#endif
 
 solverHandle_t GPUContext::cusolver_dn_handle() const {
   return impl_->GetSolverHandle();
@@ -1020,6 +1028,7 @@ void GPUContext::SetBlasTF32Handle(std::function<blasHandle_t()>&& func) {
   impl_->SetBlasTF32Handle(std::move(func));
 }
 
+#ifndef PADDLE_WITH_MUSA
 void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
   impl_->SetBlasLtHandle(blaslt);
 }
@@ -1027,6 +1036,7 @@ void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
 void GPUContext::SetBlasLtHandle(std::function<blasLtHandle_t()>&& func) {
   impl_->SetBlasLtHandle(std::move(func));
 }
+#endif
 
 void GPUContext::SetDnnHandle(dnnHandle_t handle) {
   impl_->SetDnnHandle(handle);
