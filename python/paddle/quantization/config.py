@@ -103,36 +103,36 @@ class QuantConfig:
         weight: QuanterFactory = None,
     ):
         r"""
-         Set the quantization config by layer. It has the highest priority among
-         all the setting methods.
+        Set the quantization config by layer. It has the highest priority among
+        all the setting methods.
 
-         Args:
-             layer(Union[Layer, list]): One or a list of layers.
-             activation(QuanterFactory): Quanter used for activations.
-             weight(QuanterFactory): Quanter used for weights.
+        Args:
+            layer(Union[Layer, list]): One or a list of layers.
+            activation(QuanterFactory): Quanter used for activations.
+            weight(QuanterFactory): Quanter used for weights.
 
-         Examples:
-        .. code-block:: python
+        Examples:
+           .. code-block:: python
 
-             >>> import paddle
-             >>> from paddle.nn import Linear
-             >>> from paddle.quantization import QuantConfig
-             >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+               >>> import paddle
+               >>> from paddle.nn import Linear
+               >>> from paddle.quantization import QuantConfig
+               >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-             >>> class Model(paddle.nn.Layer):
-             ...    def __init__(self):
-             ...        super().__init__()
-             ...        self.fc = Linear(576, 120)
-             >>> model = Model()
-             >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-             >>> q_config = QuantConfig(activation=None, weight=None)
-             >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-             >>> # doctest: +SKIP
-             >>> print(q_config)
-             Global config:
-             None
-             Layer prefix config:
-             {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680ee0>}
+               >>> class Model(paddle.nn.Layer):
+               ...    def __init__(self):
+               ...        super().__init__()
+               ...        self.fc = Linear(576, 120)
+               >>> model = Model()
+               >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+               >>> q_config = QuantConfig(activation=None, weight=None)
+               >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
+               >>> # doctest: +SKIP
+               >>> print(q_config)
+               Global config:
+               None
+               Layer prefix config:
+               {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680ee0>}
 
         """
         if isinstance(layer, list):

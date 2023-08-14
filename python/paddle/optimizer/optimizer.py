@@ -670,19 +670,19 @@ class Optimizer:
                 >>> exe = paddle.static.Executor()
                 >>> exe.run(start_prog)
                 >>> for batch in range(10):
-                ...     print("Learning rate of step{}: {}", adam.get_lr())     # 0.5->0.05->0.005...
+                ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr())) # 0.5->0.05->0.005...
                 ...     out = exe.run(main_prog, feed={'x': np.random.randn(3, 10).astype('float32')})
                 ...     scheduler.step()
-                Learning rate of step{}: {} 0.5
-                Learning rate of step{}: {} 0.5
-                Learning rate of step{}: {} 0.05
-                Learning rate of step{}: {} 0.05
-                Learning rate of step{}: {} 0.005000000000000001
-                Learning rate of step{}: {} 0.005000000000000001
-                Learning rate of step{}: {} 0.0005000000000000001
-                Learning rate of step{}: {} 0.0005000000000000001
-                Learning rate of step{}: {} 5.000000000000001e-05
-                Learning rate of step{}: {} 5.000000000000001e-05
+                Learning rate of step0: 0.5
+                Learning rate of step1: 0.5
+                Learning rate of step2: 0.05
+                Learning rate of step3: 0.05
+                Learning rate of step4: 0.005000000000000001
+                Learning rate of step5: 0.005000000000000001
+                Learning rate of step6: 0.0005000000000000001
+                Learning rate of step7: 0.0005000000000000001
+                Learning rate of step8: 5.000000000000001e-05
+                Learning rate of step9: 5.000000000000001e-05
         """
         if isinstance(self._learning_rate, float):
             return self._learning_rate
