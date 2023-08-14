@@ -11,11 +11,11 @@ cc_test(
        enforce
        generated_static_op)
        
-set(BF32_CPU_QUANTIZE_PASS_TEST_APP "test_mkldnn_cpu_quantize_pass")
-set(BF32_CPU_QUANTIZE_PASS_TEST_APP_SRC
+set(CPU_QUANTIZE_PASS_TEST_APP "test_analyzer_cpu_quantize_pass")
+set(CPU_QUANTIZE_PASS_TEST_APP_SRC
     "test_mkldnn_cpu_quantize_pass.cc")
-    inference_analysis_api_test_build(${BF32_CPU_QUANTIZE_PASS_TEST_APP}
-                                      ${BF32_CPU_QUANTIZE_PASS_TEST_APP_SRC})
+    inference_analysis_api_test_build(${CPU_QUANTIZE_PASS_TEST_APP}
+                                      ${CPU_QUANTIZE_PASS_TEST_APP_SRC})
 
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry

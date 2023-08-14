@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ limitations under the License. */
 #include <iostream>
 #include <unordered_map>
 
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 #include "paddle/fluid/framework/ir/pass.h"
@@ -103,19 +102,21 @@ TEST(cpuQuantizePass, ConvReLU6) {
    
   for (const auto &pass : PreGraphPasses) {
     auto pass_ = paddle::framework::ir::PassRegistry::Instance().Get(pass);
-    if (pass == "fc_fuse_pass") {
-        pass_->Set("use_gpu", new bool(false));
-    }else if(pass == "cpu_quantize_pass"){
+    if(pass == "cpu_quantize_pass"){
         pass_->Set("quant_var_scales", scales);
     };
     graph.reset(pass_->Apply(graph.release()));
   }
+  int fused_conv2d_num = 0;
   for (auto* node : graph->Nodes()) {
     if(node->IsOp() && node->Op() && node->Op()->Type() =="fused_conv2d"){
         CHECK_EQ(node->Op()->GetAttrIfExists<float>("fuse_beta"), 6)
             << "Attr fuse_beta must equal to 6.";
+        fused_conv2d_num++;
     };
   };
+  CHECK_GT(fused_conv2d_num, 0)
+      << "Graph must contain fused_conv2d";
 
 }
 
