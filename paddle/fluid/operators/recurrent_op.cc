@@ -30,23 +30,25 @@ namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
 
-const char RecurrentBase::kInputs[] = "inputs";
-const char RecurrentBase::kInitialStates[] = "initial_states";
-const char RecurrentBase::kParameters[] = "parameters";
-const char RecurrentBase::kOutputs[] = "outputs";
-const char RecurrentBase::kStepScopes[] = "step_scopes";
-const char RecurrentBase::kHasStates[] = "has_states";
-const char RecurrentBase::kExStates[] = "ex_states";
-const char RecurrentBase::kStates[] = "states";
-const char RecurrentBase::kStepBlock[] = "sub_block";
-const char RecurrentBase::kReverse[] = "reverse";
-const char RecurrentBase::kIsTrain[] = "is_train";
-const char RecurrentBase::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+const char RecurrentBase::kInputs[] = "inputs";                 // NOLINT
+const char RecurrentBase::kInitialStates[] = "initial_states";  // NOLINT
+const char RecurrentBase::kParameters[] = "parameters";         // NOLINT
+const char RecurrentBase::kOutputs[] = "outputs";               // NOLINT
+const char RecurrentBase::kStepScopes[] = "step_scopes";        // NOLINT
+const char RecurrentBase::kHasStates[] = "has_states";          // NOLINT
+const char RecurrentBase::kExStates[] = "ex_states";            // NOLINT
+const char RecurrentBase::kStates[] = "states";                 // NOLINT
+const char RecurrentBase::kStepBlock[] = "sub_block";           // NOLINT
+const char RecurrentBase::kReverse[] = "reverse";               // NOLINT
+const char RecurrentBase::kIsTrain[] = "is_train";              // NOLINT
+const char RecurrentBase::kSkipEagerDeletionVars[] =
+    "skip_eager_deletion_vars";  // NOLINT
 #define GRAD_SUFFIX "@GRAD"
-const char RecurrentBase::kInputGrads[] = "inputs" GRAD_SUFFIX;
-const char RecurrentBase::kOutputGrads[] = "outputs" GRAD_SUFFIX;
-const char RecurrentBase::kParamGrads[] = "parameters" GRAD_SUFFIX;
-const char RecurrentBase::kInitStateGrads[] = "initial_states" GRAD_SUFFIX;
+const char RecurrentBase::kInputGrads[] = "inputs" GRAD_SUFFIX;      // NOLINT
+const char RecurrentBase::kOutputGrads[] = "outputs" GRAD_SUFFIX;    // NOLINT
+const char RecurrentBase::kParamGrads[] = "parameters" GRAD_SUFFIX;  // NOLINT
+const char RecurrentBase::kInitStateGrads[] =
+    "initial_states" GRAD_SUFFIX;  // NOLINT
 
 static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
                             framework::Scope *parent_scope,

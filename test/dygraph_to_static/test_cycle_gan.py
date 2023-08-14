@@ -36,6 +36,8 @@ from paddle import fluid
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
+from dygraph_to_static_util import test_and_compare_with_new_ir
+
 import paddle
 from paddle.fluid.dygraph import to_variable
 from paddle.jit.api import to_static
@@ -529,8 +531,8 @@ class Args:
 
 def optimizer_setting(parameters):
     lr = 0.0002
-    optimizer = fluid.optimizer.Adam(
-        learning_rate=fluid.layers.piecewise_decay(
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[
                 100 * step_per_epoch,
                 120 * step_per_epoch,
@@ -540,7 +542,7 @@ def optimizer_setting(parameters):
             ],
             values=[lr, lr * 0.8, lr * 0.6, lr * 0.4, lr * 0.2, lr * 0.1],
         ),
-        parameter_list=parameters,
+        parameters=parameters,
         beta1=0.5,
     )
     return optimizer
@@ -694,21 +696,18 @@ class TestCycleGANModel(unittest.TestCase):
         out = train(self.args, to_static)
         return out
 
+    @test_and_compare_with_new_ir(False)
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)
 
-        assert_func = np.allclose
         # Note(Aurelius84): Because we disable BN on GPU,
         # but here we enhance the check on CPU by `np.array_equal`
         # which means the dy_out and st_out shall be exactly same.
         if not fluid.is_compiled_with_cuda():
-            assert_func = np.array_equal
-
-        self.assertTrue(
-            assert_func(dy_out, st_out),
-            msg=f"dy_out:\n {dy_out}\n st_out:\n{st_out}",
-        )
+            np.testing.assert_array_equal(dy_out, st_out)
+        else:
+            np.testing.assert_allclose(dy_out, st_out, rtol=1e-5, atol=1e-8)
 
 
 if __name__ == "__main__":

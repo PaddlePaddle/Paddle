@@ -16,13 +16,35 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 
 namespace paddle {
 namespace dialect {
+
+using VariantType = paddle::variant<bool,
+                                    int,
+                                    int64_t,
+                                    float,
+                                    double,
+                                    std::string,
+                                    std::vector<bool>,
+                                    std::vector<int>,
+                                    std::vector<int64_t>,
+                                    std::vector<float>,
+                                    std::vector<double>,
+                                    std::vector<std::string>,
+                                    phi::Scalar,
+                                    std::vector<phi::Scalar>,
+                                    phi::IntArray,
+                                    phi::DataType,
+                                    phi::DataLayout,
+                                    phi::Place>;
+
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
@@ -44,6 +66,8 @@ static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
     return phi::DataType::INT32;
   } else if (dtype.isa<ir::Int64Type>()) {
     return phi::DataType::INT64;
+  } else if (dtype.isa<ir::IndexType>()) {
+    return phi::DataType::INT32;
   } else if (dtype.isa<ir::BoolType>()) {
     return phi::DataType::BOOL;
   } else if (dtype.isa<ir::Complex64Type>()) {
@@ -57,8 +81,10 @@ static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
   }
 }
 
+// use phi::DataType::INT32 for IndexType from builtin type to phi::DataType,
+// but only use INT32 not IndexType from phi::DataType type to builtin type.
 static inline ir::Type TransToIrDataType(phi::DataType dtype,
-                                         ir::IrContext *ctx = nullptr) {
+                                         ir::IrContext* ctx = nullptr) {
   if (ctx == nullptr) {
     ctx = ir::IrContext::Instance();
   }
@@ -96,7 +122,7 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
 }
 
 static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
-                                               ir::IrContext *ctx = nullptr) {
+                                               ir::IrContext* ctx = nullptr) {
   if (ctx == nullptr) {
     ctx = ir::IrContext::Instance();
   }
@@ -118,6 +144,8 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
           scalar.dtype()));
   }
 }
+
+VariantType GetAttributeData(const ir::Attribute& attr);
 
 }  // namespace dialect
 }  // namespace paddle

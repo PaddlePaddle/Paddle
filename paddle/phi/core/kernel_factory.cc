@@ -560,10 +560,9 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   // corresponding kernel_name
   std::string message = "Currently, paddle support following kernel keys of `" +
                         kernel_name + "`: { ";
-  for (auto iter = all_kernel_key.begin(); iter != all_kernel_key.end();
-       ++iter) {
-    std::vector<std::string>& dtype_vec = iter->second;
-    message += "(" + iter->first + ", [";
+  for (auto& item : all_kernel_key) {
+    std::vector<std::string>& dtype_vec = item.second;
+    message += "(" + item.first + ", [";
     message += paddle::string::join_strings(dtype_vec, ", ");
     message += "]); ";
   }

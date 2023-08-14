@@ -59,8 +59,8 @@ class BufferedLineFileReader {
   int read_lines(T* reader, LineFunc func, int skip_lines) {
     int lines = 0;
     size_t ret = 0;
-    char* ptr = NULL;
-    char* eol = NULL;
+    char* ptr = nullptr;
+    char* eol = nullptr;
     total_len_ = 0;
     error_line_ = 0;
 
@@ -70,7 +70,7 @@ class BufferedLineFileReader {
       total_len_ += ret;
       ptr = buff_;
       eol = reinterpret_cast<char*>(memchr(ptr, '\n', ret));
-      while (eol != NULL) {
+      while (eol != nullptr) {
         int size = static_cast<int>((eol - ptr) + 1);
         x.append(ptr, size - 1);
         ++lines;
@@ -1084,13 +1084,13 @@ void MultiSlotInMemoryDataFeed::Init(
   feed_vec_.resize(use_slots_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
-    batch_float_feasigns_.push_back(std::vector<float>());
-    batch_uint64_feasigns_.push_back(std::vector<uint64_t>());
+    batch_float_feasigns_.emplace_back();
+    batch_uint64_feasigns_.emplace_back();
     batch_float_feasigns_[i].reserve(default_batch_size_ *
                                      kEstimatedFeasignNumPerSlot);
     batch_uint64_feasigns_[i].reserve(default_batch_size_ *
                                       kEstimatedFeasignNumPerSlot);
-    offset_.push_back(std::vector<size_t>());
+    offset_.emplace_back();
     offset_[i].reserve(default_batch_size_ +
                        1);  // Each lod info will prepend a zero
   }
@@ -1106,13 +1106,13 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
                                                  uint32_t* cmatch,
                                                  uint32_t* rank) {
   std::string searchid_str = log_key.substr(16, 16);
-  *search_id = (uint64_t)strtoull(searchid_str.c_str(), NULL, 16);
+  *search_id = (uint64_t)strtoull(searchid_str.c_str(), nullptr, 16);
 
   std::string cmatch_str = log_key.substr(11, 3);
-  *cmatch = (uint32_t)strtoul(cmatch_str.c_str(), NULL, 16);
+  *cmatch = (uint32_t)strtoul(cmatch_str.c_str(), nullptr, 16);
 
   std::string rank_str = log_key.substr(14, 2);
-  *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
+  *rank = (uint32_t)strtoul(rank_str.c_str(), nullptr, 16);
 }
 
 int MultiSlotInMemoryDataFeed::ParseInstanceFromSo(
@@ -1224,7 +1224,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             }
             FeatureFeasign f;
             f.float_feasign_ = feasign;
-            instance->float_feasigns_.push_back(FeatureItem(f, idx));
+            instance->float_feasigns_.emplace_back(f, idx);
           }
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
@@ -1236,7 +1236,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             }
             FeatureFeasign f;
             f.uint64_feasign_ = feasign;
-            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
+            instance->uint64_feasigns_.emplace_back(f, idx);
           }
         }
         pos = endptr - str;
@@ -1297,7 +1297,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             }
             FeatureFeasign f;
             f.float_feasign_ = feasign;
-            instance->float_feasigns_.push_back(FeatureItem(f, idx));
+            instance->float_feasigns_.emplace_back(f, idx);
           }
         } else if (all_slots_type_[i][0] == 'u') {  // uint64
           for (int j = 0; j < num; ++j) {
@@ -1307,7 +1307,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
             }
             FeatureFeasign f;
             f.uint64_feasign_ = feasign;
-            instance->uint64_feasigns_.push_back(FeatureItem(f, idx));
+            instance->uint64_feasigns_.emplace_back(f, idx);
           }
         }
         pos = endptr - str;
@@ -1438,8 +1438,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   ins_content_vec_.reserve(ins_vec.size());
   ins_id_vec_.clear();
   ins_id_vec_.reserve(ins_vec.size());
-  for (size_t i = 0; i < ins_vec.size(); ++i) {
-    auto& r = ins_vec[i];
+  for (const auto& r : ins_vec) {
     ins_id_vec_.push_back(r.ins_id_);
     ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
@@ -1658,8 +1657,8 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   fstat(fd_, &sb);
   end_ = static_cast<size_t>(sb.st_size);
 
-  buffer_ =
-      reinterpret_cast<char*>(mmap(NULL, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
+  buffer_ = reinterpret_cast<char*>(
+      mmap(nullptr, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
   PADDLE_ENFORCE_NE(
       buffer_,
       MAP_FAILED,
@@ -1935,8 +1934,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
   ins_content_vec_.reserve(ins_vec.size());
   ins_id_vec_.clear();
   ins_id_vec_.reserve(ins_vec.size());
-  for (size_t i = 0; i < ins_vec.size(); ++i) {
-    auto r = ins_vec[i];
+  for (auto r : ins_vec) {
     ins_id_vec_.push_back(r->ins_id_);
     ins_content_vec_.push_back(r->content_);
     for (auto& item : r->float_feasigns_) {
@@ -2001,7 +1999,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
 #endif
 }
 
-SlotRecordInMemoryDataFeed::~SlotRecordInMemoryDataFeed() {
+SlotRecordInMemoryDataFeed::~SlotRecordInMemoryDataFeed() {  // NOLINT
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   stop_token_.store(true);
   for (auto& thread : pack_threads_) {
@@ -2095,13 +2093,13 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   feed_vec_.resize(used_slots_info_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
-    batch_float_feasigns_.push_back(std::vector<float>());
-    batch_uint64_feasigns_.push_back(std::vector<uint64_t>());
+    batch_float_feasigns_.emplace_back();
+    batch_uint64_feasigns_.emplace_back();
     batch_float_feasigns_[i].reserve(default_batch_size_ *
                                      kEstimatedFeasignNumPerSlot);
     batch_uint64_feasigns_[i].reserve(default_batch_size_ *
                                       kEstimatedFeasignNumPerSlot);
-    offset_.push_back(std::vector<size_t>());
+    offset_.emplace_back();
     offset_[i].reserve(default_batch_size_ +
                        1);  // Each lod info will prepend a zero
   }
@@ -2403,11 +2401,12 @@ static void parser_log_key(const std::string& log_key,
                            uint32_t* cmatch,
                            uint32_t* rank) {
   std::string searchid_str = log_key.substr(16, 16);
-  *search_id = static_cast<uint64_t>(strtoull(searchid_str.c_str(), NULL, 16));
+  *search_id =
+      static_cast<uint64_t>(strtoull(searchid_str.c_str(), nullptr, 16));
   std::string cmatch_str = log_key.substr(11, 3);
-  *cmatch = static_cast<uint32_t>(strtoul(cmatch_str.c_str(), NULL, 16));
+  *cmatch = static_cast<uint32_t>(strtoul(cmatch_str.c_str(), nullptr, 16));
   std::string rank_str = log_key.substr(14, 2);
-  *rank = static_cast<uint32_t>(strtoul(rank_str.c_str(), NULL, 16));
+  *rank = static_cast<uint32_t>(strtoul(rank_str.c_str(), nullptr, 16));
 }
 
 bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
@@ -2459,8 +2458,7 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
   int float_total_slot_num = 0;
   int uint64_total_slot_num = 0;
 
-  for (size_t i = 0; i < all_slots_info_.size(); ++i) {
-    auto& info = all_slots_info_[i];
+  for (auto& info : all_slots_info_) {
     int num = strtol(&str[pos], &endptr, 10);
     PADDLE_ENFORCE(num,
                    "The number of ids can not be zero, you need padding "

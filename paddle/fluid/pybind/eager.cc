@@ -376,7 +376,7 @@ py::object ParsePyArray(
     numpy_value = py::object(
         py::handle(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1)), true);
   } else {
-    if (flag_kwargs && kws_map["value"] != NULL) {
+    if (flag_kwargs && kws_map["value"] != nullptr) {
       numpy_value = py::object(py::handle(kws_map["value"]), true);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -403,7 +403,7 @@ paddle::platform::Place ParsePlace(
     place = CastPyArg2Place(PyTuple_GET_ITEM(args, kw_order_map["place"] - 1),
                             kw_order_map["place"] - 1);
   } else {
-    if (flag_kwargs && kws_map["place"] != NULL) {
+    if (flag_kwargs && kws_map["place"] != nullptr) {
       place = CastPyArg2Place(kws_map["place"], 0);
     } else {
       // default
@@ -425,7 +425,7 @@ std::shared_ptr<TensorDistAttr> ParseDistAttrArgs(
     dist_attr = CastPyArg2DistAttr(
         PyTuple_GET_ITEM(args, kw_order_map["dist_attr"] - 1),
         kw_order_map["dist_attr"] - 1);
-  } else if (flag_kwargs && kws_map["dist_attr"] != NULL) {
+  } else if (flag_kwargs && kws_map["dist_attr"] != nullptr) {
     dist_attr = CastPyArg2DistAttr(kws_map["dist_attr"], 0);
   }
   return dist_attr;
@@ -445,7 +445,7 @@ int ParseBooleanArgs(std::string key,
     res = static_cast<int>(CastPyArg2AttrBoolean(
         PyTuple_GET_ITEM(args, kw_order_map[key] - 1), kw_order_map[key] - 1));
   } else {
-    if (flag_kwargs && kws_map[key] != NULL) {
+    if (flag_kwargs && kws_map[key] != nullptr) {
       res = static_cast<int>(CastPyArg2AttrBoolean(kws_map[key], 0));
     }
   }
@@ -469,7 +469,7 @@ std::string ParseName(std::unordered_map<std::string, PyObject*> kws_map,
     }
   } else {
     if (flag_kwargs) {
-      if ((kws_map["name"] == NULL) || (kws_map["name"] == Py_None)) {
+      if ((kws_map["name"] == nullptr) || (kws_map["name"] == Py_None)) {
         act_name =
             egr::Controller::Instance().GenerateUniqueName(unique_name_prefix);
       } else {
@@ -581,7 +581,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
           CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
                            kw_order_map["value"] - 1);
     } else {
-      if (flag_kwargs && kws_map["value"] != NULL) {
+      if (flag_kwargs && kws_map["value"] != nullptr) {
         src_tensor = CastPyArg2Tensor(kws_map["value"], 0);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -610,7 +610,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
           PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
           kw_order_map["value"] - 1);
     } else {
-      if (flag_kwargs && kws_map["value"] != NULL) {
+      if (flag_kwargs && kws_map["value"] != nullptr) {
         src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -687,7 +687,7 @@ void AutoInitStringTensorByStringTensor(
         CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
                          kw_order_map["value"] - 1);
   } else {
-    if (flag_kwargs && kws_map["value"] != NULL) {
+    if (flag_kwargs && kws_map["value"] != nullptr) {
       src_tensor = CastPyArg2Tensor(kws_map["value"], 0);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -700,6 +700,20 @@ void AutoInitStringTensorByStringTensor(
   }
   InitStringTensorWithStringTensor(py_tensor_ptr, src_tensor, place, act_name);
 }
+
+PyDoc_STRVAR(
+    TensorDoc,
+    R"DOC(Tensor($self, /, value, place, persistable, zero_copy, name, stop_gradient, dims, dtype, type)
+--
+
+Tensor is the basic data structure in PaddlePaddle. There are some ways to create a Tensor:
+
+- Use the exsiting ``data`` to create a Tensor, please refer to :ref:`api_paddle_to_tensor`.
+- Create a Tensor with a specified ``shape``, please refer to :ref:`api_paddle_ones`,
+  :ref:`api_paddle_zeros`, :ref:`api_paddle_full`.
+- Create a Tensor with the same ``shape`` and ``dtype`` as other Tensor, please refer to
+  :ref:`api_paddle_ones_like`, :ref:`api_paddle_zeros_like`, :ref:`api_paddle_full_like`.
+)DOC");
 
 /** We should have init function with signature:
  * 1.
@@ -750,20 +764,20 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   if (kwargs) flag_kwargs = true;
 
   // all kwargs
-  PyObject* kw_zero_copy = NULL;
-  PyObject* kw_persistable = NULL;
-  PyObject* kw_stop_gradient = NULL;
+  PyObject* kw_zero_copy = nullptr;
+  PyObject* kw_persistable = nullptr;
+  PyObject* kw_stop_gradient = nullptr;
 
-  PyObject* kw_value = NULL;  // receive PyArray or Tensor
-  PyObject* kw_place = NULL;
-  PyObject* kw_name = NULL;
-  PyObject* kw_dims = NULL;
-  PyObject* kw_dtype = NULL;
-  PyObject* kw_type = NULL;
-  PyObject* kw_dist_attr = NULL;
+  PyObject* kw_value = nullptr;  // receive PyArray or Tensor
+  PyObject* kw_place = nullptr;
+  PyObject* kw_name = nullptr;
+  PyObject* kw_dims = nullptr;
+  PyObject* kw_dtype = nullptr;
+  PyObject* kw_type = nullptr;
+  PyObject* kw_dist_attr = nullptr;
 
   // the keywords argument
-  static char* kwlist[] = {const_cast<char*>("value"),
+  static char* kwlist[] = {const_cast<char*>("value"),  // NOLINT
                            const_cast<char*>("place"),
                            const_cast<char*>("persistable"),
                            const_cast<char*>("zero_copy"),
@@ -773,7 +787,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                            const_cast<char*>("dtype"),
                            const_cast<char*>("type"),
                            const_cast<char*>("dist_attr"),
-                           NULL};
+                           nullptr};
 
   // 'O' Store a Python object (without any conversion) in a C object pointer,
   // '|' Indicates that the remaining arguments in the Python argument list are
@@ -842,7 +856,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           egr::Controller::Instance().GetExpectedPlace());
       return 0;
     } else {  // no position args, all arguments are kwargs
-      if (kw_value != NULL) {
+      if (kw_value != nullptr) {
         if (pybind11::detail::npy_api::get().PyArray_Check_(kw_value)) {
           VLOG(6) << "Calling case3's or case4's initializer";
           AutoInitTensorByPyArray(
@@ -870,7 +884,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "Please check your input first and make sure you are on the "
               "right way."));
         }
-      } else if (kw_dtype != NULL &&
+      } else if (kw_dtype != nullptr &&
                  PyObject_TypeCheck(kw_dtype, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer";
 
@@ -1108,18 +1122,18 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   if (kwargs) flag_kwargs = true;
 
   // all kwargs
-  PyObject* kw_zero_copy = NULL;
+  PyObject* kw_zero_copy = nullptr;
 
-  PyObject* kw_value = NULL;  // receive PyArray or Tensor
-  PyObject* kw_name = NULL;
-  PyObject* kw_dims = NULL;
+  PyObject* kw_value = nullptr;  // receive PyArray or Tensor
+  PyObject* kw_name = nullptr;
+  PyObject* kw_dims = nullptr;
 
   // the keywords argument
-  static char* kwlist[] = {const_cast<char*>("value"),
+  static char* kwlist[] = {const_cast<char*>("value"),  // NOLINT
                            const_cast<char*>("zero_copy"),
                            const_cast<char*>("name"),
                            const_cast<char*>("dims"),
-                           NULL};
+                           nullptr};
   // 'O' Store a Python object (without any conversion) in a C object pointer,
   // '|' Indicates that the remaining arguments in the Python argument list are
   // optional.
@@ -1174,7 +1188,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           egr::Controller::Instance().GetExpectedPlace());
       return 0;
     } else {
-      if (kw_value != NULL) {
+      if (kw_value != nullptr) {
         if (pybind11::detail::npy_api::get().PyArray_Check_(kw_value)) {
           VLOG(6) << "Calling case3's or case4's string initializer";
           AutoInitStringTensorByPyArray(
@@ -1193,7 +1207,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "Please check your input first and make sure you are on the "
               "right way."));
         }
-      } else if (kw_dims != NULL) {
+      } else if (kw_dims != nullptr) {
         VLOG(6) << "Calling case2's string initializer.";
         std::unordered_map<std::string, Py_ssize_t> kw_order_map{{"dims", 1},
                                                                  {"name", 2}};
@@ -1297,18 +1311,18 @@ void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
 }
 
 static void TensorDealloc(TensorObject* self) {
-  if (self->weakrefs != NULL)
+  if (self->weakrefs != nullptr)
     PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));
   self->tensor.~Tensor();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
-extern struct PyGetSetDef variable_properties[];
-extern struct PyGetSetDef string_tensor_variable_properties[];
+extern struct PyGetSetDef variable_properties[];                // NOLINT
+extern struct PyGetSetDef string_tensor_variable_properties[];  // NOLINT
 
-extern PyMethodDef variable_methods[];
-extern PyMethodDef math_op_patch_methods[];
-extern PyMethodDef string_tensor_variable_methods[];
+extern PyMethodDef variable_methods[];                // NOLINT
+extern PyMethodDef math_op_patch_methods[];           // NOLINT
+extern PyMethodDef string_tensor_variable_methods[];  // NOLINT
 
 PyNumberMethods number_methods;
 PySequenceMethods sequence_methods;
@@ -1336,6 +1350,7 @@ void BindEager(pybind11::module* module) {
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;
+  type->tp_doc = TensorDoc;
   type->tp_weaklistoffset = offsetof(TensorObject, weakrefs);
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);

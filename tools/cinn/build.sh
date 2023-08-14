@@ -18,7 +18,7 @@ set -ex
 workspace=$(cd $(dirname ${BASH_SOURCE[0]})/../..; pwd)
 build_dir_name=${cinn_build:-build_cinn}
 build_dir=$workspace/${build_dir_name}
-py_version=${py_version:-3.8}
+py_version=${py_version:-3.10}
 cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 
 
@@ -54,12 +54,6 @@ OLD_HTTP_PROXY=$http_proxy &> /dev/null
 OLD_HTTPS_PROXY=$https_proxy &> /dev/null
 set -x
 
-function proxy_off {
-  set +x
-  unset http_proxy &> /dev/null
-  unset https_proxy &> /dev/null
-  set -x
-}
 function proxy_on {
   set +x
   export http_proxy=$OLD_HTTP_PROXY &> /dev/null
@@ -70,10 +64,6 @@ function proxy_on {
 function prepare_ci {
   cd $workspace
   proxy_on
-  if [[ ! -z ${PULL_ID} ]]; then
-    # in ci environment, we use aliyun ubuntu mirror, thus turn off proxy
-    proxy_off
-  fi
 
   if [[ $(command -v python) == $build_dir/ci-env/bin/python ]]; then
     return
@@ -92,12 +82,11 @@ function prepare_ci {
   python${py_version} -m pip install -U --no-cache-dir pip
   python${py_version} -m pip install wheel
   python${py_version} -m pip install sphinx==3.3.1 sphinx_gallery==0.8.1 recommonmark==0.6.0 exhale scipy breathe==4.24.0 matplotlib sphinx_rtd_theme
-  python${py_version} -m pip install paddlepaddle-gpu==0.0.0.post112 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
+  python${py_version} -m pip install paddlepaddle-gpu==0.0.0.post118 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
 }
 
 
 function cmake_ {
-    proxy_off
     mkdir -p $build_dir
     cd $build_dir
     set -x
@@ -109,7 +98,6 @@ function cmake_ {
 }
 
 function _download_and_untar {
-    proxy_off
     local tar_file=$1
     if [[ ! -f $tar_file ]]; then
         wget https://paddle-inference-dist.bj.bcebos.com/CINN/$tar_file
@@ -118,7 +106,6 @@ function _download_and_untar {
 }
 
 function prepare_model {
-    proxy_off
     cd $build_dir/third_party
 
     _download_and_untar ResNet18.tar.gz
@@ -203,7 +190,6 @@ function CINNRT {
 
     prepare_ci
 
-    proxy_off
     mkdir -p $build_dir
     cd $build_dir
     set -x

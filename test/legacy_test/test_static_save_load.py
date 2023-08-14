@@ -25,7 +25,7 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import fluid
 from paddle.fluid import core, framework
-from paddle.fluid.optimizer import Adam
+from paddle.optimizer import Adam
 
 paddle.enable_static()
 

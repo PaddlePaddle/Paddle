@@ -25,7 +25,7 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
@@ -87,7 +87,7 @@ ProgramInterpreter::~ProgramInterpreter() {
   async_work_queue_.reset();
   VLOG(4) << "~ProgramInterpreter(): " << this << " on " << place_;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
@@ -127,7 +127,7 @@ FetchList ProgramInterpreter::Run(
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -165,7 +165,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -222,11 +222,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
-FetchList ProgramInterpreter::BetaRun(
-    const std::vector<std::string>& feed_names, bool need_fetch) {
-  return {};
-}
-
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }
@@ -278,8 +273,8 @@ void ProgramInterpreter::reset_scope(Scope* new_scope) {
     refs_[i]->ResetVariable(var_list[i]);
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); i++) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 }
 
@@ -346,6 +341,18 @@ std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
 const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
     const {
   return stream_analyzer_;
+}
+
+const interpreter::NewIrDependencyBuilder&
+ProgramInterpreter::GetNewIrDependencyBuilder() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
+}
+
+const interpreter::NewIrStreamAnalyzer&
+ProgramInterpreter::GetNewIrStreamAnalyzer() const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
 }
 
 bool ProgramInterpreter::IsSharedResultsBuild() const {
@@ -425,8 +432,7 @@ void ProgramInterpreter::BuildInplace() {
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    auto& instr = vec_instruction_[i];
+  for (auto& instr : vec_instruction_) {
     auto* op_base = instr.OpBase();
     if (!op_base->Info().infer_inplace_) {
       continue;
@@ -777,8 +783,8 @@ void ProgramInterpreter::Convert(
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 
   bool inplaced = false;
@@ -1406,8 +1412,7 @@ void ProgramInterpreter::TraceInstructionList(
     }
   }
 
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    auto instr_id = trace_execute_order_[idx];
+  for (auto instr_id : trace_execute_order_) {
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
@@ -1447,9 +1452,9 @@ void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
 
 void ProgramInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    if (vec_instruction_[i].KernelType() == OpFuncType::kCpuSync ||
-        vec_instruction_[i].KernelType() == OpFuncType::kGpuSync) {
+  for (auto& ins : vec_instruction_) {
+    if (ins.KernelType() == OpFuncType::kCpuSync ||
+        ins.KernelType() == OpFuncType::kGpuSync) {
       sync_op_num = sync_op_num + 1;
     }
   }
@@ -1505,6 +1510,20 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ss << "trace order: ";
+    for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+      ss << vec_instruction_[trace_execute_order_[idx]]
+                .OpFunc()
+                ->operator_base_->Type()
+         << "[" << trace_execute_order_[idx] << "]"
+         << " -> ";
+    }
+    ss << "end\n";
+    VLOG(6) << ss.str();
+  }
 }
 
 }  // namespace framework

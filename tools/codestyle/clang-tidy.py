@@ -225,13 +225,13 @@ def main():
     parser.add_argument(
         '-clang-tidy-binary',
         metavar='PATH',
-        default='clang-tidy-10',
+        default='clang-tidy-15',
         help='path to clang-tidy binary',
     )
     parser.add_argument(
         '-clang-apply-replacements-binary',
         metavar='PATH',
-        default='clang-apply-replacements-10',
+        default='clang-apply-replacements-15',
         help='path to clang-apply-replacements binary',
     )
     parser.add_argument(
@@ -412,4 +412,23 @@ def main():
 
 
 if __name__ == '__main__':
+    target_version = "15.0.2"
+    try:
+        out = subprocess.check_output(['clang-tidy --version'], shell=True)
+        version = out.decode('utf-8')
+        if version.find(target_version) == -1:
+            print(
+                f"clang-tidy version == {target_version} not found, attempting auto-install...",
+                file=sys.stderr,
+            )
+            subprocess.check_output(
+                'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
+            )
+    except:
+        print(
+            "clang-tidy not found, attempting auto-install...", file=sys.stderr
+        )
+        subprocess.check_output(
+            'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
+        )
     main()

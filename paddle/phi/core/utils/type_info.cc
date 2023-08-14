@@ -72,7 +72,7 @@ template class TypeInfoTraits<phi::DeviceContext, GPUPinnedContext>;
 template class TypeInfoTraits<phi::DeviceContext, XPUContext>;
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template class TypeInfoTraits<phi::StorageProperties, OneDNNStorageProperties>;
 #endif
 

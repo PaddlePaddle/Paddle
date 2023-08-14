@@ -146,11 +146,10 @@ class Engine:
 
         if optimizer and not isinstance(
             optimizer,
-            (paddle.optimizer.Optimizer, paddle.static.Optimizer),
+            (paddle.optimizer.Optimizer),
         ):
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-                " or `paddle.static.Optimizer`."
             )
         self._optimizer = auto_utils.validate_opt(optimizer)
 
@@ -243,6 +242,7 @@ class Engine:
         self.history = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+        paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -1255,6 +1255,7 @@ class Engine:
         steps_per_epoch=None,
         sample_split=1,
         mode=None,
+        places=None,
     ):
         if mode is not None:
             self.to_mode(mode)
@@ -1281,6 +1282,7 @@ class Engine:
             worker_init_fn=worker_init_fn,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
+            places=places,
         )
         return dataloader
 
@@ -1418,6 +1420,7 @@ class Engine:
         worker_init_fn=None,
         epochs=1,
         steps_per_epoch=None,
+        places=None,
     ):
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
@@ -1440,7 +1443,6 @@ class Engine:
                 feed_list.append(copy_var)
 
         # insert read op at the end of program
-        places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = DistributedDataLoader(
                 dataset,
