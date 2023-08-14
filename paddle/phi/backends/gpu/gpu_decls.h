@@ -33,8 +33,6 @@ namespace phi {
 
 DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t, musaStream_t);
 DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t, musaEvent_t);
-// TODO(@caizhi): using correct type: musolverDnHandle_t, musparseHandle_t
-DECLARE_TYPE_FOR_GPU(solverHandle_t, cusolverDnHandle_t, rocsolver_handle, musolverDnHandle_t);
 DECLARE_TYPE_FOR_GPU(sparseHandle_t, cusparseHandle_t, rocsparse_handle, musparseHandle_t);
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle, mublasHandle_t);
@@ -77,6 +75,7 @@ DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
 DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
+DECLARE_TYPE_FOR_GPU(solverHandle_t, cusolverDnHandle_t, rocsolver_handle);
 #undef DECLARE_TYPE_FOR_GPU
 #endif
 

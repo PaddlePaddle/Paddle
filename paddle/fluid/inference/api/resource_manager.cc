@@ -173,8 +173,8 @@ void GPUContextResource::DestroyGPUResource() {
   DestroyBlasHandle();
 #ifndef PADDLE_WITH_MUSA
   DestroyBlasLtHandle();
-#endif
   DestroySolverHandle();
+#endif
   DestroySparseHandle();
 }
 
@@ -219,7 +219,6 @@ void GPUContextResource::InitBlasLtHandle() {
 void GPUContextResource::DestroyBlasLtHandle() {
   phi::DestroyBlasLtHandle(blaslt_handle_);
 }
-#endif
 
 void GPUContextResource::InitSolverHandle() {
   phi::InitSolverHandle(&solver_handle_, stream_);
@@ -228,6 +227,7 @@ void GPUContextResource::InitSolverHandle() {
 void GPUContextResource::DestroySolverHandle() {
   phi::DestroySolverHandle(solver_handle_);
 }
+#endif
 
 void GPUContextResource::InitSparseHandle() {
   phi::InitSparseHandle(&sparse_handle_, stream_);
@@ -307,7 +307,6 @@ GPUContextResource::GetBlasLtHandleCreator() {
     return blaslt_handle_;
   };
 }
-#endif
 
 phi::solverHandle_t GPUContextResource::GetSolverDnHandle() const {
   return solver_handle_;
@@ -320,6 +319,7 @@ GPUContextResource::GetSolverDnHandleCreator() {
     return solver_handle_;
   };
 }
+#endif
 
 phi::sparseHandle_t GPUContextResource::GetSparseHandle() const {
   return sparse_handle_;

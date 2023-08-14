@@ -62,8 +62,8 @@ class GPUContextResource {
   std::function<phi::blasHandle_t()> GetBlasTF32TensorCoreHandleCreator();
 #ifndef PADDLE_WITH_MUSA
   std::function<phi::blasLtHandle_t()> GetBlasLtHandleCreator();
-#endif
   std::function<phi::solverHandle_t()> GetSolverDnHandleCreator();
+#endif
   std::function<phi::sparseHandle_t()> GetSparseHandleCreator();
   std::function<Eigen::GpuDevice*()> GetGpuEigenDeviceCreator();
 
@@ -74,8 +74,8 @@ class GPUContextResource {
   blasHandle_t GetBlasTF32Handle() const;
 #ifndef PADDLE_WITH_MUSA
   blasLtHandle_t GetBlasLtHandle() const;
-#endif
   phi::solverHandle_t GetSolverDnHandle() const;
+#endif
   phi::sparseHandle_t GetSparseHandle() const;
   Eigen::GpuDevice* GetGpuEigenDevice() const;
   int GetGpuComputeCapability() const;
@@ -97,9 +97,9 @@ class GPUContextResource {
 #ifndef PADDLE_WITH_MUSA
   void InitBlasLtHandle();
   void DestroyBlasLtHandle();
-#endif
   void InitSolverHandle();
   void DestroySolverHandle();
+#endif
   void InitSparseHandle();
   void DestroySparseHandle();
 
@@ -124,9 +124,9 @@ class GPUContextResource {
   blasHandle_t blas_tf32_tensor_core_handle_{nullptr};
 #ifndef PADDLE_WITH_MUSA
   blasLtHandle_t blaslt_handle_{nullptr};
+  phi::solverHandle_t solver_handle_{nullptr};
 #endif
   dnnHandle_t dnn_handle_{nullptr};
-  phi::solverHandle_t solver_handle_{nullptr};
   phi::sparseHandle_t sparse_handle_{nullptr};
   // DnnWorkspaceHandle
 };

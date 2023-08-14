@@ -275,7 +275,9 @@ struct GPUContext::Impl {
       DestoryInternalWorkspace();
       DestoryInternalEigenDevice();
       phi::DestroySparseHandle(sparse_handle_);
+#ifndef PADDLE_WITH_MUSA
       phi::DestroySolverHandle(solver_handle_);
+#endif
       phi::DestroyDnnHandle(dnn_handle_);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (nccl_comm_) {
@@ -511,6 +513,7 @@ struct GPUContext::Impl {
     dnn_handle_creator_ = std::move(handle_creator);
   }
 
+#ifndef PADDLE_WITH_MUSA
   solverHandle_t GetSolverHandle() {
     std::call_once(flag_slover_, [&]() {
       if (!solver_handle_) {
@@ -530,6 +533,7 @@ struct GPUContext::Impl {
   void SetSolverHandle(std::function<solverHandle_t()>&& handle_creator) {
     solver_handle_creator_ = std::move(handle_creator);
   }
+#endif
 
   sparseHandle_t GetSparseHandle() {
     std::call_once(flag_sparse_, [&]() {
@@ -829,8 +833,10 @@ struct GPUContext::Impl {
 #endif
   dnnHandle_t dnn_handle_{nullptr};
   std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
+#ifndef PADDLE_WITH_MUSA
   solverHandle_t solver_handle_{nullptr};
   std::function<solverHandle_t()> solver_handle_creator_{nullptr};
+#endif
   sparseHandle_t sparse_handle_{nullptr};
   std::function<sparseHandle_t()> sparse_handle_creator_{nullptr};
   DnnWorkspaceHandle* workspace_{nullptr};
@@ -904,11 +910,11 @@ blasHandle_t GPUContext::cublas_handle() const {
 blasLtHandle_t GPUContext::cublaslt_handle() const {
   return impl_->GetBlasLtHandle();
 }
-#endif
 
 solverHandle_t GPUContext::cusolver_dn_handle() const {
   return impl_->GetSolverHandle();
 }
+#endif
 
 sparseHandle_t GPUContext::cusparse_handle() const {
   return impl_->GetSparseHandle();
@@ -1046,6 +1052,7 @@ void GPUContext::SetDnnHandle(std::function<dnnHandle_t()>&& func) {
   impl_->SetDnnHandle(std::move(func));
 }
 
+#ifndef PADDLE_WITH_MUSA
 void GPUContext::SetSolverHandle(solverHandle_t handle) {
   impl_->SetSolverHandle(handle);
 }
@@ -1053,6 +1060,7 @@ void GPUContext::SetSolverHandle(solverHandle_t handle) {
 void GPUContext::SetSolverHandle(std::function<solverHandle_t()>&& func) {
   impl_->SetSolverHandle(std::move(func));
 }
+#endif
 
 void GPUContext::SetSparseHandle(sparseHandle_t handle) {
   impl_->SetSparseHandle(handle);
