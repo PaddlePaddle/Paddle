@@ -69,8 +69,7 @@ class PhiKernelAdaptor {
                &value_2_var_name,
                &variable_2_var_name,
                &var_name_2_id,
-               &variable_list,
-               nullptr);
+               &variable_list);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();

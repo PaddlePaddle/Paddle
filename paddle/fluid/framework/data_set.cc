@@ -510,8 +510,8 @@ void DatasetImpl<T>::LoadIntoMemory() {
 #endif
   } else {
     for (int64_t i = 0; i < thread_num_; ++i) {
-      load_threads.push_back(std::thread(
-          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+      load_threads.emplace_back(&paddle::framework::DataFeed::LoadIntoMemory,
+                                readers_[i].get());
     }
     for (std::thread& t : load_threads) {
       t.join();
@@ -534,16 +534,16 @@ void DatasetImpl<T>::PreLoadIntoMemory() {
     CHECK(static_cast<size_t>(preload_thread_num_) == preload_readers_.size());
     preload_threads_.clear();
     for (int64_t i = 0; i < preload_thread_num_; ++i) {
-      preload_threads_.push_back(
-          std::thread(&paddle::framework::DataFeed::LoadIntoMemory,
-                      preload_readers_[i].get()));
+      preload_threads_.emplace_back(
+          &paddle::framework::DataFeed::LoadIntoMemory,
+          preload_readers_[i].get());
     }
   } else {
     CHECK(static_cast<size_t>(thread_num_) == readers_.size());
     preload_threads_.clear();
     for (int64_t i = 0; i < thread_num_; ++i) {
-      preload_threads_.push_back(std::thread(
-          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get()));
+      preload_threads_.emplace_back(
+          &paddle::framework::DataFeed::LoadIntoMemory, readers_[i].get());
     }
   }
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() end";
@@ -849,7 +849,7 @@ void MultiSlotDataset::GlobalShuffle(int thread_num) {
   }
   VLOG(3) << "start global shuffle threads, num = " << thread_num;
   for (int i = 0; i < thread_num; ++i) {
-    global_shuffle_threads.push_back(std::thread(global_shuffle_func));
+    global_shuffle_threads.emplace_back(global_shuffle_func);
   }
   for (std::thread& t : global_shuffle_threads) {
     t.join();
@@ -1618,7 +1618,7 @@ void MultiSlotDataset::GetRandomData(
     for (auto slot : slots_to_replace) {
       auto range = rand_rec.feas_.equal_range(slot);
       for (auto it = range.first; it != range.second; ++it) {
-        new_rec.uint64_feasigns_.push_back({it->second, it->first});
+        new_rec.uint64_feasigns_.emplace_back(it->second, it->first);
         debug_push_cnt += 1;
       }
     }

@@ -59,14 +59,14 @@ class LinearQuanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             return _C_ops.quantize_linear(
-                input,
+                input.cast('float32'),
                 self._scales,
                 self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
@@ -109,14 +109,14 @@ class LinearDequanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             return _C_ops.dequantize_linear(
-                input,
+                input.cast('float32'),
                 self._scales,
                 self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(

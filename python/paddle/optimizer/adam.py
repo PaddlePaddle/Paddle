@@ -350,6 +350,13 @@ class Adam(Optimizer):
                 "Beta1Pow": [beta1_pow_acc],
                 "Beta2Pow": [beta2_pow_acc],
             }
+
+            # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
+            found_inf = self._get_auxiliary_var('found_inf')
+
+            if found_inf:
+                inputs['SkipUpdate'] = found_inf
+
             outputs = {
                 "ParamOut": [param_and_grad[0]],
                 "Moment1Out": [moment1],

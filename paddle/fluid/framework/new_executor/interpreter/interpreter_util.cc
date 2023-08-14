@@ -37,7 +37,7 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -346,7 +346,7 @@ void CreateAllOps(const framework::BlockDesc& block,
         info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
@@ -476,6 +476,56 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
   }
 }
 
+platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
+                                                const platform::Place& place) {
+  auto& pool = platform::DeviceContextPool::Instance();
+  auto* default_dev_ctx = pool.Get(place);
+
+  // Replace the default_dev_ctx according to dst_place_type for memcpy op if
+  // needed.
+
+  // NOTE(liudongxue01):
+  //  Please apply the following logic in other Executor/Interpreter modules
+  //  likewise.
+  //
+
+  // NOTE(liudongxue01):
+  // The following code aims to fixup the memcpy kernel which does not handle
+  // some rare case. The case is:
+  //  1. The default place in the current execution context is not CUDAPlace,
+  //  such as CPUPlace,
+  //  2. The dst_place_type is 1 which means CUDAPlace,
+  //  3. The expected result place is CUDAPlace but the actual result is
+  //  CPUPlace.
+  // When the default place is CPUPlace, we call the tensor.cuda() would
+  // simply hit such case.
+  //
+  // Q: Why we do not add such logic in the memcpy kernel?
+  // A: (1) To fixup the memcpy kernel, we need to construct a CUDAPlace() and
+  //    corresponding DeviceContext instance which used by the phi::Copy(...)
+  //    api to perform the real memcpy action. (2) We should not access the
+  //    singleton of the DeviceContextPool object in the PHI framework which
+  //    is designed as a standalone module and all context data should passed
+  //    into the kernel API through arguments. (3) So we have no way to
+  //    construct a CUDAPlace() in the memcpy kernel and then pass it
+  //     to the phi::Copy(...) api.
+  if (!platform::is_gpu_place(place)) {
+    const auto& op_type = op->Type();
+    if (op_type == "memcpy") {
+      int dst_place_type = op->Attr<int>("dst_place_type");
+      if (dst_place_type == 1) {  // 1 : CUDAPlace
+        auto dev_ctx = pool.Get(paddle::DefaultGPUPlace());
+        VLOG(4) << "Change the device context for memcpy OP: ("
+                << default_dev_ctx->type_info().name() << ") -> ("
+                << dev_ctx->type_info().name() << ")";
+        return dev_ctx;
+      }
+    }
+  }
+
+  return default_dev_ctx;
+}
+
 void HandleOperatorBase(const platform::Place& place,
                         std::shared_ptr<OperatorBase> op,
                         OpFuncNode* op_func_node,
@@ -527,7 +577,7 @@ void BuildOpFuncList(const platform::Place& place,
         main_program, block.ID(), ops_unique);
   }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::RegisterModelLayout(ops_unique, place);
 #endif
   // its elements will be moved to vec_func_list
@@ -536,6 +586,8 @@ void BuildOpFuncList(const platform::Place& place,
     ops.emplace_back(std::move(op_unique));
   }
   auto unused_var_map = GetUnusedVars(block, ops);
+
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -655,8 +707,9 @@ void BuildOpFuncList(const platform::Place& place,
           runtime_scope = local_scope;
         }
 
-        auto& pool = platform::DeviceContextPool::Instance();
-        auto* dev_ctx = pool.Get(place);
+        // construct the device context
+        auto* dev_ctx = ConstructDeviceContext(op, place);
+
         SetDeviceCommContext(op, dev_ctx);
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
@@ -977,10 +1030,7 @@ void BuildOpFuncList(
         attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
     op_func_node.phi_op_name_ = op_name;
 
-    if (op_name == "builtin.combine" || op_name == "pd.feed" ||
-        op_name == "builtin.set_parameter" ||
-        op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.feed_with_place" || op_name == "pd.shadow_output") {
+    if (GetSpecialOpNames().count(op_name)) {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
@@ -1169,6 +1219,18 @@ void SetDeviceCommContext(::ir::Operation* op,
               << ", ring_id: " << ring_id << ", get comm_context failed!";
     }
   }
+}
+
+std::unordered_set<std::string> GetSpecialOpNames() {
+  return {
+      "builtin.combine",
+      "builtin.slice",
+      "pd.feed",
+      "builtin.set_parameter",
+      "builtin.get_parameter",
+      "pd.data",
+      "pd.shadow_output",
+  };
 }
 
 }  // namespace interpreter

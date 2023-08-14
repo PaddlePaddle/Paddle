@@ -17,7 +17,6 @@ import re
 import subprocess
 
 import paddle
-from paddle import fluid
 from paddle.framework import core
 
 from ..base.private_helper_function import wait_server_ready
@@ -293,7 +292,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     % (platform.system())
                 )
 
-        if not isinstance(self.inner_opt, fluid.optimizer.SGDOptimizer):
+        if not isinstance(self.inner_opt, paddle.optimizer.SGD):
             return False
 
         free = get_sys_free_mem()

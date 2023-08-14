@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
@@ -1204,7 +1204,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     bool should_rotate =
         config.is_run_mkldnn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -1230,7 +1230,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (should_rotate) {
       std::rotate(out_dims_array.begin() + 1,
                   out_dims_array.end() - 1,
@@ -3237,38 +3237,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
-}
-
-void RmsNormInferMeta(const MetaTensor& x,
-                      const MetaTensor& weight,
-                      const MetaTensor& bias,
-                      const float epsilon,
-                      const int begin_norm_axis,
-                      MetaTensor* out) {
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
-  auto x_dims_size = x_dims_vec.size();
-
-  size_t normalized_dims = 1;
-  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
-    normalized_dims *= x_dims_vec[i];
-  }
-
-  PADDLE_ENFORCE_EQ(normalized_dims,
-                    weight.dims()[0],
-                    phi::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be"
-                        "the size of Weight, but received"
-                        "normalized size of Input(X) is [%d], received size"
-                        "of Weight is [%d]",
-                        normalized_dims,
-                        weight.dims()[0]));
-
-  auto out_dims = phi::make_ddim(x_dims_vec);
-
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  out->share_lod(x);
 }
 
 }  // namespace phi

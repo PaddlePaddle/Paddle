@@ -16,10 +16,18 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
+#include <string>
 #include <vector>
 
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
 namespace phi {
+class DeviceContext;
+
 namespace distributed {
+class CommContext;
+
 namespace auto_parallel {
 
 class ProcessMesh;
@@ -30,8 +38,6 @@ using auto_parallel::ProcessMesh;
 bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping);
 
 bool IsDimsMappingReplicated(const std::vector<int64_t>& dims_mapping);
-
-int64_t GetCurGlobalRank();
 
 // Get the coordinate of cur rank in process mesh. For example, the process mesh
 // is [[0, 1], [2, 3], [4, 5], [6, 7]], if the current rank is 4, then will
@@ -45,6 +51,23 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh);
 // For example, if dims_mapping is [-1, 1, -1, 0], will return {1: 1, 3: 0}.
 std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping);
+
+// Create a comm context of the input process_ids. Once the newly comm context
+// created, it will be cached in the global instance, and get from the global
+// cache later. If the input dev_ctx is GPU, then nccl comm context will be
+// created. If the input dev_ctx is CPU, then gloo comm context will be created.
+CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
+                                    const std::vector<int64_t>& process_ids);
+
+int64_t GetCurGlobalRank();
+
+std::string GetMasterAddr();
+
+int64_t GetGlobalWorldSize();
+
+uint16_t GetMasterPort();
+
+std::shared_ptr<TCPStore> CreateOrGetGlobalTCPStore();
 
 }  // namespace distributed
 }  // namespace phi

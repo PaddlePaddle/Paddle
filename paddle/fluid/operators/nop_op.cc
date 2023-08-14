@@ -45,9 +45,14 @@ establish the dependency between input and output tensors.
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(NopNoNeedBufferVarsInferer, "X", "Out");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(nop, ops::NopOp, ops::NopOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(nop,
+                             ops::NopOp,
+                             ops::NopOpMaker,
+                             ops::NopNoNeedBufferVarsInferer);

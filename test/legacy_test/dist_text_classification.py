@@ -55,7 +55,7 @@ def conv_net(
     fc0_dim=96,
     class_dim=2,
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=input,
         size=[dict_dim, emb_dim],
         is_sparse=False,
@@ -114,7 +114,7 @@ def get_reader(word_dict, batch_size):
 
 
 def get_optimizer(learning_rate):
-    optimizer = fluid.optimizer.SGD(learning_rate=learning_rate)
+    optimizer = paddle.optimizer.SGD(learning_rate=learning_rate)
     return optimizer
 
 
