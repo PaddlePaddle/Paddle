@@ -221,6 +221,8 @@ class Parallelizer:
         # Guarantee the order of params_grads is same between dynamic mode and static mode
         # by making parameter_list equal to model.parameters(),
         # because the order affact the result of ClipGradByGLobalNorm.
+        # If parameter_list is not None, the order of params_grads is same with parameter_list.
+        # If parameter_list is None, params_grads will be as prog.global_block().all_parameters().
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
                 loss,
@@ -242,6 +244,7 @@ class Parallelizer:
         optimizer = copy.deepcopy(optimizer)
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
+        optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):

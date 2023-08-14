@@ -1330,7 +1330,9 @@ class Optimizer:
                 # ...
                 optimizer.apply_gradients(params_grads)
         """
-        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+        # NOTE(zhaoyinglia): AutoParallel set '_sorted' attribute to skip the 'sotred' operator.
+        if not hasattr(self, "_sorted"):
+            params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
         # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
         if self._flatten_param_grads and self.regularization is None:

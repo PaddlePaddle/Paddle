@@ -2164,10 +2164,6 @@ def append_backward(
             fwd_op = grad_op_id_to_fwd_op[op.desc.original_id()]
             op._cuda_graph_attr = fwd_op._cuda_graph_attr
 
-    # NOTE(zhaoyinglia):
-    # If parameter_list is not None, the order of params_grads is same with parameter_list.
-    # If parameter_list is None, params_grads will be sorted with param's name
-    # as prog.global_block().all_parameters() is out of order after prog.clone().
     if parameter_list is not None:
         check_type(
             parameter_list,
@@ -2189,7 +2185,6 @@ def append_backward(
                 parameters.append(param)
     else:
         params = program.global_block().all_parameters()
-        params = sorted(params, key=lambda p: p.name)
         parameters = [param.name for param in params if param.trainable]
 
     params_and_grads = []
