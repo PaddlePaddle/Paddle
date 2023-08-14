@@ -690,11 +690,13 @@ EOF
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -E "${single_list}" --output-on-failure -j 2 | tee $tmpfile
         else
             ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
             ctest -R "($UT_list_prec_1)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -E "${single_list}" --output-on-failure -j 2 | tee $tmpfile
         fi
         failed_test_lists=''
         collect_failed_tests
@@ -930,8 +932,9 @@ set -ex
 
 function get_precision_ut_mac() {
     on_precision=0
-    serial_list="test_resnet|test_resnet_v2|test_concat_op|test_paddle_save_load"
-    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    # serial_list: Some single tests need to reduce concurrency
+    single_list="test_cdist|test_resnet|test_resnet_v2|test_concat_op|test_transformer|test_bert_with_stride|test_paddle_save_load"
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' |grep -vw -E $single_list)
     precision_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python $PADDLE_ROOT/tools/get_pr_ut.py
