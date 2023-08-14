@@ -15,9 +15,8 @@ limitations under the License. */
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
-
-#include "test/cpp/inference/api/tester_helper.h"
-
+#include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -55,6 +54,7 @@ const std::vector<std::string> PreGraphPasses({
    "cpu_quantize_placement_pass",
    "cpu_quantize_pass",
 });
+
 TEST(cpuQuantizePass, ConvReLU6) {
   paddle::framework::ProgramDesc prog;
   auto* block = prog.MutableBlock(0);
@@ -82,18 +82,18 @@ TEST(cpuQuantizePass, ConvReLU6) {
   relu6_op->SetOutput("Out", {"relu-Out"}); 
 
   auto place = phi::CPUPlace();
-  auto* scales = new VarQuantScale();
-  phi::DenseTensor input_tensor;
-  phi::DenseTensor weight_tensor;
-  input_tensor.Resize({1});
-  weight_tensor.Resize({1});
-  auto* ptr_input = input_tensor.mutable_data<double>(place);
-  auto* ptr_weight = weight_tensor.mutable_data<double>(place);
-  ptr_input[0] = SCALE;
-  ptr_weight[0] = SCALE;
+  std::unique_ptr<VarQuantScale> scales(new VarQuantScale());
+  phi::DenseTensor scale_input_tensor;
+  phi::DenseTensor scale_weight_tensor;
+  scale_input_tensor.Resize({1});
+  scale_weight_tensor.Resize({1});
+  auto* ptr_scale_input = scale_input_tensor.mutable_data<double>(place);
+  auto* ptr_scale_weight = scale_weight_tensor.mutable_data<double>(place);
+  ptr_scale_input[0] = SCALE;
+  ptr_scale_weight[0] = SCALE;
 
-  (*scales)["conv2d-X"] = std::make_pair(false, std::move(input_tensor));
-  (*scales)["conv2d-Y"] = std::make_pair(false, std::move(weight_tensor));
+  (*scales)["conv2d-X"] = std::make_pair(false, std::move(scale_input_tensor));
+  (*scales)["conv2d-Y"] = std::make_pair(false, std::move(scale_weight_tensor));
 
   paddle::framework::Scope scope;
 
@@ -103,7 +103,7 @@ TEST(cpuQuantizePass, ConvReLU6) {
   for (const auto &pass : PreGraphPasses) {
     auto pass_ = paddle::framework::ir::PassRegistry::Instance().Get(pass);
     if(pass == "cpu_quantize_pass"){
-        pass_->Set("quant_var_scales", scales);
+        pass_->Set("quant_var_scales", scales.get());
     };
     graph.reset(pass_->Apply(graph.release()));
   }

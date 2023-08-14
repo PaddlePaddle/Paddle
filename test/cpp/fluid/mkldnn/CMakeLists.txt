@@ -11,11 +11,19 @@ cc_test(
        enforce
        generated_static_op)
        
-set(CPU_QUANTIZE_PASS_TEST_APP "test_analyzer_cpu_quantize_pass")
-set(CPU_QUANTIZE_PASS_TEST_APP_SRC
-    "test_mkldnn_cpu_quantize_pass.cc")
-    inference_analysis_api_test_build(${CPU_QUANTIZE_PASS_TEST_APP}
-                                      ${CPU_QUANTIZE_PASS_TEST_APP_SRC})
+cc_test(
+  test_analyzer_cpu_quantize_pass
+  SRCS test_mkldnn_cpu_quantize_pass.cc
+  DEPS executor
+       op_registry
+       conv2d_op
+       activation_op
+       cpu_quantize_pass
+       phi
+       scope
+       device_context
+       enforce
+       generated_static_op)
 
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry
