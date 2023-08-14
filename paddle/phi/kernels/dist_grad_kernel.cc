@@ -104,5 +104,6 @@ PD_REGISTER_KERNEL(dist_grad,
                    phi::DistGradKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #endif
