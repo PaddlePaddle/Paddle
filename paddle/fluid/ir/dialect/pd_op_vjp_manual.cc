@@ -17,16 +17,19 @@
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/primitive/type/desc_tensor.h"
 #include "paddle/ir/core/op_base.h"
+#include "paddle/phi/common/int_array.h"
 
 // TODO(wanghao107)
 // this file will be generated in pd_op.cc
 
 namespace paddle {
 namespace dialect {
+using IntArray = paddle::experimental::IntArray;
+
 std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
     ir::Operation* op,
     const std::vector<std::vector<ir::OpResult>>& out_grads,
-    const std::vector<std::vector<int>>& stop_gradients) {
+    const std::vector<std::vector<bool>>& stop_gradients) {
   TanhOp op_obj = op->dyn_cast<TanhOp>();
   Tensor out(
       std::make_shared<primitive::experimental::DescTensor>(op_obj.out()));
@@ -35,7 +38,7 @@ std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (!stop_gradients[0][0]) {
+  if (tensor_res[0][0].defined()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
@@ -47,7 +50,7 @@ std::vector<std::vector<ir::OpResult>> TanhOp::Vjp(
 std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
     ir::Operation* op,
     const std::vector<std::vector<ir::OpResult>>& out_grads,
-    const std::vector<std::vector<int>>& stop_gradients) {
+    const std::vector<std::vector<bool>>& stop_gradients) {
   // TODO(wanghao107)
   // we don't support inplace now,
   // so use the non-inplace version instead currently.
@@ -60,7 +63,7 @@ std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::tanh_vjp(out, grad_out, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (!stop_gradients[0][0]) {
+  if (tensor_res[0][0].defined()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()
@@ -72,24 +75,22 @@ std::vector<std::vector<ir::OpResult>> Tanh_Op::Vjp(
 std::vector<std::vector<ir::OpResult>> MeanOp::Vjp(
     ir::Operation* op,
     const std::vector<std::vector<ir::OpResult>>& out_grads,
-    const std::vector<std::vector<int>>& stop_gradients) {
+    const std::vector<std::vector<bool>>& stop_gradients) {
   MeanOp op_obj = op->dyn_cast<MeanOp>();
   Tensor x(std::make_shared<primitive::experimental::DescTensor>(op_obj.x()));
   Tensor out_grad(
       std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
 
-  std::vector<int64_t> axis =
-      op->attribute("axis")
-          .dyn_cast<paddle::dialect::IntArrayAttribute>()
-          .data()
-          .GetData();
+  IntArray axis = op->attribute("axis")
+                      .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                      .data();
   bool keepdim = op->attribute("keepdim").dyn_cast<ir::BoolAttribute>().data();
   bool reduce_all = false;
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::mean_vjp(
           x, out_grad, axis, keepdim, reduce_all, stop_gradients);
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (!stop_gradients[0][0]) {
+  if (tensor_res[0][0].defined()) {
     res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
                     tensor_res[0][0].impl())
                     ->getValue()

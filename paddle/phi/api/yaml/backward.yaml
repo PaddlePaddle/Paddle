@@ -2345,6 +2345,7 @@
     param : [out, out, grad_x_grad_forward]
   kernel :
     func : tanh_triple_grad
+  composite : tanh_triple_grad(out, grad_out_forward, grad_x_grad_forward, grad_out_new_grad, grad_out_grad_grad, out_grad, grad_out_forward_grad, grad_x_grad_forward_grad)
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
   optional : grad_out_new_grad, grad_out_grad_grad
 
