@@ -29,7 +29,9 @@ ir::OpResult add_n(std::vector<ir::OpResult> x) {
   return add_n_op.out();
 }
 
-ir::OpResult mean(ir::OpResult x, std::vector<int64_t> axis, bool keepdim) {
+ir::OpResult mean(ir::OpResult x,
+                  const std::vector<int64_t>& axis,
+                  bool keepdim) {
   paddle::dialect::MeanOp mean_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::MeanOp>(
           x, axis, keepdim);
@@ -37,27 +39,27 @@ ir::OpResult mean(ir::OpResult x, std::vector<int64_t> axis, bool keepdim) {
 }
 
 ir::OpResult sum(ir::OpResult x,
-                 std::vector<int64_t> axis,
+                 const std::vector<int64_t>& axis,
                  phi::DataType dtype,
                  bool keepdim) {
-  paddle::dialect::SumOp sum_op =
+  auto sum_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SumOp>(
           x, axis, dtype, keepdim);
   return sum_op.out();
 }
 
 ir::OpResult divide(ir::OpResult x, ir::OpResult y) {
-  paddle::dialect::DivideOp divide_op =
+  auto divide_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::DivideOp>(x,
                                                                             y);
   return divide_op.out();
 }
 
-ir::OpResult full(std::vector<int64_t> shape,
+ir::OpResult full(const std::vector<int64_t>& shape,
                   float value,
                   phi::DataType dtype,
-                  phi::Place place) {
-  paddle::dialect::FullOp full_op =
+                  const phi::Place& place) {
+  auto full_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::FullOp>(
           shape, value, dtype, place);
   return full_op.out();

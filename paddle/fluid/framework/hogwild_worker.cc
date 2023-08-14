@@ -213,7 +213,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
 #endif
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (is_multi_node) {
@@ -348,7 +348,7 @@ void HogwildWorker::TrainFiles() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
 #endif
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (is_multi_node) {

@@ -815,6 +815,8 @@ XPUOpMap& get_kl2_ops() {
       {"sum", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"swish", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"swish_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"take_along_axis",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"tanh_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"tanh", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
