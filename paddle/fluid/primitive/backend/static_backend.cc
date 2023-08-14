@@ -82,7 +82,7 @@ std::tuple<Tensor, Tensor> add_grad<DescTensor>(const Tensor& x,
       Tensor(std::make_shared<primitive::experimental::DescTensor>(
           std::get<0>(op_res))),
       Tensor(std::make_shared<primitive::experimental::DescTensor>(
-          std::get<0>(op_res))));
+          std::get<1>(op_res))));
 }
 }  // namespace experimental
 }  // namespace backend
