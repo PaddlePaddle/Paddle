@@ -14,7 +14,7 @@ Checks: '
 -bugprone-inaccurate-erase,
 -bugprone-incorrect-roundings,
 -bugprone-infinite-loop,
--bugprone-integer-division,
+bugprone-integer-division,
 -bugprone-macro-repeated-side-effects,
 -bugprone-misplaced-operator-in-strlen-in-alloc,
 -bugprone-misplaced-widening-cast,
