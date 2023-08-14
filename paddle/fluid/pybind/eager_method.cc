@@ -1017,6 +1017,7 @@ static PyObject* tensor_method_detach(TensorObject* self,
 
 PyDoc_STRVAR(tensor_method_detach___doc__, R"DOC(detach_($self, /)
 --
+
 Detach self from the current graph, and returns self Tensor.
 In addition, the detached Tensor doesn't provide gradient propagation.
 
