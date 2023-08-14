@@ -139,6 +139,8 @@ endif()
 # https://github.com/PaddlePaddle/Paddle/issues/12773
 if(NOT WIN32)
   set(COMMON_FLAGS
+      -mcmodel=large
+      -fdebug-types-section
       -fPIC
       -fno-omit-frame-pointer
       -Werror
