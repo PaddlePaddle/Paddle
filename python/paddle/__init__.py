@@ -346,7 +346,9 @@ from .tensor.math import erfinv  # noqa: F401
 from .tensor.math import rad2deg  # noqa: F401
 from .tensor.math import deg2rad  # noqa: F401
 from .tensor.math import gcd  # noqa: F401
+from .tensor.math import gcd_  # noqa: F401
 from .tensor.math import lcm  # noqa: F401
+from .tensor.math import lcm_  # noqa: F401
 from .tensor.math import diff  # noqa: F401
 from .tensor.math import angle  # noqa: F401
 from .tensor.math import fmax  # noqa: F401
@@ -360,6 +362,7 @@ from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
 from .tensor.math import ldexp  # noqa: F401
+from .tensor.math import ldexp_  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
@@ -391,6 +394,7 @@ from .tensor.search import bucketize  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
+from .tensor.search import where_  # noqa: F401
 from .tensor.search import index_select  # noqa: F401
 from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
@@ -529,6 +533,7 @@ __all__ = [  # noqa
     'is_integer',
     'cross',
     'where',
+    'where_',
     'log1p',
     'cos',
     'cos_',
@@ -686,7 +691,9 @@ __all__ = [  # noqa
     'rad2deg',
     'deg2rad',
     'gcd',
+    'gcd_',
     'lcm',
+    'lcm_',
     'expand',
     'broadcast_to',
     'ones_like',
@@ -809,6 +816,7 @@ __all__ = [  # noqa
     'take',
     'frexp',
     'ldexp',
+    'ldexp_',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
