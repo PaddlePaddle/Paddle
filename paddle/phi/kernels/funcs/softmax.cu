@@ -21,8 +21,6 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
-// TODO(@caizhi): enable it
-#if 0
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
 using DataLayout = phi::backends::gpu::DataLayout;
 template <typename T>
@@ -61,8 +59,6 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
                                             context.template Alloc<T>(Y),
                                             MIOPEN_SOFTMAX_ACCURATE,
                                             MIOPEN_SOFTMAX_MODE_INSTANCE));
-#elif defined(PADDLE_WITH_MUSA)
-  // TODO
 #else
   cudnnTensorDescriptor_t cudnn_x_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
@@ -148,18 +144,16 @@ template class SoftmaxCUDNNFunctor<float, phi::GPUContext>;
 template class SoftmaxCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<float, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
-// TODO(@caizhi): enable it
-//#if CUDNN_VERSION_MIN(8, 1, 0)
-//template class SoftmaxCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
-//template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
-//#endif
+#if CUDNN_VERSION_MIN(8, 1, 0)
+template class SoftmaxCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
+#endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP
 template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
-#endif 
 template class SoftmaxFunctor<phi::GPUContext, phi::dtype::float16>;
 template class SoftmaxFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 template class SoftmaxFunctor<phi::GPUContext, float>;
