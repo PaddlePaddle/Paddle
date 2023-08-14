@@ -43,7 +43,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name)
     : InstructionBase(id, place) {
-  auto op_attributes = op->attributes();
+  auto& op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
@@ -171,6 +171,10 @@ LegacyKernelInstruction::LegacyKernelInstruction(
 LegacyKernelInstruction::~LegacyKernelInstruction() {
   if (kernel_context_ != nullptr) {
     delete kernel_context_;
+  }
+
+  if (phi_kernel_ != nullptr) {
+    delete phi_kernel_;
   }
 }
 
