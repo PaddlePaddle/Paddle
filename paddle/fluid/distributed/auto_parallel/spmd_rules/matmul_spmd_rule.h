@@ -39,7 +39,8 @@ class MatmulSPMDRule : public SPMDRuleBase {
                const paddle::framework::AttributeMap& attrs) override;
 
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferBackward(const std::vector<DistTensorSpec>& output_specs,
+  InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                const std::vector<DistTensorSpec>& output_specs,
                 const paddle::framework::AttributeMap& attrs) override;
 };
 }  // namespace auto_parallel

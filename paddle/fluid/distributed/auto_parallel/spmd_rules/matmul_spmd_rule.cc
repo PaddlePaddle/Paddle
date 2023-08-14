@@ -216,10 +216,24 @@ TensorDistAttr GetInferedDistAttr(
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 MatmulSPMDRule::InferBackward(const std::vector<DistTensorSpec>& output_specs,
                               const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of MatmulSPMDRule is NOT implemented yet."));
+  auto output_specs_size = output_specs.size();
+  PADDLE_ENFORCE_EQ(
+      output_specs_size,
+      1,
+      phi::errors::InvalidArgument(
+          "The size of OutputSpec of matmul should be 1, but got [%d].",
+          output_specs_size));
 
-  return {};
+  auto out_shape = output_specs[0].shape();
+  int out_ndim = out_shape.size();
+  auto out_dist_attr_src = output_specs[0].dist_attr();
+  std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
+
+  // step1: build Einsum Notation
+  std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
+  std::string x_axes = GetBroadcastAxes(out_ndim - 1, out_ndim - 1, alphabet);
+  std::string weight_axes = "k";
+  std::string out_axes = x_axes + "k";
 }
 
 }  // namespace auto_parallel
