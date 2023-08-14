@@ -390,12 +390,10 @@ class LBFGS(Optimizer):
             ...         return loss
             ...     opt.step(closure)
             ...
-            ...
             >>> for input, target in zip(inputs, targets):
             ...     input = paddle.to_tensor(input)
             ...     target = paddle.to_tensor(target)
             ...     train_step(input, target)
-            ...
     """
 
     def __init__(
