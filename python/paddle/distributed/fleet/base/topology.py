@@ -261,12 +261,13 @@ class HybridCommunicateGroup:
                 self._sep_degree,
             )
         )
-        debug_str += ", mp_group: {},  sharding_group: {}, pp_group: {}, dp_group: {}, sep:group: %s, check/clip group: {}".format(
+        debug_str += ", mp_group: {},  sharding_group: {}, pp_group: {}, dp_group: {}, sep:group: {}, check/clip group: {}".format(
             self._mp_group,
             self._sharding_group,
             self._pp_group,
             self._dp_group,
             self._sep_group,
+            self._check_group,
         )
         logger.info(debug_str)
 
@@ -547,7 +548,7 @@ class HybridCommunicateGroup:
         if len(parallel_group) > 1:
             return parallel_group, parallel_comm_group
         else:
-            return parallel_group[0], parallel_comm_group[0]    
+            return parallel_group[0], parallel_comm_group[0]
 
 
 class _CommunicateGroup:
