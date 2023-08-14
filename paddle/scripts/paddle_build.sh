@@ -688,6 +688,13 @@ EOF
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         check_approvals_of_unittest 2
         get_precision_ut_mac
+        # serial_list: Some single tests need to reduce concurrency
+        single_list="test_cdist|test_resnet|test_resnet_v2|test_concat_op|test_transformer|test_bert_with_stride|test_paddle_save_load"
+        disable_ut_quickly="${disable_ut_quickly}|${single_list}"
+        echo "========================================="
+        echo "The following unittests have been disabled:"
+        echo ${disable_ut_quickly}
+        echo "========================================="
         if [[ "$on_precision" == "0" ]];then
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
             ctest -E "${single_list}" --output-on-failure -j 2 | tee $tmpfile
@@ -932,9 +939,7 @@ set -ex
 
 function get_precision_ut_mac() {
     on_precision=0
-    # serial_list: Some single tests need to reduce concurrency
-    single_list="test_cdist|test_resnet|test_resnet_v2|test_concat_op|test_transformer|test_bert_with_stride|test_paddle_save_load"
-    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' |grep -vw -E $single_list)
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precision_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
         python $PADDLE_ROOT/tools/get_pr_ut.py
