@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "glog/logging.h"
+
+#include "paddle/phi/kernels/ftrl_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -227,5 +230,4 @@ class FTRLOpKernel : public framework::OpKernel<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
