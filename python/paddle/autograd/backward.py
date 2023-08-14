@@ -377,9 +377,9 @@ def append_backward_ops(
             input_grad_stopgradient_list = []
             for input in op.operands_source():
                 if input in no_grad_set:
-                    input_grad_stopgradient_list.append([1])
+                    input_grad_stopgradient_list.append([True])
                 else:
-                    input_grad_stopgradient_list.append([0])
+                    input_grad_stopgradient_list.append([False])
 
             before_ops_num = len(block.ops)
             # prim should be a globel flag, it will make create_grad_op choose diffrient func

@@ -65,3 +65,23 @@ TEST(TypeConverterTest, paramterless_type) {
                                  ir::Complex64Type,
                                  ir::Complex128Type>();
 }
+
+void test_index_type() {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+
+  ir::Type type = ir::IndexType::get(ctx);
+  std::stringstream ss;
+  ss << type;
+  EXPECT_GT(ss.str().size(), 0u);
+  EXPECT_EQ(ss.str(), "index");
+  EXPECT_NE(ss.str(), "<<NULL TYPE>>");
+  phi::DataType phi_type = paddle::dialect::TransToPhiDataType(type);
+  auto& type_translator = paddle::translator::TypeTranslator::instance();
+  paddle::framework::VarDesc empty_var_desc("empty");
+  auto proto_type = paddle::framework::TransToProtoVarType(phi_type);
+  ir::Type final_type = type_translator[proto_type](ctx, empty_var_desc);
+  EXPECT_EQ(paddle::dialect::TransToIrDataType(phi_type), final_type);
+}
+
+TEST(IndexTypeConverterTest, index_type) { test_index_type(); }
