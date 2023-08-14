@@ -59,11 +59,6 @@ class TESS(AudioClassificationDataset):
             ...     # do something with audio, label
             ...     print(audio.shape, label)
             ...     # [audio_data_length] , label_id
-            [58124] 1
-            [60883] 1
-            [58079] 1
-            [60643] 1
-            [61232] 1
 
             >>> tess_dataset = paddle.audio.datasets.TESS(mode=mode,
             ...                                         feat_type='mfcc',
@@ -73,11 +68,6 @@ class TESS(AudioClassificationDataset):
             ...     # do something with mfcc feature, label
             ...     print(audio.shape, label)
             ...     # [feature_dim, num_frames] , label_id
-            [40, 455] 1
-            [40, 476] 1
-            [40, 454] 1
-            [40, 474] 1
-            [40, 479] 1
     """
 
     archive = {
