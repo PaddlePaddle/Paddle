@@ -292,8 +292,8 @@ class TestMNISTWithToStatic(TestMNIST):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            dirname=model_path,
+        ] = paddle.static.io.load_inference_model(
+            path_prefix=model_path,
             executor=exe,
             model_filename=model_filename,
             params_filename=params_filename,

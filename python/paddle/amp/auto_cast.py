@@ -250,7 +250,6 @@ def _is_valid_optimizer(optimizer):
         optimizer,
         (
             paddle.optimizer.Optimizer,
-            paddle.fluid.optimizer.Optimizer,
             DygraphShardingOptimizer,
         ),
     )
@@ -260,7 +259,7 @@ def check_optimizers(optimizers):
     for optimizer in optimizers:
         if not _is_valid_optimizer(optimizer):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
+                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
                     type(optimizer)
                 )
             )
