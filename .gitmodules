@@ -85,3 +85,4 @@
 [submodule "third_party/openblas"]
 	path = third_party/openblas
 	url = https://github.com/xianyi/OpenBLAS.git
+	ignore = dirty
