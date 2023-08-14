@@ -24,9 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/flags.h"
-#ifdef PADDLE_WITH_MUSA
-#include <musa.h>
-#endif
+
 PHI_DECLARE_string(cuda_dir);
 
 namespace phi {
@@ -140,7 +138,8 @@ void GPUDeviceCode::CheckAvailableStatus() {
   hiprtcResult nvrtc_result =
       dynload::hiprtcVersion(&nvrtc_major, &nvrtc_minor);
 #elif defined(PADDLE_WITH_MUSA)
-  // TODO(@caizhi): enable dynload module
+  mtrtcResult nvrtc_result =
+      dynload::mtrtcVersion(&nvrtc_major, &nvrtc_minor);
 #else
   nvrtcResult nvrtc_result = dynload::nvrtcVersion(&nvrtc_major, &nvrtc_minor);
 #endif
@@ -168,8 +167,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
 #ifdef PADDLE_WITH_HIP
   if (nvrtc_result != HIPRTC_SUCCESS || driver_result != hipSuccess) {
 #elif defined(PADDLE_WITH_MUSA)
-  // TODO(@caizhi): enable dynload module
-  if (false) {
+  if (nvrtc_result != MTRTC_SUCCESS || driver_result != MUSA_SUCCESS) {
 #else
   if (nvrtc_result != NVRTC_SUCCESS || driver_result != CUDA_SUCCESS) {
 #endif
@@ -343,11 +341,85 @@ bool GPUDeviceCode::Compile(bool include_path) {
     return false;
   }
 #elif defined(PADDLE_WITH_MUSA)
-  // TODO(@caizhi): enable dynload module
+  mtrtcProgram program;
+  if (!CheckNVRTCResult(dynload::mtrtcCreateProgram(&program,
+                                                    kernel_.c_str(),  // buffer
+                                                    name_.c_str(),    // name
+                                                    0,         // numHeaders
+                                                    nullptr,   // headers
+                                                    nullptr),  // includeNames
+                        "mtrtcCreateProgram")) {
+    return false;
+  }
+
+  // Compile the program for specified compute_capability
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       DeviceContextPool::Instance().Get(place_));
-  is_compiled_ = false;
-  return false;
+  int compute_capability = dev_ctx->GetComputeCapability();
+  std::string compute_flag =
+      "--gpu-architecture=compute_" + std::to_string(compute_capability);
+  std::vector<const char*> options = {"--std=c++11", compute_flag.c_str()};
+  std::string include_option;
+  if (include_path) {
+    std::string cuda_include_path = FindCUDAIncludePath();
+    if (!cuda_include_path.empty()) {
+      include_option = "--include-path=" + cuda_include_path;
+      options.push_back(include_option.c_str());
+    }
+  }
+  mtrtcResult compile_result =
+      dynload::mtrtcCompileProgram(program,          // program
+                                   options.size(),   // numOptions
+                                   options.data());  // options
+  if (compile_result == MTRTC_ERROR_COMPILATION) {
+    // Obtain compilation log from the program
+    size_t log_size;
+    if (!CheckNVRTCResult(dynload::mtrtcGetProgramLogSize(program, &log_size),
+                          "mtrtcGetProgramLogSize")) {
+      return false;
+    }
+    std::vector<char> log;
+    log.resize(log_size + 1);
+    if (!CheckNVRTCResult(dynload::mtrtcGetProgramLog(program, log.data()),
+                          "nvrtcGetProgramLog")) {
+      return false;
+    }
+    LOG(WARNING) << "JIT compiling of MUSA code failed:"
+                 << "\n  Kernel name: " << name_ << "\n  Kernel body:\n"
+                 << kernel_ << "\n  Compiling log: " << log.data();
+
+    return false;
+  }
+
+  // Obtain PTX from the program
+  size_t ptx_size;
+  if (!CheckNVRTCResult(dynload::mtrtcGetMUSASize(program, &ptx_size),
+                        "mtrtcGetMUSASize")) {
+    return false;
+  }
+  ptx_.resize(ptx_size + 1);
+  if (!CheckNVRTCResult(dynload::mtrtcGetMUSA(program, ptx_.data()),
+                        "mtrtcGetMUSA")) {
+    return false;
+  }
+
+  if (!CheckNVRTCResult(dynload::mtrtcDestroyProgram(&program),
+                        "mtrtcDestroyProgram")) {
+    return false;
+  }
+
+  if (!CheckCUDADriverResult(dynload::muModuleLoadData(&module_, ptx_.data()),
+                             "muModuleLoadData",
+                             name_)) {
+    return false;
+  }
+
+  if (!CheckCUDADriverResult(
+          dynload::muModuleGetFunction(&function_, module_, name_.c_str()),
+          "muModuleGetFunction",
+          name_)) {
+    return false;
+  }
 #else
   nvrtcProgram program;
   if (!CheckNVRTCResult(dynload::nvrtcCreateProgram(&program,
@@ -512,8 +584,15 @@ bool GPUDeviceCode::CheckNVRTCResult(hiprtcResult result,
   }
   return true;
 }
-#endif
-#ifdef PADDLE_WITH_CUDA
+#elif defined(PADDLE_WITH_MUSA)
+bool GPUDeviceCode::CheckNVRTCResult(mtrtcResult result, std::string function) {
+  if (result != MTRTC_SUCCESS) {
+    LOG_FIRST_N(WARNING, 1)
+        << "Call " << function << " for < " << name_
+        << " > failed: " << dynload::mtrtcGetErrorString(result);
+    return false;
+  }
+#else
 bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
   if (result != NVRTC_SUCCESS) {
     LOG_FIRST_N(WARNING, 1)
@@ -521,9 +600,9 @@ bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
         << " > failed: " << dynload::nvrtcGetErrorString(result);
     return false;
   }
+#endif
   return true;
 }
-#endif
 #endif
 
 }  // namespace phi
