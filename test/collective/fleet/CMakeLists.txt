@@ -418,8 +418,26 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21242;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_sharding_parallel
-                       PROPERTIES TIMEOUT "120")
+                       PROPERTIES TIMEOUT "120")                      
 endif()
+
+
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_sep_parallel
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "120"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21242;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_sep_parallel
+                       PROPERTIES TIMEOUT "120")
+endif()                     
+
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_tensor_parallel

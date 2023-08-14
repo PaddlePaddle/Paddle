@@ -167,44 +167,6 @@ class CommunicateTopology:
         tf = coord._replace(**kwargs)._asdict()
         return self.get_rank(**tf)
 
-    # fuse comm group message
-    def get_dp_sep_parallel_group(self):
-        self._check_sep_exist()
-        return self._dp_sep_comm_group
-
-    def get_pp_mp_parallel_group(self):
-        self._check_sep_exist()
-        return self._pp_mp_comm_group
-
-    def create_fuse_group(self, fused_strategy_list):
-        assert (
-            len(fused_strategy_list) > 0
-        ), "the length of fused_strategy_list must be greater than 0."
-
-        parallel_group = []
-        parallel_comm_group = []
-        parallel_groups = self._topo.get_fused_ranks(fused_strategy_list)
-        parallel_groups.sort()
-
-        for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
-            if self.global_rank in group:
-                parallel_group.append(group)
-                parallel_comm_group.append(comm_group)
-
-        assert len(parallel_group) > 0
-        assert len(parallel_comm_group) > 0
-
-        logger.info(
-            "Total {} comm group(s) of fused {} create successfully!".format(
-                len(parallel_groups), fused_strategy_list
-            )
-        )
-        if len(parallel_group) > 1:
-            return parallel_group, parallel_comm_group
-        else:
-            return parallel_group[0], parallel_comm_group[0]
-
 
 class HybridCommunicateGroup:
     def __init__(self, topology):
@@ -548,6 +510,44 @@ class HybridCommunicateGroup:
         return self._topo.get_rank_from_stage(
             self.global_rank, pipe=stage_id, **kwargs
         )
+
+    # fuse comm group message
+    def get_dp_sep_parallel_group(self):
+        self._check_sep_exist()
+        return self._dp_sep_comm_group
+
+    def get_pp_mp_parallel_group(self):
+        self._check_sep_exist()
+        return self._pp_mp_comm_group
+
+    def create_fuse_group(self, fused_strategy_list):
+        assert (
+            len(fused_strategy_list) > 0
+        ), "the length of fused_strategy_list must be greater than 0."
+
+        parallel_group = []
+        parallel_comm_group = []
+        parallel_groups = self._topo.get_fused_ranks(fused_strategy_list)
+        parallel_groups.sort()
+
+        for group in parallel_groups:
+            comm_group = paddle.distributed.new_group(ranks=group)
+            if self.global_rank in group:
+                parallel_group.append(group)
+                parallel_comm_group.append(comm_group)
+
+        assert len(parallel_group) > 0
+        assert len(parallel_comm_group) > 0
+
+        logger.info(
+            "Total {} comm group(s) of fused {} create successfully!".format(
+                len(parallel_groups), fused_strategy_list
+            )
+        )
+        if len(parallel_group) > 1:
+            return parallel_group, parallel_comm_group
+        else:
+            return parallel_group[0], parallel_comm_group[0]    
 
 
 class _CommunicateGroup:
