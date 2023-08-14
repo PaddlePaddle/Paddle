@@ -22,7 +22,7 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 

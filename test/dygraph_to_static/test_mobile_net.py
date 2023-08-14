@@ -446,11 +446,11 @@ class MobileNetV2(paddle.nn.Layer):
 
 
 def create_optimizer(args, parameter_list):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=args.lr,
         momentum=args.momentum_rate,
-        regularization=paddle.regularizer.L2Decay(args.l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(args.l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
@@ -608,7 +608,7 @@ def predict_static(args, data):
         inference_program,
         feed_target_names,
         fetch_targets,
-    ] = fluid.io.load_inference_model(
+    ] = paddle.static.io.load_inference_model(
         args.model_save_dir,
         executor=exe,
         model_filename=args.model_filename,

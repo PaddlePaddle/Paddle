@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
@@ -1204,7 +1204,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     bool should_rotate =
         config.is_run_mkldnn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -1230,7 +1230,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (should_rotate) {
       std::rotate(out_dims_array.begin() + 1,
                   out_dims_array.end() - 1,

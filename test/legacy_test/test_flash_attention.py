@@ -410,6 +410,17 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
         self.use_sdp_kernel = False
 
 
+class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 256)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = False
+
+
 class TestMathAttentionAPITest(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)

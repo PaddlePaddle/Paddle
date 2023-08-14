@@ -125,7 +125,7 @@ class TestCorrelationOp(unittest.TestCase):
         )
 
         loss = paddle.mean(out)
-        optimizer = fluid.optimizer.Momentum(0.0001, 0.9)
+        optimizer = paddle.optimizer.Momentum(0.0001, 0.9)
         optimizer.minimize(loss)
 
         place = fluid.CUDAPlace(0)

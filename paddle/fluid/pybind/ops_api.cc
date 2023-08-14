@@ -20,6 +20,10 @@
 namespace paddle {
 namespace pybind {
 
+static PyObject *add_n(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_add_n(self, args, kwargs);
+}
+
 static PyObject *mean(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_mean(self, args, kwargs);
 }
@@ -36,7 +40,11 @@ static PyObject *divide(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_divide(self, args, kwargs);
 }
 
-static PyMethodDef OpsAPI[] = {{"mean",
+static PyMethodDef OpsAPI[] = {{"add_n",
+                                (PyCFunction)(void (*)(void))add_n,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for add_n."},
+                               {"mean",
                                 (PyCFunction)(void (*)(void))mean,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for mean."},

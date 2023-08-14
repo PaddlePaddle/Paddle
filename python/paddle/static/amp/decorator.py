@@ -37,10 +37,10 @@ from .function_overload import FunctionType, overload
 def _set_multi_precision(optimizer, multi_precision):
     if not isinstance(
         optimizer,
-        (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+        (paddle.optimizer.Optimizer),
     ):
         raise RuntimeError(
-            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".format(
+            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {}.".format(
                 type(optimizer)
             )
         )
@@ -483,7 +483,7 @@ class OptimizerWithMixedPrecision:
             real_optimizer = real_optimizer.inner_opt
         if isinstance(
             real_optimizer,
-            (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW),
+            (paddle.optimizer.Adam, paddle.optimizer.AdamW),
         ):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we
             # copy it in advance to avoid multiple time copies.

@@ -55,7 +55,7 @@ TEST(VJP, TanhBackwardTest) {
   paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
 
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh");
@@ -109,7 +109,7 @@ TEST(VJP, Tanh_BackwardTest) {
   paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
 
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.tanh_");
@@ -163,7 +163,7 @@ TEST(VJP, MeanBackwardTest) {
   paddle::dialect::FullOp op3 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  std::vector<std::vector<int>> stop_gradients{{0}};
+  std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<ir::OpResult>> out_grads{{op3.out()}};
 
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.mean");
