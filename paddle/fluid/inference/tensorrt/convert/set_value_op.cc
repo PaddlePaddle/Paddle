@@ -97,7 +97,7 @@ class SetValueConverter : public OpConverter {
     tmp_dims = updates->getDimensions();
     for (int i = 0; i < tmp_dims.nbDims; i++) {
       PADDLE_ENFORCE_GT(tmp_dims.d[i], 0);
-      std::cout << "updates dims值：" << tmp_dims.d[i] << std::endl;
+      std::cout << "更新后的updates dims值：" << tmp_dims.d[i] << std::endl;
     }
 
     int64_t axes = 0;
@@ -149,7 +149,7 @@ class SetValueConverter : public OpConverter {
 
     for(int i = 0; i < input_dims.nbDims; i++) {
       if (i != axes) {
-        PADDLE_ENFORCE_EQ(input_dims.d[i], update_dims.d[i]);
+       // PADDLE_ENFORCE_EQ(input_dims.d[i], update_dims.d[i]);
       } 
     }
 

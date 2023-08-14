@@ -1770,7 +1770,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       int pad_size = paddings.size();
-      if (nbDims < 2) {
+      if (nbDims <= 3) {
         return false;
       }
       if (nbDims * 2 != pad_size) {

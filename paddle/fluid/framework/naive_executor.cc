@@ -140,14 +140,13 @@ if(nvtx)
     op->Run(*scope_, place_);
 
 
+#ifdef PADDLE_WITH_NVTX
+if(nvtx)
+    platform::CudaNvtxRangePop();
+#endif
 
-
-
-
-
-    
     // std::cout << op->OutputVars(true).front() << std::endl;
-    // success = cudaStreamSynchronize(dev_ctx->stream());
+    // auto success = cudaStreamSynchronize(dev_ctx->stream());
     // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
 
@@ -205,12 +204,6 @@ if(nvtx)
       }
     }
 
-
-#ifdef PADDLE_WITH_NVTX
-if(nvtx)
-    platform::CudaNvtxRangePop();
-#endif
-
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
       for (auto &it : reuse_cache_[op.get()]) {
@@ -241,6 +234,9 @@ if(nvtx)
       func(op.get(), scope_);
     }
   }
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePop();
+#endif
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
