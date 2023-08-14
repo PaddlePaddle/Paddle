@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
+import paddle
 from paddle.framework import core
 
 SEED = 2021
@@ -33,6 +34,12 @@ def get_c_embedding(start, end, table, ids):
     return output
 
 
+def c_embedding_wrapper(table, index, start_index=0):
+    return paddle._legacy_C_ops.c_embedding(
+        table, index, "start_index", start_index
+    )
+
+
 class TestCEmbeddingCPU(OpTest):
     def setUp(self):
         self.init_dtype()
@@ -44,6 +51,7 @@ class TestCEmbeddingCPU(OpTest):
 
     def initcase(self):
         self.op_type = "c_embedding"
+        self.python_api = c_embedding_wrapper
         table = np.random.random((17, 64)).astype(self.dtype)
         ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
             self.ids_dtype
@@ -102,6 +110,7 @@ class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
 
     def initcase(self):
         self.op_type = "c_embedding"
+        self.python_api = c_embedding_wrapper
         table = np.random.random((17, 64)).astype(self.dtype)
         ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
             self.ids_dtype
