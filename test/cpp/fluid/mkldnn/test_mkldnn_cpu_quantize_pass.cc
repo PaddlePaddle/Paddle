@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "test/cpp/inference/api/tester_helper.h"
@@ -24,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include <unordered_map>
 #include <glog/logging.h>
 
 using namespace std;
@@ -32,38 +32,15 @@ using namespace std;
 DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 namespace paddle {
-namespace inference {
-namespace analysis {
+namespace pass {
 
+using VarQuantScale =
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+    
 static float const SCALE = 2.f;
 const std::vector<std::string> PreGraphPasses({
    "simplify_with_basic_ops_pass",
    "quant_dequant_mkldnn_pass",
-//    "mkldnn_placement_pass",
-//    "constant_folding_pass",
-   "squeeze2_transpose2_onednn_fuse_pass",
-   "layer_norm_fuse_pass",
-   "attention_lstm_fuse_pass",
-   "seqconv_eltadd_relu_fuse_pass",
-   "fc_lstm_fuse_pass",
-   "mul_lstm_fuse_pass",
-//    "fc_gru_fuse_pass",
-//    "mul_gru_fuse_pass",
-//    "multi_gru_fuse_pass",
-//    "multi_gru_seq_fuse_pass",
-//    "seq_concat_fc_fuse_pass",
-   "gpu_cpu_squeeze2_matmul_fuse_pass",
-   "gpu_cpu_reshape2_matmul_fuse_pass",
-   "gpu_cpu_flatten2_matmul_fuse_pass",
-   "matmul_v2_scale_fuse_pass",
-   "squared_mat_sub_fuse_pass",
-   "is_test_pass",
-   "gpu_cpu_map_matmul_v2_to_mul_pass",
-   "gpu_cpu_map_matmul_v2_to_matmul_pass",
-   "matmul_scale_fuse_pass",
-   "gpu_cpu_map_matmul_to_mul_pass",
-   "repeated_fc_relu_fuse_pass",
-   "depthwise_conv_mkldnn_pass",
    "conv_bn_fuse_pass",
    "conv_eltwiseadd_bn_fuse_pass",
    "conv_affine_channel_mkldnn_fuse_pass",
@@ -73,24 +50,11 @@ const std::vector<std::string> PreGraphPasses({
    "conv_transpose_bias_mkldnn_fuse_pass",
    "conv_elementwise_add_mkldnn_fuse_pass",
    "conv_activation_mkldnn_fuse_pass",
-   "fc_fuse_pass",
-   "repeated_fc_relu_fuse_pass",
-   "fc_mkldnn_pass",
-   "fc_act_mkldnn_fuse_pass",
-   "matmul_transpose_reshape_mkldnn_fuse_pass",
-   "batch_norm_act_fuse_pass",
-   "softplus_activation_onednn_fuse_pass",
-//    "compute_propagate_scales_mkldnn_pass",
-   "scale_matmul_fuse_pass",
-   "reshape_transpose_matmul_mkldnn_fuse_pass",
-   "matmul_elementwise_add_mkldnn_fuse_pass",
    "operator_scale_onednn_fuse_pass",
    "operator_unsqueeze2_onednn_fuse_pass",
    "operator_reshape2_onednn_fuse_pass",
    "cpu_quantize_placement_pass",
    "cpu_quantize_pass",
-   "cpu_quantize_squash_pass",
-   "quant_transpose2_dequant_onednn_fuse_pass"
 });
 TEST(cpuQuantizePass, ConvReLU6) {
   paddle::framework::ProgramDesc prog;
@@ -137,10 +101,6 @@ TEST(cpuQuantizePass, ConvReLU6) {
   std::unique_ptr<paddle::framework::ir::Graph> graph(new paddle::framework::ir::Graph(prog));
   (graph)->SetNotOwned(paddle::framework::ir::kParamScopeAttr, &scope);
    
-  int num_nodes_before = graph->Nodes().size();
-  VLOG(3) << "Before apply pass, Graph node num:" << num_nodes_before;
-  VLOG(3) << DebugString(graph);
-
   for (const auto &pass : PreGraphPasses) {
     auto pass_ = paddle::framework::ir::PassRegistry::Instance().Get(pass);
     if (pass == "fc_fuse_pass") {
@@ -150,15 +110,8 @@ TEST(cpuQuantizePass, ConvReLU6) {
     };
     graph.reset(pass_->Apply(graph.release()));
   }
-  int num_nodes_after = graph->Nodes().size();
-  VLOG(3) << "-------------------------------------------";
-  VLOG(3) << "After apply pass, Graph node num:" << num_nodes_after;
-  VLOG(3) << DebugString(graph);
   for (auto* node : graph->Nodes()) {
     if(node->IsOp() && node->Op() && node->Op()->Type() =="fused_conv2d"){
-        VLOG(3) << "fused_conv2d OP: ";
-        VLOG(3) << "Op Attr(fuse_beta) value: ";
-        VLOG(3) << node->Op()->GetAttrIfExists<float>("fuse_beta");
         CHECK_EQ(node->Op()->GetAttrIfExists<float>("fuse_beta"), 6)
             << "Attr fuse_beta must equal to 6.";
     };
@@ -166,6 +119,5 @@ TEST(cpuQuantizePass, ConvReLU6) {
 
 }
 
-}  // namespace analysis
-}  // namespace inference
+}  // namespace pass
 }  // namespace paddle

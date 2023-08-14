@@ -625,11 +625,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ${MOBILENET_MODEL_DIR} false)
 
   if(WITH_MKLDNN)
-    set(BF32_CPU_QUANTIZE_PASS_TEST_APP "test_analyzer_cpu_quantize_pass")
-    set(BF32_CPU_QUANTIZE_PASS_TEST_APP_SRC
-        "analysis_cpu_quantize_pass_tester.cc")
-    inference_analysis_api_test_build(${BF32_CPU_QUANTIZE_PASS_TEST_APP}
-                                      ${BF32_CPU_QUANTIZE_PASS_TEST_APP_SRC})
     ### INT8 tests
 
     set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
