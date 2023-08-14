@@ -113,8 +113,7 @@ SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-SplitSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
-                             const std::vector<DistTensorSpec>& output_specs,
+SplitSPMDRule::InferBackward(const std::vector<DistTensorSpec>& output_specs,
                              const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "InferBackward of SplitPMDRule is NOT implemented yet."));

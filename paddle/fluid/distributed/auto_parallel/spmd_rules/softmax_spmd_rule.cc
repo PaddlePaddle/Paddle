@@ -107,7 +107,6 @@ SoftmaxSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 SoftmaxSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
-                               const std::vector<DistTensorSpec>& output_specs,
                                const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "InferBackward of SoftmaxSPMDRule is NOT implemented yet."));
