@@ -28,8 +28,8 @@ from ....communication.reduce import ReduceOp, _get_reduce_op
 def _get_mp_env_flag(flag):
     # Model parallel environment flag.
     # Flags_mp_aysnc_allreduce: support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
-    # Flags_fused_linear_param_grad_add: support fused_linear_param_grad_add in ColumnParallelLinear
-    # Flags_skip_mp_c_identity: support skip c_identity in ColumnParallelLinear and RowParallelLinear
+    # Flags_fused_linear_param_grad_add: support fused_linear_param_grad_add in ColumnParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.
+    # Flags_skip_mp_c_identity: support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.
     assert flag in [
         "Flags_mp_aysnc_allreduce",
         "Flags_fused_linear_param_grad_add",
@@ -61,8 +61,8 @@ def _c_identity(tensor, group=None):
             @staticmethod
             def forward(ctx, tensor):
                 if _get_mp_env_flag(
-                    "Flags_skip_mp_c_identity"
-                ) and _get_mp_env_flag("Flags_mp_aysnc_allreduce"):
+                    "Flags_mp_aysnc_allreduce"
+                ) and _get_mp_env_flag("Flags_skip_mp_c_identity"):
                     return tensor
                 else:
                     return _legacy_C_ops.c_identity(
@@ -276,7 +276,9 @@ def _mp_allreduce(
 
             @staticmethod
             def backward(ctx, dy):
-                if _get_mp_env_flag("Flags_skip_mp_c_identity"):
+                if _get_mp_env_flag(
+                    "Flags_mp_aysnc_allreduce"
+                ) and _get_mp_env_flag("Flags_skip_mp_c_identity"):
                     return dy
                 else:
                     return _legacy_C_ops.c_identity(
