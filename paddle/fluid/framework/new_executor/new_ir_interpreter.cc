@@ -38,6 +38,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
@@ -201,24 +202,18 @@ void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+  const NewIRInterpreter& impl = dynamic_cast<const NewIRInterpreter&>(src);
+  if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
     return;
   }
   // share op dependency
-  ir_dependency_builder_.ShareDependencyFrom(src.GetNewIrDependencyBuilder());
-  dependecy_count_ = src.GetDependencyCount();
+  ir_dependency_builder_.ShareDependencyFrom(impl.GetNewIrDependencyBuilder());
+  dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  ir_stream_analyzer_.ShareEventInfoFrom(src.GetNewIrStreamAnalyzer());
+  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetNewIrStreamAnalyzer());
   is_shared_results_build_ = true;
-  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
-}
-
-// op dependences
-const interpreter::DependencyBuilder& NewIRInterpreter::GetDependencyBuilder()
-    const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetDependencyBuilder is not implemented in NewIRInterpreter."));
 }
 
 const interpreter::NewIrDependencyBuilder&
@@ -229,11 +224,6 @@ NewIRInterpreter::GetNewIrDependencyBuilder() const {
 std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
     const {
   return dependecy_count_;
-}
-
-const interpreter::StreamAnalyzer& NewIRInterpreter::GetStreamAnalyzer() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetStreamAnalyzer is not implemented in NewIRInterpreter."));
 }
 
 const interpreter::NewIrStreamAnalyzer&
@@ -439,8 +429,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
-          op_name == "pd.fused_softmax_mask_upper_triangle_grad") {
+      if (dialect::IsLegacyOp(op_name)) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,
