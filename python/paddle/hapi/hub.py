@@ -178,9 +178,11 @@ def list(repo_dir, source='github', force_reload=False):
 
     Args:
         repo_dir(str): Github or local path.
-            github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `main` if not specified.
-            local path (str): Local repo path.
+
+            - github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
+              tag/branch. The default branch is `main` if not specified.
+            - local path (str): Local repo path.
+
         source (str): `github` | `gitee` | `local`. Default is `github`.
         force_reload (bool, optional): Whether to discard the existing cache and force a fresh download. Default is `False`.
 
@@ -224,9 +226,11 @@ def help(repo_dir, model, source='github', force_reload=False):
 
     Args:
         repo_dir(str): Github or local path.
-            github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `main` if not specified.
+
+            - github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
+              tag/branch. The default branch is `main` if not specified.
             local path (str): Local repo path.
+
         model (str): Model name.
         source (str): `github` | `gitee` | `local`. Default is `github`.
         force_reload (bool, optional): Default is `False`.
@@ -267,9 +271,11 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
 
     Args:
         repo_dir(str): Github or local path.
-            github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
-                tag/branch. The default branch is `main` if not specified.
-            local path (str): Local repo path.
+
+            - github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
+              tag/branch. The default branch is `main` if not specified.
+            - local path (str): Local repo path.
+
         model (str): Model name.
         source (str): `github` | `gitee` | `local`. Default is `github`.
         force_reload (bool, optional): Default is `False`.
