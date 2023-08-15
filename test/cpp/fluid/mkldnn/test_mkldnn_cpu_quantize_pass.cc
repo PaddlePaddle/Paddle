@@ -25,7 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include <glog/logging.h>
 
-using namespace std;
+using std::pair;
+using std::string;
+using std::unordered_map;
 
 DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
@@ -104,7 +106,7 @@ TEST(cpuQuantizePass, ConvReLU6) {
     auto pass_ = paddle::framework::ir::PassRegistry::Instance().Get(pass);
     if(pass == "cpu_quantize_pass"){
         pass_->Set("quant_var_scales", scales.get());
-    };
+    }
     graph.reset(pass_->Apply(graph.release()));
   }
   int fused_conv2d_num = 0;
@@ -113,8 +115,8 @@ TEST(cpuQuantizePass, ConvReLU6) {
         CHECK_EQ(node->Op()->GetAttrIfExists<float>("fuse_beta"), 6)
             << "Attr fuse_beta must equal to 6.";
         fused_conv2d_num++;
-    };
-  };
+    }
+  }
   CHECK_GT(fused_conv2d_num, 0)
       << "Graph must contain fused_conv2d";
 

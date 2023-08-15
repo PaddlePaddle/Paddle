@@ -16,14 +16,10 @@ cc_test(
   SRCS test_mkldnn_cpu_quantize_pass.cc
   DEPS executor
        op_registry
-       conv2d_op
        activation_op
-       cpu_quantize_pass
        phi
        scope
-       device_context
-       enforce
-       generated_static_op)
+       device_context)
 
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry
