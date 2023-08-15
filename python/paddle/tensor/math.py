@@ -1629,6 +1629,36 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     return x
 
 
+@inplace_apis_in_dygraph_only
+def nan_to_num_(x, nan=0.0, posinf=None, neginf=None, name=None):
+    r"""
+    Inplace version of ``nan_to_num`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_nan_to_num`.
+    """
+    # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
+    # incorrectly, so we have to explicitly contruct tensors here
+    posinf_value = paddle.full_like(x, float("+inf"))
+    neginf_value = paddle.full_like(x, float("-inf"))
+    nan = paddle.full_like(x, nan)
+    assert x.dtype in [paddle.float32, paddle.float64]
+    is_float32 = x.dtype == paddle.float32
+    if posinf is None:
+        posinf = (
+            np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
+        )
+    posinf = paddle.full_like(x, posinf)
+    if neginf is None:
+        neginf = (
+            np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
+        )
+    neginf = paddle.full_like(x, neginf)
+    x_not_nan = paddle.logical_not(paddle.isnan(x))
+    x = paddle.where_(x_not_nan, x, nan)
+    x = paddle.where_(x != posinf_value, x, posinf)
+    x = paddle.where_(x != neginf_value, x, neginf)
+    return x
+
+
 def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
