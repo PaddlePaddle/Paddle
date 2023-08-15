@@ -111,20 +111,3 @@ class CSplitOpCUDAKernel : public framework::OpKernel<T> {
 };
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-PD_REGISTER_STRUCT_KERNEL(c_split,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::CSplitOpCUDAKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
-#endif
-                          plat::float16) {
-}
