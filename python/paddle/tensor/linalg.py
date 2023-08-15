@@ -2427,7 +2427,14 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
             # one can verify : X = P @ L @ U ;
     """
-
+    if x.ndim < 2:
+        raise ValueError(
+            f"The shape of x should be (*, M, N), but received ndim is [{x.ndim} < 2]"
+        )
+    if y.ndim < 1:
+        raise ValueError(
+            f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
+        )
     if in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
