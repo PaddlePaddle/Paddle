@@ -336,7 +336,7 @@ void interleave_column_major_tensor(int8_t* interleaved_quantized_tensor,
 
   const size_t num_vec_rows = num_rows / elts_in_int32;
   const size_t vec_rows_per_tile = rows_per_tile / elts_in_int32;
-  const size_t interleave = 2;
+  const size_t interleave = 128 * 8 / quant_bit / rows_per_tile;
   for (size_t read_col = 0; read_col < num_cols; ++read_col) {
     const size_t write_col = read_col / interleave;
     for (size_t base_vec_row = 0; base_vec_row < num_vec_rows;
