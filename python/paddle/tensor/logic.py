@@ -51,6 +51,8 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
                 "float32",
                 "float64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             op_name,
         )
@@ -68,6 +70,8 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
                     "float32",
                     "float64",
                     "uint16",
+                    "complex64",
+                    "complex128",
                 ],
                 op_name,
             )
