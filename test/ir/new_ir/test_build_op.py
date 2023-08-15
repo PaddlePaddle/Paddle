@@ -109,7 +109,6 @@ class TestBuildOp4(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.concat([tanh_out, tanh_out], 0)
-        print(newir_program)
         self.assertEqual(out.get_defining_op().name(), "pd.concat")
         self.assertEqual(
             out.get_defining_op()

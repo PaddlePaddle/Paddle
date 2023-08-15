@@ -20,15 +20,6 @@
 
 namespace paddle {
 namespace dialect {
-ir::OpResult concat(std::vector<ir::OpResult> x, float axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(x);
-  auto concat_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ConcatOp>(
-          combine_op.out(), axis);
-  return concat_op.out();
-}
-
 std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
                                       ir::OpResult out_grad,
                                       ir::OpResult axis) {

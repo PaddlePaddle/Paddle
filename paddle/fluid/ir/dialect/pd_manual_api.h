@@ -22,7 +22,6 @@
 
 namespace paddle {
 namespace dialect {
-ir::OpResult concat(std::vector<ir::OpResult> x, float axis);
 
 std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
                                       ir::OpResult out_grad,
