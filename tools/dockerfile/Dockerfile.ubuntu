@@ -177,10 +177,13 @@ RUN pip3.7 --no-cache-dir install coverage && \
     pip3.9 --no-cache-dir install coverage
 
 COPY ./python/requirements.txt /root/
+COPY ./python/unittest_py/requirements.txt /home/
 RUN pip3.7 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.7 --no-cache-dir install -r /home/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.9 --no-cache-dir install -r /root/requirements.txt
-
+    pip3.8 --no-cache-dir install -r /home/requirements.txt && \
+    pip3.9 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.9 --no-cache-dir install -r /home/requirements.txt
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && \
