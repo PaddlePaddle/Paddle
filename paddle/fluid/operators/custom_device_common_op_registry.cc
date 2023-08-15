@@ -147,6 +147,25 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
+class CIdentityOpCustomDeviceKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
+
+    int rid = ctx.Attr<int>("ring_id");
+    PADDLE_ENFORCE_GE(
+        rid,
+        0,
+        platform::errors::InvalidArgument(
+            "The ring_id (%d) for c_identity op must be non-negative.", rid));
+    out->mutable_data<T>(ctx.GetPlace());
+
+    paddle::framework::TensorCopy(*x, out->place(), out);
+  }
+};
+
+template <typename DeviceContext, typename T>
 class CSplitOpCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -1368,17 +1387,22 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_identity,
       device_type,
-      paddle::operators::
-          CIdentityOpKernel<float, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          CIdentityOpKernel<double, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          CIdentityOpKernel<int, paddle::platform::CustomDeviceContext>,
-      paddle::operators::
-          CIdentityOpKernel<int64_t, paddle::platform::CustomDeviceContext>,
-      paddle::operators::CIdentityOpKernel<
-          paddle::platform::float16,
-          paddle::platform::CustomDeviceContext>) {}
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          float>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          double>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          int64_t>,
+      paddle::operators::CIdentityOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          paddle::platform::float16>) {}
+
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_sync_calc_stream,
       device_type,
