@@ -259,7 +259,7 @@ class OpInfoParser:
             'bool': ['ir::BoolAttribute', 'bool'],
             'bool[]': [
                 'ir::ArrayAttribute<ir::BoolAttribute>',
-                'const std::vecot<bool>&',
+                'const std::vector<bool>&',
             ],
             'str': ['ir::StrAttribute', 'const std::string&'],
             'str[]': [
