@@ -1181,9 +1181,9 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
     bool lower = PADDLE_GET_CONST(bool, op_desc.GetAttr("lower"));
     std::string target_op_name = "";
     if (lower) {
-      target_op_name = "tril";
+      target_op_name = "pd.tril";
     } else {
-      target_op_name = "triu";
+      target_op_name = "pd.triu";
     }
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
