@@ -784,7 +784,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     pred_config.tensorrt_precision_mode()
                     == paddle_infer.PrecisionType.Int8
                 )
-                if (not is_fp8 and quant) or (is_fp8 and not quant):
+                if (not is_fp8 and quant) or (is_fp8 and not (quant or explicit)):
                     continue
 
                 if explicit:

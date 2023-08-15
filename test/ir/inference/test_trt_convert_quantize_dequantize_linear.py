@@ -145,7 +145,7 @@ class TrtConvertQuantizeDequantizeTest(TrtLayerAutoScanTest):
         ), (1e-2, 1e-2)
 
     def test(self):
-        self.run_test(quant=True, explicit=True)
+        self.run_test(quant=False, explicit=True)
 
 
 if __name__ == "__main__":
