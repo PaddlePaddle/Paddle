@@ -308,8 +308,6 @@ try:
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
     from .libpaddle import _get_phi_kernel_name
-    from .libpaddle import _add_skip_comp_ops
-    from .libpaddle import _remove_skip_comp_ops
 
     # prim controller flags
     from .libpaddle import __set_bwd_prim_enabled
@@ -320,6 +318,9 @@ try:
     from .libpaddle import _is_eager_prim_enabled
     from .libpaddle import __set_eager_prim_enabled
     from .libpaddle import _set_prim_target_grad_name
+    from .libpaddle import _add_skip_comp_ops
+    from .libpaddle import _set_bwd_prim_blacklist
+    from .libpaddle import _remove_skip_comp_ops
 
     # custom devivce
     from .libpaddle import _get_current_custom_device_stream
@@ -504,6 +505,15 @@ def _set_prim_forward_blacklist(ops=None):
         raise TypeError(
             "ops set in forward_blacklist must belong to [str, str of tuple or list]"
         )
+    return
+
+
+def _set_prim_backward_blacklist(*args):
+    ops = set(args)
+    for item in ops:
+        if not isinstance(item, str):
+            raise TypeError("all items in set must belong to string")
+    _set_bwd_prim_blacklist(ops)
     return
 
 
