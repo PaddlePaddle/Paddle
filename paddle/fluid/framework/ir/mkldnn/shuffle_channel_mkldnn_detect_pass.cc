@@ -145,11 +145,11 @@ void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph) const {
               std::accumulate(x_shape1.begin(),
                               x_shape1.end(),
                               static_cast<int64_t>(1),
-                              std::multiplies<int64_t>()) /  // NOLINE
+                              std::multiplies<int64_t>()) /  // NOLINT
               std::accumulate(reshape1_shape.begin(),
                               reshape1_shape.end(),
                               static_cast<int64_t>(-1),
-                              std::multiplies<int64_t>());  // NOLINE
+                              std::multiplies<int64_t>());  // NOLINT
           break;
         }
       }
@@ -165,11 +165,11 @@ void ShuffleChannelMKLDNNDetectPass::ApplyImpl(ir::Graph* graph) const {
               std::accumulate(x_shape2.begin(),
                               x_shape2.end(),
                               static_cast<int64_t>(1),
-                              std::multiplies<int64_t>()) /  // NOLINE
+                              std::multiplies<int64_t>()) /  // NOLINT
               std::accumulate(reshape2_shape.begin(),
                               reshape2_shape.end(),
                               static_cast<int64_t>(-1),
-                              std::multiplies<int64_t>());  // NOLINE
+                              std::multiplies<int64_t>());  // NOLINT
           break;
         }
       }

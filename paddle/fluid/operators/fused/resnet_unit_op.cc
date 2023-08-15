@@ -24,7 +24,7 @@ static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int64_t nhw = std::accumulate(out_shape.begin(),
                                 out_shape.end(),
                                 1,
-                                std::multiplies<int>()) /  // NOLINE
+                                std::multiplies<int>()) /  // NOLINT
                 c;
   int32_t c_int32_elems = ((c + 63) & ~63) / 32;
   int32_t nhw_int32_elems = ((nhw + 31) & ~31);
