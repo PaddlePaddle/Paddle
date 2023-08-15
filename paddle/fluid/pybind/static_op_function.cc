@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/static_op_function.h"
-#include "paddle/fluid/ir/dialect/pd_manual_api.h"
+#include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/op_function_common.h"

@@ -328,10 +328,10 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->nnadapter_model_cache_token()));
     } else if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
-      bool fc_mkldnn_pass = 0;
+      bool fc_mkldnn_pass = false;
       for (const std::string &pass_n : passes) {
         if (pass_n == "fc_mkldnn_pass") {
-          fc_mkldnn_pass = 1;
+          fc_mkldnn_pass = true;
         }
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
