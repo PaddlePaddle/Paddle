@@ -191,7 +191,7 @@ class TestCase12(TestSetItemBase):
 
         return foo
 
-    def run_dygrah(self, func):
+    def run_dygraph(self, func):
         y = func()
         return (y,)
 
@@ -208,7 +208,7 @@ class TestCase13(TestSetItemBase):
 
         return foo
 
-    def run_dygrah(self, func):
+    def run_dygraph(self, func):
         y = func()
         return (y,)
 
@@ -226,7 +226,7 @@ class TestCase14(TestSetItemBase):
 
         return foo
 
-    def run_dygrah(self, func):
+    def run_dygraph(self, func):
         y = func()
         return (y,)
 
