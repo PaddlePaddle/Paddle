@@ -139,8 +139,6 @@ endif()
 # https://github.com/PaddlePaddle/Paddle/issues/12773
 if(NOT WIN32)
   set(COMMON_FLAGS
-      -mcmodel=large
-      -fdebug-types-section
       -fPIC
       -fno-omit-frame-pointer
       -Werror
@@ -153,6 +151,11 @@ if(NOT WIN32)
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
       ${fsanitize})
+
+  string(TOUPPER "${CMAKE_BUILD_TYPE}" UPPERCASE_CMAKE_BUILD_TYPE)
+  if("${UPPERCASE_CMAKE_BUILD_TYPE}" MATCHES DEBUG|RELWITHDEBINFO)
+    set(COMMON_FLAGS ${COMMON_FLAGS} -mcmodel=large -fdebug-types-section)
+  endif()
 
   if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare # Warnings in Popart
