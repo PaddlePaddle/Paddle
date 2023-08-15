@@ -113,7 +113,7 @@ def _get_default_nprocs():
     elif 'npu' in device:
         return core.get_custom_device_count('npu')
     elif 'mlu' in device:
-        return core.get_custim_device_count('mlu')
+        return core.get_custom_device_count('mlu')
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
