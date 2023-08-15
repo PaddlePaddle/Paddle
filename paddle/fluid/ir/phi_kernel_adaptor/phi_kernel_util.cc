@@ -583,8 +583,6 @@ void BuildRuntimeContext(
     auto var = inner_scope->FindVar(in_var_name);
     std::vector<paddle::framework::Variable*> vec_tmp = {var};
     auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    std::cerr << "legacy attr name " << legacy_attr_name << "\t"
-              << fluid_op_name << "\t" << name << std::endl;
 
     runtime_ctx->inputs[legacy_attr_name].push_back(var);
   }
