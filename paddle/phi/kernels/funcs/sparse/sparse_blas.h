@@ -100,6 +100,3 @@ inline SparseBlasT<DeviceContext, T> GetSparseBlas(
 #if defined(PADDLE_WITH_HIP) && HIP_VERSION >= 402
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas_impl.hip.h"
 #endif
-#if defined(PADDLE_WITH_MUSA)
-#include "paddle/phi/kernels/funcs/sparse/sparse_blas_impl.mu.h"
-#endif

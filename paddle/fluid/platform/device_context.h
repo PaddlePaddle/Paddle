@@ -45,7 +45,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MUSA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/dynload/mublas.h"
-#include "paddle/fluid/platform/dynload/mudnn.h"
 #include "paddle/fluid/platform/dynload/musparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
