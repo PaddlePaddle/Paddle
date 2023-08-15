@@ -16,6 +16,7 @@ include(ExternalProject)
 
 find_package(OpenSSL REQUIRED)
 
+# test
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
 message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
 
