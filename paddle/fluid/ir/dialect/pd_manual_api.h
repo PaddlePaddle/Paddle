@@ -40,6 +40,8 @@ ir::OpResult full(const std::vector<int64_t>& shape,
                   phi::DataType dtype = phi::DataType::FLOAT32,
                   const phi::Place& place = phi::CPUPlace());
 
+ir::OpResult concat(std::vector<ir::OpResult> x, float axis);
+
 ir::OpResult tanh_grad(ir::OpResult out, ir::OpResult grad_out);
 
 ir::OpResult mean_grad(ir::OpResult x,
@@ -47,5 +49,9 @@ ir::OpResult mean_grad(ir::OpResult x,
                        const std::vector<int64_t>& axis = {},
                        bool keepdim = false,
                        bool reduce_all = false);
+
+std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
+                                      ir::OpResult out_grad,
+                                      ir::OpResult axis);
 }  // namespace dialect
 }  // namespace paddle

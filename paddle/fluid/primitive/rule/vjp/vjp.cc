@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
-#include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/ir/dialect/pd_manual_api.h"
 #include "paddle/fluid/primitive/backend/static_backend.h"
 #include "paddle/fluid/primitive/type/desc_tensor.h"
 #include "paddle/ir/core/operation.h"
@@ -107,6 +107,51 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
   // construct vjp result by op result and stop_gradients info
   if (!stop_gradients[0][0]) {
     vjp_res[0][0] = op_res;
+  }
+  return vjp_res;
+}
+
+std::vector<std::vector<paddle::Tensor>> concat_vjp(
+    const std::vector<Tensor>& x,
+    const Tensor& out_grad,
+    const Tensor& axis,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res(
+      1, std::vector<paddle::Tensor>(1));
+  // get concat_grad res.
+  std::vector<Tensor> op_res =
+      backend::experimental::concat_grad<primitive::experimental::DescTensor>(
+          x, out_grad, axis);
+
+  // set op stop_gradient info
+  // TODO(wanghao107): Replace with more generic code.
+  // Support set stop_gradients for all ops.
+  ir::Operation* grad_op =
+      std::static_pointer_cast<primitive::experimental::DescTensor>(
+          op_res[0].impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>()
+          .owner();
+  uint32_t num_res = grad_op->num_results();
+  std::vector<ir::Attribute> ir_stop_gradients(num_res);
+  for (size_t i = 0; i < num_res; i++) {
+    if (stop_gradients[0][i]) {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), true);
+    } else {
+      ir_stop_gradients[i] =
+          ir::BoolAttribute::get(ir::IrContext::Instance(), false);
+    }
+  }
+  grad_op->set_attribute(
+      "stop_gradient",
+      ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
+
+  // construct vjp result by op result and stop_gradients info
+  for (auto idx = 0; idx <= op_res[0].size(); idx++) {
+    if (!stop_gradients[0][idx]) {
+      vjp_res[0][idx] = op_res[idx];
+    }
   }
   return vjp_res;
 }

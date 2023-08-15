@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/ir/dialect/pd_manual_api.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/core/builder.h"
@@ -55,6 +55,15 @@ ir::OpResult divide(ir::OpResult x, ir::OpResult y) {
   return divide_op.out();
 }
 
+ir::OpResult concat(std::vector<ir::OpResult> x, float axis) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(x);
+  auto concat_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ConcatOp>(
+          combine_op.out(), axis);
+  return concat_op.out();
+}
+
 ir::OpResult full(const std::vector<int64_t>& shape,
                   float value,
                   phi::DataType dtype,
@@ -83,5 +92,18 @@ ir::OpResult mean_grad(ir::OpResult x,
   return mean_grad_op.result(0);
 }
 
+std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
+                                      ir::OpResult out_grad,
+                                      ir::OpResult axis) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(x);
+
+  paddle::dialect::ConcatGradOp concat_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ConcatGradOp>(
+          combine_op.out(), out_grad, axis);
+  auto slice_op = APIBuilder::Instance().GetBuilder()->Build<ir::SliceOp>(
+      concat_grad_op.result(0));
+  return slice_op.outputs();
+}
 }  // namespace dialect
 }  // namespace paddle

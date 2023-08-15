@@ -46,6 +46,12 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
     bool reduce_all,
     const std::vector<std::vector<bool>>& stop_gradients);
 
+std::vector<std::vector<paddle::Tensor>> concat_vjp(
+    const std::vector<Tensor>& x,
+    const Tensor& out_grad,
+    const Tensor& axis,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 namespace details {
 // NOTE: this namespace will store
 // primitive ops grad composite rules.

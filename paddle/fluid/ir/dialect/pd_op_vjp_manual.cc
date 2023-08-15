@@ -16,6 +16,7 @@
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/primitive/type/desc_tensor.h"
+#include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/phi/common/int_array.h"
 
@@ -98,5 +99,37 @@ std::vector<std::vector<ir::OpResult>> MeanOp::Vjp(
   }
   return res;
 }
+
+std::vector<std::vector<ir::OpResult>> ConcatOp::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  ConcatOp op_obj = op->dyn_cast<ConcatOp>();
+  ir::CombineOp combine_op_obj =
+      op_obj.x().GetDefiningOp()->dyn_cast<ir::CombineOp>();
+  std::vector<Tensor> x;
+  for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {
+    x.emplace_back(std::make_shared<primitive::experimental::DescTensor>(
+        combine_op_obj.inputs()[idx]));
+  }
+
+  Tensor out_grad(
+      std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
+
+  Tensor axis(
+      std::make_shared<primitive::experimental::DescTensor>(op_obj.axis()));
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::experimental::concat_vjp(x, out_grad, axis, stop_gradients);
+  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
+  if (tensor_res[0][0].defined()) {
+    res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
+                    tensor_res[0][0].impl())
+                    ->getValue()
+                    .dyn_cast<ir::OpResult>();
+  }
+  return res;
+}
+
 }  // namespace dialect
 }  // namespace paddle

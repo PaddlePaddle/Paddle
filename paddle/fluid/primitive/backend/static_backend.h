@@ -37,6 +37,11 @@ Tensor mean_grad(const Tensor& x,
                  const IntArray& axis = {},
                  bool keepdim = false,
                  bool reduce_all = false);
+
+template <typename T>
+std::vector<Tensor> concat_grad(const std::vector<Tensor>& x,
+                                const Tensor& out_grad,
+                                const Tensor& axis);
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive
