@@ -48,7 +48,7 @@ static PyObject *fetch(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_fetch(self, args, kwargs);
 }
 
-static PyMethodDef OpsAPI[] = {{"add_n",
+static PyMethodDef OpsAPI[] = {{"add_n",  // NOLINT
                                 (PyCFunction)(void (*)(void))add_n,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for add_n."},

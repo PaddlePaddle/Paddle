@@ -2195,7 +2195,7 @@ void gpc_tristrip_clip(gpc_op op,
                                tn->active * sizeof(gpc_vertex),
                                const_cast<char *>("tristrip creation"));
         v = 0;
-        if (0) {
+        if (false) {
           lt = tn->v[RIGHT];
           rt = tn->v[LEFT];
         } else {

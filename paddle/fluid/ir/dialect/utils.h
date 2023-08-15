@@ -50,6 +50,8 @@ static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
     return phi::DataType::INT32;
   } else if (dtype.isa<ir::Int64Type>()) {
     return phi::DataType::INT64;
+  } else if (dtype.isa<ir::IndexType>()) {
+    return phi::DataType::INT32;
   } else if (dtype.isa<ir::BoolType>()) {
     return phi::DataType::BOOL;
   } else if (dtype.isa<ir::Complex64Type>()) {
@@ -63,6 +65,8 @@ static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
   }
 }
 
+// use phi::DataType::INT32 for IndexType from builtin type to phi::DataType,
+// but only use INT32 not IndexType from phi::DataType type to builtin type.
 static inline ir::Type TransToIrDataType(phi::DataType dtype,
                                          ir::IrContext* ctx = nullptr) {
   if (ctx == nullptr) {
@@ -126,6 +130,8 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
 }
 
 VariantType GetAttributeData(const ir::Attribute& attr);
+
+bool IsLegacyOp(const std::string& name);
 
 }  // namespace dialect
 }  // namespace paddle

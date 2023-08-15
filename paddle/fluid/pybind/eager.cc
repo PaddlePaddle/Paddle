@@ -701,7 +701,7 @@ void AutoInitStringTensorByStringTensor(
   InitStringTensorWithStringTensor(py_tensor_ptr, src_tensor, place, act_name);
 }
 
-PyDoc_STRVAR(
+PyDoc_STRVAR(  // NOLINT
     TensorDoc,
     R"DOC(Tensor($self, /, value, place, persistable, zero_copy, name, stop_gradient, dims, dtype, type)
 --
