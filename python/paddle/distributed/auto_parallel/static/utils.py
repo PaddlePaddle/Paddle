@@ -610,13 +610,19 @@ def save_distributed_checkpoint(
 
     Examples:
         .. code-block:: python
+
             >>> import os
             >>> from paddle.distributed.auto_parallel.static.utils import save_distributed_checkpoint
 
+            >>> step = 16000
+            >>> global_batch_size = 32
             >>> path = os.path.join("./output", "step_%d" % step)
             >>> os.makedirs(path, exist_ok=True)
+            >>> program = fluid.Program()
+
             >>> add_info = {'batch': step, "batch_size": global_batch_size}
             >>> save_distributed_checkpoint(program, path, path, add_info)
+
     """
     from .dist_context import get_default_distributed_context
 
@@ -655,6 +661,7 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Depends on external files.')
             >>> from paddle.distributed.auto_parallel.static.utils import load_distributed_checkpoint
 
             >>> ckpt_path = ['./model_state_rank0.pdmodel',
@@ -696,6 +703,7 @@ def load_checkpoint_into_program(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Depends on external files.')
             >>> from paddle.distributed.auto_parallel.static.utils import load_checkpoint_into_program
 
             >>> exe.run(startup_program)
@@ -1008,11 +1016,12 @@ def _merge_parameter(
             >>> import numpy as np
             >>> from paddle.distributed.auto_parallel.static.utils import _merge_parameter
 
-            >>> partition_param_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
+            >>> partition_param_list = [(np.array([[[1.11, 1.12]]]), [[0, 1],[0, 1],[0, 2]])]
             >>> param = np.array([[[1.13, 1.14]]])
-            >>> partition_index = [[0,1],[0,1],[2,4]]
+            >>> partition_index = [[0, 1],[0, 1],[2, 4]]
+            >>> complete_shape = [2, 2, 4]
 
-            >>> _merge_parameter(partition_param_list, param, partition_index)
+            >>> _merge_parameter(partition_param_list, param, partition_index, complete_shape)
             >>> print(partition_param_list)
             [(array([[[1.11, 1.12, 1.13, 1.14]]]), [[0, 1],[0, 1],[0, 4]])]
 
@@ -1126,7 +1135,7 @@ def _get_sliced_param_index(
             >>> print(slice_param)
             [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
-            >>> index = _get_sliced_param_index(rank, complete_shape, dims_mapping
+            >>> index = _get_sliced_param_index(rank, complete_shape, dims_mapping,
             ...                                 process_shape, process_group)
             >>> print(index)
             2

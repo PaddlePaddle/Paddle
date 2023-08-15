@@ -157,16 +157,16 @@ class Strategy(BaseConfig):
 
             >>> strategy = auto.Strategy()
             >>> sharding = strategy.sharding
-            >>> self.assertEqual(sharding.enabled, False)
-            >>> self.assertEqual(sharding.stage, 1)
-            >>> self.assertEqual(sharding.degree, 8)
+            >>> assert sharding.enabled == False
+            >>> assert sharding.stage == 1
+            >>> assert sharding.degree == 8
 
             >>> sharding.enabled = True
             >>> sharding.stage = 2
             >>> sharding.degree = 2
-            >>> self.assertEqual(sharding.enabled, True)
-            >>> self.assertEqual(sharding.stage, 2)
-            >>> self.assertEqual(sharding.degree, 2)
+            >>> assert sharding.enabled == True
+            >>> assert sharding.stage == 2
+            >>> assert sharding.degree == 2
 
     """
 
