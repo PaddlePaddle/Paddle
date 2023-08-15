@@ -49,7 +49,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
       auto mixed_gemm_runner =
           CutlassFpAIntBGemmRunner<typename PDDataTypeTraits<T>::DataType,
                                    uint8_t>();
-      int mixgemm_max_size = std::max(n, k);
+      int mixgemm_max_size = std::max(m, k);
       DenseTensor mixgemm_workspace;
       int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
           m, mixgemm_max_size, mixgemm_max_size);
@@ -92,7 +92,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
       auto mixed_gemm_runner =
           CutlassFpAIntBGemmRunner<typename PDDataTypeTraits<T>::DataType,
                                    cutlass::uint4b_t>();
-      int mixgemm_max_size = std::max(n, k);
+      int mixgemm_max_size = std::max(m, k);
       DenseTensor mixgemm_workspace;
       int64_t mixgemm_workspace_size_bytes = mixed_gemm_runner.getWorkspaceSize(
           m, mixgemm_max_size, mixgemm_max_size);

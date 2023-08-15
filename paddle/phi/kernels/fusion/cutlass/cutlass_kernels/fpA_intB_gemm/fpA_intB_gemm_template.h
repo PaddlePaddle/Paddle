@@ -68,13 +68,14 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
                                        char* workspace,
                                        size_t workspace_bytes,
                                        cudaStream_t stream,
-                                       int* occupancy = nullptr) {
+                                       int* occupancy) {
   static_assert(cutlass::platform::is_same<T, half>::value ||
 #ifdef PADDLE_CUDA_BF16
                     cutlass::platform::is_same<T, __nv_bfloat16>::value ||
 #endif
                     cutlass::platform::is_same<T, float>::value,
                 "Specialized for bfloat16, half, float");
+
   static_assert(
       cutlass::platform::is_same<T, WeightType>::value ||
           cutlass::platform::is_same<WeightType, uint8_t>::value ||
@@ -87,14 +88,12 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
       cutlass::platform::is_same<T, half>::value,
       cutlass::half_t,
       T>::type;
-
 #ifdef PADDLE_CUDA_BF16
   using ElementType = typename cutlass::platform::conditional<
       cutlass::platform::is_same<ElementType_, __nv_bfloat16>::value,
       cutlass::bfloat16_t,
       ElementType_>::type;
 #endif
-
   using CutlassWeightType_ = typename cutlass::platform::conditional<
       cutlass::platform::is_same<WeightType, half>::value,
       cutlass::half_t,
@@ -184,10 +183,17 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
 
   Gemm gemm;
   if (gemm.get_workspace_size(args) > workspace_bytes) {
+    // TODO(wangbojun) here to reset the split-k in gemm args, but no work for
+    // now to run bf16 mixgemm, we have set the split-k factor to 1
     VLOG(1) << "Requested split-k but workspace size insufficient. Falling "
                "back to non-split-k implementation.";
+    VLOG(1) << "need workspace sizoe of: " << gemm.get_workspace_size(args)
+            << ", but got " << workspace_bytes;
+    VLOG(1) << "args.batch_stride_D:" << args.batch_stride_D;
+    VLOG(1) << "args.batch_count:" << args.batch_count;
     // If requested split-k factor will require more workspace bytes, revert to
     // standard gemm.
+    //
     args.batch_count = 1;
   }
 
@@ -237,13 +243,13 @@ struct dispatch_stages {
                        size_t workspace_bytes,
                        cudaStream_t stream,
                        int* occupancy = nullptr) {
+    // VLOG(3)<<__PRETTY_FUNCTION__;
     std::string err_msg = "Cutlass fpA_intB gemm. Not instantiates for arch " +
                           std::to_string(arch::kMinComputeCapability) +
                           " with stages set to " + std::to_string(Stages);
     throw std::runtime_error("[dispatch_stages::dispatch] " + err_msg);
   }
 };
-
 template <typename T,
           typename WeightType,
           typename arch,
@@ -270,6 +276,8 @@ struct dispatch_stages<T,
                        size_t workspace_bytes,
                        cudaStream_t stream,
                        int* occupancy = nullptr) {
+    // VLOG(3)<<__PRETTY_FUNCTION__;
+
     generic_mixed_gemm_kernelLauncher<T,
                                       WeightType,
                                       arch,
@@ -359,7 +367,7 @@ void dispatch_gemm_config(const T* A,
                           char* workspace,
                           size_t workspace_bytes,
                           cudaStream_t stream,
-                          int* occupancy = nullptr) {
+                          int* occupancy) {
   switch (gemm_config.stages) {
     case 2:
       using DispatcherStages2 = dispatch_stages<T,
@@ -448,7 +456,8 @@ void dispatch_gemm_to_cutlass(const T* A,
                               size_t workspace_bytes,
                               CutlassGemmConfig gemm_config,
                               cudaStream_t stream,
-                              int* occupancy = nullptr) {
+                              int* occupancy) {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
   // Note that SIMT configs are omitted here since they are not supported for
   // fpA_intB. We also only instantiate configs here where threadblockShapeM ==
   // warpShapeM since those usually perform the best for mixed type gemms.
@@ -561,24 +570,24 @@ void dispatch_gemm_to_cutlass(const T* A,
       break;
     case CutlassTileConfig::Undefined:
       throw std::runtime_error(
-          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config "
-          "undefined.");
+          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config undefined.");
       break;
     case CutlassTileConfig::ChooseWithHeuristic:
       throw std::runtime_error(
-          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config should "
-          "have already been set by heuristic.");
+          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config should have "
+          "already been set by heuristic.");
       break;
     default:
       throw std::runtime_error(
-          "[fpA_intB][dispatch_gemm_to_cutlass] Config is invalid "
-          "for mixed type GEMM.");
+          "[fpA_intB][dispatch_gemm_to_cutlass] Config is invalid for mixed "
+          "type GEMM.");
       break;
   }
 }
 
 template <typename T, typename WeightType>
 CutlassFpAIntBGemmRunner<T, WeightType>::CutlassFpAIntBGemmRunner() {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
   int device{-1};
   check_cuda_error(cudaGetDevice(&device));
   sm_ = getSMVersion();
@@ -587,7 +596,9 @@ CutlassFpAIntBGemmRunner<T, WeightType>::CutlassFpAIntBGemmRunner() {
 }
 
 template <typename T, typename WeightType>
-CutlassFpAIntBGemmRunner<T, WeightType>::~CutlassFpAIntBGemmRunner() {}
+CutlassFpAIntBGemmRunner<T, WeightType>::~CutlassFpAIntBGemmRunner() {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
+}
 
 template <typename T, typename WeightType>
 template <typename EpilogueTag>
@@ -605,20 +616,38 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
     const size_t workspace_bytes,
     cudaStream_t stream,
     int* occupancy) {
-  // if (sm_ >= 70 && sm_ < 75) {
-  //     dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm70,
-  //     EpilogueTag>(
-  //         A, B, weight_scales, biases, C, m, n, k, workspace_ptr,
-  //         workspace_bytes, gemm_config, stream, occupancy);
-  // }
-  // else if (sm_ >= 75 && sm_ < 80) {
-  //     dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm75,
-  //     EpilogueTag>(
-  //         A, B, weight_scales, biases, C, m, n, k, workspace_ptr,
-  //         workspace_bytes, gemm_config, stream, occupancy);
-  // }
-  // else
-  if (sm_ >= 80 && sm_ < 90) {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
+  if (sm_ >= 70 && sm_ < 75) {
+    dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm70, EpilogueTag>(
+        A,
+        B,
+        weight_scales,
+        biases,
+        C,
+        m,
+        n,
+        k,
+        workspace_ptr,
+        workspace_bytes,
+        gemm_config,
+        stream,
+        occupancy);
+  } else if (sm_ >= 75 && sm_ < 80) {
+    dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm75, EpilogueTag>(
+        A,
+        B,
+        weight_scales,
+        biases,
+        C,
+        m,
+        n,
+        k,
+        workspace_ptr,
+        workspace_bytes,
+        gemm_config,
+        stream,
+        occupancy);
+  } else if (sm_ >= 80 && sm_ < 90) {
     dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm80, EpilogueTag>(
         A,
         B,
@@ -635,8 +664,8 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
         occupancy);
   } else {
     throw std::runtime_error(
-        "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported "
-        "for CUTLASS mixed type GEMM");
+        "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
+        "CUTLASS mixed type GEMM");
   }
 }
 
@@ -654,6 +683,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
   static constexpr bool is_weight_only = !std::is_same<T, WeightType>::value;
   const bool is_weight_only_encoder = m >= 512 ? true : false;
   std::vector<CutlassGemmConfig> candidate_configs =
@@ -718,6 +748,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
   if (activation_type == "gelu") {
     run_gemm<EpilogueOpBiasFtGelu>(A,
                                    B,
@@ -770,6 +801,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm(const T* A,
                                                    char* workspace_ptr,
                                                    const size_t workspace_bytes,
                                                    cudaStream_t stream) {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
   run_gemm<EpilogueOpNoBias>(A,
                              B,
                              weight_scales,
@@ -787,7 +819,8 @@ template <typename T, typename WeightType>
 int CutlassFpAIntBGemmRunner<T, WeightType>::getWorkspaceSize(const int m,
                                                               const int n,
                                                               const int k) {
-  // sizes for each config, which would launch the maximum number of blocks
+  // VLOG(3)<<__PRETTY_FUNCTION__;    // These are the min tile sizes for each
+  // config, which would launch the maximum number of blocks
   const int max_grid_m = (m + 31) / 32;
   const int max_grid_n = (n + 127) / 128;
   // We need 4 bytes per block in the worst case. We launch split_k_limit in z
@@ -839,4 +872,14 @@ int CutlassFpAIntBGemmRunner<float, WeightType>::getWorkspaceSize(const int m,
   return 0;
 }
 
+template class CutlassFpAIntBGemmRunner<float, uint8_t>;
+template class CutlassFpAIntBGemmRunner<half, uint8_t>;
+#ifdef PADDLE_CUDA_BF16
+template class CutlassFpAIntBGemmRunner<__nv_bfloat16, uint8_t>;
+#endif
+template class CutlassFpAIntBGemmRunner<float, cutlass::uint4b_t>;
+template class CutlassFpAIntBGemmRunner<half, cutlass::uint4b_t>;
+#ifdef PADDLE_CUDA_BF16
+template class CutlassFpAIntBGemmRunner<__nv_bfloat16, cutlass::uint4b_t>;
+#endif
 }  // namespace phi

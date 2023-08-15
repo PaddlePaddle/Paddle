@@ -26,8 +26,8 @@ def weight_quantize(x, algo="weight_only_int8"):
             'weight_only_int4' and 'llm.int8', default: 'weight_only_int8'.
 
     Returns:
-        out (Tensor): The Tensor which is the quantitative results.
-        scale (Tensor): The scale Tensor which is the scale of pre-channel.
+        out (Tensor): The Tensor which is the quantitative results, the data type is the same as that of x.
+        scale (Tensor): The scale Tensor which is the scale of pre-channel, the data type is float32.
     Examples:
         .. code-block:: python
 
@@ -79,7 +79,7 @@ def weight_only_linear(
         weight_scale (Tensor|None): The input scale Tensor Provided to weight for dequantization. Its rank must be 1.
         weight_dtype(str): The dtype of  weight Tensor, must be one of 'int8', 'int4', Defaulted to 'int8'.
     Returns:
-        Tensor: the output Tensor.
+        Tensor: the output Tensor, the data type is the same as that of x.
 
     Examples:
         .. code-block:: python
@@ -145,7 +145,7 @@ def llm_int8_linear(
         threshold(float): The min value of outlier in activation, outlier's channel will be apply multiply with x.dtype.
 
     Returns:
-        Tensor: the output Tensor.
+        Tensor: the output Tensor, the data type is the same as that of x.
 
     Examples:
         .. code-block:: python
