@@ -238,9 +238,19 @@ class ScopedTensorDescriptor {
     return desc_;
   }
 
+  template <typename T>
+  inline dynload::Tensor& descriptor(const T* data,
+                                     const DataLayout& order,
+                                     const std::vector<int>& dims,
+                                     const int groups = 1) {
+    desc_.SetAddr(data);
+    descriptor<T>(order, dims, groups);
+    return desc_;
+  }
+
   inline dynload::Tensor& descriptor(const dynload::Tensor::Type mudnn_type,
-                                    const std::vector<int>& dim,
-                                    const std::vector<int>& stride) {
+                                     const std::vector<int>& dim,
+                                     const std::vector<int>& stride) {
     desc_.SetType(mudnn_type);
     desc_.SetNdInfo(dim.size(), dim.data(), stride.data());
     return desc_;
@@ -248,7 +258,7 @@ class ScopedTensorDescriptor {
 
   template <typename T>
   inline dynload::Tensor& descriptor(const std::vector<int>& dim,
-                                    const std::vector<int>& stride) {
+                                     const std::vector<int>& stride) {
     descriptor(CudnnDataType<T>::type, dim, stride);
     return desc_;
   }
@@ -298,6 +308,30 @@ class ScopedPoolingDescriptor {
  private:
   dynload::Pooling desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedPoolingDescriptor);
+};
+
+
+class ScopedSoftmaxDescriptor {
+ public:
+  ScopedSoftmaxDescriptor() {}
+  ~ScopedSoftmaxDescriptor() PADDLE_MAY_THROW {}
+
+  inline dynload::Softmax& descriptor(const dynload::Softmax::Mode& mode,
+                                      const dynload::Softmax::Algorithm& algo,
+                                      const int& dim) {
+    desc_.SetMode(mode);
+    desc_.SetDim(dim);
+    desc_.SetAlgorithm(algo);
+    return desc_;
+  }
+
+  dynload::Softmax& desc() {
+    return desc_;
+  }
+
+ private:
+  dynload::Softmax desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedSoftmaxDescriptor);
 };
 
 

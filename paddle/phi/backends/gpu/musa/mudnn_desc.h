@@ -210,17 +210,6 @@ class ConvolutionDescriptor {
            const int groups = 1) {
     allow_tf32_ = allow_tf32;
     desc_->SetNdInfo(pads.size(), pads.data(), strides.data(), dilations.data());
-    /* if (2 == pads.size()) { */
-    /*   desc_->SetNdInfo({pads[0], pads[1]}, */
-    /*                    {strides[0], strides[1]}, */
-    /*                    {dilations[0], dilations[1]}); */
-    /* } else if (3 == pads.size()) { */
-    /*   desc_->SetNdInfo({pads[0], pads[1], pads[2]}, */
-    /*                    {strides[0], strides[1], strides[2]}, */
-    /*                    {dilations[0], dilations[1], dilations[2]}); */
-    /* } else { */
-    /*   PD_THROW("pads size is ", pads.size()); */ 
-    /* } */
     desc_->SetComputeMode(dynload::Convolution::ComputeMode::ALL);
     desc_->SetGroups(groups);
   }

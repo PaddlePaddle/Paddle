@@ -101,7 +101,6 @@ if(WITH_MUSA)
        "gpudnn/affine_grid_grad_kernel.cu"
        "gpudnn/affine_grid_kernel.cu"
        "gpudnn/softmax_grad_kernel.cu"
-       "gpudnn/softmax_kernel.cu"
        "gpudnn/conv_grad_kernel.cu"
        "gpudnn/conv_transpose_grad_kernel.cu"
        "gpudnn/conv_transpose_kernel.cu"
