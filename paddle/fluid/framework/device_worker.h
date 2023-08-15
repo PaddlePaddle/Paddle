@@ -84,12 +84,13 @@ class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   void AddStream(const gpuStream_t stream) { copy_streams_.push_back(stream); }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
-    defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_XPU)
   void AddPlace(const paddle::platform::Place place) {
     places_.push_back(place);
   }
@@ -154,7 +155,8 @@ class PullDenseWorker {
   float total_batch_num_ = 0;
   std::unordered_map<const Scope*, int> scope_to_thread_id_;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::vector<gpuStream_t> copy_streams_;
 #endif
   std::vector<paddle::platform::Place> places_;
@@ -185,7 +187,8 @@ class DeviceWorker {
   virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
   virtual void Schedule(int taskid UNUSED) {}
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   virtual void SetStream(const gpuStream_t stream UNUSED) {}
   virtual void SetEvent(const gpuEvent_t event UNUSED) {}
 #endif
@@ -561,7 +564,8 @@ class PSGPUWorker : public HogwildWorker {
     new (&program_) ProgramDesc(main_program);
   }
   void ProduceTasks() override;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   virtual void SetStream(const gpuStream_t stream) { copy_stream_ = stream; }
   virtual void SetEvent(const gpuEvent_t event) { event_ = event; }
 #endif
@@ -629,7 +633,8 @@ class PSGPUWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> pull_queue_;
   paddle::framework::Channel<std::shared_ptr<HeterTask>> push_queue_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   gpuEvent_t event_;
   gpuStream_t copy_stream_;
 #endif
@@ -802,7 +807,8 @@ class HeterSectionWorker : public DeviceWorker {
   Scope* GetThreadScope() override { return minibatch_scope_; }
 
   // multi-stream
-  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||
+  // defined(PADDLE_WITH_MUSA)
   //  void SetStream(const gpuStream_t stream) override {}
   //  void SetEvent(const gpuEvent_t event) override {}
   // #endif

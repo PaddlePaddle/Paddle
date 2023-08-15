@@ -1356,8 +1356,12 @@ function(math_library TARGET)
   elseif(WITH_MUSA)
     musa_library(
       ${TARGET}
-      SRCS ${cc_srcs} ${cu_srcs}
-      DEPS ${math_library_DEPS} ${math_common_deps})
+      SRCS
+      ${cc_srcs}
+      ${cu_srcs}
+      DEPS
+      ${math_library_DEPS}
+      ${math_common_deps})
   elseif(${cc_srcs_len} GREATER 0)
     cc_library(
       ${TARGET}

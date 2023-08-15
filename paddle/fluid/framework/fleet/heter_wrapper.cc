@@ -121,7 +121,8 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
            tensor->numel() *
                SizeOfType(framework::TransToProtoVarType(tensor->dtype())));
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     memory::Copy(platform::CPUPlace(),
                  data_ptr,
                  tensor->place(),
@@ -141,7 +142,8 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void HeterWrapper::DeSerializeToTensor(Scope* scope,
                                        const VariableMessage& req_var,
                                        platform::Place place,
@@ -169,7 +171,8 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   void* tensor_data = tensor->mutable_data(
       place, framework::TransToPhiDataType(ToVarType(req_var.data_type())));
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   memory::Copy(place,
                tensor_data,
                platform::CPUPlace(),

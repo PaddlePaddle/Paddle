@@ -80,7 +80,8 @@ class EagerDeletionOpHandle : public OpHandleBase {
   std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
   GarbageCollector *gc_;                        // not own
   std::vector<Variable *> vars_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   phi::GPUContext *dev_ctx_{nullptr};
   gpuEvent_t event_{nullptr};
 #endif

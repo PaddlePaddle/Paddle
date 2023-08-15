@@ -3,7 +3,9 @@ add_subdirectory(memory_optimize_pass)
 add_subdirectory(multi_devices_graph_pass)
 if(NOT APPLE
    AND NOT WIN32
-   AND (WITH_GPU OR WITH_ROCM OR WITH_MUSA))
+   AND (WITH_GPU
+        OR WITH_ROCM
+        OR WITH_MUSA))
   add_subdirectory(fusion_group)
 endif()
 
@@ -159,7 +161,9 @@ if(WITH_TENSORRT)
   pass_library(split_layernorm_to_math_ops_pass inference)
 endif()
 
-if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   pass_library(cudnn_placement_pass base DEPS placement_pass_base)
   pass_library(embedding_eltwise_layernorm_fuse_pass inference)
 endif()

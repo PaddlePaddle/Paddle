@@ -139,7 +139,8 @@ class WarpRNNTFunctor {
     rnntStatus_t status = RNNT_STATUS_UNKNOWN_ERROR;
     bool gpu = false;
     if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       gpu = true;
 #else
       PADDLE_THROW(errors::PreconditionNotMet(

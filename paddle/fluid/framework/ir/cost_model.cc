@@ -128,7 +128,8 @@ bool CostData::SetCostData(const ProgramDesc& program,
     double cpu_time_ms = main_thread_events[op_push_index].CpuElapsedMs(
         main_thread_events[op_pop_index]);
     double gpu_time_ms = 0;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     gpu_time_ms = main_thread_events[op_push_index].CudaElapsedMs(
         main_thread_events[op_pop_index]);
 #endif
@@ -152,7 +153,8 @@ bool CostData::SetCostData(const ProgramDesc& program,
     double cpu_time_ms = main_thread_events[start_profiler_idx].CpuElapsedMs(
         main_thread_events[stop_profiler_idx]);
     double gpu_time_ms = 0;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     gpu_time_ms = main_thread_events[start_profiler_idx].CudaElapsedMs(
         main_thread_events[stop_profiler_idx]);
 #endif

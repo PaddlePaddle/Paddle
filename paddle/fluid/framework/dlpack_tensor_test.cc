@@ -108,7 +108,8 @@ void TestToDLManagedTensor(const platform::Place &place, uint16_t lanes) {
 
 template <typename T>
 void TestMainLoop() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::vector<platform::Place> places{platform::CPUPlace(),
                                       platform::CUDAPlace(0),
                                       platform::CUDAPinnedPlace()};

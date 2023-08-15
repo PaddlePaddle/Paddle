@@ -94,9 +94,10 @@ function(version version_file)
          "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
   endif()
   if(WITH_MUSA)
-    file(APPEND ${version_file}
-         "MUSA version: v${MUSA_MAJOR_VERSION}.${MUSA_MINOR_VERSION}.${MUSA_PATCH_VERSION}\n"
-         "MUDNN version: v${MUDNN_MAJOR_VERSION}.${MUDNN_MINOR_VERSION}\n")
+    file(
+      APPEND ${version_file}
+      "MUSA version: v${MUSA_MAJOR_VERSION}.${MUSA_MINOR_VERSION}.${MUSA_PATCH_VERSION}\n"
+      "MUDNN version: v${MUDNN_MAJOR_VERSION}.${MUDNN_MINOR_VERSION}\n")
   endif()
   if(WITH_ROCM)
     file(APPEND ${version_file}
