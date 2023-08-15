@@ -1598,6 +1598,22 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "dropout_rate != 0, stop convert";
         return false;
       }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (!(x_shape.size() == 3 || x_shape.size() == 4)) {
+        VLOG(3) << "The fused_bias_dropout_residual_layer_norm op only support "
+                   "3-D or 4-D input in "
+                   "tensorrt.";
+        return false;
+      }
     }
     if (op_type == "fused_preln_embedding_eltwise_layernorm") {
       if (!with_dynamic_shape) {
