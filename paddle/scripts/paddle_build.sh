@@ -689,7 +689,7 @@ EOF
         check_approvals_of_unittest 2
         get_precision_ut_mac
         # serial_list: Some single tests need to reduce concurrency
-        single_list="test_cdist|test_resnet|test_resnet_v2|test_concat_op|test_transformer|test_bert_with_stride|test_paddle_save_load"
+        single_list="^test_cdist$|^test_resnet$|^test_resnet_v2$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
         disable_ut_quickly="${disable_ut_quickly}|${single_list}"
         echo "========================================="
         echo "The following unittests have been disabled:"
