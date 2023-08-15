@@ -434,6 +434,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(ceil_grad, CeilGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_grad, CeluGradKernel)
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(celu_double_grad,
                                           CeluDoubleGradKernel)

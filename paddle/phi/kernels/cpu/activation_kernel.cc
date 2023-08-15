@@ -278,6 +278,7 @@ PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(ceil, CeilKernel)
 PD_REGISTER_KERNEL(negative,
                    CPU,
                    ALL_LAYOUT,

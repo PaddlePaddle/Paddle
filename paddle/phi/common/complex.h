@@ -487,6 +487,16 @@ HOSTDEVICE inline complex<T> log(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> ceil(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::ceil(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::ceil(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const complex<T>& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;
