@@ -470,7 +470,6 @@ class OptimizerWithMixedPrecision:
             return optimize_ops
 
         found_inf = self._check_finite_and_unscale(params_grads)
-        found_inf = False
         if (
             self._use_dynamic_loss_scaling
             and self._amp_vartype == core.VarDesc.VarType.FP16

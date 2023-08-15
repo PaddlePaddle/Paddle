@@ -176,6 +176,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
              " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
              "possible, "
              "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
+      py_rank = 1;
       py_dims[0] = 1;
       py_strides[0] = sizeof_dtype * numel;
     }
