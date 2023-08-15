@@ -33,9 +33,15 @@ void CastCUDAKernelImpl(const GPUContext& dev_ctx,
                         DenseTensor* out) {
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
-  auto x_origin = x;
-  inputs.emplace_back(&x_origin);
-  outputs.emplace_back(out);
+  // inplace case
+  if (out->IsSharedWith(x)) {
+    auto x_origin = x;
+    inputs.emplace_back(&x_origin);
+    outputs.emplace_back(out);
+  } else {
+    inputs.emplace_back(&x);
+    outputs.emplace_back(out);
+  }
   dev_ctx.Alloc<OutT>(out);
   out->set_type(out_dtype);
   phi::funcs::ElementwiseKernel<OutT>(
