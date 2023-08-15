@@ -26,8 +26,11 @@ template <typename InT, typename OutT>
 struct CastFunctor {
   HOSTDEVICE OutT operator()(InT x) const { return static_cast<OutT>(x); }
 };
-template <typename Context, typename InT, typename OutT, int VecSize>
-static void VecCastKernel(const Context &ctx, const InT *x, OutT *y, size_t n) {
+template <typename InT, typename OutT, int VecSize>
+static void VecCastKernel(const phi::GPUContext &ctx,
+                          const InT *x,
+                          OutT *y,
+                          size_t n) {
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n, VecSize);
   auto block = config.GetGridSize();
   auto thread = config.GetBlockSize();
@@ -43,8 +46,8 @@ static void VecCastKernel(const Context &ctx, const InT *x, OutT *y, size_t n) {
           in_arr, out_arr, n, main_offset, VecSize, FunctorT());
 }
 
-template <typename Context, typename InT, typename OutT>
-static void LaunchCastKernel(const Context &ctx,
+template <typename InT, typename OutT>
+static void LaunchCastKernel(const phi::GPUContext &ctx,
                              const InT *x,
                              OutT *y,
                              size_t n) {
@@ -56,11 +59,11 @@ static void LaunchCastKernel(const Context &ctx,
   int vec_size = std::min(phi::GetVectorizedSize(x), phi::GetVectorizedSize(y));
   switch (vec_size) {
     case 4:
-      return VecCastKernel<Context, InT, OutT, 4>(ctx, x, y, n);
+      return VecCastKernel<InT, OutT, 4>(ctx, x, y, n);
     case 2:
-      return VecCastKernel<Context, InT, OutT, 2>(ctx, x, y, n);
+      return VecCastKernel<InT, OutT, 2>(ctx, x, y, n);
     case 1:
-      return VecCastKernel<Context, InT, OutT, 1>(ctx, x, y, n);
+      return VecCastKernel<InT, OutT, 1>(ctx, x, y, n);
     default:
       PADDLE_THROW(
           errors::InvalidArgument("The vectorized size must be 1, 2 or 4."));

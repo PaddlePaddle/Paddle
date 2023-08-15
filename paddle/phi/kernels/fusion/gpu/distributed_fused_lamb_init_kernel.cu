@@ -177,20 +177,19 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
   return total_numel_sum_with_padding;
 }
 
-template <typename T, typename Context>
-static T *TensorFillConstant(const Context &dev_ctx,
+template <typename T>
+static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
                              DenseTensor *tensor,
                              const DDim &dims,
                              T value) {
   tensor->Resize(dims);
   auto *ptr = dev_ctx.template Alloc<T>(tensor);
-  phi::funcs::SetConstant<Context, T> set_constant;
+  phi::funcs::SetConstant<phi::GPUContext, T> set_constant;
   set_constant(dev_ctx, tensor, value);
   return ptr;
 }
 
-template <typename Context>
-static DenseTensor CastDataForInitedTensor(const Context &dev_ctx,
+static DenseTensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
                                            DenseTensor *origin,
                                            DenseTensor *fused_out,
                                            size_t numel_offset) {
@@ -210,7 +209,7 @@ static DenseTensor CastDataForInitedTensor(const Context &dev_ctx,
   auto *dst = fused_out->data<float>() + numel_offset;
   auto *src = origin->data<dtype::float16>();
   auto numel = origin->numel();
-  phi::LaunchCastKernel(dev_ctx, src, dst, numel);
+  LaunchCastKernel(dev_ctx, src, dst, numel);
   VLOG(10) << "Cast from FP32 -> FP16, range: [" << numel_offset << ", "
            << numel_offset + numel << ")"
            << " , total: [0, " << fused_out->numel() << ")";
@@ -222,11 +221,11 @@ static DenseTensor CastDataForInitedTensor(const Context &dev_ctx,
   return sliced_tensor;
 }
 
-template <typename Context>
-static DenseTensor CopyAndShareBufferForInitedTensor(const Context &dev_ctx,
-                                                     DenseTensor *origin,
-                                                     DenseTensor *fused_out,
-                                                     size_t numel_offset) {
+static DenseTensor CopyAndShareBufferForInitedTensor(
+    const phi::GPUContext &dev_ctx,
+    DenseTensor *origin,
+    DenseTensor *fused_out,
+    size_t numel_offset) {
   PADDLE_ENFORCE_EQ(
       origin->IsInitialized(),
       true,
@@ -255,9 +254,7 @@ static DenseTensor CopyAndShareBufferForInitedTensor(const Context &dev_ctx,
   auto fused_out_numel = fused_out->numel();
   auto sliced_tensor = fused_out->Resize({fused_out_numel})
                            .Slice(numel_offset, numel + numel_offset);
-  DDim origin_dim = origin->dims();
-  phi::Copy(dev_ctx, sliced_tensor, dev_ctx.GetPlace(), false, origin);
-  origin->Resize(origin_dim);
+  phi::Copy(dev_ctx, *origin, dev_ctx.GetPlace(), false, &sliced_tensor);
   origin->ShareBufferWith(sliced_tensor);
   fused_out->Resize(fused_out_dim);
   VLOG(10) << "Copy and share buffer, range: [" << numel_offset << ", "
@@ -288,8 +285,8 @@ static void ShareBufferForNonInitedTensor(DenseTensor *origin,
            << ") , dtype = " << fused_out->dtype();
 }
 
-template <typename T, typename Context>
-static void CopyVectorToCPUTensor(const Context &dev_ctx,
+template <typename T>
+static void CopyVectorToCPUTensor(const phi::GPUContext &dev_ctx,
                                   const std::vector<T> &src,
                                   DenseTensor *dst) {
   dst->Resize({static_cast<int64_t>(src.size())});
@@ -334,6 +331,7 @@ static T ClipByBound(T x, T low_value, T high_value) {
   if (x > high_value) return high_value;
   return x;
 }
+
 template <typename T, typename Context>
 void DistributedFusedLambInitOpKernel(
     const Context &dev_ctx,
@@ -363,10 +361,6 @@ void DistributedFusedLambInitOpKernel(
     std::vector<DenseTensor *> grad_out,
     DenseTensor *global_scale,
     DenseTensor *step) {
-  LOG_FIRST_N(INFO, 1) << "step1 start"
-                          "____________________________________________________"
-                          "____________________________________________________"
-                          "_________________________________________.";
   VLOG(10) << "starts to run DistributedFusedLambInitOp";
   auto place = dev_ctx.GetPlace();
   auto stream = dev_ctx.stream();
@@ -398,6 +392,7 @@ void DistributedFusedLambInitOpKernel(
       auto *g = grad[i];
       auto *p_out = param_out[i];
       auto *g_out = grad_out[i];
+
       PADDLE_ENFORCE_NOT_NULL(
           p,
           errors::InvalidArgument("The %d-th parameter should not be nullptr.",
@@ -433,6 +428,7 @@ void DistributedFusedLambInitOpKernel(
           numel,
           0,
           errors::InvalidArgument("The %d-th Input(Param) have no elements."));
+
       void *g_data = nullptr;
       if (g->IsInitialized()) {
         PADDLE_ENFORCE_EQ(g->dtype(),
@@ -476,14 +472,15 @@ void DistributedFusedLambInitOpKernel(
       info->numel_offset = 0;        // not determined yet
     }
   }
+
   size_t fp32_wd_end_idx =
       ReorderParamGradInfoList(apply_weight_decay, &fp32_infos);
   size_t fp16_wd_end_idx =
       ReorderParamGradInfoList(apply_weight_decay, &fp16_infos);
+
   auto param_num = fp32_infos.size() + fp16_infos.size();
   param_order->Resize({static_cast<int16_t>(param_num)});
-  int *param_order_t = dev_ctx.template HostAlloc<int>(param_order);
-
+  auto *param_order_t = dev_ctx.template HostAlloc<int>(param_order);
   for (size_t i = 0; i < fp32_infos.size(); ++i) {
     param_order_t[i] = static_cast<int>(fp32_infos[i].idx);
   }
@@ -492,6 +489,7 @@ void DistributedFusedLambInitOpKernel(
   }
 
   VLOG(10) << "Fill ParamGradInfo ends";
+
   // Step 2: determine the numel_with_padding and numel_offset
   VLOG(10) << "rank = " << rank << ", nranks = " << nranks
            << " , alignment = " << alignment;
@@ -518,11 +516,11 @@ void DistributedFusedLambInitOpKernel(
   // NOTE: We guarantee that both fp32_numel and fp16_numel can be exactly
   // divided by alignment and nranks.
   auto fp32_numel = FillAlignmentPaddingInfo(
-      &fp32_infos, alignment, nranks, DataType::FLOAT32);
+      &fp32_infos, alignment, nranks, phi::DataType::FLOAT32);
   VLOG(10) << "FP32 ParamGradInfo: "
            << paddle::string::join_strings(fp32_infos, " ");
   auto fp16_numel = FillAlignmentPaddingInfo(
-      &fp16_infos, alignment, nranks, DataType::FLOAT16);
+      &fp16_infos, alignment, nranks, phi::DataType::FLOAT16);
   VLOG(10) << "FP16 ParamGradInfo: "
            << paddle::string::join_strings(fp16_infos, " ");
   auto total_numel = fp32_numel + fp16_numel;
@@ -537,6 +535,7 @@ void DistributedFusedLambInitOpKernel(
            << ", fp32_numel = " << fp32_numel << ", fp16_numel = " << fp16_numel
            << ", fp32_numel_each_device = " << fp32_numel_each_device
            << ", fp16_numel_each_device = " << fp16_numel_each_device;
+
   // Step 3: allocate output tensor and do initialization
   float *fused_fp32_param = nullptr, *fused_fp32_grad = nullptr;
   dtype::float16 *fused_fp16_param = nullptr, *fused_fp16_grad = nullptr;
@@ -581,9 +580,8 @@ void DistributedFusedLambInitOpKernel(
         dev_ctx, info.param_t, fp32_p_t, info.numel_offset);
     master_param_out[info.idx]->Resize(info.param_t->dims());
     master_param_out[info.idx]->ShareBufferWith(sliced_tensor);
-    dev_ctx.template Alloc<float>(master_param_out[info.idx]);
     // PADDLE_ENFORCE_EQ(
-    //     (dev_ctx.template Alloc<float>(master_param_out[info.idx])),
+    //     master_params[info.idx]->mutable_data<float>(place),
     //     sliced_tensor.data<float>(),
     //     errors::InvalidArgument("Invalid master weight tensor pointer."));
     if (info.grad_t->IsInitialized()) {
@@ -611,9 +609,8 @@ void DistributedFusedLambInitOpKernel(
 
     CopyAndShareBufferForInitedTensor(
         dev_ctx, info.param_t, fp16_p_t, info.numel_offset);
-    dev_ctx.template Alloc<float>(master_param_out[info.idx]);
     // PADDLE_ENFORCE_EQ(
-    //     dev_ctx.template Alloc<float>(master_param_out[info.idx]),
+    //     master_params[info.idx]->mutable_data<float>(place),
     //     sliced_tensor.data<float>(),
     //     errors::InvalidArgument("Invalid master weight tensor pointer."));
 
@@ -626,6 +623,7 @@ void DistributedFusedLambInitOpKernel(
     }
   }
   VLOG(10) << "Copy/share data for Param/Grad ends";
+
   // Step 4: For Moment1, Moment2, Beta1Pow, Beta2Pow, just fill constant
   TensorFillConstant<float>(
       dev_ctx, moment1, {static_cast<int64_t>(numel_each_device)}, 0.0f);
@@ -634,6 +632,7 @@ void DistributedFusedLambInitOpKernel(
   TensorFillConstant<float>(dev_ctx, beta1_pow, {1}, beta1);
   TensorFillConstant<float>(dev_ctx, beta2_pow, {1}, beta2);
   VLOG(10) << "Init Moment and BetaPow ends";
+
   // Step 5: Do sharding
   size_t fp32_start_idx, fp32_end_idx, fp32_start_numel_offset,
       fp32_end_numel_offset;
@@ -768,6 +767,7 @@ void DistributedFusedLambInitOpKernel(
   dev_ctx.Wait();
   VLOG(10) << "Wait for H2D copy";
 }
+
 }  // namespace fusion
 }  // namespace phi
 
