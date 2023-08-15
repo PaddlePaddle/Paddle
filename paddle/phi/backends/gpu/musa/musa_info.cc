@@ -260,6 +260,7 @@ void GpuMemcpyAsync(void *dst,
                     size_t count,
                     gpuMemcpyKind kind,
                     gpuStream_t stream) {
+  std::cout << "###################################### other stream "  << stream << std::endl;
   PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(dst, src, count, kind, stream));
 }
 
@@ -267,6 +268,7 @@ void GpuMemcpySync(void *dst,
                    const void *src,
                    size_t count,
                    gpuMemcpyKind kind) {
+  std::cout << __FILE__ << " ################################# default stream " << count << std::endl;
   PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpy(dst, src, count, kind));
 }
 

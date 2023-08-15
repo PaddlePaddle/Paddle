@@ -240,7 +240,7 @@ void InitStream(gpuStream_t* stream) {
       hipStreamCreateWithPriority(stream, hipStreamDefault, 0));
 #elif defined(PADDLE_WITH_MUSA)
   PADDLE_ENFORCE_GPU_SUCCESS(
-      musaStreamCreateWithPriority(stream, musaStreamDefault, 0));
+      musaStreamCreateWithPriority(stream, musaStreamDefault, 1));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamCreateWithPriority(stream, cudaStreamDefault, 0));
@@ -313,6 +313,7 @@ void DestroyBlasLtHandle(blasLtHandle_t handle) {
 
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
   if (phi::dynload::HasCUDNN()) {
+    std::cout << __FILE__ << " :" << __LINE__ << std::endl;
 #ifdef PADDLE_WITH_HIP
     size_t miopen_major, miopen_minor, miopen_patch;
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -333,7 +334,10 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreate(handle));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetStream(*handle, stream));
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+    *handle = new dynload::Handle(place.device);
+    (*handle)->SetStream(stream);
+#else
     auto local_cudnn_version = phi::dynload::cudnnGetVersion() / 100;
     auto compile_cudnn_version = CUDNN_VERSION / 100;
     if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
@@ -365,6 +369,7 @@ void DestroyDnnHandle(dnnHandle_t handle) {
   if (handle != nullptr) {
     // TODO(@caizhi): enable dynload module
     // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDestroy(handle));
+    delete handle;
     handle = nullptr;
   }
 #else

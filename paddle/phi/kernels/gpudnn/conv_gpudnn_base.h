@@ -47,6 +47,7 @@ static inline bool UseFixedWorkspace() {
   return FLAGS_conv_workspace_size_limit >= 0;
 }
 
+#if 0
 static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
   if (!use_fixed_workspace) {
     int device_id = phi::backends::gpu::GetCurrentDeviceId();
@@ -64,6 +65,7 @@ static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
   }
 }
 
+#endif
 // The container of SearchAlgorithm::Find() result.
 template <typename AlgoT>
 struct SearchResult {

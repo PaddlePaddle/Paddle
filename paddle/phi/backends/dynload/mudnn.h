@@ -20,6 +20,8 @@ namespace dynload {
 
 extern bool HasCUDNN();
 
+using namespace ::musa::dnn;
+
 }  // namespace dynload
 }  // namespace phi
 #endif
