@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/number_count_kernel.h"
 
-#include "paddle/phi/common/reduce_type.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void ReduceKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int root_id,
-                  int reduce_type,
-                  DenseTensor* out);
-
+void NumberCountKernel(const Context& dev_ctx,
+                       const DenseTensor& numbers,
+                       int upper_range,
+                       DenseTensor* out) {
+  PADDLE_THROW(phi::errors::Unavailable(
+      "Do not support expert count op for cpu kernel now."));
+}
 }  // namespace phi
+
+PD_REGISTER_KERNEL(
+    number_count, CPU, ALL_LAYOUT, phi::NumberCountKernel, int, int64_t) {}

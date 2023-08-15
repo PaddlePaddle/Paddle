@@ -110,9 +110,7 @@ void ParallelCompiler::LaunchTask() {
 
   RunTask(&tasks_[0]);
   // syncthreads.
-  for (auto& worker : threads) {
-    worker.join();
-  }
+  for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
 }
 
 CompilationResult ParallelCompiler::MergeResult() {
@@ -139,7 +137,7 @@ CompilationResult ParallelCompiler::MergeResult() {
       res.instructions.emplace_back(std::move(instruction));
     }
   }
-  return std::move(res);
+  return res;
 }
 
 void ParallelCompiler::Task::Lowering() {
@@ -196,23 +194,23 @@ void ParallelCompiler::Task::CodegenAndJit() {
       CHECK(!cuda_c.empty())
           << "Compile CUDA C code failed from device module:\n"
           << dmodule;
-      source_codes.emplace_back(cuda_c);
-      backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
-          cuda_c, start_gidx + i);
-      // cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
 
       using runtime::cuda::CUDAModule;
       backends::nvrtc::Compiler compiler;
       auto ptx = compiler(cuda_c);
       CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-      source_ptxs.emplace_back(ptx);
-      backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx,
-                                                               start_gidx + i);
       // load cumodule
       cumodule = std::make_unique<CUDAModule>(ptx,
                                               compiler.compile_to_cubin()
                                                   ? CUDAModule::Kind::CUBIN
                                                   : CUDAModule::Kind::PTX);
+      // dump code to file
+      source_codes.emplace_back(cuda_c);
+      source_ptxs.emplace_back(ptx);
+      backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+          cuda_c, start_gidx + i);
+      backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx,
+                                                               start_gidx + i);
 
       // register kernel
       backends::RuntimeSymbols symbols;
