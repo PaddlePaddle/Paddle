@@ -122,15 +122,19 @@ class CodeGen:
             ret.append(f'{self._type_map[type]} {name}')
         return ', '.join(ret)
 
-    def _gen_api_attrs(self, op_info, with_default):
+    def _gen_api_attrs(self, op_info, with_default, with_mutable_attr):
         name_list = op_info.attribute_name_list
         type_list = op_info.attribute_build_arg_type_list
         default_value_list = op_info.attribute_default_value_list
+        mutable_name_list = op_info.mutable_attribute_name_list
         assert len(name_list) == len(type_list) == len(default_value_list)
         ret = []
         for name, type, default_value in zip(
             name_list, type_list, default_value_list
         ):
+            if with_mutable_attr and name in mutable_name_list:
+                type = OP_RESULT
+                default_value = None
             if with_default and default_value is not None:
                 if type in ['float', 'double']:
                     default_value = default_value.strip('"')
@@ -143,9 +147,11 @@ class CodeGen:
                 ret.append(f'{type} {name}')
         return ', '.join(ret)
 
-    def _gen_api_args(self, op_info, with_default_attr):
+    def _gen_api_args(self, op_info, with_default_attr, with_mutable_attr):
         inputs = self._gen_api_inputs(op_info)
-        attrs = self._gen_api_attrs(op_info, with_default_attr)
+        attrs = self._gen_api_attrs(
+            op_info, with_default_attr, with_mutable_attr
+        )
         return (inputs + ', ' + attrs).strip(', ')
 
     def _gen_ret_type(self, op_info):
@@ -159,11 +165,11 @@ class CodeGen:
         elif len(type_list) == 0:
             return 'void'
 
-    def _gen_one_declare(self, op_info, op_name):
+    def _gen_one_declare(self, op_info, op_name, with_mutable_attr):
         return API_DECLARE_TEMPLATE.format(
             ret_type=self._gen_ret_type(op_info),
             api_name=op_name,
-            args=self._gen_api_args(op_info, True),
+            args=self._gen_api_args(op_info, True, with_mutable_attr),
         )
 
     def _gen_h_file(self, op_info_items, namespaces, h_file_path):
@@ -177,7 +183,10 @@ class CodeGen:
                     and op_name not in PD_MANUAL_OP_LIST
                 ):
                     continue
-                declare_str += self._gen_one_declare(op_info, op_name)
+                declare_str += self._gen_one_declare(op_info, op_name, False)
+                if len(op_info.mutable_attribute_name_list) > 0:
+                    declare_str += self._gen_one_declare(op_info, op_name, True)
+
         body = declare_str
         for namespace in reversed(namespaces):
             body = NAMESPACE_TEMPLATE.format(namespace=namespace, body=body)
@@ -254,7 +263,7 @@ class CodeGen:
         elif len(ret_list) == 0:
             return 'return;'
 
-    def _gen_one_impl(self, op_info, op_name):
+    def _gen_one_impl(self, op_info, op_name, with_mutable_attr):
         in_combine, in_combine_op_list = self._gen_in_combine(op_info)
         compute_op, op_inst_name = self._gen_compute_op(
             op_info, op_name, in_combine_op_list
@@ -266,7 +275,7 @@ class CodeGen:
         ret = API_IMPL_TEMPLATE.format(
             ret_type=self._gen_ret_type(op_info),
             api_name=op_name,
-            args=self._gen_api_args(op_info, False),
+            args=self._gen_api_args(op_info, False, with_mutable_attr),
             in_combine=in_combine,
             compute_op=compute_op,
             out_slice=out_slice,
@@ -287,7 +296,9 @@ class CodeGen:
                     and op_name not in PD_MANUAL_OP_LIST
                 ):
                     continue
-                impl_str += self._gen_one_impl(op_info, op_name)
+                impl_str += self._gen_one_impl(op_info, op_name, False)
+                if len(op_info.mutable_attribute_name_list) > 0:
+                    impl_str += self._gen_one_impl(op_info, op_name, True)
         body = impl_str
         for namespace in reversed(namespaces):
             body = NAMESPACE_TEMPLATE.format(namespace=namespace, body=body)
