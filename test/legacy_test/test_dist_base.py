@@ -435,10 +435,10 @@ class TestDistRunnerBase:
                     model_save_dir, "fleet_persistables"
                 )
                 infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer"
+                    model_save_dir, "fluid_infer/infer"
                 )
                 infer_save_dir_fleet = os.path.join(
-                    model_save_dir, "fleet_infer"
+                    model_save_dir, "fleet_infer/infer"
                 )
             else:
                 model_save_dir_fluid = os.path.join(
@@ -448,25 +448,24 @@ class TestDistRunnerBase:
                     model_save_dir, "fleet_persistables_2"
                 )
                 infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer_2"
+                    model_save_dir, "fluid_infer_2/infer_2"
                 )
                 infer_save_dir_fleet = os.path.join(
-                    model_save_dir, "fleet_infer_2"
+                    model_save_dir, "fleet_infer_2/infer_2"
                 )
             paddle.distributed.io.save_persistables(
                 exe, model_save_dir_fluid, fleet._origin_program
             )
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
-            feeded_var_names = [var.name for var in feed_var_list]
-            fluid.io.save_inference_model(
-                infer_save_dir_fluid,
-                feeded_var_names,
-                [avg_cost],
-                exe,
-                fleet._origin_program,
+            paddle.static.io.save_inference_model(
+                path_prefix=infer_save_dir_fluid,
+                feed_vars=feed_var_list,
+                fetch_vars=[avg_cost],
+                executor=exe,
+                program=fleet._origin_program,
             )
             fleet.save_inference_model(
-                exe, infer_save_dir_fleet, feeded_var_names, [avg_cost]
+                exe, infer_save_dir_fleet, feed_var_list, [avg_cost]
             )
 
     def run_trainer(self, args):

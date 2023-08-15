@@ -19,6 +19,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -45,11 +46,11 @@ if fluid.is_compiled_with_cuda():
 
 
 def optimizer_setting(parameter_list=None):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=base_lr,
         momentum=momentum_rate,
-        regularization=paddle.regularizer.L2Decay(l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
@@ -354,7 +355,7 @@ class ResNetHelper:
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,
@@ -423,6 +424,19 @@ class TestResnet(unittest.TestCase):
             rtol=1e-05,
             err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
                 predictor_pre, st_pre
+            ),
+        )
+
+    @test_with_new_ir
+    def test_resnet_new_ir(self):
+        static_loss = self.train(to_static=True)
+        dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
             ),
         )
 

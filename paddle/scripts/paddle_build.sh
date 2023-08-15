@@ -743,7 +743,7 @@ EOF
                             done
                         rm -f $tmp_dir/*
                         failed_test_lists=''
-                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests
                         exec_times=$[$exec_times+1]
                     done
@@ -930,6 +930,7 @@ set -ex
 
 function get_precision_ut_mac() {
     on_precision=0
+    serial_list="test_resnet|test_resnet_v2|test_concat_op|test_paddle_save_load"
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precision_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -3149,8 +3150,17 @@ function exec_samplecode_test() {
 
 
 function collect_ccache_hits() {
-    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
-    echo "ccache hit rate: ${rate}%"
+    ccache -s
+    ccache_version=$(ccache -V | grep "ccache version" | awk '{print $3}')
+    echo "$ccache_version"
+    if [[ $ccache_version == 4* ]] ; then
+        rate=$(ccache -s | grep "Hits" | awk 'NR==1 {print $5}' | cut -d '(' -f2 | cut -d ')' -f1)
+        echo "ccache hit rate: ${rate}%"
+    else
+        rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+        echo "ccache hit rate: ${rate}"
+    fi
+
     echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
@@ -3962,7 +3972,7 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_DY2ST_TEST=True
+        export FLAGS_NEW_IR_OPTEST=True
         parallel_test
         check_coverage
         ;;
