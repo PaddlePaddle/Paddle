@@ -14,16 +14,19 @@
 
 #pragma once
 
-#include "paddle/phi/common/reduce_type.h"
-#include "paddle/phi/core/dense_tensor.h"
-
 namespace phi {
 
-template <typename T, typename Context>
-void ReduceKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int root_id,
-                  int reduce_type,
-                  DenseTensor* out);
+enum class ReduceType {
+  kRedSum,
+  kRedMax,
+  kRedMin,
+  kRedProd,
+  kRedAvg,
+  kRedAny,
+  kRedAll
+};
+
+constexpr const char* ReduceTypeStrings[] = {
+    "SUM", "MAX", "MIN", "PRODUCT", "AVG", "ANY", "ALL"};
 
 }  // namespace phi

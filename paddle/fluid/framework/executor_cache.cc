@@ -266,7 +266,7 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
     auto &cached_value = cached_exe_info.GetMutable(program_id, is_grad);
     cached_value.executor_ = pe_and_graph.first;
     cached_value.graph_ = pe_and_graph.second;
-    return std::make_pair(pe_and_graph.first, /*is_new_created=*/true);
+    return std::make_pair(pe_and_graph.first, true);
   } else {
     VLOG(1) << "get exe_info from cache by: " << program_id
             << " is_grad: " << is_grad;
@@ -280,7 +280,7 @@ CacheInfo GetExecutorInfoFromCache(const ProgramDesc &program_desc,
     // need to recreate tmp variables in new scope
     parallel_executor->PrepareVariables(scope);
 
-    return std::make_pair(parallel_executor, /*is_new_created=*/false);
+    return std::make_pair(parallel_executor, false);
   }
 }
 

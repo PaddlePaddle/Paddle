@@ -14,16 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ReduceKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int root_id,
-                  int reduce_type,
-                  DenseTensor* out);
+void NumberCountKernel(const Context& ctx,
+                       const DenseTensor& numbers,
+                       int upper_range,
+                       DenseTensor* out);
 
 }  // namespace phi

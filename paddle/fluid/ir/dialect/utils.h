@@ -147,5 +147,7 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
 
 VariantType GetAttributeData(const ir::Attribute& attr);
 
+bool IsLegacyOp(const std::string& name);
+
 }  // namespace dialect
 }  // namespace paddle

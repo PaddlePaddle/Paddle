@@ -69,5 +69,10 @@ uint16_t GetMasterPort();
 
 std::shared_ptr<TCPStore> CreateOrGetGlobalTCPStore();
 
+// If given a number, balance split it to multiple pieces.
+// For example, the input value is 12, split it to 5 pieces, then return
+// {3, 3, 2, 2, 2}.
+std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces);
+
 }  // namespace distributed
 }  // namespace phi

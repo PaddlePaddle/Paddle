@@ -91,11 +91,11 @@ phi::KernelKey GetConcatExpectedKernelType(
   (void)op_ptr;
   auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
   auto input_data_type = framework::proto::VarType::Type(0);
-  bool flag = 0;
+  bool flag = false;
   for (auto* input : inputs) {
     if (input->IsInitialized()) {
       input_data_type = framework::TransToProtoVarType(input->dtype());
-      flag = 1;
+      flag = true;
       break;
     }
   }
