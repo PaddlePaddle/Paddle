@@ -103,7 +103,7 @@
   - {typename: bool, name: load_as_fp16}
   - {typename: bool, name: model_from_memory}
   outputs:
-    - {typename: 'Tensor[]', name: out, optional: true, intermediate: false}
+    - {typename: 'Tensor[]', name: Out, optional: true, intermediate: false}
   no_need_buffer: null
   data_transform: null
   kernel:
