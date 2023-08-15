@@ -85,30 +85,15 @@ void FastLayerNormXPUKernel(const Context& ctx,
   auto* out_data = ctx.template Alloc<T>(out);
 
 #ifdef PADDLE_WITH_XPU_PLUGIN
-  if (right <= 832) {
-    int r = xpu::plugin::fast_layer_norm_tiny(
-        ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x_data),
-        reinterpret_cast<XPUType*>(out_data),
-        left,
-        right,
-        epsilon,
-        scale_data_fp32,
-        bias_data_fp32);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm_tiny");
-  } else {
-    int r = xpu::layer_norm(ctx.x_context(),
-                            reinterpret_cast<const XPUType*>(x_data),
-                            reinterpret_cast<XPUType*>(out_data),
-                            left,
-                            right,
-                            epsilon,
-                            scale_data_fp32,
-                            bias_data_fp32,
-                            nullptr,
-                            nullptr);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");
-  }
+  int r = xpu::plugin::fast_layer_norm(ctx.x_context(),
+                                       reinterpret_cast<const XPUType*>(x_data),
+                                       reinterpret_cast<XPUType*>(out_data),
+                                       left,
+                                       right,
+                                       epsilon,
+                                       scale_data_fp32,
+                                       bias_data_fp32);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_layer_norm");
 #else
   // int layer_norm(Context* ctx, const T* x, T* y, int64_t m, int64_t n, float
   // eps, const float* scale, const float* bias, float* mean, float* var, bool

@@ -50,11 +50,11 @@ graph:
                     output
 ------------------------------------------------------
 After the pass is applied:
-                    add_x
+                      x
                       |
               fast_layernorm_xpu
                       |
-                    Output
+                    output
 */
 struct FastLayernormXPUPattern : public PatternBase {
   FastLayernormXPUPattern(PDPattern* pattern, const std::string& name_scope);

@@ -84,29 +84,34 @@ static int xpu2_wrapper(Context* ctx,
                         float eps,
                         const float* scale,
                         const float* bias) {
-  if (n % 32 == 0) {
-    xpu2::plugin::fast_layer_norm_tiny_align32<T>
-        <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
-            eps, m, n, x, y, scale, bias);
+  if (n <= 832) {
+    if (n % 32 == 0) {
+      xpu2::plugin::fast_layer_norm_tiny_align32<T>
+          <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
+              eps, m, n, x, y, scale, bias);
+    } else {
+      xpu2::plugin::fast_layer_norm_tiny_common<T>
+          <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
+              eps, m, n, x, y, scale, bias);
+    }
   } else {
-    xpu2::plugin::fast_layer_norm_tiny_common<T>
-        <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
-            eps, m, n, x, y, scale, bias);
+    return layer_norm(ctx, x, y, m, n, eps, scale, bias, nullptr, nullptr);
   }
+
   return SUCCESS;
 }
 
 template <typename T>
-int fast_layer_norm_tiny(Context* ctx,
-                         const T* x,
-                         T* y,
-                         int64_t m,
-                         int64_t n,
-                         float eps,
-                         const float* scale,
-                         const float* bias) {
+int fast_layer_norm(Context* ctx,
+                    const T* x,
+                    T* y,
+                    int64_t m,
+                    int64_t n,
+                    float eps,
+                    const float* scale,
+                    const float* bias) {
   WRAPPER_CHECK_CTX(ctx);
-  WRAPPER_DUMP_FUNCTION_T1(ctx, "fast_layer_norm_tiny", T);
+  WRAPPER_DUMP_FUNCTION_T1(ctx, "fast_layer_norm", T);
   WRAPPER_DUMP_PARAM5(ctx, x, y, m, n, eps);
   WRAPPER_DUMP_PARAM2(ctx, scale, bias);
   WRAPPER_DUMP(ctx);
@@ -125,22 +130,22 @@ int fast_layer_norm_tiny(Context* ctx,
   WRAPPER_UNIMPLEMENTED(ctx);
 }
 
-template int fast_layer_norm_tiny(Context*,
-                                  const float*,
-                                  float*,
-                                  int64_t,
-                                  int64_t,
-                                  float,
-                                  const float*,
-                                  const float*);
-template int fast_layer_norm_tiny(Context*,
-                                  const float16*,
-                                  float16*,
-                                  int64_t,
-                                  int64_t,
-                                  float,
-                                  const float*,
-                                  const float*);
+template int fast_layer_norm(Context*,
+                             const float*,
+                             float*,
+                             int64_t,
+                             int64_t,
+                             float,
+                             const float*,
+                             const float*);
+template int fast_layer_norm(Context*,
+                             const float16*,
+                             float16*,
+                             int64_t,
+                             int64_t,
+                             float,
+                             const float*,
+                             const float*);
 
 }  // namespace plugin
 }  // namespace api

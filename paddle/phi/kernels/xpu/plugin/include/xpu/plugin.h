@@ -67,14 +67,14 @@ DLL_EXPORT int take_along_axis(Context* ctx,
                                int64_t axis);
 
 template <typename T>
-DLL_EXPORT int fast_layer_norm_tiny(Context* ctx,
-                                    const T* x,
-                                    T* y,
-                                    int64_t m,
-                                    int64_t n,
-                                    float eps,
-                                    const float* scale,
-                                    const float* bias);
+DLL_EXPORT int fast_layer_norm(Context* ctx,
+                               const T* x,
+                               T* y,
+                               int64_t m,
+                               int64_t n,
+                               float eps,
+                               const float* scale,
+                               const float* bias);
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu
