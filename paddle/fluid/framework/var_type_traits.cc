@@ -42,7 +42,6 @@
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
 #endif
-#include "paddle/fluid/operators/mudnn_rnn_cache.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)

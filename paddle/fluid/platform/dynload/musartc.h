@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,40 @@ limitations under the License. */
 
 #pragma once
 
+#include <mtrtc.h>
+
+#include <mutex>  // NOLINT
+
+#include "paddle/phi/backends/dynload/musartc.h"
+
 namespace paddle {
 namespace platform {
 namespace dynload {
 
 extern bool HasNVRTC();
 
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name)     \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
+  extern DynLoad__##__name __name
+
+/**
+ * include all needed musartc functions
+ **/
+#define MUSARTC_ROUTINE_EACH(__macro) \
+  __macro(mtrtcVersion);              \
+  __macro(mtrtcGetErrorString);       \
+  __macro(mtrtcCompileProgram);       \
+  __macro(mtrtcCreateProgram);        \
+  __macro(mtrtcDestroyProgram);       \
+  __macro(mtrtcGetMUSA);              \
+  __macro(mtrtcGetMUSASize);          \
+  __macro(mtrtcGetProgramLog);        \
+  __macro(mtrtcGetProgramLogSize)
+
+MUSARTC_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_NVRTC_WRAP);
+
+#undef PLATFORM_DECLARE_DYNAMIC_LOAD_NVRTC_WRAP
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
-

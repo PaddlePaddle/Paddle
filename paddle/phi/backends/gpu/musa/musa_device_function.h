@@ -100,7 +100,8 @@ __forceinline__ __device__ phi::dtype::complex<double> CudaShuffleDownSync(
                                            width));
   return phi::dtype::complex<double>(real, imag);
 }
-#if 0
+
+// TODO(@MTAI): there is compiling error when compiling the following code
 //template <>
 //__forceinline__ __device__ phi::dtype::float16 CudaShuffleXorSync(
 //    unsigned mask, phi::dtype::float16 val, int width) {
@@ -112,7 +113,7 @@ __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleXorSync(
     unsigned mask, phi::dtype::bfloat16 val, int width) {
 #if defined(PADDLE_MUSA_BF16)
   return phi::dtype::bfloat16(
-      __shfl_xor_sync(mask, val.to_nv_bfloat16(), width));
+      __shfl_xor_sync(mask, val.to_mt_bfloat16(), width));
 #else
   PADDLE_ENFORCE(
       false, "__shfl_xor_sync with bfloat16 is not supported on cuda <= 11.");
@@ -149,7 +150,6 @@ template <typename T>
 HOSTDEVICE T Infinity() {
   return INFINITY;
 }
-#endif
 
 template <typename T>
 __device__ T reduceSum(T val, int tid, int len) {

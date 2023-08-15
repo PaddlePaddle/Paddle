@@ -31,12 +31,13 @@ namespace backends {
 namespace gpu {
 
 int DnnVersion() {
-  return 0;
-  //if (!dynload::HasCUDNN()) return -1;
-  //size_t version_major, version_minor, version_patch;
-  //PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenGetVersion(
-  //    &version_major, &version_minor, &version_patch));
-  //return version_major * 100 + version_minor * 10 + version_patch;
+  if (!dynload::HasCUDNN()) return -1;
+  // TODO(@caizhi): mudnnGetVersion is not supported now.
+  // version info will be returned from mudnnGetVersion later.
+  const int version_major = 1;
+  const int version_minor = 1;
+  const int version_patch = 0;
+  return version_major * 1000 + version_minor * 100 + version_patch;
 }
 
 static int GetGPUDeviceCountImpl() {
@@ -49,22 +50,22 @@ static int GetGPUDeviceCountImpl() {
     return 0;
   }
 
-  const auto *cuda_visible_devices = std::getenv("MUSA_VISIBLE_DEVICES");
+  const auto *musa_visible_devices = std::getenv("MUSA_VISIBLE_DEVICES");
 
-  if (cuda_visible_devices != nullptr) {
-    std::string cuda_visible_devices_str(cuda_visible_devices);
-    if (!cuda_visible_devices_str.empty()) {
-      cuda_visible_devices_str.erase(
-          0, cuda_visible_devices_str.find_first_not_of('\''));
-      cuda_visible_devices_str.erase(
-          cuda_visible_devices_str.find_last_not_of('\'') + 1);
-      cuda_visible_devices_str.erase(
-          0, cuda_visible_devices_str.find_first_not_of('\"'));
-      cuda_visible_devices_str.erase(
-          cuda_visible_devices_str.find_last_not_of('\"') + 1);
+  if (musa_visible_devices != nullptr) {
+    std::string musa_visible_devices_str(musa_visible_devices);
+    if (!musa_visible_devices_str.empty()) {
+      musa_visible_devices_str.erase(
+          0, musa_visible_devices_str.find_first_not_of('\''));
+      musa_visible_devices_str.erase(
+          musa_visible_devices_str.find_last_not_of('\'') + 1);
+      musa_visible_devices_str.erase(
+          0, musa_visible_devices_str.find_first_not_of('\"'));
+      musa_visible_devices_str.erase(
+          musa_visible_devices_str.find_last_not_of('\"') + 1);
     }
-    if (std::all_of(cuda_visible_devices_str.begin(),
-                    cuda_visible_devices_str.end(),
+    if (std::all_of(musa_visible_devices_str.begin(),
+                    musa_visible_devices_str.end(),
                     [](char ch) { return ch == ' '; })) {
       VLOG(2) << "MUSA_VISIBLE_DEVICES is set to be "
                  "empty. No GPU detected.";
