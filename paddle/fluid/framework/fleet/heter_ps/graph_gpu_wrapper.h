@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include <thrust/device_ptr.h>
+#include <thrust/execution_policy.h>
+#include <thrust/random.h>
+#include <thrust/shuffle.h>
 #include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <thrust/device_ptr.h>
-#include <thrust/random.h>
-#include <thrust/shuffle.h>
-#include <thrust/execution_policy.h>
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
@@ -201,16 +201,17 @@ class GraphGpuWrapper {
       std::shared_ptr<phi::Allocation>& size_list,
       std::shared_ptr<phi::Allocation>& size_list_prefix_sum,
       std::shared_ptr<phi::Allocation>& feature_list,  // NOLINT
-      std::shared_ptr<phi::Allocation>& slot_list,
-      bool sage_mode = false);  // NOLINT
+      std::shared_ptr<phi::Allocation>& slot_list,     // NOLINT
+      bool sage_mode = false);
   int get_float_feature_info_of_nodes(
       int gpu_id,
       uint64_t* d_nodes,
       int node_num,
-      uint32_t* size_list,
-      uint32_t* size_list_prefix_sum,
+      std::shared_ptr<phi::Allocation>& size_list,
+      std::shared_ptr<phi::Allocation>& size_list_prefix_sum,
       std::shared_ptr<phi::Allocation>& feature_list,  // NOLINT
-      std::shared_ptr<phi::Allocation>& slot_list);    // NOLINT
+      std::shared_ptr<phi::Allocation>& slot_list,     // NOLINT
+      bool sage_mode = false);
   void init_metapath(std::string cur_metapath,
                      int cur_metapath_index,
                      int cur_metapath_len);
@@ -229,7 +230,7 @@ class GraphGpuWrapper {
   std::string& get_node_type_size(std::string first_node_type);
   std::string& get_edge_type_size();
   void set_keys2rank(int gpu_id,
-          std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank);
+                     std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank);
   void show_mem(const char* msg);
   void debug(const char* desc) const;
 
