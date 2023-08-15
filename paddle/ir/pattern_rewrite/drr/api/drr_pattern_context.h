@@ -117,7 +117,7 @@ class Op {
   Tensor& operator()() const;
 
   Tensor& operator()(const Tensor& arg) const;
-  // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
+  Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
   // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
   // Tensor& arg2) const; const Tensor& operator()(const Tensor& arg0, const
   // Tensor& arg1, const Tensor& arg2, const Tensor& arg3) const; const Tensor&
