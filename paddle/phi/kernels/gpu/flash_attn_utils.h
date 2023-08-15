@@ -14,7 +14,42 @@
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/enforce.h"
+
+#ifdef PADDLE_WITH_FLASHATTN
+#include "paddle/phi/backends/dynload/flashattn.h"
+#endif
+
 namespace phi {
+
+#ifdef PADDLE_WITH_FLASHATTN
+static std::pair<uint64_t, uint64_t> GenerateRNGState(
+    const GPUContext& ctx,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const std::string& rng_name,
+    const int64_t batch_size,
+    const int64_t num_heads) {
+  if (fixed_seed_offset.get_ptr()) {
+    const int64_t* fixed_seed_offset_data =
+        fixed_seed_offset.get_ptr()->data<int64_t>();
+    uint64_t seed = static_cast<uint64_t>(fixed_seed_offset_data[0]);
+    uint64_t offset = static_cast<uint64_t>(fixed_seed_offset_data[1]);
+    return std::make_pair(seed, offset);
+  } else {
+    uint64_t inc = batch_size * num_heads * 32;
+    std::pair<uint64_t, uint64_t> seed_offset_pair;
+    if (rng_name != "") {
+      auto gen = phi::GetRandomSeedGenerator(rng_name);
+      seed_offset_pair = gen->IncrementOffset(inc);
+    } else {
+      auto* gen = ctx.GetGenerator();
+      seed_offset_pair = gen->IncrementOffset(inc);
+    }
+    return seed_offset_pair;
+  }
+}
 
 template <typename T>
 struct FlashAttnFwdParamsV2 {
@@ -55,7 +90,7 @@ struct FlashAttnFwdParamsV2 {
                        const DataType q_dtype,
                        const bool is_test,
                        const std::string& rng_name,
-                       const DenseTensor* const fixed_seed_offset_ptr,
+                       const paddle::optional<DenseTensor>& fixed_seed_offset,
                        DenseTensor* _softmax,
                        DenseTensor* _softmax_lse,
                        DenseTensor* _seed_offset)
@@ -78,24 +113,11 @@ struct FlashAttnFwdParamsV2 {
     // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
     // with the same size.
     rng_state = Empty<int64_t>(ctx, {2});
-    if (fixed_seed_offset_ptr) {
-      const int64_t* fixed_seed_offset_data =
-          fixed_seed_offset_ptr->data<int64_t>();
-      seed = static_cast<uint64_t>(fixed_seed_offset_data[0]);
-      offset = static_cast<uint64_t>(fixed_seed_offset_data[1]);
-    } else {
-      uint64_t inc = batch_size * num_heads * 32;
-      std::pair<uint64_t, uint64_t> seed_offset_pair;
-      if (rng_name != "") {
-        auto gen = phi::GetRandomSeedGenerator(rng_name);
-        seed_offset_pair = gen->IncrementOffset(inc);
-      } else {
-        auto* gen = ctx.GetGenerator();
-        seed_offset_pair = gen->IncrementOffset(inc);
-      }
-      seed = seed_offset_pair.first;
-      offset = seed_offset_pair.second;
-    }
+
+    auto seed_offset_pair = GenerateRNGState(
+        ctx, fixed_seed_offset, rng_name, batch_size, num_heads);
+    seed = seed_offset_pair.first;
+    offset = seed_offset_pair.second;
 
     seed_offset->Resize({2});
     int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
@@ -178,4 +200,66 @@ struct FlashAttnBwdParamsV2 {
         ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
   }
 };
+
+static void CheckFlashAttnStatus(const bool status) {
+  PADDLE_ENFORCE_EQ(status,
+                    true,
+                    phi::errors::External(
+                        "Error in Flash-Attention, detail information is: %s",
+                        phi::dynload::flash_attn_error()));
+}
+
+template <typename T>
+__global__ void SimleScaleKernel(const T* input,
+                                 int64_t numel,
+                                 float scale,
+                                 T* ouput) {
+  CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
+    ouput[i] = static_cast<T>(scale * static_cast<float>(input[i]));
+  }
+}
+
+template <typename T, typename Context>
+void ComputeScaleQ(
+    const Context& ctx, int64_t numel, float scale, const T* input, T* output) {
+  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
+  SimleScaleKernel<<<gpu_config.block_per_grid,
+                     gpu_config.thread_per_block,
+                     0,
+                     ctx.stream()>>>(input, numel, scale, output);
+}
+
+static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
+  std::vector<int64_t> mask_dim_4d;
+  if (attn_mask) {
+    const auto& origin_dims = attn_mask->dims();
+    auto rank = origin_dims.size();
+    PADDLE_ENFORCE_GE(
+        rank,
+        4,
+        phi::errors::InvalidArgument(
+            "Teh number of dimenstions of attn_mask is expected to be greater "
+            "or equal to 4, but recieved %d. The shape of attn_mask is {%s}",
+            rank,
+            origin_dims));
+
+    int64_t first_dim = 1;
+    for (int i = 0; i < rank - 3; i++) {
+      first_dim *= origin_dims[i];
+    }
+    mask_dim_4d = {first_dim,
+                   origin_dims[rank - 3],
+                   origin_dims[rank - 2],
+                   origin_dims[rank - 1]};
+  }
+  return mask_dim_4d;
+}
+#endif
+
+static void RaiseNotSupportedError() {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("FlashAttention is unsupported, please check "
+                                 "the GPU compability and CUDA Version."));
+}
+
 }  // namespace phi

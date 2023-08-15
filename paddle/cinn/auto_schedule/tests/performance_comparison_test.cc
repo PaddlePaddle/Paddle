@@ -55,6 +55,7 @@ DEFINE_string(resnet50_model_dir,
 DEFINE_int32(evaluate_knobs,
              -1,
              "the options to control which schedule tests will be run.");
+DECLARE_double(cinn_infer_model_version);
 
 namespace cinn {
 namespace auto_schedule {
@@ -355,6 +356,7 @@ TEST_F(PerformanceTester, Gather) {
 // paddle model test
 TEST_F(PerformanceTester, ResNet50) {
   CHECK_NE(FLAGS_resnet50_model_dir, "");
+  FLAGS_cinn_infer_model_version = 1.0;
   std::unordered_map<std::string, std::vector<int64_t>> feeds = {
       {"inputs", {batch_size, 3, 224, 224}}};
   Evaluate(cinn::frontend::PaddleModelConvertor(common::DefaultNVGPUTarget())

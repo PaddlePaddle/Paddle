@@ -264,4 +264,20 @@ void Operation::Verify() {
   }
 }
 
+std::vector<OpOperand> Operation::operands() const {
+  std::vector<OpOperand> res;
+  for (uint32_t i = 0; i < num_operands(); ++i) {
+    res.push_back(operand(i));
+  }
+  return res;
+}
+
+std::vector<OpResult> Operation::results() const {
+  std::vector<OpResult> res;
+  for (uint32_t i = 0; i < num_results(); ++i) {
+    res.push_back(result(i));
+  }
+  return res;
+}
+
 }  // namespace ir

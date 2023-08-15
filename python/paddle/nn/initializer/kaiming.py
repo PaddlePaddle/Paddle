@@ -84,7 +84,7 @@ class MSRAInitializer(Initializer):
                    should be added. Used in static graph only, default None.
 
         Returns:
-            The initialization op
+            The initialization op.
         """
         block = self._check_block(block)
 
@@ -220,14 +220,12 @@ class KaimingNormal(MSRAInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            linear = nn.Linear(2,
-                               4,
-                               weight_attr=nn.initializer.KaimingNormal())
-            data = paddle.rand([30, 10, 2], dtype='float32')
-            res = linear(data)
+            >>> linear = nn.Linear(2, 4, weight_attr=nn.initializer.KaimingNormal())
+            >>> data = paddle.rand([30, 10, 2], dtype='float32')
+            >>> res = linear(data)
 
     """
 
@@ -268,14 +266,12 @@ class KaimingUniform(MSRAInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            linear = nn.Linear(2,
-                               4,
-                               weight_attr=nn.initializer.KaimingUniform())
-            data = paddle.rand([30, 10, 2], dtype='float32')
-            res = linear(data)
+            >>> linear = nn.Linear(2, 4, weight_attr=nn.initializer.KaimingUniform())
+            >>> data = paddle.rand([30, 10, 2], dtype='float32')
+            >>> res = linear(data)
 
     """
 

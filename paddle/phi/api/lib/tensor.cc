@@ -403,12 +403,7 @@ void Tensor::reset() {
 
 /* Part 6: Operator overloading */
 
-Tensor &Tensor::operator=(const Tensor &x) & {
-  impl_ = x.impl_;
-  autograd_meta_ = x.autograd_meta_;
-  name_ = x.name_;
-  return *this;
-}
+Tensor &Tensor::operator=(const Tensor &x) & = default;
 
 Tensor &Tensor::operator=(Tensor &&x) & {
   impl_ = std::move(x.impl_);

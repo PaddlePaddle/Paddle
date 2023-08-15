@@ -38,7 +38,7 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-Communicator::Communicator() {}
+Communicator::Communicator() = default;
 
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
@@ -796,8 +796,8 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
-  send_scope_.reset(new Scope());
-  xpu_temp_scope_.reset(new Scope());
+  send_scope_ = std::make_unique<Scope>();
+  xpu_temp_scope_ = std::make_unique<Scope>();
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
     auto &varnames = ctx.origin_varnames;
@@ -807,7 +807,7 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
               send_queue_size_);
     }
   }
-  send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
+  send_threadpool_ = std::make_unique<::ThreadPool>(thread_pool_size_);
 }
 
 AsyncCommunicator::~AsyncCommunicator() {
@@ -1517,7 +1517,7 @@ void FLCommunicator::InitBrpcClient(
                              // before, but no need for Coordinator
   }
   if (coordinator_client_ptr_ == nullptr) {
-    coordinator_client_ptr_.reset(new CoordinatorClient);
+    coordinator_client_ptr_ = std::make_unique<CoordinatorClient>();
   }
   int16_t servers = host_sign_list.size();
   coordinator_client_ptr_->_env = &ps_env_;

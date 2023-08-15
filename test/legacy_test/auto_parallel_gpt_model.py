@@ -35,7 +35,7 @@ def init_global():
 
 class MultiHeadAttention(nn.Layer):
     """
-    Attention mapps queries and a set of key-value pairs to outputs, and
+    Attention maps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces.
     """
@@ -114,7 +114,7 @@ class MultiHeadAttention(nn.Layer):
 
     def _prepare_qkv(self, query, key, value, use_cache=False, cache=None):
         """
-        Prapares linear projected queries, keys and values for usage of subsequnt
+        Prepares linear projected queries, keys and values for usage of subsequent
         multiple parallel attention. If `cache` is not None, using cached results
         to reduce redundant calculations.
         """
@@ -203,7 +203,7 @@ class MultiHeadAttention(nn.Layer):
 
     def gen_cache(self, key, value=None, type=Cache):
         """
-        Generates cache for `forward` usage in inference accroding to arguments.
+        Generates cache for `forward` usage in inference according to arguments.
         The generated cache is an instance of `MultiHeadAttention.Cache` or an
         instance of `MultiHeadAttention.StaticCache`.
         """
@@ -573,7 +573,7 @@ class GPTEmbeddings(nn.Layer):
             ones = paddle.ones_like(input_ids, dtype="int64")
             seq_length = paddle.cumsum(ones, axis=-1)
             position_ids = seq_length - ones
-        input_embedings = self.word_embeddings(input_ids)
+        input_embeddings = self.word_embeddings(input_ids)
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.word_embeddings.weight, _global_process_mesh, ["x", None]
@@ -592,7 +592,7 @@ class GPTEmbeddings(nn.Layer):
             )
 
         position_embeddings = self.position_embeddings(position_ids)
-        embeddings = input_embedings + position_embeddings
+        embeddings = input_embeddings + position_embeddings
         embeddings = self.dropout(embeddings)
         return embeddings
 

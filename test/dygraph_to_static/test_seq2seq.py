@@ -70,11 +70,11 @@ def train(args, attn_model=False):
                 dropout=args.dropout,
             )
 
-        global_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
-        optimizer = fluid.optimizer.SGD(
+        gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
+        optimizer = paddle.optimizer.SGD(
             args.learning_rate,
-            parameter_list=model.parameters(),
-            grad_clip=global_norm_clip,
+            parameters=model.parameters(),
+            grad_clip=gloabl_norm_clip,
         )
 
         model.train()

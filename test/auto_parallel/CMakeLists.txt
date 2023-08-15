@@ -77,6 +77,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
   set_tests_properties(test_pass_quantization
                        PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 60)
+  py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
+  set_tests_properties(test_reshard_s_to_r
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout

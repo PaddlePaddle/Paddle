@@ -260,7 +260,17 @@ class ETCDMaster(Master):
                     delete_success = True
                 except:
                     time.sleep(1)
-        lease = self.client.lease(ttl)
+
+        if self.ctx.is_auto_tuner_mode():
+            lease_success = False
+            while not lease_success:
+                try:
+                    lease = self.client.lease(ttl)
+                    lease_success = True
+                except:
+                    time.sleep(1)
+        else:
+            lease = self.client.lease(ttl)
 
         # self.client.delete_prefix(self.job_prefix)
 

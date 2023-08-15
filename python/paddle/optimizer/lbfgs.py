@@ -143,6 +143,8 @@ def _strong_wolfe(
 
                 a_lo = aj;
         end(repeat)
+
+    reference: https://github.com/pytorch/pytorch
     """
 
     d_norm = d.abs().max()
@@ -275,7 +277,6 @@ def _strong_wolfe(
             # Armijo condition not satisfied or not lower than lowest point
             bracket[high_pos] = alpha
             bracket_f[high_pos] = loss_new
-            # bracket_g[high_pos] = grad_new.clone(memory_format=torch.contiguous_format)
             bracket_g[high_pos] = grad_new.clone()
             bracket_gtd[high_pos] = gtd_new
             low_pos, high_pos = (
@@ -523,7 +524,7 @@ class LBFGS(Optimizer):
     def _add_grad(self, alpha, direction):
         offset = 0
         for p in self._params:
-            numel = reduce(lambda x, y: x * y, p.shape)
+            numel = reduce(lambda x, y: x * y, p.shape) if p.shape != [] else 1
             p = paddle.assign(
                 p.add(
                     direction[offset : offset + numel].reshape(p.shape) * alpha

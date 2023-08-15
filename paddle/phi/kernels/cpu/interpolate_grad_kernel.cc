@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -190,11 +191,11 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
       int input_x = floorf(x_n);
       MT x_t = x_n - input_x;
 
-      MT x_coeffs[4];
-      MT y_coeffs[4];
+      std::array<MT, 4> x_coeffs;
+      std::array<MT, 4> y_coeffs;
 
-      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
-      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
+      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs.data(), x_t);
+      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs.data(), y_t);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
