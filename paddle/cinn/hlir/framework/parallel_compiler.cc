@@ -51,9 +51,9 @@ CompilationResult ParallelCompiler::operator()() {
 
 void ParallelCompiler::SplitTask() {
   CHECK(!context_->graph->fusion_groups.empty());
-  CHECK(context_->graph->fusion_groups.size() ==
-            context_->lowered_funcs.size() ||
-        context_->lowered_funcs.empty());
+  CHECK(context_->lowered_funcs.empty() ||
+        context_->graph->fusion_groups.size() ==
+            context_->lowered_funcs.size());
   // Assign fusion_group to each task.
   // The maximum number of tasks is determined by the number of threads.
   // Fusion_group is assigned to tasks in order and continuous.
@@ -169,6 +169,8 @@ void ParallelCompiler::Task::Lowering() {
             << "}\n";
     auto lowered_group = op_lowerer.Lower(group);
     CHECK_EQ(lowered_group.size(), 1) << "Lowerd Function Is Not Equal 1!";
+    backends::CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
+        lowered_group.front(), idx);
     lowered_funcs.emplace_back(std::move(lowered_group));
   }
 }
@@ -176,55 +178,58 @@ void ParallelCompiler::Task::Lowering() {
 void ParallelCompiler::Task::CodegenAndJit() {
   VLOG(2) << "Start Codegen and JIT with Group [" << start_gidx << "-"
           << stop_gidx << ") at thread" << std::this_thread::get_id();
-  // build module
-  ir::Module::Builder builder(common::UniqName("module"), context->target);
-  for (auto& func : lowered_funcs) {
-    CHECK_EQ(func.size(), 1);
-    builder.AddFunction(func[0]);
-  }
-
-  auto ir_module = builder.Build();
-  if (context->target == common::DefaultNVGPUTarget()) {
+  for (int i = 0; i < lowered_funcs.size(); ++i) {
+    // build module
+    ir::Module::Builder builder(common::UniqName("module"), context->target);
+    builder.AddFunction(lowered_funcs[i].front());
+    auto ir_module = builder.Build();
+    if (context->target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
-    auto splited_module = backends::SplitCudaAndHostModule(ir_module);
-    auto hmodule = std::get<0>(splited_module);
-    auto dmodule = std::get<1>(splited_module);
+      auto splited_module = backends::SplitCudaAndHostModule(ir_module);
+      auto hmodule = std::get<0>(splited_module);
+      auto dmodule = std::get<1>(splited_module);
 
-    VLOG(3) << "Host Code:\n" << hmodule;
-    VLOG(3) << "Device Code:\n" << dmodule;
-    backends::CodeGenCUDA_Dev codegen(context->target);
-    auto cuda_c = codegen.Compile(dmodule);
-    CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
-                           << dmodule;
-    source_codes.emplace_back(cuda_c);
+      VLOG(3) << "Host Code:\n" << hmodule;
+      VLOG(3) << "Device Code:\n" << dmodule;
+      backends::CodeGenCUDA_Dev codegen(context->target);
+      auto cuda_c = codegen.Compile(dmodule);
+      CHECK(!cuda_c.empty())
+          << "Compile CUDA C code failed from device module:\n"
+          << dmodule;
+      source_codes.emplace_back(cuda_c);
+      backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+          cuda_c, start_gidx + i);
+      // cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
 
-    cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
+      using runtime::cuda::CUDAModule;
+      backends::nvrtc::Compiler compiler;
+      auto ptx = compiler(cuda_c);
+      CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
+      source_ptxs.emplace_back(ptx);
+      backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx,
+                                                               start_gidx + i);
+      // load cumodule
+      cumodule = std::make_unique<CUDAModule>(ptx,
+                                              compiler.compile_to_cubin()
+                                                  ? CUDAModule::Kind::CUBIN
+                                                  : CUDAModule::Kind::PTX);
 
-    using runtime::cuda::CUDAModule;
-    backends::nvrtc::Compiler compiler;
-    auto ptx = compiler(cuda_c);
-    CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    source_ptxs.emplace_back(ptx);
-    // load cumodule
-    cumodule = std::make_unique<CUDAModule>(ptx,
-                                            compiler.compile_to_cubin()
-                                                ? CUDAModule::Kind::CUBIN
-                                                : CUDAModule::Kind::PTX);
-
-    // register kernel
-    backends::RuntimeSymbols symbols;
-    for (auto& fn : dmodule.functions()) {
-      auto cufunc = cumodule->GetFunction(0, fn->name);
-      CHECK(cufunc);
-      symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
-    }
-    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
-                                               std::move(symbols));
-    engine->Link<backends::CodeGenCUDA_Host>(hmodule);
+      // register kernel
+      backends::RuntimeSymbols symbols;
+      for (auto& fn : dmodule.functions()) {
+        auto cufunc = cumodule->GetFunction(0, fn->name);
+        CHECK(cufunc);
+        symbols.RegisterVar(fn->name + "_ptr_",
+                            reinterpret_cast<void*>(cufunc));
+      }
+      engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
+                                                 std::move(symbols));
+      engine->Link<backends::CodeGenCUDA_Host>(hmodule);
 #endif
-  } else {
-    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());
-    engine->Link<backends::CodeGenX86>(ir_module);
+    } else {
+      engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());
+      engine->Link<backends::CodeGenX86>(ir_module);
+    }
   }
 }
 
@@ -247,6 +252,8 @@ void ParallelCompiler::Task::BuildInstruction() {
                           group->GetFuncName());
 
     instr->Finalize();
+    // Dump instruction
+    backends::CompilationInfoDumper::DumpInstructionByGroupIndex(instr, idx);
     instructions.push_back(std::move(instr));
   }
 }
