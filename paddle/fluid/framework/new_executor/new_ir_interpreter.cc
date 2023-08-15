@@ -38,6 +38,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
@@ -428,8 +429,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op_name == "pd.fused_softmax_mask_upper_triangle" ||
-          op_name == "pd.fused_softmax_mask_upper_triangle_grad") {
+      if (dialect::IsLegacyOp(op_name)) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,
