@@ -370,7 +370,7 @@ class Fleet:
         return self
 
     def _init_hybrid_parallel_env(self):
-        """initialize the hybrid environment"""
+        """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
         self.dp_degree = self.hybrid_configs["dp_degree"]
         self.mp_degree = self.hybrid_configs["mp_degree"]
@@ -534,7 +534,9 @@ class Fleet:
     def worker_endpoints(self, to_string=False):
         """
         Get current worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
-
+        Args:
+            to_string (Boolean, optional): if True, return string
+                default: False
         Returns:
             list/string: server endpoints
 
@@ -591,6 +593,9 @@ class Fleet:
         """
         Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
+        Args:
+            to_string (Boolean, optional): if True, return string
+                default: False
         Returns:
             list/string: server endpoints
 
@@ -651,7 +656,9 @@ class Fleet:
         """
         initialize `Communicator` for parameter server training.
 
-
+        Args:
+            scopes (core.Scope, optional): the scope to save state
+                default: None
         Returns:
             None
 
@@ -721,7 +728,13 @@ class Fleet:
         """
         load fleet model from path
 
-
+        Args:
+            path (str): the path to load fleet model
+            mode(int): model load mode
+                0: load checkpoint model
+                1: load delta model (delta means diff, it's usually for online predict)
+                2: load base model (base model filters some feasigns in checkpoint, it'susually for online predict)
+                3: load batch model (do some statistic works in checkpoint, such as calculate unseen days of each feasign)
         Returns:
             None
 
