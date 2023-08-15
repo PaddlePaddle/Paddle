@@ -313,7 +313,6 @@ void DestroyBlasLtHandle(blasLtHandle_t handle) {
 
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
   if (phi::dynload::HasCUDNN()) {
-    std::cout << __FILE__ << " :" << __LINE__ << std::endl;
 #ifdef PADDLE_WITH_HIP
     size_t miopen_major, miopen_minor, miopen_patch;
     PADDLE_ENFORCE_GPU_SUCCESS(

@@ -60,7 +60,6 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                            bool deterministic,
                            int groups,
                            DenseTensor* transformed_output) {
-  std::cout << __FILE__ << " : Start " << std::endl;
   const T* input_data = transformed_input->data<T>();
   const T* filter_data = transformed_filter_channel->data<T>();
   T* output_data = transformed_output->data<T>();

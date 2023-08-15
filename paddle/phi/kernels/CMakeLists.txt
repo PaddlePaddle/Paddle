@@ -29,7 +29,6 @@ file(GLOB kernel_primitive_h "primitive/*.h")
 file(
   GLOB kernel_cu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-<<<<<<< HEAD
   "gpu/*.cu"
   "gpu/*.cu.cc"
   "gpudnn/*.cu"
@@ -106,7 +105,6 @@ if(WITH_MUSA)
        "gpudnn/conv_grad_kernel.cu"
        "gpudnn/conv_transpose_grad_kernel.cu"
        "gpudnn/conv_transpose_kernel.cu"
-       "gpudnn/conv_kernel_mu.cu"
        "gpudnn/pool_grad_kernel.cu"
        "sparse/gpu/softmax_grad_kernel.cu"
        "sparse/gpu/softmax_kernel.cu"

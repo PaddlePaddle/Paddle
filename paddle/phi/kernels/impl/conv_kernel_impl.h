@@ -35,7 +35,6 @@ void ConvKernelImpl(const Context& dev_ctx,
                     const std::vector<int>& dilations_t,
                     const std::string& data_format,
                     DenseTensor* output) {
-  std::cout << "conv start ################################ " << __FILE__ << " :" << __LINE__ << std::endl;
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
@@ -62,6 +62,7 @@ void PoolRawKernel(const Context& ctx,
                    bool adaptive,
                    const std::string& padding_algorithm,
                    DenseTensor* out) {
+  std::cout << __FILE__ << " :" << __LINE__ << std::endl;
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
@@ -114,11 +115,13 @@ void PoolRawKernel(const Context& ctx,
         int reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
         if (reduce_num > 0 &&
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
-#if defined(__HIPCC__) || defined(__NVCC__)
+#if defined(__HIPCC__) || defined(__NVCC__) || defined(__MUSACC__)
+          std::cout << __FILE__ << " :" << __LINE__ << std::endl;
           auto stream = ctx.stream();
           funcs::ReduceKernel<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
               ctx, x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim);
 #else  // for cpu
+          std::cout << __FILE__ << " :" << __LINE__ << std::endl;
           funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
           funcs::AvgPool<T> pool_process;
           pool2d_forward(ctx,

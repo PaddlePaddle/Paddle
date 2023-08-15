@@ -33,7 +33,6 @@ struct SearchAlgorithm<dynload::Convolution::Algorithm> {
     };
 
     workspace_handle.RunFuncSync(mudnn_find_func, workspace_size);
-    /* VLOG(3) << "choose algo " << algo; */
     return algo;
   }
 
@@ -41,6 +40,23 @@ struct SearchAlgorithm<dynload::Convolution::Algorithm> {
     return 0;
   }
 };
+
+
+void InternalMemFree(void* ptr) {
+  if (!ptr) {
+    return;
+  }
+  musaFree(ptr);
+}
+
+dynload::MemoryHandler InternalMemAlloc(size_t s) {
+  void* data = nullptr;
+  if (s) {
+    musaMalloc(&data, s);
+  }
+  return dynload::MemoryHandler(data, InternalMemFree);
+}
+
 
 #if 0
 template <>
@@ -156,94 +172,5 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
 };
 
 #endif
-
-using muTensor = ::musa::dnn::Tensor;
-using muHandle = ::musa::dnn::Handle;
-// using BINARY_MODE = ::musa::dnn::Binary::Mode;
-muTensor CreateMUTensor(const DenseTensor& tensor) {
-  muTensor mu_tensor;
-  mu_tensor.SetNdInfo(tensor.dims().size(), tensor.dims().Get());
-  switch (tensor.dtype()) {
-    case DataType::FLOAT32:
-      mu_tensor.SetType(muTensor::Type::FLOAT);
-      break;
-    case DataType::INT32:
-      mu_tensor.SetType(muTensor::Type::INT32);
-      break;
-    case DataType::INT64:
-      mu_tensor.SetType(muTensor::Type::INT64);
-      break;
-    default:
-      std::cerr << "=========mismatch dtype in kernel=====\n";
-      throw;
-  }
-  mu_tensor.SetAddr(tensor.data());
-  return mu_tensor;
-}
-
-void ConfigConv(
-    ::musa::dnn::Convolution& c,
-    const std::vector<int>& str,
-    const std::vector<int>& pad ,
-    const std::vector<int>& dil,
-    int64_t groups) {
-  auto sz = str.size();
-  if (sz == 2) {
-    // CHECK_MUDNN_STATUS(
-        c.SetNdInfo(
-            {static_cast<int>(pad[0]), static_cast<int>(pad[1])},
-            {static_cast<int>(str[0]), static_cast<int>(str[1])},
-            {static_cast<int>(dil[0]), static_cast<int>(dil[1])});
-        // "SetNdInfo");
-  } else {
-    // conv3d
-    // PADDLE_ENFORCE_GPU_SUCCESS(
-        c.SetNdInfo(
-            {static_cast<int>(pad[0]),
-             static_cast<int>(pad[1]),
-             static_cast<int>(pad[2])},
-            {static_cast<int>(str[0]),
-             static_cast<int>(str[1]),
-             static_cast<int>(str[2])},
-            {static_cast<int>(dil[0]),
-             static_cast<int>(dil[1]),
-             static_cast<int>(dil[2])});
-        // "SetNdInfo");
-  }
-  // CHECK_MUDNN_STATUS(
-      c.SetComputeMode(::musa::dnn::Convolution::ComputeMode::ALL);
-      // "SetComputeMode");
-  c.SetGroups(groups);
-}
-
-void InternalMemFree(void* ptr) {
-  if (!ptr) {
-    return;
-  }
-  musaFree(ptr);
-}
-
-::musa::dnn::MemoryHandler InternalMemAlloc(size_t s) {
-  void* data = nullptr;
-  if (s) {
-    musaMalloc(&data, s);
-  }
-  return ::musa::dnn::MemoryHandler(data, InternalMemFree);
-}
-
-
-void ConfigFormat(muTensor& mt, phi::backends::gpu::DataLayout layout) {
-  switch (layout) {
-    case phi::backends::gpu::DataLayout::kNHWC:
-      mt.SetFormat(muTensor::Format::NHWC);
-      break;
-    case phi::backends::gpu::DataLayout::kNCHW:
-      mt.SetFormat(muTensor::Format::NCHW);
-      break;
-    default:
-      std::cerr << "=========mismatch layout in kernel===== " << __FILE__ << std::endl;
-      throw;
-  }
-}
 
 } // namespace phi
