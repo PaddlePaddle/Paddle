@@ -211,7 +211,8 @@ GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
 
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map) {
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis) {
   std::vector<int64_t> dims_mapping;
   for (int64_t i = 0, n = axes.size(); i < n; i++) {
     std::string axis = axes.substr(i, 1);
@@ -220,10 +221,15 @@ std::vector<int64_t> GetDimsMappingForAxes(
     } else {
       auto iter = axis_to_dim_map.find(axis);
       if (iter == axis_to_dim_map.end()) {
-        phi::errors::InvalidArgument(
-            "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        if (unsharded_miss_axis) {
+          dims_mapping.emplace_back(-1);
+        } else {
+          phi::errors::InvalidArgument(
+              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        }
+      } else {
+        dims_mapping.emplace_back(iter->second);
       }
-      dims_mapping.emplace_back(iter->second);
     }
   }
   return dims_mapping;

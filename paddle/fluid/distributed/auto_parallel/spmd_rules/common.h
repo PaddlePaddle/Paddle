@@ -144,7 +144,8 @@ GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
 // its dims mapping to -1.
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map);
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis = false);
 
 // The static map that stores and initializes all the registered SPMD rules.
 class SPMDRuleMap {
