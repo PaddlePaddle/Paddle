@@ -36,6 +36,7 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
@@ -461,9 +462,12 @@ void NewIRInterpreter::BuildInstruction() {
                                                    var_name_2_id_,
                                                    variable_2_var_name_));
       }
+    } else if (op->dialect()->name() == "cinn") {
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CinnJitInstruction>(op_idx++, place_, op, scope_));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Now only support pd or pd_kernel dialect."));
+          "Now only support pd_kernel and cinn dialect."));
     }
   }
 }
