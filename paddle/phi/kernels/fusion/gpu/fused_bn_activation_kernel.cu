@@ -52,7 +52,6 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
                              DenseTensor *saved_mean,
                              DenseTensor *saved_variance,
                              DenseTensor *reserve_space) {
-  std::cerr << "!!!!!!!!!!!!!!!!" << std::endl;
 // Note(andsonder): Fused bn activation only used in the gpu place.
 #if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
   using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
