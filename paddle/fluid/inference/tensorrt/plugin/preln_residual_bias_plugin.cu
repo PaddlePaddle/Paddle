@@ -359,9 +359,15 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   int hidden = input_dims.d[2];
-  const size_t rows = static_cast<size_t>(
-      input_dims.d[0] * input_dims.d[1]);  // batch * seq_length
-  const size_t cols = static_cast<size_t>(input_dims.d[2]);
+  int rows_dy = input_dims.d[0] * input_dims.d[1];
+  int cols_dy = input_dims.d[2];
+  if (input_dims.nbDims == 4) {
+    hidden = input_dims.d[3];
+    rows_dy = input_dims.d[0] * input_dims.d[1] * input_dims.d[2];
+    cols_dy = input_dims.d[3];
+  }
+  const size_t rows = static_cast<size_t>(rows_dy);  // batch * seq_length
+  const size_t cols = static_cast<size_t>(cols_dy);
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
