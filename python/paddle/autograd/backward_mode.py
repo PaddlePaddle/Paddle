@@ -56,6 +56,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
             >>> paddle.autograd.backward([z1, z2], [grad_tensor1, grad_tensor2], True)
             >>> print(x.grad)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[12. 18.]
              [17. 25.]]
 
@@ -63,6 +64,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
             >>> paddle.autograd.backward([z1, z2], [grad_tensor1, None], True)
             >>> print(x.grad)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[12. 18.]
              [17. 25.]]
 
