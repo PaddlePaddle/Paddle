@@ -325,18 +325,15 @@ void OpTranscriber::InsertSliceOperationForInput(
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
-    auto& name = n.first;
     auto& args = n.second;
 
     for (const auto& arg_name : args) {
       bool check =
-          param_map->count(arg_name) != 0 || !yaml_input_set.count(arg_name);
-      IR_ENFORCE(check,
-                 "arg %s.%s as input should be exists before prasing %s",
-                 name,
-                 arg_name,
-                 op_desc.Type());
-      auto defining_info = (*param_map)[arg_name];
+          param_map->count(arg_name) != 0 && !yaml_input_set.count(arg_name);
+      if (!check) {
+        continue;
+      }
+      auto defining_info = param_map->at(arg_name);
       if (defining_info.generated_by_vector) {
         InsertSliceOperationForTarget(
             ctx, param_map, program, defining_info, arg_name);
@@ -391,7 +388,8 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       }
     }
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
-             << legacy_input_name << " " << legacy_input_vars.size();
+             << legacy_input_name << " " << legacy_input_vars.size() << "["
+             << legacy_input_vars << "]";
 
     if (legacy_input_vars.empty() && mutable_attributes != nullptr &&
         mutable_attributes->count(info.name) != 0) {
@@ -613,45 +611,14 @@ void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
                                           const OpDesc& op_desc,
                                           ir::Operation* operation,
                                           const OpOutputMapping& arg_to_idx) {
-  for (const auto& n : op_desc.Outputs()) {
-    auto& name = n.first;
+  for (const auto& [arg_name, idx] : arg_to_idx) {
     VLOG(10) << "[output recording]"
-             << "[" << op_desc.Type() << "]" << name;
-    const auto& args = n.second;
-    size_t idx_in_vector = 0;
-    for (const auto& arg_name : args) {
-      if (arg_name == kEmptyVarName) {
-        idx_in_vector++;
-        continue;
-      }
-      auto idx_iter = arg_to_idx.find(arg_name);
-      if (idx_iter == arg_to_idx.end()) {
-        VLOG(4) << "[output recording]"
-                << "[" << op_desc.Type() << "][skip]" << arg_name;
-        continue;
-      }
-      auto idx = idx_iter->second;
-      VLOG(10) << "[output recording]"
-               << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
+             << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
+    ir::OpResult value = operation->result(idx);
+    bool generated_by_vector = value.type().isa<ir::VectorType>();
 
-      ir::OpResult value = operation->result(idx);
-      bool generated_by_vector = value.type().isa<ir::VectorType>();
-
-      // Specially process TensorArray, this because we cannot distinguish it
-      // with Vector<DenseTensor> by other conditions but we cannot support it
-      // like Vector<DenseTensor>
-      if (args.size() == 1) {
-        VarDesc* var = op_desc.Block()->FindVarRecursive(args[0]);
-        if (var->GetType() ==
-            paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
-          generated_by_vector = false;
-        }
-      }
-
-      (*param_map)[arg_name] = VariableDefiningInfo(
-          value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
-      idx_in_vector++;
-    }
+    (*param_map)[arg_name] = VariableDefiningInfo(
+        value, generated_by_vector, generated_by_vector ? idx : -1);
   }
 }
 
