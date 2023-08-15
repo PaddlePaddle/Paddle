@@ -134,13 +134,10 @@ RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
 COPY ./python/requirements.txt /root/
-COPY ./python/unittest_py/requirements.txt /home/
 RUN pip3.7 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.7 --no-cache-dir install -r /home/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.8 --no-cache-dir install -r /home/requirements.txt && \
-    pip3.9 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.9 --no-cache-dir install -r /home/requirements.txt
+    pip3.9 --no-cache-dir install -r /root/requirements.txt
+
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 #RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
 #CMD source ~/.bashrc
