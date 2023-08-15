@@ -487,6 +487,64 @@ HOSTDEVICE inline complex<T> log(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> log2(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  complex<T> log2 = complex<T>(std::log(2.0), 0.0);
+  return complex<T>(thrust::log(thrust::complex<T>(a)) / log2);
+#else
+  complex<T> log2 = complex<T>(std::log(2.0), 0.0);
+  return complex<T>(std::log(std::complex<T>(a)) / log2);
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> log10(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::log10(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::log10(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> log1p(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  T x = a.real();
+  T y = a.imag();
+  T zabs = thrust::abs(a);
+  T theta = thrust::atan2(y, x + T(1));
+  if (zabs < 0.5) {
+    T r = x * (T(2) + x) + y * y;
+    if (r == 0) {
+      return complex<T>({x, theta});
+    }
+    return complex<T>({T(0.5) * thrust::log1p(r), theta});
+  } else {
+    T z0 = thrust::hypot(x + 1, y);
+    return complex<T>({thrust::log(z0), theta});
+  }
+#else
+  T x = a.real();
+  T y = a.imag();
+  T zabs = std::abs(a);
+  T theta = std::atan2(y, x + T(1));
+  if (zabs < 0.5) {
+    T r = x * (T(2) + x) + y * y;
+    if (r == 0) {
+      return complex<T>({x, theta});
+    }
+    return complex<T>({T(0.5) * std::log1p(r), theta});
+  } else {
+    T z0 = std::hypot(x + 1, y);
+    return complex<T>({std::log(z0), theta});
+  }
+#endif
+}
+
+template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const complex<T>& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;
