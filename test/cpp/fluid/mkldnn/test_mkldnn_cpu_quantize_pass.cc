@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
-#include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include <glog/logging.h>
+#include "paddle/fluid/platform/enforce.h"
 
 using std::pair;
 using std::string;
@@ -36,25 +36,25 @@ namespace pass {
 
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
-    
+
 static float const SCALE = 2.f;
 const std::vector<std::string> PreGraphPasses({
-   "simplify_with_basic_ops_pass",
-   "quant_dequant_mkldnn_pass",
-   "conv_bn_fuse_pass",
-   "conv_eltwiseadd_bn_fuse_pass",
-   "conv_affine_channel_mkldnn_fuse_pass",
-   "conv_transpose_bn_fuse_pass",
-   "conv_transpose_eltwiseadd_bn_fuse_pass",
-   "conv_bias_mkldnn_fuse_pass",
-   "conv_transpose_bias_mkldnn_fuse_pass",
-   "conv_elementwise_add_mkldnn_fuse_pass",
-   "conv_activation_mkldnn_fuse_pass",
-   "operator_scale_onednn_fuse_pass",
-   "operator_unsqueeze2_onednn_fuse_pass",
-   "operator_reshape2_onednn_fuse_pass",
-   "cpu_quantize_placement_pass",
-   "cpu_quantize_pass",
+    "simplify_with_basic_ops_pass",
+    "quant_dequant_mkldnn_pass",
+    "conv_bn_fuse_pass",
+    "conv_eltwiseadd_bn_fuse_pass",
+    "conv_affine_channel_mkldnn_fuse_pass",
+    "conv_transpose_bn_fuse_pass",
+    "conv_transpose_eltwiseadd_bn_fuse_pass",
+    "conv_bias_mkldnn_fuse_pass",
+    "conv_transpose_bias_mkldnn_fuse_pass",
+    "conv_elementwise_add_mkldnn_fuse_pass",
+    "conv_activation_mkldnn_fuse_pass",
+    "operator_scale_onednn_fuse_pass",
+    "operator_unsqueeze2_onednn_fuse_pass",
+    "operator_reshape2_onednn_fuse_pass",
+    "cpu_quantize_placement_pass",
+    "cpu_quantize_pass",
 });
 
 TEST(cpuQuantizePass, ConvReLU6) {
@@ -66,7 +66,7 @@ TEST(cpuQuantizePass, ConvReLU6) {
   conv2d_op->SetInput("Input", {"conv2d-X"});
   conv2d_op->SetInput("Filter", {"conv2d-Y"});
   conv2d_op->SetOutput("Output", {"conv2d-Out"});
-  
+
   const std::vector<int> strides({1, 1});
   const std::vector<int> paddings({1, 1});
   const std::vector<int> dilations({1, 1});
@@ -81,7 +81,7 @@ TEST(cpuQuantizePass, ConvReLU6) {
   relu6_op->SetType("relu6");
   relu6_op->SetAttr("threshold", 6.f);
   relu6_op->SetInput("X", {"conv2d-Out"});
-  relu6_op->SetOutput("Out", {"relu-Out"}); 
+  relu6_op->SetOutput("Out", {"relu-Out"});
 
   auto place = phi::CPUPlace();
   std::unique_ptr<VarQuantScale> scales(new VarQuantScale());
@@ -99,27 +99,26 @@ TEST(cpuQuantizePass, ConvReLU6) {
 
   paddle::framework::Scope scope;
 
-  std::unique_ptr<paddle::framework::ir::Graph> graph(new paddle::framework::ir::Graph(prog));
+  std::unique_ptr<paddle::framework::ir::Graph> graph(
+      new paddle::framework::ir::Graph(prog));
   (graph)->SetNotOwned(paddle::framework::ir::kParamScopeAttr, &scope);
-   
-  for (const auto &pass : PreGraphPasses) {
+
+  for (const auto& pass : PreGraphPasses) {
     auto pass_ = paddle::framework::ir::PassRegistry::Instance().Get(pass);
-    if(pass == "cpu_quantize_pass"){
-        pass_->Set("quant_var_scales", scales.get());
+    if (pass == "cpu_quantize_pass") {
+      pass_->Set("quant_var_scales", scales.get());
     }
     graph.reset(pass_->Apply(graph.release()));
   }
   int fused_conv2d_num = 0;
   for (auto* node : graph->Nodes()) {
-    if(node->IsOp() && node->Op() && node->Op()->Type() =="fused_conv2d"){
-        CHECK_EQ(node->Op()->GetAttrIfExists<float>("fuse_beta"), 6)
-            << "Attr fuse_beta must equal to 6.";
-        fused_conv2d_num++;
+    if (node->IsOp() && node->Op() && node->Op()->Type() == "fused_conv2d") {
+      CHECK_EQ(node->Op()->GetAttrIfExists<float>("fuse_beta"), 6)
+          << "Attr fuse_beta must equal to 6.";
+      fused_conv2d_num++;
     }
   }
-  CHECK_GT(fused_conv2d_num, 0)
-      << "Graph must contain fused_conv2d";
-
+  CHECK_GT(fused_conv2d_num, 0) << "Graph must contain fused_conv2d";
 }
 
 }  // namespace pass
