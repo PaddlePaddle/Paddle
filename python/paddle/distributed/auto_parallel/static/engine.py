@@ -100,14 +100,14 @@ class Engine:
             >>> engine = auto.Engine(model, loss, optimizer, metrics)
             >>> # fit
             >>> engine.fit(train_dataset,
-            ...             epochs=2,
-            ...             batch_size=64)
+            ...            epochs=2,
+            ...            batch_size=64)
             >>> # evaluate
             >>> engine.evaluate(valid_dataset,
             ...                 batch_size=64)
             >>> # predict
             >>> engine.predict(valid_dataset,
-            ...                 batch_size=64)
+            ...                batch_size=64)
             >>> # save
             >>> engine.save("./my_model")
             >>> # load
