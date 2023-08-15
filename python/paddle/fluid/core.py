@@ -488,23 +488,12 @@ ops_contain_none = {
 }
 
 
-def _set_prim_forward_blacklist(ops=None):
-    if ops is None:
-        prim_config["forward_blacklist"] = []
-    elif isinstance(ops, str):
-        prim_config["forward_blacklist"].add(ops)
-    elif isinstance(ops, (list, tuple)):
-        for item in ops:
-            if not isinstance(item, str):
-                raise TypeError(
-                    "ops set in forward_blacklist must belong to [str, str of tuple or list]"
-                )
-            else:
-                prim_config["forward_blacklist"].add(item)
-    else:
-        raise TypeError(
-            "ops set in forward_blacklist must belong to [str, str of tuple or list]"
-        )
+def _set_prim_forward_blacklist(*args):
+    for item in args:
+        if not isinstance(item, str):
+            raise TypeError("ops set in forward_blacklist must belong to str")
+        else:
+            prim_config["forward_blacklist"].add(item)
     return
 
 
