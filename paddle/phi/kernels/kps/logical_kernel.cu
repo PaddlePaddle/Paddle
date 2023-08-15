@@ -84,7 +84,9 @@ PD_REGISTER_KERNEL(logical_xor, KPS, ALL_LAYOUT, phi::LogicalXorKernel, int) {
                      int64_t,                                \
                      int,                                    \
                      int8_t,                                 \
-                     int16_t) {                              \
+                     int16_t,                                \
+                     phi::dtype::complex<float>,             \
+                     phi::dtype::complex<double>) {          \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);    \
   }
 

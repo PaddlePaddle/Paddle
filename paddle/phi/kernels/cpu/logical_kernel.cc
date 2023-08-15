@@ -64,7 +64,9 @@ void LogicalNotKernel(const Context& dev_ctx,
                      int64_t,                               \
                      int,                                   \
                      int8_t,                                \
-                     int16_t) {                             \
+                     int16_t,                               \
+                     phi::dtype::complex<float>,            \
+                     phi::dtype::complex<double>) {         \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);   \
   }
 
