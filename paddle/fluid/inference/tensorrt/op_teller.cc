@@ -1610,8 +1610,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
       if (!(x_shape.size() == 3 || x_shape.size() == 4)) {
         VLOG(3) << "The fused_bias_dropout_residual_layer_norm op only support "
-                   "3-D or 4-D input in "
-                   "tensorrt.";
+                   "3-D or 4-D input in tensorrt.";
         return false;
       }
     }
