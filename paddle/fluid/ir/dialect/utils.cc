@@ -22,7 +22,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd.fused_softmax_mask_upper_triangle_grad",
     "pd.load_combine",
     "pd.fused_bn_add_activation_",
-    "pd.fused_bn_add_activation_grad"};
+    "pd.fused_bn_add_activation_grad",
+    "pd.load_combine"};
 
 enum class AttrType {
   UNDEFINED = 0,

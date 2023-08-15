@@ -74,7 +74,7 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_leaf__doc__,
+PyDoc_STRVAR(tensor_is_leaf__doc__,  // NOLINT
              R"DOC(is_leaf
 
 Whether a Tensor is leaf Tensor.
