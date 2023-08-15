@@ -207,6 +207,18 @@ void SliceOp::Verify() const {
       output_type);
 }
 
+void SliceOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    const ir::OpResult &input) {
+  argument.inputs = {input};
+  std::vector<ir::Type> outputs_types;
+  for (size_t idx = 0; idx < input.type().dyn_cast<ir::VectorType>().size();
+       ++idx) {
+    argument.output_types.emplace_back(
+        input.type().dyn_cast<ir::VectorType>()[idx]);
+  }
+}
+
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT
 
 void ConstantOp::Build(Builder &builder,

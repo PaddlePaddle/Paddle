@@ -78,26 +78,9 @@ SLICE_OP_TEMPLATE = """
 COMPUTE_OP_TEMPLATE = """
     paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
-API_LIST = [
-    'add_n',
-    'mean',
-    'sum',
-    'divide',
-    'full',
-    'tanh_grad',
-    'mean_grad',
-    'concat',
-    'add',
-    'multiply',
-    'elementwise_pow',
-    'scale',
-    'reshape',
-    'expand',
-    'tile',
-    'add_grad',
-]
 OP_RESULT = 'ir::OpResult'
 VECTOR_TYPE = 'ir::VectorType'
+PD_MANUAL_OP_LIST = ['add_n']
 
 
 def get_op_class_name(op_name):
@@ -167,13 +150,14 @@ class CodeGen:
 
     def _gen_ret_type(self, op_info):
         type_list = op_info.output_type_list
-        assert len(type_list) >= 1
         if len(type_list) > 1:
             return 'std::tuple<{}>'.format(
                 ', '.join([self._type_map[type] for type in type_list])
             )
         elif len(type_list) == 1:
             return self._type_map[type_list[0]]
+        elif len(type_list) == 0:
+            return 'void'
 
     def _gen_one_declare(self, op_info, op_name):
         return API_DECLARE_TEMPLATE.format(
@@ -186,7 +170,12 @@ class CodeGen:
         declare_str = ''
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
-                if op_name not in API_LIST:
+                # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
+                # is wrong, so temporarily skip the automatic generation of these APIs
+                if (
+                    op_info.infer_meta_func is None
+                    and op_name not in PD_MANUAL_OP_LIST
+                ):
                     continue
                 declare_str += self._gen_one_declare(op_info, op_name)
         body = declare_str
@@ -258,11 +247,12 @@ class CodeGen:
         return slice_op_str, ret_list
 
     def _gen_return_result(self, ret_list):
-        assert len(ret_list) >= 1
         if len(ret_list) > 1:
             return 'return std::make_tuple({});'.format(', '.join(ret_list))
-        else:
+        elif len(ret_list) == 1:
             return f'return {ret_list[0]};'
+        elif len(ret_list) == 0:
+            return 'return;'
 
     def _gen_one_impl(self, op_info, op_name):
         in_combine, in_combine_op_list = self._gen_in_combine(op_info)
@@ -290,7 +280,12 @@ class CodeGen:
         impl_str = ''
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
-                if op_name not in API_LIST:
+                # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
+                # is wrong, so temporarily skip the automatic generation of these APIs
+                if (
+                    op_info.infer_meta_func is None
+                    and op_name not in PD_MANUAL_OP_LIST
+                ):
                     continue
                 impl_str += self._gen_one_impl(op_info, op_name)
         body = impl_str

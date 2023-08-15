@@ -93,6 +93,13 @@ class IR_API CombineOp : public ir::Op<CombineOp> {
                     const std::vector<ir::OpResult> &inputs);
 
   void Verify() const;
+  std::vector<ir::Value> inputs() {
+    std::vector<ir::Value> inputs;
+    for (uint32_t idx = 0; idx < num_operands(); idx++) {
+      inputs.push_back(operand_source(static_cast<int>(idx)));
+    }
+    return inputs;
+  }
   ir::OpResult out() { return result(0); }
 };
 
@@ -108,8 +115,21 @@ class IR_API SliceOp : public ir::Op<SliceOp> {
   static constexpr uint32_t attributes_num = 1;
 
   static const char *attributes_name[attributes_num];
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const ir::OpResult &input);
+
   void Verify() const;
-  ir::OpResult out() { return result(0); }
+  ir::Value input() { return operand_source(0); }
+  std::vector<ir::OpResult> outputs() {
+    //  return this->results();
+    std::vector<ir::OpResult> outputs;
+    for (uint32_t idx = 0; idx < num_results(); idx++) {
+      outputs.push_back(result(static_cast<int>(idx)));
+    }
+    return outputs;
+  }
 };
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
