@@ -197,6 +197,7 @@ class L2Decay(WeightDecayRegularizer):
 
         .. code-block:: python
             :name: code-example2
+
             >>> # Example2: set Regularizer in parameters
             >>> # Set L2 regularization in parameters.
             >>> # Global regularizer does not take effect on my_conv2d for this case.

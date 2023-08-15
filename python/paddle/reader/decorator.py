@@ -67,12 +67,13 @@ def cache(reader):
             ...         yield i
             ...
             >>> # All data is cached into memory
-            >>> cached_reader = paddle.io.cache(reader)
+            >>> cached_reader = paddle.fluid.io.cache(reader)
 
-            >>> # Output: 0 1 2
             >>> for i in cached_reader():
             ...     print(i)
-            0 1 2
+            0
+            1
+            2
     """
     all_data = tuple(reader())
 
@@ -144,12 +145,10 @@ def shuffle(reader, buf_size):
         .. code-block:: python
 
             >>> # doctest: +SKIP('outputs are 0~4 unordered arrangement')
-            >>> import paddle.fluid as fluid
-
             >>> def reader():
             ...     for i in range(5):
             ...         yield i
-            >>> shuffled_reader = fluid.io.shuffle(reader, 3)
+            >>> shuffled_reader = paddle.reader.decorator.shuffle(reader, 3)
             >>> for e in shuffled_reader():
             ...     print(e)
             >>> # outputs are 0~4 unordered arrangement
@@ -258,13 +257,12 @@ def compose(*readers, **kwargs):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> def reader_creator_10(dur):
             ...     def reader():
             ...         for i in range(10):
             ...             yield i
             ...     return reader
-            >>> reader = fluid.io.compose(reader_creator_10(0), reader_creator_10(0))
+            >>> reader = paddle.reader.decorator.compose(reader_creator_10(0), reader_creator_10(0))
     """
     check_alignment = kwargs.pop('check_alignment', True)
 
@@ -319,12 +317,14 @@ def buffered(reader, size):
             ...         yield i
             ...
             >>> # Create a buffered reader, and the buffer size is 2.
-            >>> buffered_reader = paddle.io.buffered(reader, 2)
+            >>> buffered_reader = paddle.reader.decorator.buffered(reader, 2)
 
             >>> # Output: 0 1 2
             >>> for i in buffered_reader():
             ...     print(i)
-            0 1 2
+            0
+            1
+            2
     """
 
     class EndSignal:
@@ -375,15 +375,17 @@ def firstn(reader, n):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
-
             >>> def reader():
             ...     for i in range(100):
             ...         yield i
-            >>> firstn_reader = fluid.io.firstn(reader, 5)
+            >>> firstn_reader = paddle.reader.decorator.firstn(reader, 5)
             >>> for e in firstn_reader():
             ...     print(e)
-            0 1 2 3 4
+            0
+            1
+            2
+            3
+            4
     """
 
     # TODO(yuyang18): Check if just drop the reader, could clean the opened
@@ -526,9 +528,8 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     Example:
 
     .. code-block:: python
+
         >>> import paddle
-        >>> import paddle.fluid as fluid
-        >>> from paddle.fluid.io import multiprocess_reader
         >>> import numpy as np
 
         >>> sample_files = ['sample_file_1', 'sample_file_2']
@@ -562,7 +563,7 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         ...
         ...         reader = fluid.io.PyReader(feed_list=[image], capacity=2)
         ...
-        ...         decorated_reader = multiprocess_reader(
+        ...         decorated_reader = paddle.reader.multiprocess_reader(
         ...             [generate_reader(sample_files[0]), generate_reader(sample_files[1])], False)
         ...
         ...         reader.decorate_sample_generator(decorated_reader, batch_size=2, places=[place])

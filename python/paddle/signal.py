@@ -52,24 +52,27 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
     .. code-block:: python
 
         >>> import paddle
-        >>> from paddle.signal import frame
+        >>> from paddle import signal
 
         >>> # 1D
         >>> x = paddle.arange(8)
-        >>> y0 = frame(x, frame_length=4, hop_length=2, axis=-1)
+        >>> y0 = signal.frame(x, frame_length=4, hop_length=2, axis=-1)
+        >>> print(y0)
         [[0, 2, 4],
          [1, 3, 5],
          [2, 4, 6],
          [3, 5, 7]]
 
-        >>> y1 = frame(x, frame_length=4, hop_length=2, axis=0)
+        >>> y1 = signal.frame(x, frame_length=4, hop_length=2, axis=0)
+        >>> print(y1)
         [[0, 1, 2, 3],
          [2, 3, 4, 5],
          [4, 5, 6, 7]]
 
         >>> # 2D
         >>> x0 = paddle.arange(16).reshape([2, 8])
-        >>> y0 = frame(x0, frame_length=4, hop_length=2, axis=-1)
+        >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
+        >>> print(y0)
         [[[0, 2, 4],
           [1, 3, 5],
           [2, 4, 6],
@@ -80,18 +83,18 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
           [11, 13, 15]]]
 
         >>> x1 = paddle.arange(16).reshape([8, 2])
-        >>> y1 = frame(x1, frame_length=4, hop_length=2, axis=0)
+        >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
         >>> print(y1.shape)
         [3, 4, 2]
 
         >>> # > 2D
         >>> x0 = paddle.arange(32).reshape([2, 2, 8])
-        >>> y0 = frame(x0, frame_length=4, hop_length=2, axis=-1)
+        >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
         >>> print(y0.shape)
         [2, 2, 4, 3]
 
         >>> x1 = paddle.arange(32).reshape([8, 2, 2])
-        >>> y1 = frame(x1, frame_length=4, hop_length=2, axis=0)
+        >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
         >>> print(y1.shape)
         [3, 4, 2, 2]
     """
@@ -482,7 +485,7 @@ def istft(
             >>> import paddle
             >>> from paddle.signal import stft, istft
 
-            >>> paddle.seed(0)convert-doctest --debug doctest
+            >>> paddle.seed(0)
 
             >>> # STFT
             >>> x = paddle.randn([8, 48000], dtype=paddle.float64)
@@ -495,7 +498,7 @@ def istft(
             >>> print(x_.shape)
             [8, 48000]
 
-            >>> np.allclose(x, x_)  # True
+            >>> np.allclose(x, x_)
             True
     """
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'istft')
