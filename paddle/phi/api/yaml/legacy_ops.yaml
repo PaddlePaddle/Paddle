@@ -881,6 +881,7 @@
     data_type : x
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
+  optional : reserve_space
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
