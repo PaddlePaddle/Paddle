@@ -239,8 +239,8 @@ void set_constant(const phi::DeviceContext& context,
     return;
   }
 #endif
-#if defined(PADDLE_WITH_CUDA) || \
-    defined(PADDLE_WITH_HIP)  // || defined(PADDLE_WITH_MUSA )
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // tensor->place().apply_visitor(func);
   phi::VisitPlace(tensor->place(), func);
 #elif defined(PADDLE_WITH_XPU)

@@ -262,7 +262,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
-#else   // CUDA & MUSA
+#else  // CUDA & MUSA
   ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                 args,
                                                 bwd_result,
@@ -385,7 +385,7 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    double,
                    float16,
                    phi::dtype::bfloat16) {}
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(conv2d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,

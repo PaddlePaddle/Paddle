@@ -198,7 +198,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       gridx,
                                                       input_height,
                                                       largest));
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
       FIXED_BLOCK_DIM(switch (phi::funcs::getMaxLength(k)) {
         FIXED_MAXLENGTH(
             phi::funcs::KeMatrixTopK<T, maxLength, kBlockDim>
@@ -307,7 +307,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       gridx,
                                                       input_height,
                                                       largest));
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
       FIXED_BLOCK_DIM(switch (phi::funcs::getMaxLength(k)) {
         FIXED_MAXLENGTH(phi::funcs::KeMatrixTopK<T, maxLength, kBlockDim>
                         <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(

@@ -102,11 +102,11 @@ __forceinline__ __device__ phi::dtype::complex<double> CudaShuffleDownSync(
 }
 
 // TODO(@MTAI): there is compiling error when compiling the following code
-//template <>
-//__forceinline__ __device__ phi::dtype::float16 CudaShuffleXorSync(
-//    unsigned mask, phi::dtype::float16 val, int width) {
-//  return phi::dtype::float16(__shfl_xor_sync(mask, val.to_half(), width));
-//}
+// template <>
+// __forceinline__ __device__ phi::dtype::float16 CudaShuffleXorSync(
+//     unsigned mask, phi::dtype::float16 val, int width) {
+//   return phi::dtype::float16(__shfl_xor_sync(mask, val.to_half(), width));
+// }
 
 template <>
 __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleXorSync(
@@ -187,4 +187,3 @@ __device__ T reduceSum(T val, int tid, int len) {
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
-
