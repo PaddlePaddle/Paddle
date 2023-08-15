@@ -3555,6 +3555,7 @@ void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& decrease_axis,
                        MetaTensor* out,
                        MetaConfig config) {
+  std::cerr << "slice infer meta" << std::endl;
   auto in_dims = input.dims();
   PADDLE_ENFORCE_LT(
       in_dims.size(),

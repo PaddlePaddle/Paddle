@@ -507,6 +507,7 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
+            print("forward program", progs[0])
             return progs[0]
         else:
             return self.infer_program
@@ -520,6 +521,7 @@ class PartialProgramLayer:
                 progs = self._train_pure_fp16_forward_backward_program
             else:
                 progs = self._train_forward_backward_program
+            print("backward program", progs[1])
             return progs[1]
         else:
             """

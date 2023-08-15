@@ -108,11 +108,13 @@ void SliceKernel(const Context& ctx,
                  const std::vector<int64_t>& infer_flags,
                  const std::vector<int64_t>& decrease_axis,
                  DenseTensor* out) {
+  std::cerr << "cpu slice here" << std::endl;
   int rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();
   auto& ends = ends_arr.GetData();
 
+  // std::cerr << "cpu slice here" << std::endl;
   switch (rank) {
     case 1:
       SliceCompute<T, Context, 1>(

@@ -968,6 +968,8 @@ void NewIRInterpreter::TraceRunInstructionList(
             << "]";
     RunInstructionBase(instr_node);
 
+    instr_node->DeviceContext().Wait();
+
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
       break;
