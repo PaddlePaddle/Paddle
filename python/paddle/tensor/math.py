@@ -5138,13 +5138,13 @@ def gcd_(x, y, name=None):
         # they won't be used.
         y_equal_0 = y == 0
         y_safe = paddle.where(y_equal_0, paddle.ones(y.shape, y.dtype), y)
-        x, y = (
-            paddle.where_(y_equal_0, x, y),
+        y, x = (
             paddle.where(
                 y_equal_0,
                 paddle.zeros(y.shape, y.dtype),
                 paddle.mod(x, y_safe),
             ),
+            paddle.where_(y_equal_0, x, y),
         )
         return (
             paddle.where(x < y, x, y),
@@ -5227,13 +5227,14 @@ def lcm_(x, y, name=None):
     # paddle.mod will raise an error when any element of y is 0. To avoid
     # that, we change those zeros to ones. Their values don't matter because
     # they won't be used.
-    d_equal_0 = paddle.equal(d, 0)
-    d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
-    out = paddle.where(
-        d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe
+    d_not_equal_0 = d != 0
+    d_safe = paddle.where(d_not_equal_0, d, paddle.ones(d.shape, d.dtype))
+    out = paddle.where_(
+        d_not_equal_0,
+        paddle.abs_(x.multiply_(y)).floor_divide_(d_safe),
+        paddle.zeros(d.shape, d.dtype),
     )
-    paddle.assign(out, x)
-    return x
+    return out
 
 
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):

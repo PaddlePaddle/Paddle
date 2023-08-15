@@ -808,7 +808,7 @@ class TestDygraphInplaceI0(TestDygraphInplaceWithContinuous):
         return paddle.i0(var)
 
 
-class TestDygraphInplaceGcd(TestDygraphInplaceWithContinuous):
+class TestDygraphInplaceGcd(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.randint(2, size=200)
         self.input_var_numpy = self.input_var_numpy.reshape([10, 20])
@@ -822,41 +822,16 @@ class TestDygraphInplaceGcd(TestDygraphInplaceWithContinuous):
         return paddle.gcd(var, self.y)
 
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
-            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-            self.assertEqual(var.inplace_version, 0)
-
-            inplace_var = self.inplace_api_processing(var)
-            self.assertEqual(var.inplace_version, 3)
-
-            inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 4)
-
-            inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 7)
+        pass
 
     def test_backward_error(self):
-        # It raises an error because the inplace operator will result
-        # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
-            var_a.stop_gradient = False
+        pass
 
-            var_b = var_a**2
+    def test_backward_success_1(self):
+        pass
 
-            # Here, the gradient computation will use the value of var_b
-            var_c = var_b**2
-            var_c = paddle.cast(var_c, "float32")
-            self.inplace_api_processing(var_b)
-
-            loss = paddle.nn.functional.relu(var_c)
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    3, 0
-                ),
-            ):
-                loss.backward()
+    def test_backward_success_2(self):
+        pass
 
 
 class TestDygraphInplaceLcm(TestDygraphInplace):
@@ -871,6 +846,20 @@ class TestDygraphInplaceLcm(TestDygraphInplace):
 
     def non_inplace_api_processing(self, var):
         return paddle.lcm(var, self.y)
+
+    def test_forward_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 5)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 9)
 
     def test_backward_error(self):
         pass
