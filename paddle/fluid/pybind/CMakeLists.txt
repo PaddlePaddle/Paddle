@@ -57,18 +57,7 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS}
-      paddle_rpc
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      phi
-      glog)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${BRPC_DEPS} zlib phi)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)

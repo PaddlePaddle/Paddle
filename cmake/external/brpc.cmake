@@ -107,3 +107,13 @@ add_dependencies(brpc extern_brpc)
 add_definitions(-DBRPC_WITH_GLOG)
 
 list(APPEND external_project_dependencies brpc)
+
+set(BRPC_DEPS
+    brpc
+    protobuf
+    ssl
+    crypto
+    leveldb
+    glog
+    snappy
+    gflags)

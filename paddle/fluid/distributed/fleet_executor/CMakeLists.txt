@@ -5,20 +5,11 @@ endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_ARM_BRPC)
-  set(BRPC_DEPS arm_brpc snappy phi glog)
+  set(FLUID_BRPC_DEPS arm_brpc snappy phi glog)
 elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      phi
-      glog)
+  set(FLUID_BRPC_DEPS ${BRPC_DEPS} zlib phi)
 else()
-  set(BRPC_DEPS "")
+  set(FLUID_BRPC_DEPS "")
 endif()
 
 cc_library(
@@ -53,7 +44,7 @@ cc_library(
        op_registry
        phi
        glog
-       ${BRPC_DEPS})
+       ${FLUID_BRPC_DEPS})
 if(WITH_DISTRIBUTE)
   set(DISTRIBUTE_COMPILE_FLAGS
       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"

@@ -35,15 +35,9 @@ else()
     ps_framework_proto
     framework_proto
     sendrecv_rpc
-    brpc
-    leveldb
-    ssl
-    crypto
-    protobuf
+    ${BRPC_DEPS}
     ${flags_dep}
-    glog
     zlib
-    snappy
     device_context)
 endif()
 

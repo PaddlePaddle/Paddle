@@ -226,18 +226,18 @@ cc_test(
   SRCS var_type_traits_test.cc
   DEPS var_type_traits)
 
-set(BRPC_DEPS "")
+set(FLUID_BRPC_DEPS "")
 if(WITH_PSCORE)
-  set(BRPC_DEPS brpc ssl crypto)
+  set(FLUID_BRPC_DEPS ${BRPC_DEPS})
 endif()
 if(WITH_PSLIB)
   if(WITH_PSLIB_BRPC)
-    set(BRPC_DEPS pslib_brpc)
+    set(FLUID_BRPC_DEPS pslib_brpc)
   elseif(NOT WITH_HETERPS)
-    set(BRPC_DEPS brpc ssl crypto)
+    set(FLUID_BRPC_DEPS ${BRPC_DEPS})
   endif()
   if(WITH_ARM_BRPC)
-    set(BRPC_DEPS arm_brpc)
+    set(FLUID_BRPC_DEPS arm_brpc)
   endif()
 endif()
 
@@ -248,7 +248,7 @@ cc_library(
 cc_library(
   device_worker
   SRCS device_worker.cc
-  DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
+  DEPS trainer_desc_proto lod_tensor scope ${FLUID_BRPC_DEPS})
 cc_test(
   device_worker_test
   SRCS device_worker_test.cc
@@ -833,7 +833,7 @@ if(WITH_DISTRIBUTE)
            heter_service_proto
            fleet
            heter_server
-           brpc
+           ${${BRPC_DEPS}}
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
