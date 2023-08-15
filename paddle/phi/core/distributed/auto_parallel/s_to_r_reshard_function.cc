@@ -46,10 +46,9 @@ bool SToRReshardFunction::IsSuitable(const DistTensor& in,
   return flag;
 }
 
-std::shared_ptr<DistTensor> SToRReshardFunction::Eval(
-    DeviceContext* dev_ctx,
-    const DistTensor& in,
-    const TensorDistAttr& out_dist_attr) {
+DistTensor SToRReshardFunction::Eval(DeviceContext* dev_ctx,
+                                     const DistTensor& in,
+                                     const TensorDistAttr& out_dist_attr) {
   // TODO(liyurui): Only support transfer shard(0) to replicate for now.
   // Concat is needed when transfer shard(x) to replicate, will be supported
   // later.
@@ -64,9 +63,10 @@ std::shared_ptr<DistTensor> SToRReshardFunction::Eval(
   DenseTensor out_all_gather = ReshardAllGatherFunctor(
       dev_ctx, in_physical_tensor_cur_rank, in_process_ids);
 
-  return std::make_shared<DistTensor>(
-      out_all_gather, out_all_gather.dims(), out_dist_attr);
+  return DistTensor(out_all_gather, out_all_gather.dims(), out_dist_attr);
 }
+
+REGISTER_RESHARD_FUNC(SToRReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi

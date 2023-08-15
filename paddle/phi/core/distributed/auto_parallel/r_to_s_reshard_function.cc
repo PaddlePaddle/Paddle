@@ -46,10 +46,9 @@ bool RToSReshardFunction::IsSuitable(const DistTensor& in,
   return flag;
 }
 
-std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
-    phi::DeviceContext* dev_ctx,
-    const DistTensor& in,
-    const TensorDistAttr& out_dist_attr) {
+DistTensor RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+                                     const DistTensor& in,
+                                     const TensorDistAttr& out_dist_attr) {
   const auto& out_dims_mapping = out_dist_attr.dims_mapping();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
@@ -90,9 +89,10 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
   VLOG(3) << "The shape of physical tensor after split is "
           << out_physical_tensor_cur_rank.dims();
 
-  return std::make_shared<DistTensor>(
-      out_physical_tensor_cur_rank, in.dims(), out_dist_attr);
+  return DistTensor(out_physical_tensor_cur_rank, in.dims(), out_dist_attr);
 }
+
+REGISTER_RESHARD_FUNC(RToSReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi
