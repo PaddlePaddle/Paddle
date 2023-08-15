@@ -140,14 +140,21 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
 PD_REGISTER_KERNEL(c_embedding_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::CEmbeddingGradKernel,
                    float,
                    double,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                    phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(c_embedding_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CEmbeddingGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 #endif
-                   phi::dtype::float16) {
-}
