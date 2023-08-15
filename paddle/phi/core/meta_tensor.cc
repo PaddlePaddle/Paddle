@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -258,6 +259,12 @@ const LoD& MetaTensor::lod() const {
     PADDLE_THROW(phi::errors::Unimplemented("Unsupported getting lod of `%s`.",
                                             tensor_->type_info().name()));
   }
+}
+
+/////////////// For Auto Parallel ////////////////
+
+const auto_parallel::TensorDistAttr& DistMetaTensor::dist_attr() const {
+  return static_cast<DistTensor*>(tensor_)->dist_attr();
 }
 
 }  // namespace phi
