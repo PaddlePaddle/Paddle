@@ -12,10 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
-namespace distributed {
-enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
+
+KernelSignature NumberCountOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("number_count", {"numbers"}, {"upper_range"}, {"Out"});
 }
+
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(number_count, phi::NumberCountOpArgumentMapping);
