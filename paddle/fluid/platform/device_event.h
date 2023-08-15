@@ -31,7 +31,8 @@ using ::paddle::platform::kXPU;
 USE_EVENT(kCPU)
 USE_EVENT_WAIT(kCPU, kCPU)
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 USE_EVENT(kCUDA);
 USE_EVENT_WAIT(kCUDA, kCUDA)
 USE_EVENT_WAIT(kCPU, kCUDA)

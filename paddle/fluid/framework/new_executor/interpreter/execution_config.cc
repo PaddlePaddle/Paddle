@@ -53,7 +53,8 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
     processor_count = std::thread::hardware_concurrency();
     if (processor_count) {
       if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
         device_count = phi::backends::gpu::GetGPUDeviceCount();
 #endif
       }

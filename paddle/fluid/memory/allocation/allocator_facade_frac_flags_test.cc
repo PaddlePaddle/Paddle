@@ -17,7 +17,8 @@
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -46,7 +47,8 @@ void AllocateTestCases() {
     ASSERT_EQ(cpu_allocation->size(), size);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     place = platform::CUDAPlace(0);
     size = 1024;
@@ -82,7 +84,8 @@ void AllocateTestCases() {
 }
 
 TEST(Allocator, Allocator) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
   FLAGS_gpu_allocator_retry_time = 500;
   FLAGS_fraction_of_cuda_pinned_memory_to_use = 0.5;

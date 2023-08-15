@@ -250,7 +250,8 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
 
   const auto &place = dev_ctx.GetPlace();
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     ConcatDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                               tensor_list,
                               dense_tensor,
@@ -307,7 +308,8 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
 
   const auto &place = dev_ctx.GetPlace();
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     SplitDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                              tensor,
                              &dense_list,

@@ -117,7 +117,8 @@ PD_REGISTER_KERNEL(save_sr,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(save,
                    GPU,
                    ALL_LAYOUT,

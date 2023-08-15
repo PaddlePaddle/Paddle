@@ -19,7 +19,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #define USE_DEVICE
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
@@ -53,7 +54,8 @@ BuddyAllocator::BuddyAllocator(
           platform::PlaceHelper::CreatePlace(dev_type));
     };
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     init_allocate_size_func_ = &platform::GpuInitAllocSize;
     re_allocate_size_func_ = &platform::GpuReallocSize;
 #endif
@@ -249,7 +251,8 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   allocate_bytes = DeviceAllocateSize(
       init_allocate_size_func_, re_allocate_size_func_, request_bytes);
 #else
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   allocate_bytes = DeviceAllocateSize(
       &platform::GpuInitAllocSize, &platform::GpuReallocSize, request_bytes);
 #endif

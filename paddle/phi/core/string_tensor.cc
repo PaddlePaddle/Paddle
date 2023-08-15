@@ -114,7 +114,8 @@ void StringTensor::init_holder() {
   if (place.GetType() == phi::AllocationType::CPU) {
     std::memset(ptr, 0, bytes_size);
   } else if (place.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_HIP
     hipMemset(ptr, 0, bytes_size);
 #elif defined(PADDLE_WITH_MUSA)

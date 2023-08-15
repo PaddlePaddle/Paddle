@@ -16,7 +16,8 @@ limitations under the License. */
 
 #include <string>
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 

@@ -36,7 +36,8 @@ struct RowwiseMean2D {
                   DenseTensor* vec);
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename T>
 class RowwiseMean2D<phi::GPUContext, T> {
  public:
@@ -93,7 +94,8 @@ struct ColwiseSum2D {
                   DenseTensor* vec);
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename T>
 class ColwiseSum2D<phi::GPUContext, T> {
  public:

@@ -172,7 +172,8 @@ class HeterServiceContext {
   int place_num_;
   Scope* scope_{nullptr};
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   gpuEvent_t event_;
 #endif
   std::vector<OperatorBase*> ops_;
@@ -204,7 +205,8 @@ class HeterXpuTrainer : public TrainerBase {
   virtual std::string GetDumpPath(int tid) { return ""; }
   virtual void InitDumpEnv() {}
   template <typename T>
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   void HeterMemCpy(phi::DenseTensor* tensor,
                    phi::DenseTensor* root_tensor,
                    const paddle::platform::Place& thread_place,
@@ -242,7 +244,8 @@ class HeterXpuTrainer : public TrainerBase {
   std::vector<Scope*> place_scopes_;
   BtObjectPool<HeterServiceContext> object_pool_;
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::vector<gpuStream_t> copy_streams_;
   std::vector<gpuEvent_t> events_;
 #endif

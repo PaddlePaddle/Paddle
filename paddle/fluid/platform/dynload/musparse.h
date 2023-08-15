@@ -29,27 +29,27 @@ namespace dynload {
   extern DynLoad__##__name __name
 
 #if defined(PADDLE_WITH_MUSA)
-#define MUSPARSE_ROUTINE_EACH(__macro)    \
-  __macro(musparseSetStream);             \
-  __macro(musparseCreateMatDescr);        \
-  __macro(musparseSnnz);                  \
-  __macro(musparseDnnz);                  \
-  __macro(musparseSetMatType);            \
-  __macro(musparseSetMatIndexBase);       \
-  __macro(musparseCreateCsr);             \
-  __macro(musparseCreateCoo);             \
-  __macro(musparseCreateDnMat);           \
-  __macro(musparseCreateDnVec);           \
-  __macro(musparseSpMM);                  \
-  __macro(musparseDestroySpMat);          \
-  __macro(musparseDestroyDnMat);          \
-  __macro(musparseDestroyDnVec);          \
-  __macro(musparseSpMV);                  \
-  __macro(musparseSDDMM_bufferSize);      \
-  __macro(musparseSDDMM_preprocess);      \
-  __macro(musparseSDDMM);                 \
-  __macro(musparseDnMatSetStridedBatch);  \
-  __macro(musparseCooSetStridedBatch);    \
+#define MUSPARSE_ROUTINE_EACH(__macro)   \
+  __macro(musparseSetStream);            \
+  __macro(musparseCreateMatDescr);       \
+  __macro(musparseSnnz);                 \
+  __macro(musparseDnnz);                 \
+  __macro(musparseSetMatType);           \
+  __macro(musparseSetMatIndexBase);      \
+  __macro(musparseCreateCsr);            \
+  __macro(musparseCreateCoo);            \
+  __macro(musparseCreateDnMat);          \
+  __macro(musparseCreateDnVec);          \
+  __macro(musparseSpMM);                 \
+  __macro(musparseDestroySpMat);         \
+  __macro(musparseDestroyDnMat);         \
+  __macro(musparseDestroyDnVec);         \
+  __macro(musparseSpMV);                 \
+  __macro(musparseSDDMM_bufferSize);     \
+  __macro(musparseSDDMM_preprocess);     \
+  __macro(musparseSDDMM);                \
+  __macro(musparseDnMatSetStridedBatch); \
+  __macro(musparseCooSetStridedBatch);   \
   __macro(musparseCsrSetStridedBatch);
 
 MUSPARSE_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_MUSPARSE_WRAP)

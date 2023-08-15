@@ -46,7 +46,7 @@ __inline__ __device__ T WarpAllReduce(T val) {
   for (int mask = ThreadGroupWidth / 2; mask > 0; mask /= 2) {
 #if PADDLE_WITH_HIP
     val = Functor<T>()(val, __shfl_xor(0xffffffff, val, mask));
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
     val = Functor<T>()(val, __shfl_xor_sync(0xffffffff, val, mask));
 #endif
   }

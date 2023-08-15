@@ -40,7 +40,8 @@ class ChromeTracingLogger : public BaseLogger {
   void LogNodeTrees(const NodeTrees&) override;
   void LogExtraInfo(const std::unordered_map<std::string, std::string>);
   void LogMemTraceEventNode(const MemTraceEventNode&) override;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   void LogDeviceProperty(
       const std::map<uint32_t, gpuDeviceProp>& device_property_map);
 #endif

@@ -218,7 +218,8 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     ALL_LAYOUT,
     paddle::operators::FeedSparseCooTensorKernel<phi::CPUContext>) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_sparse_coo_tensor,
     GPU,

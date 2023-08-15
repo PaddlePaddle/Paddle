@@ -698,7 +698,8 @@ void EnableProfiler(ProfilerState state) {
   HostTraceLevel::GetInstance().SetLevel(option.trace_level);
   should_send_profile_state = true;
   phi::GetDeviceTracer()->Enable();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (phi::ProfilerHelper::g_state == ProfilerState::kCUDA ||
       phi::ProfilerHelper::g_state == ProfilerState::kAll ||
       phi::ProfilerHelper::g_state == ProfilerState::kCPU) {

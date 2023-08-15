@@ -26,7 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -77,7 +78,8 @@ int* TestBuddyAllocator(BuddyAllocator* allocator,
   return nullptr;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 TEST(BuddyAllocator, GpuFraction) {
   // In a 16 GB machine, the pool size will be about 160 MB
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;

@@ -674,7 +674,7 @@ PD_REGISTER_KERNEL(instance_norm_double_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else // CUDA
+#else  // CUDA
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
                    ALL_LAYOUT,

@@ -42,7 +42,8 @@
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 // todo
 #define PADDLE_WITH_CUDA_OR_HIP_COMPLEX
 #endif
@@ -67,7 +68,8 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   HOSTDEVICE complex(T real, T imag) : real(real), imag(imag) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
   template <typename T1>
   HOSTDEVICE inline explicit complex(const thrust::complex<T1>& c) {

@@ -256,7 +256,8 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
 
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
 
 #ifdef PADDLE_WITH_HIP
@@ -798,7 +799,8 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
       dst_place.GetType() == phi::AllocationType::CPU) {
     std::memcpy(dst, src, num);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
            dst_place.GetType() == phi::AllocationType::GPUPINNED) {
     std::memcpy(dst, src, num);

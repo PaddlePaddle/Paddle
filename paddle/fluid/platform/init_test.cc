@@ -32,7 +32,8 @@ TEST(InitDevices, CUDA) {
   using paddle::framework::InitDevices;
   using paddle::platform::DeviceContextPool;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   int count = paddle::platform::GetGPUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();

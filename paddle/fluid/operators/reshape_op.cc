@@ -429,7 +429,8 @@ class ReshapeKernel {
                               pt_scalar_shape,
                               out);
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeInferKernel(static_cast<const phi::GPUContext &>(dev_ctx),
@@ -462,7 +463,8 @@ class ReshapeGradKernel {
       phi::ReshapeGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, d_x);
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeGradKernel(
@@ -492,7 +494,8 @@ class ReshapeDoubleGradKernel {
       phi::ReshapeDoubleGradKernel(
           static_cast<const phi::CPUContext &>(dev_ctx), *d_out, *dd_x, dd_out);
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeDoubleGradKernel(
@@ -761,7 +764,8 @@ REGISTER_OPERATOR(reshape2_grad_grad,
                   ops::ReshapeDoubleGradOpNoNeedBufferVarInferer,
                   Reshape2DoubleGradInferShapeFunctor);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape,
                                 float,
                                 ops::ReshapeKernel,

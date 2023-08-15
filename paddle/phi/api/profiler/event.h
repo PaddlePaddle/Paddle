@@ -31,7 +31,8 @@ limitations under the License. */
 #include <musa_runtime.h>
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
@@ -65,7 +66,8 @@ class Event {
   void set_name(std::string name) { name_ = name; }
   void set_role(EventRole role) { role_ = role; }
   std::string attr() const { return attr_; }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifndef PADDLE_WITH_CUPTI
   gpuEvent_t event() const { return event_; }
   int device() const { return device_; }
@@ -84,7 +86,8 @@ class Event {
   int64_t cpu_ns_;
   bool visited_status_{false};
   std::string attr_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;
 
@@ -140,7 +143,8 @@ class MemEvent {
 };
 
 class CudaEvent {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
  public:
   CudaEvent() {
