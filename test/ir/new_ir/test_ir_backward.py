@@ -91,17 +91,7 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
 
-        self.assertEqual(newir_program.block().ops[-3].name(), "pd.full")
-        self.assertEqual(input_grad[0].get_defining_op().name(), "pd.tanh_grad")
-        self.assertEqual(
-            input_grad[0]
-            .get_defining_op()
-            .operands()[1]
-            .source()
-            .get_defining_op()
-            .name(),
-            "pd.mean_grad",
-        )
+        self.assertEqual(newir_program.block().ops[-1].name(), "pd.mean")
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
