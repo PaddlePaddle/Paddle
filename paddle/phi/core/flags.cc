@@ -1283,25 +1283,13 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
 
 /**
  * Using new IR in executor  FLAG
- * Name: enable_new_ir_in_executor_beta_run
- * Since Version: 2.6.0
- * Value Range: bool, default=true
- * Example:
- * Note: If Ture, executor will use new IR and run in beta version.
- */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_beta_run,
-                         true,
-                         "Enable new IR in executor");
-
-/**
- * Using new IR in executor  FLAG
- * Name: enable_new_ir_in_executor_loop_run
+ * Name: enable_new_ir_in_executor_trace_run
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, executor will use new IR and run in beta version by for loop
+ * Note: If Ture, executor will use new IR and run in beta version by for trace
  * version.
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_loop_run,
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");

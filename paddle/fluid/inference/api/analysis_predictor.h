@@ -574,7 +574,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   // Helper class to perform quantization
   class MkldnnQuantizer;
   MkldnnQuantizer *mkldnn_quantizer_{nullptr};

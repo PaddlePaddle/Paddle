@@ -77,7 +77,7 @@ TEST(StandaloneExecutor, run) {
   std::string out_name = os.str() + "_inner_var_2";
   test_core.SetSkipGcVars({out_name});
 
-  test_core.BetaRun({});
+  test_core.Run({});
 
   auto out_tensor =
       test_core.local_scope() == nullptr
@@ -118,7 +118,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   std::string out_name = os.str() + "_inner_var_0";
   test_core.SetSkipGcVars({out_name});
 
-  test_core.BetaRun({});
+  test_core.Run({});
 
   auto out_tensor =
       test_core.local_scope() == nullptr

@@ -62,7 +62,10 @@ void BuildRuntimeContext(
 std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name,
+    const paddle::framework::Scope* scope);
 
 template <typename Context,
           typename InType,
@@ -289,7 +292,7 @@ void BuildPhiContext(ir::Operation* op,
     ir::Value out_ptr = op->result(i);
     auto out_type = out_ptr.type();
     if (out_type) {
-      auto name = name_map.at(out_ptr);
+      auto& name = name_map.at(out_ptr);
       VLOG(6) << "ctx->EmplaceBackOutput: " << name;
     } else {
       VLOG(6) << "ctx->EmplaceBackOutput : an optioanl output";

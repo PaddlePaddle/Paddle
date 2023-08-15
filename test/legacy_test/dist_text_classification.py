@@ -114,7 +114,7 @@ def get_reader(word_dict, batch_size):
 
 
 def get_optimizer(learning_rate):
-    optimizer = fluid.optimizer.SGD(learning_rate=learning_rate)
+    optimizer = paddle.optimizer.SGD(learning_rate=learning_rate)
     return optimizer
 
 
