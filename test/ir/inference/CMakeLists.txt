@@ -174,7 +174,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
+  if(WITH_MKLDNN)
+    set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
+  endif()
 
   if(WITH_NV_JETSON)
     set_tests_properties(

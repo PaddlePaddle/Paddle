@@ -10,6 +10,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_matmul_rule MODULES test_softmax_rule)
   py_test_modules(test_split_rule MODULES test_split_rule)
   py_test_modules(test_transpose_rule MODULES test_transpose_rule)
+  py_test_modules(test_reshape_rule MODULES test_reshape_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
