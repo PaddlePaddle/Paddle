@@ -461,8 +461,6 @@ class TestDistMPTraining(unittest.TestCase):
 
         os.environ['Flags_mp_aysnc_allreduce'] = "True"
         os.environ['Flags_skip_mp_c_identity'] = "True"
-        if paddle.version.cuda() >= '11.6':
-            os.environ['Flags_fused_linear_param_grad_add'] = "True"
 
         for _ in range(5):
             np_data = np.random.randint(
