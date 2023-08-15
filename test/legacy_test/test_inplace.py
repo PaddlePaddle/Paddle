@@ -19,8 +19,6 @@ import numpy as np
 
 import paddle
 
-paddle.device.set_device('gpu:4')
-
 
 class TestInplace(unittest.TestCase):
     def test_forward_version(self):
