@@ -202,10 +202,10 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.profiler as profiler
+            >>> import paddle
             >>> model = Model()
             >>> for i in range(max_iter):
-            ...     profiler._nvprof_range(i, 10, 20):
+            ...     with paddle.profiler.utils._nvprof_range(i, 10, 20):
             ...         out = model(in)
     '''
     if start >= end:
