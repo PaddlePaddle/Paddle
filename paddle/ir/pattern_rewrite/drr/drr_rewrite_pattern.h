@@ -35,7 +35,8 @@ namespace drr {
 template <typename SourceOp, typename DrrFunctor>
 class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
  public:
-  DrrRewritePattern(ir::IrContext* context, ir::PatternBenefit benefit)
+  explicit DrrRewritePattern(ir::IrContext* context,
+                             ir::PatternBenefit benefit = 1)
       : ir::OpRewritePattern<SourceOp>(context, benefit) {
     DrrPatternContext drr_context;
     DrrFunctor functor;
@@ -205,6 +206,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
 
     if (Matched) {
       IR_ENFORCE(step == source_pattern_graph_->CountOfOpCalls());
+    } else {
+      return Matched;
     }
     // Matched = Matched && step == source_pattern_graph_->CountOfOpCalls();
 
@@ -232,6 +235,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     DeleteSourcePatternOp(*source_pattern_match_ctx_, rewriter);
   }
 
+ private:
   MatchContextImpl CreateOperations(
       const ResultPatternGraph& result_pattern_graph,
       const MatchContextImpl& src_match_ctx,

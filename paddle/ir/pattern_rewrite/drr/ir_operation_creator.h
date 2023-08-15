@@ -50,7 +50,8 @@ Operation* CreateOperation(const OpCall& op_call,
         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
     // TODO(zyfncg): support attr in build op.
     Operation* reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
-        ir::OpResult(ir_values[0].impl()), std::vector<int64_t>{16, 3, 4, 16});
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        std::vector<int64_t>{16, 3, 4, 16});
     auto out = reshape_op->result(0);
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(out));
@@ -59,6 +60,36 @@ Operation* CreateOperation(const OpCall& op_call,
   LOG(ERROR) << "Unknown op " << op_call.name();
   return nullptr;
 }
+
+// template <typename Op>
+// class CreateOperation {
+//  public:
+//   Operation* operator()(const OpCall& op_call,
+//                         ir::PatternRewriter& rewriter,  // NOLINT
+//                         MatchContextImpl* res_match_ctx) {
+//     IR_THROW("Not implemented");
+//   }
+// };
+
+// template <>
+// class CreateOperation<paddle::dialect::ReshapeOp> {
+//  public:
+//   Operation* operator()(const OpCall& op_call,
+//                         ir::PatternRewriter& rewriter,  // NOLINT
+//                         MatchContextImpl* res_match_ctx) {
+//     const auto& inputs = op_call.inputs();
+//     std::vector<Value> ir_values =
+//         GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+//     // TODO(zyfncg): support attr in build op.
+//     Operation* reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
+//         ir_values[0].dyn_cast<ir::OpResult>(),
+//         std::vector<int64_t>{16, 3, 4, 16});
+//     auto out = reshape_op->result(0);
+//     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
+//                                std::make_shared<IrValue>(out));
+//     return reshape_op;
+//   }
+// };
 
 }  // namespace drr
 }  // namespace ir

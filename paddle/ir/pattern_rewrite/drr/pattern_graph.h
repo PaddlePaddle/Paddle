@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <functional>
 
 namespace ir {
 namespace drr {
@@ -54,22 +55,15 @@ class PatternGraph {
 
   void Print() const;
 
+  const std::vector<std::shared_ptr<OpCall>>& owned_op_call()const { return owned_op_call_; };   
+
+  const std::unordered_map<id_type, std::shared_ptr<Tensor>>& id2owend_tensor() const { return id2owned_tensor_; };
+
  protected:
   std::unordered_map<id_type, std::shared_ptr<Tensor>> id2owned_tensor_;
   std::vector<std::shared_ptr<OpCall>> owned_op_call_;
   std::unordered_set<id_type> input_tensors_;
   std::unordered_set<id_type> output_tensors_;
-};
-
-class GraphTopo {
- public:
-  explicit GraphTopo(const PatternGraph* graph) : graph_(graph) {}
-
-  void WalkGraphNodesTopoOrder(
-      const std::function<void(const OpCall&)>& VisitNode) const {}
-
- private:
-  const PatternGraph* graph_;
 };
 
 class SourcePatternGraph : public PatternGraph {
@@ -81,6 +75,17 @@ class SourcePatternGraph : public PatternGraph {
 };
 
 class ResultPatternGraph : public PatternGraph {};
+
+class GraphTopo {
+ public:
+  explicit GraphTopo(const PatternGraph* graph) : graph_(graph) {}
+
+  void WalkGraphNodesTopoOrder(
+      const std::function<void(const OpCall&)>& VisitNode) const;
+
+ private:
+  const PatternGraph* graph_;
+};
 
 }  // namespace drr
 }  // namespace ir
