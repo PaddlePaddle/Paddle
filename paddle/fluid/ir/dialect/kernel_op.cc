@@ -20,8 +20,10 @@
 namespace paddle {
 namespace dialect {
 
-const char* PhiKernelOp::attributes_name[attributes_num] = {
-    "op_name", "kernel_name", "kernel_key"};
+const char* PhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
+    "op_name",
+    "kernel_name",
+    "kernel_key"};
 
 void PhiKernelOp::Verify() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";

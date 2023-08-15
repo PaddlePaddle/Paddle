@@ -76,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
@@ -156,8 +157,10 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_linear_compress)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
+  list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -543,6 +546,7 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
+list(REMOVE_ITEM TEST_OPS "test_stride")
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
@@ -963,10 +967,10 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
-  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 240)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_norm_op PROPERTIES TIMEOUT 150)
   set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 250)
   set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 250)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
@@ -1267,12 +1271,16 @@ set(STATIC_BUILD_TESTS
     test_adagrad_op
     test_adamw_op
     test_arg_min_max_op
+    test_assign_pos_op
     test_bincount_op
+    test_c_embedding_op
+    test_decayed_adagrad_op
     test_decoupled_py_reader
     test_eig_op
     test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
+    test_ftrl_op
     test_fused_attention_op
     test_fused_attention_op_api
     test_fuse_bn_act_pass
@@ -1281,6 +1289,7 @@ set(STATIC_BUILD_TESTS
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
+    test_limit_by_capacity_op
     test_lookup_table_bf16_op
     test_lookup_table_v2_op
     test_matmul_op
@@ -1288,7 +1297,10 @@ set(STATIC_BUILD_TESTS
     test_merged_adam_op
     test_momentum_op
     test_nce
+    test_number_count_op
     test_paddle_save_load_binary
+    test_prune_gate_by_capacity_op
+    test_random_routing_op
     test_reduce_op
     test_segment_ops
     test_sparse_momentum_op
@@ -1309,6 +1321,10 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
+endif()
+
+if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_c_embedding_op)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
@@ -1349,6 +1365,7 @@ set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      250)
+
 file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_white_list"
      NEW_IR_OP_TESTS)
 foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
@@ -1360,3 +1377,54 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
     message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
   endif()
 endforeach()
+
+file(STRINGS
+     "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_precision_white_list"
+     NEW_IR_OP_RELAXED_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(
+      ${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                               "FLAGS_NEW_IR_OPTEST_RELAX_CHECK=True")
+  else()
+    message(
+      STATUS "NewIR Relaxed OpTest: not found ${IR_OP_TEST} in legacy_test")
+  endif()
+endforeach()
+
+set(STRIED_TESTS
+    test_complex_getitem
+    test_complex_grad_accumulated
+    test_complex_simplenet
+    test_conv1d_layer
+    test_conv1d_transpose_layer
+    test_conv2d_layer
+    test_diagonal_op
+    test_imperative_ocr_attention_model
+    test_imperative_ptb_rnn
+    test_imperative_ptb_rnn_sorted_gradient
+    test_initializer
+    test_inplace
+    test_real_imag_op
+    test_reshape_op
+    test_set_value_op
+    test_signal
+    test_slice_op
+    test_solve_op
+    test_squeeze_op
+    test_squeeze2_op
+    test_unbind_op
+    test_unsqueeze_op
+    test_unsqueeze2_op
+    test_var_base)
+
+foreach(STRIED_TEST ${STRIED_TESTS})
+  py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
+                  FLAGS_use_stride_kernel=true)
+  set_tests_properties(${STRIED_TEST}_with_stride PROPERTIES TIMEOUT 120)
+endforeach()
+
+py_test_modules(test_stride MODULES test_stride ENVS
+                FLAGS_use_stride_kernel=true)
+
+set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)

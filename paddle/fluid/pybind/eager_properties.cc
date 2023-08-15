@@ -74,6 +74,37 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_leaf__doc__,  // NOLINT
+             R"DOC(is_leaf
+
+Whether a Tensor is leaf Tensor.
+
+For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor.
+
+For the Tensor whose stop_gradient is ``False`` , it will be leaf Tensor too if it is created by user.
+
+Returns:
+    bool: Whether a Tensor is leaf Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.)
+        print(x.is_leaf) # True
+
+        x = paddle.to_tensor(1., stop_gradient=True)
+        y = x + 1
+        print(x.is_leaf) # True
+        print(y.is_leaf) # True
+
+        x = paddle.to_tensor(1., stop_gradient=False)
+        y = x + 1
+        print(x.is_leaf) # True
+        print(y.is_leaf) # False
+)DOC");
+
 PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
   EAGER_TRY
   return ToPyObject(egr::EagerUtils::IsLeafTensor(self->tensor));
@@ -95,6 +126,27 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
   return ToPyObject(meta->StopGradient());
   EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
+  EAGER_TRY
+  return reinterpret_cast<PyObject*>(self);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int tensor_properties_set_data(TensorObject* self,
+                               PyObject* value,
+                               void* closure) {
+  EAGER_TRY
+  auto src = CastPyArg2Tensor(value, 0);
+  self->tensor = src;
+  phi::DenseTensor tmp;
+  auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor) {
+    dense_tensor->ShareInplaceVersionCounterWith(tmp);
+  }
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
@@ -126,6 +178,26 @@ int tensor_properties_set_grad(TensorObject* self,
                      "Please check if you have manually cleared"
                      "the grad inside autograd_meta"));
   grad->copy_(src, self->tensor.place(), true);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
+}
+
+int tensor_properties_set_grad_(TensorObject* self,
+                                PyObject* value,
+                                void* closure) {
+  EAGER_TRY
+  auto src = CastPyArg2Tensor(value, 0);
+  PADDLE_ENFORCE(
+      egr::EagerUtils::IsLeafTensor(self->tensor),
+      paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+
+  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE(grad != nullptr,
+                 paddle::platform::errors::Fatal(
+                     "Detected NULL grad"
+                     "Please check if you have manually cleared"
+                     "the grad inside autograd_meta"));
+  *grad = src;
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
@@ -245,6 +317,43 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
+  EAGER_TRY
+  std::vector<int64_t> value;
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+    return ToPyObject(value);
+  }
+
+  auto stride = self->tensor.strides();
+  size_t rank = static_cast<size_t>(stride.size());
+  value.resize(rank);
+
+  for (size_t i = 0; i < rank; i++) {
+    value[i] = stride[i];
+  }
+
+  return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+    RETURN_PY_NONE;
+  }
+
+  auto dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+
+  if (dense_tensor == nullptr) {
+    RETURN_PY_NONE;
+  } else {
+    return ToPyObject(dense_tensor->offset());
+  }
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_TRY
   std::string layout = "";
@@ -336,10 +445,20 @@ PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-struct PyGetSetDef variable_properties[] = {
+struct PyGetSetDef variable_properties[] = {  // NOLINT
+    {"data",
+     (getter)tensor_properties_get_data,
+     (setter)tensor_properties_set_data,
+     nullptr,
+     nullptr},
     {"grad",
      (getter)tensor_properties_get_grad,
      (setter)tensor_properties_set_grad,
+     nullptr,
+     nullptr},
+    {"grad_",
+     (getter)tensor_properties_get_grad,
+     (setter)tensor_properties_set_grad_,
      nullptr,
      nullptr},
     {"name",
@@ -359,10 +478,13 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
     {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
-    // {"is_leaf", (getter)tensor_properties_get_is_leaf, nullptr,
-    // nullptr,
-    //  nullptr},
+    {"strides",
+     (getter)tensor_properties_get_strides,
+     nullptr,
+     nullptr,
+     nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
+    {"offset", (getter)tensor_properties_get_offset, nullptr, nullptr, nullptr},
     {"dist_attr",
      (getter)tensor_properties_get_dist_attr,
      nullptr,
@@ -375,7 +497,11 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
     {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
-    {"is_leaf", (getter)tensor_properties_is_leaf, nullptr, nullptr, nullptr},
+    {"is_leaf",
+     (getter)tensor_properties_is_leaf,
+     nullptr,
+     tensor_is_leaf__doc__,
+     nullptr},
     {"grad_fn",
      (getter)tensor_properties_get_grad_fn,
      nullptr,
@@ -384,7 +510,7 @@ struct PyGetSetDef variable_properties[] = {
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 // variable_properties for core.eager.StringTensor
-struct PyGetSetDef string_tensor_variable_properties[] = {
+struct PyGetSetDef string_tensor_variable_properties[] = {  // NOLINT
     {"name",
      (getter)tensor_properties_get_name,
      (setter)tensor_properties_set_name,

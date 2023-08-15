@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -31,6 +32,12 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           DenseTensor* dst) {
+  if (!src.meta().is_contiguous()) {
+    DenseTensor src_copy = paddle::experimental::Trans2Contiguous(src);
+    Copy(dev_ctx, src_copy, dst_place, blocking, dst);
+    return;
+  }
+
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
@@ -55,7 +62,7 @@ void Copy(const Context& dev_ctx,
   void* dst_ptr = nullptr;
   if (dst_place.GetType() == AllocationType::CPU) {
     dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     dst->set_layout(src.layout());
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -253,6 +260,7 @@ void Copy(const Context& dev_ctx,
     PADDLE_THROW(errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
+  dst->set_strides(src.strides());
 }
 
 template <typename Context>
@@ -440,7 +448,7 @@ template void Copy(const CustomContext& dev_ctx,
                    TensorArray* dst);
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template void Copy(const OneDNNContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,

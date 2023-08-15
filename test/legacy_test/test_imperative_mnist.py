@@ -21,7 +21,6 @@ from utils import DyGraphProgramDescTracerTestHelper
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
 
@@ -125,8 +124,8 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             mnist = MNIST()
-            sgd = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=mnist.parameters()
+            sgd = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=mnist.parameters()
             )
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
@@ -188,7 +187,7 @@ class TestImperativeMnist(unittest.TestCase):
             )
 
             mnist = MNIST()
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(),
                 batch_size=batch_size,

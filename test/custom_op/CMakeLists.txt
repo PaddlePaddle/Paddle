@@ -39,6 +39,8 @@ if(WITH_TESTING)
   py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
   py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
   py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
+  py_test(test_custom_cast_op_jit SRCS test_custom_cast_op_jit.py)
+  set_tests_properties(test_custom_cast_op_jit PROPERTIES TIMEOUT 180)
   py_test(test_custom_concat SRCS test_custom_concat.py)
   set_tests_properties(
     test_custom_concat PROPERTIES ENVIRONMENT

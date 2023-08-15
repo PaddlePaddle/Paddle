@@ -7,3 +7,7 @@ endif()
 
 cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
             ${PATTERN_REWRITE_TEST_DEPS})
+
+set_tests_properties(
+  pattern_rewrite_test PROPERTIES ENVIRONMENT
+                                  "FLAGS_enable_new_ir_in_executor=true")

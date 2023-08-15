@@ -14,7 +14,7 @@
 
 import unittest
 
-from hybrid_parallel_mp_model import TestDistMPTraning
+from hybrid_parallel_mp_model import TestDistMPTraining
 
 import paddle
 
@@ -22,7 +22,7 @@ import paddle
 # log.setLevel(logging.WARNING)
 
 
-class TestMPClipGrad(TestDistMPTraning):
+class TestMPClipGrad(TestDistMPTraining):
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(

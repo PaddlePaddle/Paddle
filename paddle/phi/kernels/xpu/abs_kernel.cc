@@ -22,9 +22,14 @@ namespace phi {
 template <typename T, typename Context>
 void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<T>(out);
-  int r = xpu::abs(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  int r = xpu::abs<XPUType>(ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(x.data<T>()),
+                            reinterpret_cast<XPUType*>(out->data<T>()),
+                            x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(abs, XPU, ALL_LAYOUT, phi::AbsKernel, float) {}
+PD_REGISTER_KERNEL(
+    abs, XPU, ALL_LAYOUT, phi::AbsKernel, float, phi::dtype::float16) {}

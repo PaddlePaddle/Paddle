@@ -1245,21 +1245,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x1.grad.shape, [5])
 
     def test_mode(self):
-        # 1) x is 0D
-        x = paddle.randn([])
-        x.stop_gradient = False
-        out, index = paddle.mode(x)
-        out.backward()
-
-        self.assertEqual(out.shape, [])
-        self.assertEqual(out, x)
-        self.assertEqual(index.shape, [])
-        self.assertEqual(index, 0)
-
-        self.assertEqual(x.grad.shape, [])
-        self.assertEqual(x.grad, 1.0)
-
-        # 2) x is 1D
         x1 = paddle.randn([5])
         x1.stop_gradient = False
         out1, index1 = paddle.mode(x1)

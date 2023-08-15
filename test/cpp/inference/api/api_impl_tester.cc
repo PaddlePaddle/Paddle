@@ -318,7 +318,7 @@ TEST(inference_api_native, image_classification_gpu) {
 // }
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(inference_api_native, image_classification_cpu_onednn) {
   FLAGS_use_mkldnn = true;
   MainImageClassification(paddle::PaddlePlace::kCPU);
