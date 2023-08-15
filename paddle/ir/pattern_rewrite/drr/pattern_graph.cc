@@ -15,7 +15,7 @@
 #include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 
 #include <iostream>
-
+#include <queue>
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
@@ -120,8 +120,67 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
+
 const OpCall *SourcePatternGraph::AnchorNode() const {
   return id2owned_tensor_.at(*output_tensors_.begin())->producer();
+}
+
+
+void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)> &VisitNode) const {
+  // graph data
+  const std::unordered_set<ir::drr::PatternGraph::id_type> &inputs_tensor = graph_->input_tensors();
+  const std::unordered_map<ir::drr::PatternGraph::id_type,std::shared_ptr<ir::drr::Tensor>> &id2owned_tensor = graph_->id2owend_tensor();
+  const std::vector<std::shared_ptr<OpCall>> &owend_opcall = graph_->owned_op_call();
+
+  std::queue<const ir::drr::OpCall *> opcall_queue;
+  std::unordered_map<const ir::drr::OpCall *, std::unordered_set<std::string>> opcall_dependent; 
+  
+  // init opcall_dependent;
+  for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall){
+
+    if (opcall_sptr.get()->inputs().empty()){ // opcall inputs is empty
+      opcall_queue.push(opcall_sptr.get());
+    }
+    else{
+      for(const auto &pre_depd_tensor : opcall_sptr.get()->inputs()){
+        opcall_dependent[opcall_sptr.get()].insert(pre_depd_tensor->name());
+      }
+    }
+  }
+
+  // init queue
+  for (const auto &tensor_id : inputs_tensor) {
+    const std::string& tensor_name = id2owned_tensor.at(tensor_id).get()->name();
+
+    for(const auto &tensor_comsumer : id2owned_tensor.at(tensor_id).get()->consumers()){
+
+      opcall_dependent[tensor_comsumer].erase(tensor_name);
+      if (opcall_dependent[tensor_comsumer].empty()){
+        opcall_queue.push(tensor_comsumer);
+      }
+    }
+  }
+
+  while (!opcall_queue.empty()) {
+    const ir::drr::OpCall *opcall = opcall_queue.front();
+    opcall_queue.pop();
+    VisitNode(*opcall);
+
+    // update opcall_dependent
+    for (const auto &output_tensor : opcall->outputs()) {
+
+      for (const auto &tensor_comsumer : output_tensor->consumers()){
+
+        opcall_dependent[tensor_comsumer].erase(output_tensor->name());
+        if (opcall_dependent[tensor_comsumer].empty()){
+          opcall_queue.push(tensor_comsumer);
+        }
+      }
+
+    }
+  }
+
+  return; 
 }
 
 }  // namespace drr
