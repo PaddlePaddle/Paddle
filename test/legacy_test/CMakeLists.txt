@@ -1408,6 +1408,7 @@ set(STRIED_TESTS
     test_real_imag_op
     test_reshape_op
     test_set_value_op
+    test_searchsorted_op
     test_signal
     test_slice_op
     test_solve_op
