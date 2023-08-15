@@ -92,6 +92,15 @@ Tensor& Op::operator()(const Tensor& arg) const {
   return out;
 }
 
+Tensor& Op::operator()(const Tensor& arg1, const Tensor& arg2) const {
+  std::vector<const Tensor*> inputs{&arg1, &arg2};
+  auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
+    "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
+  std::vector<const Tensor*> outputs{&out};
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
+  return out;
+}
+
 Tensor& Op::operator()() const {
   std::vector<const Tensor*> inputs{};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(

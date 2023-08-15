@@ -28,11 +28,14 @@ struct RemoveRedundentReshapeFunctor {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &reshape = pat.Op("reshape");
-    pat.Tensor("ret") = reshape(reshape(pat.Tensor("arg0")));
+
+    pat.Tensor("ret") = reshape(reshape(pat.Tensor("arg0"), pat.Tensor("shape0")), pat.Tensor("shape1"));
 
     // Result patterns：要替换为的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
-    res.Tensor("ret") = res.Op("reshape")(res.Tensor("arg0"));
+
+    //
+    res.Tensor("ret") = res.Op("reshape")(res.Tensor("arg0"), res.Tensor("shape1"));
   }
 };
 
