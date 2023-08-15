@@ -21,6 +21,7 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid.core import PaddleDType, PaddleTensor
+from paddle.framework import core
 from paddle.inference import (
     Config,
     create_predictor,
@@ -199,6 +200,18 @@ class TestInferenceBaseAPI(unittest.TestCase):
 
         test_lod_tensor()
         test_paddle_tensor()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestInferenceShareExternalDataAPI(unittest.TestCase):
+    def get_config(self, model, params):
+        config = Config()
+        config.set_model_buffer(model, len(model), params, len(params))
+        config.enable_use_gpu(100, 0)
+        return config
 
     def test_share_external_data_cuda(self):
         def test_paddle_tensor_bf16():
