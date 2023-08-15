@@ -20,10 +20,10 @@
 namespace cinn {
 namespace common {
 
-TEST(DFSTopoWalker, simple) {
+TEST(DfsTopoWalker, simple) {
   std::vector<std::pair<int, int>> edges{
       {0, 1}, {2, 3}, {1, 3}, {0, 3}, {3, 4}};
-  DFSTopoWalker<int> walker(
+  DfsTopoWalker<int> walker(
       [&](int node, const std::function<void(int)>& NodeHandler) {
         for (const auto& pair : edges) {
           if (pair.second == node) {

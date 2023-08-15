@@ -26,16 +26,16 @@ namespace common {
 template <typename NodeType,
           typename NodeHash = std::hash<NodeType>,
           typename NodeEqual = std::equal_to<NodeType>>
-class DFSTopoWalker final {
+class DfsTopoWalker final {
  public:
-  DFSTopoWalker(const DFSTopoWalker&) = delete;
-  DFSTopoWalker(DFSTopoWalker&&) = delete;
+  DfsTopoWalker(const DfsTopoWalker&) = delete;
+  DfsTopoWalker(DfsTopoWalker&&) = delete;
 
   using NodeHandlerType = std::function<void(NodeType)>;
   using NodesVisitorType =
       std::function<void(NodeType, const NodeHandlerType&)>;
 
-  DFSTopoWalker(const NodesVisitorType& VisitPreNodes,
+  DfsTopoWalker(const NodesVisitorType& VisitPreNodes,
                 const NodesVisitorType& VisitNextNodes)
       : VisitPreNodes_(VisitPreNodes), VisitNextNodes_(VisitNextNodes) {}
 

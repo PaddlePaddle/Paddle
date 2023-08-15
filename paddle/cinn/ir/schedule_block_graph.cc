@@ -175,7 +175,7 @@ void ScheduleBlockGraph::DFSTopoWalk(const NodeHandlerType& NodeHandler,
       NextNodeHandler(next_node);
     }
   };
-  common::DFSTopoWalker<ScheduleBlockNode*> walker(VisitPreNodes,
+  common::DfsTopoWalker<ScheduleBlockNode*> walker(VisitPreNodes,
                                                    VisitNextNodes);
   std::vector<ScheduleBlockNode*> starts =
       is_reverse ? EndPoints() : StartPoints();
