@@ -492,9 +492,9 @@ class LayerHelperBase:
         )
         saved_block_id = self.main_program.current_block_idx
         self.main_program.current_block_idx = 0
-        paddle.assign(
-            0, output
-        )  # maybe slow, but onnx makes outputs of while_op must exist in inputs
+        paddle.tensor.creation.fill_constant(
+            output.shape, dtype, 0.0, force_cpu=False, out=output
+        )
         output.stop_gradient = stop_gradient
         self.main_program.current_block_idx = saved_block_id
         return output
