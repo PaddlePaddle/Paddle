@@ -83,5 +83,22 @@ ir::OpResult mean_grad(ir::OpResult x,
   return mean_grad_op.result(0);
 }
 
+ir::OpResult data(const std::string& name,
+                  const std::vector<int64_t>& shape,
+                  phi::DataType dtype,
+                  const phi::Place& place) {
+  auto data_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::DataOp>(
+          name, shape, dtype, place);
+  return data_op.out();
+}
+
+ir::OpResult fetch(ir::OpResult x, const std::string& name, int col) {
+  auto fetch_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::FetchOp>(
+          x, name, col);
+  return fetch_op.out();
+}
+
 }  // namespace dialect
 }  // namespace paddle

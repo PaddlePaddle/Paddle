@@ -631,14 +631,14 @@
   backward : cumsum_grad
 
 - op : data
-  args : (int64_t index, DataType dtype, str name, Place place)
+  args : (str name, IntArray shape, DataType dtype, Place place)
   output : Tensor(out)
   infer_meta :
     func : FeedWithPlaceInferMeta
-    param : [index, dtype]
+    param : [dtype]
   kernel:
     func : data
-    param : [index, dtype]
+    param : [dtype]
     data_type : dtype
     backend : place
 

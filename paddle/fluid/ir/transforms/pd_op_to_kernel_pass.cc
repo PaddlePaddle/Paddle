@@ -179,10 +179,14 @@ phi::KernelKey GetKernelKey(
   if (op->name() == "pd.data") {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
-    auto t =
+    auto data_place =
         op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
 
-    auto backend = paddle::experimental::ParseBackend(t);
+    auto backend = paddle::experimental::ParseBackend(data_place);
+
+    if (backend == phi::Backend::UNDEFINED) {
+      backend = paddle::experimental::ParseBackend(place);
+    }
 
     return {backend,
             phi::DataLayout::ANY,
@@ -548,7 +552,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
     }
-
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;

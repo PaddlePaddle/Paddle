@@ -47,5 +47,13 @@ ir::OpResult mean_grad(ir::OpResult x,
                        const std::vector<int64_t>& axis = {},
                        bool keepdim = false,
                        bool reduce_all = false);
+
+ir::OpResult data(const std::string& name,
+                  const std::vector<int64_t>& shape,
+                  phi::DataType dtype,
+                  const phi::Place& place);
+
+ir::OpResult fetch(ir::OpResult x, const std::string& name, int col);
+
 }  // namespace dialect
 }  // namespace paddle

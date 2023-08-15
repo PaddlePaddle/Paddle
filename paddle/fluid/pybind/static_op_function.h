@@ -29,6 +29,8 @@ PyObject *static_api_mean(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_sum(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_divide(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs);
+PyObject *static_api_data(PyObject *self, PyObject *args, PyObject *kwargs);
+PyObject *static_api_fetch(PyObject *self, PyObject *args, PyObject *kwargs);
 
 }  // namespace pybind
 }  // namespace paddle
