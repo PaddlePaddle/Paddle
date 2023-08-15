@@ -34,7 +34,8 @@ void AMinKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(
     amin, CPU, ALL_LAYOUT, phi::AMinKernel, float, double, int, int64_t) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(
     amin, GPU, ALL_LAYOUT, phi::AMinKernel, float, double, int, int64_t) {}
 #endif

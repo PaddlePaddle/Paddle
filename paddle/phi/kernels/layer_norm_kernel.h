@@ -30,7 +30,8 @@ void LayerNormKernel(const Context& ctx,
                      DenseTensor* mean,
                      DenseTensor* variance);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename T, typename U>
 class LayerNormDirectCUDAFunctor {
  public:

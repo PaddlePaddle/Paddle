@@ -220,7 +220,8 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool ZeroCopyRun() override;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // Note: Can only be used under thread_local semantics.
   bool ExpRunWithExternalStream(const gpuStream_t stream);
 #endif

@@ -129,7 +129,8 @@ struct VarHandle : public VarHandleBase {
         name_(std::move(name)),
         place_(std::move(place)) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   bool HasEvent() { return has_event_; }
 
   const gpuEvent_t& GetEvent() {
@@ -154,7 +155,8 @@ struct VarHandle : public VarHandleBase {
   size_t scope_idx_;
   std::string name_;
   platform::Place place_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // Only when this event is triggered, var is generated.
   gpuEvent_t event_;
   bool has_event_{false};

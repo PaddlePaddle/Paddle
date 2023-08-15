@@ -62,7 +62,8 @@ PD_REGISTER_KERNEL(npu_identity,
                    bool,
                    phi::dtype::float16) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(npu_identity,
                    GPU,
                    ALL_LAYOUT,

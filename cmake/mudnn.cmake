@@ -62,15 +62,15 @@ macro(find_mudnn_version mudnn_version_file)
   string(REGEX MATCH "define MUDNN_VERSION_MAJOR +([0-9]+)" MUDNN_MAJOR_VERSION
                "${MUDNN_VERSION_FILE_CONTENTS}")
   string(REGEX REPLACE "define MUDNN_VERSION_MAJOR +([0-9]+)" "\\1"
-               MUDNN_MAJOR_VERSION "${MUDNN_MAJOR_VERSION}")
+                       MUDNN_MAJOR_VERSION "${MUDNN_MAJOR_VERSION}")
   string(REGEX MATCH "define MUDNN_VERSION_MINOR +([0-9]+)" MUDNN_MINOR_VERSION
                "${MUDNN_VERSION_FILE_CONTENTS}")
   string(REGEX REPLACE "define MUDNN_VERSION_MINOR +([0-9]+)" "\\1"
-	       MUDNN_MINOR_VERSION "${MUDNN_MINOR_VERSION}")
+                       MUDNN_MINOR_VERSION "${MUDNN_MINOR_VERSION}")
   string(REGEX MATCH "define MUDNN_VERSION_PATCH +([0-9]+)" MUDNN_PATCH_VERSION
                "${MUDNN_VERSION_FILE_CONTENTS}")
   string(REGEX REPLACE "define MUDNN_VERSION_PATCH +([0-9]+)" "\\1"
-               MUDNN_PATCH_VERSION "${MUDNN_PATCH_VERSION}")
+                       MUDNN_PATCH_VERSION "${MUDNN_PATCH_VERSION}")
 
   if(NOT MUDNN_MAJOR_VERSION)
     set(MUDNN_VERSION "???")

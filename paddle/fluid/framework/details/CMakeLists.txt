@@ -205,63 +205,91 @@ elseif(WITH_ROCM)
 elseif(WITH_MUSA)
   musa_library(
     nan_inf_utils
-    SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place phi)
+    SRCS
+    nan_inf_utils_detail.cc
+    DEPS
+    framework_proto
+    scope
+    place
+    phi)
   musa_library(
     all_reduce_op_handle
-    SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base
-         scope
-         lod_tensor
-         phi
-         memory
-         dynload_cuda
-         variable_visitor)
+    SRCS
+    all_reduce_op_handle.cc
+    DEPS
+    op_handle_base
+    scope
+    lod_tensor
+    phi
+    memory
+    dynload_cuda
+    variable_visitor)
   musa_library(
     fused_all_reduce_op_handle
-    SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         op_handle_base
-         variable_visitor
-         scope
-         lod_tensor
-         phi
-         memory
-         dynload_cuda
-         place)
+    SRCS
+    fused_all_reduce_op_handle.cc
+    DEPS
+    all_reduce_op_handle
+    op_handle_base
+    variable_visitor
+    scope
+    lod_tensor
+    phi
+    memory
+    dynload_cuda
+    place)
   musa_library(
     grad_merge_all_reduce_op_handle
-    SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS fused_all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         memory
-         dynload_cuda
-         variable_visitor
-         place
-         all_reduce_op_handle)
+    SRCS
+    grad_merge_all_reduce_op_handle.cc
+    DEPS
+    fused_all_reduce_op_handle
+    op_handle_base
+    scope
+    lod_tensor
+    phi
+    memory
+    dynload_cuda
+    variable_visitor
+    place
+    all_reduce_op_handle)
 
   if(WITH_DISTRIBUTE)
     musa_library(
       reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi dynload_cuda)
+      SRCS
+      reduce_op_handle.cc
+      DEPS
+      op_handle_base
+      variable_visitor
+      scope
+      phi
+      dynload_cuda)
   else()
     musa_library(
       reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi dynload_cuda)
+      SRCS
+      reduce_op_handle.cc
+      DEPS
+      op_handle_base
+      variable_visitor
+      scope
+      phi
+      dynload_cuda)
   endif()
   musa_library(
     broadcast_op_handle
-    SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi memory variable_visitor dynload_cuda)
-  musa_library(
-    fused_broadcast_op_handle
-    SRCS fused_broadcast_op_handle.cc
-    DEPS broadcast_op_handle)
+    SRCS
+    broadcast_op_handle.cc
+    DEPS
+    op_handle_base
+    scope
+    phi
+    memory
+    variable_visitor
+    dynload_cuda)
+  musa_library(fused_broadcast_op_handle SRCS fused_broadcast_op_handle.cc DEPS
+               broadcast_op_handle)
 else()
   cc_library(
     nan_inf_utils
@@ -446,7 +474,9 @@ endif()
 
 if(NOT APPLE
    AND NOT WIN32
-   AND (WITH_GPU OR WITH_ROCM OR WITH_MUSA))
+   AND (WITH_GPU
+        OR WITH_ROCM
+        OR WITH_MUSA))
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
 endif()
 cc_library(

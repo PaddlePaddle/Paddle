@@ -232,7 +232,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   if (x.nnz() <= 0) {
 #ifdef PADDLE_WITH_HIP
     DenseTensor indices = phi::Empty<int>(dev_ctx, {sparse_dim, non_zero_num});
-#else // MUSA and CUDA
+#else  // MUSA and CUDA
     DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
 #endif
     DenseTensor values = phi::EmptyLike<T, GPUContext>(dev_ctx, x.values());
@@ -247,7 +247,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   const auto& csr_cols = Cast<IntT>(dev_ctx, x.cols(), DataType::INT32);
   const int* csr_crows_data = csr_crows.template data<int>();
   const int* csr_cols_data = csr_cols.template data<int>();
-#else // MUSA & CUDA
+#else  // MUSA & CUDA
   const auto& csr_crows = x.crows();
   const auto& csr_cols = x.cols();
   const IntT* csr_crows_data = csr_crows.data<IntT>();
@@ -264,7 +264,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   int* coo_indices = indices.data<int>();
   int* coo_rows_data = coo_indices;
   int* coo_cols_data = coo_rows_data + non_zero_num;
-#else // MUSA & CUDA
+#else  // MUSA & CUDA
   DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
   DenseTensor offsets = phi::Empty<IntT>(dev_ctx, {batches});
   IntT* coo_indices = indices.data<IntT>();
@@ -312,7 +312,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
                                     coo_rows_data,
                                     rocsparse_index_base_zero);
   });
-#else // MUSA & CUDA
+#else  // MUSA & CUDA
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
   config.block_per_grid.y = batches;
   ConvertCsrCrowsToCooRows<IntT>
@@ -323,7 +323,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
                                      csr_cols_data,
 #ifdef PADDLE_WITH_HIP
                                      sizeof(int) * non_zero_num,
-#else // MUSA & CUDA
+#else  // MUSA & CUDA
                                      sizeof(IntT) * non_zero_num,
 #endif
                                      gpuMemcpyDeviceToDevice,

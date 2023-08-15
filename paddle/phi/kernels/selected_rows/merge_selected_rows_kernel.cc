@@ -41,7 +41,8 @@ PD_REGISTER_KERNEL(merge_selected_rows,
                    float,
                    double) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(merge_selected_rows,
                    GPU,
                    ALL_LAYOUT,

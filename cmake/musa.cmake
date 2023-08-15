@@ -24,14 +24,15 @@ endforeach()
 
 find_path(
   OPENMP_INCLUDE_DIR omp.h
-  PATHS ${llvm_openmp_search_list}
-  REQUIRED
+  PATHS ${llvm_openmp_search_list} REQUIRED
   NO_DEFAULT_PATH)
 include_directories(${OPENMP_INCLUDE_DIR})
 
 macro(find_musa_version musa_version_file)
   set(python_file ${PROJECT_BINARY_DIR}/get_version.py)
-  set(MUSA_VERSION "None" CACHE STRING "musa version" FORCE)
+  set(MUSA_VERSION
+      "None"
+      CACHE STRING "musa version" FORCE)
   file(
     WRITE ${python_file}
     ""
@@ -52,27 +53,27 @@ macro(find_musa_version musa_version_file)
   if(python_res EQUAL 0)
     set(MUSA_VERSION ${python_out})
   endif()
-  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\1" MUSA_MAJOR_VERSION "${MUSA_VERSION}")
-  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\2" MUSA_MINOR_VERSION "${MUSA_VERSION}")
-  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\3" MUSA_PATCH_VERSION "${MUSA_VERSION}")
+  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\1" MUSA_MAJOR_VERSION
+                       "${MUSA_VERSION}")
+  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\2" MUSA_MINOR_VERSION
+                       "${MUSA_VERSION}")
+  string(REGEX REPLACE "([0-9]+)\.([0-9]+)\.([0-9]+)" "\\3" MUSA_PATCH_VERSION
+                       "${MUSA_VERSION}")
 
   if(NOT MUSA_MAJOR_VERSION)
     set(MUSA_VERSION "???")
-    message(
-      WARNING "Cannot find MUSA version in ${MUSA_PATH}/version.json"
-    )
+    message(WARNING "Cannot find MUSA version in ${MUSA_PATH}/version.json")
   else()
     math(
       EXPR
       MUSA_VERSION
       "${MUSA_MAJOR_VERSION} * 10000 + ${MUSA_MINOR_VERSION} * 100   + ${MUSA_PATCH_VERSION}"
     )
+    message(STATUS "Current MUSA version file is ${MUSA_PATH}/version.json.")
     message(
       STATUS
-        "Current MUSA version file is ${MUSA_PATH}/version.json.")
-    message(
-      STATUS
-	"Current MUSA version is v${MUSA_MAJOR_VERSION}.${MUSA_MINOR_VERSION}.${MUSA_PATCH_VERSION} ")
+        "Current MUSA version is v${MUSA_MAJOR_VERSION}.${MUSA_MINOR_VERSION}.${MUSA_PATCH_VERSION} "
+    )
   endif()
 endmacro()
 find_musa_version(${MUSA_PATH}/version.json)

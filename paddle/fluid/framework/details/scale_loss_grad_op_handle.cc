@@ -76,7 +76,8 @@ struct ScaleLossGradFunctor {
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
     } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       OutT cast_coeff = static_cast<OutT>(coeff_);
       auto stream = static_cast<phi::GPUContext *>(ctx_)->stream();
       memory::Copy(place_,
@@ -110,7 +111,8 @@ void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
   auto *tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize(phi::make_ddim({1}));
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   ScaleLossGradFunctor func(
       coeff_, tensor, place_, out_dtype_, this->dev_ctxes_.at(place_));
   if (record_event) {

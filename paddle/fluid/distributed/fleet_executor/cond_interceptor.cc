@@ -71,7 +71,8 @@ bool CondInterceptor::GetCondResult() {
   const auto& cond_tensor = cond_var->Get<phi::DenseTensor>();
   bool res = false;
   if (platform::is_gpu_place(cond_tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     phi::DenseTensor cpu_tensor;
     framework::TensorCopy(cond_tensor, platform::CPUPlace(), &cpu_tensor);
     platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
