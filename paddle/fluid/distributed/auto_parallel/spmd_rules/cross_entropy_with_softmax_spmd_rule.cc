@@ -172,6 +172,7 @@ CrossEntropyWithSoftmaxSPMDRule::InferForward(
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 CrossEntropyWithSoftmaxSPMDRule::InferBackward(
+    const std::vector<DistTensorSpec>& output_specs,
     const std::vector<DistTensorSpec>& input_specs,
     const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(phi::errors::Unimplemented(

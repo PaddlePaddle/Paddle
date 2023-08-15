@@ -133,6 +133,7 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
   return ret;
 }
 
+//
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
     const std::vector<DistTensorSpec>& input_specs,
@@ -193,12 +194,65 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferForward(
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 paddle::distributed::auto_parallel::ReshapeSPMDRule::InferBackward(
+    const std::vector<DistTensorSpec>& input_specs,
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of ReductionSPMDRule is NOT implemented yet."));
+  // step0: Verify Input Args Based on Reshape Logic
+  int64_t ninputs = input_specs.size();
+  int64_t noutputs = output_specs.size();
+  PADDLE_ENFORCE_EQ(
+      ninputs,
+      1,
+      phi::errors::InvalidArgument("The size of InputSpec in reshape must "
+                                   "be equal to 1, but got [%d].",
+                                   ninputs));
+  PADDLE_ENFORCE_EQ(
+      noutputs,
+      1,
+      phi::errors::InvalidArgument("The size of OutputSpec in reshape must "
+                                   "be equal to 1, but got [%d].",
+                                   noutputs));
+  VerifySpecs(input_specs, "reshape");
+  VerifySpecs(output_specs, "reshape");
 
-  return {};
+  // step1: build the transformation from the output shape
+  // to original shape. Inferbackward infers the dims mapping
+  // from output to input, we first get the transformation
+  // from output to input so that we can infer the dims mapping
+  // with the map from output axes to input axes.
+  // Shapes in Inferbackward don't contain -1 or 0, so they will
+  // not be modified and we can use ref here.
+  const std::vector<int64_t>& output_shape = output_specs[0].shape();
+  const std::vector<int64_t>& input_shape = input_specs[0].shape();
+
+  std::vector<DimTrans*> trans = MakeReshapeDimTrans(output_shape, input_shape);
+
+  // step2: infer the dims mapping of input with
+  // output's dims_mapping and the transformation.
+  std::vector<std::vector<int64_t>> dims_mapping_vec =
+      InferFromDimTrans(output_specs[0], trans);
+
+  // step3: update the dist attributes of input
+  // and output with the inferred dims mapping
+  TensorDistAttr new_output_dist_attr(output_specs[0].dist_attr());
+  new_output_dist_attr.set_dims_mapping(dims_mapping_vec[0]);
+  TensorDistAttr input_dist_attr(input_specs[0].dist_attr());
+  input_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+
+  VLOG(4) << "Reshape Inferbackward: output_shape: [" << str_join(output_shape)
+          << "] input_shape: [" << str_join(input_shape) << "]";
+  VLOG(4) << "Transformation from output to input:";
+  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+    DimTrans* t = trans[i];
+    VLOG(4) << "\tInput axis " << i << ": " << t->to_string();
+  }
+  VLOG(4) << "input_dims_mapping: [" << str_join(dims_mapping_vec[1])
+          << "] output_dims_mapping: [" << str_join(dims_mapping_vec[0])
+          << "]\n\n";
+
+  CleanUp();
+
+  return {{input_dist_attr}, {new_output_dist_attr}};
 }
 
 }  // namespace auto_parallel

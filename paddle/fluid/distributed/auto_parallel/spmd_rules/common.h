@@ -60,7 +60,8 @@ class SPMDRuleBase {
   // 1. The first vector: the merged DistAttr of output tensors.
   // 2. The infered DistAttr of Input tensors.
   virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-  InferBackward(const std::vector<DistTensorSpec>& output_specs,
+  InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                const std::vector<DistTensorSpec>& output_specs,
                 const paddle::framework::AttributeMap& attrs);
 
   template <typename T>

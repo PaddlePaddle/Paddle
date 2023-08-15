@@ -214,7 +214,8 @@ TensorDistAttr GetInferedDistAttr(
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-MatmulSPMDRule::InferBackward(const std::vector<DistTensorSpec>& output_specs,
+MatmulSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                              const std::vector<DistTensorSpec>& output_specs,
                               const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "InferBackward of MatmulSPMDRule is NOT implemented yet."));
