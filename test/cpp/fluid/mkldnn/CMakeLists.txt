@@ -12,7 +12,7 @@ cc_test(
        generated_static_op)
        
 cc_test(
-  test_analyzer_cpu_quantize_pass
+  test_mkldnn_cpu_quantize_pass
   SRCS test_mkldnn_cpu_quantize_pass.cc
   DEPS executor
        op_registry
