@@ -651,6 +651,7 @@ class Fleet:
         """
         initialize `Communicator` for parameter server training.
 
+
         Returns:
             None
 
@@ -719,6 +720,7 @@ class Fleet:
     def load_model(self, path, mode):
         """
         load fleet model from path
+
 
         Returns:
             None
