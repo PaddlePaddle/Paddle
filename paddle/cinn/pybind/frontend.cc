@@ -203,8 +203,7 @@ void BindFrontend(pybind11::module *m) {
             auto graph = Optimize(&self, fetch_ids, target, passes);
 
             scope = hlir::framework::BuildScope(target, graph, scope);
-            hlir::framework::GraphCompiler::CompilationContext context(
-                graph, scope, target);
+            hlir::framework::CompilationContext context(graph, scope, target);
 
             // Keep compile option same as paddle
             context.with_instantiate_variables = true;
@@ -305,8 +304,7 @@ void BindFrontend(pybind11::module *m) {
             hlir::framework::ApplyPass(g.get(), "InferShape");
             std::shared_ptr<hlir::framework::Scope> scope =
                 hlir::framework::BuildScope(target, g);
-            hlir::framework::GraphCompiler::CompilationContext context(
-                g, scope, target);
+            hlir::framework::CompilationContext context(g, scope, target);
             hlir::framework::GraphCompiler gc(context);
             auto program = gc.Build();
             for (size_t i = 0; i < tensor_inputs.size(); i++) {
@@ -356,8 +354,7 @@ void BindFrontend(pybind11::module *m) {
             std::shared_ptr<hlir::framework::Scope> scope =
                 hlir::framework::BuildScope(target, graph);
 
-            hlir::framework::GraphCompiler::CompilationContext context(
-                graph, scope, target);
+            hlir::framework::CompilationContext context(graph, scope, target);
             hlir::framework::GraphCompiler gc(context);
             auto program = gc.Build(code);
             for (size_t i = 0; i < tensor_inputs.size(); i++) {

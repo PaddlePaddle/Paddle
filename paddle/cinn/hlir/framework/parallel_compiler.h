@@ -19,6 +19,7 @@
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/lowered_func.h"
@@ -31,61 +32,18 @@ namespace framework {
 
 class ParallelCompiler {
  public:
-  enum class Stage {
-    DEFAULT,
-    LOWERING,
-    CODEGEN_AND_JIT,
-    BUILD_INSTRUCTION,
-  };
-
-  enum class Status {
-    SUCCESS,
-    UNKNOWN_FAIL,
-    LOWERING_FAIL,
-    CODEGEN_JIT_FAIL,
-    INSTUCTION_FAIL,
-    PROGRAM_FAIL,
-  };
-
-  struct CompileOptions {
-    ParallelCompiler::Stage stage = ParallelCompiler::Stage::DEFAULT;
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  };
-
-  struct CompilationResult {
-    // Compiler status
-    ParallelCompiler::Status status;
-    // Compiler message
-    std::string message;
-    // Lower result
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-    // Host/CUDA codegen result
-    std::vector<std::string> source_codes;
-    // CUDA ptx result
-    std::vector<std::string> source_ptxs;
-    // Instruction result
-    std::vector<std::unique_ptr<Instruction>> instructions;
-  };
-
   struct Task {
-    Task(ParallelCompiler* p,
-         std::shared_ptr<Scope>& s,  // NOLINT
-         std::shared_ptr<Graph>& g,  // NOLINT
-         const CompileOptions& cp,
-         const Target& t)
-        : compiler(p), scope(s), graph(g), options(cp), target(t) {}
+    Task(ParallelCompiler* compiler, CompilationContext* context)
+        : compiler(compiler), context(context) {}
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();
 
-    ParallelCompiler::Status status;
-    std::string message;
-
-    const Target target;
     ParallelCompiler* compiler;
-    std::shared_ptr<Scope> scope;
-    std::shared_ptr<Graph> graph;
-    const CompileOptions& options;
+    CompilationContext* context;
+
+    CompilationStatus status = CompilationStatus::SUCCESS;
+    std::string message;
 
     int start_gidx;
     int stop_gidx;
@@ -100,12 +58,8 @@ class ParallelCompiler {
 #endif
   };
 
-  explicit ParallelCompiler(std::shared_ptr<Scope>& scope,  // NOLINT
-                            std::shared_ptr<Graph>& graph,  // NOLINT
-                            const CompileOptions& option,
-                            const common::Target& target)
-      : scope_(scope), graph_(graph), option_(option), target_(target) {}
-  ~ParallelCompiler() {}
+  explicit ParallelCompiler(CompilationContext* context) : context_(context) {}
+  ~ParallelCompiler() = default;
   CompilationResult operator()();
 
  private:
@@ -115,10 +69,7 @@ class ParallelCompiler {
   CompilationResult MergeResult();
 
   std::vector<Task> tasks_;
-  const common::Target target_;
-  const CompileOptions& option_;
-  std::shared_ptr<Scope> scope_;
-  std::shared_ptr<Graph> graph_;
+  CompilationContext* context_;
 };
 
 }  // namespace framework

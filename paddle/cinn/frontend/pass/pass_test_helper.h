@@ -36,6 +36,7 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
@@ -79,9 +80,8 @@ inline void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
   hlir::framework::ApplyPasses(graph.get(), graph_passes);
   VLOG(3) << "Graph Viz:\n" << graph->Visualize();
   BuildScope(target, graph, scope);
-  hlir::framework::GraphCompiler::CompilationContext context(
-      graph, scope, target);
-  context.attached_code = "";
+  hlir::framework::CompilationContext context(graph, scope, target);
+  context.attached_source_code = "";
   context.with_instantiate_variables = true;
   context.fetch_var_ids.insert(output_ids.begin(), output_ids.end());
   hlir::framework::GraphCompiler gc(context);

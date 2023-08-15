@@ -23,6 +23,7 @@
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
@@ -69,8 +70,7 @@ TEST(syntax, program_execute_multi_elementwise_add) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler::CompilationContext context(
-      graph, scope, target);
+  hlir::framework::CompilationContext context(graph, scope, target);
   hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   scope->Var<hlir::framework::Tensor>("A");
@@ -90,8 +90,7 @@ TEST(syntax, program_execute_multi_elementwise_add2) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler::CompilationContext context(
-      graph, scope, target);
+  hlir::framework::CompilationContext context(graph, scope, target);
   hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
@@ -125,9 +124,9 @@ std::get<2>(programTuple);
   auto graph = cinn::frontend::Optimize(program.get(), fetch_ids, target);
 
   scope = BuildScope(target, graph, scope);
-  hlir::framework::GraphCompiler::CompilationContext context(graph, scope,
-target); hlir::framework::GraphCompiler gc(context); auto runtime_program =
-gc.Build();
+  hlir::framework::CompilationContext context(graph, scope,target);
+  hlir::framework::GraphCompiler gc(context);
+  auto runtime_program = gc.Build();
 
   auto at = scope->GetTensor("A");
   SetRandData<float>(at, target);
@@ -138,11 +137,12 @@ gc.Build();
   LOG(INFO) << "scope.names: " << Join(scope->var_names(), ",");
 
   const std::string output_name = "fc_0.tmp_2";
-  auto tensor                   =
-scope->GetTensor(var_map_paddle_to_program.at(output_name)); LOG(INFO) <<
-"tensor.shape: " << utils::Join(tensor->shape().data(), ","); auto data =
-GetTensorData<float>(tensor, target); for (int i = 0; i < 10; i++) LOG(INFO) <<
-"data: " << data[i];
+  auto tensor = scope->GetTensor(var_map_paddle_to_program.at(output_name));
+  LOG(INFO) << "tensor.shape: " << utils::Join(tensor->shape().data(), ",");
+  auto data = GetTensorData<float>(tensor, target);
+  for (int i = 0; i < 10; i++) {
+    LOG(INFO) << "data: " << data[i];
+  }
 }
 */
 

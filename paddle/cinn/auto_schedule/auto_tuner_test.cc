@@ -26,6 +26,7 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/ir_base.h"
@@ -37,6 +38,7 @@ namespace cinn {
 namespace auto_schedule {
 
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
 using ::cinn::hlir::framework::Graph;
 using ::cinn::hlir::framework::GraphCompiler;
 using ::cinn::hlir::framework::Instruction;
@@ -53,7 +55,7 @@ class TestAutoTuner : public ::testing::Test {
 
   std::shared_ptr<Graph> graph;
   std::shared_ptr<Scope> compiled_scope;
-  GraphCompiler::CompilationContext context;
+  CompilationContext context;
   std::unique_ptr<GraphCompiler> graph_compiler;
   std::unique_ptr<AutoTuner> tuner;
 

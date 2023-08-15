@@ -17,6 +17,8 @@
 namespace cinn {
 namespace auto_schedule {
 
+using hlir::framework::CompilationContext;
+using hlir::framework::CompilationResult;
 using hlir::framework::GraphCompiler;
 
 SimpleBuilder::SimpleBuilder(hlir::framework::GraphCompiler* graph_compiler)
@@ -25,16 +27,14 @@ SimpleBuilder::SimpleBuilder(hlir::framework::GraphCompiler* graph_compiler)
 BuildResult SimpleBuilder::Build(const MeasureInput& input) {
   CHECK_NE(graph_compiler_, static_cast<GraphCompiler*>(nullptr))
       << "empty handle to GraphCompiler";
-  GraphCompiler::CompilationContext& context =
-      graph_compiler_->GetCompilationContext();
+  CompilationContext& context = graph_compiler_->GetCompilationContext();
   context.groups.emplace_back(input.task->subgraph);
   context.lowered_funcs.emplace_back(input.lowered_funcs);
   context.remove_unused_variables = false;
   VLOG(5) << "call GraphCompiler to Build with Graph::Group size="
           << context.groups.size()
           << ", lowered_funcs group size=" << context.lowered_funcs.size();
-  GraphCompiler::CompilationResult compiled_result =
-      graph_compiler_->Build(&context);
+  CompilationResult compiled_result = graph_compiler_->Build(&context);
 
   BuildResult build_result;
   build_result.compiled_scope = graph_compiler_->GetScope().get();

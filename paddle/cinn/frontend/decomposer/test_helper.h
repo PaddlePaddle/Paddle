@@ -27,6 +27,7 @@
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
@@ -208,8 +209,7 @@ void RunAndCheckShape(NetBuilder* builder,
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
   hlir::framework::ApplyPasses(graph.get(), DefaultOpFusionPasses());
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler::CompilationContext context(
-      graph, scope, target);
+  hlir::framework::CompilationContext context(graph, scope, target);
   hlir::framework::GraphCompiler gc(context);
 
   auto runtime_program = gc.Build();

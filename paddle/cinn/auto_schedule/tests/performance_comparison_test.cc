@@ -25,6 +25,7 @@
 #include "paddle/cinn/frontend/paddle_model_convertor.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/ir_base.h"
@@ -61,6 +62,7 @@ namespace cinn {
 namespace auto_schedule {
 
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
 using ::cinn::hlir::framework::Graph;
 using ::cinn::hlir::framework::GraphCompiler;
 using ::cinn::hlir::framework::Instruction;
@@ -94,7 +96,7 @@ class PerformanceTester : public ::testing::Test {
       hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
       VLOG(3) << "Build " << schedule_name << " program.";
       auto scope = BuildScope(target_, graph);
-      GraphCompiler::CompilationContext context(graph, scope, target_);
+      CompilationContext context(graph, scope, target_);
       auto graph_compiler = std::make_unique<GraphCompiler>(context);
       auto runtime_program =
           (this->*build_fn)(graph.get(), graph_compiler.get());
@@ -145,8 +147,7 @@ class PerformanceTester : public ::testing::Test {
         std::make_unique<hlir::framework::OpLowerer>(
             dtype_dict, shape_dict, target_);
 
-    GraphCompiler::CompilationContext& context =
-        graph_compiler->GetCompilationContext();
+    CompilationContext& context = graph_compiler->GetCompilationContext();
     context.with_instantiate_variables = true;
 
     if (graph->fusion_groups.empty()) {
@@ -192,8 +193,7 @@ class PerformanceTester : public ::testing::Test {
     tuner->Initialize(tuning_config, graph_compiler);
     TuningResult tuning_result = tuner->Tune(tuning_options);
 
-    GraphCompiler::CompilationContext& context =
-        graph_compiler->GetCompilationContext();
+    CompilationContext& context = graph_compiler->GetCompilationContext();
     context.with_instantiate_variables = true;
     context.Apply(tuning_result);
 

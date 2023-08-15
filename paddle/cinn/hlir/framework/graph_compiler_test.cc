@@ -48,7 +48,7 @@ TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
   ASSERT_EQ(scope->var_names().size(), 6);
   EXPECT_NE(scope->FindVar(c->id), nullptr);
 
-  GraphCompiler::CompilationContext context(graph, scope, target);
+  CompilationContext context(graph, scope, target);
   GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   ASSERT_EQ(scope->var_names().size(), 3);
@@ -70,7 +70,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler::CompilationContext context_disable(graph, scope, target);
+  CompilationContext context_disable(graph, scope, target);
   GraphCompiler gc_disable(context_disable);
   // disable with_buffer_handle_instruction_inserted: only 1 instruction
   auto runtime_program_disable =
@@ -82,7 +82,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   // enable with_buffer_handle_instruction_inserted: 3 instructions, 1st ->
   // malloc instruction(a, b, d), 2nd -> the real computation
   // instruction(add + relu)  and 3rd -> free instruction
-  GraphCompiler::CompilationContext context_enable(graph, scope, target);
+  CompilationContext context_enable(graph, scope, target);
   context_enable.with_buffer_handle_instruction_inserted = true;
   GraphCompiler gc_enable(context_enable);
   auto runtime_program_enable =
@@ -197,7 +197,7 @@ void RunCublas(
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 
   auto scope = BuildScope(target, graph);
-  GraphCompiler::CompilationContext context(graph, scope, target);
+  CompilationContext context(graph, scope, target);
   GraphCompiler gc(context);
   auto exe_program = gc.Build();
 
@@ -249,9 +249,9 @@ TEST(GraphCompilerTest, TestLowering) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler::CompilationContext context(graph, scope, target);
+  CompilationContext context(graph, scope, target);
   GraphCompiler gc(context);
-  GraphCompiler::CompilationResult result = gc.Lowering();
+  CompilationResult result = gc.Lowering();
 
   LOG(INFO) << "Runtime program status: "
             << (result.runtime_program.get() == nullptr);
@@ -274,9 +274,9 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler::CompilationContext context(graph, scope, target);
+  CompilationContext context(graph, scope, target);
   GraphCompiler gc(context);
-  GraphCompiler::CompilationResult result = gc.CodegenAndJit();
+  CompilationResult result = gc.CodegenAndJit();
 
   LOG(INFO) << "Runtime program status: "
             << (result.runtime_program.get() == nullptr);
@@ -299,9 +299,9 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler::CompilationContext context(graph, scope, target);
+  CompilationContext context(graph, scope, target);
   GraphCompiler gc(context);
-  GraphCompiler::CompilationResult result = gc.BuildInstruction();
+  CompilationResult result = gc.BuildInstruction();
 
   LOG(INFO) << "Runtime program status: "
             << (result.runtime_program.get() == nullptr);

@@ -46,8 +46,7 @@ std::unordered_map<std::string, std::vector<float>> RunModelTest(
   hlir::framework::ApplyPasses(graph.get(), passes);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler::CompilationContext context(
-      graph, scope, target);
+  hlir::framework::CompilationContext context(graph, scope, target);
   hlir::framework::GraphCompiler gc(context);
   auto run_program = gc.Build();
 

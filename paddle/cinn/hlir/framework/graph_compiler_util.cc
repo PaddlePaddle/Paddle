@@ -1,4 +1,4 @@
-// Copyright (c) 2022 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/cinn/auto_schedule/measure/measure.h"
-#include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 
 namespace cinn {
-namespace auto_schedule {
+namespace hlir {
+namespace framework {
 
-// This class utilize the GraphCompiler bound to the graph to build
-// the input schedule as executable objects
-class SimpleBuilder : public ScheduleBuilder {
- public:
-  explicit SimpleBuilder(hlir::framework::GraphCompiler* graph_compiler);
+void CompilationContext::Apply(
+    const auto_schedule::TuningResult& tuning_result) {
+  // assign options with TuningResult directly
+  groups.assign(tuning_result.subgraphs.begin(), tuning_result.subgraphs.end());
+  lowered_funcs.assign(tuning_result.function_groups.begin(),
+                       tuning_result.function_groups.end());
+}
 
-  // Build and pack the result
-  BuildResult Build(const MeasureInput& input) override;
-
- private:
-  hlir::framework::GraphCompiler* graph_compiler_;
-};
-
-}  // namespace auto_schedule
+}  // namespace framework
+}  // namespace hlir
 }  // namespace cinn

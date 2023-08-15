@@ -36,9 +36,10 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-ParallelCompiler::CompilationResult ParallelCompiler::operator()() {
-  if (graph_->fusion_groups.size() == 0) {
-    hlir::framework::ApplyPasses(graph_.get(), {"BuildNonFusedGroupsPass"});
+CompilationResult ParallelCompiler::operator()() {
+  if (context_->graph->fusion_groups.empty()) {
+    hlir::framework::ApplyPasses(context_->graph.get(),
+                                 {"BuildNonFusedGroupsPass"});
   }
   // Task Spilt
   SplitTask();
@@ -49,20 +50,22 @@ ParallelCompiler::CompilationResult ParallelCompiler::operator()() {
 }
 
 void ParallelCompiler::SplitTask() {
-  CHECK(graph_->fusion_groups.size());
-  CHECK(graph_->fusion_groups.size() == option_.lowered_funcs.size() ||
-        option_.lowered_funcs.size() == 0);
+  CHECK(!context_->graph->fusion_groups.empty());
+  CHECK(context_->graph->fusion_groups.size() ==
+            context_->lowered_funcs.size() ||
+        context_->lowered_funcs.empty());
   // Assign fusion_group to each task.
   // The maximum number of tasks is determined by the number of threads.
   // Fusion_group is assigned to tasks in order and continuous.
-  int fusion_group_size = graph_->fusion_groups.size();
+  int fusion_group_size = context_->graph->fusion_groups.size();
   int thread_size = FLAGS_cinn_parallel_compile_thread > 0
                         ? FLAGS_cinn_parallel_compile_thread
                         : 1;
   int group_per_task =
-      (graph_->fusion_groups.size() + thread_size - 1) / thread_size;
-  for (int idx = 0; idx < graph_->fusion_groups.size(); idx += group_per_task) {
-    Task task(this, scope_, graph_, option_, target_);
+      (context_->graph->fusion_groups.size() + thread_size - 1) / thread_size;
+  for (int idx = 0; idx < context_->graph->fusion_groups.size();
+       idx += group_per_task) {
+    Task task(this, context_);
     task.start_gidx = idx;
     task.stop_gidx =
         (idx + group_per_task > fusion_group_size ? fusion_group_size
@@ -76,21 +79,21 @@ void ParallelCompiler::RunTask(ParallelCompiler::Task* task) {
   VLOG(2) << "Stark run sub-task, Thread Id : " << std::this_thread::get_id();
   VLOG(4) << "Start Lowering";
   task->Lowering();
-  if (option_.stage == ParallelCompiler::Stage::LOWERING) {
+  if (context_->stage == CompilationStage::LOWERING) {
     VLOG(4) << "Just lowering, finish sub task on thread: "
             << std::this_thread::get_id();
     return;
   }
   VLOG(4) << "Start CodegenAndJit";
   task->CodegenAndJit();
-  if (option_.stage == ParallelCompiler::Stage::CODEGEN_AND_JIT) {
+  if (context_->stage == CompilationStage::CODEGEN_AND_JIT) {
     VLOG(4) << "Just codegen and jit, finish sub task on thread: "
             << std::this_thread::get_id();
     return;
   }
   VLOG(4) << "Start BuildInstruction";
   task->BuildInstruction();
-  if (option_.stage == ParallelCompiler::Stage::BUILD_INSTRUCTION) {
+  if (context_->stage == CompilationStage::BUILD_INSTRUCTION) {
     VLOG(4) << "Just build instruction, finish sub task on thread: "
             << std::this_thread::get_id();
     return;
@@ -112,11 +115,13 @@ void ParallelCompiler::LaunchTask() {
   }
 }
 
-ParallelCompiler::CompilationResult ParallelCompiler::MergeResult() {
-  ParallelCompiler::CompilationResult res;
-  for (auto& task : tasks_) {
-    if (task.status != ParallelCompiler::Status::SUCCESS) {
-      LOG(WARNING) << "Compile fail on some task.";
+CompilationResult ParallelCompiler::MergeResult() {
+  CompilationResult res;
+  for (int i = 0; i < tasks_.size(); ++i) {
+    auto& task = tasks_[i];
+    if (task.status != CompilationStatus::SUCCESS) {
+      LOG(WARNING) << "Compile fail on task " << i << ", corresponds to group "
+                   << task.start_gidx << " - " << task.stop_gidx;
       res.status = task.status;
       res.message = task.message;
       return std::move(res);
@@ -138,27 +143,30 @@ ParallelCompiler::CompilationResult ParallelCompiler::MergeResult() {
 }
 
 void ParallelCompiler::Task::Lowering() {
-  if (options.lowered_funcs.size()) {
-    CHECK_EQ(options.lowered_funcs.size(), graph->fusion_groups.size());
+  if (!context->lowered_funcs.empty()) {
+    CHECK_EQ(context->lowered_funcs.size(),
+             context->graph->fusion_groups.size());
   }
   auto& dtype_dict =
-      graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
+      context->graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
           "inferdtype");
   auto& shape_dict =
-      graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
-          "infershape");
+      context->graph
+          ->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
+              "infershape");
 
-  OpLowerer op_lowerer(dtype_dict, shape_dict, target);
+  OpLowerer op_lowerer(dtype_dict, shape_dict, context->target);
   for (int idx = start_gidx; idx < stop_gidx; ++idx) {
-    if (options.lowered_funcs.size()) {
-      lowered_funcs.push_back(options.lowered_funcs[idx]);
+    if (!context->lowered_funcs.empty()) {
+      lowered_funcs.push_back(context->lowered_funcs[idx]);
       continue;
     }
-    auto& group = graph->fusion_groups[idx];
+    auto& group = context->graph->fusion_groups[idx];
     VLOG(1) << "Start Lowering Group " << idx << " at "
             << std::this_thread::get_id() << " :\n"
             << "Group " << idx << " {\n"
-            << graph->DebugGroupedGraph(group->CollectNodes()) << "}\n";
+            << context->graph->DebugGroupedGraph(group->CollectNodes())
+            << "}\n";
     auto lowered_group = op_lowerer.Lower(group);
     CHECK_EQ(lowered_group.size(), 1) << "Lowerd Function Is Not Equal 1!";
     lowered_funcs.emplace_back(std::move(lowered_group));
@@ -169,14 +177,14 @@ void ParallelCompiler::Task::CodegenAndJit() {
   VLOG(2) << "Start Codegen and JIT with Group [" << start_gidx << "-"
           << stop_gidx << ") at thread" << std::this_thread::get_id();
   // build module
-  ir::Module::Builder builder(common::UniqName("module"), target);
+  ir::Module::Builder builder(common::UniqName("module"), context->target);
   for (auto& func : lowered_funcs) {
     CHECK_EQ(func.size(), 1);
     builder.AddFunction(func[0]);
   }
 
   auto ir_module = builder.Build();
-  if (target == common::DefaultNVGPUTarget()) {
+  if (context->target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     auto splited_module = backends::SplitCudaAndHostModule(ir_module);
     auto hmodule = std::get<0>(splited_module);
@@ -184,7 +192,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
 
     VLOG(3) << "Host Code:\n" << hmodule;
     VLOG(3) << "Device Code:\n" << dmodule;
-    backends::CodeGenCUDA_Dev codegen(target);
+    backends::CodeGenCUDA_Dev codegen(context->target);
     auto cuda_c = codegen.Compile(dmodule);
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
@@ -198,10 +206,10 @@ void ParallelCompiler::Task::CodegenAndJit() {
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
     source_ptxs.emplace_back(ptx);
     // load cumodule
-    cumodule.reset(new CUDAModule(ptx,
-                                  compiler.compile_to_cubin()
-                                      ? CUDAModule::Kind::CUBIN
-                                      : CUDAModule::Kind::PTX));
+    cumodule = std::make_unique<CUDAModule>(ptx,
+                                            compiler.compile_to_cubin()
+                                                ? CUDAModule::Kind::CUBIN
+                                                : CUDAModule::Kind::PTX);
 
     // register kernel
     backends::RuntimeSymbols symbols;
@@ -225,14 +233,13 @@ void ParallelCompiler::Task::BuildInstruction() {
   for (int idx = start_gidx; idx < stop_gidx; ++idx) {
     VLOG(2) << "Start BuildInstruction of Group " << idx << " at "
             << std::this_thread::get_id();
-    auto& group = graph->fusion_groups[idx];
-    CHECK(group->input_names.size() > 0 || group->output_names.size() > 0);
-    auto instr =
-        std::unique_ptr<Instruction>(new Instruction(target,
-                                                     scope.get(),
-                                                     group->input_names,
-                                                     group->output_names,
-                                                     group->GetFuncName()));
+    auto& group = context->graph->fusion_groups[idx];
+    CHECK(!group->input_names.empty() || !group->output_names.empty());
+    auto instr = std::make_unique<Instruction>(context->target,
+                                               context->scope.get(),
+                                               group->input_names,
+                                               group->output_names,
+                                               group->GetFuncName());
 
     auto fn_ptr = engine->Lookup(group->GetFuncName());
     CHECK(fn_ptr) << "Can't find jit function : " << group->GetFuncName();

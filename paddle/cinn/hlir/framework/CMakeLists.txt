@@ -12,6 +12,7 @@ gather_srcs(
   program.cc
   parallel_compiler.cc
   graph_compiler.cc
+  graph_compiler_util.cc
   graph.cc
   node.cc
   pass.cc

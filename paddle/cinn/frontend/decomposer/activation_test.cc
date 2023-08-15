@@ -86,8 +86,7 @@ TEST(Decomposer, softmax_decomposer) {
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler::CompilationContext context(
-      graph, scope, target);
+  hlir::framework::CompilationContext context(graph, scope, target);
   hlir::framework::GraphCompiler gc(context);
   auto run_program = gc.Build();
 

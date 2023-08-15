@@ -69,8 +69,7 @@ void RunProgram(const Target& target, Program* prog) {
 
   auto scope = BuildScope(target, graph);
 
-  hlir::framework::GraphCompiler::CompilationContext context(
-      graph, scope, target);
+  hlir::framework::CompilationContext context(graph, scope, target);
   hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 

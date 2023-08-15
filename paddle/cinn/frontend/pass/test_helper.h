@@ -23,6 +23,7 @@
 #include "paddle/cinn/frontend/pass/use_program_pass.h"
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 
@@ -117,8 +118,7 @@ class PassTest {
     hlir::framework::ApplyPasses(graph.get(), DefaultOpFusionPasses());
 
     auto scope = hlir::framework::BuildScope(target_, graph);
-    hlir::framework::GraphCompiler::CompilationContext context(
-        graph, scope, target_);
+    hlir::framework::CompilationContext context(graph, scope, target_);
     context.with_instantiate_variables = true;
     hlir::framework::GraphCompiler gc(context);
     auto runtime_program = std::move(gc.Build());
