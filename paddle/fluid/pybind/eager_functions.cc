@@ -1273,7 +1273,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef variable_functions[] = {
+PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
      (PyCFunction)(void (*)())eager_api_scale,

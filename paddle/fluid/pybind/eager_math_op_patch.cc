@@ -1833,7 +1833,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef math_op_patch_methods[] = {
+PyMethodDef math_op_patch_methods[] = {  // NOLINT
     {"__add__",
      (PyCFunction)(void (*)())tensor__add__method,
      METH_VARARGS | METH_KEYWORDS,
