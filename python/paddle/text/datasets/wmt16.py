@@ -86,8 +86,6 @@ class WMT16(Dataset):
             ...
             ...     def forward(self, src_ids, trg_ids, trg_ids_next):
             ...         return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
-            ...
-            >>> paddle.disable_static()
 
             >>> wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
 
@@ -99,17 +97,17 @@ class WMT16(Dataset):
             ...
             ...     model = SimpleNet()
             ...     src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
-            ...     print(src_ids.numpy(), trg_ids.numpy(), trg_ids_next.numpy())
-            [89] [32] [33]
-            [79] [18] [19]
-            [55] [26] [27]
-            [147] [36] [37]
-            [106] [22] [23]
-            [135] [50] [51]
-            [54] [43] [44]
-            [217] [30] [31]
-            [146] [51] [52]
-            [55] [24] [25]
+            ...     print(src_ids.item(), trg_ids.item(), trg_ids_next.item())
+            89 32 33
+            79 18 19
+            55 26 27
+            147 36 37
+            106 22 23
+            135 50 51
+            54 43 44
+            217 30 31
+            146 51 52
+            55 24 25
     """
 
     def __init__(

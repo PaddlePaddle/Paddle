@@ -62,7 +62,7 @@ def viterbi_decode(
             >>> print(path)
             Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 0],
-              [1, 1]])
+             [1, 1]])
     """
     if in_dygraph_mode():
         return _C_ops.viterbi_decode(
@@ -138,7 +138,7 @@ class ViterbiDecoder(Layer):
             >>> print(path)
             Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 0],
-              [1, 1]])
+             [1, 1]])
     """
 
     def __init__(self, transitions, include_bos_eos_tag=True, name=None):
