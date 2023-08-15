@@ -85,17 +85,15 @@ class TestInverseSingularAPI(unittest.TestCase):
             )
             result = paddle.inverse(x=input)
 
-            input_np = np.zeros([4, 4]).astype("float32")
+            input_np = np.ones([4, 4]).astype("float32")
 
             exe = fluid.Executor(place)
-            try:
+            with self.assertRaises(OSError):
                 fetches = exe.run(
                     fluid.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
-            except OSError as ex:
-                print("The mat is singular")
 
     def test_static(self):
         for place in self.places:
@@ -106,10 +104,8 @@ class TestInverseSingularAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 input_np = np.ones([4, 4]).astype("float32")
                 input = fluid.dygraph.to_variable(input_np)
-                try:
+                with self.assertRaises(OSError):
                     result = paddle.inverse(input)
-                except OSError as ex:
-                    print("The mat is singular")
 
 
 if __name__ == "__main__":
