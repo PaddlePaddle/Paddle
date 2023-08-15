@@ -345,7 +345,8 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
   EXPECT_TRUE(caught_eof);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename T>
 bool CheckCudaStatusSuccess(T value, const std::string& msg = "success") {
   PADDLE_ENFORCE_GPU_SUCCESS(value);

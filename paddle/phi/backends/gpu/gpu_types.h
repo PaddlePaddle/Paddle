@@ -17,7 +17,8 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
@@ -46,8 +47,14 @@ namespace phi {
 #endif  // PADDLE_WITH_CUDA
 
 DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t, musaError_t);
-DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind, musaMemcpyKind);
-DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t, musaDeviceProp);
+DECLARE_TYPE_FOR_GPU(gpuMemcpyKind,
+                     cudaMemcpyKind,
+                     hipMemcpyKind,
+                     musaMemcpyKind);
+DECLARE_TYPE_FOR_GPU(gpuDeviceProp,
+                     cudaDeviceProp,
+                     hipDeviceProp_t,
+                     musaDeviceProp);
 #undef DECLARE_TYPE_FOR_GPU
 
 #ifndef PADDLE_WITH_MUSA
@@ -70,7 +77,6 @@ DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      miopenActivationMode_t);
 #undef DECLARE_TYPE_FOR_GPU
 #endif
-
 
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
@@ -109,4 +115,5 @@ DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToDevice,
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace phi
 
-#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||
+        // defined(PADDLE_WITH_MUSA )

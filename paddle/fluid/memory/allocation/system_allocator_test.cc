@@ -57,7 +57,8 @@ TEST(CPUAllocator, LockMem) {
   TestAllocator(&a, 0);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 TEST(GPUAllocator, Alloc) {
   paddle::memory::detail::GPUAllocator a(0);
   TestAllocator(&a, 2048);

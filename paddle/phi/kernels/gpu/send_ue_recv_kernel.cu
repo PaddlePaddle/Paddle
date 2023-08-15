@@ -106,7 +106,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   int block_ = 256;
 #else
-  int block_ = 1024; // CUDA & MUSA
+  int block_ = 1024;  // CUDA & MUSA
 #endif
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
     GraphSendUERecvSumCUDAFunctor<T> sum_functor;

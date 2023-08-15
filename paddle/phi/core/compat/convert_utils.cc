@@ -57,7 +57,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   switch (backend) {
     case phi::Backend::CPU:
       return phi::CPUPlace();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     case phi::Backend::GPU:
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
@@ -66,7 +67,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
     case phi::Backend::ONEDNN:
       return phi::CPUPlace();
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     case phi::Backend::GPUDNN:
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
@@ -77,7 +79,8 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
           set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
 #endif
     case phi::Backend::KPS:
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #elif defined(PADDLE_WITH_XPU_KP)

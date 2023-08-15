@@ -15,7 +15,8 @@
 #pragma once
 
 // CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif

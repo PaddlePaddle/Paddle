@@ -86,7 +86,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   // MIOPEN need to set groups in cdesc in miopen_desc.h
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn(), groups);
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn());
 #endif
@@ -197,7 +197,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                                                    workspace_size));
       },
       workspace_size);
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
   ConvRunner<T, ConvKind::kForward>::Apply(ctx,
                                            args,
                                            fwd_result,
@@ -653,7 +653,7 @@ PD_REGISTER_KERNEL(conv3d,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
                    ALL_LAYOUT,

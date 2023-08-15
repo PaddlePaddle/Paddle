@@ -1409,7 +1409,7 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-#else // CUDA 
+#else  // CUDA
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1447,7 +1447,7 @@ PD_REGISTER_KERNEL(batch_norm_double_grad,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,

@@ -134,7 +134,8 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (kernel_key.backend() == phi::Backend::GPU ||
       kernel_key.backend() == phi::Backend::GPUDNN) {
     PADDLE_THROW(

@@ -31,7 +31,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
@@ -197,7 +198,8 @@ std::string OpName(const framework::VariableNameMap& name_map,
                    const std::string& type_name);
 void SetTracerOption(TracerOption option);
 platform::TracerOption GetTracerOption();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void DummyKernelAndEvent();
 #endif
 

@@ -949,8 +949,8 @@ void BatchNormKernel(const Context &ctx,
 //                 ctx.GetPlace())),
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
-#else // CUDA & MUSA
-      // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+#else  // CUDA & MUSA
+       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
@@ -1263,7 +1263,7 @@ PD_REGISTER_KERNEL(batch_norm,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(batch_norm,
                    GPU,
                    ALL_LAYOUT,

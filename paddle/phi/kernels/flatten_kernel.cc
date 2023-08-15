@@ -75,7 +75,8 @@ PD_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(flatten_infer,
                    GPU,
                    ALL_LAYOUT,

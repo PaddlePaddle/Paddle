@@ -86,7 +86,6 @@ using mudnnStatus_t = ::musa::dnn::Status;
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
-
 #ifdef PADDLE_WITH_MUSA
 #include "paddle/phi/backends/dynload/mublas.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
@@ -97,7 +96,6 @@ using mudnnStatus_t = ::musa::dnn::Status;
 #include "paddle/phi/backends/dynload/mccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_MUSA
-
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/hipfft.h"
@@ -114,7 +112,8 @@ using mudnnStatus_t = ::musa::dnn::Status;
 // Note: these headers for simplify demangle type string
 #include "paddle/phi/core/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
 
@@ -1056,31 +1055,31 @@ inline std::string build_musa_error_msg(mcclResult_t mccl_result) {
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_MCCL
 
-#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                     \
-  do {                                                       \
-    auto __cond__ = (COND);                                  \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);         \
-    constexpr auto __success_type__ =                        \
-        ::phi::enforce::details::ExternalApiType<            \
-            __CUDA_STATUS_TYPE__>::kSuccess;                 \
-    if (UNLIKELY(__cond__ != __success_type__)) {            \
-      auto __summary__ = phi::errors::External(              \
-          ::phi::enforce::build_musa_error_msg(__cond__));   \
-      __THROW_ERROR_INTERNAL__(__summary__);                 \
-    }                                                        \
+#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                   \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      auto __summary__ = phi::errors::External(            \
+          ::phi::enforce::build_musa_error_msg(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);               \
+    }                                                      \
   } while (0)
 
-#define PADDLE_WARN_GPU_SUCCESS(COND)                        \
-  do {                                                       \
-    auto __cond__ = (COND);                                  \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);         \
-    constexpr auto __success_type__ =                        \
-        ::phi::enforce::details::ExternalApiType<            \
-            __CUDA_STATUS_TYPE__>::kSuccess;                 \
-    if (UNLIKELY(__cond__ != __success_type__)) {            \
-      ::phi::enforce::ThrowWarnInternal(                     \
-          ::phi::enforce::build_musa_error_msg(__cond__));   \
-    }                                                        \
+#define PADDLE_WARN_GPU_SUCCESS(COND)                      \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      ::phi::enforce::ThrowWarnInternal(                   \
+          ::phi::enforce::build_musa_error_msg(__cond__)); \
+    }                                                      \
   } while (0)
 
 #define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                              \

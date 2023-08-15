@@ -33,9 +33,15 @@ namespace phi {
 
 DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t, musaStream_t);
 DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t, musaEvent_t);
-DECLARE_TYPE_FOR_GPU(sparseHandle_t, cusparseHandle_t, rocsparse_handle, musparseHandle_t);
+DECLARE_TYPE_FOR_GPU(sparseHandle_t,
+                     cusparseHandle_t,
+                     rocsparse_handle,
+                     musparseHandle_t);
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
-DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle, mublasHandle_t);
+DECLARE_TYPE_FOR_GPU(blasHandle_t,
+                     cublasHandle_t,
+                     rocblas_handle,
+                     mublasHandle_t);
 #undef DECLARE_TYPE_FOR_GPU
 
 #ifndef PADDLE_WITH_MUSA

@@ -25,7 +25,8 @@
 #include "paddle/phi/common/place.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -49,7 +50,8 @@ class CPUContextResource {
   std::unique_ptr<Eigen::DefaultDevice> cpu_eigen_device_;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 class GPUContextResource {
  public:
   explicit GPUContextResource(const phi::Place& place, void* stream);
@@ -149,7 +151,8 @@ class ResourceManager {
   std::mutex cpu_mutex_;
   std::unique_ptr<CPUContextResource> cpu_resource_{nullptr};
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // GPU Resource
  public:
   void* InitGPUResource(const phi::Place& place, void* stream);

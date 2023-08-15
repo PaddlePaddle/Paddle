@@ -260,7 +260,8 @@ PD_REGISTER_STRUCT_KERNEL(pad_constant_like_grad,
                           int,
                           int64_t) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_STRUCT_KERNEL(pad_constant_like,
                           GPU,
                           ALL_LAYOUT,

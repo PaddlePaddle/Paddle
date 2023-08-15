@@ -15,8 +15,8 @@
 #pragma once
 
 // CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
-    defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_XPU_KP)
 
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"

@@ -16,8 +16,8 @@
 
 #include <list>
 #include <map>
-#include <set>
 #include <mutex>
+#include <set>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"

@@ -39,7 +39,8 @@ class MemcpyH2DFunctor {
 
   void operator()(const phi::DenseTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     auto stream = static_cast<const phi::GPUContext *>(&dev_ctx_)->stream();
 #else
     auto stream = nullptr;

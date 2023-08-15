@@ -37,7 +37,6 @@
 #include "math.h"  // NOLINT
 #endif
 
-
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 

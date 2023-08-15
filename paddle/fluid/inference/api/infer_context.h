@@ -26,7 +26,8 @@ class InferCPUContext : public phi::CPUContext {
   using phi::CPUContext::SetEigenDevice;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 class InferGPUContext : public phi::GPUContext {
  public:
   explicit InferGPUContext(const phi::Place& place);

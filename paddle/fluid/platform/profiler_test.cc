@@ -122,7 +122,8 @@ TEST(RecordEvent, RecordEvent) {
       if (events[i][j].name() == "_start_profiler_") ++start_profiler_count;
       if (events[i][j].name() == "push") {
         EXPECT_EQ(events[i][j + 1].name(), "pop");
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
         EXPECT_GT(events[i][j].CudaElapsedMs(events[i][j + 1]), 0);
 #else
         EXPECT_GT(events[i][j].CpuElapsedMs(events[i][j + 1]), 0);

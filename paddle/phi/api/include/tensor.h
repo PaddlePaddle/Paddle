@@ -401,7 +401,8 @@ class PADDLE_API Tensor final {
    */
   void set_impl(std::shared_ptr<phi::TensorBase>&& impl);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   /**
    * @brief Get the stream where the tensor is currently located
    * This is a deprecated method and may be removed in the future!

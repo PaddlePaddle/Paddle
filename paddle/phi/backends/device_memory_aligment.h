@@ -36,7 +36,8 @@ inline size_t Alignment(size_t size,
     if (place.GetType() == phi::AllocationType::CPU) {
       alignment = phi::backends::cpu::CpuMinChunkSize();
     } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       alignment = phi::backends::gpu::GpuMinChunkSize();
 #elif defined(PADDLE_WITH_XPU)
       alignment = phi::backends::xpu::XPUMinChunkSize();

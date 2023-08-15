@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/nvrtc.h"
 #endif
 #ifdef PADDLE_WITH_MUSA
-#include "paddle/phi/backends/dynload/musartc.h"
 #include "paddle/phi/backends/dynload/musa_driver.h"
+#include "paddle/phi/backends/dynload/musartc.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/hiprtc.h"
@@ -52,7 +52,8 @@ class DeviceCode {
   std::string kernel_;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 class GPUDeviceCode : public DeviceCode {
  public:
   explicit GPUDeviceCode(const Place& place,

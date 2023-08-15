@@ -15,8 +15,8 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
-    defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_XPU_KP)
 
 #include <array>
 #include <functional>
@@ -282,7 +282,8 @@ using GPUDNNContext = GPUContext;
 // because we want to implement a KPS-based kernel and make it run
 // on GPU and XPU at the same time, so we need KPSContext when registering
 // KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 using KPSContext = GPUContext;
 #endif
 
@@ -293,7 +294,8 @@ struct DefaultDevice;
 }  // namespace Eigen
 
 namespace phi {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 // Currently, GPUPinnedContext is only used to data copying.
 class GPUPinnedContext
     : public DeviceContext,

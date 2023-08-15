@@ -33,8 +33,6 @@
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #endif  // PADDLE_WITH_CUDA
 
-
-
 #ifdef PADDLE_WITH_MUSA
 #include "paddle/phi/backends/dynload/mublas.h"
 #include "paddle/phi/backends/dynload/mudnn.h"

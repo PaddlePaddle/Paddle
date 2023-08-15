@@ -25,8 +25,8 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 #ifdef PADDLE_WITH_MUSA
-#include <musa_runtime.h>
 #include <murand_kernel.h>
+#include <musa_runtime.h>
 #endif
 
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"

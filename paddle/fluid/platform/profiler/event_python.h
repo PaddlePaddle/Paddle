@@ -138,7 +138,8 @@ struct HostPythonNode {
 class ProfilerResult {
  public:
   ProfilerResult() : tree_(nullptr) {}
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   explicit ProfilerResult(
       std::unique_ptr<NodeTrees> tree,
       const ExtraInfo& extra_info,
@@ -166,7 +167,8 @@ class ProfilerResult {
 
   std::string GetVersion() { return version_; }
   uint32_t GetSpanIndx() { return span_indx_; }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::map<uint32_t, gpuDeviceProp> GetDeviceProperty() {
     return device_property_map_;
   }
@@ -176,7 +178,8 @@ class ProfilerResult {
   std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
   std::shared_ptr<NodeTrees> tree_;
   ExtraInfo extra_info_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::map<uint32_t, gpuDeviceProp> device_property_map_;
 #endif
   std::string version_;

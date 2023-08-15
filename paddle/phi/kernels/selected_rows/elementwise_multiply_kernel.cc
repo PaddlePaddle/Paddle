@@ -84,7 +84,8 @@ PD_REGISTER_KERNEL(multiply_sr,
                    complex64,
                    complex128) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(multiply_raw_sr,
                    GPU,
                    ALL_LAYOUT,

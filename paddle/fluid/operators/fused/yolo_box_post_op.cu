@@ -370,11 +370,11 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
               hipMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_MUSA)
     musaMalloc(reinterpret_cast<void**>(&device_anchors),
-              anchors.size() * sizeof(int));
+               anchors.size() * sizeof(int));
     musaMemcpy(device_anchors,
-              anchors.data(),
-              anchors.size() * sizeof(int),
-              musaMemcpyHostToDevice);
+               anchors.data(),
+               anchors.size() * sizeof(int),
+               musaMemcpyHostToDevice);
 #else
     cudaMalloc(reinterpret_cast<void**>(&device_anchors),
                anchors.size() * sizeof(int));
@@ -423,7 +423,7 @@ class YoloBoxPostKernel : public framework::OpKernel<T> {
                 sizeof(int));
 #elif defined(PADDLE_WITH_MUSA)
       musaMalloc(reinterpret_cast<void**>(&ts_info[i].bbox_count_device_ptr),
-                sizeof(int));
+                 sizeof(int));
 #else
       cudaMalloc(reinterpret_cast<void**>(&ts_info[i].bbox_count_device_ptr),
                  sizeof(int));

@@ -78,7 +78,8 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
   }
   for (auto& p : set) {
     if (p.GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       device_codes_.emplace(p, DeviceCodeMap());
 #else
       PADDLE_THROW(phi::errors::PreconditionNotMet(
@@ -88,12 +89,14 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   GPUDeviceCode::CheckAvailableStatus();
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_HIP
 static bool CheckCUDADriverResult(hipError_t result,
                                   std::string caller,
@@ -138,8 +141,7 @@ void GPUDeviceCode::CheckAvailableStatus() {
   hiprtcResult nvrtc_result =
       dynload::hiprtcVersion(&nvrtc_major, &nvrtc_minor);
 #elif defined(PADDLE_WITH_MUSA)
-  mtrtcResult nvrtc_result =
-      dynload::mtrtcVersion(&nvrtc_major, &nvrtc_minor);
+  mtrtcResult nvrtc_result = dynload::mtrtcVersion(&nvrtc_major, &nvrtc_minor);
 #else
   nvrtcResult nvrtc_result = dynload::nvrtcVersion(&nvrtc_major, &nvrtc_minor);
 #endif
@@ -592,6 +594,8 @@ bool GPUDeviceCode::CheckNVRTCResult(mtrtcResult result, std::string function) {
         << " > failed: " << dynload::mtrtcGetErrorString(result);
     return false;
   }
+  return true;
+}
 #else
 bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
   if (result != NVRTC_SUCCESS) {
@@ -600,9 +604,9 @@ bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
         << " > failed: " << dynload::nvrtcGetErrorString(result);
     return false;
   }
-#endif
   return true;
 }
+#endif
 #endif
 
 }  // namespace phi
