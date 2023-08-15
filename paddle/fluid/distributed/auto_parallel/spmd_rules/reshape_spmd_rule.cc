@@ -212,7 +212,6 @@ paddle::distributed::auto_parallel::ReshapeSPMDRule::InferBackward(
       phi::errors::InvalidArgument("The size of OutputSpec in reshape must "
                                    "be equal to 1, but got [%d].",
                                    noutputs));
-  VerifySpecs(input_specs, "reshape");
   VerifySpecs(output_specs, "reshape");
 
   // step1: build the transformation from the output shape
