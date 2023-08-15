@@ -15,7 +15,18 @@
 #pragma once
 
 namespace phi {
-namespace distributed {
-enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
-}
+
+enum class ReduceType {
+  kRedSum,
+  kRedMax,
+  kRedMin,
+  kRedProd,
+  kRedAvg,
+  kRedAny,
+  kRedAll
+};
+
+constexpr const char* ReduceTypeStrings[] = {
+    "SUM", "MAX", "MIN", "PRODUCT", "AVG", "ANY", "ALL"};
+
 }  // namespace phi
