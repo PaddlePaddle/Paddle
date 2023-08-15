@@ -298,8 +298,8 @@ def _get_subprocess_env_list(nprocs, options):
                 "the number of visible devices(%d) is less than the number "
                 "of spawn processes(%d), please ensure that the correct "
                 "`nprocs` argument is passed or the environment variable "
-                "`CUDA_VISIBLE_DEVICES` is correctly configured."
-                % (len(env_devices_list), nprocs)
+                "`FLAGS_selected_%ss` is correctly configured."
+                % (len(env_devices_list), nprocs, custom_device_name)
             )
         args.selected_devices = ",".join(
             [str(env_devices_list[x]) for x in range(0, nprocs)]
