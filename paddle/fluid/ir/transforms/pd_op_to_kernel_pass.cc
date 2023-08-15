@@ -163,6 +163,7 @@ phi::KernelKey GetKernelKey(
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
     dialect::OpYamlInfoParser* op_info_parser = nullptr) {
+  std::cout << op->name() << std::endl;
   if (op->name() == "pd.feed") {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
@@ -309,7 +310,7 @@ phi::KernelKey GetKernelKey(
           type = input_type.dyn_cast<ir::VectorType>()[0]
                      .dyn_cast<dialect::AllocatedDenseTensorType>();
         } else {
-          type = dialect::AllocatedDenseTensorType();
+          continue;
         }
       }
 
