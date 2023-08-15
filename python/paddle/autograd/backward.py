@@ -483,9 +483,8 @@ def append_backward_ops(
 
             # create grad_op
             before_ops_num = len(block.ops)
-            first_op = op if combine_op is None else combine_op
             input_grad_list = paddle.framework.core.call_vjp(
-                first_op, output_grad_list, input_grad_stopgradient_list
+                op, output_grad_list, input_grad_stopgradient_list
             )
             after_ops_num = len(block.ops)
 

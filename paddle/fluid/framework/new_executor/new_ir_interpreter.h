@@ -53,12 +53,7 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
 
-  // op dependences
-  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
-
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
-
-  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
 
   bool IsSharedResultsBuild() const override;
 
@@ -195,11 +190,9 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void SolvePersisableVarNames();
 
-  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
-      const override;
+  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder() const;
 
-  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
-      const override;
+  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer() const;
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
