@@ -34,6 +34,10 @@ def quant_helper(
     )
 
 
+def naive_residual_bias_add(x, residual, bias, residual_alpha):
+    return x + residual_alpha * residual + bias
+
+
 def naive_layer_norm(x, gamma, beta, epsilon):
     x_float = paddle.cast(x, dtype=paddle.float32)
     mean = paddle.mean(x_float, axis=-1, keepdim=True)
@@ -166,6 +170,29 @@ class TestlayernormOp(unittest.TestCase):
         paddle.enable_static()
         return paddle_layernorm_out, paddle_naive_layernorm_out
 
+    def check_residual_bias_add(self, x_np, residual_np, bias_np, dtype):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np.astype(dtype))
+        residual = paddle.to_tensor(residual_np.astype(dtype))
+        bias = paddle.to_tensor(bias_np.astype(dtype))
+
+        paddle_layernorm_out = paddle.incubate.nn.functional.fused_layer_norm(
+            x,
+            None,
+            None,
+            self.epsilon,
+            begin_norm_axis=1,
+            bias=bias,
+            residual=residual,
+            residual_alpha=self.residual_alpha,
+        )
+
+        paddle_naive_residual_out = naive_residual_bias_add(
+            x, residual, bias, self.residual_alpha
+        )
+        paddle.enable_static()
+        return (paddle_layernorm_out, paddle_naive_residual_out)
+
     def check_residual_bias_layernorm(
         self, x_np, gamma_np, beta_np, residual_np, bias_np, dtype
     ):
@@ -246,6 +273,23 @@ class TestlayernormOp(unittest.TestCase):
             paddle_layernorm_out,
             paddle_naive_layernorm_out,
             paddle_naive_residual_out,
+        )
+
+    def test_residual_bias_add(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        (
+            paddle_residual_bias_out,
+            paddle_naive_residual_bias_out,
+        ) = self.check_residual_bias_add(
+            self.x_np, self.residual_np, self.bias_np, 'float16'
+        )
+
+        np.testing.assert_allclose(
+            paddle_residual_bias_out[0].numpy(),
+            paddle_naive_residual_bias_out.numpy(),
+            rtol=1e-3,
+            atol=1e-3,
         )
 
     def test_layernorm_fp16(self):
@@ -450,6 +494,55 @@ class TestlayernormStaticOp(unittest.TestCase):
             )
         return out_s, paddle_naive_layernorm_out
 
+    def check_residual_bias_add(self, x_np, residual_np, bias_np, dtype):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np.astype(dtype))
+        residual = paddle.to_tensor(residual_np.astype(dtype))
+        bias = paddle.to_tensor(bias_np.astype(dtype))
+
+        paddle_naive_residual_out = naive_residual_bias_add(
+            x, residual, bias, self.residual_alpha
+        )
+        paddle.enable_static()
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            x_static = paddle.static.data(
+                name="x_static", shape=[self.batch, self.cols], dtype=dtype
+            )
+            residual_static = paddle.static.data(
+                name="residual_static",
+                shape=[self.batch, self.cols],
+                dtype=dtype,
+            )
+            bias_static = paddle.static.data(
+                name="bias_static", shape=[self.cols], dtype=dtype
+            )
+            outs = paddle.incubate.nn.functional.fused_layer_norm(
+                x_static,
+                None,
+                None,
+                self.epsilon,
+                begin_norm_axis=1,
+                bias=bias_static,
+                residual=residual_static,
+                residual_alpha=self.residual_alpha,
+                quant_scale=self.quant_scale,
+                quant_round_type=self.quant_round_type,
+                quant_max_bound=self.quant_max_bound,
+                quant_min_bound=self.quant_min_bound,
+            )
+
+            exe = fluid.Executor(self.place)
+            out_s = exe.run(
+                feed={
+                    "x_static": x_np.astype(dtype),
+                    "residual_static": residual_np.astype(dtype),
+                    "bias_static": bias_np.astype(dtype),
+                },
+                fetch_list=[outs],
+            )
+        return out_s, paddle_naive_residual_out
+
     def check_residual_bias_layernorm(
         self, x_np, gamma_np, beta_np, residual_np, bias_np, dtype
     ):
@@ -609,6 +702,26 @@ class TestlayernormStaticOp(unittest.TestCase):
             paddle_naive_layernorm.numpy(),
             rtol=2,
             atol=2,
+        )
+
+    def test_residual_bias_add(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        (
+            paddle_layernorm,
+            paddle_naive_residual_out,
+        ) = self.check_residual_bias_add(
+            self.x_np,
+            self.residual_np,
+            self.bias_np,
+            'float16',
+        )
+
+        np.testing.assert_allclose(
+            paddle_layernorm[0],
+            paddle_naive_residual_out.numpy(),
+            rtol=1e-3,
+            atol=1e-3,
         )
 
     def test_residual_bias_add_layernorm_fp16(self):
