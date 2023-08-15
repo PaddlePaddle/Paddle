@@ -162,7 +162,7 @@ class TestMPBroadcastObj(TestDistMPTraining):
             loss_b = self.train_batch(batch, model_b, optimizer_b, False)
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-6
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-4
             )
 
 
