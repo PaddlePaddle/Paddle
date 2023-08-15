@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/dialect/shape/shape_op.h"
+#include "paddle/ir/dialect/shape/IR/shape_op.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
 namespace ir {
