@@ -17,6 +17,11 @@
 namespace paddle {
 namespace dialect {
 
+const std::unordered_set<std::string> LegacyOpList = {
+    "pd.fused_softmax_mask_upper_triangle",
+    "pd.fused_softmax_mask_upper_triangle_grad",
+    "pd.load_combine"};
+
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -166,6 +171,8 @@ VariantType GetAttributeData(const ir::Attribute& attr) {
   AttrType attr_type = GetAttributeType(attr);
   return kAttrCastMap[attr_type](attr);
 }
+
+bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
 }  // namespace dialect
 }  // namespace paddle
