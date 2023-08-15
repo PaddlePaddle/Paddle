@@ -56,8 +56,11 @@ TEST(DEV_API, strings_cast_convert) {
   dense_x_data[1] = long_str;
 
   // 2. get expected results
-  std::string expected_results[] = {
-      short_str, short_str, long_str, long_str};  // NOLINT
+  std::string expected_results[] = {// NOLINT
+                                    short_str,
+                                    short_str,
+                                    long_str,
+                                    long_str};
   std::transform(short_str.begin(),
                  short_str.end(),
                  expected_results[0].begin(),

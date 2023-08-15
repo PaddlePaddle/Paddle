@@ -243,8 +243,31 @@ struct SimplifyIfThenElseMutator : public ir::IRMutator<> {
     auto* node = expr->As<ir::IfThenElse>();
     node->condition = common::AutoSimplify(node->condition);
 
-    if (node->true_case.defined()) Visit(&node->true_case, &node->true_case);
-    if (node->false_case.defined()) Visit(&node->false_case, &node->false_case);
+    auto* condition_int = node->condition.As<ir::IntImm>();
+    auto* condition_uint = node->condition.As<ir::UIntImm>();
+    int64_t value;
+    if (condition_int || condition_uint) {
+      if (condition_int) {
+        value = condition_int->value;
+      } else {
+        value = condition_uint->value;
+      }
+      if (value) {
+        *expr = op->true_case;
+      } else {
+        if (op->false_case.defined()) {
+          *expr = op->false_case;
+        } else {
+          // null condition
+          *expr = ir::Block::Make({});
+        }
+      }
+    }
+    if (expr->As<ir::IfThenElse>()) {
+      if (node->true_case.defined()) Visit(&node->true_case, &node->true_case);
+      if (node->false_case.defined())
+        Visit(&node->false_case, &node->false_case);
+    }
   }
 };
 
