@@ -36,12 +36,12 @@ class ResultPatternGraph;
 
 class Attribute {
  public:
-  explicit Attribute(const std::string& id) : attr_id_(id) {}
+  explicit Attribute(const std::string& name) : attr_name_(name) {}
 
-  const std::string& id() const { return attr_id_; }
+  const std::string& name() const { return attr_name_; }
 
  private:
-  std::string attr_id_;
+  std::string attr_name_;
 };
 
 class TensorShape {
@@ -128,6 +128,7 @@ class Op {
 
  private:
   friend class DrrPatternContext;
+  friend class OpCall;
 
   Op(const std::string& op_type_name,
      const std::unordered_map<std::string, Attribute>& attributes,
@@ -135,6 +136,10 @@ class Op {
       : op_type_name_(op_type_name),
         attributes_(attributes),
         pattern_graph_(pattern_graph) {}
+
+  const std::unordered_map<std::string, Attribute>& attributes() const {
+    return attributes_;
+  }
 
   static int64_t count;
 
@@ -194,6 +199,10 @@ class OpCall {
   const std::vector<const Tensor*>& inputs() const { return inputs_; }
 
   const std::vector<const Tensor*>& outputs() const { return outputs_; }
+
+  const std::unordered_map<std::string, Attribute>& attributes() const {
+    return op_->attributes();
+  }
 
  private:
   const Op* op_;

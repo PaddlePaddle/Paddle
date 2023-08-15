@@ -18,6 +18,7 @@
 #include <unordered_map>
 
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 #include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
 #include "paddle/ir/pattern_rewrite/drr/ir_value.h"
@@ -25,7 +26,6 @@
 namespace ir {
 namespace drr {
 
-class OpCall;
 template <class T>
 struct CppTypeToIrAttribute;
 
@@ -64,9 +64,17 @@ class MatchContextImpl final {
     return *tensor_map_.at(tensor_name);
   }
 
+  ir::Attribute GetIrAttr(const std::string& tensor_name) const {
+    return attr_map_.at(tensor_name);
+  }
+
   const std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>&
   operation_map() const {
     return operation_map_;
+  }
+
+  const std::unordered_map<std::string, ir::Attribute>& attr_map() const {
+    return attr_map_;
   }
 
   void BindIrValue(const std::string& value_name,
@@ -77,6 +85,10 @@ class MatchContextImpl final {
   void BindIrOperation(const OpCall* op_call,
                        const std::shared_ptr<IrOperation>& op) {
     operation_map_.emplace(op_call, op);
+    const auto& attrs = op_call->attributes();
+    for (const auto& kv : attrs) {
+      BindIrAttr(kv.second.name(), op->get()->attribute(kv.first));
+    }
   }
 
   void BindIrAttr(const std::string& attr_name, ir::Attribute attr) {
