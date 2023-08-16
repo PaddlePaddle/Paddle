@@ -38,6 +38,12 @@ Tensor mean_grad(const Tensor& x,
                  bool reduce_all = false);
 
 template <typename T>
+std::tuple<Tensor, Tensor> add_grad(const Tensor& x,
+                                    const Tensor& y,
+                                    const Tensor& out_grad,
+                                    int axis);
+
+template <typename T>
 Tensor divide(const Tensor& x, const Tensor& y);
 
 template <typename T>

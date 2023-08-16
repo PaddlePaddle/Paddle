@@ -142,5 +142,53 @@ std::vector<std::vector<ir::OpResult>> SumOp::Vjp(
   }
   return res;
 }
+
+std::vector<std::vector<ir::OpResult>> AddOp::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  AddOp op_obj = op->dyn_cast<AddOp>();
+  Tensor x(std::make_shared<primitive::DescTensor>(op_obj.x()));
+  Tensor y(std::make_shared<primitive::DescTensor>(op_obj.y()));
+  Tensor out_grad(std::make_shared<primitive::DescTensor>(out_grads[0][0]));
+  int axis = -1;
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::add_vjp(x, y, out_grad, axis, stop_gradients);
+  std::vector<std::vector<ir::OpResult>> res(2, std::vector<ir::OpResult>(1));
+  for (size_t i = 0; i < 2; ++i) {
+    if (tensor_res[i][0].defined()) {
+      res[i][0] = std::static_pointer_cast<primitive::DescTensor>(
+                      tensor_res[i][0].impl())
+                      ->getValue()
+                      .dyn_cast<ir::OpResult>();
+    }
+  }
+  return res;
+}
+
+std::vector<std::vector<ir::OpResult>> Add_Op::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  Add_Op op_obj = op->dyn_cast<Add_Op>();
+  Tensor x(std::make_shared<primitive::DescTensor>(op_obj.x()));
+  Tensor y(std::make_shared<primitive::DescTensor>(op_obj.y()));
+  Tensor out_grad(std::make_shared<primitive::DescTensor>(out_grads[0][0]));
+  int axis = -1;
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::add_vjp(x, y, out_grad, axis, stop_gradients);
+  std::vector<std::vector<ir::OpResult>> res(2, std::vector<ir::OpResult>(1));
+  for (size_t i = 0; i < 2; ++i) {
+    if (tensor_res[i][0].defined()) {
+      res[i][0] = std::static_pointer_cast<primitive::DescTensor>(
+                      tensor_res[i][0].impl())
+                      ->getValue()
+                      .dyn_cast<ir::OpResult>();
+    }
+  }
+  return res;
+}
 }  // namespace dialect
 }  // namespace paddle

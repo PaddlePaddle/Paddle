@@ -38,6 +38,13 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
     bool reduce_all,
     const std::vector<std::vector<bool>>& stop_gradients);
 
+std::vector<std::vector<paddle::Tensor>> add_vjp(
+    const Tensor& x,
+    const Tensor& y,
+    const Tensor& out_grad,
+    int axis,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 std::vector<std::vector<paddle::Tensor>> divide_vjp(
     const Tensor& x,
     const Tensor& y,
@@ -53,5 +60,6 @@ std::vector<std::vector<paddle::Tensor>> sum_vjp(
     bool keepdim,
     bool reduce_all,
     const std::vector<std::vector<bool>>& stop_gradients);
+
 }  // namespace primitive
 }  // namespace paddle
