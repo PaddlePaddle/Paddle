@@ -11,4 +11,14 @@ if(WITH_TESTING AND WITH_CINN)
     gtest
     glog)
   set_tests_properties(test_new_ir_compiler PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  cc_test_old(
+    test_jit_instruction
+    SRCS
+    jit_instruction_test.cc
+    DEPS
+    interpreter
+    new_ir_compiler
+    convert_to_dialect)
+  set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()

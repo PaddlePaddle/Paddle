@@ -15,21 +15,23 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
-#include "paddle/cinn/utils/data_util.h"
-
 #include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/convert_to_dialect.h"
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/utils/data_util.h"
 
 std::unique_ptr<::ir::Program> BuildProgram() {
   ::ir::IrContext* ctx = ::ir::IrContext::Instance();
@@ -49,44 +51,13 @@ std::unique_ptr<::ir::Program> BuildProgram() {
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
-  // TODO(Aurelius84): test more op
-  // auto add_z = builder.Build<paddle::dialect::MatmulOp>(full_op_x->result(0),
-  //                                                       full_op_y->result(0));
   return std::move(program);
 }
 
-TEST(NewIRCompier, CompilerAndRun) {
-  // Step 1: Construct ir::Program
-  std::unique_ptr<::ir::Program> program = BuildProgram();
-  EXPECT_EQ(program->block()->size(), 2u);
+namespace paddle {
+namespace framework {
 
-  std::stringstream ss;
-  program->Print(ss);
-  LOG(INFO) << ss.str();
-
-  // Step 2: Compiler New ir::Program into Runtime Program
-  auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  ASSERT_EQ(scope->var_names().size(), 2);
-
-  cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
-  auto runtime_program = ir_compiler.Build();
-
-  // Step 3: Execute Runtime Instruction and check Scope.
-  ASSERT_NO_THROW(runtime_program->Execute());
-  const float value = 2.0;
-  for (auto& var_name : scope->var_names()) {
-    std::string name = {var_name.begin(), var_name.end()};
-    std::vector<float> data =
-        cinn::GetTensorData<float>(scope->GetTensor(name), target);
-    for (int i = 0; i < data.size(); ++i) {
-      LOG_FIRST_N(INFO, 3) << "data: " << data[i];
-      ASSERT_NEAR(data[i], value, 1e-5);
-    }
-  }
-}
-
-TEST(RuntimeDialect, CompilerAndRun) {
+TEST(CinnJitInstruction, Run) {
   // Step 1: Construct ir::Program
   std::unique_ptr<::ir::Program> program = BuildProgram();
   EXPECT_EQ(program->block()->size(), 2u);
@@ -103,25 +74,23 @@ TEST(RuntimeDialect, CompilerAndRun) {
   std::unique_ptr<::ir::Program> ir_runtime_program =
       cinn::hlir::framework::ConvertToRuntimeDialect(*runtime_program);
 
-  // Step 4: Run cinn::dialect::RuntimeDialect
-  for (auto iter = ir_runtime_program->block()->begin();
-       iter != ir_runtime_program->block()->end();
-       ++iter) {
-    auto op = (*iter)->dyn_cast<cinn::dialect::JitKernelOp>();
-    auto* instr = op.instruction();
-    instr->Run(/*name2podargs=*/nullptr,
-               false,
-               /*stream=*/nullptr,
-               /*use_cache=*/true);
-  }
-#ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaDeviceSynchronize());
-#endif
-
-  // Step 5: Check Scope Tensor Value.
-  const float value = 2.0;
+  std::set<std::string> out_names;
   for (auto& var_name : scope->var_names()) {
     std::string name = {var_name.begin(), var_name.end()};
+    out_names.insert(name);
+  }
+
+  platform::Place place = platform::CUDAPlace(0);
+  Scope exe_scope;
+
+  InterpreterCore executor(
+      place, {}, std::move(ir_runtime_program), &exe_scope);
+  executor.SetSkipGcVars(out_names);
+  executor.Run({});
+
+  // TODO(Aurelius84): Need to replace check with framework::Scope.
+  const float value = 2.0;
+  for (auto& name : out_names) {
     std::vector<float> data =
         cinn::GetTensorData<float>(scope->GetTensor(name), target);
     for (int i = 0; i < data.size(); ++i) {
@@ -130,3 +99,6 @@ TEST(RuntimeDialect, CompilerAndRun) {
     }
   }
 }
+
+}  // namespace framework
+}  // namespace paddle
