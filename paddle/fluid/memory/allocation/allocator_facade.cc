@@ -1279,30 +1279,6 @@ AllocatorFacade& AllocatorFacade::Instance() {
   return *instance;
 }
 
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// const std::shared_ptr<phi::Allocator> AllocatorFacade::GetAllocatorTmp(const
-// phi::Place& place,
-//                                                                    gpuStream_t
-//                                                                    stream) {
-//   return AllocatorFacade::Instance().GetAllocator(place, stream);
-// }
-
-// const std::shared_ptr<phi::Allocator>
-// AllocatorFacade::GetHostAllocatorTmp(const phi::Place& place) {
-//   return AllocatorFacade::Instance().GetAllocator(place);
-// }
-
-// const std::shared_ptr<phi::Allocator>
-// AllocatorFacade::GetPinnedAllocatorTmp(const phi::Place& place) {
-//   return AllocatorFacade::Instance().GetAllocator(place);
-// }
-
-// const std::shared_ptr<phi::Allocator>
-// AllocatorFacade::GetZeroAllocatorTmp(const phi::Place& place) {
-//   return AllocatorFacade::Instance().GetZeroAllocator(place);
-// }
-// #endif
-
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {

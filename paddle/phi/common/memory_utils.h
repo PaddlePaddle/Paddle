@@ -160,12 +160,12 @@ struct MemoryInterface {
 
 #if defined(PADDLE_WITH_CUDA) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-  phi::Allocator* (*get_allocator)(int device_id, cudaStream_t stream);
+  phi::Allocator* (*get_allocator)(int device_id, phi::gpuStream_t stream);
   phi::Allocator* (*get_host_allocator)();
   phi::Allocator* (*get_zero_allocator)(int device_id);
   phi::Allocator* (*get_host_zero_allocator)();
   phi::Allocator* (*get_pinned_allocator)();
-  std::shared_ptr<std::remove_pointer<paddle::gpuEvent_t>::type> (
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> (
       *get_new_cuda_event)(int device_id);
 #endif
 };
@@ -343,7 +343,7 @@ class MemoryUtils {
 
 #if defined(PADDLE_WITH_CUDA) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-  const phi::Allocator* GetAllocator(int device_id, cudaStream_t stream) {
+  const phi::Allocator* GetAllocator(int device_id, phi::gpuStream_t stream) {
     return memory_method_->get_allocator(device_id, stream);
   }
 
@@ -443,7 +443,7 @@ const Allocator* GetHostZeroAllocator();
 
 const Allocator* GetPinnedAllocator();
 
-std::shared_ptr<std::remove_pointer<paddle::gpuEvent_t>::type> GetCudaEvent(
+std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
     int device_id);
 #endif
 

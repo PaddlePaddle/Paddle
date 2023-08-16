@@ -455,16 +455,6 @@ void InitMemoryMethod() {
 
 #if defined(PADDLE_WITH_CUDA) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-    // memory_method->get_allocator =
-    // paddle::memory::allocation::AllocatorFacade::GetAllocatorTmp;
-    // memory_method->get_host_allocator =
-    // paddle::memory::allocation::AllocatorFacade::GetHostAllocatorTmp;
-    // memory_method->get_zero_allocator =
-    // paddle::memory::allocation::AllocatorFacade::GetZeroAllocatorTmp;
-    // memory_method->get_pinned_allocator =
-    // paddle::memory::allocation::AllocatorFacade::GetPinnedAllocatorTmp;
-    // memory_method->get_new_cuda_event =
-    // paddle::platform::CudaEventResourcePool::NewTmp;
     memory_method->get_allocator = [](int device_id,
                                       cudaStream_t stream) -> phi::Allocator * {
       return paddle::memory::allocation::AllocatorFacade::Instance()

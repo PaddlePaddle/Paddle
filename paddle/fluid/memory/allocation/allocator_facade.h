@@ -81,17 +81,6 @@ class AllocatorFacade {
 
   bool IsStreamSafeCUDAAllocatorUsed();
 
-  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  // static const std::shared_ptr<phi::Allocator>& GetAllocatorTmp(const
-  // phi::Place& place,
-  //                                                          gpuStream_t
-  //                                                          stream);
-  // static const std::shared_ptr<phi::Allocator>& GetHostAllocatorTmp(const
-  // phi::Place& place); static const std::shared_ptr<phi::Allocator>&
-  // GetPinnedAllocatorTmp(const phi::Place& place); static const
-  // std::shared_ptr<phi::Allocator>& GetZeroAllocatorTmp(const phi::Place&
-  // place); #endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
   uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
