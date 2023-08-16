@@ -365,6 +365,11 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         out_.backward()
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
+    def test_dot_scale_product_flag(self):
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+        self.test_dot_scale_product()
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
+
 
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
