@@ -24,8 +24,27 @@ from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
+_first_get_mp_env_flag = True
+
 
 def _get_mp_env_flag(flag):
+    global _first_get_mp_env_flag
+    if _first_get_mp_env_flag:
+        print(
+            "Flags_mp_aysnc_allreduce is {}, which is used to support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear.".format(
+                str(os.getenv("Flags_mp_aysnc_allreduce")).lower()
+            )
+        )
+        print(
+            "Flags_fused_linear_param_grad_add is {}, which is used to support fused_linear_param_grad_add in ColumnParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.".format(
+                str(os.getenv("Flags_fused_linear_param_grad_add")).lower()
+            )
+        )
+        print(
+            "Flags_skip_mp_c_identity is {}, which is used to support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.".format(
+                str(os.getenv("Flags_skip_mp_c_identity")).lower()
+            )
+        )
     # Model parallel environment flag.
     # Flags_mp_aysnc_allreduce: support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
     # Flags_fused_linear_param_grad_add: support fused_linear_param_grad_add in ColumnParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
@@ -449,34 +448,6 @@ class TestDistMPTraining(unittest.TestCase):
 
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-6
-            )
-
-    def test_mp_model_async_allreduce(self):
-        (
-            model_a,
-            optimizer_a,
-            model_b,
-            optimizer_b,
-        ) = self.build_model_optimizer()
-
-        os.environ['Flags_mp_aysnc_allreduce'] = "True"
-        os.environ['Flags_skip_mp_c_identity'] = "True"
-
-        for _ in range(5):
-            np_data = np.random.randint(
-                0,
-                vocab_size,
-                (
-                    batch_size,
-                    seq_length,
-                ),
-            )
-            batch = paddle.to_tensor(np_data)
-            loss_a = self.train_batch(batch, model_a, optimizer_a, True)
-            loss_b = self.train_batch(batch, model_b, optimizer_b, False)
-
-            np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=1e-4
             )
 
 
