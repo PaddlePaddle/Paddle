@@ -444,9 +444,6 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
     op->SetInput("Variance", this->Output("VarianceOut"));
   }
 
-  op->SetInput("MeanOut", this->Output("MeanOut"));
-  op->SetInput("VarianceOut", this->Output("VarianceOut"));
-
   op->SetAttrMap(this->Attrs());
 
   op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));

@@ -440,7 +440,6 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  ir_res->Print(std::cout);
   return ir_res;
 }
 
@@ -514,7 +513,6 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
-  res->Print(std::cout);
   return res;
 }
 

@@ -162,7 +162,6 @@ ir::OpResult AddPlaceTransferOp(ir::OpResult in,
     ir::Operation* op =
         ir::Operation::Create({in}, op_attribute, {out_type}, op_info);
 
-    // auto new_out_type = paddle::dialect::AllocatedDenseTensorType::get(ctx, )
     program->block()->push_back(op);
 
     auto new_in = op->result(0);
@@ -704,17 +703,17 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
               VLOG(6) << "need trans from " << place << " to "
                       << kernel_key.backend();
               // build memcopy op
+              auto out_place = phi::TransToPhiPlace(kernel.InputAt(i).backend);
               auto out_type = dialect::AllocatedDenseTensorType::get(
                   ctx,
-                  phi::TransToPhiPlace(kernel.InputAt(i).backend),
+                  out_place,
                   cur_in.type().dyn_cast<dialect::DenseTensorType>());
-              new_in = AddPlaceTransferOp(
-                  new_in,
-                  out_type,
-                  place,
-                  phi::TransToPhiPlace(kernel.InputAt(i).backend),
-                  kernel_key,
-                  program.get());
+              new_in = AddPlaceTransferOp(new_in,
+                                          out_type,
+                                          place,
+                                          out_place,
+                                          kernel_key,
+                                          program.get());
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
             // [ todo need update here, support combine data transfomer]
