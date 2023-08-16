@@ -380,7 +380,12 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(dist_tensor->dist_attr().get());
 #else
-    RETURN_PY_NONE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `dist_attr()` property of (Dist)Tensor is not supported in the "
+        "current "
+        "PaddlePaddle, please recompile and installPaddlePaddle with the "
+        "option "
+        "of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
     RETURN_PY_NONE
