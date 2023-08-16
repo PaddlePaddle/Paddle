@@ -635,7 +635,6 @@ class TestCTCLossAPICase(unittest.TestCase):
             [max(self.logits_length), self.batch_size, self.num_classes],
         ).astype("float32")
 
-
         softmax = np.apply_along_axis(stable_softmax, -1, logits)
         # labels should not be blank
         labels = np.random.randint(
@@ -644,7 +643,7 @@ class TestCTCLossAPICase(unittest.TestCase):
             [self.batch_size, max(self.labels_length)],
             dtype="int32",
         )
-        
+
         ctc = CTCForward(
             softmax,
             self.logits_length,
@@ -666,7 +665,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
             softmax, labels, logits_length, labels_length
         )
-    
+
         loss_pd = loss_pd.numpy()
         paddle.enable_static()
         loss_np = np.squeeze(loss_np, axis=-1)

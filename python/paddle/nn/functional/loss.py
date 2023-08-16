@@ -1897,11 +1897,11 @@ def ctc_loss(
                 },
             )
             return loss_out
-        
+
     if not use_log_softmax:
         raise ValueError(
             'Expected log_probs is an unscaled probability sequence. It not need to go through the log_softmax operation.'
-            )
+        )
     loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
