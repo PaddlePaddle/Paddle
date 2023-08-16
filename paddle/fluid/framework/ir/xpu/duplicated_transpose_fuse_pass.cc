@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/two_transpose_fuse_pass.h"
+#include "paddle/fluid/framework/ir/xpu/duplicated_transpose_fuse_pass.h"
 #include <string>
 
 #include "glog/logging.h"
@@ -28,8 +28,9 @@ namespace ir {
 
 namespace patterns {
 
-struct TwoTransposeFusePattern : public PatternBase {
-  TwoTransposeFusePattern(PDPattern* pattern, const std::string& name_scope);
+struct DuplicatedTransposeFusePattern : public PatternBase {
+  DuplicatedTransposeFusePattern(PDPattern* pattern,
+                                 const std::string& name_scope);
 
   // declare operator node's name
   PATTERN_DECL_NODE(transpose_1);
@@ -40,42 +41,37 @@ struct TwoTransposeFusePattern : public PatternBase {
   PATTERN_DECL_NODE(transpose_2_out);
 };
 
-TwoTransposeFusePattern::TwoTransposeFusePattern(PDPattern* pattern,
-                                                 const std::string& name_scope)
+DuplicatedTransposeFusePattern::DuplicatedTransposeFusePattern(
+    PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* x = pattern->NewNode(x_repr())->assert_is_op_input("transpose2", "X");
-
   auto* transpose_1 =
       pattern->NewNode(transpose_1_repr())->assert_is_op("transpose2");
-
   auto* transpose_1_out = pattern->NewNode(transpose_1_out_repr())
                               ->assert_is_op_output("transpose2", "Out")
                               ->assert_has_n_outputs(1)
                               ->assert_is_op_input("transpose2", "X");
-
   transpose_1->LinksFrom({x}).LinksTo({transpose_1_out});
-
   auto* transpose_2 =
       pattern->NewNode(transpose_2_repr())->assert_is_op("transpose2");
-
   auto* transpose_2_out = pattern->NewNode(transpose_2_out_repr())
-                              ->assert_is_op_output("transpose2", "Out")
-                              ->assert_has_n_outputs(1);
+                              ->assert_is_op_output("transpose2", "Out");
   transpose_2->LinksFrom({transpose_1_out}).LinksTo({transpose_2_out});
 }
 
 }  // namespace patterns
 
-void TwoTransposeFusePass::TwoTranspose(ir::Graph* graph) const {
+void DuplicatedTransposeFusePass::DuplicatedTranspose(ir::Graph* graph) const {
   GraphPatternDetector gpd;
 
-  patterns::TwoTransposeFusePattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::DuplicatedTransposeFusePattern pattern(gpd.mutable_pattern(),
+                                                   name_scope_);
 
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle TwoTransposeFusePass";
+    VLOG(4) << "handle DuplicatedTransposeFusePass";
     // declare operator node's name
     GET_IR_NODE(transpose_1);
     GET_IR_NODE(transpose_2);
@@ -85,14 +81,12 @@ void TwoTransposeFusePass::TwoTranspose(ir::Graph* graph) const {
     GET_IR_NODE(transpose_2_out);
 
     auto* block = transpose_1->Op()->Block();
-    // Generate reshape2 op
+    // Generate transpose2 op
     framework::OpDesc transpose_op_desc(block);
     transpose_op_desc.SetType("transpose2");
     transpose_op_desc.SetInput("X", {x->Name()});
-
     auto axis1 = transpose_1->Op()->GetAttrIfExists<std::vector<int>>("axis");
     auto axis2 = transpose_2->Op()->GetAttrIfExists<std::vector<int>>("axis");
-
     for (int i = 0; i < axis2.size(); i++) {
       axis2[i] = axis1[axis2[i]];
     }
@@ -106,7 +100,6 @@ void TwoTransposeFusePass::TwoTranspose(ir::Graph* graph) const {
     // delete useless node
     std::unordered_set<const Node*> delete_nodes = {
         transpose_1, transpose_2, transpose_1_out};
-
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
@@ -115,22 +108,22 @@ void TwoTransposeFusePass::TwoTranspose(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void TwoTransposeFusePass::ApplyImpl(ir::Graph* graph) const {
+void DuplicatedTransposeFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
-  TwoTranspose(graph);
+  DuplicatedTranspose(graph);
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(two_transpose_fuse_pass,
-              paddle::framework::ir::TwoTransposeFusePass);
+REGISTER_PASS(duplicated_transpose_fuse_pass,
+              paddle::framework::ir::DuplicatedTransposeFusePass);
 
-REGISTER_PASS_CAPABILITY(two_transpose_fuse_pass)
+REGISTER_PASS_CAPABILITY(duplicated_transpose_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "transpose2", 0));

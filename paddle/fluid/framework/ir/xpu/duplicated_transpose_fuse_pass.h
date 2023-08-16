@@ -34,23 +34,25 @@ namespace ir {
 Origin subgraph:
         x
         |
-      transpose
+    transpose
         |
-      transpose
+    transpose
         |
+        y
 
 Fused subgraph:
         x
         |
     transpose
         |
+        y
 */
-class TwoTransposeFusePass : public FusePassBase {
+class DuplicatedTransposeFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void TwoTranspose(ir::Graph* graph) const;
+  void DuplicatedTranspose(ir::Graph* graph) const;
 
   const std::string name_scope_{"two_transpose_fuse_pass"};
 };
