@@ -66,9 +66,21 @@ void silu_grad(const Tensor& x,
                const Tensor& out_grad,
                Tensor* x_grad) {
   if (x_grad) {
-    auto sigmoid = out / x;
-    auto res = out_grad * sigmoid * (1.0 + x * (1.0 - sigmoid));
-    set_output<T>(res, x_grad);
+    auto org_dtype = x.dtype();
+    bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                     org_dtype == phi::DataType::BFLOAT16;
+    if (need_cast) {
+      auto x_cast = cast<T>(x, phi::DataType::FLOAT32);
+      auto out_cast = cast<T>(out, phi::DataType::FLOAT32);
+      auto out_grad_cast = cast<T>(out_grad, phi::DataType::FLOAT32);
+      auto sigmoid = 1.0 / (1.0 + exp<T>(-x_cast));
+      auto res = out_grad_cast * sigmoid * (1.0 + x_cast - out_cast);
+      set_output<T>(cast<T>(res, org_dtype), x_grad);
+    } else {
+      auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
+      auto res = out_grad * sigmoid * (1.0 + x - out);
+      set_output<T>(res, x_grad);
+    }
   }
 }
 
