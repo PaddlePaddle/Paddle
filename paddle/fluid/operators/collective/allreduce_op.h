@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
@@ -37,7 +37,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::PreconditionNotMet(
                           "AllReduce op can run on gpu place only for now."));
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");

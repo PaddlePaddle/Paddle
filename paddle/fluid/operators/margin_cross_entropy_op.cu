@@ -37,7 +37,7 @@ namespace cub = hipcub;
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -70,7 +70,7 @@ void GetClassInterval(const gpuStream_t& stream,
     return;
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   DenseTensor num_classes_per_device;
   phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   int* num_classes_per_device_ptr = num_classes_per_device.data<int>();
@@ -239,7 +239,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                               DenseTensor* loss) {
   const auto& place = dev_ctx.GetPlace();  // old code
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   paddle::platform::NCCLComm* comm;
   paddle::distributed::ProcessGroup* pg = nullptr;
   gpuStream_t stream;
@@ -350,7 +350,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
           phi::kps::IdentityFunctor<T>(),
           {1});
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     if (pg) {
       std::vector<phi::DenseTensor> in_tensor;
@@ -391,7 +391,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       phi::kps::ExpFunctor<T>(),
       {1});
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     if (pg) {
       std::vector<phi::DenseTensor> in_tensor;
@@ -449,7 +449,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                                                    class_interval.data<int>());
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     if (pg) {
       std::vector<phi::DenseTensor> in_tensor;

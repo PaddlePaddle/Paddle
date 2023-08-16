@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/process_group_utils.h"
 #include "paddle/phi/api/all.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 
@@ -1231,7 +1231,7 @@ void BindDistributed(py::module *m) {
               py::arg("id"),
               py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_MCCL)
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)

@@ -91,10 +91,11 @@ using mudnnStatus_t = ::musa::dnn::Status;
 #include "paddle/phi/backends/dynload/mublas.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
 #include "paddle/phi/backends/dynload/murand.h"
-#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
 #include <error.h>
 
 #include "paddle/phi/backends/dynload/mccl.h"
+// #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_MUSA
 
@@ -890,7 +891,7 @@ DEFINE_EXTERNAL_API_TYPE(mufftResult_t, MUFFT_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(MUresult, MUSA_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
-DEFINE_EXTERNAL_API_TYPE(mcclResult_t, mcclSuccess);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 #endif
 
 }  // namespace details
@@ -1033,14 +1034,14 @@ inline std::string build_musa_error_msg(musparseStatus_t stat) {
 
 /**************** MCCL ERROR ****************/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
-inline bool is_error(mcclResult_t mccl_result) {
-  return mccl_result != mcclSuccess;
+inline bool is_error(ncclResult_t nccl_result) {
+  return nccl_result != ncclSuccess;
 }
 
-inline std::string build_musa_error_msg(mcclResult_t mccl_result) {
+inline std::string build_musa_error_msg(ncclResult_t nccl_result) {
   std::ostringstream sout;
-  sout << "MCCL error(" << mccl_result << "), "
-       << phi::dynload::mcclGetErrorString(mccl_result) << ". ";
+  sout << "MCCL error(" << nccl_result << "), "
+       << phi::dynload::ncclGetErrorString(nccl_result) << ". ";
   if (errno == ENOSPC || errno == EAGAIN) {
     std::string detail(strerror(errno));
     detail += "\nPlease try one of the following solutions:";

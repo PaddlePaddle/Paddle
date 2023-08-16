@@ -38,7 +38,7 @@ if(WITH_MCCL)
       math(EXPR MCCL_VERSION "${MCCL_MAJOR_VERSION} * 1000 +
                  ${MCCL_MINOR_VERSION} * 100 + ${MCCL_PATCH_VERSION}")
     endif()
-    add_definitions("-DMCCL_VERSION_CODE=$MCCL_VERSION")
+    # add_definitions("-DMCCL_VERSION_CODE=$MCCL_VERSION")
     include_directories(${MCCL_INCLUDE_DIR})
 
     message(STATUS "Current MCCL header is ${MCCL_INCLUDE_DIR}/mccl.h. ")

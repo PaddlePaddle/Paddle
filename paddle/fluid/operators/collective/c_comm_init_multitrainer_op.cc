@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 // #include "paddle/fluid/operators/distributed/distributed.h"
 // #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -55,7 +55,7 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input X must be provided."));
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
     int ntrainers = Attr<int>("ntrainers");

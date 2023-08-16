@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -29,7 +29,7 @@ void ReduceKernel(const Context& dev_ctx,
                   int root,
                   int reduce_type,
                   DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
 

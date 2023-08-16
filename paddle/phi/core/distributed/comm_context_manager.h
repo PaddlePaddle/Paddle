@@ -44,7 +44,7 @@ class CommContextManager {
 
   bool Has(int ring_id) const;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     int dev_id,
                                     int ring_id,

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/data_norm_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -212,7 +212,7 @@ class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
         d_batch_square_sum);
 
     if (need_sync_stats) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       auto comm = platform::NCCLCommContext::Instance().Get(0, ctx.GetPlace());
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_size),

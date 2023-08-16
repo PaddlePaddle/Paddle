@@ -78,12 +78,12 @@ REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 #endif
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
-     defined PADDLE_WITH_XPU_BKCL) &&                        \
+     defined PADDLE_WITH_XPU_BKCL) && defined PADDLE_WITH_MCCL || \
     (defined PADDLE_WITH_PSLIB)
 REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif
 }  // namespace framework

@@ -21,15 +21,15 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) && NCCL_VERSION_CODE >= 2703
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 namespace phi {
 
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
-    NCCL_VERSION_CODE >= 2703
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
+    defined(PADDLE_WITH_MCCL)) && NCCL_VERSION_CODE >= 2703
 template <typename Context>
 void send_shape_info(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -124,8 +124,8 @@ void PSendKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int peer,
                  bool dynamic_shape) {
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) && NCCL_VERSION_CODE >= 2703
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
   if (dynamic_shape) {
@@ -144,8 +144,8 @@ template <typename T, typename Context>
 void PSendArrayKernel(const Context& dev_ctx,
                       const TensorArray& x_array,
                       int peer) {
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) && NCCL_VERSION_CODE >= 2703
 
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();

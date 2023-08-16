@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/utils.h"
 #endif
@@ -29,7 +29,7 @@ template <typename T, typename Context>
 void AllToAllKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #if NCCL_VERSION_CODE >= 2703
   auto x_dims = x.dims();
   out->Resize(x_dims);

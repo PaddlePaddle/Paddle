@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <mccl.h>
+#include <nccl.h>
 
 #include <mutex>  // NOLINT
 
@@ -30,7 +30,7 @@ extern void* mccl_dso_handle;
   struct DynLoad__##__name {                                     \
     template <typename... Args>                                  \
     auto operator()(Args... args) -> decltype(__name(args...)) { \
-      using mccl_func = decltype(&::__name);                     \
+      using mccl_func = decltype(&__name);                     \
       std::call_once(mccl_dso_flag, []() {                       \
         mccl_dso_handle = phi::dynload::GetNCCLDsoHandle();      \
       });                                                        \
@@ -41,27 +41,27 @@ extern void* mccl_dso_handle;
   extern DynLoad__##__name __name
 
 #define MCCL_RAND_ROUTINE_EACH(__macro) \
-  __macro(mcclCommInitAll);             \
-  __macro(mcclGetUniqueId);             \
-  __macro(mcclCommInitRank);            \
-  __macro(mcclCommDestroy);             \
-  __macro(mcclCommCount);               \
-  __macro(mcclCommCuDevice);            \
-  __macro(mcclCommUserRank);            \
-  __macro(mcclAllReduce);               \
-  __macro(mcclBcast);                   \
-  __macro(mcclAllGather);               \
-  __macro(mcclGroupStart);              \
-  __macro(mcclGroupEnd);                \
-  __macro(mcclReduce);                  \
-  __macro(mcclReduceScatter);           \
-  __macro(mcclGetErrorString);          \
-  __macro(mcclBroadcast);               \
-  __macro(mcclGetVersion);              \
-  __macro(mcclSend);                    \
-  __macro(mcclRecv);                    \
-  __macro(mcclRedOpCreatePreMulSum);    \
-  __macro(mcclRedOpDestroy);
+  __macro(ncclCommInitAll);             \
+  __macro(ncclGetUniqueId);             \
+  __macro(ncclCommInitRank);            \
+  __macro(ncclCommDestroy);             \
+  __macro(ncclCommCount);               \
+  __macro(ncclCommCuDevice);            \
+  __macro(ncclCommUserRank);            \
+  __macro(ncclAllReduce);               \
+  __macro(ncclBcast);                   \
+  __macro(ncclAllGather);               \
+  __macro(ncclGroupStart);              \
+  __macro(ncclGroupEnd);                \
+  __macro(ncclReduce);                  \
+  __macro(ncclReduceScatter);           \
+  __macro(ncclGetErrorString);          \
+  __macro(ncclBroadcast);               \
+  __macro(ncclGetVersion);              \
+  __macro(ncclSend);                    \
+  __macro(ncclRecv);                    \
+  __macro(ncclRedOpCreatePreMulSum);    \
+  __macro(ncclRedOpDestroy);
 
 MCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MCCL_WRAP)
 

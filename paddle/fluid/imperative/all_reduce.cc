@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 
 #include "paddle/fluid/imperative/all_reduce.h"
 
@@ -24,6 +24,10 @@
 
 #ifdef PADDLE_WITH_RCCL
 #include <rccl.h>
+#endif
+
+#ifdef PADDLE_WITH_MCCL
+#include <mccl.h>
 #endif
 
 #include "paddle/fluid/framework/scope.h"

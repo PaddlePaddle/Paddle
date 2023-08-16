@@ -30,6 +30,16 @@
 #define gpuMemcpyDeviceToHost hipMemcpyDeviceToHost
 #define gpuMemcpyHostToDevice hipMemcpyHostToDevice
 #define gpuFree hipFree
+#elif defined(PADDLE_WITH_MCCL)
+#include <musa_runtime.h>
+
+#include "paddle/phi/backends/dynload/mccl.h"
+
+#define gpuMalloc musaMalloc
+#define gpuMemcpy musaMemcpy
+#define gpuMemcpyDeviceToHost musaMemcpyDeviceToHost
+#define gpuMemcpyHostToDevice musaMemcpyHostToDevice
+#define gpuFree musaFree
 #else
 #include <cuda_runtime.h>
 

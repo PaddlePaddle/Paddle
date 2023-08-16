@@ -24,12 +24,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/api/include/tensor.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
@@ -248,7 +248,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int rid = ctx.Attr<int>("ring_id");

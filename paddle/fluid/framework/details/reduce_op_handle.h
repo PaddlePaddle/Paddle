@@ -39,7 +39,7 @@ namespace platform {
 struct NCCLContextMap;
 }  // namespace platform
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
@@ -79,7 +79,7 @@ struct ReduceOpHandle : public OpHandleBase {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
   ReduceOpHandle(ir::Node *node,
                  const std::vector<Scope *> &local_scopes,

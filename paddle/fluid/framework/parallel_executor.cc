@@ -148,7 +148,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
@@ -400,7 +400,7 @@ class ParallelExecutorPrivate {
 
   std::unordered_map<std::string, bool> is_persistable_;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::BKCLCommunicator *bkcl_ctxs_{nullptr};
@@ -810,7 +810,7 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
@@ -1315,7 +1315,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
 #endif
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)) && \
-    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL))
+    (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL) && !defined(PADDLE_WITH_MCCL))
   if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
         device_count,
@@ -1473,7 +1473,7 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
   }
 
   if (member_->IsUseCUDA(member_->use_device_) && member_->nranks_ > 1) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     member_->InitOrGetNCCLCommunicator(global_scope, &member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
@@ -1525,7 +1525,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
   std::vector<ir::Graph *> async_graphs(device_count);
 
   auto &graphs = *device_graphs;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (member_->build_strategy_.async_mode_) {
     PADDLE_ENFORCE_EQ(graphs.size(),
                       device_count,

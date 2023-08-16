@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
-     defined PADDLE_WITH_XPU_BKCL) &&                        \
+     defined PADDLE_WITH_MCCL || defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"

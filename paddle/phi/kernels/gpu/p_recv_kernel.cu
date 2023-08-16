@@ -21,15 +21,15 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) && NCCL_VERSION_CODE >= 2703
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 namespace phi {
 
-#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
-    NCCL_VERSION_CODE >= 2703
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
+    defined(PADDLE_WITH_MCCL)) && NCCL_VERSION_CODE >= 2703
 template <typename Context>
 DDim recv_shape_info(const Context& dev_ctx,
                      phi::DenseTensor* out,
@@ -130,8 +130,8 @@ void PRecvKernel(const Context& dev_ctx,
                  DataType dtype,
                  bool dynamic_shape,
                  DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) && NCCL_VERSION_CODE >= 2703
 
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
@@ -156,8 +156,8 @@ void PRecvArrayKernel(const Context& dev_ctx,
                       DataType dtype,
                       const std::vector<int>& out_shape,
                       TensorArray* out_array) {
-#if defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) && NCCL_VERSION_CODE >= 2703
 
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();

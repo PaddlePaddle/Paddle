@@ -132,7 +132,7 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
@@ -145,7 +145,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
@@ -1102,7 +1102,7 @@ All parameter, weight, gradient are variables in Paddle.
           "get_fetch_list",
           [](Variable &self) { return self.GetMutable<FetchList>(); },
           py::return_value_policy::reference)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
       .def(
           "get_communicator",
           [](Variable &self) -> platform::Communicator * {
@@ -1605,7 +1605,7 @@ All parameter, weight, gradient are variables in Paddle.
                   return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
           });
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   m.def("get_all_device_type", []() {
@@ -2746,7 +2746,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_BOX_PS
   BindBoxWrapper(&m);
 #endif
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   BindNCCLWrapper(&m);
 #endif
 #ifdef PADDLE_WITH_GLOO

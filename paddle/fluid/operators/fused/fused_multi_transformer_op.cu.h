@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -58,7 +58,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int count,
                       const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
 
   if (map->has(ring_id)) {

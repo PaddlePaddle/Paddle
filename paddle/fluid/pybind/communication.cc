@@ -41,7 +41,7 @@ void BindCommContextManager(py::module *m) {
       py::class_<phi::distributed::CommContextManager,
                  std::shared_ptr<phi::distributed::CommContextManager>>(
           *m, "CommContextManager")
-#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_MCCL)
           .def_static(
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,

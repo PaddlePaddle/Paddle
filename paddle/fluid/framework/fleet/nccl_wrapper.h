@@ -31,6 +31,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
+#ifdef PADDLE_WITH_MCCL
+#include "paddle/fluid/platform/dynload/mccl.h"
+#endif
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
@@ -51,7 +54,7 @@ class NCCLInfo {
   int local_rank_;
   int global_ranks_;
   int my_global_rank_;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   ncclUniqueId nccl_id_;
   ncclComm_t comm_;
   gpuStream_t stream_;

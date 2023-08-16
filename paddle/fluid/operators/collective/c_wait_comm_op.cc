@@ -19,7 +19,7 @@ namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -43,7 +43,7 @@ class CWaitCommOp : public framework::OperatorBase {
             "wait_comm op can run on gpu place only for now, but got %s",
             place.DebugString()));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
     int ring_id = Attr<int>("ring_id");
 
     auto compute_stream =

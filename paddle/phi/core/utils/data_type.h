@@ -211,7 +211,7 @@ inline int TransToProtoVarType(const DataType& dtype) {
   }
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 inline ncclDataType_t ToNCCLDataType(DataType type) {
   if (type == DataType::FLOAT32) {
     return ncclFloat;
