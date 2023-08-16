@@ -299,9 +299,6 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
       *expr = node->stmts[0];
       Visit(expr, expr);
     } else {
-      for (auto& s : node->stmts) {
-        Visit(&s, &s);
-      }
       std::vector<Expr> stmts;
       for (auto& s : node->stmts) {
         if (s.As<ir::Block>()) {
@@ -311,34 +308,12 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
             stmts.push_back(inner_stmt);
           }
         } else {
+          IRMutator<>::Visit(&s, &s);
           stmts.push_back(s);
         }
       }
       expr->As<ir::Block>()->stmts = stmts;
     }
-  }
-
-  void Visit(const IfThenElse* op, Expr* expr) override {
-    if (op->condition.As<ir::UIntImm>()) {
-      if (op->condition.as_bool() == false) {
-        VLOG(6) << "Simplify ir::IfThenElse false block";
-        if (expr->As<IfThenElse>()->false_case.defined()) {
-          *expr = expr->As<IfThenElse>()->false_case;
-        } else {
-          *expr = ir::Block::Make({});
-        }
-      } else {
-        if (expr->As<IfThenElse>()->true_case.defined()) {
-          VLOG(6) << "Simplify ir::IfThenElse true block";
-          *expr = expr->As<IfThenElse>()->true_case;
-        } else {
-          *expr = ir::Block::Make({});
-        }
-      }
-      ir::IRMutator<ir::Expr*>::Visit(expr, expr);
-      return;
-    }
-    ir::IRMutator<ir::Expr*>::Visit(op, expr);
   }
 };
 

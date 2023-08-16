@@ -1176,6 +1176,25 @@ struct AddNOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TrilAndTriuOpTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    bool lower = PADDLE_GET_CONST(bool, op_desc.GetAttr("lower"));
+    std::string target_op_name = "";
+    if (lower) {
+      target_op_name = "pd.tril";
+    } else {
+      target_op_name = "pd.triu";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op tril_triu should have corresponding OpInfo pd.tril or pd.triu.");
+    }
+
+    return op_info;
+  }
+};
+
 ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
                                           TranslationContext* param_map,
                                           const OpDesc& op_desc,
@@ -1355,8 +1374,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
       for (int i = 0; i <= append_size; i++) {
         y_new_shape.push_back(1);
       }
-      dialect::Reshape_Op reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      dialect::ReshapeOp reshape_op =
+          builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
       VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
               << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
@@ -1371,8 +1390,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       auto concat_op =
           builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
       auto y_new_shape = concat_op.out();
-      auto reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
     }
     return {x_value, y_new};
@@ -1449,7 +1467,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
 
     ir::OpResult value = operation->result(idx);
     ir::Builder builder(ctx, operation->GetParent());
-    auto reshape_op = builder.Build<dialect::Reshape_Op>(value, y_shape);
+    auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
     (*param_map)[y_grad_var_name] =
         VariableDefiningInfo(reshape_op.out(), false, -1);
   }
@@ -1474,6 +1492,7 @@ OpTranslator::OpTranslator() {
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
+  special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
