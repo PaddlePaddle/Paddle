@@ -81,22 +81,6 @@ def _is_xpu_available():
         return False
 
 
-def _is_custom_device_available():
-    """
-    Check whether Custom device is available.
-    """
-    try:
-        assert len(paddle.framework.core.get_available_custom_device()) > 0
-        return True
-    except Exception as e:
-        logging.warning(
-            "You are using Custom device version PaddlePaddle, but there is no Custom devices "
-            "detected on your machine. Maybe Custom devices is not set properly."
-            "\n Original Error is {}".format(e)
-        )
-        return False
-
-
 def _run_dygraph_single(use_cuda, use_xpu, use_custom, custom_device_name):
     """
     Testing the simple network in dygraph mode using one CPU/GPU/XPU.
@@ -256,8 +240,8 @@ def run_check():
         use_cuda = _is_cuda_available()
     elif paddle.is_compiled_with_xpu():
         use_xpu = _is_xpu_available()
-    elif len(paddle.framework.core.get_all_custom_device_type()) == 1:
-        use_custom = _is_custom_device_available()
+    elif len(paddle.framework.core.get_all_custom_device_type()) > 0:
+        use_custom = True
 
     if use_cuda:
         device_str = "GPU"
@@ -268,7 +252,13 @@ def run_check():
     elif use_custom:
         device_str = paddle.framework.core.get_all_custom_device_type()[0]
         custom_device_name = device_str
-        device_list = paddle.framework.core.get_available_custom_device()
+        device_list = list(
+            range(
+                paddle.framework.core.get_custom_device_count(
+                    custom_device_name
+                )
+            )
+        )
     else:
         device_str = "CPU"
         device_list = paddle.static.cpu_places(device_count=1)
