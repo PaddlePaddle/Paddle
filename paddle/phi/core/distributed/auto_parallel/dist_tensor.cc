@@ -28,9 +28,13 @@ inline void check_defined(const DistTensor& dist_tensor,
 }
 
 // TODO(chenweihang): Reshard the input global value into local value
-DistTensor::DistTensor(const DDim& dims,
-                       const TensorDistAttr& dist_attr,
-                       const phi::DenseTensor& global_value)
+DistTensor::DistTensor(const phi::DenseTensor& global_value,
+                       const TensorDistAttr& dist_attr)
+    : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {}
+
+DistTensor::DistTensor(const phi::DenseTensor& global_value,
+                       const DDim& dims,
+                       const TensorDistAttr& dist_attr)
     : dims_(dims), dist_attr_(dist_attr), value_(global_value) {}
 
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)

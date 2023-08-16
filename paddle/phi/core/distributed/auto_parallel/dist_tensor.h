@@ -20,9 +20,6 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 namespace phi {
-
-class DenseTensorUtils;
-
 namespace distributed {
 
 using auto_parallel::TensorDistAttr;
@@ -32,16 +29,18 @@ class DistTensor final
       public phi::TypeInfoTraits<phi::TensorBase, DistTensor> {
  public:
   /// \brief Construct a dist tensor based dense tensor.
+  /// \param global_value The global dense tensor of the current tensor.
+  /// \param dist_attr The distributed attributes of the current tensor.
+  DistTensor(const phi::DenseTensor& global_value,
+             const TensorDistAttr& dist_attr);
+
+  /// \brief Construct a dist tensor based dense tensor.
+  /// \param global_value The global dense tensor of the current tensor.
   /// \param dims The global dimension of the currnet tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
-  /// \param dense_tensor The global dense tensor of the current tensor.
-  DistTensor(const DDim& dims,
-             const TensorDistAttr& dist_attr,
-             const phi::DenseTensor& global_value);
-
-  DistTensor(const DDim& dims,
-             const TensorDistAttr& dist_attr,
-             phi::DenseTensor&& global_value);
+  DistTensor(const phi::DenseTensor& global_value,
+             const DDim& dims,
+             const TensorDistAttr& dist_attr);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
   /// \param dims The global dimension of the currnet Tensor.
@@ -119,8 +118,6 @@ class DistTensor final
   const Place& place() const override;
 
  private:
-  friend class phi::DenseTensorUtils;
-
   // The global dimensions(shape)
   DDim dims_;
   // The distributed attributes

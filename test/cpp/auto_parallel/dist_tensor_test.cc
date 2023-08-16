@@ -38,9 +38,14 @@ TEST(dist_tensor, constructor) {
 
   // copy construct
   DenseTensor x1(alloc, meta);
-  DistTensor dist_x1(dims, dist_attr, x1);
+  DistTensor dist_x1(x1, dist_attr);
   EXPECT_TRUE(dist_x1.defined());
   EXPECT_TRUE(dist_x1.initialized());
+
+  DenseTensor x2(alloc, meta);
+  DistTensor dist_x2(x2, dims, dist_attr);
+  EXPECT_TRUE(dist_x2.defined());
+  EXPECT_TRUE(dist_x2.initialized());
 
   // empty construct
   DistTensor dist_x2(dims, dist_attr);

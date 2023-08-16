@@ -489,12 +489,9 @@ phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
   if (out) {
     // TODO(chenweihang): now all dist case are nullptr
     if (out->impl() == nullptr) {
-      auto dense_t = std::make_shared<phi::DenseTensor>();
       // TODO(chenweihang): polish code, dist_attr is null now
-      auto dist_attr =
-          std::make_shared<phi::distributed::auto_parallel::TensorDistAttr>();
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-          dense_t, phi::DenseTensorMeta(), dist_attr);
+          phi::DDim(), phi::distributed::auto_parallel::TensorDistAttr());
       out->set_impl(dist_t);
     }
     return static_cast<phi::distributed::DistTensor*>(out->impl().get());
