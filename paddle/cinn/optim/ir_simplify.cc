@@ -302,6 +302,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
       for (auto& s : node->stmts) {
         Visit(&s, &s);
       }
+
       std::vector<Expr> stmts;
       for (auto& s : node->stmts) {
         if (s.As<ir::Block>()) {
@@ -340,8 +341,13 @@ struct SimplifyForLoopsMutator : public ir::IRMutator<> {
       var_intervals.emplace(
           var_name, common::CasInterval{min_i->value, extent_i->value - 1});
 
-      Visit(&node->body, &node->body);
-      *expr = node->body;
+      if (node->body.As<ir::Block>() &&
+          node->body.As<ir::Block>()->stmts.size() == 1) {
+        *expr = node->body.As<ir::Block>()->stmts[0];
+      } else {
+        *expr = node->body;
+      }
+      Visit(expr, expr);
       var_intervals.erase(var_name);
     } else {
       Visit(&node->body, &node->body);
