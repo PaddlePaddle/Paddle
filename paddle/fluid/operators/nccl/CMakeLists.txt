@@ -1,4 +1,4 @@
-if(NOT (WITH_NCCL OR WITH_RCCL))
+if(NOT (WITH_NCCL OR WITH_RCCL OR WITH_MCCL))
   return()
 endif()
 

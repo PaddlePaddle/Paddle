@@ -39,7 +39,7 @@ class NCCLCommunicator;
 }  // namespace platform
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
@@ -217,7 +217,7 @@ struct BuildStrategy {
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
                    DeviceType use_device,
                    platform::NCCLCommunicator *nccl_ctxs) const;
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)

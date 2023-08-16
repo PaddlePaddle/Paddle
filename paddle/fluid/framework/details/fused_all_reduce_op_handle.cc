@@ -194,7 +194,7 @@ void FusedAllReduceOpHandle::RunImpl() {
     FusedAllReduceFunc(in_var_handles, out_var_handles);
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   if (FLAGS_allreduce_record_one_event) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(end_event_, nccl_stream));

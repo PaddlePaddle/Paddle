@@ -50,6 +50,12 @@ if(WITH_HETERPS)
       SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
       DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
     add_subdirectory(heter_ps)
+  elseif(WITH_MCCL)
+    musa_library(
+      ps_gpu_wrapper
+      SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
+      DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
+    add_subdirectory(heter_ps)
   endif()
 else()
   cc_library(
@@ -58,7 +64,7 @@ else()
     DEPS gloo_wrapper)
 endif()
 
-if(WITH_NCCL OR WITH_RCCL)
+if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
   cc_library(
     nccl_wrapper
     SRCS nccl_wrapper.cc

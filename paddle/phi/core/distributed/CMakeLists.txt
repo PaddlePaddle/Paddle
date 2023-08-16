@@ -4,7 +4,7 @@ add_subdirectory(auto_parallel)
 
 set(DISTRIBUTED_COMMON_SRCS comm_context_manager.cc)
 
-if(WITH_NCCL OR WITH_RCCL)
+if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
   list(APPEND DISTRIBUTED_COMMON_SRCS nccl_comm_context.cc)
 endif()
 

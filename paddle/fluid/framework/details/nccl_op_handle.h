@@ -27,6 +27,9 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/fluid/platform/dynload/mccl.h"
+#endif
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/flags.h"
 
@@ -55,6 +58,8 @@ class NCCLOpHandleBase : public OpHandleBase {
     for (auto& ev : inter_events_) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(ev.second));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
@@ -62,6 +67,8 @@ class NCCLOpHandleBase : public OpHandleBase {
     for (auto& ev : exter_events_) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(ev.second));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
@@ -143,6 +150,11 @@ class NCCLOpHandleBase : public OpHandleBase {
           &inter_events_[dev_id], hipEventDisableTiming));
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(
           &exter_events_[dev_id], hipEventDisableTiming));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaEventCreateWithFlags(
+          &inter_events_[dev_id], musaEventDisableTiming));
+      PADDLE_ENFORCE_GPU_SUCCESS(musaEventCreateWithFlags(
+          &exter_events_[dev_id], musaEventDisableTiming));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(
           &inter_events_[dev_id], cudaEventDisableTiming));
@@ -243,6 +255,8 @@ class NCCLOpHandleBase : public OpHandleBase {
 
 #ifdef PADDLE_WITH_HIP
     hipEventRecord(inter_events_.at(dev_id), stream);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventRecord(inter_events_.at(dev_id), stream);
 #else
     cudaEventRecord(inter_events_.at(dev_id), stream);
 #endif
@@ -280,6 +294,13 @@ class NCCLOpHandleBase : public OpHandleBase {
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     hipEventRecord(exter_events_.at(dev_id), stream);
+#elif defined(PADDLE_WITH_MUSA)
+    musaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
+
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+        sendbuff, recvbuff, count, datatype, op, comm, stream));
+
+    musaEventRecord(exter_events_.at(dev_id), stream);
 #else
     cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
@@ -310,6 +331,8 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", stream:" << stream;
 #ifdef PADDLE_WITH_HIP
     hipStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
+#elif defined(PADDLE_WITH_MUSA)
+    musaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #else
     cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #endif
