@@ -132,7 +132,8 @@ __global__ void FusedLayernormResidualDropoutBias(
     T *dst,
     T *layernorm_dst,
     LayerNormParamType<T> *mean,
-    LayerNormParamType<T> *var) {
+    LayerNormParamType<T> *var,
+    const float residual_alpha = 1.0) {
   int col_id = threadIdx.x;
   int row_id = blockIdx.x;
   int idx = row_id * cols + col_id;
@@ -175,7 +176,8 @@ __global__ void FusedLayernormResidualDropoutBias(
                                                   is_test,
                                                   &mean_val,
                                                   &var_val,
-                                                  relu);
+                                                  relu,
+                                                  residual_alpha);
   }
 
   mean_val = phi::funcs::BlockReduceSum<U>(mean_val, shared_mean);
@@ -233,7 +235,8 @@ void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
     T *dst,
     T *layernorm_dst,
     LayerNormParamType<T> *mean,
-    LayerNormParamType<T> *var) {
+    LayerNormParamType<T> *var,
+    const float residual_alpha = 1.0) {
   if (dropout_prob != 0.0f) {
     FusedLayernormResidualDropoutBias<T,
                                       MaskType,
@@ -258,7 +261,8 @@ void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
                                              dst,
                                              layernorm_dst,
                                              mean,
-                                             var);
+                                             var,
+                                             residual_alpha);
   } else {
     FusedLayernormResidualDropoutBias<T,
                                       MaskType,
@@ -283,7 +287,8 @@ void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
                                              dst,
                                              layernorm_dst,
                                              mean,
-                                             var);
+                                             var,
+                                             residual_alpha);
   }
 }
 
@@ -539,7 +544,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     const float quant_next_in_scale = 1.0,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
-    const float quant_min_bound = -127.0) {
+    const float quant_min_bound = -127.0,
+    const float residual_alpha = 1.0) {
   __shared__ U smem[WARPS_M * WARPS_N];
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
@@ -641,13 +647,13 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
                                     dequant_out_scale[it][jt]) +
                      bias[it][jt]) *
                         static_cast<T>(mask_vec[it][jt]) * factor +
-                    residual[it][jt];
+                    residual[it][jt] * static_cast<T>(residual_alpha);
             x[it][jt] = tmp;
             xf[it * VecSize + jt] = U(tmp);
           } else {
             x[it][jt] = (static_cast<T>(x_input[it][jt]) + bias[it][jt]) *
                             static_cast<T>(mask_vec[it][jt]) * factor +
-                        residual[it][jt];
+                        residual[it][jt] * static_cast<T>(residual_alpha);
             xf[it * VecSize + jt] = U(x[it][jt]);
           }
         }
@@ -663,12 +669,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
             T tmp = static_cast<T>(static_cast<float>(x_input[it][jt]) *
                                    dequant_out_scale[it][jt]) *
                         static_cast<T>(mask_vec[it][jt]) * factor +
-                    residual[it][jt];
+                    residual[it][jt] * static_cast<T>(residual_alpha);
             x[it][jt] = tmp;
           } else {
             x[it][jt] = static_cast<T>(x_input[it][jt]) *
                             static_cast<T>(mask_vec[it][jt]) * factor +
-                        residual[it][jt];
+                        residual[it][jt] * static_cast<T>(residual_alpha);
           }
           xf[it * VecSize + jt] = U(x[it][jt]);
         }
@@ -848,7 +854,8 @@ void LaunchLayernormResidualDropoutBias(
     const float quant_next_in_scale = 1.0,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
-    const float quant_min_bound = -127.0) {
+    const float quant_min_bound = -127.0,
+    const float residual_alpha = 1.0) {
   // dropout_prob == 1.0f
   // NOTE(minghaoBD): OutType should be T if drop_out_rate == 1.0
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
@@ -942,7 +949,8 @@ void LaunchLayernormResidualDropoutBias(
                                                        quant_next_in_scale,    \
                                                        quant_round_type,       \
                                                        quant_max_bound,        \
-                                                       quant_min_bound);       \
+                                                       quant_min_bound,        \
+                                                       residual_alpha);        \
     } else {                                                                   \
       fused_fast_ln_fwd_kernel<                                                \
           false,                                                               \
@@ -986,7 +994,8 @@ void LaunchLayernormResidualDropoutBias(
                                                        quant_next_in_scale,    \
                                                        quant_round_type,       \
                                                        quant_max_bound,        \
-                                                       quant_min_bound);       \
+                                                       quant_min_bound,        \
+                                                       residual_alpha);        \
     }                                                                          \
   } break
 
@@ -1036,7 +1045,8 @@ void LaunchLayernormResidualDropoutBias(
         dst,
         reinterpret_cast<T *>(layernorm_dst),
         mean,
-        var);
+        var,
+        residual_alpha);
   } else {
     if (can_call_fast_ln_kernel) {
       switch (cols) {
@@ -1074,7 +1084,8 @@ void LaunchLayernormResidualDropoutBias(
           dst,
           reinterpret_cast<T *>(layernorm_dst),
           mean,
-          var);
+          var,
+          residual_alpha);
     }
   }
 }

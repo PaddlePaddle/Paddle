@@ -46,14 +46,37 @@ add_custom_command(
           ${op_compat_yaml_file}
   VERBATIM)
 
+set(api_gen_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/op_generator/api_gen.py)
+set(api_header_file ${PD_DIALECT_BINARY_DIR}/pd_api.h)
+set(api_source_file ${PD_DIALECT_BINARY_DIR}/pd_api.cc)
+set(api_header_file_tmp ${api_header_file}.tmp)
+set(api_source_file_tmp ${api_source_file}.tmp)
+
+add_custom_command(
+  OUTPUT ${api_header_file} ${api_source_file}
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
+    --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
+    ${api_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
+          ${api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
+          ${api_source_file}
+  COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
+  DEPENDS ${api_gen_file} ${op_forward_yaml_file1} ${op_forward_yaml_file2}
+          ${op_backward_yaml_file1} ${op_backward_yaml_file2}
+          ${op_compat_yaml_file}
+  VERBATIM)
+
 # All source files of pd_dialect, except for the source file of op, which is generated in the compilation directory.
 file(GLOB PD_DIALECT_SRCS "*.cc")
 
 cc_library(
   pd_dialect
-  SRCS ${PD_DIALECT_SRCS} ${op_source_file}
-  DEPS framework_proto
-       phi
+  SRCS ${PD_DIALECT_SRCS} ${op_source_file} ${api_source_file}
+  DEPS phi
        phi_utils
        pd_interface
        pd_trait

@@ -29,7 +29,7 @@ from paddle.distributed.io import (
 from paddle.fluid import core, executor
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.io import load_inference_model, save_inference_model
+from paddle.static.io import load_inference_model, save_inference_model
 
 paddle.enable_static()
 
@@ -82,15 +82,15 @@ class TestBook(unittest.TestCase):
             )
 
         # Separated model and unified model
-        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+        save_inference_model(
+            MODEL_DIR, [x, y], [avg_cost], exe, program=program
+        )
         save_inference_model(
             UNI_MODEL_DIR,
-            ["x", "y"],
+            [x, y],
             [avg_cost],
             exe,
-            program,
-            'model',
-            'params',
+            program=program,
         )
         main_program = program.clone()._prune_with_input(
             feeded_var_names=["x", "y"], targets=[avg_cost]
@@ -104,12 +104,22 @@ class TestBook(unittest.TestCase):
         importlib.reload(executor)  # reload to build a new scope
 
         model_0 = InferModel(load_inference_model(MODEL_DIR, exe))
-        with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
+        with open((UNI_MODEL_DIR + '.pdmodel'), "rb") as f:
             model_str = f.read()
-        model_1 = InferModel(
-            load_inference_model(None, exe, model_str, params_str)
+        model_1 = InferModel(load_inference_model(UNI_MODEL_DIR, exe))
+
+        # To be compatible with load_inference_model_distributed function
+        tmp_model_filename = MODEL_DIR + '.pdmodel'
+        tmp_params_filename = MODEL_DIR + '.pdiparams'
+        model_2 = InferModel(
+            load_inference_model_distributed(
+                root_path.name,
+                exe,
+                model_filename=tmp_model_filename,
+                params_filename=tmp_params_filename,
+            )
         )
-        model_2 = InferModel(load_inference_model_distributed(MODEL_DIR, exe))
+
         model_3 = InferModel(
             load_inference_model_distributed(None, exe, model_str, params_str)
         )
@@ -134,11 +144,11 @@ class TestBook(unittest.TestCase):
 
         self.assertRaises(
             ValueError,
-            fluid.io.load_inference_model,
+            paddle.static.io.load_inference_model,
             None,
             exe,
-            model_str,
-            None,
+            model_filename=model_str,
+            params_filename=None,
         )
         self.assertRaises(
             ValueError,
@@ -173,7 +183,9 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe = executor.Executor(place)
         exe.run(init_program, feed={}, fetch_list=[])
 
-        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+        save_inference_model(
+            MODEL_DIR, [x, y], [avg_cost], exe, program=program
+        )
         root_path.cleanup()
 
     def test_save_inference_model_with_auc(self):
@@ -202,10 +214,10 @@ class TestSaveInferenceModel(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             save_inference_model(
-                MODEL_DIR, ["x", "y"], [avg_cost], exe, program
+                MODEL_DIR, [x, y], [avg_cost], exe, program=program
             )
             root_path.cleanup()
-            expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
+            expected_warn = "Be sure that you have set auc states to 0 before saving inference model."
             self.assertTrue(len(w) > 0)
             self.assertTrue(expected_warn == str(w[0].message))
 
@@ -237,11 +249,13 @@ class TestInstance(unittest.TestCase):
 
         cp_prog = CompiledProgram(program)
 
-        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
+        save_inference_model(
+            MODEL_DIR, [x, y], [avg_cost], exe, program=cp_prog
+        )
         self.assertRaises(
             TypeError,
             save_inference_model,
-            [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog],
+            [MODEL_DIR, [x, y], [avg_cost], [], cp_prog],
         )
         root_path.cleanup()
 
@@ -535,7 +549,7 @@ class TestLoadInferenceModelError(unittest.TestCase):
         place = core.CPUPlace()
         exe = executor.Executor(place)
         self.assertRaises(
-            ValueError, load_inference_model, './test_not_exist_dir', exe
+            ValueError, load_inference_model, './test_not_exist_dir/model', exe
         )
         self.assertRaises(
             ValueError,

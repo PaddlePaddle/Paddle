@@ -1708,7 +1708,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     // TODO(NHZlX): Should add the link to the doc of
     // paddle_infer::CreatePredictor<paddle_infer::Config>
     if (config.glog_info_disabled()) {
-      FLAGS_logtostderr = 1;
+      FLAGS_logtostderr = true;
       FLAGS_minloglevel = 2;  // GLOG_ERROR
     }
 

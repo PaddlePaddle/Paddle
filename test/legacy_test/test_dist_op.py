@@ -158,6 +158,86 @@ class TestDistOpCase5(TestDistOp):
         self.p = 1.5
 
 
+class TestDistBF16Op(OpTest):
+    def init_data_type(self):
+        self.data_type = 'bfloat16'
+
+
+class TestDistBF16OpCase1(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (3, 5, 5, 6)
+        self.y_shape = (5, 5, 6)
+        self.p = 1.0
+
+
+class TestDistBF16OpCase2(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (10, 10)
+        self.y_shape = (4, 10, 10)
+        self.p = 2.0
+
+
+class TestDistBF16OpCase3(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (15, 10)
+        self.y_shape = (15, 10)
+        self.p = float("inf")
+
+
+class TestDistBF16OpCase4(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (2, 3, 4, 5, 8)
+        self.y_shape = (3, 1, 5, 8)
+        self.p = float("-inf")
+
+
+class TestDistBF16OpCase5(TestDistBF16Op):
+    def init_case(self):
+        self.x_shape = (4, 1, 4, 8)
+        self.y_shape = (2, 2, 1, 4, 4, 8)
+        self.p = 1.5
+
+
+class TestDistFP16Op(OpTest):
+    def init_data_type(self):
+        self.data_type = 'float16'
+
+
+class TestDistFP16OpCase1(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (3, 5, 5, 6)
+        self.y_shape = (5, 5, 6)
+        self.p = 1.0
+
+
+class TestDistFP16OpCase2(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (10, 10)
+        self.y_shape = (4, 10, 10)
+        self.p = 2.0
+
+
+class TestDistFP16OpCase3(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (15, 10)
+        self.y_shape = (15, 10)
+        self.p = float("inf")
+
+
+class TestDistFP16OpCase4(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (2, 3, 4, 5, 8)
+        self.y_shape = (3, 1, 5, 8)
+        self.p = float("-inf")
+
+
+class TestDistFP16OpCase5(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (4, 1, 4, 8)
+        self.y_shape = (2, 2, 1, 4, 4, 8)
+        self.p = 1.5
+
+
 class TestDistAPI(unittest.TestCase):
     def init_data_type(self):
         self.data_type = (

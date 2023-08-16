@@ -101,7 +101,8 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
   }
 }
 
-PyDoc_STRVAR(tensor_method_numpy__doc__, R"DOC(numpy($self, /)
+PyDoc_STRVAR(tensor_method_numpy__doc__,  // NOLINT
+             R"DOC(numpy($self, /)
 --
 
 Returns a numpy array shows the value of current Tensor.
@@ -128,8 +129,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   EAGER_TRY
   auto& api = pybind11::detail::npy_api::get();
   if (!self->tensor.impl()) {
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -148,8 +149,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   auto tensor_dims = self->tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
-  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
-  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+  Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
+  Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
   if (py_rank == 0) {
@@ -248,6 +249,27 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            place,
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
+#ifdef PADDLE_WITH_DISTRIBUTE
+    } else if (self->tensor.is_dist_tensor()) {
+      // TODO(chenweihang): deal with DistTensor as local DenseTensor now,
+      // if the local DenseTensor is shard or partial, do gather or reduce?
+      VLOG(6) << "Getting DistTensor's numpy value";
+      auto* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      auto& dense_tensor = dist_tensor->value();
+      cpu_tensor.set_meta(dense_tensor.meta());
+      // deep copy
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor.Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      // deep copy
+      paddle::memory::Copy(place,
+                           cpu_tensor.Holder()->ptr(),
+                           place,
+                           dense_tensor.Holder()->ptr(),
+                           dense_tensor.Holder()->size());
+#endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -272,6 +294,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
     gpuMemcpyKind kind = hipMemcpyDeviceToHost;
+    phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
 #endif
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
@@ -288,6 +311,22 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       dense_tensor->Holder()->ptr(),
                                       dense_tensor->Holder()->size(),
                                       kind);
+#ifdef PADDLE_WITH_DISTRIBUTE
+    } else if (self->tensor.is_dist_tensor()) {
+      VLOG(6) << "Getting DistTensor's numpy value";
+      auto* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      auto& dense_tensor = dist_tensor->value();
+      cpu_tensor.set_meta(dense_tensor.meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor.Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
+                                      dense_tensor.Holder()->ptr(),
+                                      dense_tensor.Holder()->size(),
+                                      kind);
+#endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -341,6 +380,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (self->tensor.is_custom_device()) {
     eager_gil_scoped_release guard;
+    phi::DeviceContextPool::Instance().Get(self->tensor.place())->Wait();
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
@@ -417,8 +457,8 @@ static PyObject* tensor_method_numpy_for_string_tensor(TensorObject* self,
   if (!self->tensor.impl() || !self->tensor.impl()->initialized()) {
     VLOG(6) << "The StringTensor is uninitialized. Return the empty string "
                "numpy array.";
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];  // NOLINT
     py_dims[0] = 0;
     py_strides[0] = 0;
 
@@ -542,6 +582,28 @@ static PyObject* tensor_method__copy_to(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_reconstruct_from___doc__,
+             R"DOC(reconstruct_from_($self, other/)
+--
+
+Reconstruct the self with other Tensor. It is a deep copy of 'self = other'.
+
+Returns:
+    None.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      t1 = paddle.to_tensor([1.0], stop_gradient=False)
+      t2 = paddle.to_tensor([2.0], stop_gradient=True)
+
+      t1.reconstruct_from_(t2)
+
+      print(t1)
+)DOC");
+
 static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
@@ -595,7 +657,8 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method_clone__doc__, R"DOC(clone($self, /)
+PyDoc_STRVAR(tensor_method_clone__doc__,  // NOLINT
+             R"DOC(clone($self, /)
 --
 
 Returns a new Tensor, which is clone of origin Tensor, and it remains in the current graph.
@@ -651,6 +714,38 @@ static PyObject* tensor_method_clone(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_retain_grads__doc__, R"DOC(retain_grads($self, /)
+--
+
+Enables this Tensor to have their grad populated during backward(). It is a no-op for leaf tensors.
+
+Returns:
+    None.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1.0, 2.0, 3.0])
+      x.stop_gradient = False
+      y = x + x
+      y.retain_grads()
+      loss = y.sum()
+      loss.backward()
+
+      print(y.grad) # [1., 1., 1.]
+
+      x = paddle.to_tensor([1.0, 2.0, 3.0])
+      x.stop_gradient = False
+      y = x + x
+      # y.retain_grads()
+      loss = y.sum()
+      loss.backward()
+
+      print(y.grad) # None
+)DOC");
+
 static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -670,7 +765,7 @@ static PyObject* tensor_retain_grads(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_clear_gradient__doc__,
+PyDoc_STRVAR(tensor_clear_gradient__doc__,  // NOLINT
              R"DOC(clear_gradient($self, set_to_zero=True, /)
 --
 
@@ -893,7 +988,8 @@ static PyObject* tensor__is_shared_underline_tensor_with(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method_detach__doc__, R"DOC(detach($self, /)
+PyDoc_STRVAR(tensor_method_detach__doc__,  // NOLINT
+             R"DOC(detach($self, /)
 --
 
 Returns a new Tensor, detached from the current graph.
@@ -961,6 +1057,16 @@ static PyObject* tensor_method_detach(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_detach___doc__, R"DOC(detach_($self, /)
+--
+
+Detach self from the current graph, and returns self Tensor.
+In addition, the detached Tensor doesn't provide gradient propagation.
+
+Returns:
+    Tensor, The detached Tensor.
+)DOC");
+
 static PyObject* tensor_method_detach_(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
@@ -979,6 +1085,24 @@ static PyObject* tensor_method_detach_(TensorObject* self,
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_get_tensor__doc__, R"DOC(get_tensor($self, /)
+--
+
+Returns the underline tensor in the origin Tensor.
+
+Returns:
+    Underline tensor.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1.0], stop_gradient=False)
+      underline_x = x.get_tensor()
+      print(underline_x) # a Dense Tensor info
+)DOC");
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
@@ -1289,8 +1413,8 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   if (tensor.dtype() == proto_type) {                                        \
     auto numpy_dtype = TensorDtype2NumpyDtype(proto_type);                   \
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
-    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];                  \
-    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];               \
+    Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];    /* NOLINT */  \
+    Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank]; /* NOLINT */  \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \
@@ -1636,7 +1760,7 @@ static PyObject* tensor_inplace_assign(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method__register_reduce_hook__doc__,
+PyDoc_STRVAR(tensor_method__register_reduce_hook__doc__,  // NOLINT
              R"DOC(_register_backward_hook($self, hook, /)
 --
 
@@ -1935,6 +2059,23 @@ static PyObject* tensor_method_get_non_zero_cols(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_method_is_dense__doc__, R"DOC(is_dense($self, /)
+--
+
+Whether the Tensor is a Dense Tensor.
+
+Returns:
+    Whether the Tensor is a Dense Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        print(x.is_dense())
+)DOC");
+
 static PyObject* tensor_method_is_dense(TensorObject* self,
                                         PyObject* args,
                                         PyObject* kwargs) {
@@ -1945,6 +2086,23 @@ static PyObject* tensor_method_is_dense(TensorObject* self,
   return ToPyObject(self->tensor.is_dense_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_method_is_dist__doc__, R"DOC(is_dist($self, /)
+--
+
+Whether the Tensor is a Distributed Tensor.
+
+Returns:
+    Whether the Tensor is a Distributed Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        print(x.is_dist()) # False
+)DOC");
 
 static PyObject* tensor_method_is_dist(TensorObject* self,
                                        PyObject* args,
@@ -2025,7 +2183,8 @@ static PyObject* tensor__inplace_version(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method_element_size__doc__, R"DOC(element_size($self, /)
+PyDoc_STRVAR(tensor_method_element_size__doc__,  // NOLINT
+             R"DOC(element_size($self, /)
 --
 
 Returns the size in bytes of an element in the Tensor.
@@ -2064,7 +2223,7 @@ static PyObject* tensor_method_element_size(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_method__bump_inplace_version__doc__,
+PyDoc_STRVAR(tensor_method__bump_inplace_version__doc__,  // NOLINT
              R"DOC(_bump_inplace_version($self, /)
 --
 
@@ -2243,6 +2402,24 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_data_ptr__doc__,
+             R"DOC(data_ptr($self, /)
+--
+
+Returns the address of the first element of current Tensor.
+
+Returns:
+    int, The address of the first element of current Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        print(x.data_ptr())
+)DOC");
+
 static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* args,
                                  PyObject* kwargs) {
@@ -2272,6 +2449,25 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_get_strides__doc__,
+             R"DOC(get_strides($self, /)
+--
+
+Returns the strides of current Tensor.
+
+Returns:
+    List, the strides of current Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        y = x[1]
+        print(y.get_strides())
+)DOC");
+
 static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
@@ -2289,6 +2485,27 @@ static PyObject* tensor_method_strides(TensorObject* self,
   return ToPyObject(value);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_contiguous__doc__,
+             R"DOC(contiguous($self, /)
+--
+
+Returns a contiguous in memory tensor containing the same data as current Tensor.
+If self tensor is already contiguous, this function returns the current Tensor.
+
+Returns:
+    Tensor, The contiguous Tensor.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        y = x[1]
+        y = y.contiguous()
+        print(y)
+)DOC");
 
 static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
@@ -2314,6 +2531,24 @@ static PyObject* tensor_contiguous(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_is_contiguous__doc__,
+             R"DOC(is_contiguous($self, /)
+--
+
+Whether the Tensor is contiguous.
+
+Returns:
+    Bool, Whether the Tensor is contiguous.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor([1, 2, 3])
+        y = x[1]
+        print(y.is_contiguous())
+)DOC");
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
@@ -2366,7 +2601,7 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef variable_methods[] = {
+PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS,
@@ -2395,11 +2630,11 @@ PyMethodDef variable_methods[] = {
     {"reconstruct_from_",
      (PyCFunction)(void (*)())tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_reconstruct_from___doc__},
     {"retain_grads",
      (PyCFunction)(void (*)())tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_retain_grads__doc__},
     {"clear_gradient",
      (PyCFunction)(void (*)())tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS,
@@ -2407,11 +2642,11 @@ PyMethodDef variable_methods[] = {
     {"is_dense",
      (PyCFunction)(void (*)())tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_is_dense__doc__},
     {"is_dist",
      (PyCFunction)(void (*)())tensor_method_is_dist,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_is_dist__doc__},
     {"_zero_grads",
      (PyCFunction)(void (*)())tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS,
@@ -2439,11 +2674,11 @@ PyMethodDef variable_methods[] = {
     {"detach_",
      (PyCFunction)(void (*)(void))tensor_method_detach_,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_detach___doc__},
     {"get_tensor",
      (PyCFunction)(void (*)())tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_method_get_tensor__doc__},
     {"get_selected_rows",
      (PyCFunction)(void (*)())tensor_method_get_underline_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
@@ -2602,7 +2837,7 @@ PyMethodDef variable_methods[] = {
     {"data_ptr",
      (PyCFunction)(void (*)())tensor_data_ptr,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_data_ptr__doc__},
     {"_grad_ivar",
      (PyCFunction)(void (*)())tensor__grad_ivar,
      METH_VARARGS | METH_KEYWORDS,
@@ -2610,15 +2845,15 @@ PyMethodDef variable_methods[] = {
     {"contiguous",
      (PyCFunction)(void (*)(void))tensor_contiguous,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_contiguous__doc__},
     {"is_contiguous",
      (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_is_contiguous__doc__},
     {"get_strides",
      (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
-     nullptr},
+     tensor_get_strides__doc__},
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
@@ -2628,7 +2863,7 @@ PyMethodDef variable_methods[] = {
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
-PyMethodDef string_tensor_variable_methods[] = {
+PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS,

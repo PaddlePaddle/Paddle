@@ -25,7 +25,7 @@ __all__ = []
 
 def _cubic_interpolate(x1, f1, g1, x2, f2, g2, bounds=None):
     r"""Cubic interpolation between (x1, f1, g1) and (x2, f2, g2).
-        Use two points and their gradient to determine a cubic function and get the minimun point
+        Use two points and their gradient to determine a cubic function and get the minimum point
         between them in the cubic curve.
 
     Reference:
@@ -38,7 +38,7 @@ def _cubic_interpolate(x1, f1, g1, x2, f2, g2, bounds=None):
         bounds: bounds of interpolation area
 
     Returns:
-        min_pos: the minimun point between the specified points in the cubic curve.
+        min_pos: the minimum point between the specified points in the cubic curve.
     """
     # Compute bounds of interpolation area
     if bounds is not None:
@@ -143,6 +143,8 @@ def _strong_wolfe(
 
                 a_lo = aj;
         end(repeat)
+
+    reference: https://github.com/pytorch/pytorch
     """
 
     d_norm = d.abs().max()
@@ -275,7 +277,6 @@ def _strong_wolfe(
             # Armijo condition not satisfied or not lower than lowest point
             bracket[high_pos] = alpha
             bracket_f[high_pos] = loss_new
-            # bracket_g[high_pos] = grad_new.clone(memory_format=torch.contiguous_format)
             bracket_g[high_pos] = grad_new.clone()
             bracket_gtd[high_pos] = gtd_new
             low_pos, high_pos = (
@@ -337,14 +338,14 @@ class LBFGS(Optimizer):
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. The default value is None.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-            It canbe a float value as coeff of L2 regularization or \
+            It can be a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
-            some derived class of ``GradientClipBase`` . There are three cliping strategies \
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of \
+            some derived class of ``GradientClipBase`` . There are three clipping strategies \
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , \
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
@@ -357,45 +358,43 @@ class LBFGS(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            paddle.disable_static()
-            np.random.seed(0)
-            np_w = np.random.rand(1).astype(np.float32)
-            np_x = np.random.rand(1).astype(np.float32)
+            >>> paddle.disable_static()
+            >>> np.random.seed(0)
+            >>> np_w = np.random.rand(1).astype(np.float32)
+            >>> np_x = np.random.rand(1).astype(np.float32)
 
-            inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]
-            # y = 2x
-            targets = [2 * x for x in inputs]
+            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]
+            >>> # y = 2x
+            >>> targets = [2 * x for x in inputs]
 
-            class Net(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    w = paddle.to_tensor(np_w)
-                    self.w = paddle.create_parameter(shape=w.shape, dtype=w.dtype, default_initializer=paddle.nn.initializer.Assign(w))
-
-                def forward(self, x):
-                    return self.w * x
-
-            net = Net()
-            opt = paddle.optimizer.LBFGS(learning_rate=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
-            def train_step(inputs, targets):
-                def closure():
-                    outputs = net(inputs)
-                    loss = paddle.nn.functional.mse_loss(outputs, targets)
-                    print('loss: ', loss.item())
-                    opt.clear_grad()
-                    loss.backward()
-                    return loss
-                opt.step(closure)
-
-
-            for input, target in zip(inputs, targets):
-                input = paddle.to_tensor(input)
-                target = paddle.to_tensor(target)
-                train_step(input, target)
-
+            >>> class Net(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         w = paddle.to_tensor(np_w)
+            ...         self.w = paddle.create_parameter(shape=w.shape, dtype=w.dtype, default_initializer=paddle.nn.initializer.Assign(w))
+            ...
+            ...     def forward(self, x):
+            ...         return self.w * x
+            ...
+            >>> net = Net()
+            >>> opt = paddle.optimizer.LBFGS(learning_rate=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
+            >>> def train_step(inputs, targets):
+            ...     def closure():
+            ...         outputs = net(inputs)
+            ...         loss = paddle.nn.functional.mse_loss(outputs, targets)
+            ...         print('loss: ', loss.item())
+            ...         opt.clear_grad()
+            ...         loss.backward()
+            ...         return loss
+            ...     opt.step(closure)
+            ...
+            >>> for input, target in zip(inputs, targets):
+            ...     input = paddle.to_tensor(input)
+            ...     target = paddle.to_tensor(target)
+            ...     train_step(input, target)
     """
 
     def __init__(
@@ -457,41 +456,41 @@ class LBFGS(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                paddle.disable_static()
+                >>> paddle.disable_static()
 
-                net = paddle.nn.Linear(10, 10)
-                opt = paddle.optimizer.LBFGS(
-                    learning_rate=1,
-                    max_iter=1,
-                    max_eval=None,
-                    tolerance_grad=1e-07,
-                    tolerance_change=1e-09,
-                    history_size=100,
-                    line_search_fn='strong_wolfe',
-                    parameters=net.parameters(),
-                )
+                >>> net = paddle.nn.Linear(10, 10)
+                >>> opt = paddle.optimizer.LBFGS(
+                ...     learning_rate=1,
+                ...     max_iter=1,
+                ...     max_eval=None,
+                ...     tolerance_grad=1e-07,
+                ...     tolerance_change=1e-09,
+                ...     history_size=100,
+                ...     line_search_fn='strong_wolfe',
+                ...     parameters=net.parameters(),
+                >>> )
 
-                def train_step(inputs, targets):
-                    def closure():
-                        outputs = net(inputs)
-                        loss = paddle.nn.functional.mse_loss(outputs, targets)
-                        opt.clear_grad()
-                        loss.backward()
-                        return loss
+                >>> def train_step(inputs, targets):
+                ...     def closure():
+                ...         outputs = net(inputs)
+                ...         loss = paddle.nn.functional.mse_loss(outputs, targets)
+                ...         opt.clear_grad()
+                ...         loss.backward()
+                ...         return loss
+                ...
+                ...     opt.step(closure)
+                ...
+                >>> inputs = paddle.rand([10, 10], dtype="float32")
+                >>> targets = paddle.to_tensor([2 * x for x in inputs])
 
-                    opt.step(closure)
-
-                inputs = paddle.rand([10, 10], dtype="float32")
-                targets = paddle.to_tensor([2 * x for x in inputs])
-
-                n_iter = 0
-                while n_iter < 20:
-                    loss = train_step(inputs, targets)
-                    n_iter = opt.state_dict()["state"]["func_evals"]
-                    print("n_iter:", n_iter)
-
+                >>> n_iter = 0
+                >>> while n_iter < 20:
+                ...     loss = train_step(inputs, targets)
+                ...     n_iter = opt.state_dict()["state"]["func_evals"]
+                ...     print("n_iter:", n_iter)
+                ...
         """
 
         packed_state = {}
@@ -558,34 +557,34 @@ class LBFGS(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                paddle.disable_static()
+                >>> paddle.disable_static()
 
-                inputs = paddle.rand([10, 10], dtype="float32")
-                targets = paddle.to_tensor([2 * x for x in inputs])
+                >>> inputs = paddle.rand([10, 10], dtype="float32")
+                >>> targets = paddle.to_tensor([2 * x for x in inputs])
 
-                net = paddle.nn.Linear(10, 10)
-                opt = paddle.optimizer.LBFGS(
-                    learning_rate=1,
-                    max_iter=1,
-                    max_eval=None,
-                    tolerance_grad=1e-07,
-                    tolerance_change=1e-09,
-                    history_size=100,
-                    line_search_fn='strong_wolfe',
-                    parameters=net.parameters(),
-                )
+                >>> net = paddle.nn.Linear(10, 10)
+                >>> opt = paddle.optimizer.LBFGS(
+                ...     learning_rate=1,
+                ...     max_iter=1,
+                ...     max_eval=None,
+                ...     tolerance_grad=1e-07,
+                ...     tolerance_change=1e-09,
+                ...     history_size=100,
+                ...     line_search_fn='strong_wolfe',
+                ...     parameters=net.parameters(),
+                >>> )
 
-                def closure():
-                    outputs = net(inputs)
-                    loss = paddle.nn.functional.mse_loss(outputs, targets)
-                    print("loss:", loss.item())
-                    opt.clear_grad()
-                    loss.backward()
-                    return loss
-
-                opt.step(closure)
+                >>> def closure():
+                ...     outputs = net(inputs)
+                ...     loss = paddle.nn.functional.mse_loss(outputs, targets)
+                ...     print("loss:", loss.item())
+                ...     opt.clear_grad()
+                ...     loss.backward()
+                ...     return loss
+                ...
+                >>> opt.step(closure)
         """
 
         with paddle.no_grad():

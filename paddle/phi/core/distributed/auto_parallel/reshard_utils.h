@@ -23,7 +23,11 @@
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace phi {
+class DeviceContext;
+
 namespace distributed {
+class CommContext;
+
 namespace auto_parallel {
 
 class ProcessMesh;
@@ -48,6 +52,13 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh);
 std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping);
 
+// Create a comm context of the input process_ids. Once the newly comm context
+// created, it will be cached in the global instance, and get from the global
+// cache later. If the input dev_ctx is GPU, then nccl comm context will be
+// created. If the input dev_ctx is CPU, then gloo comm context will be created.
+CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
+                                    const std::vector<int64_t>& process_ids);
+
 int64_t GetCurGlobalRank();
 
 std::string GetMasterAddr();
@@ -57,6 +68,11 @@ int64_t GetGlobalWorldSize();
 uint16_t GetMasterPort();
 
 std::shared_ptr<TCPStore> CreateOrGetGlobalTCPStore();
+
+// If given a number, balance split it to multiple pieces.
+// For example, the input value is 12, split it to 5 pieces, then return
+// {3, 3, 2, 2, 2}.
+std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces);
 
 }  // namespace distributed
 }  // namespace phi

@@ -41,7 +41,7 @@ class TestTanhVjp(unittest.TestCase):
         tanh_op = newir_program.block().ops[-2]
         fill_constant_op = newir_program.block().ops[-1]
         out_grads = [[fill_constant_op.result(0)]]
-        stop_gradients = [[0]]
+        stop_gradients = [[False]]
         with paddle.ir.core.program_guard(newir_program):
             grad_outs = call_vjp(tanh_op, out_grads, stop_gradients)
         self.assertEqual(
@@ -72,7 +72,7 @@ class TestTanhVjp(unittest.TestCase):
         tanh_op = newir_program.block().ops[-2]
         fill_constant_op = newir_program.block().ops[-1]
         out_grads = [[fill_constant_op.result(0)]]
-        stop_gradients = [[1]]
+        stop_gradients = [[True]]
         with paddle.ir.core.program_guard(newir_program):
             grad_outs = call_vjp(tanh_op, out_grads, stop_gradients)
         self.assertEqual(grad_outs[0][0], None)
@@ -93,7 +93,7 @@ class TestMeanVjp(unittest.TestCase):
         fill_constant_op = newir_program.block().ops[-1]
         mean_op = newir_program.block().ops[-2]
         out_grads = [[fill_constant_op.result(0)]]
-        stop_gradients = [[0]]
+        stop_gradients = [[False]]
         with paddle.ir.core.program_guard(newir_program):
             grad_outs = call_vjp(mean_op, out_grads, stop_gradients)
             self.assertEqual(
@@ -133,7 +133,7 @@ class TestMeanVjp(unittest.TestCase):
         fill_constant_op = newir_program.block().ops[-1]
         mean_op = newir_program.block().ops[-2]
         out_grads = [[fill_constant_op.result(0)]]
-        stop_gradients = [[1]]
+        stop_gradients = [[True]]
         with paddle.ir.core.program_guard(newir_program):
             grad_outs = call_vjp(mean_op, out_grads, stop_gradients)
             self.assertEqual(grad_outs[0][0], None)

@@ -296,7 +296,7 @@ void CUPTIAPI bufferCompleted(CUcontext ctx,
       } else {
         CUPTI_CALL(status);
       }
-    } while (1);
+    } while (true);
 
     size_t dropped;
     CUPTI_CALL(

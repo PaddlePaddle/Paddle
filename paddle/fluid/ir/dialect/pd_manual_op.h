@@ -48,24 +48,6 @@ class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface> {
   void Verify();
   ir::Value inputs() { return operand_source(0); }
   ir::OpResult out() { return result(0); }
-  ir::Attribute attribute(const std::string &name) {
-    {
-      PADDLE_ENFORCE(
-          attributes().count(name) > 0,
-          phi::errors::PreconditionNotMet("Attribute is not exist."));
-      return attributes().at(name);
-    }
-  }
-  template <typename T>
-  T attribute(const std::string &name) {
-    {
-      PADDLE_ENFORCE(
-          attributes().count(name) > 0 && attributes().at(name).isa<T>(),
-          phi::errors::PreconditionNotMet("Attribute is not right."));
-      return attributes().at(name).dyn_cast<T>();
-    }
-  }
-
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 

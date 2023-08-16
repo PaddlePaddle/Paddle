@@ -54,7 +54,9 @@ std::shared_ptr<DistTensor> ConstructReplicatedDistCPU(
   dist_attr->set_process_mesh(mesh);
 
   return std::make_shared<DistTensor>(
-      std::make_shared<DenseTensor>(input_dense), dist_attr);
+      std::make_shared<DenseTensor>(input_dense),
+      input_dense.meta(),
+      dist_attr);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -87,7 +89,9 @@ std::shared_ptr<DistTensor> ConstructReplicatedDistGPU(
   dist_attr->set_process_mesh(mesh);
 
   return std::make_shared<DistTensor>(
-      std::make_shared<DenseTensor>(input_dense_gpu), dist_attr);
+      std::make_shared<DenseTensor>(input_dense_gpu),
+      input_dense_gpu.meta(),
+      dist_attr);
 }
 #endif
 
@@ -114,11 +118,41 @@ TEST(reshard_r_to_s, r_to_s_same_placement_cpu_1d_mesh) {
 
   RToSReshardFunction r_to_s_func;
   std::shared_ptr<DistTensor> output =
-      r_to_s_func.Eval(*context, *input, out_dist_attr);
+      r_to_s_func.Eval(context, *input, out_dist_attr);
 
   CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), true);
   CHECK_EQ(output->numel(), 12);
   CHECK_EQ(output->dims(), DDim({6, 2}));
+}
+
+TEST(reshard_r_to_s, r_to_s_same_placement_cpu_1d_mesh_unbalance_split) {
+  setenv("PADDLE_TRAINER_ID", "1", 1);
+
+  std::vector<int64_t> tensor_shape = {6, 8};
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* context = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
+
+  std::vector<int64_t> mesh_shape = {4};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x"};
+  ProcessMesh mesh(mesh_shape, process_ids, dim_names);
+
+  std::shared_ptr<DistTensor> input =
+      ConstructReplicatedDistCPU(context, tensor_shape, mesh);
+
+  std::shared_ptr<TensorDistAttr> out_dist_attr =
+      std::make_shared<TensorDistAttr>(tensor_shape);
+  std::vector<int64_t> out_dims_mapping = {0, -1};
+  out_dist_attr->set_dims_mapping(out_dims_mapping);
+  out_dist_attr->set_process_mesh(mesh);
+
+  RToSReshardFunction r_to_s_func;
+  std::shared_ptr<DistTensor> output =
+      r_to_s_func.Eval(context, *input, out_dist_attr);
+
+  CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), true);
+  CHECK_EQ(output->numel(), 16);
+  CHECK_EQ(output->dims(), DDim({2, 8}));
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -136,7 +170,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_gpu_1d_mesh) {
 
   std::shared_ptr<TensorDistAttr> out_dist_attr =
       std::make_shared<TensorDistAttr>(tensor_shape);
-  std::vector<int64_t> out_dims_mapping = {0, -1};
+  std::vector<int64_t> out_dims_mapping = {0, -1, -1};
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(mesh);
 
@@ -145,7 +179,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_gpu_1d_mesh) {
 
   RToSReshardFunction r_to_s_func;
   std::shared_ptr<DistTensor> output =
-      r_to_s_func.Eval(*context, *input, out_dist_attr);
+      r_to_s_func.Eval(context, *input, out_dist_attr);
 
   CHECK_EQ(r_to_s_func.IsSuitable(*input, out_dist_attr), true);
   CHECK_EQ(output->numel(), 32);
