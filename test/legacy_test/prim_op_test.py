@@ -302,10 +302,8 @@ class PrimForwardChecker:
             if hasattr(self.op_test, 'enable_cinn')
             else True
         )
-        if os.getenv('FLAGS_enable_cinn') == '1':
+        if os.getenv('FLAGS_enable_cinn'):
             self.enable_cinn = True
-        if os.getenv('FLAGS_enable_cinn') == '0':
-            self.enable_cinn = False
         self.enable_check_eager_comp = (
             self.op_test.enable_check_eager_comp
             if hasattr(self.op_test, 'enable_check_eager_comp')
