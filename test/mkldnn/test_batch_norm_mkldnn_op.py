@@ -24,7 +24,7 @@ from test_batch_norm_op import (
     _reference_training,
 )
 
-from paddle.fluid import core
+from paddle.base import core
 
 _set_use_system_allocator(True)
 

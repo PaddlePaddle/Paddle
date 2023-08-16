@@ -21,9 +21,9 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 from paddle.static import nn
 
 
@@ -42,7 +42,7 @@ class TRTInstanceNormTest(InferencePassTest):
             1 << 30, self.bs, 2, self.precision, self.serialize, False
         )
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             shape = [-1, self.channel, self.height, self.width]
             data = paddle.static.data(name='in', shape=shape, dtype='float32')
             instance_norm_out = nn.instance_norm(data)

@@ -15,7 +15,7 @@
 import paddle
 from paddle import _legacy_C_ops
 from paddle.distributed import collective
-from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.framework import LayerHelper, _create_tensor, in_dynamic_mode
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils

@@ -19,9 +19,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 
 
 class TestScatterOp(OpTest):
@@ -571,16 +571,16 @@ class TestScatterBF16Op6(TestScatterOp6):
 
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
         self.executed_api()
 
     def executed_api(self):
         self.scatter = paddle.scatter
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[3, 2], dtype="float64"
             )
@@ -596,9 +596,9 @@ class TestScatterAPI(unittest.TestCase):
                 np.float64
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={
                     "input": input_data,
                     "index": index_data,
@@ -619,16 +619,16 @@ class TestScatterAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
                 index_data = np.array([2, 1, 0, 1]).astype(np.int64)
                 updates_data = np.array(
                     [[1, 1], [2, 2], [3, 3], [4, 4]]
                 ).astype(np.float64)
 
-                x = fluid.dygraph.to_variable(x_data)
-                index = fluid.dygraph.to_variable(index_data)
-                updates = fluid.dygraph.to_variable(updates_data)
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
 
                 output1 = self.scatter(x, index, updates, overwrite=False)
                 self.assertEqual(
@@ -648,7 +648,7 @@ class TestScatterAPI(unittest.TestCase):
         updates = np.ones(shape=[10759233, 256], dtype="float32")
 
         def test_dygraph():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 gpu_out = paddle.scatter(
                     paddle.to_tensor(x),
                     paddle.to_tensor(index),

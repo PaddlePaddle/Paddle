@@ -15,9 +15,9 @@
 import logging
 
 import paddle
-from paddle.fluid import core, framework, unique_name
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Variable, in_dygraph_mode, program_guard
+from paddle.base import core, framework, unique_name
+from paddle.base.backward import append_backward
+from paddle.base.framework import Variable, in_dygraph_mode, program_guard
 from paddle.optimizer import Optimizer
 
 
@@ -50,7 +50,7 @@ class RecomputeOptimizer(Optimizer):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy as np
 
             paddle.enable_static()
@@ -78,14 +78,14 @@ class RecomputeOptimizer(Optimizer):
             sgd.minimize(cost)
 
             print("Finished optimize")
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             step = 10
 
             for i in range(step):
                 cost_val = exe.run(feed=gen_data(),
-                       program=fluid.default_main_program(),
+                       program=base.default_main_program(),
                        fetch_list=[cost.name])
                 print("step=%d cost=%f" % (i, cost_val[0]))
 
@@ -133,7 +133,7 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
 
                 paddle.enable_static()
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -178,8 +178,8 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
-                import paddle.fluid.framework as framework
+                import paddle.base as base
+                import paddle.base.framework as framework
 
                 paddle.enable_static()
 
@@ -666,7 +666,7 @@ class RecomputeOptimizer(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
 
                 paddle.enable_static()
 
@@ -748,7 +748,7 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
 
                 paddle.enable_static()
 

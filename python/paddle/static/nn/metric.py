@@ -18,9 +18,9 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _create_tensor, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import Variable, _create_tensor, in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper
 from paddle.nn.initializer import ConstantInitializer
 
 __all__ = []

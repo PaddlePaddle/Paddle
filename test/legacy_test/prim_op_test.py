@@ -20,8 +20,8 @@ import config
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle.base import core
+from paddle.base.framework import (
     OpProtoHolder,
     _dygraph_tracer,
     canonicalize_attrs,
@@ -401,7 +401,7 @@ class PrimForwardChecker:
 
     def check(self):
         if (
-            type(self.place) is paddle.fluid.libpaddle.CUDAPlace
+            type(self.place) is paddle.base.libpaddle.CUDAPlace
             and not paddle.is_compiled_with_cuda()
         ):
             return
@@ -417,9 +417,9 @@ class PrimForwardChecker:
 
     def get_kernel_sig(self):
         paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) is paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) is paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         (
             eager_tensor_inputs,
@@ -437,9 +437,9 @@ class PrimForwardChecker:
 
     def get_eager_desire(self):
         paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) is paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) is paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         (
             eager_tensor_inputs,
@@ -578,7 +578,7 @@ class PrimForwardChecker:
         # forward comp only for comp op
         if self.prim_op_type == "prim":
             return
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             core._set_prim_forward_enabled(self.enable_fw_comp)
             startup_program, main_program = (
                 paddle.static.Program(),
@@ -655,9 +655,9 @@ class PrimForwardChecker:
         if self.prim_op_type == "prim":
             return
         paddle.disable_static()
-        if type(self.place) == paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) == paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) == paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) == paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         atol = self.fw_comp_atol if self.enable_fw_comp else self.jit_comp_atol
         rtol = self.fw_comp_rtol if self.enable_fw_comp else self.jit_comp_rtol
@@ -734,7 +734,7 @@ class PrimForwardChecker:
             return
         # cinn doesn't support cpu place
         if (
-            type(self.place) == paddle.fluid.libpaddle.CPUPlace
+            type(self.place) == paddle.base.libpaddle.CPUPlace
             and self.enable_cinn
             and core.is_compiled_with_cinn()
         ):
@@ -751,9 +751,9 @@ class PrimForwardChecker:
             else self.fw_comp_rtol
         )
         core._set_prim_forward_enabled(self.enable_fw_comp)
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) is paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) is paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         (
             eager_tensor_inputs,
@@ -848,7 +848,7 @@ class PrimGradChecker(PrimForwardChecker):
 
     def check(self):
         if (
-            type(self.place) is paddle.fluid.libpaddle.CUDAPlace
+            type(self.place) is paddle.base.libpaddle.CUDAPlace
             and not paddle.is_compiled_with_cuda()
         ):
             return
@@ -925,9 +925,9 @@ class PrimGradChecker(PrimForwardChecker):
 
     def get_eager_desire(self):
         paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) is paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) is paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         (
             eager_tensor_inputs,
@@ -978,9 +978,9 @@ class PrimGradChecker(PrimForwardChecker):
         if self.prim_op_type == "comp":
             return
         paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) is paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) is paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         atol = self.rev_comp_atol
         rtol = self.rev_comp_rtol
@@ -1027,7 +1027,7 @@ class PrimGradChecker(PrimForwardChecker):
             core._set_prim_backward_enabled(self.enable_rev_comp)
         atol = self.rev_comp_atol if self.enable_rev_comp else self.fw_comp_atol
         rtol = self.rev_comp_rtol if self.enable_rev_comp else self.fw_comp_rtol
-        with paddle.fluid.framework._static_guard():
+        with paddle.base.framework._static_guard():
             startup_program, main_program = (
                 paddle.static.Program(),
                 paddle.static.Program(),
@@ -1130,9 +1130,9 @@ class PrimGradChecker(PrimForwardChecker):
 
     def check_jit_comp(self):
         paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) is paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) is paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         if self.prim_op_type == "prim":
             core._set_prim_backward_enabled(self.enable_rev_comp)
@@ -1247,15 +1247,15 @@ class PrimGradChecker(PrimForwardChecker):
     def check_jit_comp_with_cinn(self):
         # cinn doesn't support cpu place
         if (
-            type(self.place) is paddle.fluid.libpaddle.CPUPlace
+            type(self.place) is paddle.base.libpaddle.CPUPlace
             and self.enable_cinn
             and core.is_compiled_with_cinn()
         ):
             return
         paddle.disable_static()
-        if type(self.place) is paddle.fluid.libpaddle.CPUPlace:
+        if type(self.place) is paddle.base.libpaddle.CPUPlace:
             paddle.device.set_device("cpu")
-        if type(self.place) is paddle.fluid.libpaddle.CUDAPlace:
+        if type(self.place) is paddle.base.libpaddle.CUDAPlace:
             paddle.device.set_device("gpu:0")
         if self.prim_op_type == "prim":
             core._set_prim_backward_enabled(self.enable_rev_comp)

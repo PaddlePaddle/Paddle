@@ -20,8 +20,8 @@ import numpy as np
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle.base import core
+from paddle.base.framework import (
     Variable,
     _current_expected_place,
     default_main_program,
@@ -31,10 +31,10 @@ from paddle.fluid.framework import (
 )
 from paddle.regularizer import L2Decay
 
-from ..fluid import framework, unique_name
-from ..fluid.backward import _get_no_grad_set_name, append_backward
-from ..fluid.framework import Parameter, program_guard
-from ..fluid.layer_helper import LayerHelper
+from ..base import framework, unique_name
+from ..base.backward import _get_no_grad_set_name, append_backward
+from ..base.framework import Parameter, program_guard
+from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 __all__ = []
@@ -106,15 +106,15 @@ class Optimizer:
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
             some derived class of ``GradientClipBase`` . There are three cliping strategies \
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , \
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` , \
+            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -480,7 +480,7 @@ class Optimizer:
                         persistable=True,
                     )
 
-        with paddle.fluid.framework.dygraph_guard_if_declarative():
+        with paddle.base.framework.dygraph_guard_if_declarative():
             do_create()
 
     @framework.dygraph_only
@@ -1067,7 +1067,7 @@ class Optimizer:
                 )
 
             if isinstance(parameters_and_grads, list):
-                with paddle.fluid.framework.dygraph_guard_if_declarative():
+                with paddle.base.framework.dygraph_guard_if_declarative():
                     self._create_accumulators(
                         target_block,
                         [
@@ -1083,7 +1083,7 @@ class Optimizer:
                     for p in params_acc_dict['params']
                     if not p[0].stop_gradient
                 ]
-                with paddle.fluid.framework.dygraph_guard_if_declarative():
+                with paddle.base.framework.dygraph_guard_if_declarative():
                     self._create_accumulators(target_block, params_acc_dict)
 
             if framework.in_dygraph_mode():
@@ -1156,9 +1156,9 @@ class Optimizer:
 
         Args:
             loss (Tensor): ``loss`` tensor to run optimizations.
-            startup_program (Program, optional): :ref:`api_fluid_Program` for
+            startup_program (Program, optional): :ref:`api_base_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+                is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1425,7 +1425,7 @@ class Optimizer:
                     ):
                         repeate_regularizer = True
                         logging.info(
-                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "If regularizer of a Parameter has been set by 'base.ParamAttr' or 'base.WeightNormParamAttr' already. "
                             "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                             % regularization.__str__()
                         )
@@ -1503,9 +1503,9 @@ class Optimizer:
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_fluid_Program` for
+            startup_program (Program, optional): :ref:`api_base_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_fluid_default_startup_program` will be used.
+                is None, at this time :ref:`api_base_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1603,7 +1603,7 @@ class Optimizer:
                 >>> adam.step()
                 >>> adam.clear_grad()
         """
-        if paddle.fluid.dygraph.base.in_declarative_mode():
+        if paddle.base.dygraph.base.in_declarative_mode():
             self._declarative_step()
             return
 

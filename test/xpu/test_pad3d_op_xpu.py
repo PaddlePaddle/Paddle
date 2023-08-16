@@ -25,7 +25,7 @@ from op_test_xpu import XPUOpTest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import Executor, Program, default_main_program, program_guard
+from paddle.base import Executor, Program, default_main_program, program_guard
 
 paddle.enable_static()
 

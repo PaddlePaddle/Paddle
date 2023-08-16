@@ -19,8 +19,8 @@ from legacy_test.test_collective_api_base import (
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid, framework
-from paddle.fluid import data_feeder
+from paddle import base, framework
+from paddle.base import data_feeder
 
 paddle.enable_static()
 
@@ -103,7 +103,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
@@ -116,7 +116,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
     def get_model_new(
         self, main_prog, startup_program, rank, dtype=None, reduce_type=None
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype=dtype
             )

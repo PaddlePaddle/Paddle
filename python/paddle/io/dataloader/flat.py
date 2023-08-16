@@ -36,7 +36,7 @@ def _flatten_batch(batch):
             for field in batch:
                 if isinstance(
                     field,
-                    (np.ndarray, paddle.Tensor, paddle.fluid.core.eager.Tensor),
+                    (np.ndarray, paddle.Tensor, paddle.base.core.eager.Tensor),
                 ):
                     structure.append(f'{FIELD_PREFIX}{field_idx}')
                     flat_batch.append(field)
@@ -59,7 +59,7 @@ def _flatten_batch(batch):
             for k, field in batch.items():
                 if isinstance(
                     field,
-                    (np.ndarray, paddle.Tensor, paddle.fluid.core.eager.Tensor),
+                    (np.ndarray, paddle.Tensor, paddle.base.core.eager.Tensor),
                 ):
                     structure[k] = f'{FIELD_PREFIX}{field_idx}'
                     flat_batch.append(field)

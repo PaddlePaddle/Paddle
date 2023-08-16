@@ -15,7 +15,7 @@
 import paddle
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
-from paddle.fluid import core
+from paddle.base import core
 from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op

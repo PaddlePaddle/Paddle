@@ -23,7 +23,7 @@ from eager_op_test import (
 )
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 

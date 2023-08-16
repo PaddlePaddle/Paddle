@@ -21,9 +21,9 @@ from decorator_helper import prog_scope
 from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.backward import append_backward
+from paddle import base
+from paddle.base import Program, core, program_guard
+from paddle.base.backward import append_backward
 
 
 class TestAssignOp(eager_op_test.OpTest):
@@ -126,11 +126,11 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             append_backward(mean)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
         feed_add = feed_x + ones
@@ -149,8 +149,8 @@ class TestAssignOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.assign, x1)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
@@ -179,11 +179,11 @@ class TestAssignOApi(unittest.TestCase):
             append_backward(mean)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
         feed_add = feed_x + ones
@@ -198,7 +198,7 @@ class TestAssignOApi(unittest.TestCase):
 
     def test_assign_NumpyArray(self):
         for dtype in [np.bool_, np.float32, np.int32, np.int64]:
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 array = np.random.random(size=(100, 10)).astype(dtype)
                 result1 = paddle.zeros(shape=[3, 3], dtype='float32')
                 paddle.assign(array, result1)
@@ -279,8 +279,8 @@ class TestAssignOpErrorApi(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.assign, x1)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
@@ -321,9 +321,9 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
         paddle.disable_static()
@@ -353,9 +353,9 @@ class TestAssignTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
         paddle.disable_static()

@@ -24,7 +24,7 @@ except:
 
 import paddle
 
-from ...fluid.framework import IrGraph, IrNode
+from ...base.framework import IrGraph, IrNode
 from ...framework import _get_paddle_place, core
 from ...static import Program, data, program_guard, scope_guard
 from ...utils import unique_name
@@ -168,7 +168,7 @@ class QuantizationTransformPass:
             optimizer_func(function): Fuction return a optimizer. When 'is_test' is
                 False and user want to use self-defined quantization function and
                 preprocess function, this function must be set. Default is None.
-            executor(Fluid.Executor): If user want to use self-defined quantization
+            executor(base.Executor): If user want to use self-defined quantization
                 function and preprocess function, executor must be set for initialization.
                 Default is None.
 
@@ -179,7 +179,7 @@ class QuantizationTransformPass:
                 >>> # The original graph will be rewrite.
                 >>> import paddle.static as static
                 >>> from paddle.static.quantization import QuantizationTransformPass
-                >>> from paddle.fluid.framework import IrGraph
+                >>> from paddle.base.framework import IrGraph
                 >>> from paddle.framework import core
 
                 >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
@@ -2449,7 +2449,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 >>> import paddle
                 >>> import paddle.static as static
                 >>> from paddle.static.quantization import QuantizationTransformPassV2
-                >>> from paddle.fluid.framework import IrGraph
+                >>> from paddle.base.framework import IrGraph
                 >>> from paddle.framework import core
 
                 >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
@@ -2842,7 +2842,7 @@ class AddQuantDequantPassV2:
                 >>> import paddle
                 >>> import paddle.static as static
                 >>> from paddle.static.quantization import AddQuantDequantPassV2
-                >>> from paddle.fluid.framework import IrGraph
+                >>> from paddle.base.framework import IrGraph
                 >>> from paddle.framework import core
 
                 >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
@@ -3025,7 +3025,7 @@ class ReplaceFakeQuantDequantPass:
                 >>> import paddle
                 >>> import paddle.static as static
                 >>> from paddle.static.quantization import ReplaceFakeQuantDequantPass
-                >>> from paddle.fluid.framework import IrGraph
+                >>> from paddle.base.framework import IrGraph
                 >>> from paddle.framework import core
 
                 >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
@@ -3182,7 +3182,7 @@ class QuantWeightPass:
             >>> import paddle
             >>> import paddle.static as static
             >>> from paddle.static.quantization import QuantWeightPass
-            >>> from paddle.fluid.framework import IrGraph
+            >>> from paddle.base.framework import IrGraph
             >>> from paddle.framework import core
 
             >>> graph = IrGraph(core.Graph(paddle.static.Program().desc), for_test=False)

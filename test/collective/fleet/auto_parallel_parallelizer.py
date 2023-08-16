@@ -19,7 +19,7 @@ import paddle.nn.functional as F
 from paddle import nn, static, utils
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 _global_parallel_strategy = None

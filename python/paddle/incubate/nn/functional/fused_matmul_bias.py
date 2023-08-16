@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.linalg import matmul
 

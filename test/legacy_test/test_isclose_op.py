@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestIscloseOp(OpTest):
@@ -118,9 +118,9 @@ class TestIscloseStatic(unittest.TestCase):
         paddle.enable_static()
         x_data = np.random.rand(10, 10)
         y_data = np.random.rand(10, 10)
-        places = [paddle.fluid.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
-            places.append(paddle.fluid.CUDAPlace(0))
+        places = [paddle.base.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.base.CUDAPlace(0))
         for place in places:
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -132,9 +132,9 @@ class TestIscloseStatic(unittest.TestCase):
                     name='y', shape=[10, 10], dtype='float64'
                 )
                 result = paddle.isclose(x, y)
-                exe = paddle.fluid.Executor(place)
+                exe = paddle.base.Executor(place)
                 fetches = exe.run(
-                    paddle.fluid.default_main_program(),
+                    paddle.base.default_main_program(),
                     feed={"x": x_data, "y": y_data},
                     fetch_list=[result],
                 )
@@ -145,7 +145,7 @@ class TestIscloseStatic(unittest.TestCase):
 class TestIscloseDygraph(unittest.TestCase):
     def test_api_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()

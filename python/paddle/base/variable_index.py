@@ -73,10 +73,10 @@ class SliceInfo:
 
     def update(self, index):
         if is_list_tuple(index, int) or isinstance(
-            index, (paddle.fluid.Variable, np.ndarray)
+            index, (paddle.base.Variable, np.ndarray)
         ):
             # convert index to Tensor
-            if not isinstance(index, paddle.fluid.Variable):
+            if not isinstance(index, paddle.base.Variable):
                 index = paddle.assign(index)
 
             if self.dtype is None:
@@ -123,7 +123,7 @@ class SliceInfo:
 
     def get_offset_stride(self, tensor_shape):
         for index in self.indexes:
-            if not isinstance(index, paddle.fluid.Variable):
+            if not isinstance(index, paddle.base.Variable):
                 raise ValueError(
                     "only support list/tensor index, but received {}.".format(
                         type(index)
@@ -152,7 +152,7 @@ class SliceInfo:
         return paddle.gather_nd(tensor, index)
 
     def set_item(self, tensor_origin, value):
-        if not isinstance(value, paddle.fluid.Variable):
+        if not isinstance(value, paddle.base.Variable):
             value = paddle.assign(value)
         tensor_type = None
 
@@ -398,7 +398,7 @@ def _setitem_for_tensor_array(var, item, value):
 
 
 def _setitem_impl_(var, item, value):
-    from paddle.fluid import core
+    from paddle.base import core
     from .framework import default_main_program, Variable
 
     if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -565,7 +565,7 @@ def _setitem_impl_(var, item, value):
         var._bump_inplace_version()
         output = var
     else:
-        helper = paddle.fluid.layer_helper.LayerHelper('set_value', **locals())
+        helper = paddle.base.layer_helper.LayerHelper('set_value', **locals())
         if helper.main_program.current_block_idx != 0:
             # not in global block, we should create a global variable.
             output = helper._create_global_variable_for_type_inference(
@@ -786,7 +786,7 @@ def parse_index(x, indices):
             has_advanced_index = True
             estimated_dim += 1
 
-        elif isinstance(slice_item, paddle.fluid.Variable):
+        elif isinstance(slice_item, paddle.base.Variable):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
             if slice_item.dtype == paddle.bool:
                 if slice_item.ndim == 0:
@@ -816,7 +816,7 @@ def parse_index(x, indices):
             axes.append(dim)
             use_strided_slice = (
                 True
-                if (isinstance(step, paddle.fluid.Variable) or step != 1)
+                if (isinstance(step, paddle.base.Variable) or step != 1)
                 else use_strided_slice
             )
     return (
@@ -844,7 +844,7 @@ def _setitem_static(x, indices, values):
     """
     from .framework import default_main_program, Variable
 
-    if x.type == paddle.fluid.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if x.type == paddle.base.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         return _setitem_for_tensor_array(x, indices, values)
 
     # step1: parsing the index and recording them
@@ -912,7 +912,7 @@ def _setitem_static(x, indices, values):
             x._bump_inplace_version()
             output = x
         else:
-            helper = paddle.fluid.layer_helper.LayerHelper(
+            helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
             if helper.main_program.current_block_idx != 0:
@@ -986,7 +986,7 @@ def _setitem_static(x, indices, values):
             x._bump_inplace_version()
             output = x
         else:
-            helper = paddle.fluid.layer_helper.LayerHelper(
+            helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
             if helper.main_program.current_block_idx != 0:

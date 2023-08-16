@@ -18,7 +18,7 @@ from legacy_test import nets
 from legacy_test.test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 paddle.enable_static()
@@ -27,8 +27,8 @@ DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
@@ -39,7 +39,7 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
@@ -50,7 +50,7 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
@@ -60,12 +60,12 @@ def cnn_model(data):
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    with fluid.device_guard("gpu:1"):
+    with base.device_guard("gpu:1"):
         predict = paddle.static.nn.fc(
             x=conv_pool_2,
             size=SIZE,
             activation="softmax",
-            weight_attr=fluid.param_attr.ParamAttr(
+            weight_attr=base.param_attr.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01)
             ),
         )
@@ -74,7 +74,7 @@ def cnn_model(data):
             x=conv_pool_1,
             size=SIZE,
             activation="softmax",
-            weight_attr=fluid.param_attr.ParamAttr(
+            weight_attr=base.param_attr.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01)
             ),
         )
@@ -85,7 +85,7 @@ def cnn_model(data):
 class TestDistMnist2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        with fluid.device_guard("gpu:0"):
+        with base.device_guard("gpu:0"):
             images = paddle.static.data(
                 name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
             )
@@ -94,7 +94,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
             )
 
             if dist_strategy:
-                data_loader = fluid.io.DataLoader.from_generator(
+                data_loader = base.io.DataLoader.from_generator(
                     feed_list=[images, label],
                     capacity=64,
                     use_double_buffer=False,
@@ -102,20 +102,20 @@ class TestDistMnist2x2(TestDistRunnerBase):
                 )
             # Train program
             predict = cnn_model(images)
-        with fluid.device_guard("gpu:1"):
+        with base.device_guard("gpu:1"):
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
             )
             avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        with fluid.device_guard("gpu:1"):
+        with base.device_guard("gpu:1"):
             batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
             batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size_tensor
             )
 
-        inference_program = fluid.default_main_program().clone()
+        inference_program = base.default_main_program().clone()
         base_lr = self.lr
         passes = [30, 60, 80, 90]
         steps_per_pass = 10

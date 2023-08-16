@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 from mkldnn_op_test import format_reorder
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestTransposeOp(OpTest):

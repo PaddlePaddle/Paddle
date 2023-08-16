@@ -23,9 +23,9 @@ from paddle.common_ops_import import (
     convert_dtype,
     in_dygraph_mode,
 )
-from paddle.fluid import core
-from paddle.fluid.backward import _infer_var_data_type_shape_
-from paddle.fluid.framework import Operator, Program, Variable, static_only
+from paddle.base import core
+from paddle.base.backward import _infer_var_data_type_shape_
+from paddle.base.framework import Operator, Program, Variable, static_only
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -166,7 +166,7 @@ class ConditionalBlock:
         .. code-block:: python
 
              import paddle
-             import paddle.fluid as fluid
+             import paddle.base as base
              cond = paddle.less_than(x=label, y=limit)
              true_image, false_image = layers.split_lod_tensor(
                  input=image, mask=cond)
@@ -411,8 +411,8 @@ class While:
     while loop control flow. Repeat while body until cond is False.
 
     Note:
-        A new OP :ref:`api_fluid_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
-        OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+        A new OP :ref:`api_base_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_base_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
 
     Notice:
         Local variables created in ``While`` are similar to that created in while of C++, and cannot be referenced externally.
@@ -1186,8 +1186,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 return false_fn()
         return None
 
-    check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
-    check_type(name, "name", (str, type(None)), "fluid.layers.cond")
+    check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+    check_type(name, "name", (str, type(None)), "base.layers.cond")
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
@@ -1726,7 +1726,7 @@ class Switch:
             condition,
             'condition',
             ['bool'],
-            'the member function case of fluid.layers.Switch',
+            'the member function case of base.layers.Switch',
         )
 
         if len(self.pre_not_conditions) == 0:

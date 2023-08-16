@@ -18,7 +18,7 @@ from paddle.distributed.communication.group import (
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
-from paddle.fluid import data_feeder
+from paddle.base import data_feeder
 
 
 def _recv_in_dygraph(

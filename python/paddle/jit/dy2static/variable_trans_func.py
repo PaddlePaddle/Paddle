@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import Variable
+from paddle.base.framework import Variable
 from paddle.utils import gast, is_sequence, map_structure
 
 from .utils import UndefinedVar, create_undefined_variable

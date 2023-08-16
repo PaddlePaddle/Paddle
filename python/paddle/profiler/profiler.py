@@ -22,7 +22,7 @@ from typing import Any, Callable, Iterable, Optional, Union
 from warnings import warn
 
 import paddle
-from paddle.fluid.core import (
+from paddle.base.core import (
     ProfilerOptions,
     TracerEventType,
     _Profiler,

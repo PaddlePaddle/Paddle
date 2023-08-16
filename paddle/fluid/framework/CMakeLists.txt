@@ -600,8 +600,8 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
+      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/base/proto/
       COMMAND cp distributed_strategy_*.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -620,7 +620,7 @@ if(WITH_PYTHON)
     endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
-                   "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+                   "${PADDLE_BINARY_DIR}/python/paddle/base/proto/")
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
               "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
@@ -628,7 +628,7 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
       COMMAND copy /Y *.py ${proto_dstpath}
       COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."

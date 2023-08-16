@@ -24,9 +24,9 @@ from paddle.common_ops_import import (
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import check_dtype
-from paddle.fluid.framework import (
+from paddle.base import core, unique_name
+from paddle.base.data_feeder import check_dtype
+from paddle.base.framework import (
     Program,
     Variable,
     default_main_program,
@@ -35,9 +35,9 @@ from paddle.fluid.framework import (
     program_guard,
     static_only,
 )
-from paddle.fluid.layers.layer_function_generator import templatedoc
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base.layers.layer_function_generator import templatedoc
+from paddle.base.param_attr import ParamAttr
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.nn.initializer import Constant, Normal
 
 __all__ = []
@@ -182,7 +182,7 @@ def fc(
           # out: [[1.8 1.8]]
     """
 
-    def fc_fluid(
+    def fc_base(
         input,
         size,
         num_flatten_dims=1,
@@ -238,7 +238,7 @@ def fc(
         # add activation
         return helper.append_activation(pre_activation)
 
-    return fc_fluid(
+    return fc_base(
         input=x,
         size=size,
         num_flatten_dims=num_flatten_dims,
@@ -412,7 +412,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
         A Tensor with same type as input.
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
+          import paddle.base as base
           import paddle
           input = paddle.static.data(name="input", shape=[64, 1], dtype="int64")
           label = paddle.static.data(name="label", shape=[64, 1], dtype="int64")
@@ -1037,7 +1037,7 @@ def conv2d(
 
     if (
         core.is_compiled_with_cuda()
-        and paddle.fluid.get_flags("FLAGS_conv2d_disable_cudnn")[
+        and paddle.base.get_flags("FLAGS_conv2d_disable_cudnn")[
             "FLAGS_conv2d_disable_cudnn"
         ]
     ):
@@ -2563,10 +2563,10 @@ def bilinear_tensor_product(
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_base_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_base_ParamAttr` .
 
     Returns:
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
@@ -2884,7 +2884,7 @@ def batch_norm(
                 *attrs_,
             )
 
-        return paddle.fluid.dygraph_utils._append_activation_in_dygraph(
+        return paddle.base.dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=act, use_mkldnn=False
         )
 

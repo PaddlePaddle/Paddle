@@ -19,7 +19,7 @@ from paddle import _C_ops, _ir_ops, ir
 from paddle.framework import in_dynamic_mode
 
 from ..common_ops_import import Variable
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core
 from .math import _get_reduce_axis_with_tensor
 from .search import where

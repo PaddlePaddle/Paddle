@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.static import InputSpec
 
 
@@ -27,7 +27,7 @@ from paddle.static import InputSpec
 @paddle.jit.to_static
 def for_in_range(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     for i in range(x.numpy().item()):
         z = z + i
     return z
@@ -55,7 +55,7 @@ def for_enumerate_list(x_array):
 @paddle.jit.to_static
 def for_iter_var_numpy(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for x in x_array.numpy():
         z = z + x
     return z
@@ -66,7 +66,7 @@ def for_iter_var_numpy(x_array):
 def for_enumerate_var_numpy(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
         z = z + x
@@ -78,7 +78,7 @@ def for_enumerate_var_numpy(x_array):
 def for_enumerate_var_numpy_with_start(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
         z = z + x
@@ -89,7 +89,7 @@ def for_enumerate_var_numpy_with_start(x_array):
 @paddle.jit.to_static
 def for_in_range_with_break(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     for i in range(x.numpy()[0]):
         z = z + i
         if i > 2:
@@ -102,7 +102,7 @@ def for_in_range_with_break(x):
 def for_enumerate_var_numpy_with_break(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
         z = z + x
@@ -116,7 +116,7 @@ def for_enumerate_var_numpy_with_break(x_array):
 def for_enumerate_var_numpy_with_continue(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy()):
         y = y + i
         if i > 2:
@@ -130,7 +130,7 @@ def for_enumerate_var_numpy_with_continue(x_array):
 def for_enumerate_var_numpy_with_start_break(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
         z = z + x
@@ -144,7 +144,7 @@ def for_enumerate_var_numpy_with_start_break(x_array):
 def for_enumerate_var_numpy_with_start_continue(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
         if i > 2:
@@ -157,7 +157,7 @@ def for_enumerate_var_numpy_with_start_continue(x_array):
 @paddle.jit.to_static
 def for_iter_var(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
 
     for x in x_array:
         z = z + x
@@ -169,7 +169,7 @@ def for_iter_var(x_array):
 def for_enumerate_var(x_array):
     y = paddle.tensor.fill_constant([1], 'int32', 0)
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array):
         y = y + i
         z = z + x
@@ -180,7 +180,7 @@ def for_enumerate_var(x_array):
 @paddle.jit.to_static
 def for_iter_var_list(x):
     # 1. prepare data, ref test_list.py
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     iter_num = paddle.tensor.fill_constant(shape=[1], value=5, dtype="int32")
     a = []
     for i in range(iter_num):
@@ -196,7 +196,7 @@ def for_iter_var_list(x):
 @paddle.jit.to_static
 def for_enumerate_var_list(x):
     # 1. prepare data, ref test_list.py
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     iter_num = paddle.tensor.fill_constant(shape=[1], value=5, dtype="int32")
     a = []
     for i in range(iter_num):
@@ -214,7 +214,7 @@ def for_enumerate_var_list(x):
 @paddle.jit.to_static
 def for_enumerate_var_with_nested_range(x_array):
     x = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
     for i, num in enumerate(x_array):
         for idx in range(num):
             x = x + num
@@ -225,7 +225,7 @@ def for_enumerate_var_with_nested_range(x_array):
 @paddle.jit.to_static
 def for_iter_var_idx(x_array):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
+    x_array = base.dygraph.to_variable(x_array)
 
     for x in x_array[0:]:
         z = z + x
@@ -356,9 +356,9 @@ def tensor_array_slice_in_enumerate():
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.set_input()
         self.set_test_func()
@@ -373,7 +373,7 @@ class TestTransformBase(unittest.TestCase):
 
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             return self.dygraph_func(self.input)
 
     def get_dygraph_output(self):
@@ -401,7 +401,7 @@ class TestTransform(TestTransformBase):
 class TestTransformForOriginalList(TestTransform):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             return self.dygraph_func()
 
 

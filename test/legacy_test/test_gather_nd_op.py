@@ -22,8 +22,8 @@ from eager_op_test import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestGatherNdOpWithEmptyIndex(OpTest):
@@ -554,14 +554,14 @@ class TestGatherNdError(unittest.TestCase):
 
 class TestGatherNdAPI2(unittest.TestCase):
     def test_static(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
             data1.desc.set_need_check_feed(False)
             index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
             index.desc.set_need_check_feed(False)
             out = paddle.gather_nd(data1, index)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
             index_1 = np.array([[1]]).astype('int32')
             (result,) = exe.run(
@@ -571,7 +571,7 @@ class TestGatherNdAPI2(unittest.TestCase):
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
     def test_static_fp16_with_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -607,8 +607,8 @@ class TestGatherNdAPI2(unittest.TestCase):
         paddle.disable_static()
         input_1 = np.array([[1, 2], [3, 4], [5, 6]])
         index_1 = np.array([[1]])
-        input = fluid.dygraph.to_variable(input_1)
-        index = fluid.dygraph.to_variable(index_1)
+        input = base.dygraph.to_variable(input_1)
+        index = base.dygraph.to_variable(index_1)
         output = paddle.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([[3, 4]])

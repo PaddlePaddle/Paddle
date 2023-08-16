@@ -16,12 +16,12 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestFloorModOp(unittest.TestCase):
     def test_dygraph(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             # mod by zero
             x = paddle.to_tensor([59], dtype='int32')
             y = paddle.to_tensor([0], dtype='int32')

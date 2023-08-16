@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def cal_kthvalue(x, k, axis, keepdim=False):
@@ -141,7 +141,7 @@ class TestKthvalueOpKernels(unittest.TestCase):
                 )
 
         test_cpu_kernel()
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             test_gpu_kernel()
 
 
@@ -168,7 +168,7 @@ class TestKthvalueOpWithNaN(unittest.TestCase):
             self.assertEqual(inds[0, 2].numpy(), nan_position)
 
         test_nan_in_cpu_kernel()
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             test_nan_in_gpu_kernel()
 
 

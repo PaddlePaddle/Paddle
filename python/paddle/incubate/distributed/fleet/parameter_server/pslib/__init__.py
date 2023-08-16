@@ -339,7 +339,7 @@ class PSLib(Fleet):
         """
         save pserver model called from a worker
         Args:
-            executor(Executor): fluid executor
+            executor(Executor): base executor
             dirname(str): save model path
             feeded_var_names(list): default None
             target_vars(list): default None
@@ -386,9 +386,9 @@ class PSLib(Fleet):
         save presistable parameters,
         when using fleet, it will save sparse and dense feature
         Args:
-            executor(Executor): fluid executor
+            executor(Executor): base executor
             dirname(str): save path. It can be hdfs/afs path or local path
-            main_program(Program): fluid program, default None
+            main_program(Program): base program, default None
             kwargs: use define property, current support following
                 mode(int): 0 means save all pserver model,
                            1 means save delta pserver model (save diff),
@@ -413,9 +413,9 @@ class PSLib(Fleet):
         when using fleet, it will save sparse and dense feature
 
         Args:
-            executor(Executor): fluid executor
+            executor(Executor): base executor
             dirname(str): save path. It can be hdfs/afs path or local path
-            main_program(Program): fluid program, default None
+            main_program(Program): base program, default None
             kwargs: use define property, current support following
                 mode(int): 0 means save all pserver model,
                            1 means save delta pserver model (save diff),
@@ -466,9 +466,9 @@ class PSLib(Fleet):
         save sparse cache table,
         when using fleet, it will save sparse cache table
         Args:
-            executor(Executor): fluid executor
+            executor(Executor): base executor
             dirname(str): save path. It can be hdfs/afs path or local path
-            main_program(Program): fluid program, default None
+            main_program(Program): base program, default None
             kwargs: use define property, current support following
                 mode(int): define for feature extension in the future,
                            currently no use, will pass a default value 0
@@ -527,7 +527,7 @@ class PSLib(Fleet):
         Args:
             decay(float): the decay rate, usually range in (0, 1)
             emb_dim(int): one element's length in datanorm layer
-            scope(Scope): Scope object, default is fluid.global_scope()
+            scope(Scope): Scope object, default is base.global_scope()
             table_id(int): table id of shrinking dense table. None means shrink all,
                            you should specify it when using multiple scopes,
                            default is None.
@@ -617,7 +617,7 @@ class PSLib(Fleet):
 
               # below is how to save proto binary file
               with open("my_program.bin", "wb") as fout:
-                  my_program = fluid.default_main_program()
+                  my_program = base.default_main_program()
                   fout.write(my_program.desc.serialize_to_string())
 
         """
@@ -658,7 +658,7 @@ class PSLib(Fleet):
                                    load_combine = False)
               # below is how to save proto binary file
               with open("my_program.bin", "wb") as fout:
-                  my_program = fluid.default_main_program()
+                  my_program = base.default_main_program()
                   fout.write(my_program.desc.serialize_to_string())
         """
         self._role_maker._barrier_worker()
@@ -1129,7 +1129,7 @@ class fleet_embedding:
                   size=[-1, 11],
                   is_sparse=True,
                   is_distributed=True,
-                  param_attr=fluid.ParamAttr(name="embedding"))
+                  param_attr=base.ParamAttr(name="embedding"))
     """
 
     def __init__(self, click_name, scale_sparse_grad=True):
@@ -1158,8 +1158,8 @@ class fleet_embedding:
 
 class DownpourOptimizer(DistributedOptimizer):
     """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    DistributedOptimizer is a wrapper for paddle.base.optimizer
+    A user should pass a paddle.base.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in

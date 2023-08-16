@@ -25,9 +25,9 @@ from io import BytesIO
 import numpy as np
 import math
 import paddle
-from paddle.fluid import layers
-from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import (
+from paddle.base import layers
+from paddle.base.executor import Executor, global_scope
+from paddle.base.framework import (
     Program,
     Parameter,
     default_main_program,
@@ -50,14 +50,14 @@ from paddle.reader import (
     multiprocess_reader,
 )
 from .wrapped_decorator import signature_safe_contextmanager
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.log_helper import get_logger
+from paddle.base.compiler import CompiledProgram
+from paddle.base.log_helper import get_logger
 from . import reader
 from . import unique_name
 from .reader import *
 from . import core
 from paddle.utils import deprecated
-from paddle.fluid.framework import static_only
+from paddle.base.framework import static_only
 
 __all__ = reader.__all__
 

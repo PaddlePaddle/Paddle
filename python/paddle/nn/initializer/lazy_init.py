@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid import framework
+from ...base import framework
 
 __all__ = ["LazyGuard"]
 

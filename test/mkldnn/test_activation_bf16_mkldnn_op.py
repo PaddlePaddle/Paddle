@@ -21,7 +21,7 @@ from scipy.special import erf
 from test_activation_op import TestActivation
 from test_gelu_op import gelu
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

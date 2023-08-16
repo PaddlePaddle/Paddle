@@ -173,9 +173,9 @@ class TestModulatedDeformableConvOp(OpTest):
         )
         output = output.astype(self.dtype)
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Offset': OpTest.np_dtype_to_fluid_dtype(offset),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            'Input': OpTest.np_dtype_to_base_dtype(input),
+            'Offset': OpTest.np_dtype_to_base_dtype(offset),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
         }
         self.attrs = {
             'strides': self.stride,

@@ -23,9 +23,9 @@ sys.path.append("..")
 from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.random import random as rand
 
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 from paddle import static
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -46,7 +46,7 @@ class TestConjOp(OpTest):
         ).astype(self.dtype)
         out = np.conj(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
 
     def test_check_output(self):

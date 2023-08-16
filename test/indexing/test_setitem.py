@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.variable_index import _setitem_static
+from paddle.base.variable_index import _setitem_static
 
 
 class TestSetitemInDygraph(unittest.TestCase):

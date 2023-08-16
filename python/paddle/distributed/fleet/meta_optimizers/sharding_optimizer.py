@@ -14,7 +14,7 @@
 
 import os
 
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.optimizer import PipelineOptimizer
 from paddle.static import (
     create_global_var,

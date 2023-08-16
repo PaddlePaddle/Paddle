@@ -26,7 +26,7 @@ A `scoped_function` will take a `function` as input. That function will be
 invoked in a new local scope.
 """
 
-import paddle.fluid.core
+import paddle.base.core
 import threading
 
 __tl_scope__ = threading.local()
@@ -44,13 +44,13 @@ __all__ = [
 def get_cur_scope():
     """
     Get current scope.
-    :rtype: paddle.fluid.core.Scope
+    :rtype: paddle.base.core.Scope
     """
     cur_scope_stack = getattr(__tl_scope__, 'cur_scope', None)
     if cur_scope_stack is None:
         __tl_scope__.cur_scope = list()
     if len(__tl_scope__.cur_scope) == 0:
-        __tl_scope__.cur_scope.append(paddle.fluid.core.Scope())
+        __tl_scope__.cur_scope.append(paddle.base.core.Scope())
     return __tl_scope__.cur_scope[-1]
 
 

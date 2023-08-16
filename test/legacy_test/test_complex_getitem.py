@@ -16,15 +16,15 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.dygraph as dg
-from paddle import fluid
+import paddle.base.dygraph as dg
+from paddle import base
 
 
 class TestComplexGetitemLayer(unittest.TestCase):
     def setUp(self):
-        self._places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            self._places.append(fluid.CUDAPlace(0))
+        self._places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            self._places.append(base.CUDAPlace(0))
 
     def test_case1(self):
         x_np = np.random.randn(2, 3, 4) + 1j * np.random.randn(2, 3, 4)

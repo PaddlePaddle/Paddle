@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
@@ -472,13 +472,13 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
     def test_shape_with_batch_sizes(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
             one = 2.0
             out = one / x_var
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
             (out_result,) = exe.run(feed={'x': x}, fetch_list=[out])
             self.assertEqual((out_result == (2 / x)).all(), True)
@@ -486,7 +486,7 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
@@ -494,7 +494,7 @@ class TestDivideOp(unittest.TestCase):
             self.assertEqual(('div_res' in y_1.name), True)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([2, 3, 4]).astype('float64')
             np_y = np.array([1, 5, 2]).astype('float64')
             x = paddle.to_tensor(np_x)
@@ -513,8 +513,8 @@ class TestComplexElementwiseDivOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}

@@ -385,7 +385,7 @@ class TestQuantAwareCase(StaticCase):
         # self.assertEqual(convert_quant_op_nums_1, convert_quant_op_nums_2)
 
     def get_op_number(self, prog):
-        graph = paddle.fluid.framework.IrGraph(
+        graph = paddle.base.framework.IrGraph(
             paddle.framework.core.Graph(prog.desc), for_test=False
         )
         quant_op_nums = 0
@@ -398,7 +398,7 @@ class TestQuantAwareCase(StaticCase):
         return op_nums, quant_op_nums
 
     def get_convert_op_number(self, prog):
-        graph = paddle.fluid.framework.IrGraph(
+        graph = paddle.base.framework.IrGraph(
             paddle.framework.core.Graph(prog.desc), for_test=True
         )
         quant_op_nums = 0

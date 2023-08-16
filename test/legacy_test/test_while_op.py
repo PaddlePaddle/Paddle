@@ -17,10 +17,10 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.executor import Executor
 from paddle.incubate.layers.nn import shuffle_batch
 
 paddle.enable_static()
@@ -78,9 +78,9 @@ class TestWhileOp(unittest.TestCase):
         return loss, sum_result
 
     def test_simple_net(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
 
             append_backward(loss)
@@ -99,11 +99,11 @@ class TestWhileOp(unittest.TestCase):
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
     def test_simple_net_forward(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             self.simple_net()
-            binary = fluid.compiler.CompiledProgram(main_program)
+            binary = base.compiler.CompiledProgram(main_program)
 
             cpu = core.CPUPlace()
             exe = Executor(cpu)
@@ -130,7 +130,7 @@ class TestWhileOp(unittest.TestCase):
 
 class BadInputTest(unittest.TestCase):
     def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_bad_x():
                 x = [1, 2, 3]
@@ -166,8 +166,8 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         output = shuffle_temp
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
 
         input_x = numpy.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]])
         input_x = input_x.reshape(3, 1, 4)
@@ -175,7 +175,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         input_y = input_y.reshape(3, 1, 1)
 
         (res,) = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={'x': input_x, 'y': input_y},
             fetch_list=[output],
         )
@@ -188,9 +188,9 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
         """
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
 
             def func(x):
                 s = paddle.zeros([])

@@ -20,8 +20,8 @@ from eager_op_test import OpTest, skip_check_grad_ci
 from gradient_checker import grad_check
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 @skip_check_grad_ci(
@@ -61,9 +61,9 @@ class TestCholeskyOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -71,8 +71,8 @@ class TestCholeskyOp(OpTest):
     def func(self, place):
         # use small size since Jacobian gradients is time consuming
         root_data = self.root_data[..., :3, :3]
-        prog = fluid.Program()
-        with fluid.program_guard(prog):
+        prog = base.Program()
+        with base.program_guard(prog):
             root = paddle.create_parameter(
                 dtype=root_data.dtype, shape=root_data.shape
             )
@@ -98,7 +98,7 @@ class TestCholeskyOp2D(TestCholeskyOp):
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
         if core.is_compiled_with_rocm():
-            paddle.disable_static(place=fluid.CPUPlace())
+            paddle.disable_static(place=base.CPUPlace())
         else:
             paddle.disable_static()
         a = np.random.rand(3, 3)
@@ -110,12 +110,12 @@ class TestDygraph(unittest.TestCase):
 
 class TestCholeskySingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place, with_out=False):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float64"
             )
@@ -123,10 +123,10 @@ class TestCholeskySingularAPI(unittest.TestCase):
 
             input_np = np.zeros([4, 4]).astype("float64")
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             try:
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
@@ -141,14 +141,14 @@ class TestCholeskySingularAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_np = np.array(
                     [
                         [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
                         [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
                     ]
                 ).astype("float64")
-                input = fluid.dygraph.to_variable(input_np)
+                input = base.dygraph.to_variable(input_np)
                 try:
                     result = paddle.cholesky(input)
                 except RuntimeError as ex:

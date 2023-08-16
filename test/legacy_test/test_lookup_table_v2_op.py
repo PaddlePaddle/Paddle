@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
@@ -204,14 +204,14 @@ class TestLookupTableIsSparse(unittest.TestCase):
 
     def get_w_grad(self, is_sparse):
         self.init_data()
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program, fluid.Program()):
+        main_program = base.Program()
+        with base.program_guard(main_program, base.Program()):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int64')
             y_ = paddle.static.data(name='y_', shape=[-1, 5], dtype='float32')
             emb = paddle.static.nn.embedding(
                 input=x,
                 size=[10, 16],
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="emb_weight",
                     learning_rate=10,
                     initializer=paddle.nn.initializer.Assign(self.w_data),
@@ -226,9 +226,9 @@ class TestLookupTableIsSparse(unittest.TestCase):
             sgd_optimizer = paddle.optimizer.SGD(learning_rate=1e-4)
             sgd_optimizer.minimize(loss)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             ret = exe.run(
                 feed={'x': self.x_data, 'y_': self.y_data},
                 fetch_list=['emb_weight'],
@@ -253,11 +253,11 @@ class TestLookupTableApi(unittest.TestCase):
         x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
         emb = paddle.static.nn.embedding(input=x, size=[128, 64])
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         x_data = np.random.randint(0, 127, [2, 20]).astype("int64")
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         ret = exe.run(
             feed={
                 'x': x_data,

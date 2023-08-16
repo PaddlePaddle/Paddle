@@ -16,14 +16,14 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import (
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
     core,
     dygraph_only,
 )
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.tensor import max, to_tensor
 
 __all__ = [

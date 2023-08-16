@@ -18,9 +18,9 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import (
     Program,
     convert_np_dtype_to_dtype_,
     default_main_program,
@@ -70,14 +70,14 @@ class TestVariable(unittest.TestCase):
         )
 
         w = b.create_var(
-            dtype=paddle.fluid.core.VarDesc.VarType.STRINGS,
+            dtype=paddle.base.core.VarDesc.VarType.STRINGS,
             shape=[1],
             name="str_var",
         )
         self.assertEqual(None, w.lod_level)
 
     def test_element_size(self):
-        with fluid.program_guard(Program(), Program()):
+        with base.program_guard(Program(), Program()):
             x = paddle.static.data(name='x1', shape=[2], dtype='bool')
             self.assertEqual(x.element_size(), 1)
 
@@ -139,9 +139,9 @@ class TestVariable(unittest.TestCase):
 
         self.assertEqual(0, nw.lod_level)
 
-        main = fluid.Program()
-        with fluid.program_guard(main):
-            exe = fluid.Executor(place)
+        main = base.Program()
+        with base.program_guard(main):
+            exe = base.Executor(place)
             tensor_array = np.array(
                 [
                     [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
@@ -170,10 +170,10 @@ class TestVariable(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.nn.fc(x, size=1, activation=None)
             y_1 = y[:, 0]
-            feeder = fluid.DataFeeder(place=place, feed_list=[x])
+            feeder = base.DataFeeder(place=place, feed_list=[x])
             data = []
             data.append(np.random.randint(10, size=[13]).astype('float32'))
-            exe.run(fluid.default_startup_program())
+            exe.run(base.default_startup_program())
 
             local_out = exe.run(
                 main,
@@ -387,7 +387,7 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[0] == expected[0]).all())
 
     def test_slice(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
@@ -409,16 +409,16 @@ class TestVariable(unittest.TestCase):
             self.assertTrue(isinstance(str(wc), str))
 
     def test_tostring(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self._tostring()
 
-        with fluid.program_guard(default_main_program()):
+        with base.program_guard(default_main_program()):
             self._tostring()
 
     def test_fake_interface_only_api(self):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", lod_level=0)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self.assertRaises(AssertionError, var.numpy)
             self.assertRaises(AssertionError, var.backward)
             self.assertRaises(AssertionError, var.gradient)
@@ -427,7 +427,7 @@ class TestVariable(unittest.TestCase):
     def test_variable_in_dygraph_mode(self):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", shape=[1, 1])
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self.assertTrue(var.to_string(True).startswith('name:'))
 
             self.assertFalse(var.persistable)
@@ -440,8 +440,8 @@ class TestVariable(unittest.TestCase):
 
             self.assertTrue(var.name.startswith('_generated_var_'))
             self.assertEqual(var.shape, (1, 1))
-            self.assertEqual(var.dtype, fluid.core.VarDesc.VarType.FP64)
-            self.assertEqual(var.type, fluid.core.VarDesc.VarType.LOD_TENSOR)
+            self.assertEqual(var.dtype, base.core.VarDesc.VarType.FP64)
+            self.assertEqual(var.type, base.core.VarDesc.VarType.LOD_TENSOR)
 
     def test_create_selected_rows(self):
         b = default_main_program().current_block()
@@ -450,7 +450,7 @@ class TestVariable(unittest.TestCase):
             name="var",
             shape=[1, 1],
             dtype="float32",
-            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+            type=base.core.VarDesc.VarType.SELECTED_ROWS,
             persistable=True,
         )
 
@@ -463,7 +463,7 @@ class TestVariable(unittest.TestCase):
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog):
             x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
-            exe = paddle.static.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(base.CPUPlace())
             exe.run(paddle.static.default_startup_program())
 
             output = exe.run(prog, fetch_list=[x.size()])
@@ -484,7 +484,7 @@ class TestVariable(unittest.TestCase):
 
         startup = paddle.static.Program()
         main = paddle.static.Program()
-        scope = fluid.core.Scope()
+        scope = base.core.Scope()
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main, startup):
                 x = paddle.static.data(
@@ -575,7 +575,7 @@ class TestVariableSlice(unittest.TestCase):
             self.assertTrue((result[i] == expected[i]).all())
 
     def test_slice(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
@@ -628,9 +628,9 @@ class TestListIndex(unittest.TestCase):
                 y = x[index_mod]
 
                 place = (
-                    paddle.fluid.CPUPlace()
-                    if not paddle.fluid.core.is_compiled_with_cuda()
-                    else paddle.fluid.CUDAPlace(0)
+                    paddle.base.CPUPlace()
+                    if not paddle.base.core.is_compiled_with_cuda()
+                    else paddle.base.CUDAPlace(0)
                 )
 
                 prog = paddle.static.default_main_program()
@@ -713,9 +713,9 @@ class TestListIndex(unittest.TestCase):
             y = x[index1, index2]
 
             place = (
-                paddle.fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else paddle.fluid.CUDAPlace(0)
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
             )
 
             prog = paddle.static.default_main_program()
@@ -777,7 +777,7 @@ class TestListIndex(unittest.TestCase):
         x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 
         y = x[index]
-        place = paddle.fluid.CPUPlace()
+        place = paddle.base.CPUPlace()
 
         prog = paddle.static.default_main_program()
         exe = paddle.static.Executor(place)
@@ -835,7 +835,7 @@ class TestListIndex(unittest.TestCase):
         )
 
         y = paddle.static.setitem(x, index, value)
-        place = paddle.fluid.CPUPlace()
+        place = paddle.base.CPUPlace()
 
         prog = paddle.static.default_main_program()
         exe = paddle.static.Executor(place)
@@ -1034,9 +1034,9 @@ class TestListIndex(unittest.TestCase):
                 x1_out = paddle.static.setitem(x1, (index_1, index_2), value)
                 x2_out = paddle.static.setitem(x2, index_1, value)
                 place = (
-                    paddle.fluid.CPUPlace()
-                    if not paddle.fluid.core.is_compiled_with_cuda()
-                    else paddle.fluid.CUDAPlace(0)
+                    paddle.base.CPUPlace()
+                    if not paddle.base.core.is_compiled_with_cuda()
+                    else paddle.base.CUDAPlace(0)
                 )
 
                 prog = paddle.static.default_main_program()
@@ -1117,9 +1117,9 @@ class TestListIndex(unittest.TestCase):
                 y1 = x1_out[index_mod2, index_mod1]
                 y2 = x2_out[index_mod2]
                 place = (
-                    paddle.fluid.CPUPlace()
-                    if not paddle.fluid.core.is_compiled_with_cuda()
-                    else paddle.fluid.CUDAPlace(0)
+                    paddle.base.CPUPlace()
+                    if not paddle.base.core.is_compiled_with_cuda()
+                    else paddle.base.CUDAPlace(0)
                 )
 
                 prog = paddle.static.default_main_program()

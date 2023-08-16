@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
-from paddle.fluid.framework import default_main_program
+from paddle.base.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm
 

@@ -21,13 +21,13 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..fluid.data_feeder import (
+from ..base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.framework import Variable
+from ..base.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -5013,7 +5013,7 @@ def as_strided(x, shape, stride, offset=0, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5045,7 +5045,7 @@ def view(x, shape_or_dtype, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5054,7 +5054,7 @@ def view(x, shape_or_dtype, name=None):
 
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5089,7 +5089,7 @@ def view_as(x, other, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
             y = paddle.rand([8, 6], dtype="float32")
@@ -5122,7 +5122,7 @@ def unfold(x, axis, size, step, name=None):
         .. code-block:: python
 
             import paddle
-            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
+            paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.arange(9, dtype="float64")
 

@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
@@ -221,14 +221,14 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_1_np},
                 fetch_list=out_1,
                 use_prune=True,
             )[0]
 
             res_2 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x2": self.x_2_np},
                 fetch_list=out_2,
                 use_prune=True,
@@ -263,14 +263,14 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_1_np},
                 fetch_list=out_1,
                 use_prune=True,
             )[0]
 
             res_2 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x2": self.x_2_np},
                 fetch_list=out_2,
                 use_prune=True,
@@ -337,28 +337,28 @@ class TestPixelUnshuffleError(unittest.TestCase):
         '''test_error_functional'''
 
         def error_input():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([4, 12, 12]).astype("float64")
                 pixel_unshuffle = F.pixel_unshuffle(paddle.to_tensor(x), 2)
 
         self.assertRaises(ValueError, error_input)
 
         def error_downscale_factor_1():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
                 pixel_unshuffle = F.pixel_unshuffle(paddle.to_tensor(x), 3.33)
 
         self.assertRaises(TypeError, error_downscale_factor_1)
 
         def error_downscale_factor_2():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
                 pixel_unshuffle = F.pixel_unshuffle(paddle.to_tensor(x), -1)
 
         self.assertRaises(ValueError, error_downscale_factor_2)
 
         def error_data_format():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
                 pixel_unshuffle = F.pixel_unshuffle(
                     paddle.to_tensor(x), 3, "WOW"
@@ -370,7 +370,7 @@ class TestPixelUnshuffleError(unittest.TestCase):
         '''test_error_layer'''
 
         def error_input_layer():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([4, 12, 12]).astype("float64")
                 ps = paddle.nn.PixelUnshuffle(2)
                 ps(paddle.to_tensor(x))
@@ -378,21 +378,21 @@ class TestPixelUnshuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_input_layer)
 
         def error_downscale_factor_layer_1():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
                 ps = paddle.nn.PixelUnshuffle(3.33)
 
         self.assertRaises(TypeError, error_downscale_factor_layer_1)
 
         def error_downscale_factor_layer_2():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
                 ps = paddle.nn.PixelUnshuffle(-1)
 
         self.assertRaises(ValueError, error_downscale_factor_layer_2)
 
         def error_data_format_layer():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 1, 12, 12]).astype("float64")
                 ps = paddle.nn.PixelUnshuffle(3, "MEOW")
 

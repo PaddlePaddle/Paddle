@@ -17,11 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops, fluid
+from paddle import _legacy_C_ops, base
 
 
 class MyLayer(paddle.nn.Layer):
-    def __init__(self, num_stacked_param, use_fluid_api):
+    def __init__(self, num_stacked_param, use_base_api):
         super().__init__()
         # create ParameterList with iterable Parameters
         self.params = self.paddle_imperative_ParameterList(num_stacked_param)
@@ -39,12 +39,12 @@ class MyLayer(paddle.nn.Layer):
 
 
 class TestImperativeContainerParameterList(unittest.TestCase):
-    def paramter_list(self, use_fluid_api):
+    def paramter_list(self, use_base_api):
         data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(data_np)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(data_np)
             num_stacked_param = 4
-            model = MyLayer(num_stacked_param, use_fluid_api)
+            model = MyLayer(num_stacked_param, use_base_api)
             self.assertEqual(len(model.params), num_stacked_param)
             res = model(x)
             self.assertListEqual(res.shape, [5, 2])

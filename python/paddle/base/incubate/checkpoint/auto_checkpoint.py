@@ -22,9 +22,9 @@ import collections
 from threading import Thread, current_thread
 from contextlib import contextmanager
 
-from paddle.fluid import unique_name, compiler
+from paddle.base import unique_name, compiler
 from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
-from paddle.fluid.framework import in_dygraph_mode, Program
+from paddle.base.framework import in_dygraph_mode, Program
 
 g_train_epoch_range = None
 g_checker = None

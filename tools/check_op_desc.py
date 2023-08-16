@@ -15,7 +15,7 @@
 import json
 import sys
 
-from paddle.fluid.core import OpUpdateType
+from paddle.base.core import OpUpdateType
 from paddle.utils import OpLastCheckpointChecker
 
 INPUTS = "Inputs"

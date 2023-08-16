@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 from mkldnn_op_test import format_reorder
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestReQuantizeOp(OpTest):
@@ -53,7 +53,7 @@ class TestReQuantizeOp(OpTest):
                 self.input_data_type
             )
 
-        self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
+        self.inputs = {'Input': OpTest.np_dtype_to_base_dtype(self.input)}
         self.attrs = {
             'Scale_in': self.scale_in,
             'Scale_out': self.scale_out,
@@ -339,8 +339,8 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
             "input": self.input,
             "output": self.output,
         }
-        program = fluid.Program()
-        with fluid.program_guard(program):
+        program = base.Program()
+        with base.program_guard(program):
             block = program.global_block()
             for name in variables:
                 block.create_var(
@@ -360,7 +360,7 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
                 },
             )
             place = core.CPUPlace()
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             for i in range(2):
                 out = exe.run(
                     program,

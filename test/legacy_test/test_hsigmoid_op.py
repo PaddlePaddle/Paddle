@@ -20,7 +20,7 @@ from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 np.random.seed(100)
@@ -298,7 +298,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             input=input_word,
             is_sparse=is_sparse,
             size=[3, 3],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Normal(std=1 / math.sqrt(3))
             ),
         )
@@ -323,9 +323,9 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
         return avg_cost, data_list
 
     def training_test(self, is_sparse):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             paddle.seed(1)
-            start_up = fluid.default_startup_program()
+            start_up = base.default_startup_program()
             x = np.arange(6).reshape(6)
             path_table = np.array([(1, 2, -1), (1, 2, -1)]).astype('int64')
             path_code = np.array([(1, 0, -1), (0, 0, -1)]).astype('int64')
@@ -335,10 +335,10 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
 
-            main_program = fluid.default_main_program()
-            place = fluid.CPUPlace()
-            feeder = fluid.DataFeeder(feed_list=data_list, place=place)
-            exe = fluid.Executor(place)
+            main_program = base.default_main_program()
+            place = base.CPUPlace()
+            feeder = base.DataFeeder(feed_list=data_list, place=place)
+            exe = base.Executor(place)
 
             exe.run(start_up)
             result = []
@@ -619,10 +619,10 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             for ret in [ret1, ret2]:
                 np.testing.assert_allclose(self.out_np, ret, rtol=1e-05)
 
-    def test_fluid_api(self):
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+    def test_base_api(self):
+        train_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             x = paddle.static.data('x', [-1, self.feature_size])
             labels = paddle.static.data('labels', [-1, 1], 'int64')
             path_table = None
@@ -647,7 +647,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 path_code=path_code,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             exe.run(startup_program)
             feed_dict = {'x': self.x_np, 'labels': self.labels_np}
             if self.is_custom:

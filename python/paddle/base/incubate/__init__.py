@@ -13,5 +13,5 @@
 
 # incubate directory is mainly for internal use
 # after we have tested incubate APIs in industrial application for a period
-# we will move stable functions into fluid
+# we will move stable functions into base
 __version__ = '0.1.0'

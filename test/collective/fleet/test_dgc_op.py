@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from op import Operator
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 g_array_size = 102400
 
@@ -28,7 +28,7 @@ class TestDGCOp(unittest.TestCase):
         size = array_size
         np.random.seed(5)  # fix seed
 
-        self.scope = fluid.global_scope()
+        self.scope = base.global_scope()
         self.place = place
         print("place:", place)
 

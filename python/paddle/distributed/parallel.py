@@ -185,7 +185,7 @@ def sync_params_buffers(
 
         for coalesced_var, origin_vars, var_shapes in coalesced_vars:
             var_len = [np.prod(v_shape) for v_shape in var_shapes]
-            paddle.fluid.framework._dygraph_tracer().trace_op(
+            paddle.base.framework._dygraph_tracer().trace_op(
                 type='split',
                 inputs={'X': coalesced_var},
                 outputs={'Out': origin_vars},

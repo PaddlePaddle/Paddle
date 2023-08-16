@@ -59,7 +59,7 @@ from .extension_utils import (
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
-from ...fluid import core
+from ...base import core
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -108,7 +108,7 @@ class TestFoldOp(OpTest):
     def set_data(self):
         self.init_data()
         self.calc_fold()
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
         self.attrs = {
             'kernel_sizes': self.kernel_sizes,
             'paddings': self.paddings,
@@ -151,13 +151,13 @@ class TestFoldAPI(TestFoldOp):
         self.op_type = 'fold'
         self.python_api = paddle.nn.functional.fold
         self.set_data()
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_api(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input = paddle.to_tensor(self.x)
                 m = paddle.nn.Fold(**self.attrs)
                 m.eval()
@@ -172,7 +172,7 @@ class TestFoldAPI(TestFoldOp):
 
 class TestFoldOpError(unittest.TestCase):
     def test_errors(self):
-        from paddle.fluid.framework import Program, program_guard
+        from paddle.base.framework import Program, program_guard
         from paddle.nn.functional import fold
 
         with program_guard(Program(), Program()):

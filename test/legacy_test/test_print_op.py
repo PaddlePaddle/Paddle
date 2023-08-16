@@ -18,9 +18,9 @@ import numpy as np
 from simple_nets import init_data, simple_fc_net
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import switch_main_program
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import switch_main_program
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -29,7 +29,7 @@ paddle.enable_static()
 class TestPrintOpCPU(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CPUPlace()
-        self.x_tensor = fluid.core.LoDTensor()
+        self.x_tensor = base.core.LoDTensor()
         tensor_np = np.random.random(size=(2, 3)).astype('float32')
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
@@ -93,7 +93,7 @@ class TestPrintOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of Print_op must be Variable.
-            x1 = fluid.create_lod_tensor(
+            x1 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], paddle.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.static.Print, x1)
@@ -108,7 +108,7 @@ class TestPrintOpError(unittest.TestCase):
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.x_tensor = fluid.core.LoDTensor()
+        self.x_tensor = base.core.LoDTensor()
         tensor_np = np.random.random(size=(2, 3)).astype('float32')
         self.x_tensor.set(tensor_np, self.place)
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])

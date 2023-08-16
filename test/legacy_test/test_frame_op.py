@@ -19,7 +19,7 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.lib.stride_tricks import as_strided
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def frame_from_librosa(x, frame_length, hop_length, axis=-1):

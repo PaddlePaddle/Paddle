@@ -20,8 +20,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
+from paddle.base import core
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 

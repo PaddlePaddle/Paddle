@@ -20,8 +20,8 @@ from functools import cmp_to_key, reduce
 import numpy as np
 
 import paddle
-from paddle.fluid import core, unique_name
-from paddle.fluid.framework import (
+from paddle.base import core, unique_name
+from paddle.base.framework import (
     Parameter,
     Program,
     default_startup_program,
@@ -49,24 +49,24 @@ class PipelineOptimizer:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
+            import paddle.base as base
+            import paddle.base.layers as layers
             import numpy as np
 
             paddle.enable_static()
-            with fluid.device_guard("gpu:0"):
+            with base.device_guard("gpu:0"):
                 x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=0)
                 y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=0)
-                data_loader = fluid.io.DataLoader.from_generator(
+                data_loader = base.io.DataLoader.from_generator(
                     feed_list=[x, y],
                     capacity=64,
                     use_double_buffer=True,
                     iterable=False)
 
-                emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
-                emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+                emb_x = layers.embedding(input=x, param_attr=base.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+                emb_y = layers.embedding(input=y, param_attr=base.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
 
-            with fluid.device_guard("gpu:1"):
+            with base.device_guard("gpu:1"):
                 concat = layers.concat([emb_x, emb_y], axis=1)
                 fc = paddle.static.nn.fc(x=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
                 loss = paddle.mean(fc)
@@ -81,13 +81,13 @@ class PipelineOptimizer:
                     yield x, y
             data_loader.set_sample_generator(train_reader, batch_size=1)
 
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CUDAPlace(0)
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             batch_size = 1
             data_loader.start()
             exe.train_from_dataset(
-                    fluid.default_main_program())
+                    base.default_main_program())
             data_loader.reset()
     """
 

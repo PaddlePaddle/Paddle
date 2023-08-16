@@ -50,7 +50,7 @@ def to_tensor(pic, data_format='CHW'):
     else:
         img = paddle.to_tensor(pic)
 
-    if paddle.fluid.data_feeder.convert_dtype(img.dtype) == 'uint8':
+    if paddle.base.data_feeder.convert_dtype(img.dtype) == 'uint8':
         return paddle.cast(img, np.float32) / 255.0
     else:
         return img

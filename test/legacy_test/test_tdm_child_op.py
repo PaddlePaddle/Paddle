@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.incubate.layers.nn import tdm_child
 
 
@@ -152,14 +152,14 @@ class TestTDMChildShape(unittest.TestCase):
                 x=x,
                 node_nums=26,
                 child_nums=2,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Assign(tree_info_np)
                 ),
             )
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place=place)
-            exe.run(fluid.default_startup_program())
+            place = base.CPUPlace()
+            exe = base.Executor(place=place)
+            exe.run(base.default_startup_program())
 
             feed = {
                 'x': np.array(

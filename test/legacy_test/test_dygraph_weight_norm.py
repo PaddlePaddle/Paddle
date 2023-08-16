@@ -19,7 +19,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.nn.utils import remove_weight_norm, weight_norm
 
 
@@ -121,7 +121,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
         return g, v
 
     def test_check_output(self):
-        fluid.enable_imperative()
+        base.enable_imperative()
         linear = paddle.nn.Conv2D(2, 3, 3)
         before_weight = linear.weight.numpy()
         if self.dim is None:
@@ -132,7 +132,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
         wn = weight_norm(linear, dim=self.dim)
         outputs = []
         for name, data in self.data.items():
-            output = linear(fluid.dygraph.to_variable(data))
+            output = linear(base.dygraph.to_variable(data))
             outputs.append(output.numpy())
         after_weight = linear.weight
         self.actual_outputs = [linear.weight_g.numpy(), linear.weight_v.numpy()]
@@ -183,7 +183,7 @@ class TestDygraphRemoveWeightNorm(unittest.TestCase):
         self.dim = None
 
     def test_check_output(self):
-        fluid.enable_imperative()
+        base.enable_imperative()
         linear = paddle.nn.Conv2D(2, 3, 3)
         before_weight = linear.weight
         wn = weight_norm(linear, dim=self.dim)

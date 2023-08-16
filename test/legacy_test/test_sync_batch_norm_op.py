@@ -33,9 +33,9 @@ from eager_op_test import (
 )
 
 import paddle
-from paddle import fluid, nn
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import base, nn
+from paddle.base import Program, core, program_guard
+from paddle.base.framework import in_dygraph_mode
 
 _set_use_system_allocator(True)
 
@@ -149,13 +149,13 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         self, place, layout, seed, sync_bn=False, only_forward=False
     ):
         """Build program."""
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
         main.random_seed = seed
         startup.random_seed = seed
         use_cudnn = (self.dtype == np.float16) or (self.dtype == np.uint16)
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, startup):
+        with base.unique_name.guard():
+            with base.program_guard(main, startup):
                 data = paddle.static.data(
                     name='input',
                     shape=self.dshape,
@@ -166,14 +166,14 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     input=data,
                     num_filters=32,
                     filter_size=1,
-                    param_attr=fluid.ParamAttr(name='conv2d_weight'),
+                    param_attr=base.ParamAttr(name='conv2d_weight'),
                     bias_attr=False,
                     use_cudnn=use_cudnn,
                 )
                 bn = paddle.static.nn.batch_norm(
                     conv,
-                    param_attr=fluid.ParamAttr(name='bn_scale'),
-                    bias_attr=fluid.ParamAttr(name='bn_bias'),
+                    param_attr=base.ParamAttr(name='bn_scale'),
+                    bias_attr=base.ParamAttr(name='bn_bias'),
                     moving_mean_name='bn_moving_mean',
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
@@ -226,14 +226,14 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             )
             np.save(filepath, data[id * stride : (id + 1) * stride])
         data = create_or_get_tensor(
-            scope, "input", OpTest.np_dtype_to_fluid_dtype(data), place
+            scope, "input", OpTest.np_dtype_to_base_dtype(data), place
         )
 
         # Single-GPU, N = 32 per GPU
         main, startup, outs = self._build_program(
             place, layout, seed, False, only_forward
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
             'bn_moving_mean',
@@ -374,8 +374,8 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
         cleanup = enable_static()
         with program_guard(Program(), Program()):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CUDAPlace(0)
+            x1 = base.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CUDAPlace(0)
             )
             self.assertRaises(TypeError, my_sync_batch_norm, x1)
 
@@ -405,8 +405,8 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
                 paddle.nn.BatchNorm2D(5),
                 paddle.nn.BatchNorm2D(
                     5,
-                    weight_attr=fluid.ParamAttr(name='bn.scale'),
-                    bias_attr=fluid.ParamAttr(name='bn.bias'),
+                    weight_attr=base.ParamAttr(name='bn.scale'),
+                    bias_attr=base.ParamAttr(name='bn.bias'),
                 ),
             )
             model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -451,7 +451,7 @@ class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
         if not core.is_compiled_with_cuda():
             return
 
-        with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+        with base.dygraph.guard(base.CUDAPlace(0)):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10, data_format='CN')
             data = np.random.random([3, 3, 3]).astype('float32')
             x = paddle.to_tensor(data)

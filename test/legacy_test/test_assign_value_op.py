@@ -18,12 +18,12 @@ import eager_op_test
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 
 def assign_value_wrapper(
-    shape=[], dtype=fluid.core.VarDesc.VarType.FP32, values=0.0
+    shape=[], dtype=base.core.VarDesc.VarType.FP32, values=0.0
 ):
     tensor = paddle.Tensor()
     return paddle._C_ops.assign_value_(
@@ -80,9 +80,9 @@ class TestAssignApi(unittest.TestCase):
                 self.dtype
             )
             self.place = (
-                fluid.CUDAPlace(0)
-                if fluid.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                base.CUDAPlace(0)
+                if base.is_compiled_with_cuda()
+                else base.CPUPlace()
             )
 
     def init_dtype(self):
@@ -90,12 +90,12 @@ class TestAssignApi(unittest.TestCase):
 
     def test_assign(self):
         with eager_op_test.paddle_static_guard():
-            main_program = fluid.Program()
-            with fluid.program_guard(main_program):
+            main_program = base.Program()
+            with base.program_guard(main_program):
                 x = paddle.tensor.create_tensor(dtype=self.dtype)
                 paddle.assign(self.value, output=x)
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
             np.testing.assert_array_equal(fetched_x, self.value)
             self.assertEqual(fetched_x.dtype, self.value.dtype)
@@ -119,9 +119,9 @@ class TestAssignApi4(TestAssignApi):
                 np.bool_
             )
             self.place = (
-                fluid.CUDAPlace(0)
-                if fluid.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                base.CUDAPlace(0)
+                if base.is_compiled_with_cuda()
+                else base.CPUPlace()
             )
 
     def init_dtype(self):

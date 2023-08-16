@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle.fluid.data_feeder import check_type, convert_dtype
+from paddle.base.data_feeder import check_type, convert_dtype
 
 from ..framework import core
 

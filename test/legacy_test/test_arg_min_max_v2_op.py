@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def create_kernel_case(op_type, numpy_op_type):
@@ -166,7 +166,7 @@ def create_test_case(op_type):
             np.random.seed(123)
             self.input_data = np.random.rand(10, 10).astype("float32")
             self.places = []
-            self.places.append(fluid.CPUPlace())
+            self.places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
             self.op = eval("paddle.%s" % (op_type))

@@ -26,7 +26,7 @@ __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 _HYBRID_PARALLEL_GROUP = None
 _use_four_directions = os.environ.get(
-    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.fluid.core.is_compiled_with_xpu()
+    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
 )
 
 

@@ -22,8 +22,8 @@ from paddle.distributed.auto_parallel.static.operators.common import (
     is_elementwise_op,
 )
 from paddle.distributed.fleet import auto
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
+from paddle.base import program_guard
+from paddle.base.backward import append_backward
 
 paddle.enable_static()
 

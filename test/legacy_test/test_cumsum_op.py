@@ -21,8 +21,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -53,7 +53,7 @@ class TestCumsumOp(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
 
     def run_static(self, use_gpu=False):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
             x = paddle.static.data('X', [100, 100])
             y = paddle.cumsum(x)
@@ -63,9 +63,9 @@ class TestCumsumOp(unittest.TestCase):
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
 
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             out = exe.run(
                 feed={'X': data_np},
                 fetch_list=[
@@ -90,23 +90,23 @@ class TestCumsumOp(unittest.TestCase):
             np.testing.assert_allclose(z, out[5], rtol=1e-05)
 
     def test_cpu(self):
-        paddle.disable_static(paddle.fluid.CPUPlace())
+        paddle.disable_static(paddle.base.CPUPlace())
         self.run_cases()
         paddle.enable_static()
 
         self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
-        paddle.disable_static(paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(paddle.base.CUDAPlace(0))
         self.run_cases()
         paddle.enable_static()
 
         self.run_static(use_gpu=True)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data('x', [3, 4])
             y = paddle.cumsum(x, name='out')
             self.assertTrue('out' in y.name)
@@ -475,7 +475,7 @@ create_test_bf16_class(TestSumOpReverseExclusive)
 class BadInputTest(unittest.TestCase):
     def test_error(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_bad_x():
                 data = [1, 2, 4]

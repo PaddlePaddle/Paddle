@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 from test_imperative_lod_tensor_to_selected_rows import SimpleNet
 
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph import base
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph import base
 
 call_forward_post_hook = False
 call_forward_pre_hook = False
@@ -49,15 +49,15 @@ class Test_Forward_Hook(unittest.TestCase):
     def test_forward_hook_return_value(self):
         seed = 90
 
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
-            with fluid.dygraph.guard(place):
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
-                fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            with base.dygraph.guard(place):
+                base.default_startup_program().random_seed = seed
+                base.default_main_program().random_seed = seed
+                base.set_flags({'FLAGS_sort_sum_gradient': True})
 
                 input_word = (
                     np.array(
@@ -131,15 +131,15 @@ class Test_Forward_Hook(unittest.TestCase):
     def test_forward_hook(self):
         seed = 90
 
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
 
         for place in places:
-            with fluid.dygraph.guard(place):
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
-                fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            with base.dygraph.guard(place):
+                base.default_startup_program().random_seed = seed
+                base.default_main_program().random_seed = seed
+                base.set_flags({'FLAGS_sort_sum_gradient': True})
 
                 global call_forward_post_hook
                 global call_forward_pre_hook

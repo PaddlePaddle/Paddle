@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestLRNOp(OpTest):
@@ -110,13 +110,13 @@ class TestLRNOpAttrDataFormat(TestLRNOp):
 class TestLocalResponseNormFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def check_static_3d_input(self, place):
         with paddle_static_guard():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 in_np1 = np.random.random([3, 40, 40]).astype("float32")
                 in_np2 = np.transpose(in_np1, (0, 2, 1))
 
@@ -132,9 +132,9 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                 res2 = paddle.nn.functional.local_response_norm(
                     x=input2, size=5, data_format='NLC'
                 )
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input1": in_np1, "input2": in_np2},
                     fetch_list=[res1, res2],
                 )
@@ -146,7 +146,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 
     def check_static_4d_input(self, place):
         with paddle_static_guard():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 input1 = paddle.static.data(
                     name="input1", shape=[3, 3, 40, 40], dtype="float32"
                 )
@@ -164,9 +164,9 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                 in_np1 = np.random.random([3, 3, 40, 40]).astype("float32")
                 in_np2 = np.transpose(in_np1, (0, 2, 3, 1))
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input1": in_np1, "input2": in_np2},
                     fetch_list=[res1, res2],
                 )
@@ -178,7 +178,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 
     def check_static_5d_input(self, place):
         with paddle_static_guard():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 input1 = paddle.static.data(
                     name="input1", shape=[3, 3, 3, 40, 40], dtype="float32"
                 )
@@ -195,9 +195,9 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                 in_np1 = np.random.random([3, 3, 3, 40, 40]).astype("float32")
                 in_np2 = np.transpose(in_np1, (0, 2, 3, 4, 1))
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"input1": in_np1, "input2": in_np2},
                     fetch_list=[res1, res2],
                 )
@@ -215,7 +215,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                 self.check_static_5d_input(place=place)
 
     def check_dygraph_3d_input(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             in_np1 = np.random.random([3, 40, 40]).astype("float32")
             in_np2 = np.transpose(in_np1, (0, 2, 1))
 
@@ -233,7 +233,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
             np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def check_dygraph_4d_input(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             in_np1 = np.random.random([3, 3, 40, 40]).astype("float32")
             in_np2 = np.transpose(in_np1, (0, 2, 3, 1))
 
@@ -251,7 +251,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
             np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def check_dygraph_5d_input(self, place):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             in_np1 = np.random.random([3, 3, 3, 40, 40]).astype("float32")
             in_np2 = np.transpose(in_np1, (0, 2, 3, 4, 1))
 
@@ -282,10 +282,10 @@ class TestLocalResponseNormFAPIError(unittest.TestCase):
 
                 def test_Variable():
                     # the input of lrn must be Variable.
-                    x1 = fluid.create_lod_tensor(
+                    x1 = base.create_lod_tensor(
                         np.array([-1, 3, 5, 5]),
                         [[1, 1, 1, 1]],
-                        fluid.CPUPlace(),
+                        base.CPUPlace(),
                     )
                     paddle.nn.functional.local_response_norm(x1, size=5)
 
@@ -327,13 +327,13 @@ class TestLocalResponseNormFAPIError(unittest.TestCase):
 class TestLocalResponseNormCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 in1 = paddle.rand(shape=(3, 3, 40, 40), dtype="float32")
                 in2 = paddle.transpose(in1, [0, 2, 3, 1])
 
@@ -347,7 +347,7 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                 np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def test_static_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle_static_guard():
                 with paddle.static.program_guard(

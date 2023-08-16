@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.regularizer import WeightDecayRegularizer
-from paddle.fluid.data_feeder import check_type
+from paddle.base.data_feeder import check_type
 
 __all__ = [
     'ParamAttr',

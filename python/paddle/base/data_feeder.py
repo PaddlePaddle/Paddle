@@ -155,7 +155,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         expected_type += (core.eager.Tensor,)
     elif isinstance(input, core.eager.Tensor):
         raise TypeError(
-            "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
+            "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
             "Because received '{}' in {} is a imperative Variable.".format(
                 input_name, op_name
             )
@@ -337,12 +337,12 @@ class DataFeeder:
     Parameters:
         feed_list (list): Variables or names of Variables that need
             to feed.
-        place (:ref:`api_fluid_CPUPlace` | :ref:`api_fluid_CUDAPlace` ):
+        place (:ref:`api_base_CPUPlace` | :ref:`api_base_CUDAPlace` ):
             place indicates the device (CPU | GPU) the data will be fed into, if
-            you want to feed data into GPU, please using :code:`fluid.CUDAPlace(i)`
+            you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
-            please using :code:`fluid.CPUPlace()`.
-        program (:ref:`api_fluid_Program` , optional): The Program that will
+            please using :code:`base.CPUPlace()`.
+        program (:ref:`api_base_Program` , optional): The Program that will
             feed data into, if program is None, it will use default_main_program().
             Default None.
 
@@ -354,24 +354,24 @@ class DataFeeder:
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
 
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
             def reader():
                 for _ in range(4):
                     yield np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32'),
 
-            main_program = fluid.Program()
-            startup_program = fluid.Program()
+            main_program = base.Program()
+            startup_program = base.Program()
 
-            with fluid.program_guard(main_program, startup_program):
+            with base.program_guard(main_program, startup_program):
                 data_1 = paddle.static.data(name='data_1', shape=[None, 2, 2], dtype='float32')
                 data_2 = paddle.static.data(name='data_2', shape=[None, 1, 3], dtype='float32')
                 out = paddle.static.nn.fc(x=[data_1, data_2], size=2)
                 # ...
-            feeder = fluid.DataFeeder([data_1, data_2], place)
+            feeder = base.DataFeeder([data_1, data_2], place)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup_program)
 
             feed_data = feeder.feed(reader())
@@ -426,7 +426,7 @@ class DataFeeder:
                 # result['data_1']  a LoD-Tensor with shape of  [5, 2, 1, 3]. 5 is batch size, and [2, 1, 3] is the real shape of data_1.
                 # result['data_2'], result['data_3'] are similar.
                 import numpy as np
-                import paddle.fluid as fluid
+                import paddle.base as base
 
                 def reader(limit=5):
                     for i in range(1, limit + 1):
@@ -435,7 +435,7 @@ class DataFeeder:
                 data_1 = paddle.static.data(name='data_1', shape=[None, 2, 1, 3])
                 data_2 = paddle.static.data(name='data_2', shape=[None, 1], dtype='int64')
                 data_3 = paddle.static.data(name='data_3', shape=[None, 3, 3], dtype='float32')
-                feeder = fluid.DataFeeder(['data_1','data_2', 'data_3'], fluid.CPUPlace())
+                feeder = base.DataFeeder(['data_1','data_2', 'data_3'], base.CPUPlace())
 
 
                 result = feeder.feed(reader())

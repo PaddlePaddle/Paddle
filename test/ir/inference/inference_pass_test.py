@@ -21,9 +21,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, create_paddle_predictor
 
 
 class InferencePassTest(unittest.TestCase):
@@ -31,8 +31,8 @@ class InferencePassTest(unittest.TestCase):
         paddle.enable_static()
         super().__init__(methodName)
         paddle.enable_static()
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
         self.feeds = None
         self.fetch_list = None
 
@@ -57,7 +57,7 @@ class InferencePassTest(unittest.TestCase):
     def _save_models(
         self, dirname, feeded_var_names, target_vars, executor, program, scope
     ):
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             # save models as combined but sometimes params is null
             # To adapt to this situation, the path needs to be adjusted to the old version format.
             feeded_vars = []
@@ -92,7 +92,7 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return PaddlePaddle outputs.
         '''
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             outs = executor.run(
                 program=program,
                 feed=self.feeds,
@@ -114,7 +114,7 @@ class InferencePassTest(unittest.TestCase):
             tensor = predictor.get_input_tensor(name)
             feed_data = list(self.feeds.values())[i]
             tensor.copy_from_cpu(np.array(feed_data))
-            if type(feed_data) == fluid.LoDTensor:
+            if type(feed_data) == base.LoDTensor:
                 tensor.set_lod(feed_data.lod())
 
         predictor.zero_copy_run()
@@ -201,11 +201,11 @@ class InferencePassTest(unittest.TestCase):
         or disable TensorRT, enable MKLDNN or disable MKLDNN
         are all the same.
         '''
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        executor = fluid.Executor(place)
-        scope = fluid.Scope()
+        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        executor = base.Executor(place)
+        scope = base.Scope()
         device = "GPU" if use_gpu else "CPU"
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             executor.run(self.startup_program)
         self._save_models(
             self.path,

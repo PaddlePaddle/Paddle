@@ -16,7 +16,7 @@ from functools import reduce
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import (
+from paddle.base.framework import (
     _create_tensor,
     _dygraph_tracer,
     dygraph_only,
@@ -28,7 +28,7 @@ from paddle.fluid.framework import (
 def _inplace_reshape_dygraph(x, shape):
     x_shape = _create_tensor(dtype='int64')
     if in_dygraph_mode():
-        with paddle.fluid.dygraph.no_grad():
+        with paddle.base.dygraph.no_grad():
             tmp_out = _C_ops.reshape(x, shape)
             tmp_out._share_underline_tensor_to(x)
     else:
@@ -68,7 +68,7 @@ def _stride_column(param):
     """
     assert len(param.shape) == 2
     shape = [param.shape[1], param.shape[0]]
-    with paddle.fluid.dygraph.no_grad():
+    with paddle.base.dygraph.no_grad():
         reshape_var = paddle.reshape(param, shape)
         transpose_var = paddle.transpose(reshape_var, [1, 0])
         transpose_var._share_underline_tensor_to(param)
@@ -108,7 +108,7 @@ def parameters_to_vector(parameters, name=None):
 
     out = _create_tensor(dtype=dtype)
     if in_dygraph_mode():
-        with paddle.fluid.dygraph.no_grad():
+        with paddle.base.dygraph.no_grad():
             tmp = _C_ops.concat(parameters, 0)
             tmp._share_underline_tensor_to(out)
     else:
@@ -163,7 +163,7 @@ def vector_to_parameters(vec, parameters, name=None):
         sections.append(0)
 
     if in_dygraph_mode():
-        with paddle.fluid.dygraph.no_grad():
+        with paddle.base.dygraph.no_grad():
             res = _C_ops.split(vec, sections, 0)
             for i in range(0, len(parameters)):
                 res[i]._share_underline_tensor_to(parameters[i])

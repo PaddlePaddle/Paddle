@@ -20,8 +20,8 @@ import paddle
 from paddle import _C_ops
 
 from ..common_ops_import import Variable
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
+from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..base.framework import in_dygraph_mode
 from ..framework import LayerHelper, core
 from .creation import _complex_to_real_dtype, assign
 

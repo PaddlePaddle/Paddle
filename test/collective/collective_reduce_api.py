@@ -20,8 +20,8 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 import paddle.distributed as dist
-from paddle import fluid, framework
-from paddle.fluid import data_feeder
+from paddle import base, framework
+from paddle.base import data_feeder
 
 paddle.enable_static()
 
@@ -68,7 +68,7 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
@@ -84,7 +84,7 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
         dtype='float32',
         reduce_type=str(dist.ReduceOp.SUM),
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )

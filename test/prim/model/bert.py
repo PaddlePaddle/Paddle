@@ -22,7 +22,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import Tensor, nn
 from paddle.distributed.fleet.utils import recompute
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.base.data_feeder import convert_dtype
 from paddle.io import DataLoader, Dataset
 from paddle.nn import MultiHeadAttention
 

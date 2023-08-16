@@ -30,7 +30,7 @@ from test_sparse_attention_op import get_cuda_version
 import paddle
 import paddle.incubate.nn.functional as F
 from paddle import _legacy_C_ops, nn
-from paddle.fluid import core
+from paddle.base import core
 
 
 @unittest.skipIf(

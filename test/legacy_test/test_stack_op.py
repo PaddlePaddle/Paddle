@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 
@@ -204,15 +204,15 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.set_program()
 
     def set_program(self):
-        self.program = fluid.Program()
-        with fluid.program_guard(self.program):
+        self.program = base.Program()
+        with base.program_guard(self.program):
             input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = paddle.tensor.fill_constant(
@@ -226,7 +226,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
 
     def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
         np.testing.assert_array_equal(
             res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
@@ -244,15 +244,15 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.set_program()
 
     def set_program(self):
-        self.program = fluid.Program()
-        with fluid.program_guard(self.program):
+        self.program = base.Program()
+        with base.program_guard(self.program):
             input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = paddle.tensor.fill_constant(
@@ -266,7 +266,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
 
     def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
         np.testing.assert_array_equal(
             res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
@@ -275,13 +275,13 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
 
 class API_test(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[1, 2], dtype='float64')
             data2 = paddle.static.data('data2', shape=[1, 2], dtype='float64')
             data3 = paddle.static.data('data3', shape=[1, 2], dtype='float64')
             result_stack = paddle.stack([data1, data2, data3], axis=0)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             input1 = np.random.random([1, 2]).astype('float64')
             input2 = np.random.random([1, 2]).astype('float64')
             input3 = np.random.random([1, 2]).astype('float64')
@@ -293,7 +293,7 @@ class API_test(unittest.TestCase):
             np.testing.assert_allclose(expected_result, result, rtol=1e-05)
 
     def test_single_tensor_error(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x = paddle.rand([2, 3])
             self.assertRaises(TypeError, paddle.stack, x)
 
@@ -303,24 +303,24 @@ class API_DygraphTest(unittest.TestCase):
         data1 = np.array([[1.0, 2.0]])
         data2 = np.array([[3.0, 4.0]])
         data3 = np.array([[5.0, 6.0]])
-        with fluid.dygraph.guard():
-            x1 = fluid.dygraph.to_variable(data1)
-            x2 = fluid.dygraph.to_variable(data2)
-            x3 = fluid.dygraph.to_variable(data3)
+        with base.dygraph.guard():
+            x1 = base.dygraph.to_variable(data1)
+            x2 = base.dygraph.to_variable(data2)
+            x3 = base.dygraph.to_variable(data3)
             result = paddle.stack([x1, x2, x3])
             result_np = result.numpy()
         expected_result = np.stack([data1, data2, data3])
         np.testing.assert_allclose(expected_result, result_np, rtol=1e-05)
 
-        with fluid.dygraph.guard():
-            y1 = fluid.dygraph.to_variable(data1)
+        with base.dygraph.guard():
+            y1 = base.dygraph.to_variable(data1)
             result = paddle.stack([y1], axis=0)
             result_np_2 = result.numpy()
         expected_result_2 = np.stack([data1], axis=0)
         np.testing.assert_allclose(expected_result_2, result_np_2, rtol=1e-05)
 
     def test_single_tensor_error(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
             self.assertRaises(Exception, paddle.stack, x)
 
@@ -383,7 +383,7 @@ class TestStackListOfSingleTensor(unittest.TestCase):
 
     def test_list_single_tensor(self):
         expect = paddle.stack(self.x)
-        paddle.fluid.core._set_prim_all_enabled(True)
+        paddle.base.core._set_prim_all_enabled(True)
         st_model = paddle.jit.to_static(paddle.stack)
         actual = st_model(self.x)
         np.testing.assert_allclose(expect, actual)

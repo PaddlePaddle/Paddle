@@ -21,8 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import Layer
 
@@ -65,7 +65,7 @@ def train(args, place, to_static):
     env = gym.make('CartPole-v0')
     env.seed(SEED)
 
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
@@ -204,9 +204,9 @@ def train(args, place, to_static):
 class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.args = Args()
 

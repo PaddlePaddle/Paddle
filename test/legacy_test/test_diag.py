@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 class TestDiagOp(OpTest):

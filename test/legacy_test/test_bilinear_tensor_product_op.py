@@ -18,17 +18,17 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 layer = paddle.nn.Bilinear(5, 4, 1000)
                 # the input must be Variable.
-                x0 = fluid.create_lod_tensor(
-                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x0 = base.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 self.assertRaises(TypeError, layer, x0)
                 # the input dtype must be float32 or float64
@@ -60,7 +60,7 @@ class TestBilinearTensorProductOp(OpTest):
         size0 = 5
         size1 = 4
         size2 = 5
-        dtype = "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+        dtype = "float32" if base.core.is_compiled_with_rocm() else "float64"
         a = np.random.random((batch_size, size0)).astype(dtype)
         b = np.random.random((batch_size, size1)).astype(dtype)
         w = np.random.random((size2, size0, size1)).astype(dtype)

@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import (
@@ -25,8 +25,8 @@ from paddle.distributed.fleet.meta_optimizers.meta_optimizer_base import (
 
 class TestFleetMetaOptimizerBase(unittest.TestCase):
     def net(main_prog, startup_prog):
-        with fluid.program_guard(main_prog, startup_prog):
-            with fluid.unique_name.guard():
+        with base.program_guard(main_prog, startup_prog):
+            with base.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
                 input_x = paddle.static.data(
@@ -61,7 +61,7 @@ class TestFleetMetaOptimizerBase(unittest.TestCase):
                 )
         return None
 
-    net(fluid.default_startup_program(), fluid.default_main_program())
+    net(base.default_startup_program(), base.default_main_program())
 
 
 if __name__ == "__main__":

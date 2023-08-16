@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 from paddle.jit.dy2static.loop_transformer import NameVisitor
 from paddle.utils import gast
 
@@ -28,7 +28,7 @@ np.random.seed(SEED)
 
 
 def while_loop_dyfunc(x):
-    i = fluid.dygraph.to_variable(x)
+    i = base.dygraph.to_variable(x)
     while x < 10:
         i = i + x
         x = x + 1
@@ -47,7 +47,7 @@ def while_loop_dyfunc_without_tensor(x):
 
 
 def while_loop_dyfun_with_conflict_var(x):
-    i = fluid.dygraph.to_variable(x)
+    i = base.dygraph.to_variable(x)
 
     def relu(y):
         # 'y' is not visible outside the scope.
@@ -65,12 +65,12 @@ def while_loop_dyfun_with_conflict_var(x):
 
 def while_loop_dyfunc_with_none(x):
     i = (
-        fluid.dygraph.to_variable(x)
+        base.dygraph.to_variable(x)
         if x is not None
-        else fluid.dygraph.to_variable(x + 1)
+        else base.dygraph.to_variable(x + 1)
     )
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    x = fluid.dygraph.to_variable(
+    x = base.dygraph.to_variable(
         x
     )  # TODO(liym27): Delete it if the type of parameter x can be resolved
     flag = 1
@@ -133,7 +133,7 @@ def for_break_single_return(max_len):
 
 
 def while_loop_bool_op(x):
-    i = fluid.dygraph.to_variable(x)
+    i = base.dygraph.to_variable(x)
 
     while x <= -1 or x < -3 or (x < -7 or x < -5) or (x >= 0 and x < 10):
         i = i + x
@@ -142,7 +142,7 @@ def while_loop_bool_op(x):
 
 
 def while_loop_bool_op2(x):
-    i = fluid.dygraph.to_variable(x)
+    i = base.dygraph.to_variable(x)
     a = 1
 
     # In the while condition, there are both Paddle Variable and non-Variable.
@@ -161,7 +161,7 @@ def while_loop_class_var(x):
             self.c = 5
 
     foo = Foo()
-    i = fluid.dygraph.to_variable(x)
+    i = base.dygraph.to_variable(x)
     while i < 10:
         foo.b = paddle.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
@@ -302,9 +302,9 @@ class TestNameVisitor(unittest.TestCase):
 class TestTransformWhileLoop(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
@@ -319,9 +319,9 @@ class TestTransformWhileLoop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             # Set the input of dyfunc to Tensor
-            tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
+            tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
             else:
@@ -381,9 +381,9 @@ class TestLoopVarContainsProperty(TestTransformWhileLoop):
 class TestTransformForLoop(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.len = 100
         self._init_dyfunc()
@@ -398,7 +398,7 @@ class TestTransformForLoop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(self.len)
             else:

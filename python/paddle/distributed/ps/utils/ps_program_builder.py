@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
@@ -78,7 +78,7 @@ class PsProgramBuilder:
     def _build_programs(self):
         if self.attrs['is_worker']:
             self._build_trainer_programs()
-            fluid.framework.switch_startup_program(self.cloned_startup)
+            base.framework.switch_startup_program(self.cloned_startup)
             print(
                 "paddle.static.default_startup_program: {}".format(
                     paddle.static.default_startup_program
@@ -97,7 +97,7 @@ class PsProgramBuilder:
         elif self.attrs['is_server']:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
-            fluid.framework.switch_startup_program(
+            base.framework.switch_startup_program(
                 self.attrs['_startup_server']
             )
 
@@ -372,7 +372,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         elif self.attrs['is_server']:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
-            fluid.framework.switch_startup_program(
+            base.framework.switch_startup_program(
                 self.attrs['_startup_server']
             )
 
@@ -470,7 +470,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
     def _build_programs(self):
         if not self.is_server:
             self._build_trainer_programs()
-            fluid.framework.switch_startup_program(self.cloned_startup)
+            base.framework.switch_startup_program(self.cloned_startup)
             paddle.framework.switch_main_program(self.cloned_main)
             print(
                 "paddle.static.default_startup_program: {}".format(
@@ -479,7 +479,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             )
         else:
             self._build_pserver_programs()
-            fluid.framework.switch_startup_program(
+            base.framework.switch_startup_program(
                 self.attrs['_startup_server']
             )
             paddle.framework.switch_main_program(self.attrs['_main_server'])

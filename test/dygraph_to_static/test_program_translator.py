@@ -26,7 +26,7 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.jit.dy2static as _jst
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
@@ -39,8 +39,8 @@ np.random.seed(0)
 # Because initialized ops will be added into program and be executed many times.
 # The parameters are assumed to initialized outside of the function.
 def simple_func(x, weight_numpy):
-    x = fluid.dygraph.to_variable(x)
-    w = fluid.dygraph.to_variable(weight_numpy)
+    x = base.dygraph.to_variable(x)
+    w = base.dygraph.to_variable(weight_numpy)
     y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
@@ -48,8 +48,8 @@ def simple_func(x, weight_numpy):
 
 @to_static
 def decorated_simple_func(x, weight_numpy):
-    x = fluid.dygraph.to_variable(x)
-    w = fluid.dygraph.to_variable(weight_numpy)
+    x = base.dygraph.to_variable(x)
+    w = base.dygraph.to_variable(weight_numpy)
     y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
@@ -219,19 +219,19 @@ class TestEnableDeclarative(unittest.TestCase):
 
     @ast_only_test
     def test_raise_error(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.jit.enable_to_static(True)
             net = NetWithError()
             with self.assertRaises(ValueError):
-                net(fluid.dygraph.to_variable(self.x))
+                net(base.dygraph.to_variable(self.x))
 
     def test_enable_disable_declarative(self):
         paddle.jit.enable_to_static(True)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             static_output = decorated_simple_func(self.x, self.weight)
 
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             dygraph_output = decorated_simple_func(self.x, self.weight)
             np.testing.assert_allclose(
                 static_output.numpy(),

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.libpaddle.ir import (
+from paddle.base.libpaddle.ir import (
     Program,
     Block,
     Operation,
@@ -21,7 +21,7 @@ from paddle.fluid.libpaddle.ir import (
     OpResult,
     Type,
 )  # noqa: F401
-from paddle.fluid.libpaddle.ir import (
+from paddle.base.libpaddle.ir import (
     translate_to_new_ir,
     set_global_program,
     set_insertion_point,

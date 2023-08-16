@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def one_hot_wrapper(x, depth_tensor, **keargs):
@@ -141,9 +141,9 @@ class TestOneHotOpApi(unittest.TestCase):
         label = np.array(
             [np.random.randint(0, depth - 1) for i in range(6)]
         ).reshape([6, 1])
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             one_hot_label = paddle.nn.functional.one_hot(
-                fluid.dygraph.to_variable(label), depth
+                base.dygraph.to_variable(label), depth
             )
             one_hot_label = paddle.nn.functional.one_hot(
                 paddle.to_tensor(label), depth
@@ -154,13 +154,13 @@ class TestOneHotOpApi(unittest.TestCase):
         label.desc.set_need_check_feed(False)
         one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=depth)
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         label_data = np.array(
             [np.random.randint(0, 10 - 1) for i in range(6)]
         ).reshape([6, 1])
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         ret = exe.run(
             feed={
                 'label': label_data,
@@ -172,7 +172,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
 class BadInputTestOnehotV2(unittest.TestCase):
     def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_bad_x():
                 label = paddle.static.data(

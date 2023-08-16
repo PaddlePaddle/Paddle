@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.layer_helper import LayerHelper
 
 
 def unzip(input, lod):
@@ -35,7 +35,7 @@ def unzip(input, lod):
         .. code-block:: python
           import numpy as np
           import paddle
-          import paddle.fluid as fluid
+          import paddle.base as base
           paddle.enable_static()
           input_np = np.array([
                         [1.0, 2.0, 3.0, 4.0],

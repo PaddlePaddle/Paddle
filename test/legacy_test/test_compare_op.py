@@ -19,8 +19,8 @@ import numpy
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 def create_test_class(op_type, typename, callback):
@@ -73,7 +73,7 @@ def create_paddle_case(op_type, callback):
             self.input_x = np.array([1, 2, 3, 4]).astype(np.int64)
             self.input_y = np.array([1, 3, 2, 4]).astype(np.int64)
             self.real_result = callback(self.input_x, self.input_y)
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
             if core.is_compiled_with_cuda():
                 self.place = paddle.CUDAPlace(0)
 
@@ -84,7 +84,7 @@ def create_paddle_case(op_type, callback):
                 y = paddle.static.data(name='y', shape=[4], dtype='int64')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
-                exe = fluid.Executor(self.place)
+                exe = base.Executor(self.place)
                 (res,) = exe.run(
                     feed={"x": self.input_x, "y": self.input_y},
                     fetch_list=[out],
@@ -99,7 +99,7 @@ def create_paddle_case(op_type, callback):
                     y = paddle.static.data(name='y', shape=[], dtype='int64')
                     op = eval("paddle.%s" % (self.op_type))
                     out = op(x, y)
-                    exe = fluid.Executor(self.place)
+                    exe = base.Executor(self.place)
                     (res,) = exe.run(
                         feed={"x": self.input_x, "y": 1.0}, fetch_list=[out]
                     )
@@ -481,8 +481,8 @@ class TestCompareOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input x and y of compare_op must be Variable.
             x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
-            y = fluid.create_lod_tensor(
-                numpy.array([[-1]]), [[1]], fluid.CPUPlace()
+            y = base.create_lod_tensor(
+                numpy.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.greater_equal, x, y)
 
@@ -490,33 +490,33 @@ class TestCompareOpError(unittest.TestCase):
 class API_TestElementwise_Equal(unittest.TestCase):
     def test_api(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             label = paddle.assign(np.array([3, 3], dtype="int32"))
             limit = paddle.assign(np.array([3, 2], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, False])).all(), True)
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             label = paddle.assign(np.array([3, 3], dtype="int32"))
             limit = paddle.assign(np.array([3, 3], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
 
     def test_api_fp16(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             label = paddle.to_tensor([3, 3], dtype="float16")
             limit = paddle.to_tensor([3, 2], dtype="float16")
             out = paddle.equal(x=label, y=limit)
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
                 self.assertEqual((res == np.array([True, False])).all(), True)
 
@@ -546,7 +546,7 @@ class TestCompareOpPlace(unittest.TestCase):
         label = paddle.assign(np.array([3, 3], dtype="int32"))
         limit = paddle.assign(np.array([3, 2], dtype="int32"))
         out = paddle.less_than(label, limit)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([False, False])).all(), True)
 

@@ -26,7 +26,7 @@ from test_softmax_op import (
 )
 
 from paddle import enable_static
-from paddle.fluid import core
+from paddle.base import core
 
 
 def stable_softmax(x):

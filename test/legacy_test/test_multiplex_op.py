@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestMultiplexOp(OpTest):
@@ -62,7 +62,7 @@ class TestMultiplexOp(OpTest):
 
 class TestMultiplexOpError(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x1 = paddle.static.data(name='x1', shape=[None, 2], dtype='int64')
             x2 = paddle.static.data(name='x2', shape=[None, 2], dtype='int64')
             index = paddle.static.data(
@@ -111,7 +111,7 @@ class TestMultiplexODygrap(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_api(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
             img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
             inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]

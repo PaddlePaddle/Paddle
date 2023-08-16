@@ -16,12 +16,12 @@ import os
 import time
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 
 def get_dataset(inputs, config, pipe_cmd, role="worker"):
-    dataset = fluid.DatasetFactory().create_dataset()
+    dataset = base.DatasetFactory().create_dataset()
     dataset.set_use_var(inputs)
     dataset.set_pipe_command(pipe_cmd)
     dataset.set_batch_size(config.get('runner.batch_size'))
@@ -102,9 +102,9 @@ def fl_ps_train():
         _runtime_handle._run_server()
     # 4.2 run worker
     elif role_maker._is_worker():
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         _runtime_handle._init_worker()
         print('trainer get dataset')
         inputs = feeds_list[1:-1]
@@ -112,8 +112,8 @@ def fl_ps_train():
             inputs, config, "python dataset_generator_A.py"
         )
         print(
-            "fluid.default_main_program: {}".format(
-                fluid.default_main_program()._heter_pipeline_opt
+            "base.default_main_program: {}".format(
+                base.default_main_program()._heter_pipeline_opt
             )
         )
         for epoch in range(epoch_num):
@@ -121,7 +121,7 @@ def fl_ps_train():
             dataset.set_filelist(file_list)
             start_time = time.time()
             exe.train_from_dataset(
-                program=fluid.default_main_program(),
+                program=base.default_main_program(),
                 dataset=dataset,
                 print_period=2,
                 debug=False,
@@ -135,8 +135,8 @@ def fl_ps_train():
         _runtime_handle._stop_worker()
         print("Fl partyA Trainer Success!")
     else:
-        exe = fluid.Executor()
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor()
+        exe.run(base.default_startup_program())
         _runtime_handle._init_worker()
         inputs = [
             feeds_list[0],
@@ -146,14 +146,14 @@ def fl_ps_train():
             inputs, config, "python dataset_generator_B.py", "heter_worker"
         )
         print(
-            "fluid.default_main_program: {}".format(
-                fluid.default_main_program()._heter_pipeline_opt
+            "base.default_main_program: {}".format(
+                base.default_main_program()._heter_pipeline_opt
             )
         )
         for epoch in range(epoch_num):
             dataset.set_filelist(file_list)
             exe.train_from_dataset(
-                program=fluid.default_main_program(),
+                program=base.default_main_program(),
                 dataset=dataset,
                 print_period=2,
                 debug=False,

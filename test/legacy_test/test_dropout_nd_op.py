@@ -18,11 +18,11 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import _legacy_C_ops, fluid
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import _legacy_C_ops, base
+from paddle.base import core
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper
 from paddle.static import default_main_program
 
 
@@ -178,14 +178,14 @@ class TestDropoutNdAPI(unittest.TestCase):
     def setUp(self):
         paddle.seed(123)
         np.random.seed(123)
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         paddle.disable_static()
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 in_np = np.random.random([4, 32, 16]).astype("float32")
                 input = paddle.to_tensor(in_np)
                 dropout_1 = paddle.incubate.nn.FusedDropout(p=0.0, axis=[0, 1])

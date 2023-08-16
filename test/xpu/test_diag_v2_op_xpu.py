@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -240,9 +240,9 @@ class XPUTestDiagV2Op(XPUOpTestWrapper):
             result12 = paddle.diag(x5, offset=-1)
             result13 = paddle.diag(x6, offset=-1)
 
-            place = fluid.XPUPlace(0)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.XPUPlace(0)
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             (
                 res0,
                 res1,
@@ -299,12 +299,12 @@ class XPUTestDiagV2Op(XPUOpTestWrapper):
             np.testing.assert_allclose(res13, self.expected12, rtol=1e-05)
 
         def test_xpu(self):
-            paddle.disable_static(place=paddle.fluid.XPUPlace(0))
+            paddle.disable_static(place=paddle.base.XPUPlace(0))
             self.run_imperative()
 
             paddle.enable_static()
 
-            with fluid.program_guard(fluid.Program()):
+            with base.program_guard(base.Program()):
                 self.run_static()
 
 

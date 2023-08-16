@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.io import DataLoader, IterableDataset
 
 EPOCH_NUM = 2
@@ -45,13 +45,13 @@ class RandomDataset(IterableDataset):
 
 
 def simple_fc_net_static():
-    startup_prog = fluid.Program()
-    main_prog = fluid.Program()
+    startup_prog = base.Program()
+    main_prog = base.Program()
     startup_prog.random_seed = 1
     main_prog.random_seed = 1
 
-    with fluid.unique_name.guard():
-        with fluid.program_guard(main_prog, startup_prog):
+    with base.unique_name.guard():
+        with base.program_guard(main_prog, startup_prog):
             image = paddle.static.data(
                 name='image', shape=[None, IMAGE_SIZE], dtype='float32'
             )
@@ -59,10 +59,10 @@ def simple_fc_net_static():
                 name='label', shape=[None, 1], dtype='int64'
             )
             hidden = image
-            param_attr = fluid.ParamAttr(
+            param_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.8)
             )
-            bias_attr = fluid.ParamAttr(
+            bias_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.5)
             )
             for hidden_size in [10, 20, 30]:
@@ -98,10 +98,10 @@ def simple_fc_net_static():
 def prepare_places(with_cpu=False, with_gpu=True):
     places = []
     if with_cpu:
-        places.append([fluid.CPUPlace()])
+        places.append([base.CPUPlace()])
 
-    if with_gpu and fluid.core.is_compiled_with_cuda():
-        tmp = fluid.cuda_places()[:2]
+    if with_gpu and base.core.is_compiled_with_cuda():
+        tmp = base.cuda_places()[:2]
         assert len(tmp) > 0, "no gpu detected"
         places.append([tmp[0]])
     return places
@@ -109,8 +109,8 @@ def prepare_places(with_cpu=False, with_gpu=True):
 
 class TestStaticDataLoader(unittest.TestCase):
     def run_main(self, num_workers, places, persistent_workers):
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
 
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
@@ -126,10 +126,10 @@ class TestStaticDataLoader(unittest.TestCase):
             )
             # assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
-            exe = fluid.Executor(place=places[0])
+            exe = base.Executor(place=places[0])
             exe.run(startup_prog)
 
-            prog = fluid.CompiledProgram(main_prog)
+            prog = base.CompiledProgram(main_prog)
 
             step_list = []
             loss_list = []
@@ -212,8 +212,8 @@ class RandomBatchedDataset(IterableDataset):
 
 class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
     def run_main(self, num_workers, places, persistent_workers):
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
 
             dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
@@ -228,7 +228,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
                 persistent_workers=persistent_workers,
             )
 
-            exe = fluid.Executor(place=places[0])
+            exe = base.Executor(place=places[0])
             exe.run(startup_prog)
 
             prog = main_prog

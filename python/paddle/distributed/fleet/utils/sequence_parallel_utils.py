@@ -22,7 +22,7 @@ from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     fused_allreduce_gradients_with_group,
 )
-from paddle.fluid import core
+from paddle.base import core
 from paddle.nn import Layer
 from paddle.nn import functional as F
 

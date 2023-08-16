@@ -17,8 +17,8 @@ from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 
 from .fft import fft_c2c, fft_c2r, fft_r2c
-from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.layer_helper import LayerHelper
+from .base.data_feeder import check_variable_and_dtype
+from .base.layer_helper import LayerHelper
 from .tensor.attribute import is_complex
 
 __all__ = [

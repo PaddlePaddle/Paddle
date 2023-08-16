@@ -19,7 +19,7 @@ from copy import deepcopy
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestProcessGroupFp32(unittest.TestCase):
@@ -37,10 +37,10 @@ class TestProcessGroupFp32(unittest.TestCase):
         nranks = paddle.distributed.ParallelEnv().nranks
         rank = paddle.distributed.ParallelEnv().local_rank
         is_master = True if rank == 0 else False
-        store = paddle.fluid.core.TCPStore(
+        store = paddle.base.core.TCPStore(
             "127.0.0.1", 6272, is_master, nranks, 30
         )
-        pg = paddle.fluid.core.ProcessGroupGloo.create(store, rank, nranks)
+        pg = paddle.base.core.ProcessGroupGloo.create(store, rank, nranks)
 
         # test allreduce sum
         # rank 0

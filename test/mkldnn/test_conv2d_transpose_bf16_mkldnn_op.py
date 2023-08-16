@@ -19,7 +19,7 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from test_conv2d_transpose_op import conv2dtranspose_forward_naive
 
 from paddle import enable_static
-from paddle.fluid import core
+from paddle.base import core
 
 
 def conv2d_bias_naive(out, bias):
@@ -113,7 +113,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
 
         self.inputs = {
             'Input': input.view(self.input_type),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
         }
 
         if self.fuse_bias and self.bias_size is not None:
@@ -121,7 +121,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
             output = conv2d_bias_naive(output, bias)
             output = output.astype(np.float32)
             self.attrs['fuse_bias'] = self.fuse_bias
-            self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
+            self.inputs['Bias'] = OpTest.np_dtype_to_base_dtype(bias)
 
         if self.fuse_activation == "relu":
             output = np.maximum(output, 0).astype(np.float32)

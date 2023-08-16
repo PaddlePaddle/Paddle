@@ -18,8 +18,8 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid, framework
-from paddle.fluid import data_feeder
+from paddle import base, framework
+from paddle.base import data_feeder
 
 paddle.enable_static()
 
@@ -85,7 +85,7 @@ def recv_new(tensor, src, group=None, sync_op=True, dtype='float32'):
             'peer': src,
             'dynamic_shape': True,
             'out_shape': tensor.shape,
-            'dtype': fluid.framework.convert_np_dtype_to_dtype_(dtype),
+            'dtype': base.framework.convert_np_dtype_to_dtype_(dtype),
         },
     )
     return None
@@ -96,7 +96,7 @@ class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata",
                 shape=[10, 1000],
@@ -116,7 +116,7 @@ class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
         dtype='float32',
         reduce_type=None,
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata",
                 shape=[10, 1000],

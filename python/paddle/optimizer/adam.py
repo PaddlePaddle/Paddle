@@ -18,9 +18,9 @@ from collections import defaultdict
 import paddle
 from paddle import _C_ops
 
-from ..fluid import core, framework
-from ..fluid.dygraph import base as imperative_base
-from ..fluid.framework import Variable, in_dygraph_mode
+from ..base import core, framework
+from ..base.dygraph import base as imperative_base
+from ..base.framework import Variable, in_dygraph_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -72,15 +72,15 @@ class Adam(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already,
+            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
+            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
             The accumulators are updated at every step. Every element of the two moving-average
             is updated in both dense mode and sparse mode. If the size of parameter is very large,
@@ -419,7 +419,7 @@ class Adam(Optimizer):
                 >>> adam.step()
                 >>> adam.clear_grad()
         """
-        if paddle.fluid.dygraph.base.in_declarative_mode():
+        if paddle.base.dygraph.base.in_declarative_mode():
             self._declarative_step()
             return
 

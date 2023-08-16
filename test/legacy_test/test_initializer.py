@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
-from paddle.fluid.core import VarDesc
+from paddle import base
+from paddle.base import framework
+from paddle.base.core import VarDesc
 from paddle.regularizer import L2Decay
 
 DELTA = 0.00001
@@ -664,10 +664,10 @@ class TestSetGlobalInitializer(unittest.TestCase):
         """Test Set Global Param initilizer with UniformInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        fluid.set_global_initializer(
+        base.set_global_initializer(
             paddle.nn.initializer.Uniform(low=-0.5, high=0.5)
         )
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of param in layers.conv2d is NormalInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
@@ -685,17 +685,17 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
-        fluid.set_global_initializer(None)
+        base.set_global_initializer(None)
 
     def test_set_global_bias_initilizer(self):
         """Test Set Global Bias initilizer with NormalInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
-        fluid.set_global_initializer(
+        base.set_global_initializer(
             paddle.nn.initializer.Uniform(low=-0.5, high=0.5),
             bias_init=paddle.nn.initializer.Normal(0.0, 2.0),
         )
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
             # default initilizer of bias in layers.conv2d is ConstantInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
@@ -715,7 +715,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
-        fluid.set_global_initializer(None)
+        base.set_global_initializer(None)
 
 
 class TestUniformInitializerDygraph(unittest.TestCase):

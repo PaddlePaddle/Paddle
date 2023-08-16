@@ -18,7 +18,7 @@ import re
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import fleet
-from paddle.fluid.framework import dygraph_only
+from paddle.base.framework import dygraph_only
 
 
 @dygraph_only

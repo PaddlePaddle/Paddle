@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.distributed.models.moe import utils
-from paddle.fluid import core
+from paddle.base import core
 
 
 def random_routing(topk_idx, topk_value, prob, topk=2):

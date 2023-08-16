@@ -18,7 +18,7 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -38,7 +38,7 @@ class TestCollectiveReduceScatterAPI(TestCollectiveAPIRunnerBase):
         dtype='float32',
         reduce_type=None,
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )

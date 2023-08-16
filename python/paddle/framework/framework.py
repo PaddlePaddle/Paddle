@@ -16,7 +16,7 @@
 import numpy as np
 
 # TODO: define framework api
-from paddle.fluid.layer_helper_base import LayerHelperBase
+from paddle.base.layer_helper_base import LayerHelperBase
 
 __all__ = []
 

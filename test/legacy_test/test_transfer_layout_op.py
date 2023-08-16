@@ -18,10 +18,10 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import Program, program_guard
+from paddle.base.layer_helper import LayerHelper
 
 
 def transpose_layout(x, src_layout, dst_layout):
@@ -75,11 +75,11 @@ class TestTransferLayoutOpGpu(unittest.TestCase):
             z = softmax_with_data_format(y, data_format='NHWC')
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup_program)
         ret = exe.run(
             main_program,

@@ -15,7 +15,7 @@
 import copy
 from collections import defaultdict
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,

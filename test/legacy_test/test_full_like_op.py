@@ -19,8 +19,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.framework.dtype as dtypes
-from paddle.fluid import core
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base import core
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.static import Program, program_guard
 
 
@@ -114,7 +114,7 @@ class TestFullLikeOp1(OpTest):
 
         bf16_flag = self.dtype == np.uint16
         x = np.zeros(self.shape).astype(np.float32 if bf16_flag else self.dtype)
-        x = OpTest.np_dtype_to_fluid_dtype(x)
+        x = OpTest.np_dtype_to_base_dtype(x)
 
         out = np.full_like(x, self.fill_value, self.dtype)
 

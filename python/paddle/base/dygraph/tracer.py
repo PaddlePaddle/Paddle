@@ -16,8 +16,8 @@ from collections import defaultdict
 
 import numpy as np
 
-from paddle.fluid import core
-from paddle.fluid import framework
+from paddle.base import core
+from paddle.base import framework
 from paddle import _C_ops, _legacy_C_ops
 
 name_mapping = {

@@ -22,17 +22,17 @@ from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base.dygraph import to_variable
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 from paddle.optimizer import Adam
 
 SEED = 2020
 
-if paddle.fluid.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.base.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class SimpleImgConvPool(paddle.nn.Layer):
@@ -131,9 +131,9 @@ class TestMNIST(unittest.TestCase):
         self.epoch_num = 1
         self.batch_size = 64
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.train_reader = paddle.batch(
             paddle.dataset.mnist.train(),
@@ -174,11 +174,11 @@ class TestMNISTWithToStatic(TestMNIST):
 
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
-        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        base.set_flags({'FLAGS_use_mkldnn': True})
         try:
             dygraph_loss_mkldnn = self.train_dygraph()
         finally:
-            fluid.set_flags({'FLAGS_use_mkldnn': False})
+            base.set_flags({'FLAGS_use_mkldnn': False})
         np.testing.assert_allclose(
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,
@@ -190,9 +190,9 @@ class TestMNISTWithToStatic(TestMNIST):
 
     def train(self, to_static=False):
         loss_data = []
-        with fluid.dygraph.guard(self.place):
-            fluid.default_main_program().random_seed = SEED
-            fluid.default_startup_program().random_seed = SEED
+        with base.dygraph.guard(self.place):
+            base.default_main_program().random_seed = SEED
+            base.default_startup_program().random_seed = SEED
             mnist = MNIST()
             if to_static:
                 mnist = paddle.jit.to_static(mnist)
@@ -301,7 +301,7 @@ class TestMNISTWithToStatic(TestMNIST):
         self, model_path, model_filename, params_filename, inputs
     ):
         paddle.enable_static()
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         [
             inference_program,
             feed_target_names,

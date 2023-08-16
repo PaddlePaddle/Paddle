@@ -19,9 +19,9 @@ import time
 import warnings
 
 import paddle
-from paddle.fluid.framework import logging
+from paddle.base.framework import logging
 
-from ..fluid.framework import (
+from ..base.framework import (
     _current_expected_place,
     _get_paddle_place,
     _get_paddle_place_list,

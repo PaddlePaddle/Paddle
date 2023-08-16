@@ -59,8 +59,8 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y),
+                'X': OpTest.np_dtype_to_base_dtype(x),
+                'Y': OpTest.np_dtype_to_base_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -133,8 +133,8 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y),
+                'X': OpTest.np_dtype_to_base_dtype(x),
+                'Y': OpTest.np_dtype_to_base_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -206,8 +206,8 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y),
+                'X': OpTest.np_dtype_to_base_dtype(x),
+                'Y': OpTest.np_dtype_to_base_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -270,7 +270,7 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
             out = np.bitwise_not(x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
             self.outputs = {'Out': out}
 
         def init_case(self):

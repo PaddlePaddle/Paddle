@@ -24,7 +24,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def adamw_step(inputs, attributes):
@@ -185,13 +185,13 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
 
         def test_adamw_op(self):
             paddle.enable_static()
-            place = fluid.XPUPlace(0)
+            place = base.XPUPlace(0)
             shape = [2, 3, 8, 8]
-            exe = fluid.Executor(place)
-            train_prog = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(train_prog, startup):
-                with fluid.unique_name.guard():
+            exe = base.Executor(place)
+            train_prog = base.Program()
+            startup = base.Program()
+            with base.program_guard(train_prog, startup):
+                with base.unique_name.guard():
                     data = paddle.static.data(name="data", shape=shape)
                     conv = paddle.static.nn.conv2d(data, 8, 3)
                     loss = paddle.mean(conv)
@@ -437,7 +437,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
 
         def test_adamw_op(self):
             paddle.enable_static()
-            place = fluid.XPUPlace(0)
+            place = base.XPUPlace(0)
 
             learning_rate = 0.0001
             beta1 = 0.85
@@ -445,10 +445,10 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             weight_decay = 0.01
             epsilon = 1e-8
 
-            train_prog = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(train_prog, startup):
-                with fluid.unique_name.guard():
+            train_prog = base.Program()
+            startup = base.Program()
+            with base.program_guard(train_prog, startup):
+                with base.unique_name.guard():
                     x = paddle.static.data(
                         name='x', shape=[None, 10], dtype='float32'
                     )
@@ -557,7 +557,7 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
                 "linear_1.b_0@GRAD",
             ]
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(startup)
             test_prog = train_prog.clone(for_test=True)
 

@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.core import CipherFactory, CipherUtils
+from paddle.base.core import CipherFactory, CipherUtils
 
 
 class CipherUtilsTestCase(unittest.TestCase):

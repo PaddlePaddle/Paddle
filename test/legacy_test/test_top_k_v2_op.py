@@ -22,7 +22,7 @@ from eager_op_test import (
 )
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def numpy_topk(x, k=1, axis=-1, largest=True):
@@ -288,7 +288,7 @@ class TestTopKAPI(unittest.TestCase):
         self.large_input_data = np.random.rand(2, 1030)
 
     def run_dygraph(self, place):
-        with paddle.fluid.dygraph.guard(place):
+        with paddle.base.dygraph.guard(place):
             input_tensor = paddle.to_tensor(self.input_data)
             large_input_tensor = paddle.to_tensor(self.large_input_data)
             # test case for basic test case 1
@@ -474,7 +474,7 @@ class TestTopKAPI(unittest.TestCase):
             self.run_static(place)
 
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
             with self.assertRaises(BaseException):
                 paddle.topk(x, k=-1)

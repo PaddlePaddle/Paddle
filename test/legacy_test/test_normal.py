@@ -33,7 +33,7 @@ class TestNormalAPI(unittest.TestCase):
         self.dtype = self.get_dtype()
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 

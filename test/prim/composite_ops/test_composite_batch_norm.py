@@ -20,7 +20,7 @@ from prim.composite_ops.utils import SUB_TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 from paddle.incubate.autograd import primapi
 from paddle.nn import BatchNorm
 from paddle.tensor import ones  # noqa: F401

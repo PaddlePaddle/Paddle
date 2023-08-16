@@ -31,7 +31,7 @@ from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 
 _use_four_directions = os.environ.get(
-    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.fluid.core.is_compiled_with_xpu()
+    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
 )
 if _use_four_directions:
     from .pp_utils import four_directions_p2p_communication as p2p

@@ -19,7 +19,7 @@ from prim.composite_ops.utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 def generate_data(shape, dtype="float32"):

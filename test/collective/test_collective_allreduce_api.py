@@ -27,7 +27,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         pass
 
     def test_allreduce_nccl(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "collective_allreduce_api.py", "allreduce", "nccl"
             )
@@ -60,7 +60,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                 )
 
     def test_allreduce_bkcl(self):
-        if paddle.fluid.core.is_compiled_with_xpu():
+        if paddle.base.core.is_compiled_with_xpu():
             self.check_with_place(
                 "collective_allreduce_api.py", "allreduce", "bkcl"
             )

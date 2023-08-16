@@ -20,9 +20,9 @@ from eager_op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.framework import Program, program_guard
 
 
 class TestEyeOp(OpTest):
@@ -92,7 +92,7 @@ class API_TestTensorEye(unittest.TestCase):
     def test_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
             exe = paddle.static.Executor(place)
             (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, dtype="float32")

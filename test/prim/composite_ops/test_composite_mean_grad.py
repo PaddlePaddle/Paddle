@@ -19,7 +19,7 @@ from prim.composite_ops.utils import TOLERANCE
 
 import paddle
 from paddle import tensor
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.autograd import primapi
 
 

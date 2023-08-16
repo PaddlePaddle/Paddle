@@ -18,7 +18,7 @@ from functools import partial
 import numpy as np
 from eager_op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 #   TestFusedElementwiseActivationOp
 #   TestFusedElementwiseActivationOp_scalar
@@ -51,8 +51,8 @@ def create_test_class(
             self.intermediate_out = self.intermediate_out.astype(self.dtype)
 
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+                'X': OpTest.np_dtype_to_base_dtype(self.x),
+                'Y': OpTest.np_dtype_to_base_dtype(self.y),
             }
             if self.attrs["save_intermediate_out"]:
                 self.outputs = {

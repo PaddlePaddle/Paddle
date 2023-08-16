@@ -319,11 +319,11 @@ class TestDequantizeOpHalf(TestDequantizeOp):
 
     def _get_places(self):
         import paddle
-        from paddle.fluid import core
+        from paddle.base import core
 
         if core.is_compiled_with_cuda():
-            place = paddle.fluid.core.CUDAPlace(0)
-            if paddle.fluid.core.is_float16_supported(place):
+            place = paddle.base.core.CUDAPlace(0)
+            if paddle.base.core.is_float16_supported(place):
                 return [place]
             else:
                 return []

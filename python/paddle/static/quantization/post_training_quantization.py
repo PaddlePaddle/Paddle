@@ -24,7 +24,7 @@ except:
     from .utils import tqdm
 
 
-from paddle.fluid.framework import IrGraph, _get_var
+from paddle.base.framework import IrGraph, _get_var
 
 from ... import io, static
 from ...framework import core

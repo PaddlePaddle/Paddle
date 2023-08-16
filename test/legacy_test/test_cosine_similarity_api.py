@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import (
+from paddle.base import (
     Executor,
     Program,
     core,

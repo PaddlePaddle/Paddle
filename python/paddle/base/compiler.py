@@ -402,9 +402,9 @@ class IpuDynamicPatcher:
         """
         Convert the ConcreteProgram to IPUConcreteProgram.
         """
-        from ..fluid.dygraph.base import switch_to_static_graph
-        from ..fluid import backward
-        from ..fluid.framework import device_guard
+        from ..base.dygraph.base import switch_to_static_graph
+        from ..base import backward
+        from ..base.framework import device_guard
         import paddle
 
         inputs = concrete_program.inputs

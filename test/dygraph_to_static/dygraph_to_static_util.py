@@ -19,7 +19,7 @@ from functools import wraps
 import numpy as np
 
 from paddle import set_flags, static
-from paddle.fluid import core
+from paddle.base import core
 
 
 @contextlib.contextmanager

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.functional import interpolate
 
 
@@ -885,7 +885,7 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             input_x = paddle.to_tensor(input_data)
             expect_res = bilinear_interp_np(
@@ -905,7 +905,7 @@ class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             size_np = np.array([12, 12]).astype("int64")
             input_x = paddle.to_tensor(input_data)
@@ -927,7 +927,7 @@ class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             size_1 = np.array([12]).astype("int64")
             input_x = paddle.to_tensor(input_data)
@@ -952,7 +952,7 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             scale_np = np.array([2, 2]).astype("int64")
             input_x = paddle.to_tensor(input_data)
@@ -970,7 +970,7 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestBilinearInterpOpZoomOutForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1013,7 +1013,7 @@ class TestBilinearInterpOpZoomOutForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestBilinearInterpOpZoomInForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1063,7 +1063,7 @@ class TestBilinearInterpOpAPI_0DTensorScale(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             input_x = paddle.to_tensor(input_data)
             expect_res = bilinear_interp_np(
@@ -1087,7 +1087,7 @@ class TestBilinearInterpOpAPI_0DTensorScale2(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             input_x = paddle.to_tensor(input_data)
             expect_res = bilinear_interp_np(
@@ -1111,7 +1111,7 @@ class TestBilinearInterpOpAPI_0DTensorOutSize(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_data = np.random.random((2, 3, 6, 6)).astype("float32")
             input_x = paddle.to_tensor(input_data)
             expect_res = bilinear_interp_np(

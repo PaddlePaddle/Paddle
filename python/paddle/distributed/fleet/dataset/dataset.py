@@ -15,8 +15,8 @@
 
 from google.protobuf import text_format
 
-from paddle.fluid import core
-from paddle.fluid.proto import data_feed_pb2
+from paddle.base import core
+from paddle.base.proto import data_feed_pb2
 
 __all__ = []
 

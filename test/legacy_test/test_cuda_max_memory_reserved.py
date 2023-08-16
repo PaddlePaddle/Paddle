@@ -20,7 +20,7 @@ from paddle.device.cuda import (
     max_memory_reserved,
     memory_reserved,
 )
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestMaxMemoryreserved(unittest.TestCase):

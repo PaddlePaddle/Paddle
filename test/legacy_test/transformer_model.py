@@ -17,7 +17,7 @@ from functools import partial
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 pos_enc_param_names = (
     "src_pos_enc_table",
@@ -273,7 +273,7 @@ def prepare_encoder(
         src_pos,
         size=[src_max_len, src_emb_dim],
         padding_idx=pos_pad_idx,
-        param_attr=fluid.ParamAttr(name=pos_enc_param_name, trainable=False),
+        param_attr=base.ParamAttr(name=pos_enc_param_name, trainable=False),
     )
     src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc

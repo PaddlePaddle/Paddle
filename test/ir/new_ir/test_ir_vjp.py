@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
-from paddle.fluid.core import call_vjp, has_vjp
+from paddle.base.core import call_vjp, has_vjp
 
 paddle.enable_static()
 

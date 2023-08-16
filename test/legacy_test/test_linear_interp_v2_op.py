@@ -19,8 +19,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 from paddle.nn.functional import interpolate
 
 
@@ -326,8 +326,8 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             align_corners=False,
             data_format='NCW',
         )
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(x_data)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(x_data)
             interp = us_1(x)
 
             expect = linear_interp_np(
@@ -531,7 +531,7 @@ class TestLinearInterpOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestLinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

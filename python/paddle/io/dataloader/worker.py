@@ -370,7 +370,7 @@ def _worker_loop(
                     #       may copy CPU tensor to GPU even if users want to use
                     #       CPU tensor operation, so we add CPUPlace guard here
                     #       to make sure tensor will be operated only on CPU
-                    with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                    with paddle.base.dygraph.guard(place=paddle.CPUPlace()):
                         batch = fetcher.fetch(indices)
             except Exception as e:
                 if (

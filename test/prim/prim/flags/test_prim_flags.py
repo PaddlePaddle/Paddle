@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.framework import core
+from paddle.base import core
 from paddle.incubate.autograd import primapi
 
 

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid, incubate
-from paddle.fluid import core
+from paddle import base, incubate
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -92,7 +92,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
 
     def test_static(self):
         for dtype in self.dtypes:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 input_x = paddle.static.data(
                     name="x", shape=[1, 4, 32, 32], dtype=dtype
                 )
@@ -101,9 +101,9 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
                 x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
 
-                exe = fluid.Executor(fluid.CUDAPlace(0))
+                exe = base.Executor(base.CUDAPlace(0))
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"x": x_in_np},
                     fetch_list=[rst],
                 )
@@ -111,10 +111,10 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
 
     def test_dygraph(self):
         for dtype in self.dtypes:
-            with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+            with base.dygraph.guard(base.CUDAPlace(0)):
                 x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
-                input_x = fluid.dygraph.to_variable(x_in_np)
+                input_x = base.dygraph.to_variable(x_in_np)
 
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)
                 np.testing.assert_allclose(rst, rst_np, rtol=1e-05)

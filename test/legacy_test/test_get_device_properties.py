@@ -15,7 +15,7 @@
 import unittest
 
 from paddle.device.cuda import device_count, get_device_properties
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestGetDeviceProperties(unittest.TestCase):

@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid, tensor
-from paddle.fluid import Program, program_guard
+from paddle import base, tensor
+from paddle.base import Program, program_guard
 
 
 class TestUnbind(unittest.TestCase):
@@ -30,10 +30,10 @@ class TestUnbind(unittest.TestCase):
         [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
         axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
 
         [res_1, res_2] = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"x_1": input_1, "axis": 0},
             fetch_list=[out_0, out_1],
         )
@@ -42,7 +42,7 @@ class TestUnbind(unittest.TestCase):
         np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
     def test_unbind_static_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -65,7 +65,7 @@ class TestUnbind(unittest.TestCase):
                 np.testing.assert_array_equal(res[1], input[1, :])
 
     def test_unbind_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.random.random([2, 3]).astype("float32")
             x = paddle.to_tensor(np_x)
             x.stop_gradient = False
@@ -88,10 +88,10 @@ class TestLayersUnbind(unittest.TestCase):
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
         axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
 
         [res_1, res_2] = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"x_1": input_1, "axis": 0},
             fetch_list=[out_0, out_1],
         )

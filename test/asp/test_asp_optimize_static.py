@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.incubate.asp import ASPHelper
 
 paddle.enable_static()
@@ -27,8 +27,8 @@ paddle.enable_static()
 
 class TestASPStaticOptimize(unittest.TestCase):
     def setUp(self):
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
 
         def build_model():
             img = paddle.static.data(
@@ -46,7 +46,7 @@ class TestASPStaticOptimize(unittest.TestCase):
             )
             return img, label, prediction
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             self.img, self.label, predict = build_model()
             self.loss = paddle.mean(
                 paddle.nn.functional.cross_entropy(
@@ -74,7 +74,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         )
         self.assertTrue(check_params(params, params_from_asp))
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             ASPHelper._minimize(
                 self.optimizer,
                 self.loss,
@@ -166,7 +166,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         param_names = self.__get_param_names(
             self.main_program.global_block().all_parameters()
         )
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
         param_names_after_minimize = self.__get_param_names(
@@ -178,15 +178,15 @@ class TestASPStaticOptimize(unittest.TestCase):
         )
 
     def test_asp_training(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
 
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[self.img, self.label], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[self.img, self.label], place=place)
 
         exe.run(self.startup_program)
         paddle.incubate.asp.prune_model(self.main_program)
@@ -200,7 +200,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(
-                    fluid.global_scope().find_var(param.name).get_tensor()
+                    base.global_scope().find_var(param.name).get_tensor()
                 )
                 if (len(param.shape) == 4 and param.shape[1] < 4) or (
                     len(param.shape) == 2 and param.shape[0] < 4
@@ -216,13 +216,13 @@ class TestASPStaticOptimize(unittest.TestCase):
     def test_asp_training_with_amp(self):
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-            with fluid.program_guard(self.main_program, self.startup_program):
+            with base.program_guard(self.main_program, self.startup_program):
                 self.optimizer = paddle.static.amp.decorate(self.optimizer)
                 self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
                 self.optimizer.minimize(self.loss, self.startup_program)
 
-            exe = fluid.Executor(place)
-            feeder = fluid.DataFeeder(
+            exe = base.Executor(place)
+            feeder = base.DataFeeder(
                 feed_list=[self.img, self.label], place=place
             )
 
@@ -238,7 +238,7 @@ class TestASPStaticOptimize(unittest.TestCase):
             for param in self.main_program.global_block().all_parameters():
                 if ASPHelper._is_supported_layer(self.main_program, param.name):
                     mat = np.array(
-                        fluid.global_scope().find_var(param.name).get_tensor()
+                        base.global_scope().find_var(param.name).get_tensor()
                     )
                     if (len(param.shape) == 4 and param.shape[1] < 4) or (
                         len(param.shape) == 2 and param.shape[0] < 4

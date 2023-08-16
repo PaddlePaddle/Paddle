@@ -38,7 +38,7 @@ from paddle.distributed.utils.launch_utils import (
 
 # deprecated module import
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import set_flags
 
 __all__ = []

@@ -34,7 +34,7 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.fluid.data_feeder import (
+from paddle.base.data_feeder import (
     convert_uint16_to_float,
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
 )
@@ -43,7 +43,7 @@ import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
 from paddle.device import get_all_custom_device_type
-from paddle.fluid.framework import _global_flags
+from paddle.base.framework import _global_flags
 
 _grad_scalar = None
 
@@ -100,12 +100,12 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
+                import paddle.base as base
+                from paddle.base.dygraph.base import to_variable
                 import numpy as np
 
                 data = np.ones([3, 1024], dtype='float32')
-                with fluid.dygraph.guard():
+                with base.dygraph.guard():
                     tensor = to_variable(data)
                     static_var = tensor._to_static_var()
 
@@ -172,13 +172,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                from paddle.fluid.dygraph.base import to_variable
+                import paddle.base as base
+                from paddle.base.dygraph.base import to_variable
                 from paddle.nn import Linear
                 import numpy as np
 
                 data = np.ones([3, 1024], dtype='float32')
-                with fluid.dygraph.guard():
+                with base.dygraph.guard():
                     linear = Linear(1024, 4)
                     t = to_variable(data)
                     linear(t)  # call with default weight
@@ -480,7 +480,7 @@ def monkey_patch_tensor():
 
             # 2. cast Tensor to dtype
             if dtype is not None and dtype != t_used.dtype:
-                with paddle.fluid.framework._dygraph_place_guard(
+                with paddle.base.framework._dygraph_place_guard(
                     place=t_used.place
                 ):
                     t_casted = t_used.cast(dtype=dtype)
@@ -999,7 +999,7 @@ def monkey_patch_tensor():
                 prefix = 'paddle.'
                 return prefix + numpy_dtype
             else:
-                # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
+                # for example, paddle.base.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
         setattr(core.VarDesc.VarType, "__str__", dtype_str)

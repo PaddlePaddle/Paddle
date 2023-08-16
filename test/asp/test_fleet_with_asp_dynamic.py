@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle.distributed import fleet
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.asp import ASPHelper
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')

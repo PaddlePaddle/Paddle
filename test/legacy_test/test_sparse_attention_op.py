@@ -22,8 +22,8 @@ from eager_op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def get_cuda_version():
@@ -372,7 +372,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
             key_padding_mask_np = key_padding_mask_np.astype(self.dtype)
             attn_mask_np = attn_mask_np.astype(self.dtype)
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             if self.use_mask:
                 fetches_result = exe.run(
                     feed={

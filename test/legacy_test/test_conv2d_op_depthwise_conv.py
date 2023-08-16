@@ -31,7 +31,7 @@ from test_conv2d_op import (
 )
 from testsuite import create_op
 
-from paddle.fluid import core
+from paddle.base import core
 
 # ----------------TestDepthwiseConv -----
 

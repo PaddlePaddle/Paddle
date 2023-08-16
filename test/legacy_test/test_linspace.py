@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):
@@ -147,8 +147,8 @@ class TestLinspaceAPI(unittest.TestCase):
             stop = paddle.full(shape=[1], fill_value=10, dtype='float32')
             num = paddle.full(shape=[1], fill_value=5, dtype='int32')
             out = paddle.linspace(start, stop, num, dtype='float32')
-            exe = fluid.Executor(place=fluid.CPUPlace())
-            res = exe.run(fluid.default_main_program(), fetch_list=[out])
+            exe = base.Executor(place=base.CPUPlace())
+            res = exe.run(base.default_main_program(), fetch_list=[out])
             np_res = np.linspace(0, 10, 5, dtype='float32')
             self.assertEqual((res == np_res).all(), True)
 
@@ -165,9 +165,9 @@ class TestLinspaceAPI(unittest.TestCase):
             out_1 = paddle.linspace(0, 10, 5, dtype='float32')
             out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
             out_3 = paddle.linspace(0, 10, 5, dtype=core.VarDesc.VarType.FP32)
-            exe = fluid.Executor(place=fluid.CPUPlace())
+            exe = base.Executor(place=base.CPUPlace())
             res_1, res_2, res_3 = exe.run(
-                fluid.default_main_program(), fetch_list=[out_1, out_2, out_3]
+                base.default_main_program(), fetch_list=[out_1, out_2, out_3]
             )
             np.testing.assert_array_equal(res_1, res_2)
 

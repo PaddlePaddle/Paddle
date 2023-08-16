@@ -21,7 +21,7 @@ from test_softmax_op import stable_softmax
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 CUDA_BLOCK_SIZE = 32
 

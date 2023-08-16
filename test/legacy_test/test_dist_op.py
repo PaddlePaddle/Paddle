@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -246,9 +246,9 @@ class TestDistAPI(unittest.TestCase):
 
     def test_api(self):
         self.init_data_type()
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 name='x', shape=[2, 3, 4, 5], dtype=self.data_type
             )
@@ -260,13 +260,13 @@ class TestDistAPI(unittest.TestCase):
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             out = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={'x': x_i, 'y': y_i},
                 fetch_list=[result],
             )

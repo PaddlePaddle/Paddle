@@ -38,7 +38,7 @@ from functools import reduce
 import numpy as np
 
 from paddle import framework
-from paddle.fluid.framework import grad_var_name
+from paddle.base.framework import grad_var_name
 from paddle.framework import Block, Program, core
 from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
     PSDispatcher,
@@ -157,8 +157,8 @@ class DistributeTranspilerConfig:
     .. py:attribute:: split_method (PSDispatcher)
 
           Methods of dispatching parameters for server,
-          :ref:`api_fluid_transpiler_RoundRobin` or
-          :ref:`api_fluid_transpiler_HashName` can be used and default is RoundRobin.
+          :ref:`api_base_transpiler_RoundRobin` or
+          :ref:`api_base_transpiler_HashName` can be used and default is RoundRobin.
           Try to choose the best method to balance loads for parameter servers.
 
     .. py:attribute:: min_block_size (int)
@@ -266,7 +266,7 @@ class DistributeTranspiler:
 
     **DistributeTranspiler**
 
-    Convert the fluid program to distributed data-parallelism programs.
+    Convert the base program to distributed data-parallelism programs.
     Supports two modes: parameter server(pserver) mode and nccl2 mode.
 
     In pserver mode, the main_program will be transformed to use a remote
@@ -283,7 +283,7 @@ class DistributeTranspiler:
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle.distributed.transpiler as transpiler
 
             paddle.enable_static()

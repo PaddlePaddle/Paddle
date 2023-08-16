@@ -18,8 +18,8 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid, framework
-from paddle.fluid import data_feeder
+from paddle import base, framework
+from paddle.base import data_feeder
 
 paddle.enable_static()
 
@@ -70,7 +70,7 @@ class TestCollectiveConcatAPI(TestCollectiveAPIRunnerBase):
     def get_model_new(
         self, main_prog, startup_program, rank, dtype=None, reduce_type=None
     ):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )

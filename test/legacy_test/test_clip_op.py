@@ -18,8 +18,8 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestClipOp(OpTest):
@@ -277,11 +277,11 @@ class TestClipAPI(unittest.TestCase):
         max = paddle.static.data(name='max', shape=[1], dtype='float32')
 
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         out_1 = self._executed_api(images, min=min, max=max)
         out_2 = self._executed_api(images, min=0.2, max=0.9)
@@ -314,7 +314,7 @@ class TestClipAPI(unittest.TestCase):
             res10,
             res11,
         ) = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "image": data,
                 "min": np.array([0.2]).astype('float32'),
@@ -357,9 +357,9 @@ class TestClipAPI(unittest.TestCase):
     def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]
@@ -442,7 +442,7 @@ class TestClipOpFp16(unittest.TestCase):
             min = paddle.static.data(name='min1', shape=[1], dtype='float16')
             max = paddle.static.data(name='max1', shape=[1], dtype='float16')
             out = paddle.clip(images, min, max)
-            if fluid.core.is_compiled_with_cuda():
+            if base.core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 res1 = exe.run(

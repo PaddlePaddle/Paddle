@@ -19,7 +19,7 @@ from legacy_test.parallel_dygraph_mnist import TestMnist
 from legacy_test.spawn_runner_base import TestDistSpawnRunner
 from legacy_test.test_dist_base import TestDistBase
 
-from paddle import fluid
+from paddle import base
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -32,7 +32,7 @@ class TestParallelDygraphMnist(TestDistBase):
         self._find_unused_parameters = True
 
     def test_mnist(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-5,
@@ -52,7 +52,7 @@ class TestParallelDygraphMnistXPU(TestDistBase):
         self._enforce_place = "XPU"
 
     def test_mnist_xpu(self):
-        if fluid.core.is_compiled_with_xpu():
+        if base.core.is_compiled_with_xpu():
             self.check_with_place(
                 os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-4,
@@ -63,7 +63,7 @@ class TestParallelDygraphMnistXPU(TestDistBase):
 
 class TestParallelDygraphMnistSpawn(TestDistSpawnRunner):
     def test_mnist_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(test_class=TestMnist, delta=1e-5)
 
 
@@ -77,7 +77,7 @@ class TestParallelDygraphMnistAccGrad(TestDistBase):
         self._find_unused_parameters = False
 
     def test_mnist(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-5,
@@ -95,7 +95,7 @@ class TestFleetDygraphMnistXPU(TestDistBase):
         self._use_fleet_api = True
 
     def test_mnist(self):
-        if fluid.core.is_compiled_with_xpu():
+        if base.core.is_compiled_with_xpu():
             self.check_with_place(
                 os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-4,

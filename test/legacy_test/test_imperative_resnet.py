@@ -19,10 +19,10 @@ from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
+from paddle.base.layer_helper import LayerHelper
 from paddle.nn import BatchNorm
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
@@ -58,14 +58,14 @@ def optimizer_setting(params, parameter_list=None):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if fluid.in_dygraph_mode():
+        if base.in_dygraph_mode():
             optimizer = paddle.optimizer.SGD(
                 learning_rate=0.01, parameters=parameter_list
             )
         else:
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         # TODO(minqiyang): Add learning rate scheduler support to dygraph mode
-        #  optimizer = fluid.optimizer.Momentum(
+        #  optimizer = base.optimizer.Momentum(
         #  learning_rate=params["lr"],
         #  learning_rate=paddle.optimizer.lr.piecewise_decay(
         #  boundaries=bd, values=lr),
@@ -225,7 +225,7 @@ class ResNet(paddle.nn.Layer):
         self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            weight_attr=fluid.param_attr.ParamAttr(
+            weight_attr=base.param_attr.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -260,7 +260,7 @@ class TestDygraphResnet(unittest.TestCase):
 
         traced_layer = None
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
@@ -346,10 +346,10 @@ class TestDygraphResnet(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
 
             resnet = ResNet()
@@ -387,7 +387,7 @@ class TestDygraphResnet(unittest.TestCase):
                     )
 
             out = exe.run(
-                fluid.default_startup_program(),
+                base.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
 
@@ -414,7 +414,7 @@ class TestDygraphResnet(unittest.TestCase):
                 fetch_list.extend(static_param_name_list)
                 fetch_list.extend(static_grad_name_list)
                 out = exe.run(
-                    fluid.default_main_program(),
+                    base.default_main_program(),
                     feed={"pixel": static_x_data, "label": y_data},
                     fetch_list=fetch_list,
                 )

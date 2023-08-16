@@ -21,15 +21,15 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core, unique_name
-from paddle.fluid.data_feeder import (
+from paddle.base import core, unique_name
+from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.param_attr import ParamAttr
 
 __all__ = []
 
@@ -71,7 +71,7 @@ def fused_embedding_seq_pool(
     Examples:
         .. code-block:: python
             import numpy as np
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
 
@@ -137,7 +137,7 @@ def fused_seqpool_cvm(
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             paddle.enable_static()
 
             data = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
@@ -146,7 +146,7 @@ def fused_seqpool_cvm(
             embs = paddle.incubate.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
 
             label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64", lod_level=1)
-            ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+            ones = base.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
             show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
             show_clk.stop_gradient = True
 
@@ -280,7 +280,7 @@ def multiclass_nms2(
         .. code-block:: python
 
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
             boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
@@ -365,7 +365,7 @@ def search_pyramid_hash(
         lr(float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
             in this layer.
         param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            default weight parameter property is used. See usage for details in :ref:`api_base_ParamAttr` .
         param_attr_wl(ParamAttr): Specified parameters of white filter.
         param_attr_bl(ParamAttr): Specified parameters of black filter.
         distribute_update_vars(list[ParamAttr.name]): Decided which params should be updated in distribute training.
@@ -478,7 +478,7 @@ def shuffle_batch(x, seed=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
             x = paddle.static.data(name="x", shape=[-1, 4])
@@ -542,7 +542,7 @@ def partial_concat(input, start_index=0, length=-1):
         Tensor: A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             x = paddle.randn(name="x", shape=[1,3], dtype="float32")
             y = paddle.randn(name="y", shape=[1,3], dtype="float32")
@@ -603,7 +603,7 @@ def partial_sum(input, start_index=0, length=-1):
         Tensor: A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
-        import paddle.fluid as fluid
+        import paddle.base as base
         import numpy as np
         import paddle
         paddle.enable_static()
@@ -611,8 +611,8 @@ def partial_sum(input, start_index=0, length=-1):
         x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
         y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
         sum = paddle.incubate.layers.partial_sum([x,y], start_index=0, length=2)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
         yy = np.array([6,5,4,4,5,6]).reshape((2,3)).astype("float32")
         out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
@@ -660,7 +660,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         node_nums(int): Number of total nodes.
         child_nums(int): Maximum number of child nodes per node.
         param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
+            default weight parameter property is used. See usage for details in: ref: `api_base_ParamAttr`, should
             has shape(node_nums, 3 + child_nums), dtype support int32/int64.
             The dimension[1] of tdm-tree-info contains the following:
             1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
@@ -677,7 +677,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     Examples:
         .. code-block:: python
         import paddle
-        import paddle.fluid as fluid
+        import paddle.base as base
         import numpy as np
         paddle.enable_static()
         x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
@@ -689,12 +689,12 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         node_nums = 7
         child_nums = 2
         child, leaf_mask  = paddle.incubate.layers.tdm_child(x, node_nums, child_nums,
-                                param_attr=fluid.ParamAttr(
+                                param_attr=base.ParamAttr(
                                     initializer=paddle.nn.initializer.Assign(
                                                                             tree_info_np)))
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         xx = np.array([[2],[3]]).reshape((2,1)).astype("int32")
         child_res, leaf_mask_res = exe.run(feed={"x":xx}, fetch_list=[child, leaf_mask])
     """
@@ -764,10 +764,10 @@ def tdm_sampler(
         layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
         leaf_node_num (int): Number of leaf nodes.
         tree_travel_attr (ParamAttr): To specify the tdm-travel parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
+            default weight parameter property is used. See usage for details in :ref:`api_base_ParamAttr`, should
             has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
         tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
+            default weight parameter property is used. See usage for details in :ref:`api_base_ParamAttr`, should
             has shape (node_num, 1), dtype support int32/int64.
         output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
         output_list (bool): Whether to divide the output into layers and organize it into list format.
@@ -786,7 +786,7 @@ def tdm_sampler(
     Examples:
         .. code-block:: python
         import paddle
-        import paddle.fluid as fluid
+        import paddle.base as base
         import numpy as np
         paddle.enable_static()
         x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
@@ -805,10 +805,10 @@ def tdm_sampler(
             neg_samples_num_list,
             layer_node_num_list,
             leaf_node_num,
-            tree_travel_attr=fluid.ParamAttr(
+            tree_travel_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(
                     travel_array)),
-            tree_layer_attr=fluid.ParamAttr(
+            tree_layer_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(
                     layer_array)),
             output_positive=True,
@@ -816,9 +816,9 @@ def tdm_sampler(
             seed=0,
             tree_dtype='int32')
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
 
         exe.run(feed={"x":xx})
@@ -978,7 +978,7 @@ def rank_attention(
         Tensor: A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
-           import paddle.fluid as fluid
+           import paddle.base as base
            import paddle
            paddle.enable_static()
 
@@ -1039,7 +1039,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
         Tensor: A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
-           import paddle.fluid as fluid
+           import paddle.base as base
            import paddle
 
            paddle.enable_static()
@@ -1103,7 +1103,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
                   supplied inputs.
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
+          import paddle.base as base
           data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb, emb_ex = paddle.incubate.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
     """
@@ -1133,7 +1133,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     """
     :alias_main: paddle.nn.functional.bilateral_slice
         :alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
-        :old_api: paddle.fluid.layers.bilateral_slice
+        :old_api: paddle.base.layers.bilateral_slice
 
     This operation implements bilateral slicing on the input according to the guide map.
     For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
@@ -1159,7 +1159,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
 
@@ -1230,7 +1230,7 @@ def correlation(
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
             paddle.enable_static()
             x1 = paddle.static.data(name='x1',
@@ -1341,12 +1341,12 @@ def fused_bn_add_act(
             .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
 
             paddle.enable_static()
             # required: gpu
             def build_program(main_program, startup_program):
-                with fluid.program_guard(main_program, startup_program):
+                with base.program_guard(main_program, startup_program):
                     x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
                     y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                     conv1_1 = paddle.static.nn.conv2d(
@@ -1378,7 +1378,7 @@ def fused_bn_add_act(
                         reduction='none', use_softmax=False
                     )
                     loss = paddle.mean(loss)
-                    sgd = fluid.optimizer.SGD(learning_rate=0.001)
+                    sgd = base.optimizer.SGD(learning_rate=0.001)
                     sgd = paddle.static.amp.decorate(
                         sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
                     sgd.minimize(loss)
@@ -1387,19 +1387,19 @@ def fused_bn_add_act(
 
             iters = 5
             batch_size = 16
-            support_gpu = fluid.is_compiled_with_cuda()
+            support_gpu = base.is_compiled_with_cuda()
             if support_gpu:
-                main_program = fluid.Program()
-                startup_program = fluid.Program()
-                place = fluid.CUDAPlace(0)
+                main_program = base.Program()
+                startup_program = base.Program()
+                place = base.CUDAPlace(0)
                 x, y, loss = build_program(main_program, startup_program)
 
-                feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
+                feeder = base.DataFeeder(feed_list=[x, y], place=place)
                 train_reader = paddle.batch(
                     paddle.dataset.mnist.train(), batch_size=batch_size)
-                exe = fluid.Executor(place)
-                scope = fluid.Scope()
-                with fluid.scope_guard(scope):
+                exe = base.Executor(place)
+                scope = base.Scope()
+                with base.scope_guard(scope):
                     exe.run(startup_program)
                     for _ in range(iters):
                         data = next(train_reader())

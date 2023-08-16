@@ -55,7 +55,7 @@ class TestAddPositionEncodingTensorOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {'alpha': self.alpha, 'beta': self.beta}

@@ -2574,7 +2574,7 @@ set -ex
 
 function parallel_test_base_ipu() {
     mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/ipu
+    cd ${PADDLE_ROOT}/build/python/paddle/base/tests/unittests/ipu
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================

@@ -15,8 +15,8 @@
 __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.framework import dygraph_only
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import dygraph_only
+from paddle.base.layer_helper import LayerHelper
 
 
 def relu(x, name=None):

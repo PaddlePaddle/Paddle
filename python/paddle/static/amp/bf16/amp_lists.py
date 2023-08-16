@@ -14,7 +14,7 @@
 
 import copy
 
-from paddle.fluid import core
+from paddle.base import core
 
 from ..fp16_lists import black_list as black_list_fp16
 from ..fp16_lists import gray_list as gray_list_fp16

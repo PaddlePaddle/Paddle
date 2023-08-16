@@ -96,7 +96,7 @@ class TestL2LossOp(OpTest):
 
 class TestL2LossDeterministic(unittest.TestCase):
     def check_place(self, place):
-        with paddle.fluid.dygraph.guard(place):
+        with paddle.base.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')
             x = paddle.to_tensor(x_np)
             y1 = _legacy_C_ops.squared_l2_norm(x)

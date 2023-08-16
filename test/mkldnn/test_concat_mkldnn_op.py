@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 from paddle import enable_static
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestConcatAxis0OneDNNOp(OpTest):

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestClass(unittest.TestCase):
@@ -42,14 +42,14 @@ class TestClass(unittest.TestCase):
         reader = paddle.reader.cache(fake_reader)
         batch_reader = paddle.batch(reader, batch_size=batch_size)
 
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for p in places:
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(main_prog, startup_prog):
+            main_prog = base.Program()
+            startup_prog = base.Program()
+            with base.program_guard(main_prog, startup_prog):
                 img = paddle.static.data(
                     shape=[-1] + img_shape, dtype='float32', name='image'
                 )
@@ -57,17 +57,17 @@ class TestClass(unittest.TestCase):
                     shape=[-1] + label_shape, dtype='int64', name='label'
                 )
 
-                feeder = fluid.DataFeeder(feed_list=[img, label], place=p)
+                feeder = base.DataFeeder(feed_list=[img, label], place=p)
 
                 use_double_buffer = self.use_double_buffer
                 if (
-                    p._type() != fluid.CPUPlace()._type()
+                    p._type() != base.CPUPlace()._type()
                     and not use_double_buffer
                 ):
                     use_double_buffer = True
 
                 if self.use_py_reader:
-                    py_reader = fluid.io.PyReader(
+                    py_reader = base.io.PyReader(
                         feed_list=[img, label],
                         capacity=4,
                         iterable=True,
@@ -77,7 +77,7 @@ class TestClass(unittest.TestCase):
                         batch_reader, places=p
                     )
                 else:
-                    py_reader = fluid.io.DataLoader.from_generator(
+                    py_reader = base.io.DataLoader.from_generator(
                         feed_list=[img, label],
                         capacity=4,
                         iterable=True,

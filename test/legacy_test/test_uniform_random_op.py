@@ -21,9 +21,9 @@ from op import Operator
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle import base
+from paddle.base import Program, core, program_guard
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.tensor import random
 
 
@@ -179,7 +179,7 @@ class TestUniformRandomOp(OpTest):
     def test_check_api(self):
         places = self._get_places()
         for place in places:
-            with fluid.dygraph.base.guard(place=place):
+            with base.dygraph.base.guard(place=place):
                 out = self.python_api(
                     self.attrs['shape'],
                     self.dtype,
@@ -208,8 +208,8 @@ class TestUniformRandomOpError(unittest.TestCase):
         with program_guard(main_prog, start_prog):
 
             def test_Variable():
-                x1 = fluid.create_lod_tensor(
-                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.zeros((4, 784)), [[1, 1, 1, 1]], base.CPUPlace()
                 )
                 paddle.uniform(x1)
 
@@ -223,7 +223,7 @@ class TestUniformRandomOpError(unittest.TestCase):
 
             def test_out_dtype():
                 out = paddle.uniform(shape=[3, 4], dtype='float64')
-                self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+                self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
             test_out_dtype()
 
@@ -314,60 +314,60 @@ class TestUniformRandomOpApi(unittest.TestCase):
             ),
         )
 
-        place = fluid.CPUPlace()
-        x_tensor = fluid.create_lod_tensor(
+        place = base.CPUPlace()
+        x_tensor = base.create_lod_tensor(
             np.random.rand(3, 16).astype("float32"), [[1, 2]], place
         )
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
     def test_attr_tensor_API(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             dim_tensor = paddle.tensor.fill_constant([1], "int64", 3)
             ret = paddle.uniform([1, dim_tensor, 2])
 
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
 
             exe.run(startup_program)
             outs = exe.run(train_program, fetch_list=[ret])
 
     def test_attr_tensorlist_int32_API(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
             dim_2 = paddle.tensor.fill_constant([1], "int32", 2)
             ret = paddle.uniform([1, dim_1, dim_2])
 
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
 
             exe.run(startup_program)
             outs = exe.run(train_program, fetch_list=[ret])
 
     def test_attr_tensor_int32_API(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             shape = paddle.static.data(
                 name='shape_tensor', shape=[2], dtype="int32"
             )
             ret = paddle.uniform(shape)
 
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
             Shape = np.array([2, 3]).astype('int32')
             exe.run(startup_program)
             outs = exe.run(
@@ -379,19 +379,19 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
     def test_attr_tensor_API(self):
         _seed = 10
         gen = paddle.seed(_seed)
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             _min = 5
             _max = 10
 
             ret = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
             ret_2 = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
             res = paddle.equal(ret, ret_2)
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            if base.core.is_compiled_with_cuda():
+                place = base.CUDAPlace(0)
+            exe = base.Executor(place)
 
             exe.run(startup_program)
             ret_value, cmp_value = exe.run(train_program, fetch_list=[ret, res])
@@ -467,7 +467,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
 
 class TestUniformRandomDygraphMode(unittest.TestCase):
     def test_check_output(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
             x_np = x.numpy()
             for i in range(10):
@@ -481,8 +481,8 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
         with program_guard(main_prog, start_prog):
 
             def test_Variable():
-                x1 = fluid.create_lod_tensor(
-                    np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.zeros((100, 784)), [[10, 10, 10, 70]], base.CPUPlace()
                 )
                 random.uniform_random_batch_size_like(x1)
 
@@ -524,8 +524,8 @@ class TestUniformOpError(unittest.TestCase):
         with program_guard(main_prog, start_prog):
 
             def test_Variable():
-                x1 = fluid.create_lod_tensor(
-                    np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
+                x1 = base.create_lod_tensor(
+                    np.zeros((100, 784)), [[10, 10, 10, 70]], base.CPUPlace()
                 )
                 paddle.tensor.random.uniform(x1)
 
@@ -549,14 +549,14 @@ class TestUniformOpError(unittest.TestCase):
                 out = paddle.tensor.random.uniform(
                     shape=[3, 4], dtype='float64'
                 )
-                self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+                self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
             test_out_dtype()
 
 
 class TestUniformDygraphMode(unittest.TestCase):
     def test_check_output(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.tensor.random.uniform(
                 [10], dtype="float32", min=0.0, max=1.0
             )
@@ -572,17 +572,17 @@ class TestUniformDtype(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.uniform([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.uniform([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.uniform([2, 3])
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
         def test_dygraph_fp16():
             if not paddle.is_compiled_with_cuda():
@@ -590,7 +590,7 @@ class TestUniformDtype(unittest.TestCase):
                 return
             paddle.set_device('gpu')
             out = paddle.uniform([2, 3], dtype=paddle.float16)
-            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
 
         if paddle.is_compiled_with_cuda():
             paddle.set_device('gpu')

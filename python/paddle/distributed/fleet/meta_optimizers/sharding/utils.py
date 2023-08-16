@@ -1034,7 +1034,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
 
     def is_trainable(var):
         return (
-            isinstance(var, paddle.fluid.framework.Parameter) and var.trainable
+            isinstance(var, paddle.base.framework.Parameter) and var.trainable
         )
 
     def sharding_predicate(var):

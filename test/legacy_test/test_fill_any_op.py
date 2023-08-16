@@ -73,7 +73,7 @@ class TestFillAnyOpvalue2(TestFillAnyOp):
 
 class TestFillAnyInplace(unittest.TestCase):
     def test_fill_any_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
             self.assertEqual(var.inplace_version, 0)
 
@@ -87,7 +87,7 @@ class TestFillAnyInplace(unittest.TestCase):
             self.assertEqual(var.inplace_version, 3)
 
     def test_fill_any_eqaul(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             tensor = paddle.to_tensor(
                 np.random.random((20, 30)).astype(np.float32)
             )
@@ -98,7 +98,7 @@ class TestFillAnyInplace(unittest.TestCase):
             self.assertEqual((tensor.numpy() == target).all().item(), True)
 
     def test_backward(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             x = paddle.full([10, 10], -1.0, dtype='float32')
             x.stop_gradient = False
             y = 2 * x

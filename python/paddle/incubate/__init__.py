@@ -16,7 +16,7 @@ from .optimizer import LookAhead  # noqa: F401
 from .optimizer import ModelAverage  # noqa: F401
 from .optimizer import DistributedFusedLamb  # noqa: F401
 from .checkpoint import auto_checkpoint  # noqa: F401
-from ..fluid.layer_helper import LayerHelper  # noqa: F401
+from ..base.layer_helper import LayerHelper  # noqa: F401
 from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
 from .operators import softmax_mask_fuse  # noqa: F401
 from .operators import graph_send_recv

@@ -20,7 +20,7 @@ import paddle
 import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.log_util import logger
-from paddle.fluid.framework import dygraph_only
+from paddle.base.framework import dygraph_only
 
 from .save_for_auto import save_for_auto_inference
 

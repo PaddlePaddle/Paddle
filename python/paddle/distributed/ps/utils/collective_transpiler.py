@@ -18,7 +18,7 @@ import paddle
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 

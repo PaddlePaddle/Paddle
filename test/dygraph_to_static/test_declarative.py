@@ -20,8 +20,8 @@ import numpy as np
 from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
@@ -90,7 +90,7 @@ class SimpleNet(Layer):
 
 class TestStaticFunctionInstance(unittest.TestCase):
     def test_instance_same_class(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             net_1 = SimpleNet()
             net_2 = SimpleNet()
 
@@ -114,7 +114,7 @@ class TestInputSpec(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_with_input_spec(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
             y = to_variable(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.0
@@ -150,7 +150,7 @@ class TestInputSpec(unittest.TestCase):
             out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
     def test_with_error(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
             y = to_variable(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.0
@@ -174,7 +174,7 @@ class TestInputSpec(unittest.TestCase):
                 net.add_func(x, y)
 
     def test_concrete_program(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
             y = to_variable(np.ones([4, 10]).astype('float32') * 2)
             int_val = 4.0
@@ -213,7 +213,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
         paddle.jit.enable_to_static(True)
 
     def test_with_different_input(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
             y_data = np.ones([10]).astype('float32') * 2
             z_data = np.ones([10]).astype('float32') * 2.2
@@ -298,7 +298,7 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             )
 
     def test_concrete_program(self):
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             # usage 1
             foo_1 = paddle.jit.to_static(
                 foo_func,
@@ -358,7 +358,7 @@ class TestDeclarativeAPI(unittest.TestCase):
         paddle.jit.enable_to_static(False)
         with self.assertRaises(AssertionError):
             # AssertionError: We Only support to_variable in imperative mode,
-            #  please use fluid.dygraph.guard() as context to run it in imperative Mode
+            #  please use base.dygraph.guard() as context to run it in imperative Mode
             func(np.ones(5).astype("int32"))
 
 

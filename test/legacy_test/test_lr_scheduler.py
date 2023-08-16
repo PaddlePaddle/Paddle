@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def reduce_lr_on_plateau(

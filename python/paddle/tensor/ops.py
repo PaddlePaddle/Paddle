@@ -16,7 +16,7 @@
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
-from ..fluid.data_feeder import check_variable_and_dtype
+from ..base.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_mode
 from .layer_function_generator import (
     add_sample_code,

@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.jit.dy2static import partial_program, program_translator
 
 

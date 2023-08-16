@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def create_test_padding_SAME_class(parent):
@@ -116,16 +116,16 @@ class TestConv2DFusionOp(OpTest):
         self.output = self.output.astype(self.dtype)
 
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
-            'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
+            'Input': OpTest.np_dtype_to_base_dtype(input),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
+            'Bias': OpTest.np_dtype_to_base_dtype(bias),
         }
 
         if self.add_residual_data:
             residual_data = np.random.random(self.output.shape).astype(
                 self.dtype
             )
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 residual_data
             )
             self.output += residual_data

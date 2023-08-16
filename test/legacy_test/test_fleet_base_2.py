@@ -21,7 +21,7 @@ paddle.enable_static()
 
 import os
 
-from paddle import fluid
+from paddle import base
 
 
 class TestFleetBase(unittest.TestCase):
@@ -66,11 +66,11 @@ class TestFleetBase(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fluid.default_main_program()
+        compiled_prog = base.compiler.CompiledProgram(
+            base.default_main_program()
         )
 
         temp_dir = tempfile.TemporaryDirectory()

@@ -14,9 +14,9 @@
 
 import paddle
 
-from ..fluid.core import LoDTensor
-from ..fluid.data_feeder import check_type
-from ..fluid.framework import in_dygraph_mode
+from ..base.core import LoDTensor
+from ..base.data_feeder import check_type
+from ..base.framework import in_dygraph_mode
 
 __all__ = [
     'to_dlpack',
@@ -50,7 +50,7 @@ def to_dlpack(x):
     """
 
     if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
+        if not isinstance(x, (paddle.Tensor, paddle.base.core.eager.Tensor)):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
                 " but received {}.".format(type(x))
@@ -98,9 +98,9 @@ def from_dlpack(dlpack):
         )
 
     if in_dygraph_mode():
-        out = paddle.fluid.core.from_dlpack(dlpack)
+        out = paddle.base.core.from_dlpack(dlpack)
         out = paddle.to_tensor(out)
         return out
 
-    out = paddle.fluid.core.from_dlpack(dlpack)
+    out = paddle.base.core.from_dlpack(dlpack)
     return out

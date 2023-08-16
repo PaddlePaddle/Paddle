@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, OpTestTool
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 @OpTestTool.skip_if_not_cpu()

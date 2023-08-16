@@ -17,7 +17,7 @@ from eager_op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -42,7 +42,7 @@ class TestGumbelSoftmaxOp(OpTest):
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = np.zeros(self.shape).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -172,7 +172,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         batch_x = np.ones(self.shape) * single_x
         out = np.zeros(self.shape).astype(self.dtype)
         self.probs = self.softmax(single_x)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(batch_x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(batch_x)}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -228,7 +228,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         self.count_expected = 24
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
@@ -243,7 +243,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         self.assertEqual(out_np.sum(), self.count_expected)
 
         # test dygrapg api
-        with paddle.fluid.dygraph.base.guard():
+        with paddle.base.dygraph.base.guard():
             x = paddle.to_tensor(self.x)
             y = paddle.nn.functional.gumbel_softmax(x, hard=True)
             out_np = np.array(y)
@@ -255,8 +255,8 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
         paddle.disable_static()
 
         def test_Variable():
-            x1 = fluid.create_lod_tensor(
-                np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.zeros((100, 784)), [[10, 10, 10, 70]], base.CPUPlace()
             )
             paddle.nn.functional.gumbel_softmax(x1)
 

@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-from paddle import fluid
+from paddle import base
 
 
 class TestShuffleBatchOpBase(OpTest):
@@ -33,7 +33,7 @@ class TestShuffleBatchOpBase(OpTest):
     def _get_places(self):
         # NOTE: shuffle_batch is not supported on Windows
         if os.name == 'nt':
-            return [fluid.CPUPlace()]
+            return [base.CPUPlace()]
         return super()._get_places()
 
     def setUp(self):

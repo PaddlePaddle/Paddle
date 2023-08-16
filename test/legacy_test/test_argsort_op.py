@@ -18,11 +18,11 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, grad_var_name
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.executor import Executor
+from paddle.base.framework import Program, grad_var_name
 
 np.random.seed(123)
 paddle.enable_static()
@@ -85,7 +85,7 @@ class TestArgsortOpCPU(unittest.TestCase):
             self.input_shape, self.axis, self.descending, self.dtype
         )
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
                 name="x", shape=[-1] + list(self.input_shape), dtype=self.dtype
             )
@@ -141,7 +141,7 @@ class TestArgsortOpCPU(unittest.TestCase):
     def test_backward(self, numeric_grad_delta=1e-5, max_relative_error=1e-7):
         self.check_forward()
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             append_backward(self.loss)
 
         ana_grad = [np.array(x) for x in self.backward()]
@@ -356,14 +356,14 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def test_error(self):
-        def test_fluid_var_type():
-            with fluid.program_guard(fluid.Program()):
+        def test_base_var_type():
+            with base.program_guard(base.Program()):
                 x = [1]
                 output = paddle.argsort(x=x)
-            self.assertRaises(TypeError, test_fluid_var_type)
+            self.assertRaises(TypeError, test_base_var_type)
 
         def test_paddle_var_type():
-            with fluid.program_guard(fluid.Program()):
+            with base.program_guard(base.Program()):
                 x = [1]
                 output = paddle.argsort(x=x)
             self.assertRaises(TypeError, test_paddle_var_type)
@@ -393,7 +393,7 @@ class TestArgsort(unittest.TestCase):
         self.data = np.random.rand(*self.input_shape)
 
     def test_api(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
             )
@@ -401,7 +401,7 @@ class TestArgsort(unittest.TestCase):
             output = paddle.argsort(input, axis=self.axis)
             output2 = paddle.argsort(input, axis=self.axis, descending=True)
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             result, result2 = exe.run(
                 feed={'input': self.data}, fetch_list=[output, output2]
             )

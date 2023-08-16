@@ -89,8 +89,8 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
             self.out = np.multiply(self.x, self.y)
             self.inputs = {
-                'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+                'X': OpTest.np_dtype_to_base_dtype(self.x),
+                'Y': OpTest.np_dtype_to_base_dtype(self.y),
             }
             self.outputs = {'Out': self.out}
             self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}

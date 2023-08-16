@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.core import VarDesc
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.layer_function_generator import templatedoc
+from paddle.base.core import VarDesc
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
+from paddle.base.framework import Variable, in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.layers.layer_function_generator import templatedoc
 
 __all__ = []
 
@@ -38,7 +38,7 @@ def sequence_conv(
     r"""
 
     Note:
-        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+        Only receives Tensor as input. If your input is Tensor, please use conv2d Op.(base.layers.** :ref:`api_base_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -108,9 +108,9 @@ def sequence_conv(
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
             is padded at the end of each input sequence. Default: None.
         bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
-            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            default bias parameter property is used. See usage for details in :ref:`api_base_ParamAttr` .
         param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            default weight parameter property is used. See usage for details in :ref:`api_base_ParamAttr` .
         act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
             sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
@@ -730,7 +730,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         .. code-block:: python
 
             import paddle
-            from paddle import fluid
+            from paddle import base
             paddle.enable_static()
             import numpy as np
 
@@ -739,11 +739,11 @@ def sequence_expand(x, y, ref_level=-1, name=None):
                         dtype='float32', lod_level=1)
             out = paddle.static.nn.sequence_expand(x=x, y=y, ref_level=0)
 
-            exe = paddle.static.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(base.CPUPlace())
             place = paddle.CPUPlace()
 
             np_data = np.array([[1], [2], [3], [4]]).astype('float32')
-            x_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2]], place)
+            x_lod_tensor = base.create_lod_tensor(np_data, [[2, 2]], place)
             print(x_lod_tensor)
             #lod: [[0, 2, 4]]
             #    dim: 4, 1
@@ -752,7 +752,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    data: [1 2 3 4]
 
             np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-        y_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
+        y_lod_tensor = base.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
             print(y_lod_tensor)
             #lod: [[0, 2, 4][0, 3, 6, 7, 8]]
             #    dim: 8, 1
@@ -760,7 +760,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    dtype: int64_t
             #    data: [0 0 1 1 1 1 1 0]
 
-            out_main = exe.run(fluid.default_main_program(),
+            out_main = exe.run(base.default_main_program(),
                             feed={'x': x_lod_tensor, 'y': y_lod_tensor},
                             fetch_list=[out], return_numpy=False)
             print(out_main[0])
@@ -853,7 +853,7 @@ def sequence_expand_as(x, y, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle.base as base
             paddle.enable_static()
             import numpy as np
 
@@ -861,11 +861,11 @@ def sequence_expand_as(x, y, name=None):
             y = paddle.static.data(name='y', shape=[8, 1], dtype='float32', lod_level=1)
             out = paddle.static.nn.sequence_expand_as(x=x, y=y)
 
-            exe = fluid.Executor(fluid.CPUPlace())
-            place = fluid.CPUPlace()
+            exe = base.Executor(base.CPUPlace())
+            place = base.CPUPlace()
 
             np_data = np.array([[1], [2], [3], [4]]).astype('float32')
-            x_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2]], place)
+            x_lod_tensor = base.create_lod_tensor(np_data, [[2, 2]], place)
             print(x_lod_tensor)
             #lod: [[0, 2, 4]]
             #    dim: 4, 1
@@ -874,7 +874,7 @@ def sequence_expand_as(x, y, name=None):
             #    data: [1 2 3 4]
 
             np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-        y_lod_tensor = fluid.create_lod_tensor(np_data, [[3,3,1,1]], place)
+        y_lod_tensor = base.create_lod_tensor(np_data, [[3,3,1,1]], place)
             print(y_lod_tensor)
             #lod: [[0, 3, 6, 7, 8]]
             #    dim: 8, 1
@@ -882,7 +882,7 @@ def sequence_expand_as(x, y, name=None):
             #    dtype: int64_t
             #    data: [0 0 1 0 1 1 1 0]
 
-            out_main = exe.run(fluid.default_main_program(),
+            out_main = exe.run(base.default_main_program(),
                             feed={'x': x_lod_tensor, 'y': y_lod_tensor},
                             fetch_list=[out], return_numpy=False)
             print(out_main[0])
@@ -986,7 +986,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
             import paddle
             paddle.enable_static()
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy
 
             x = paddle.static.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
@@ -1072,7 +1072,7 @@ def sequence_unpad(x, length, name=None):
 
             import paddle
             paddle.enable_static()
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy
 
             # pad data
@@ -1418,7 +1418,7 @@ def sequence_reverse(x, name=None):
 
     Only supports Tensor as input. It will reverse each sequence for input Tensor.
     Currently it only supports 1-level Tensor. This operator is very useful when building a
-    reverse :ref:`api_fluid_layers_DynamicRNN` network.
+    reverse :ref:`api_base_layers_DynamicRNN` network.
 
     .. code-block:: text
 

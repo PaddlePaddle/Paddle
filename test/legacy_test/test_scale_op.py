@@ -21,8 +21,8 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import Program, program_guard
 
 
@@ -262,9 +262,9 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -293,9 +293,9 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

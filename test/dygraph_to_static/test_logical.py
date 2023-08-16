@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
 from paddle.utils import gast
 
@@ -172,7 +172,7 @@ class TestLogicalBase(unittest.TestCase):
         self.input = np.array([3]).astype('int32')
         self.place = (
             paddle.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
+            if base.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
         self._set_test_func()
@@ -184,7 +184,7 @@ class TestLogicalBase(unittest.TestCase):
 
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             result = self.dygraph_func(self.input)
             return result.numpy()
 

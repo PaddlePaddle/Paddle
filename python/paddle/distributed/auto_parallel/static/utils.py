@@ -22,7 +22,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
@@ -546,7 +546,7 @@ def _check_param_dict(param_dict):
                     "The type of key of 'param_dict' should be 'str', "
                     "but got '{}'.".format(str(type(name)))
                 )
-            if not isinstance(value, paddle.fluid.LoDTensor):
+            if not isinstance(value, paddle.base.LoDTensor):
                 raise TypeError(
                     "The type of value of 'param_dict' should be 'LoDTensor', "
                     "but got '{}'.".format(str(type(value)))
@@ -988,7 +988,7 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
 def _slice_parameter_with_dist_attr(param, dist_attr):
     """Slice parameter with distributed attribute"""
     param = (
-        np.array(param) if isinstance(param, paddle.fluid.LoDTensor) else param
+        np.array(param) if isinstance(param, paddle.base.LoDTensor) else param
     )
     dims_mapping = dist_attr["dims_mapping"]
     process_shape = dist_attr["process_shape"]
@@ -2401,7 +2401,7 @@ def _dygraph_guard_(func):
         if paddle.framework.in_dynamic_mode():
             return func(*args, **kwargs)
         else:
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 return func(*args, **kwargs)
 
     return __impl__

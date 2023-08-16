@@ -19,14 +19,14 @@ import numpy
 
 import paddle
 from paddle import Tensor
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.framework import (
+from paddle.base import core
+from paddle.base.data_feeder import check_type
+from paddle.base.framework import (
     Variable,
     default_main_program,
     in_dygraph_mode,
 )
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 
 __all__ = [  # noqa
     'LRScheduler',

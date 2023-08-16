@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 SEED = 2020
 np.random.seed(SEED)
@@ -35,9 +35,9 @@ def function(x: A) -> A:
 class TestTransformWhileLoop(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
@@ -52,9 +52,9 @@ class TestTransformWhileLoop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             # Set the input of dyfunc to Tensor
-            tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
+            tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
             else:

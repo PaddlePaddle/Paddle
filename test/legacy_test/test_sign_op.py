@@ -20,8 +20,8 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestSignOp(OpTest):
@@ -99,7 +99,7 @@ class TestSignOpError(unittest.TestCase):
 
 class TestSignAPI(unittest.TestCase):
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([-1.0, 0.0, -0.0, 1.2, 1.5], dtype='float64')
             x = paddle.to_tensor(np_x)
             z = paddle.sign(x)
@@ -151,9 +151,9 @@ class TestSignDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -182,9 +182,9 @@ class TestSignTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

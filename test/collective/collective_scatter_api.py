@@ -19,7 +19,7 @@ sys.path.append("../legacy_test")
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -29,7 +29,7 @@ class TestCollectiveScatterAPI(TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata",
                 shape=[10, 1000],

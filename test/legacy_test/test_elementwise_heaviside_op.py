@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def Heaviside_grad(x, y, dout, astype="float16", is_bfloat16=False):

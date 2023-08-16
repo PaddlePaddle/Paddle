@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import static
-from paddle.fluid import dygraph
+from paddle.base import dygraph
 
 paddle.enable_static()
 

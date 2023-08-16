@@ -19,7 +19,7 @@ import numpy as np
 from eager_op_test import OpTest
 from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -148,11 +148,11 @@ class TestConv2DInt8Op(TestConv2DOp):
         output = np.round(output).astype(self.dsttype)
 
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            'Input': OpTest.np_dtype_to_base_dtype(input.astype(self.srctype)),
+            'Filter': OpTest.np_dtype_to_base_dtype(filter),
         }
         if self.fuse_residual:
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 input_residual
             )
 

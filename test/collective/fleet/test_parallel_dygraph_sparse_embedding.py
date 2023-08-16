@@ -22,7 +22,7 @@ from parallel_dygraph_sparse_embedding import TestSparseEmbedding
 from spawn_runner_base import TestDistSpawnRunner
 from test_dist_base import TestDistBase
 
-from paddle import fluid
+from paddle import base
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -34,7 +34,7 @@ class TestParallelDygraphSparseEmdedding(TestDistBase):
         self._dygraph = True
 
     def test_sparse_embedding(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath(
                     "../../legacy_test/parallel_dygraph_sparse_embedding.py"
@@ -52,7 +52,7 @@ class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
         self._dygraph = True
 
     def test_sparse_embedding_fp64(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath(
                     "../../legacy_test/parallel_dygraph_sparse_embedding_fp64.py"
@@ -65,7 +65,7 @@ class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
 
 class TestParallelDygraphSparseEmdeddingSpawn(TestDistSpawnRunner):
     def test_sparse_embedding_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(
                 test_class=TestSparseEmbedding, delta=1e-5
             )

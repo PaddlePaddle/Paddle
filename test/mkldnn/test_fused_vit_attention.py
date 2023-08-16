@@ -17,7 +17,7 @@ import numpy as np
 
 import paddle
 import paddle.incubate
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -54,7 +54,7 @@ def test_fuse_resenet_unit():
 
     graph = core.Graph(program.desc)
     core.get_pass("self_attention_fuse_pass").apply(graph)
-    after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+    after_program = paddle.base.framework.IrGraph(graph).to_program()
     exe = paddle.static.Executor(place)
     exe.run(startup_program)
 

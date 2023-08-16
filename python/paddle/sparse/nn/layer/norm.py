@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import no_grad
 from paddle.nn.layer.norm import _BatchNormBase
 

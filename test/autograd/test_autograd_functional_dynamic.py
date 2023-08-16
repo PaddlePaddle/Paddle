@@ -212,7 +212,7 @@ class TestVJP(TestAutogradFunctional):
     def test_input_single_tensor(self):
         self.assertIsInstance(
             paddle.incubate.autograd.vjp(paddle.tanh, paddle.rand((3, 4)))[1],
-            paddle.fluid.framework.Variable,
+            paddle.base.framework.Variable,
         )
 
 

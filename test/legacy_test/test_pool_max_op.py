@@ -24,7 +24,7 @@ from eager_op_test import (
 from testsuite import create_op
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):

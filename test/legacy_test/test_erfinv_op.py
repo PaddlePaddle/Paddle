@@ -23,7 +23,7 @@ from eager_op_test import (
 from scipy.special import erfinv
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 np.random.seed(0)

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.jit.dy2static.utils import BaseNodeVisitor, index_in_list
 from paddle.jit.dy2static.variable_trans_func import create_bool_node
 from paddle.utils import gast

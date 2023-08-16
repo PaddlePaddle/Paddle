@@ -19,8 +19,8 @@ from eager_op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 def loss_wrapper(
@@ -321,15 +321,15 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
 
                 def test_Variable():
                     # the input of sigmoid_cross_entropy_with_logits must be Variable.
-                    x1 = fluid.create_lod_tensor(
+                    x1 = base.create_lod_tensor(
                         np.array([-1, 3, 5, 5]),
                         [[1, 1, 1, 1]],
-                        fluid.CPUPlace(),
+                        base.CPUPlace(),
                     )
-                    lab1 = fluid.create_lod_tensor(
+                    lab1 = base.create_lod_tensor(
                         np.array([-1, 3, 5, 5]),
                         [[1, 1, 1, 1]],
-                        fluid.CPUPlace(),
+                        base.CPUPlace(),
                     )
                     paddle.nn.functional.binary_cross_entropy_with_logits(
                         x1, lab1
