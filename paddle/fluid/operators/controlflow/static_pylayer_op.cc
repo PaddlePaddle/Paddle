@@ -169,6 +169,14 @@ class StaticPyLayerBackwardOp : public StaticPyLayerOp {
       inside_grads.emplace_back(framework::GradVarName(in));
     }
 
+    PADDLE_ENFORCE_EQ(
+        inside_grads.size(),
+        outside_grads.size(),
+        platform::errors::InvalidArgument(
+            "Mismatch inside_grads.size(): %d, and outside_grads.size(): %d",
+            inside_grads.size(),
+            outside_grads.size()));
+
     auto *scope_var = scope.FindVar(Input(StaticPyLayerOp::kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
