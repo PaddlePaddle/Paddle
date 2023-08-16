@@ -16,7 +16,6 @@ import numpy as np
 
 import paddle
 from paddle import static
-from paddle.static.nn import static_pylayer
 
 paddle.enable_static()
 
@@ -39,7 +38,7 @@ exe = paddle.static.Executor(place)
 with static.program_guard(train_program, start_program):
     data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
     data.stop_gradient = False
-    ret = static_pylayer.do_static_pylayer(forward_fn, [data], backward_fn)
+    ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
     loss = paddle.mean(ret)
     sgd_opt = paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
     print(static.default_main_program())
