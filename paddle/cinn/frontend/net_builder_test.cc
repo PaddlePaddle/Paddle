@@ -76,6 +76,16 @@ TEST(net_build, basic) {
   }
 }
 
+TEST(net_build, TestTransValidVarName) {
+  std::string a_val_id = "A";
+  std::string b_val_id = "B___";
+  frontend::NetBuilder builder("net_builder");
+  auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "@A");
+  auto b = builder.CreateInput(Float(32), {64}, "B/");
+  EXPECT_EQ(a.id(), a_val_id);
+  EXPECT_EQ(b.id(), b_val_id);
+}
+
 TEST(net_build, program_execute_multi_elementwise_add) {
   auto program = CreateAddProgram();
 #ifdef CINN_WITH_CUDA

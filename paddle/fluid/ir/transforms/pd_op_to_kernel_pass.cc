@@ -309,8 +309,12 @@ phi::KernelKey GetKernelKey(
       if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
         type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
       } else if (input_type.isa<ir::VectorType>()) {
-        type = input_type.dyn_cast<ir::VectorType>()[0]
-                   .dyn_cast<dialect::AllocatedDenseTensorType>();
+        if (!input_type.dyn_cast<ir::VectorType>().empty()) {
+          type = input_type.dyn_cast<ir::VectorType>()[0]
+                     .dyn_cast<dialect::AllocatedDenseTensorType>();
+        } else {
+          continue;
+        }
       }
 
       // fake tensor here

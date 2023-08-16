@@ -317,29 +317,6 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
       expr->As<ir::Block>()->stmts = stmts;
     }
   }
-
-  void Visit(const IfThenElse* op, Expr* expr) override {
-    if (op->condition.As<ir::UIntImm>()) {
-      if (op->condition.as_bool() == false) {
-        VLOG(6) << "Simplify ir::IfThenElse false block";
-        if (expr->As<IfThenElse>()->false_case.defined()) {
-          *expr = expr->As<IfThenElse>()->false_case;
-        } else {
-          *expr = ir::Block::Make({});
-        }
-      } else {
-        if (expr->As<IfThenElse>()->true_case.defined()) {
-          VLOG(6) << "Simplify ir::IfThenElse true block";
-          *expr = expr->As<IfThenElse>()->true_case;
-        } else {
-          *expr = ir::Block::Make({});
-        }
-      }
-      ir::IRMutator<ir::Expr*>::Visit(expr, expr);
-      return;
-    }
-    ir::IRMutator<ir::Expr*>::Visit(op, expr);
-  }
 };
 
 struct SimplifyForLoopsMutator : public ir::IRMutator<> {

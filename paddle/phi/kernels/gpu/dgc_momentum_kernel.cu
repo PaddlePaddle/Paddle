@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/dgc_momentum_op.h"
+#include "paddle/phi/kernels/dgc_momentum_kernel.h"
 
-namespace ops = paddle::operators;
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/dgc_momentum_kernel_impl.h"
 
-PD_REGISTER_STRUCT_KERNEL(
-    dgc_momentum, GPU, ALL_LAYOUT, ops::DGCMomentumKernel, float) {}
+PD_REGISTER_KERNEL(
+    dgc_momentum, GPU, ALL_LAYOUT, phi::DGCMomentumKernel, float) {}
