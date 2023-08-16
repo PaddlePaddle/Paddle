@@ -167,17 +167,97 @@ def _append_grad_suffix_(name):
     return name + core.grad_var_suffix()
 
 
-def do_static_pylayer(
-    forward_fn, inputs, backward_fn, name=None, return_names=None
+#TODO(MarioLulab): Now the backward block will be created whether or not 
+# a gradient is required. This will be fixed later.
 ):
-    if in_dygraph_mode():
-        raise NotImplementedError()
+    """
+    This API returns ``forward_fn(inputs)``, and two sub-block are created based on 
+    the logic of ``forward_fn`` and ``backward_fn``, with the operator ``static_pylayer``
+    holding information about the two blocks. 
+    
+    ``forward_fn`` and ``backward_fn`` should return same nest structure of tensors
+    or both return ``None`` if user doens't like to return anything. A nest
+    structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
+    list of tensors.
+    
+    Note:
+        1. User needs to keep the number of inputs to ``forward_fn`` the same as the 
+        number of outputs to ``backward_fn``, and the number of outputs to ``forward_fn`` 
+        the same as the number of inputs to ``backward_fn``.
+    
+        2. This API can only be used under static graph mode.
+            
+    Args:
+        forward_fn (callable): A callable to be performed in forward pass
+        inputs (list[Variable]): The list of if input Variable to the ``forward_fn`` 
+        backward_fn (callable): A callable to be performed in backward pass
+        name (str, optional ): The default value is ``None`` . Normally users
+            don't have to set this parameter.
 
+    Returns:
+        Variable|list(Variable)|tuple(Variable): returns the output of ``forward_fn(inputs)``
+    
+    Examples:
+        .. code-block: python
+            
+            import paddle
+            import numpy as np
+
+            #
+            # pseudocode:
+            # y = exp(x)
+            # dx = 2 * exp(dy)
+            #
+
+            paddle.enable_static()
+
+            def forward_fn(x):
+                return paddle.exp(x)
+
+            def backward_fn(dy):
+                return 2 * paddle.exp(dy)
+
+            main_program = paddle.static.Program()
+            start_program = paddle.static.Program()
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            with paddle.static.program_guard(main_program, start_program):
+                data = paddle.static.data(name="X", shape=[None, 5], dtype="float32")
+                data.stop_gradient = False
+                ret = paddle.static.nn.static_pylayer(forward_fn, [data], backward_fn)
+                data_grad = paddle.static.gradients([ret], data)[0]
+
+            exe = paddle.static.Executor(place)
+            exe.run(start_program)
+            x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32)
+            x, x_grad, y = exe.run(
+                main_program,
+                feed={"X": x},
+                fetch_list=[
+                    data.name,
+                    data_grad.name,
+                    ret.name
+                ],
+            )
+            # x is Numpy
+            # x.data = [[1.0, 2.0, 3.0, 4.0, 5.0]]
+            # x.shape = [1, 5]
+            # y is Numpy
+            # y.data = [[2.7182817, 7.389056, 20.085537, 54.59815, 148.41316]]
+            # y.shape = [1, 5]
+            # x_grad is Numpy
+            # x_grad.data = [[5.4365635, 5.4365635, 5.4365635, 5.4365635, 5.4365635]]
+            # x_grad.shape = [1, 5]     
+    """
+    assert(
+        in_dygraph_mode() is False
+    ), "please use PyLayer instead of static_pylayer in dygraph mode"
+    
     check_type(name, "name", (str, type(None)), "fluid.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
 
-    # only support position args now
     assert forward_fn is not None and callable(forward_fn)
     assert isinstance(inputs, list)
     static_pylayer_block = StaticPyLayerBlock(inputs)
