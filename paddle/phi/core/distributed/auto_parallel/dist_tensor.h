@@ -19,10 +19,14 @@
 
 namespace phi {
 
-namespace distributed {
-namespace auto_parallel {
+class DenseTensorUtils;
 
+namespace distributed {
+
+namespace auto_parallel {
 class TensorDistAttr;
+}
+using auto_parallel::TensorDistAttr;
 
 class DistTensor final
     : public phi::TensorBase,
@@ -30,7 +34,7 @@ class DistTensor final
  public:
   /// \brief Construct a dist tensor and allocate space.
   /// \param a The allocator used to allocate space.
-  /// \param meta The meta data of dense tensor.
+  /// \param meta The meta data of dist tensor.
   DistTensor(Allocator* a,
              const DenseTensorMeta& meta,
              const std::shared_ptr<TensorDistAttr>& dist_attr)
@@ -53,10 +57,10 @@ class DistTensor final
   }
 
   DistTensor(const std::shared_ptr<phi::DenseTensor>& dense_tensor,
+             const DenseTensorMeta& meta,
              const std::shared_ptr<TensorDistAttr>& dist_attr)
-      : dist_attr_(dist_attr) {
+      : meta_(meta), dist_attr_(dist_attr) {
     value_ = std::make_unique<DenseTensor>(*dense_tensor);
-    set_meta(dense_tensor->meta());
   }
 
   ~DistTensor() = default;
@@ -120,11 +124,12 @@ class DistTensor final
   void set_meta(const DenseTensorMeta& meta);
 
  private:
+  friend class phi::DenseTensorUtils;
+
   DenseTensorMeta meta_;
   std::shared_ptr<TensorDistAttr> dist_attr_{nullptr};
   std::unique_ptr<DenseTensor> value_{nullptr};
 };
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

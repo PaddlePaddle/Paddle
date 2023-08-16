@@ -24,7 +24,6 @@ gather_srcs(
   buffer_assign.cc
   replace_const_param_to_integer.cc
   cast_simplify.cc
-  if_simplify.cc
   lower_intrin.cc
   cast_bool_to_int8.cc
   collect_undefined_vars.cc
@@ -60,7 +59,6 @@ cinn_cc_test(test_optimize SRCS optimize_test.cc DEPS cinncore)
 cinn_cc_test(test_cache_read_write_replace SRCS
              cache_read_write_replace_test.cc DEPS cinncore)
 cinn_cc_test(test_cast_simplify SRCS cast_simplify_test.cc DEPS cinncore)
-cinn_cc_test(test_if_simplify SRCS if_simplify_test.cc DEPS cinncore)
 cinn_cc_test(test_remove_schedule_block SRCS remove_schedule_block_test.cc DEPS
              cinncore)
 cinn_cc_test(test_unroll_loops SRCS unroll_loops_test.cc DEPS cinncore)

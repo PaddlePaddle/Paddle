@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import itertools
+import os
 from collections import OrderedDict
 
 import numpy as np
 
 import paddle
+from paddle.framework import base as imperative_base
 from paddle.framework import core
+
+
+class HOOK_ACTION:
+    ALL_REDUCE = 0
+    REDUCE = 1
+
 
 alignment = {
     "gpu": 256,
@@ -101,23 +109,209 @@ def flatten_dense_tensors(
         return grad_storage
 
 
-def obtain_storage(parameters, use_main_grad, clip, dist):
+def bw_hook_func(buffer, param):
+    @paddle.autograd.no_grad()
+    def fused_comm(*_):
+        buffer.add_grad(param)
+
+    return fused_comm
+
+
+class FusedCommBuffer:
+    def __init__(
+        self,
+        id,
+        params,
+        comm_group,
+        acc_steps=1,
+        act=None,
+        dst=-1,
+        use_main_grad=None,
+        fuse_param=False,
+        scale_after_comm=True,
+    ):
+        self._id = id
+        self._params = params
+        self._acc_steps = acc_steps
+        self._comm_group = comm_group
+        self._scale_after_comm = scale_after_comm
+        self._fuse_param = fuse_param
+
+        self.use_main_grad = (
+            use_main_grad
+            if use_main_grad is not None
+            else hasattr(self._params[0], "main_grad")
+        )
+
+        self._task = None
+        self._params_step_dict = {}
+        self._params_checked_in = 0
+        self._grads_to_addr = {}
+
+        self._act = act
+        if self._act == HOOK_ACTION.ALL_REDUCE:
+            assert dst == -1
+        elif self._act == HOOK_ACTION.REDUCE:
+            assert dst != -1
+        else:
+            raise ValueError(
+                "The act should be allreudce for dp or reduce for sharding."
+            )
+        self._dst = dst
+
+        self._init_step_dict()
+
+        if self._fuse_param:
+            self.param_storage, self.grad_storage = flatten_dense_tensors(
+                self._params,
+                use_main_grad=use_main_grad,
+                fuse_param=True,
+                warp_buffer=True,
+            )
+            self.param_storage = self.param_storage.buffer
+            self.grad_storage = self.grad_storage.buffer
+        else:
+            self.param_storage = None
+            self.grad_storage = flatten_dense_tensors(
+                self._params,
+                use_main_grad=self.use_main_grad,
+                fuse_param=False,
+                warp_buffer=False,
+            ).buffer
+
+        self._record_addr()
+
+    def _record_addr(self):
+        for param in self._params:
+            addr = (
+                param.main_grad.data_ptr()
+                if self.use_main_grad
+                else param.grad.data_ptr()
+            )
+            self._grads_to_addr[param.name] = addr
+
+    def _init_step_dict(self):
+        for p in self._params:
+            self._params_step_dict[p.name] = 0
+
+    def _reset_params_checked_in(self):
+        self._task = None
+        self._init_step_dict()
+        self._params_checked_in = 0
+
+    @property
+    def _all_params_checked_in(self):
+        return (
+            len(self._params) == self._params_checked_in
+            and len(self._params_step_dict) == 0
+        )
+
+    def add_grad(self, param, use_comm=True):
+        assert param.name in self._params_step_dict
+        current_ptr = (
+            param.main_grad.data_ptr()
+            if self.use_main_grad
+            else param.grad.data_ptr()
+        )
+        if self._grads_to_addr[param.name] != current_ptr:
+            raise ValueError(
+                "The address of the grad/main_grad of the param has been changed during training, "
+                "which is not allowed for dp/sharding overlap with pp. "
+                "This may be caused by some non-inplace operations on the grad/main_grad. "
+                "Please use the inplace version of the operations or disable the overlapping."
+            )
+
+        self._params_step_dict[param.name] += 1
+
+        if self._params_step_dict[param.name] == self._acc_steps:
+            self._params_checked_in += 1
+            self._params_step_dict.pop(param.name)
+
+        if self._all_params_checked_in and use_comm:
+            self.comm_grads()
+
+    @imperative_base.no_grad
+    def comm_grads(self):
+        assert self._all_params_checked_in, (
+            "Not all params checked in."
+            "Parameter number: {}, Check-in number: {}".format(
+                len(self._params), self._params_checked_in
+            )
+        )
+
+        if not self._scale_after_comm:
+            scale_factor = 1.0 / self._comm_group.nranks
+            self.grad_storage.scale_(scale_factor)
+
+        if self._act == HOOK_ACTION.ALL_REDUCE:
+            task = paddle.distributed.all_reduce(
+                self.grad_storage, group=self._comm_group, sync_op=False
+            )
+
+        elif self._act == HOOK_ACTION.REDUCE:
+            task = paddle.distributed.reduce(
+                self.grad_storage,
+                dst=self._dst,
+                group=self._comm_group,
+                sync_op=False,
+            )
+
+        self._task = task
+
+    @imperative_base.no_grad
+    def scale_grads(self):
+        assert self._task is not None, "Task is not initialized."
+        self._task.wait()
+
+        if self._scale_after_comm:
+            scale_factor = 1.0 / self._comm_group.nranks
+            self.grad_storage.scale_(scale_factor)
+
+        self._reset_params_checked_in()
+
+
+def obtain_storage(
+    parameters,
+    use_main_grad=False,
+    clip=True,
+    dist=False,
+    fuse_param=True,
+    comm_overlap=False,
+    act=None,
+    comm_group=None,
+    dst=-1,
+    acc_steps=1,
+    scale_after_comm=False,
+):
     if len(parameters) < 1:
-        return []
+        return [], []
 
     var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
     storage = []
+    buffers = []
     for group_idx, parameters in var_groups.items():
-        param_storage, grad_storage = flatten_dense_tensors(
+        comm_buffer = FusedCommBuffer(
+            group_idx,
             parameters,
+            comm_group=comm_group,
+            acc_steps=acc_steps,
+            act=act,
+            dst=dst,
             use_main_grad=use_main_grad,
-            fuse_param=True,
-            warp_buffer=True,
+            fuse_param=fuse_param,
+            scale_after_comm=scale_after_comm,
         )
-        param_storage.buffer.need_clip = clip
-        param_storage.buffer.is_distributed = dist
-        storage.append(param_storage.buffer)
-    return storage
+        if fuse_param:
+            param_buffer = comm_buffer.param_storage
+            param_buffer.need_clip = clip
+            param_buffer.is_distributed = dist
+            storage.append(param_buffer)
+        if comm_overlap:
+            for param in parameters:
+                param._register_backward_hook(bw_hook_func(comm_buffer, param))
+            buffers.append(comm_buffer)
+
+    return storage, buffers
 
 
 def filter_params(params, is_fp32, is_distributed, need_clip):
@@ -155,7 +349,38 @@ def filter_params(params, is_fp32, is_distributed, need_clip):
     return params, dtype
 
 
-def fused_parameters(parameters, use_main_grad):
+def fused_parameters(
+    parameters,
+    use_main_grad=False,
+    fuse_param=True,
+    comm_overlap=False,
+    comm_group=None,
+    dst=-1,
+    acc_step=1,
+    scale_after_comm=False,
+):
+    """
+    Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
+    :param parameters: all parameters to be fused.
+    :param use_main_grad: does the gradient use main grad or not
+    :param comm_overlap: enable comm overlap or not
+    :param comm_group: the comm group for comm overlap
+    :param dst: the dst for comm overlap
+    :param acc_step: acc steps, using for comm overlap
+    :param fuse_param: fuse param or not
+    :param scale_after_comm: if enable comm overlap, specify the location of grad scale
+    :return: param storage if fused, comm buffers is comm overlap
+    """
+    g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
+    act = (
+        HOOK_ACTION.ALL_REDUCE if not g_shard_use_reduce else HOOK_ACTION.REDUCE
+    )
+    if comm_overlap:
+        assert comm_group is not None
+    if act == HOOK_ACTION.REDUCE:
+        assert dst != -1
+    elif act == HOOK_ACTION.ALL_REDUCE:
+        dst = -1
     param_groups = []
     attrs = []
 
@@ -178,6 +403,7 @@ def fused_parameters(parameters, use_main_grad):
 
     decay_fused = []
     all_fused = []
+    all_buffers = []
     for params, attr in zip(param_groups, attrs):
         decay_params = []
         other_params = []
@@ -190,14 +416,36 @@ def fused_parameters(parameters, use_main_grad):
 
         is_distributed = attr[1]
         need_clip = attr[2]
-        decay = obtain_storage(
-            decay_params, use_main_grad, need_clip, is_distributed
+        decay, decay_buffers = obtain_storage(
+            decay_params,
+            use_main_grad=use_main_grad,
+            clip=need_clip,
+            dist=is_distributed,
+            fuse_param=fuse_param,
+            comm_overlap=comm_overlap,
+            act=act,
+            comm_group=comm_group,
+            dst=dst,
+            acc_steps=acc_step,
+            scale_after_comm=scale_after_comm,
         )
-        other = obtain_storage(
-            other_params, use_main_grad, need_clip, is_distributed
+        other, other_buffers = obtain_storage(
+            other_params,
+            fuse_param=fuse_param,
+            comm_overlap=comm_overlap,
+            use_main_grad=use_main_grad,
+            clip=need_clip,
+            dist=is_distributed,
+            act=act,
+            comm_group=comm_group,
+            dst=dst,
+            acc_steps=acc_step,
+            scale_after_comm=scale_after_comm,
         )
         decay_fused += decay
         all_fused += decay
         all_fused += other
+        all_buffers += decay_buffers
+        all_buffers += other_buffers
 
-    return decay_fused, all_fused
+    return decay_fused, all_fused, all_buffers

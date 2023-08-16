@@ -71,6 +71,8 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
+void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
@@ -733,5 +735,7 @@ void QuantForCompressInferMeta(const MetaTensor& x,
                                const std::string& layout,
                                MetaTensor* out,
                                MetaTensor* scale);
+
+void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
 }  // namespace phi

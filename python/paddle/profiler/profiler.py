@@ -237,7 +237,7 @@ def export_chrome_tracing(
             with profiler.Profiler(
                     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
                     scheduler = (3, 10),
-                    on_trace_ready=profiler.export_protobuf('./log')) as p:
+                    on_trace_ready=profiler.export_chrome_tracing('./log')) as p:
                 for iter in range(10):
                     #train()
                     p.step()

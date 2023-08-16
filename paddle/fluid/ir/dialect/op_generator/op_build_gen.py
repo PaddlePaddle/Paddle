@@ -65,7 +65,7 @@ def GenBuildInputArgsStr(
                         ]
                         if (
                             op_attribute_build_arg_type_list[attr_idx]
-                            != "std::string"
+                            != "const std::string&"
                         ):
                             if (
                                 default_value[0] == "'"
@@ -106,7 +106,7 @@ def GenBuildInputArgsStr(
                             op_non_mutable_attribute_build_arg_type_list[
                                 attr_idx
                             ]
-                            != "std::string"
+                            != "const std::string&"
                         ):
                             if (
                                 default_value[0] == "'"

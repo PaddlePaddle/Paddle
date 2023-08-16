@@ -69,24 +69,20 @@ TEST(StandaloneExecutor, run) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(place, std::move(kernel_program), &scope);
-  VLOG(0) << "&test_core" << &test_core;
-  VLOG(0) << "&test_core.impl" << test_core.Impl();
-  VLOG(0) << "&test_core.impl.cast"
-          << reinterpret_cast<NewIRInterpreter*>(
-                 const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
 
-  test_core.BetaRun({});
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string prefix_str = os.str();
+  std::string out_name = os.str() + "_inner_var_2";
+  test_core.SetSkipGcVars({out_name});
+
+  test_core.Run({});
+
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_2")->Get<phi::DenseTensor>()
-          : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_2")
-                ->Get<phi::DenseTensor>();
+          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
@@ -114,19 +110,20 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
 
   auto place = platform::CPUPlace();
   Scope scope;
-  InterpreterCore test_core(place, std::move(kernel_program), &scope);
-  test_core.BetaRun({});
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
 
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string prefix_str = os.str();
+  std::string out_name = os.str() + "_inner_var_0";
+  test_core.SetSkipGcVars({out_name});
+
+  test_core.Run({});
+
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
-          : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_0")
-                ->Get<phi::DenseTensor>();
+          ? scope.FindVar(out_name)->Get<phi::DenseTensor>()
+          : test_core.local_scope()->FindVar(out_name)->Get<phi::DenseTensor>();
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
