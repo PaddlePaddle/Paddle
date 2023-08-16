@@ -22,7 +22,6 @@
 
 namespace paddle {
 namespace primitive {
-namespace experimental {
 
 class DescTensor : public phi::ExtendedTensor,
                    public phi::TypeInfoTraits<phi::TensorBase, DescTensor> {
@@ -38,18 +37,21 @@ class DescTensor : public phi::ExtendedTensor,
   int64_t numel() const override { return product(dims()); }
 
   DataType dtype() const override {
-    return paddle::dialect::TransToPhiDataType(value_.type());
+    return paddle::dialect::TransToPhiDataType(
+        value_.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype());
   }
 
   ir::Value getValue() const { return value_; }
+
+  const phi::Place& place() const override { return place_; }
 
   bool initialized() const override { return value_.impl() != nullptr; }
 
  private:
   ir::Value value_;
   mutable phi::DDim dims_;
+  phi::Place place_;
 };
 
-}  // namespace experimental
 }  // namespace primitive
 }  // namespace paddle

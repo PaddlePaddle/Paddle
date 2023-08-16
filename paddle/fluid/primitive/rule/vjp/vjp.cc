@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
-#include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/static_backend.h"
+#include "paddle/fluid/primitive/rule/vjp/details.h"
+#include "paddle/fluid/primitive/rule/vjp/utils.h"
 #include "paddle/fluid/primitive/type/desc_tensor.h"
 #include "paddle/ir/core/operation.h"
 // TODO(wanghao107):
@@ -22,7 +24,6 @@
 
 namespace paddle {
 namespace primitive {
-namespace experimental {
 
 std::vector<std::vector<paddle::Tensor>> tanh_vjp(
     const Tensor& out,
@@ -31,19 +32,15 @@ std::vector<std::vector<paddle::Tensor>> tanh_vjp(
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       1, std::vector<paddle::Tensor>(1));
   // get tanh_grad res.
-  Tensor op_res =
-      backend::experimental::tanh_grad<primitive::experimental::DescTensor>(
-          out, grad_out);
+  Tensor op_res = backend::tanh_grad<DescTensor>(out, grad_out);
 
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
   // Support set stop_gradients for all ops.
-  ir::Operation* grad_op =
-      std::static_pointer_cast<primitive::experimental::DescTensor>(
-          op_res.impl())
-          ->getValue()
-          .dyn_cast<ir::OpResult>()
-          .owner();
+  ir::Operation* grad_op = std::static_pointer_cast<DescTensor>(op_res.impl())
+                               ->getValue()
+                               .dyn_cast<ir::OpResult>()
+                               .owner();
   uint32_t num_res = grad_op->num_results();
   std::vector<ir::Attribute> ir_stop_gradients(num_res);
   for (size_t i = 0; i < num_res; i++) {
@@ -77,18 +74,15 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
       1, std::vector<paddle::Tensor>(1));
   // get mean_grad res.
   Tensor op_res =
-      backend::experimental::mean_grad<primitive::experimental::DescTensor>(
-          x, out_grad, axis, keepdim, reduce_all);
+      backend::mean_grad<DescTensor>(x, out_grad, axis, keepdim, reduce_all);
 
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
   // Support set stop_gradients for all ops.
-  ir::Operation* grad_op =
-      std::static_pointer_cast<primitive::experimental::DescTensor>(
-          op_res.impl())
-          ->getValue()
-          .dyn_cast<ir::OpResult>()
-          .owner();
+  ir::Operation* grad_op = std::static_pointer_cast<DescTensor>(op_res.impl())
+                               ->getValue()
+                               .dyn_cast<ir::OpResult>()
+                               .owner();
   uint32_t num_res = grad_op->num_results();
   std::vector<ir::Attribute> ir_stop_gradients(num_res);
   for (size_t i = 0; i < num_res; i++) {
@@ -111,6 +105,49 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
   return vjp_res;
 }
 
-}  // namespace experimental
+std::vector<std::vector<paddle::Tensor>> divide_vjp(
+    const Tensor& x,
+    const Tensor& y,
+    const Tensor& out,
+    const Tensor& out_grad,
+    int axis,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  // TODO(wanghao107): support prim and no prim
+  // mode in this function when pd_api code_gen
+  // is ready;
+  VLOG(3)
+      << std::boolalpha << "IsBwdPrimEnabled: "
+      << paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled();
+  std::vector<std::vector<paddle::Tensor>> vjp_res(
+      2, std::vector<paddle::Tensor>(1));
+  // get divide_grad  prim mode res.
+  Tensor* dx = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
+  Tensor* dy = !stop_gradients[1][0] ? &vjp_res[0][0] : nullptr;
+  details::divide_grad<DescTensor>(x, y, out, out_grad, axis, dx, dy);
+
+  return vjp_res;
+}
+
+std::vector<std::vector<paddle::Tensor>> sum_vjp(
+    const Tensor& x,
+    const Tensor& out_grad,
+    const IntArray& axis,
+    bool keepdim,
+    bool reduce_all,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  // TODO(wanghao107): support prim and no prim
+  // mode in this function when pd_api code_gen
+  // is ready;
+  VLOG(3)
+      << std::boolalpha << "IsBwdPrimEnabled: "
+      << paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled();
+  std::vector<std::vector<paddle::Tensor>> vjp_res(
+      1, std::vector<paddle::Tensor>(1));
+  // get divide_grad  prim mode res.
+  Tensor* x_grad = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
+  details::sum_grad<DescTensor>(x, out_grad, axis, keepdim, reduce_all, x_grad);
+  return vjp_res;
+}
+
 }  // namespace primitive
 }  // namespace paddle

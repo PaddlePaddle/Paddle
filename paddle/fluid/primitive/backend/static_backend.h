@@ -23,7 +23,6 @@
 namespace paddle {
 namespace primitive {
 namespace backend {
-namespace experimental {
 
 using Tensor = paddle::Tensor;
 using IntArray = paddle::experimental::IntArray;
@@ -69,7 +68,7 @@ Tensor full(const IntArray& shape,
             phi::Place place = phi::CPUPlace());
 
 template <typename T>
-Tensor reshape(const Tensor& x, const IntArray& shape);
+std::tuple<Tensor, Tensor> reshape(const Tensor& x, const IntArray& shape);
 
 template <typename T>
 Tensor expand(const Tensor& x, const IntArray& shape);
@@ -77,7 +76,6 @@ Tensor expand(const Tensor& x, const IntArray& shape);
 template <typename T>
 Tensor tile(const Tensor& x, const IntArray& repeat_times = {});
 
-}  // namespace experimental
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

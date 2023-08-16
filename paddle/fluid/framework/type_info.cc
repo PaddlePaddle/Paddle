@@ -41,8 +41,7 @@ template class TypeInfoTraits<phi::TensorBase, paddle::framework::Strings>;
 template class TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>;
 template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
-template class TypeInfoTraits<phi::TensorBase,
-                              paddle::primitive::experimental::DescTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::primitive::DescTensor>;
 template class TypeInfoTraits<phi::TensorBase,
                               paddle::framework::VariableRefArray>;
 
