@@ -174,7 +174,7 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
         core._set_prim_all_enabled(True)
         core._set_prim_backward_blacklist("softmax", "exp")
         self.train()
-        core._set_prim_all_enabled(True)
+        core._set_prim_all_enabled(False)
 
 
 if __name__ == '__main__':
