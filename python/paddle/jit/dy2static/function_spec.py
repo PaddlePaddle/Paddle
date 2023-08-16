@@ -313,8 +313,9 @@ def _replace_value_with_input_spec(args):
 
 def _replace_to_input_spec_with_new_name(args, arg_names):
     assert len(args) == len(arg_names)
+    order_digit = len(str(len(arg_names) - 1))
     args_with_spec = []
-    for arg, name_prefix in zip(args, arg_names):
+    for order, (arg, name_prefix) in enumerate(zip(args, arg_names)):
         index = 0
         for idx, origin_input in enumerate(paddle.utils.flatten(arg)):
             if isinstance(origin_input, np.ndarray):
@@ -341,7 +342,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                     paddle.fluid.framework.Variable,
                 ),
             ):
-                input_var.name = "_jst." + name_prefix + "." + str(index)
+                input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{str(index)}"
                 index += 1
             args_with_spec.append(input_var)
     args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)
