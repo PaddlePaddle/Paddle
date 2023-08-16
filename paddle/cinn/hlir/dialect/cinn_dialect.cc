@@ -23,7 +23,7 @@ CinnDialect::CinnDialect(::ir::IrContext* context)
   this->initialize();
 }
 
-void CinnDialect::initialize() { }
+void CinnDialect::initialize() {}
 
 }  // namespace dialect
 }  // namespace cinn
