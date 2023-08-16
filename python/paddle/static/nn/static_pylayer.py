@@ -30,18 +30,19 @@ from .control_flow import (
 
 
 class StaticPyLayerBlockGuard(BlockGuard):
-    def __init__(self, block):
+    def __init__(self, block_manager):
         check_type(
-            block, "block", StaticPyLayerBlock, "StaticPyLayerBlockGuard"
+            block_manager, "block", StaticPyLayerBlock, "StaticPyLayerBlockGuard"
         )
-        super().__init__(block.helper.main_program)
-        self.block = block
+        super().__init__(block_manager.helper.main_program)
+        self.block_manager = block_manager
 
     def __enter__(self):
-        return super().__enter__()
+        super().__enter__()
+        return self.block_manager
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.block.complete()
+        self.block_manager.complete()
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -51,39 +52,34 @@ class StaticPyLayerBlock:
             check_type(each_input, "input", Variable, "StaticPyLayerBlock")
 
         self.helper = LayerHelper("static_pylayer_block", name=name)
+        self.fwd_op_id = None
+        self._forward_block_id = None
+        self._backward_block_id = None
+        self.var_old_to_new = dict()
 
     def block(self, is_backward_block=False):
         self.is_backward_block = is_backward_block
         return StaticPyLayerBlockGuard(self)
 
     @property
-    def inside_block_index(self):
-        return self.block_id
+    def forward_block_index(self):
+        return self._forward_block_id
+    
+    @property
+    def backward_block_index(self):
+        return self._backward_block_id
 
     @property
-    def op_index(self):
-        return self.op_id
+    def fwd_op_index(self):
+        return self.fwd_op_id
 
-    def complete(self):
+    def complete_forward_block(self):
         inside_block = self.helper.main_program.current_block()
         parent_block = self.helper.main_program.block(inside_block.parent_idx)
-
-        self.block_id = inside_block.idx
-
-        if self.is_backward_block:
-            # set OpRole to `backward`
-            for op in inside_block.ops:
-                op_role_attr_name = (
-                    core.op_proto_and_checker_maker.kOpRoleAttrName()
-                )
-                backward = core.op_proto_and_checker_maker.OpRole.Backward
-                op.desc._set_attr(op_role_attr_name, backward)
-
-            # exit, because there is no need to append 'static_pylayer' op
-            return
+        self._forward_block_id = inside_block.idx
 
         intermediate = set()  # inner_outputs
-        params = set()  # inner_inputs
+        params = set()        # inner_inputs
         params, intermediate = get_inputs_outputs_in_block(
             inside_block, params, intermediate, helper=self.helper
         )
@@ -112,7 +108,64 @@ class StaticPyLayerBlock:
                 'blocks': [inside_block],
             },
         )
-        self.op_id = static_pylayer_op.idx
+        
+        self.fwd_op_id = static_pylayer_op.idx
+
+    
+    def complete_backward_block(self):
+        inside_block = self.helper.main_program.current_block()
+        parent_block = self.helper.main_program.block(inside_block.parent_idx)
+
+        self._backward_block_id = inside_block.idx
+        # set OpRole to `backward`
+        for op in inside_block.ops:
+            op_role_attr_name = (
+                core.op_proto_and_checker_maker.kOpRoleAttrName()
+            )
+            backward = core.op_proto_and_checker_maker.OpRole.Backward
+            op.desc._set_attr(op_role_attr_name, backward)
+        inside_block._set_forward_block_idx(self.forward_block_index)
+        
+        
+        # NOTE: The reason of renaming the var name in the inside block is that 
+        # we need to associating `inside_grads` and `outside_grads` at 
+        # runtime `RunImpl` in static_pylayer op
+        for old_var_name, new_var_name in self.var_old_to_new.items():
+            # TODO(MarioLulab): need to remove recursively in ``sub_block``
+            
+            # TODO(MrioLulab): to validate:
+            # choice 1 : using `Block._rename_var` api, dose it can 
+            # rename variable in vars and ops' inputs and outputs
+            inside_block._rename_var(
+                old_var_name.encode(), new_var_name.encode()
+            )
+            
+            # choice 2: using `Block.desc._rename_var` api and rename op by op manually
+            '''
+            inside_block._rename_var(
+                old_var_name.encode(), new_var_name.encode()
+            )
+            for op_idx in range(backward_block_desc.op_size()):
+                op = backward_block_desc.op(op_idx)
+                op._rename_input(old_var_name, new_var_name)
+                op._rename_output(old_var_name, new_var_name)
+            '''
+
+        
+        # update `blocks` attr by appending backward_block
+        forward_block_desc = parent_block.program.block(
+            self.forward_block_index
+        ).desc
+        backward_block_desc = inside_block.desc
+        parent_block.ops[self.fwd_op_index].desc.set_blocks_attr(
+            "blocks", [forward_block_desc, backward_block_desc]
+        )
+
+    def complete(self):
+        if not self.is_backward_block:
+            return self.complete_forward_block()
+        else:
+            return self.complete_backward_block()
 
 
 # NOTE: Borrowed from `backward.py`
@@ -167,17 +220,20 @@ def _append_grad_suffix_(name):
     return name + core.grad_var_suffix()
 
 
-#TODO(MarioLulab): Now the backward block will be created whether or not 
-# a gradient is required. This will be fixed later.
+#TODO(MarioLulab): 
+# 1. Now the backward block will be created whether or not # a gradient is required. 
+# This will be fixed later.
+# 2. Support forward_fn is None or backward_fn is None later.
+def static_pylayer(
+    forward_fn, inputs, backward_fn, name=None
 ):
     """
     This API returns ``forward_fn(inputs)``, and two sub-block are created based on 
     the logic of ``forward_fn`` and ``backward_fn``, with the operator ``static_pylayer``
     holding information about the two blocks. 
     
-    ``forward_fn`` and ``backward_fn`` should return same nest structure of tensors
-    or both return ``None`` if user doens't like to return anything. A nest
-    structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
+    ``forward_fn`` and ``backward_fn`` should return a nest structure of tensors. 
+    A nest structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
     list of tensors.
     
     Note:
@@ -260,43 +316,35 @@ def _append_grad_suffix_(name):
 
     assert forward_fn is not None and callable(forward_fn)
     assert isinstance(inputs, list)
-    static_pylayer_block = StaticPyLayerBlock(inputs)
-    with static_pylayer_block.block():
+    pylayer_block_manager = StaticPyLayerBlock(inputs)
+    with pylayer_block_manager.block(is_backward_block=False) as mgr:
         origin_output = forward_fn(*inputs)
         if origin_output is not None:
             output = map_structure(copy_to_parent_func, origin_output)
 
     current_block = helper.main_program.current_block()
-    forward_block_desc = current_block.program.block(
-        static_pylayer_block.block_id
-    ).desc
 
-    # 根据 op 的 output 构造 backward 的输入, 以此构建 backward block, 随后删掉
-    static_pylayer_op = current_block.ops[static_pylayer_block.op_index]
-    grad_var_name_ins = [
+    # **Create the backward input** from the output of the op to build the 
+    # backward block, and then delete it.
+    static_pylayer_op = current_block.ops[pylayer_block_manager.fwd_op_index]
+    bwd_var_name_inputs = [
         _append_grad_suffix_(var_name)
         for var_name in static_pylayer_op.desc.output("Out")
     ]
 
-    # push
-    # NOTE: may be no need to get arg name by `grad_op_descs`
     grad_var_ins = []
-    for arg in grad_var_name_ins:
-        # do some judge
-        # ....
-
-        fwd_name = _strip_grad_suffix_(arg)
-        var = current_block.create_var(name=arg)
+    for bwd_var_name in bwd_var_name_inputs:
+        fwd_name = _strip_grad_suffix_(bwd_var_name)
+        var = current_block.create_var(name=bwd_var_name)
 
         if current_block.desc.has_var_recursive(fwd_name.encode()):
             fwd_var = current_block.desc.find_var_recursive(fwd_name.encode())
             var.desc.set_dtype(fwd_var.dtype())
             var.desc.set_shape(fwd_var.shape())
         else:
-            # TODO(jiabin): Maybe we should not to this to cause some unexpected error on dtype
             warnings.warn(
                 "Set grad var: {} dtype to default FP32, since we can't find its related forward var".format(
-                    arg
+                    bwd_var_name
                 )
             )
             var.set_dtype(core.VarDesc.VarType.FP32)
@@ -305,43 +353,25 @@ def _append_grad_suffix_(name):
 
     assert backward_fn is not None and callable(backward_fn)
     assert isinstance(grad_var_ins, list)
-    static_pylayer_backward_block = StaticPyLayerBlock(grad_var_ins)
-    var_old_to_new = {}
-    with static_pylayer_backward_block.block(is_backward_block=True):
+    with pylayer_block_manager.block(is_backward_block=True) as mgr:
         grad_origin_output = backward_fn(*grad_var_ins)
         if grad_origin_output is not None:
             flat_grad_origin = flatten(grad_origin_output)
+            # NOTE: ``current_block`` was defined outside
             forward_input_names = current_block.ops[
-                static_pylayer_block.op_index
+                pylayer_block_manager.fwd_op_index
             ].desc.input_arg_names()
-            for idx, grad_out_old in enumerate(flat_grad_origin):
+            assert len(forward_input_names) == len(flat_grad_origin), \
+                f"needs to keep the number of inputs to ``forward_fn`` the same as the number of outputs to ``backward_fn``, \
+                but got {len(forward_input_names)} and {len(flat_grad_origin)}"
+            
+            for bwd_output_name, fwd_input_name in zip(flat_grad_origin, forward_input_names):
                 # attach old var name into new
-                forward_input_name = forward_input_names[idx]
-                grad_out_new = _append_grad_suffix_(forward_input_name)
-                var_old_to_new[grad_out_old.name] = grad_out_new
+                bwd_out_new = _append_grad_suffix_(fwd_input_name) # "X" => "X@GRAD"
+                mgr.var_old_to_new[bwd_output_name.name] = bwd_out_new # e.g. "tmp_0.mean_0": "X@GRAD"
 
-    # pop
-    for arg in grad_var_name_ins:
-        current_block._remove_var(arg)
-
-    backward_block_desc = current_block.program.block(
-        static_pylayer_backward_block.block_id
-    ).desc
-    for old_var_name, new_var_name in var_old_to_new.items():
-        backward_block_desc._rename_var(
-            old_var_name.encode(), new_var_name.encode()
-        )
-        for op_idx in range(backward_block_desc.op_size()):
-            op = backward_block_desc.op(op_idx)
-            op._rename_input(old_var_name, new_var_name)
-            op._rename_output(old_var_name, new_var_name)
-
-    # update 'blocks' attr to forward op
-    static_pylayer_op.desc.set_blocks_attr(
-        "blocks", [forward_block_desc, backward_block_desc]
-    )
-
-    if output is None:
-        return None
+    # **Delete the backward input**
+    for bwd_var_name in bwd_var_name_inputs:
+        current_block._remove_var(bwd_var_name)
 
     return output
