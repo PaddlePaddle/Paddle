@@ -25,4 +25,3 @@ MUBLAS_BLAS_ROUTINE_EACH(DEFINE_WRAP);
 
 }  // namespace dynload
 }  // namespace phi
-

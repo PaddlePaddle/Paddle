@@ -503,7 +503,7 @@ void CheckNumericsKernel(const Context& ctx,
 #ifdef PADDLE_WITH_MUSA
   PADDLE_THROW(phi::errors::Unimplemented(
       "OP check_numerics is unsupported for MUSA backend now!"));
-return;
+  return;
 #else
   int dev_id = tensor.place().device;
   VLOG(6) << "op_type=" << op_type << ", var_name=" << var_name
