@@ -478,9 +478,10 @@ std::string NewIRInterpreter::DebugValueInfo() {
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);
-    PADDLE_ENFORCE(var != nullptr,
-                   platform::errors::PreconditionNotMet(
-                       "var(%s) should exist in var_name_2_id_", kv.second));
+    PADDLE_ENFORCE(
+        var != nullptr,
+        platform::errors::PreconditionNotMet(
+            "var(%s) should exist in scope (%p)", kv.second, InnerScope()));
     os << kv.first.impl() << " -> " << kv.second << " -> "
        << var_name_2_id_.at(kv.second) << " -> " << var << "\n";
   }
