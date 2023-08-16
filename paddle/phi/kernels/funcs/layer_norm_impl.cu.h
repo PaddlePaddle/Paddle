@@ -1353,8 +1353,8 @@ __global__ void LayerNormBackwardComputeGradInput(const T *__restrict__ dout,
       // WARP_SHFL_XOR(sum_loss, mask);
       sum_loss1 += __shfl_xor(sum_loss1, mask, warpSize);
       sum_loss2 += __shfl_xor(sum_loss2, mask, warpSize);
-#else // CUDA and MUSA
-      // WARP_SHFL_XOR(sum_loss, mask);
+#else  // CUDA and MUSA
+       // WARP_SHFL_XOR(sum_loss, mask);
       sum_loss1 += __shfl_xor_sync(0xffffffff, sum_loss1, mask, warpSize);
       sum_loss2 += __shfl_xor_sync(0xffffffff, sum_loss2, mask, warpSize);
 #endif
@@ -1504,8 +1504,8 @@ __global__ void LayerNormBackwardComputeGradInputWithSmallFeatureSize(
       // WARP_SHFL_XOR(sum_loss, mask);
       sum_loss1 += __shfl_xor(sum_loss1, mask, warpSize);
       sum_loss2 += __shfl_xor(sum_loss2, mask, warpSize);
-#else // CUDA and MUSA
-      // WARP_SHFL_XOR(sum_loss, mask);
+#else  // CUDA and MUSA
+       // WARP_SHFL_XOR(sum_loss, mask);
       sum_loss1 += __shfl_xor_sync(0xffffffff, sum_loss1, mask, WarpSize);
       sum_loss2 += __shfl_xor_sync(0xffffffff, sum_loss2, mask, WarpSize);
 #endif

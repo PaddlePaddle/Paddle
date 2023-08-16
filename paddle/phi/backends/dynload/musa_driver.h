@@ -61,7 +61,6 @@ extern bool HasCUDADriver();
   __macro(muDeviceGetAttribute);                        \
   __macro(muDeviceGet);
 
-
 MUSA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MUSA_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_MUSA_WRAP
