@@ -116,6 +116,10 @@ class Tensor : public ir::IrNodeRef {
  */
 std::string GenReduceInitTensorNameOf(const std::string& tensor_name);
 
+bool IsReduceInitTensorName(const std::string& tensor_name);
+
+std::string GetOriginalReduceTensorName(const std::string& tensor_name);
+
 class ComputeOp;
 class PlaceholderOp;
 struct ReadCacheRelation;

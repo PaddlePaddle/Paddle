@@ -389,17 +389,12 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->share_lod(x);
 }
 
-void CIdentityInferMeta(const MetaTensor& x,
-                        int ring_id,
-                        bool use_calc_stream,
-                        bool use_model_parallel,
-                        MetaTensor* out) {
-  PADDLE_ENFORCE_GE(
-      ring_id,
-      0,
-      errors::InvalidArgument(
-          "The ring_id (%d) for c_identity must be non-negative.", ring_id));
-  out->set_dims(x.dims());
+void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  phi::DDim dim = x.dims();
+  dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
+  if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
+  out->set_dims(dim);
+  out->set_layout(x.layout());
   out->set_dtype(x.dtype());
 }
 
@@ -464,6 +459,20 @@ void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void CIdentityInferMeta(const MetaTensor& x,
+                        int ring_id,
+                        bool use_calc_stream,
+                        bool use_model_parallel,
+                        MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      errors::InvalidArgument(
+          "The ring_id (%d) for c_identity must be non-negative.", ring_id));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {

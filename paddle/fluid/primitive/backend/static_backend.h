@@ -37,6 +37,12 @@ Tensor mean_grad(const Tensor& x,
                  const IntArray& axis = {},
                  bool keepdim = false,
                  bool reduce_all = false);
+
+template <typename T>
+std::tuple<Tensor, Tensor> add_grad(const Tensor& x,
+                                    const Tensor& y,
+                                    const Tensor& out_grad,
+                                    int axis);
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive

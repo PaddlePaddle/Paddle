@@ -21,4 +21,4 @@
 # TODO(wanghao107)
 # remove this file and support Vjp methods
 # code gen.
-vjp_interface_gen_op_list = ["tanh", "mean"]
+vjp_interface_gen_op_list = ["tanh", "mean", "add"]
