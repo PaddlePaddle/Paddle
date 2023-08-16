@@ -182,102 +182,27 @@ class TestDygraph(unittest.TestCase):
             )
 
 
-class TestComplexDotOp(OpTest):
-    def setUp(self):
-        self.op_type = "dot"
-        self.python_api = paddle.dot
-        self.init_base_dtype()
-        self.init_input_output()
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.outputs = {'Out': self.out}
-
-    def init_base_dtype(self):
-        self.dtype = np.float64
+class TestComplex64DotOp(DotOp):
+    def init_dtype(self):
+        self.dtype = np.complex64
+        
+    def init_shape(self):
+        self.shape = 100
 
     def init_input_output(self):
-        self.x = np.random.random(100).astype(
-            self.dtype
-        ) + 1j * np.random.random(100).astype(self.dtype)
-        self.y = np.random.random(100).astype(
-            self.dtype
-        ) + 1j * np.random.random(100).astype(self.dtype)
-        self.out = np.dot(self.x, self.y)
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+        self.x = (np.random.random(self.shape) + 1j * np.random.random(self.shape)).astype(self.dtype)
+        self.y = (np.random.random(self.shape) + 1j * np.random.random(self.shape)).astype(self.dtype)
+        self.out = np.dot(self.x, self.y).astype(self.dtype)
 
 
-class TestComplexDotOp2D(OpTest):
-    def setUp(self):
-        self.op_type = "dot"
-        self.python_api = paddle.dot
-        self.init_base_dtype()
-        self.init_input_output()
+class TestComplex64DotOp2D(TestComplex64DotOp):
+    def init_shape(self):
+        self.shape = (100, 100)
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.outputs = {'Out': self.out}
 
-    def init_base_dtype(self):
-        self.dtype = np.float64
-
-    def init_input_output(self):
-        self.x = np.random.random((2, 100)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 100)).astype(self.dtype)
-        self.y = np.random.random((2, 100)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 100)).astype(self.dtype)
-        self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1)
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+class TestComplex128DotOp(TestComplex64DotOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 @unittest.skipIf(
