@@ -396,6 +396,54 @@ TEST(enforce, hip_success) {
   EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "Rccl error"));
 #endif
 }
+#elif defined(PADDLE_WITH_MUSA)
+TEST(enforce, musa_success) {
+  EXPECT_TRUE(CheckCudaStatusSuccess(musaSuccess));
+  EXPECT_TRUE(CheckCudaStatusFailure(musaErrorInvalidValue, "MUSA error"));
+
+  EXPECT_TRUE(CheckCudaStatusFailure(musaErrorMemoryAllocation, "MUSA error"));
+
+  EXPECT_TRUE(CheckCudaStatusFailure(
+      musaErrorInsufficientDriver,
+      "This indicates that the installed MooreThreads MUSA driver is older "
+      "than the "
+      "MUSA runtime library. This is not a supported configuration.Users "
+      "should install an updated MooreThreads display driver to allow the "
+      "application to run"));
+  EXPECT_TRUE(CheckCudaStatusFailure(
+      musaErrorContextIsDestroyed,
+      "This error indicates that the context current to the calling thread has "
+      "been destroyed using muCtxDestroy, or is a primary context which has "
+      "not yet been initialized"));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(MURAND_STATUS_SUCCESS));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(MURAND_STATUS_VERSION_MISMATCH, "MURAND error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(MURAND_STATUS_NOT_CREATED, "MURAND error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(MURAND_STATUS_LENGTH_NOT_MULTIPLE,
+                             "Length requested is not a multple of dimension"));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(MUBLAS_STATUS_SUCCESS));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(MUBLAS_STATUS_NOT_IMPLEMENTED, "MUBLAS error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(MUBLAS_STATUS_INVALID_VALUE, "MUBLAS error"));
+
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+  EXPECT_TRUE(CheckCudaStatusSuccess(mcclSuccess));
+  EXPECT_TRUE(CheckCudaStatusFailure(mcclUnhandledMusaError, "MCCL error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(mcclSystemError, "MCCL error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(mcclInternalError,
+                                     "An internal check failed. This is either "
+                                     "a bug in MCCL or due to memory "
+                                     "corruption"));
+  EXPECT_TRUE(CheckCudaStatusFailure(mcclInvalidUsage,
+                                     "The call to MCCL is incorrect. This is "
+                                     "usually reflecting a programming error"));
+#endif
+}
 #else
 TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusSuccess(cudaSuccess));

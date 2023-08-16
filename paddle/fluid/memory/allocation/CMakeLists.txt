@@ -91,6 +91,10 @@ if(WITH_ROCM)
     SRCS thread_local_allocator_test.cc
     DEPS allocator)
 endif()
+if(WITH_MUSA)
+  musa_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc
+            DEPS allocator)
+endif()
 
 if(WITH_GPU)
   nv_test(
@@ -102,6 +106,15 @@ elseif(WITH_ROCM)
     best_fit_allocator_test
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator memcpy)
+elseif(WITH_MUSA)
+  musa_test(
+    best_fit_allocator_test
+    SRCS
+    best_fit_allocator_test.cc
+    best_fit_allocator_test.cu
+    DEPS
+    allocator
+    memcpy)
 else()
   cc_test_old(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
               allocator)

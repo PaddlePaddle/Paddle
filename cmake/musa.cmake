@@ -117,3 +117,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   list(APPEND MUSA_MCC_FLAGS -g2)
   list(APPEND MUSA_MCC_FLAGS -O0)
 endif()
+
+set(musa_runtime_library_name musart)
+find_library(MUSARTC_LIB ${musa_runtime_library_name} HINTS ${MUSA_PATH}/lib)
+message(STATUS "MUSARTC_LIB: ${MUSARTC_LIB}")

@@ -246,6 +246,9 @@ TEST(BuddyAllocator, AllocFromAvailable) {
 #ifdef PADDLE_WITH_HIP
   hipError_t result = hipMalloc(&p, available >> 1);
   EXPECT_TRUE(result == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+  musaError_t result = musaMalloc(&p, available >> 1);
+  EXPECT_TRUE(result == musaSuccess);
 #else
   cudaError_t result = cudaMalloc(&p, available >> 1);
   EXPECT_TRUE(result == cudaSuccess);
@@ -265,6 +268,8 @@ TEST(BuddyAllocator, AllocFromAvailable) {
   if (p) {
 #ifdef PADDLE_WITH_HIP
     EXPECT_TRUE(hipFree(p) == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+    EXPECT_TRUE(musaFree(p) == musaSuccess);
 #else
     EXPECT_TRUE(cudaFree(p) == cudaSuccess);
 #endif
@@ -280,6 +285,8 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
 
 #ifdef PADDLE_WITH_HIP
   EXPECT_TRUE(hipMalloc(&p, static_cast<size_t>(1) << 30) == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+  EXPECT_TRUE(musaMalloc(&p, static_cast<size_t>(1) << 30) == musaSuccess);
 #else
   EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(1) << 30) == cudaSuccess);
 #endif
@@ -296,6 +303,8 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   if (p) {
 #ifdef PADDLE_WITH_HIP
     EXPECT_TRUE(hipFree(p) == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+    EXPECT_TRUE(musaFree(p) == musaSuccess);
 #else
     EXPECT_TRUE(cudaFree(p) == cudaSuccess);
 #endif

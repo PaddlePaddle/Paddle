@@ -468,6 +468,8 @@ void* GetNVRTCDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
+#elif defined(PADDLE_WITH_MUSA)
+  return GetDsoHandleFromSearchPath(FLAGS_musa_dir, "libmusart.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
