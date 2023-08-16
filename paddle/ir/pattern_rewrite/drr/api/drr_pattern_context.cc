@@ -83,6 +83,12 @@ void Op::operator()(const Tensor& arg, const Tensor* out) const {
   pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
 }
 
+void Op::operator()(const std::vector<const Tensor*>& args, const std::vector<const Tensor*>& outputs) const{
+  std::vector<const Tensor*> inputs(args);
+  std::vector<const Tensor*> outputs_(outputs);
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs_));
+}
+
 Tensor& Op::operator()(const Tensor& arg) const {
   std::vector<const Tensor*> inputs{&arg};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
