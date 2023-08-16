@@ -82,6 +82,7 @@ TEST(net_build, TestTransValidVarName) {
   frontend::NetBuilder builder("net_builder");
   auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "@A");
   auto b = builder.CreateInput(Float(32), {64}, "B/");
+  auto c = builder.CreateInput(Float(32), {64});
   EXPECT_EQ(a.id(), a_val_id);
   EXPECT_EQ(b.id(), b_val_id);
 }
