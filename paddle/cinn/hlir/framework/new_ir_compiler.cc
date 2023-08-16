@@ -15,7 +15,6 @@
 #include "paddle/cinn/hlir/framework/new_ir_compiler.h"
 
 #include <absl/types/variant.h>
-#include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/lang/placeholder.h"
