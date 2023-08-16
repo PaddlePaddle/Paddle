@@ -22,8 +22,13 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
+namespace distributed {
+namespace auto_parallel {
+class TensorDistAttr;
+}  // namespace auto_parallel
+}  //  namespace distributed
 
-// TODO(chenweihang): add other flags if needed
+using distributed::auto_parallel::TensorDistAttr;
 struct MetaConfig {
   bool is_runtime{true};
   bool is_run_mkldnn_kernel{false};
@@ -82,9 +87,14 @@ class MetaTensor {
 
   virtual bool is_selected_rows() const;
   virtual bool is_dense() const;
+  virtual bool is_dist() const;
   // TODO(YuanRisheng) This API is for compatible with Fluid
   //  and it will be deleted in the future.
   virtual bool is_tensor_array() const;
+
+  // For auto parallel
+  const TensorDistAttr& dist_attr() const;
+  void set_dist_attr(const TensorDistAttr& dist_attr);
 
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;
@@ -105,37 +115,4 @@ class MetaTensor {
   bool strided_kernel_used_ = false;
 };
 
-namespace distributed {
-namespace auto_parallel {
-class TensorDistAttr;
-}  // namespace auto_parallel
-
-class DistMetaTensor : public MetaTensor {
-  // supporting implicit construction is easier to use
-  DistMetaTensor(DistTensor* tensor,
-                 bool strided_kernel_used = false)  // NOLINT
-      : MetaTensor(tensor, strided_kernel_used) {}
-  DistMetaTensor(const DistTensor& tensor,
-                 bool strided_kernel_used = false)  // NOLINT
-      : MetaTensor(const_cast<TensorBase*>(&tensor), strided_kernel_used) {
-  }  // NOLINT
-  DistMetaTensor(const DistTensor* tensor,
-                 bool strided_kernel_used = false)  // NOLINT
-      : MetaTensor(const_cast<TensorBase*>(tensor), strided_kernel_used) {
-  }                                   // NOLINT
-  DistMetaTensor(DistTensor& tensor,  // NOLINT
-                 bool strided_kernel_used = false)
-      : MetaTensor(&tensor, strided_kernel_used) {}
-
-  DistMetaTensor(DistMetaTensor&&) = default;
-  DistMetaTensor& operator=(DistMetaTensor&&) = default;
-  DistMetaTensor(const DistMetaTensor&) = default;
-  DistMetaTensor& operator=(const DistMetaTensor&) = default;
-
-  virtual ~DistMetaTensor() = default;
-
-  const auto_parallel::TensorDistAttr& dist_attr() const;
-};
-
-}  // namespace distributed
 }  // namespace phi

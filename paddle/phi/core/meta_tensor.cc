@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -263,8 +264,22 @@ const LoD& MetaTensor::lod() const {
 
 /////////////// For Auto Parallel ////////////////
 
-const auto_parallel::TensorDistAttr& DistMetaTensor::dist_attr() const {
-  return static_cast<DistTensor*>(tensor_)->dist_attr();
+const TensorDistAttr& MetaTensor::dist_attr() const {
+  PADDLE_ENFORCE_EQ(
+      this->is_dist(),
+      true,
+      phi::errors::InvalidArgument("The current MetaTensor doesn't contains "
+                                   "DistTensor when call `dist_attr` method."));
+  return (static_cast<distributed::DistTensor*>(tensor_))->dist_attr();
+}
+
+void MetaTensor::set_dist_attr(const TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(this->is_dist(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The current MetaTensor doesn't contains DistTensor "
+                        "when call `set_dist_attr` method."));
+  (static_cast<distributed::DistTensor*>(tensor_))->set_dist_attr(dist_attr);
 }
 
 }  // namespace phi

@@ -14,20 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
+#include <vector>
+
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace distributed {
 
+// SPMD info is the special meta info of DIstTensor
 // Since the auto-parallel InferSPMD also infer and update the dist attr
 // of the input, the input also needs to be changeable
-
-void MatmulInferMeta(DistMetaTensor* x,
-                     DistMetaTensor* y,
-                     bool trans_x,
-                     bool trans_y,
-                     DistMetaTensor* out);
+SpmdInfo MatmulInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         bool trans_x,
+                         bool trans_y);
 
 }  // namespace distributed
 }  // namespace phi

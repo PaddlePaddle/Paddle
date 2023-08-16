@@ -57,18 +57,18 @@ auto_parallel::TensorDistAttr GetMatmulInferedDistAttr(
 
 ////////////////// InferMeta(Contains SPMD) Functions //////////////////
 
-void MatmulInferMeta(DistMetaTensor* x,
-                     DistMetaTensor* y,
-                     bool trans_x,
-                     bool trans_y,
-                     DistMetaTensor* out) {
-  // step0: verify input args based on matmul logic
-  auto x_shape = phi::vectorize(x->dims());
-  auto y_shape = phi::vectorize(y->dims());
+SpmdInfo MatmulInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         bool trans_x,
+                         bool trans_y,
+                         const MetaTensor& out) {
+  // Step0: verify input args based on matmul logic
+  auto x_shape = phi::vectorize(x.dims());
+  auto y_shape = phi::vectorize(y.dims());
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
-  auto x_dist_attr_src = x->dist_attr();
-  auto y_dist_attr_src = y->dist_attr();
+  auto x_dist_attr_src = x.dist_attr();
+  auto y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -95,7 +95,7 @@ void MatmulInferMeta(DistMetaTensor* x,
           << "trans_y: "
           << "[" << (trans_y ? "true" : "false") << "]; ";
 
-  // step1: build Einsum Notation
+  // Step1: build Einsum Notation
 
   // reserve the char k, m, n for matrix product notation: mk,kn -> mn
   int max_ndim = std::max(x_ndim, y_ndim);
@@ -145,7 +145,7 @@ void MatmulInferMeta(DistMetaTensor* x,
         y_ndim));
   }
 
-  // step2: Sharding Propogation
+  // Step2: Sharding Propogation
   if (trans_x) {
     PADDLE_ENFORCE_GE(x_ndim,
                       2,
@@ -164,12 +164,12 @@ void MatmulInferMeta(DistMetaTensor* x,
                           y_ndim));
     std::iter_swap(y_dims_mapping.end() - 2, y_dims_mapping.end() - 1);
   }
-  // step2.1: Sharding Merge
+  // Step2.1: Sharding Merge
   std::pair<std::string, std::vector<int64_t>> x_pair(x_axes, x_dims_mapping);
   std::pair<std::string, std::vector<int64_t>> y_pair(y_axes, y_dims_mapping);
   auto axis_to_dim_map = ShardingMergeForTensors({x_pair, y_pair});
 
-  // step2.2: Infer Output's Dims Mapping.
+  // Step2.2: Infer Output's Dims Mapping.
   auto_parallel::TensorDistAttr output_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   std::vector<int64_t> out_dims_mapping;
@@ -179,13 +179,13 @@ void MatmulInferMeta(DistMetaTensor* x,
   }
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
-  // step2.3: Merge and get Inputs' New Dims Mapping.
+  // Step2.3: Merge and get Inputs' New Dims Mapping.
   auto_parallel::TensorDistAttr x_dist_attr_dst = GetMatmulInferedDistAttr(
       x_dist_attr_src, x_shape, x_axes, axis_to_dim_map, trans_x);
   auto_parallel::TensorDistAttr y_dist_attr_dst = GetMatmulInferedDistAttr(
       y_dist_attr_src, y_shape, y_axes, axis_to_dim_map, trans_y);
 
-  // step2.3: Handle Partial
+  // Step2.3: Handle Partial
   // Step2.3.1 Output Partial
   std::vector<int64_t> partial_on_dims =
       ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
