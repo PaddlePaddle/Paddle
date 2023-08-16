@@ -27,15 +27,16 @@ struct RemoveRedundentReshapeFunctor {
   void operator()(ir::drr::DrrPatternContext *ctx) {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &reshape = pat.Op("reshape");
-
-    pat.Tensor("ret") = reshape(reshape(pat.Tensor("arg0"), pat.Tensor("shape0")), pat.Tensor("shape1"));
+    const auto &reshape = pat.Op("pd.reshape");
+    reshape({&pat.Tensor("arg0"), &pat.Tensor("shape0")},
+            {&pat.Tensor("out1"), &pat.Tensor("xshape_0")});
+    reshape({&pat.Tensor("out1"), &pat.Tensor("shape1")},
+            {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
 
     // Result patterns：要替换为的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
-
-    //
-    res.Tensor("ret") = res.Op("reshape")(res.Tensor("arg0"), res.Tensor("shape1"));
+    res.Op("pd.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
+                         {&res.Tensor("ret"), &res.Tensor("xshape_1")});
   }
 };
 

@@ -52,9 +52,12 @@ Operation* CreateOperation(const OpCall& op_call,
     Operation* reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
         ir_values[0].dyn_cast<ir::OpResult>(),
         std::vector<int64_t>{16, 3, 4, 16});
-    auto out = reshape_op->result(0);
-    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                               std::make_shared<IrValue>(out));
+    res_match_ctx->BindIrValue(
+        op_call.outputs()[0]->name(),
+        std::make_shared<IrValue>(reshape_op->result(0)));
+    res_match_ctx->BindIrValue(
+        op_call.outputs()[1]->name(),
+        std::make_shared<IrValue>(reshape_op->result(1)));
     return reshape_op;
   }
   LOG(ERROR) << "Unknown op " << op_call.name();
