@@ -463,6 +463,19 @@ def _program_for_fthenb_and_1f1b(program):
                     + " isn't one of LRSched, Forward, Backward or Optimizer."
                 )
 
+    def remove_empty_block(prog):
+        # keep the first block or non-empty block
+        prog.blocks = [
+            block
+            for idx, block in enumerate(prog.blocks)
+            if len(block.ops) > 0 or idx == 0
+        ]
+
+    remove_empty_block(lr_prog)
+    remove_empty_block(fwd_prog)
+    remove_empty_block(bwd_prog)
+    remove_empty_block(opt_prog)
+
     lr_prog._sync_with_cpp()
     fwd_prog._sync_with_cpp()
     bwd_prog._sync_with_cpp()
