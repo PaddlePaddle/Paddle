@@ -7,6 +7,7 @@ if(WITH_DISTRIBUTE)
     APPEND
     DISTRIBUTED_SRCS
     dist_tensor.cc
+    inferspmd_utils.cc
     reshard_function.cc
     reshard_split_functor.cc
     reshard_all_gather_functor.cc

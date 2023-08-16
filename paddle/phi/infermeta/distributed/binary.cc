@@ -14,11 +14,17 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/distributed/binary.h"
 
+#include "glog/logging.h"
+
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/distributed/utils.h"
 
 namespace phi {
 namespace distributed {
+
+using phi::distributed::auto_parallel::str_join;
 
 ////////////////// Utils Functions //////////////////
 
@@ -27,7 +33,7 @@ auto_parallel::TensorDistAttr GetMatmulInferedDistAttr(
     const std::vector<int64_t>& shape,
     const std::string& tensor_axis,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
-    const bool trans_axis) {
+    bool trans_axis) {
   auto_parallel::TensorDistAttr dist_attr =
       CopyTensorDistAttrForOutput(origin_dist_attr);
   std::vector<int64_t> infered_dims_mapping;

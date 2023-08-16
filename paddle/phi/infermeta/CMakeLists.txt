@@ -1,5 +1,10 @@
 add_subdirectory(strings)
 add_subdirectory(sparse)
+
+if(WITH_DISTRIBUTE)
+  add_subdirectory(distributed)
+endif()
+
 collect_srcs(
   infermeta_srcs
   SRCS

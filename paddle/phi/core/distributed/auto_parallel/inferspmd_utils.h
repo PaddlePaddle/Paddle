@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -32,9 +33,6 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-
-using SpmdInfo =
-    std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>;
 
 class InferSpmdContext {
  public:

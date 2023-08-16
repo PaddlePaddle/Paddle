@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace phi {

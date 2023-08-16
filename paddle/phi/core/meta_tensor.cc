@@ -228,6 +228,9 @@ bool MetaTensor::is_dense() const { return DenseTensor::classof(tensor_); }
 bool MetaTensor::is_selected_rows() const {
   return SelectedRows::classof(tensor_);
 }
+bool MetaTensor::is_dist() const {
+  return distributed::DistTensor::classof(tensor_);
+}
 bool MetaTensor::is_tensor_array() const { return false; }
 
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
@@ -294,6 +297,8 @@ const LoD& MetaTensor::lod() const {
   }
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+
 /////////////// For Auto Parallel ////////////////
 
 const TensorDistAttr& MetaTensor::dist_attr() const {
@@ -302,16 +307,11 @@ const TensorDistAttr& MetaTensor::dist_attr() const {
       true,
       phi::errors::InvalidArgument("The current MetaTensor doesn't contains "
                                    "DistTensor when call `dist_attr` method."));
-  return (static_cast<distributed::DistTensor*>(tensor_))->dist_attr();
+  return *(reinterpret_cast<phi::distributed::DistTensor*>(tensor_)
+               ->dist_attr()
+               .get());
 }
 
-void MetaTensor::set_dist_attr(const TensorDistAttr& dist_attr) {
-  PADDLE_ENFORCE_EQ(this->is_dist(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The current MetaTensor doesn't contains DistTensor "
-                        "when call `set_dist_attr` method."));
-  (static_cast<distributed::DistTensor*>(tensor_))->set_dist_attr(dist_attr);
-}
+#endif
 
 }  // namespace phi
