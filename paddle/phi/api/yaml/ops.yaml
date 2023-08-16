@@ -1017,6 +1017,16 @@
     data_type : dtype
     backend : place
 
+- op : fused_bias_residual_layernorm
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : FusedLayerNormInferMeta
+  kernel :
+    func : fused_bias_residual_layernorm
+    data_type : x
+  optional : bias, residual, norm_weight, norm_bias, residual_out
+
 - op : gather
   args : (Tensor x, Tensor index, Scalar axis=0)
   output : Tensor(out)
@@ -1606,6 +1616,17 @@
     data_type : logits
   backward : margin_cross_entropy_grad
 
+- op : masked_multihead_attention_
+  args : (Tensor x, Tensor cache_kv, Tensor src_mask, Tensor cum_offsets, Tensor sequence_lengths, Tensor rotary_tensor, Tensor beam_cache_offset, Tensor qkv_out_scale, Tensor out_shift, Tensor out_smooth, int seq_len, int rotary_emb_dims, bool use_neox_rotary_style=false, float out_scale=-1, int quant_round_type=1, float quant_max_bound=127.0, float quant_min_bound=-127.0)
+  output : Tensor(out), Tensor(cache_kv_out), Tensor(beam_cache_offset_out)
+  infer_meta :
+    func : MaskedMultiheadAttentionInferMeta
+  kernel :
+    func : masked_multihead_attention
+    data_type : cache_kv
+  optional : src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth
+  inplace : (cache_kv -> cache_kv_out), (beam_cache_offset -> beam_cache_offset_out)
+
 - op : masked_select
   args : (Tensor x, Tensor mask)
   output : Tensor (out)
@@ -2071,14 +2092,14 @@
   backward : reverse_grad
 
 - op : rms_norm
-  args : (Tensor x, Tensor weight, Tensor bias, float epsilon, int begin_norm_axis)
-  output : Tensor(out)
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out)
   infer_meta :
     func : RmsNormInferMeta
   kernel :
     func : rms_norm
     data_type : x
-  optional : bias
+  optional : bias, residual, norm_bias, residual_out
 
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)
@@ -2681,6 +2702,16 @@
   data_transform :
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
+
+- op : variable_length_memory_efficient_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal)
+  output : Tensor
+  infer_meta :
+    func : VariableLengthMemoryEfficientAttentionInferMeta
+  kernel :
+    func : variable_length_memory_efficient_attention
+    data_type : query
+  optional : mask
 
 - op : view_dtype
   args : (Tensor input, DataType dtype)

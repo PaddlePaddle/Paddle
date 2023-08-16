@@ -34,7 +34,6 @@ from paddle.fluid import (
 )
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import Parameter, dygraph_not_support, static_only
-from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
 from paddle.fluid.log_helper import get_logger
 from paddle.framework.io_utils import (
     _clone_var_in_block_,
@@ -138,6 +137,56 @@ def _clone_var_in_block(block, var):
         )
 
 
+def prepend_feed_ops(
+    inference_program, feed_target_names, feed_holder_name='feed'
+):
+    if len(feed_target_names) == 0:
+        return
+
+    global_block = inference_program.global_block()
+    feed_var = global_block.create_var(
+        name=feed_holder_name,
+        type=core.VarDesc.VarType.FEED_MINIBATCH,
+        persistable=True,
+    )
+
+    for i, name in enumerate(feed_target_names):
+        if not global_block.has_var(name):
+            raise ValueError(
+                "The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
+                "Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
+                "if '{name}' is not involved in the target_vars calculation.".format(
+                    i=i, name=name
+                )
+            )
+        out = global_block.var(name)
+        global_block._prepend_op(
+            type='feed',
+            inputs={'X': [feed_var]},
+            outputs={'Out': [out]},
+            attrs={'col': i},
+        )
+
+
+def append_fetch_ops(
+    inference_program, fetch_target_names, fetch_holder_name='fetch'
+):
+    global_block = inference_program.global_block()
+    fetch_var = global_block.create_var(
+        name=fetch_holder_name,
+        type=core.VarDesc.VarType.FETCH_LIST,
+        persistable=True,
+    )
+
+    for i, name in enumerate(fetch_target_names):
+        global_block.append_op(
+            type='fetch',
+            inputs={'X': [name]},
+            outputs={'Out': [fetch_var]},
+            attrs={'col': i},
+        )
+
+
 def normalize_program(program, feed_vars, fetch_vars):
     """
 
@@ -200,8 +249,7 @@ def normalize_program(program, feed_vars, fetch_vars):
         op._set_attr(device_attr_name, "")
         if op.type == 'auc':
             warnings.warn(
-                "Be sure that you have set auc states to 0 "
-                "before saving inference model."
+                "Be sure that you have set auc states to 0 before saving inference model."
             )
             break
 
@@ -521,15 +569,23 @@ def save_inference_model(
     program = _get_valid_program(kwargs.get('program', None))
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(program, feed_vars, fetch_vars)
+
     # serialize and save program
     legacy_format = kwargs.get('legacy_format', False)
     program_bytes = _serialize_program(
         program._remove_training_info(clip_extra=clip_extra),
         legacy_format=legacy_format,
     )
+
     save_to_file(model_path, program_bytes)
 
     vars = list(filter(is_persistable, program.list_vars()))
+
+    if len(list(vars)) == 0:
+        warnings.warn(
+            "no variable in your model, please ensure there are any variables in your model to save"
+        )
+
     if len(vars) > 0:
         save_dirname = os.path.dirname(params_path)
         params_filename = os.path.basename(params_path)
@@ -832,7 +888,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
     else:
         # check and norm path_prefix
         path_prefix = _normalize_path_prefix(path_prefix)
-
+        dir_path = os.path.dirname(path_prefix)
+        if not os.path.isdir(dir_path):
+            raise ValueError(f"There is no directory named {dir_path}")
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
         if not kwargs:
@@ -867,6 +925,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     model_path, params_path
                 )
             )
+
         program_bytes = load_from_file(model_path)
 
         # deserialize bytes to program
@@ -876,6 +935,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
         if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
+
             load_vars(
                 executor,
                 dirname=load_dirname,
@@ -1138,6 +1198,9 @@ def load_vars(
         dirname = os.path.normpath(dirname)
     else:
         vars_from_memory = True
+
+    if filename == '':
+        filename = None
 
     if vars is None:
         if main_program is None:

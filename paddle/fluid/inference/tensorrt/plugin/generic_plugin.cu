@@ -419,13 +419,14 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
         phi::Backend::GPU, phi::DataLayout::ANY, precision_type);
 
     auto nv_dtype = PhiType2NvType(precision_type);
-    phi_kernels_[nv_dtype].reset(
-        new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-            phi_kernel_signature.name, phi_kernel_key)));
+    phi_kernels_[nv_dtype] = std::make_unique<phi::Kernel>(
+        phi::KernelFactory::Instance().SelectKernel(phi_kernel_signature.name,
+                                                    phi_kernel_key));
 
     if (phi_kernel_contexts_.find(nv_dtype) == phi_kernel_contexts_.end() ||
         !phi_kernel_contexts_[nv_dtype]) {
-      phi_kernel_contexts_[nv_dtype].reset(new phi::KernelContext(dev_ctx));
+      phi_kernel_contexts_[nv_dtype] =
+          std::make_unique<phi::KernelContext>(dev_ctx);
       BuildPhiKernelContextAttr(op_desc_,
                                 phi_kernel_contexts_[nv_dtype].get(),
                                 phi_kernel_signature,

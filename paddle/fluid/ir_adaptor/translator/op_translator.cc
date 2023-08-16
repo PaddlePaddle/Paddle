@@ -761,11 +761,11 @@ struct IncrementOpTranscriber : public OpTranscriber {
 // python/paddle/tensor/creation.py::assign(x, output)
 struct AssignValueOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    std::string target_op_name = "pd.assign_value_";
+    std::string target_op_name = "pd.assign_value";
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW(
-          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+          "Op assign_value should have corresponding OpInfo pd.assign_value");
     }
 
     return op_info;
@@ -836,20 +836,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
 
     VLOG(10) << "[op assign_value] attribute translation done";
 
-    std::vector<int> src_shape =
-        paddle::get<std::vector<int>>(op_desc.GetAttr("shape"));
-    std::vector<int64_t> target_shape(src_shape.begin(), src_shape.end());
-
-    ir::Builder builder(ctx, program->block());
-    dialect::FullOp full_op = builder.Build<dialect::FullOp>(
-        target_shape,
-        0.0f,
-        attr_dtype.dyn_cast<dialect::DataTypeAttribute>().data(),
-        phi::CPUPlace());
-
-    std::vector<ir::OpResult> op_inputs = {full_op->result(0)};
-
-    VLOG(10) << "[op assign_value] insert a full op to get input";
+    std::vector<ir::OpResult> op_inputs = {};
 
     OpOutputMapping arg_to_idx;
     OpOutputTypeList op_output_types;
@@ -1368,8 +1355,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
       for (int i = 0; i <= append_size; i++) {
         y_new_shape.push_back(1);
       }
-      dialect::Reshape_Op reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      dialect::ReshapeOp reshape_op =
+          builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
       VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
               << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
@@ -1384,11 +1371,23 @@ struct ElementwiseTranscriber : public OpTranscriber {
       auto concat_op =
           builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
       auto y_new_shape = concat_op.out();
-      auto reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
     }
     return {x_value, y_new};
+  }
+};
+
+struct GradAddOpTranscriber : public ElementwiseTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    const std::string& target_op_name = "pd.add";
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+    }
+
+    return op_info;
   }
 };
 
@@ -1449,7 +1448,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
 
     ir::OpResult value = operation->result(idx);
     ir::Builder builder(ctx, operation->GetParent());
-    auto reshape_op = builder.Build<dialect::Reshape_Op>(value, y_shape);
+    auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
     (*param_map)[y_grad_var_name] =
         VariableDefiningInfo(reshape_op.out(), false, -1);
   }
@@ -1463,6 +1462,7 @@ OpTranslator::OpTranslator() {
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();

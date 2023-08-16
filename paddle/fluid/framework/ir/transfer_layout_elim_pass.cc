@@ -153,7 +153,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
     // appear before this var, but temporarily diasble this if.
-    if (var->Var()->Persistable() && 0) {
+    if (var->Var()->Persistable() && false) {
       auto var_dims =
           scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
       if (var_dims.size() == 1) {

@@ -297,13 +297,15 @@ void InitDistTensorWithTensor(
   if (place == src.place()) {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
+    self->tensor.set_impl(
+        std::make_shared<DistTensor>(tensor, tensor->meta(), dist_attr));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
+    self->tensor.set_impl(
+        std::make_shared<DistTensor>(tensor, tensor->meta(), dist_attr));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
@@ -701,7 +703,7 @@ void AutoInitStringTensorByStringTensor(
   InitStringTensorWithStringTensor(py_tensor_ptr, src_tensor, place, act_name);
 }
 
-PyDoc_STRVAR(
+PyDoc_STRVAR(  // NOLINT
     TensorDoc,
     R"DOC(Tensor($self, /, value, place, persistable, zero_copy, name, stop_gradient, dims, dtype, type)
 --

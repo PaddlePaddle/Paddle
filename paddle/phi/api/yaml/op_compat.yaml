@@ -429,6 +429,12 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : c_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -1230,6 +1236,10 @@
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
 - op : grad_add
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -2528,7 +2538,7 @@
     softmax : GetSoftmaxExpectedKernelType
     softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
