@@ -203,7 +203,7 @@ static void FillNotSpecifiedOpRole(const ProgramDesc &main_program) {
 void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
                                 ProgramDesc *main_program,
                                 ProgramDesc *startup_program) {
-  VLOG(10) << "ApplyPassesToProgram is called";
+  VLOG(0) << "==ApplyPassesToProgram is called";
   PADDLE_ENFORCE_NOT_NULL(
       main_program,
       platform::errors::InvalidArgument("The main program must be provided."));
@@ -227,10 +227,11 @@ void Pass::ApplyPassesToProgram(const std::vector<const Pass *> &passes,
   }
 
   if (passes.size() == 1 && !passes[0]->SupportApplyProgramViaGraph()) {
-    VLOG(10) << "apply pass " << passes[0]->Type() << " to program";
+    VLOG(0) << "==apply pass " << passes[0]->Type() << " to program";
     passes[0]->ApplyImpl(main_program, startup_program);
+    VLOG(0) << "==fill not specified op role to program";
     FillNotSpecifiedOpRole(*main_program);
-    VLOG(10) << "finish to apply pass " << passes[0]->Type() << " to program";
+    VLOG(0) << "==finish to apply pass " << passes[0]->Type() << " to program";
     return;
   }
 

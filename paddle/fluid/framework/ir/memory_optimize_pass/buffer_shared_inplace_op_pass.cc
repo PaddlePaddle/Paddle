@@ -176,6 +176,20 @@ GetInplaceVars(const BlockDesc &block,
   // only take block 0 gc_vars
   const auto op_gc_vars = GetEagerDeletionCleanVarsForPartial(
       *block.Program(), skip_vars, for_partial_block)[0];
+
+  std::stringstream op_gc_vars_os;
+  for (size_t i = 0; i < op_gc_vars.size(); i++) {
+    for (size_t j = 0; j < op_gc_vars[i].size(); j++) {
+      op_gc_vars_os << "[";
+      for (size_t k = 0; k < op_gc_vars[k].size(); k++) {
+        op_gc_vars_os << op_gc_vars[i][j][k] << ", ";
+      }
+      op_gc_vars_os << "], ";
+    }
+    op_gc_vars_os << "\n";
+  }
+  VLOG(0) << "====op_gc_vars: " << op_gc_vars_os.str();
+
   const auto all_ops = block.AllOps();
   PADDLE_ENFORCE_EQ(op_gc_vars.size(),
                     all_ops.size(),
@@ -266,16 +280,35 @@ GetInplaceVars(const BlockDesc &block,
 
 void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
                                           ProgramDesc *startup_program) const {
+  VLOG(0) << "===BufferSharedInplaceOpPass::ApplyImpl";
   bool use_cuda = Get<bool>(kUseCuda);
+  VLOG(0) << "===use cuda: " << use_cuda;
   auto skip_vars = Get<std::vector<std::string>>("mem_opt_skip_vars");
+  std::stringstream skip_vars_os;
+  for (const auto &var : skip_vars) {
+    skip_vars_os << var << ", ";
+  }
+  VLOG(0) << "===skip_vars include: " << skip_vars_os.str();
   bool for_partial_block = false;
   if (Has("for_partial_block")) {
     for_partial_block = Get<bool>("for_partial_block");
   }
+  VLOG(0) << "===for_partial_block: " << for_partial_block;
 
   auto *block = main_program->MutableBlock(0);
   auto inplace_vars =
       GetInplaceVars(*block, use_cuda, skip_vars, for_partial_block);
+  const auto all_ops = block->AllOps();
+  std::stringstream inplace_vars_os;
+  for (size_t i = 0; i < inplace_vars.size(); i++) {
+    inplace_vars_os << all_ops[i]->Type() << " include inplae pair: ";
+    for (size_t j = 0; j < inplace_vars[i].size(); j++) {
+      inplace_vars_os << "[" << inplace_vars[i][j].first << "->"
+                      << inplace_vars[i][j].second << "], ";
+    }
+    inplace_vars_os << "\n";
+  }
+  VLOG(0) << "===inplace_vars include: " << inplace_vars_os.str();
   PADDLE_ENFORCE_EQ(inplace_vars.size(),
                     block->OpSize(),
                     platform::errors::PermissionDenied(
@@ -283,6 +316,8 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
   int64_t n = static_cast<int64_t>(inplace_vars.size());
   for (int64_t i = n - 1; i >= 0; --i) {
     if (inplace_vars[i].empty()) continue;
+    VLOG(0) << "===" << all_ops[i]->Type()
+            << " has inplace info, insert a share_buffer at: " << i;
     auto *op = block->InsertOp(i);
     std::vector<std::string> inputs, outputs;
     inputs.reserve(inplace_vars[i].size());

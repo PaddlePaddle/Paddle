@@ -380,20 +380,24 @@ void BindPass(py::module *m) {
             const py::object &py_pass_names,
             const std::unordered_map<std::string, py::object> &pass_attrs,
             std::unordered_map<std::string, std::string> pass_attr_types) {
+           VLOG(0) << "=======================pybind "
+                      "apply_pass============================";
            auto pass_names = GetPassNames(py_pass_names);
            std::vector<std::unique_ptr<framework::ir::Pass>> passes;
            std::vector<const framework::ir::Pass *> passes_not_owned;
            passes.reserve(pass_names.size());
            passes_not_owned.reserve(pass_names.size());
            for (const auto &name : pass_names) {
+             VLOG(0) << "start get pass name is: " << name;
              auto pass = framework::ir::PassRegistry::Instance().Get(name);
              SetAttrsToPass(pass_attrs, &pass_attr_types, pass.get());
              passes.push_back(std::move(pass));
              passes_not_owned.push_back(passes.back().get());
            }
-
+           VLOG(0) << "start apply passes to program";
            framework::ir::Pass::ApplyPassesToProgram(
                passes_not_owned, main_program, startup_program);
+           VLOG(0) << "start get result attrs";
            std::unordered_map<std::string, py::object> result_attrs;
            for (const auto &pass : passes) {
              for (const auto &name_and_value : pass_attrs) {
