@@ -49,7 +49,9 @@ namespace translator {
 
 namespace {
 
-using ResultIdx = size_t;
+using IdxInOp = size_t;
+using IdxInVector = size_t;
+using ResultIdx = std::tuple<IdxInOp, IdxInVector>;
 using OpDesc = paddle::framework::OpDesc;
 using BlockDesc = paddle::framework::BlockDesc;
 using VarDesc = paddle::framework::VarDesc;
@@ -505,7 +507,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
         ir::Type translated_var_type =
             type_translator[var->GetType()](ctx, *var);
         op_output_types.push_back(translated_var_type);
-        arg_to_idx[var->Name()] = cur_output_idx;
+        arg_to_idx[var->Name()] = {cur_output_idx, 0};
         continue;
       }
     }
@@ -533,7 +535,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
 
       ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
 
-      arg_to_idx[var_name] = cur_output_idx;
+      arg_to_idx[var_name] = {cur_output_idx, 0};
       op_output_types.push_back(translated_var_type);
 
       // if src type is Vector<Tesnor>
@@ -542,10 +544,12 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << "[" << op_desc.Type() << "]" << info.name << " :"
                << info.type_name << " var: " << legacy_output_name;
       std::vector<ir::Type> types;
-      for (const auto& var_name : legacy_output_vars) {
+      for (IdxInVector idx_in_vec = 0; idx_in_vec < legacy_output_vars.size();
+           idx_in_vec++) {
+        const auto& var_name = legacy_output_vars[idx_in_vec];
         if (var_name == kEmptyVarName) {
           types.emplace_back(nullptr);
-          arg_to_idx[var_name] = cur_output_idx;
+          arg_to_idx[var_name] = {cur_output_idx, idx_in_vec};
           continue;
         }
         VarDesc* var = block->FindVarRecursive(var_name);
@@ -555,7 +559,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
         ir::Type translated_var_type =
             type_translator[var->GetType()](ctx, *var);
         types.push_back(translated_var_type);
-        arg_to_idx[var_name] = cur_output_idx;
+        arg_to_idx[var_name] = {cur_output_idx, idx_in_vec};
       }
       ir::Type vec_type = ir::VectorType::get(ctx, types);
       op_output_types.push_back(vec_type);
@@ -612,13 +616,15 @@ void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
                                           ir::Operation* operation,
                                           const OpOutputMapping& arg_to_idx) {
   for (const auto& [arg_name, idx] : arg_to_idx) {
+    const auto& [idx_in_op, idx_in_vec] = idx;
     VLOG(10) << "[output recording]"
-             << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
-    ir::OpResult value = operation->result(idx);
+             << "[" << op_desc.Type() << "]" << arg_name << " " << idx_in_op
+             << " " << idx_in_vec;
+    ir::OpResult value = operation->result(idx_in_op);
     bool generated_by_vector = value.type().isa<ir::VectorType>();
 
     (*param_map)[arg_name] = VariableDefiningInfo(
-        value, generated_by_vector, generated_by_vector ? idx : -1);
+        value, generated_by_vector, generated_by_vector ? idx_in_vec : -1);
   }
 }
 
@@ -1388,9 +1394,10 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     if (idx_iter == arg_to_idx.end()) {
       IR_THROW("op[%s] should have got its y_grad", op_desc.Type());
     }
-    auto idx = idx_iter->second;
+    auto [idx_in_op, idx_in_vec] = idx_iter->second;
     VLOG(10) << "[output recording]"
-             << "[" << op_desc.Type() << "]" << y_grad_var_name << " " << idx;
+             << "[" << op_desc.Type() << "]" << y_grad_var_name << " "
+             << idx_in_op << " " << idx_in_vec;
 
     auto y_names = op_desc.Input("Y", true);
     auto y_name = y_names[0];
@@ -1414,7 +1421,7 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
-    ir::OpResult value = operation->result(idx);
+    ir::OpResult value = operation->result(idx_in_op);
     ir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::Reshape_Op>(value, y_shape);
     (*param_map)[y_grad_var_name] =
