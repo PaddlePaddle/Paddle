@@ -22,6 +22,86 @@ void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
 }}
 """
 
+OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
+    {input_type} {input_name}(std::make_shared<primitive::experimental::DescTensor>(op_obj.{input_name}()));
+"""
+
+OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
+    Tensor {output_grad_name}(std::make_shared<primitive::experimental::DescTensor>((out_grads[{idx1}][{idx2}]);
+"""
+
+OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
+    std::vector<Tensor> {output_grad_name}(std::make_shared<primitive::experimental::DescTensor>((out_grads[{idx1}]);
+"""
+
+OP_VJP_CALL_VJP_TEMPLATE = """
+    Tensor std::vector<std::vector<Tensor>> tensor_res =
+      primitive::experimental::{op_phi_name}_vjp({inputs_list}, stop_gradients);
+"""
+
+OP_VJP_STOPGRADIENT_TEMPLATE = """
+    if(!stop_gradients[{idx1}][{idx2}]){{
+        res[{idx1}][{idx2}] = std::static_pointer_cast<primitive::experimental::DescTensor>(
+            tensor_res[idx1][idx2].impl())
+            ->getValue()
+            .dyn_cast<ir::OpResult>();
+    }}
+"""
+
+OP_VJP_DEFINE_TEMPLATE = """
+std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients){{
+  {op_class_name} op_obj = op->dyn_cast<{op_class_name}>();
+
+  VLOG(6) << "Prepare inputs of {op_grad_name}";
+
+  {forward_input_code}
+  {forward_output_code}
+  {forward_output_grad_code}
+
+  VLOG(6) << "Vjp prepare Prepare attributes of {op_grad_name}";
+  {attribute_code}
+
+  VLOG(4) << "Vjp prepare call {op_phi_name}'s vjp inteface";
+  {call_vjp_code}
+
+  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
+  {stop_gradient_input_grad_code}
+
+  return res;
+}}
+"""
+
+
+def gen_op_vjp_str(
+    op_class_name,
+    op_grad_name,
+    op_phi_name,
+    op_info,
+    op_grad_info,
+):
+    forward_input_code = ''
+    forward_output_code = ''
+    forward_output_grad_code = ''
+    attribute_code = ''
+    call_vjp_code = ''
+    stop_gradient_input_grad_code = ''
+
+    str = OP_VJP_DEFINE_TEMPLATE.format(
+        op_class_name=op_class_name,
+        op_grad_name=op_grad_name,
+        op_phi_name=op_phi_name,
+        forward_input_code=forward_input_code,
+        forward_output_code=forward_output_code,
+        forward_output_grad_code=forward_output_grad_code,
+        attribute_code=attribute_code,
+        call_vjp_code=call_vjp_code,
+        stop_gradient_input_grad_code=stop_gradient_input_grad_code,
+    )
+    return str
+
 
 def gen_op_infer_meta_str(op_info, op_class_name):
     op_infer_meta_str = ""
@@ -40,5 +120,5 @@ def gen_exclusive_interface_str(op_info):
             "  static void InferMeta( phi::InferMetaContext *infer_meta );"
         )
     if op_info.op_phi_name[0] in vjp_interface_gen_op_list:
-        exclusive_interface_str += "\n  static std::vector<std::vector<ir::OpResult>> Vjp(ir::Operation* op, const std::vector<std::vector<ir::OpResult>>& out_grads, const std::vector<std::vector<int>>& stop_gradients);"
+        exclusive_interface_str += "\n  static std::vector<std::vector<ir::OpResult>> Vjp(ir::Operation* op, const std::vector<std::vector<ir::OpResult>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str

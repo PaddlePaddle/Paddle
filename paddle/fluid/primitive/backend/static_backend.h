@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
 
 namespace paddle {
 namespace primitive {
@@ -25,6 +26,7 @@ namespace backend {
 namespace experimental {
 
 using Tensor = paddle::Tensor;
+using IntArray = paddle::experimental::IntArray;
 
 template <typename T>
 Tensor tanh_grad(const Tensor& out, const Tensor& grad_out);
@@ -32,9 +34,15 @@ Tensor tanh_grad(const Tensor& out, const Tensor& grad_out);
 template <typename T>
 Tensor mean_grad(const Tensor& x,
                  const Tensor& out_grad,
-                 std::vector<int64_t> axis = {},
+                 const IntArray& axis = {},
                  bool keepdim = false,
                  bool reduce_all = false);
+
+template <typename T>
+std::tuple<Tensor, Tensor> add_grad(const Tensor& x,
+                                    const Tensor& y,
+                                    const Tensor& out_grad,
+                                    int axis);
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive

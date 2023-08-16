@@ -670,8 +670,8 @@ def dist(x, y, p=2, name=None):
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
 
     Args:
-        x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
-        y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
+        x (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
         name (str, optional): The default value is `None`. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -701,8 +701,12 @@ def dist(x, y, p=2, name=None):
     if in_dynamic_mode():
         return _C_ops.dist(x, y, p)
 
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
-    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(
+        x, 'dtype', ['bfloat16', 'float16', 'float32', 'float64'], 'dist'
+    )
+    check_variable_and_dtype(
+        y, 'dtype', ['bfloat16', 'float16', 'float32', 'float64'], 'dist'
+    )
     check_type(p, 'p', (float, int), 'dist')
     helper = LayerHelper("dist", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -1589,13 +1593,13 @@ def bmm(x, y, name=None):
                     x_shape, y_shape
                 )
             )
-        if x_shape[2] != y_shape[1]:
+        if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
             raise ValueError(
                 "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape
                 )
             )
-        if x_shape[0] != y_shape[0]:
+        if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
             raise ValueError(
                 "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape

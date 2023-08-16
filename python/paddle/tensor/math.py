@@ -1617,7 +1617,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-                        >>> import paddle
+            >>> import paddle
 
             >>> # x is a Tensor with following elements:
             >>> #    [[nan, 0.3, 0.5, 0.9]
