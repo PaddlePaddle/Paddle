@@ -259,11 +259,13 @@ def replace_ellipsis(var, item):
     return item
 
 
-def replace_ndarray(item):
+def replace_ndarray_and_range(item):
     new_item = []
     for slice_item in item:
         if isinstance(slice_item, np.ndarray):
             new_item.append(paddle.assign(slice_item))
+        elif isinstance(slice_item, range):
+            new_item.append(list(slice_item))
         else:
             new_item.append(slice_item)
     return new_item
@@ -416,7 +418,7 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
-    item = replace_ndarray(item)
+    item = replace_ndarray_and_range(item)
     item = replace_ellipsis(var, item)
     item, none_axes = replace_none(item)
     slice_info = SliceInfo()
@@ -700,7 +702,7 @@ def parse_index(x, indices):
     if not isinstance(indices, tuple):
         indices = (indices,)
 
-    indices = replace_ndarray(indices)
+    indices = replace_ndarray_and_range(indices)
     indices = replace_ellipsis(x, indices)
     indices, none_axes = replace_none(indices)
 
