@@ -15,69 +15,217 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
 
 class ReaderBase {
  public:
-  virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
-
-  virtual void ReInit() = 0;
-
-  virtual ~ReaderBase();
-};
-
-class DecoratedReader : public ReaderBase {
- public:
-  explicit DecoratedReader(ReaderBase* reader) : ReaderBase(), reader_(reader) {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
+  explicit ReaderBase(const std::vector<DDim>& shapes,
+                      const std::vector<proto::VarType::Type>& var_types,
+                      const std::vector<bool>& need_check_feed)
+      : shapes_(shapes),
+        var_types_(var_types),
+        need_check_feed_(need_check_feed) {
+    PADDLE_ENFORCE_EQ(
+        shapes_.size(),
+        need_check_feed_.size(),
+        platform::errors::InvalidArgument(
+            "Construct ReaderBase with mismatched sizes of shapes "
+            "and need_check_feed"));
+    PADDLE_ENFORCE_EQ(
+        var_types_.size(),
+        need_check_feed_.size(),
+        platform::errors::InvalidArgument(
+            "Construct ReaderBase with mismatched sizes of var_types "
+            "and need_check_feed"));
   }
 
-  void ReInit() override { reader_->ReInit(); }
+  virtual void ReadNext(paddle::framework::LoDTensorArray* out);
+
+  virtual void Shutdown();
+
+  virtual void Start();
+
+  // Return the readers which are the end of decorating chain. Basically
+  // they are readers just before read op.
+  std::unordered_set<ReaderBase*> GetEndPoints();
+
+  // Returns the shapes of the fed variables
+  const std::vector<DDim>& Shapes() const { return shapes_; }
+
+  // Returns the dtypes of the fed variables
+  const std::vector<proto::VarType::Type>& VarTypes() const {
+    return var_types_;
+  }
+
+  // For Backward compatibility, old fluid.layers.data doesn't check shape.
+  // This function returns whether you have the check shape for this Reader.
+  const std::vector<bool>& NeedCheckFeed() const { return need_check_feed_; }
+
+  virtual ~ReaderBase();
 
  protected:
-  ReaderBase* reader_;
-};
+  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out UNUSED) {}
 
-class FileReader : public ReaderBase {
- public:
-  explicit FileReader(const std::vector<DDim>& dims);
+  virtual void ShutdownImpl() {}
 
-  void ReadNext(std::vector<LoDTensor>* out) override;
+  virtual void StartImpl() {}
 
- protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+  enum ReaderStatus { kRunning, kStopped };
+
+  ReaderStatus status_{kRunning};
+
+  mutable std::mutex mu_;
+
+  // The shapes of the fed variables.
+  std::vector<DDim> shapes_;
+
+  // The dtypes of the fed variables.
+  std::vector<proto::VarType::Type> var_types_;
+
+  // Whether to check the shape and dtype of fed variables.
+  std::vector<bool> need_check_feed_;
 
  private:
-  std::vector<DDim> dims_;
+  friend class DecoratedReader;
+  // These methods can be only invoked inside DecoratedReader to record the
+  // decorating chain.
+  void InsertDecoratedReader(
+      const std::shared_ptr<ReaderBase>& decorated_reader);
+  // A set of which readers that decorated this reader.
+  std::vector<std::weak_ptr<ReaderBase>> decorated_readers_;
+};
+
+class DecoratedReader : public ReaderBase,
+                        public std::enable_shared_from_this<DecoratedReader> {
+ public:
+  explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
+      : ReaderBase(
+            reader->Shapes(), reader->VarTypes(), reader->NeedCheckFeed()),
+        reader_(reader) {
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of DecoratedReader should not be null"));
+  }
+
+  void RegisterDecorateChain() {
+    reader_->InsertDecoratedReader(shared_from_this());
+  }
+
+  ~DecoratedReader();
+
+  const std::shared_ptr<ReaderBase>& UnderlyingReader() const {
+    return reader_;
+  }
+
+ protected:
+  void ShutdownImpl() override {
+    VLOG(1) << "ShutdownImpl";
+    reader_->Shutdown();
+  }
+
+  void StartImpl() override { reader_->Start(); }
+
+  std::shared_ptr<ReaderBase> reader_;
+};
+
+// FileReader is just a conceptual class.
+class FileReader : public ReaderBase {
+ public:
+  explicit FileReader(const std::vector<DDim>& shapes,
+                      const std::vector<proto::VarType::Type>& var_types,
+                      const std::vector<bool>& need_check_feed)
+      : ReaderBase(shapes, var_types, need_check_feed) {}
 };
 
 // The ReaderHolder is used as reader' unified wrapper,
 // making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
-  void Reset(ReaderBase* reader) { reader_.reset(reader); }
+  template <typename T>
+  void Reset(const std::shared_ptr<T>& reader) {
+    auto reader_base = std::dynamic_pointer_cast<ReaderBase>(reader);
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_base,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
+    reader_ = reader_base;
+  }
 
-  ReaderBase* Get() const { return reader_.get(); }
+  ~ReaderHolder() { VLOG(1) << "~ReaderHolder"; }
 
-  void ReadNext(std::vector<LoDTensor>* out) {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
+  const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
+
+  void ReadNext(paddle::framework::LoDTensorArray* out) {
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
     reader_->ReadNext(out);
   }
-  void ReInit() {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->ReInit();
+
+  void ResetAll() {
+    VLOG(1) << "ResetAll";
+    auto end_readers = reader_->GetEndPoints();
+    for (auto* reader : end_readers) {
+      reader->Shutdown();
+    }
+    for (auto* reader : end_readers) {
+      reader->Start();
+    }
   }
 
+  void Shutdown() {
+    VLOG(1) << "Shutdown";
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
+    reader_->Shutdown();
+  }
+
+  void Start() {
+    VLOG(1) << "start";
+    PADDLE_ENFORCE_NOT_NULL(
+        reader_,
+        platform::errors::InvalidArgument(
+            "The underlying reader of ReaderHolder should not be null"));
+    reader_->Start();
+  }
+
+  const std::vector<DDim>& Shapes() const { return reader_->Shapes(); }
+
+  const std::vector<proto::VarType::Type>& VarTypes() const {
+    return reader_->VarTypes();
+  }
+
+  const std::vector<bool>& NeedCheckFeed() const {
+    return reader_->NeedCheckFeed();
+  }
+
+  void Clear() { reader_.reset(); }
+
+  operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
+
  private:
-  std::unique_ptr<ReaderBase> reader_;
+  std::shared_ptr<ReaderBase> reader_;
 };
+
+template <typename T, typename... ARGS>
+inline std::shared_ptr<DecoratedReader> MakeDecoratedReader(ARGS&&... args) {
+  std::shared_ptr<DecoratedReader> reader(new T(std::forward<ARGS>(args)...));
+  reader->RegisterDecorateChain();
+  return reader;
+}
 
 }  // namespace framework
 }  // namespace paddle

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 At training and testing time, PaddlePaddle programs need to read data. To ease
 the users' work to write data reading code, we define that
 
@@ -38,9 +38,8 @@ items. It can be any function with no parameter that creates a iterable
 Element produced from the iterable should be a **single** entry of data,
 **not** a mini batch. That entry of data could be a single item, or a tuple of
 items.
-Item should be of `supported type <http://www.paddlepaddle.org/doc/ui/data_provider
-/pydataprovider2.html?highlight=dense_vector#input-types>`_ (e.g., numpy 1d
-array of float32, int, list of int)
+Item should be of supported type (e.g., numpy array or list/tuple of float
+or int).
 
 An example implementation for single item data reader creator:
 
@@ -62,13 +61,17 @@ An example implementation for multiple item data reader creator:
                 yield numpy.random.uniform(-1, 1, size=width*height), label
     return reader
 
-
-TODO(yuyang18): Should we add whole design doc here?
 """
 
-import decorator
-from decorator import *
+from paddle.reader.decorator import map_readers  # noqa: F401
+from paddle.reader.decorator import shuffle  # noqa: F401
+from paddle.reader.decorator import xmap_readers  # noqa: F401
+from paddle.reader.decorator import firstn  # noqa: F401
+from paddle.reader.decorator import buffered  # noqa: F401
+from paddle.reader.decorator import compose  # noqa: F401
+from paddle.reader.decorator import cache  # noqa: F401
+from paddle.reader.decorator import ComposeNotAligned  # noqa: F401
+from paddle.reader.decorator import chain  # noqa: F401
+from paddle.reader.decorator import multiprocess_reader  # noqa: F401
 
-import creator
-
-__all__ = decorator.__all__ + ['creator']
+__all__ = []

@@ -13,58 +13,65 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/channel.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace framework {
-inline proto::VarType::Type ToVarType(std::type_index type) {
-  if (type.hash_code() == typeid(LoDTensor).hash_code()) {
-    return proto::VarType_Type_LOD_TENSOR;
-  } else if (type.hash_code() == typeid(LoDRankTable).hash_code()) {
-    return proto::VarType_Type_LOD_RANK_TABLE;
-  } else if (type.hash_code() == typeid(LoDTensorArray).hash_code()) {
-    return proto::VarType_Type_LOD_TENSOR_ARRAY;
-  } else if (type.hash_code() == typeid(SelectedRows).hash_code()) {
-    return proto::VarType_Type_SELECTED_ROWS;
-  } else if (type.hash_code() == typeid(ReaderHolder).hash_code()) {
-    return proto::VarType_Type_READER;
-  } else if (type.hash_code() == typeid(ChannelHolder).hash_code()) {
-    return proto::VarType_Type_CHANNEL;
-  } else {
-    PADDLE_THROW("ToVarType:Unsupported type %s", type.name());
+
+template <typename T>
+inline bool IsType(const std::type_index& type) {
+  return type == typeid(T);
+}
+
+inline proto::VarType::Type ToVarType(int type) {
+  switch (type) {
+    case proto::VarType::LOD_TENSOR:
+    case proto::VarType::SELECTED_ROWS:
+    case proto::VarType::SPARSE_COO:
+    case proto::VarType::LOD_RANK_TABLE:
+    case proto::VarType::LOD_TENSOR_ARRAY:
+    case proto::VarType::FETCH_LIST:
+    case proto::VarType::READER:
+      return static_cast<proto::VarType::Type>(type);
+    default:
+      PADDLE_THROW(platform::errors::Unavailable(
+          "ToVarType method Unsupported type %d.", type));
   }
 }
 
 template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
-  switch (ToVarType(var.Type())) {
-    case proto::VarType_Type_LOD_TENSOR:
-      visitor(var.Get<LoDTensor>());
+  switch (var.Type()) {
+    case proto::VarType::LOD_TENSOR:
+      visitor(var.Get<phi::DenseTensor>());
       return;
-    case proto::VarType_Type_LOD_RANK_TABLE:
+    case proto::VarType::LOD_RANK_TABLE:
       visitor(var.Get<LoDRankTable>());
       return;
-    case proto::VarType_Type_LOD_TENSOR_ARRAY:
+    case proto::VarType::LOD_TENSOR_ARRAY:
       visitor(var.Get<LoDTensorArray>());
       return;
-    case proto::VarType_Type_SELECTED_ROWS:
-      visitor(var.Get<SelectedRows>());
+    case proto::VarType::SELECTED_ROWS:
+      visitor(var.Get<phi::SelectedRows>());
       return;
-    case proto::VarType_Type_READER:
+    case proto::VarType::SPARSE_COO:
+      visitor(var.Get<phi::SparseCooTensor>());
+      return;
+    case proto::VarType::READER:
       visitor(var.Get<ReaderHolder>());
       return;
-    case proto::VarType_Type_CHANNEL:
-      visitor(var.Get<ChannelHolder>());
+    case proto::VarType::FETCH_LIST:
+      visitor(var.Get<FetchList>());
       return;
     default:
-      PADDLE_THROW("Not supported visit type, %d", ToVarType(var.Type()));
+      PADDLE_THROW(platform::errors::Unavailable("Not supported visit type %s.",
+                                                 ToTypeName(var.Type())));
   }
 }
 

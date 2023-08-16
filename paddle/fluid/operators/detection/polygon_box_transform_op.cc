@@ -17,18 +17,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
-    auto* in = ctx.Input<Tensor>("Input");
-    auto in_dims = in->dims();
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()),
+        true,
+        platform::errors::InvalidArgument("It must use CUDAPlace."));
+    auto* in = ctx.Input<phi::DenseTensor>("Input");
+    auto in_dims = phi::vectorize<int>(in->dims());
     const T* in_data = in->data<T>();
-    auto* out = ctx.Output<Tensor>("Output");
+    auto* out = ctx.Output<phi::DenseTensor>("Output");
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     int batch_size = in_dims[0];
@@ -41,9 +41,9 @@ class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
         for (int id_w = 0; id_w < width; ++id_w) {
           id = id_n * height * width + width * id_h + id_w;
           if (id_n % 2 == 0) {
-            out_data[id] = id_w - in_data[id];
+            out_data[id] = id_w * 4 - in_data[id];
           } else {
-            out_data[id] = id_h - in_data[id];
+            out_data[id] = id_h * 4 - in_data[id];
           }
         }
       }
@@ -56,18 +56,25 @@ class PolygonBoxTransformOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("Input"),
-        "Input (Input) of polygon_box transform op should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Output"),
-        "Output (Output) of polygon_box transform op should not be null.");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Input"), "Input", "Input", "polygon_box_transform");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Output"), "Output", "Output", "polygon_box_transform");
 
     auto in_dim = ctx->GetInputDim("Input");
 
-    PADDLE_ENFORCE_EQ(in_dim.size(), 4, "input's rank must be 4.");
-    PADDLE_ENFORCE_EQ(in_dim[1] % 2, 0,
-                      "input's second dimension must be even.");
+    PADDLE_ENFORCE_EQ(
+        in_dim.size(),
+        4,
+        platform::errors::InvalidArgument(
+            "input's rank must be 4. But received: Input rank is [%d]",
+            in_dim.size()));
+    PADDLE_ENFORCE_EQ(in_dim[1] % 2,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "input's second dimension must be even. But "
+                          "received: Input 2nd dimension is [%d]",
+                          in_dim[1]));
 
     ctx->SetOutputDim("Output", in_dim);
   }
@@ -83,11 +90,13 @@ class PolygonBoxTransformOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 PolygonBoxTransform Operator.
+
+PolygonBoxTransform Operator is used to transform the coordinate shift to the real coordinate.
+
 The input is the final geometry output in detection network.
 We use 2*n numbers to denote the coordinate shift from n corner vertices of
 the polygon_box to the pixel location. As each distance offset contains two numbers (xi, yi),
 the geometry output contains 2*n channels.
-PolygonBoxTransform Operator is used to transform the coordinate shift to the real coordinate.
 )DOC");
   }
 };
@@ -96,10 +105,16 @@ PolygonBoxTransform Operator is used to transform the coordinate shift to the re
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(polygon_box_transform, ops::PolygonBoxTransformOp,
-                  ops::PolygonBoxTransformOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OPERATOR(
     polygon_box_transform,
-    ops::PolygonBoxTransformCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::PolygonBoxTransformCPUKernel<paddle::platform::CPUPlace, double>);
+    ops::PolygonBoxTransformOp,
+    ops::PolygonBoxTransformOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+PD_REGISTER_STRUCT_KERNEL(polygon_box_transform,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PolygonBoxTransformCPUKernel,
+                          float,
+                          double) {}

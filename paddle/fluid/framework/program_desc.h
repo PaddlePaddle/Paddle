@@ -14,11 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <stdint.h>
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -53,7 +55,19 @@ class ProgramDesc {
 
   void Flush();
 
+  void CopyFrom(const proto::ProgramDesc &desc);
+
   proto::ProgramDesc *Proto();
+
+  proto::OpVersionMap *OpVersionMap();
+
+  bool HasOpVersionMap() const;
+
+  int64_t Version() const;
+
+  bool HasVersion() const;
+
+  void SetVersion(const int64_t version);
 
   // The output variable of feed_op is referenced as feed_target.
   // This function is used to collect the output variable's name of all
@@ -65,20 +79,28 @@ class ProgramDesc {
   // fetch_ops.
   const std::vector<std::string> GetFetchTargetNames();
 
-  // The input variable of feed_op that holds input Tensor provided by users is
-  // referenced as feed_holder.
-  // This function is used to change or unify the feed_holder variables' name.
+  // The input variable of feed_op that holds input phi::DenseTensor provided by
+  // users is referenced as feed_holder. This function is used to change or
+  // unify the feed_holder variables' name.
   void SetFeedHolderName(const std::string &feed_holder_name);
 
-  // The output variable of fetch_op that holds output Tensor needed by users is
-  // referenced as fetch_holder.
-  // This function is used to change or unify the fetch_holder variables' name.
+  // The output variable of fetch_op that holds output phi::DenseTensor needed
+  // by users is referenced as fetch_holder. This function is used to change or
+  // unify the fetch_holder variables' name.
   void SetFetchHolderName(const std::string &fetch_holder_name);
 
+  std::string CachedHashString();
+
+  bool NeedUpdate() const;
+
  private:
+  void InitFromProto();
+
   proto::ProgramDesc desc_;
 
   std::vector<std::unique_ptr<BlockDesc>> blocks_;
+
+  std::string cached_hash_str_;
 };
 }  // namespace framework
 }  // namespace paddle

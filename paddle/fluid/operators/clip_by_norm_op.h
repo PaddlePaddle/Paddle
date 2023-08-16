@@ -16,36 +16,74 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
+#include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+// using SelectedRows = phi::SelectedRows;
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename DeviceContext, typename T>
-class ClipByNormKernel : public framework::OpKernel<T> {
+class ClipByNormOp : public framework::OperatorWithKernel {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto max_norm = context.Attr<T>("max_norm");
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    output->mutable_data<T>(context.GetPlace());
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-    auto x = EigenVector<T>::Flatten(*input);
-    auto out = EigenVector<T>::Flatten(*output);
-    auto x_norm = x.square().sum().sqrt();
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of ClipByNormOp should not be null. Please "
+                          "check if it is created correctly."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ClipByNormOp should not be null. "
+                          "Please check if it is created correctly."));
+    auto max_norm = ctx->Attrs().Get<float>("max_norm");
+    PADDLE_ENFORCE_GT(
+        max_norm,
+        0,
+        platform::errors::InvalidArgument("max_norm should be greater than 0. "
+                                          "Received max_norm is %f.",
+                                          max_norm));
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
 
-    auto temp = (x_norm <= max_norm).template cast<T>().eval();
-    auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
-    Eigen::array<int, 1> one_dim{{1}};
-    Eigen::DSizes<int, 1> m_dsize(input->numel());
-    out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "(Tensor) The input of clip_by_norm op and data type is float32."
+             "The number of dimensions must be between [1, 9].");
+    AddOutput("Out",
+              "(Tensor) The output of clip_by_norm op with shape as input(X)"
+              "The data type is float32.");
+    AddAttr<float>("max_norm", "(float) The maximum norm value.");
+    AddComment(R"DOC(
+ClipByNorm Operator.
+
+This operator limits the L2 norm of the input $X$ within $max\_norm$.
+If the L2 norm of $X$ is less than or equal to $max\_norm$, $Out$ will be
+the same as $X$. If the L2 norm of $X$ is greater than $max\_norm$, $X$ will
+be linearly scaled to make the L2 norm of $Out$ equal to $max\_norm$, as
+shown in the following formula:
+
+$$
+Out = \\frac{max\\_norm * X}{norm(X)},
+$$
+
+where $norm(X)$ represents the L2 norm of $X$.
+
+)DOC");
   }
 };
 

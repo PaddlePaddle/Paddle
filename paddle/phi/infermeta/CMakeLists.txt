@@ -1,0 +1,12 @@
+add_subdirectory(strings)
+add_subdirectory(sparse)
+collect_srcs(
+  infermeta_srcs
+  SRCS
+  nullary.cc
+  unary.cc
+  binary.cc
+  ternary.cc
+  multiary.cc
+  fusion.cc
+  backward.cc)

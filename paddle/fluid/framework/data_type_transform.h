@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <utility>
+
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -23,11 +24,33 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class OpKernelType;
+
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
-void TransDataType(const OpKernelType& kernel_type_for_var,
-                   const OpKernelType& expected_kernel_type, const Tensor& in,
-                   Tensor* out);
+void TransDataType(const phi::KernelKey& kernel_type_for_var,
+                   const phi::KernelKey& expected_kernel_type,
+                   const phi::DenseTensor& in,
+                   phi::DenseTensor* out);
+void TransDataType(const phi::DenseTensor& in,
+                   const paddle::framework::proto::VarType::Type& type,
+                   phi::DenseTensor* out);
+
+/**
+ * Transform complex gradient to real data type.
+ *
+ * If complex type promotion occurred in forward op, the grad output of
+ * this op is complex data type, but the input variable may be real type,
+ * in this case the grad input need to be cast to type same with input,
+ * this casting executed at the end of grad op.
+ *
+ * note: call this function need to ensure that dst_type is real and
+ * src_type is complex
+ */
+void TransComplexToReal(const proto::VarType::Type& dst_type,
+                        const proto::VarType::Type& src_type,
+                        const phi::DenseTensor& in,
+                        phi::DenseTensor* out);
 
 }  // namespace framework
 }  // namespace paddle

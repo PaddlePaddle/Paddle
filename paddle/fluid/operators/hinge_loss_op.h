@@ -15,17 +15,18 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class HingeLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* pred = context.Input<framework::Tensor>("Logits");
-    auto* label = context.Input<framework::Tensor>("Labels");
-    auto* loss = context.Output<framework::Tensor>("Loss");
+    auto* pred = context.Input<phi::DenseTensor>("Logits");
+    auto* label = context.Input<phi::DenseTensor>("Labels");
+    auto* loss = context.Output<phi::DenseTensor>("Loss");
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
@@ -33,22 +34,20 @@ class HingeLossKernel : public framework::OpKernel<T> {
     auto y = framework::EigenVector<T>::Flatten(*label);
     loss->mutable_data<T>(context.GetPlace());
     auto l = framework::EigenVector<T>::Flatten(*loss);
-    l.device(place) =
-        (static_cast<T>(1) - x * (static_cast<T>(2) * y - static_cast<T>(1)))
-            .cwiseMax(static_cast<T>(0));
+    EigenHingeLoss<std::decay_t<decltype(place)>, T>::Eval(place, l, x, y);
   }
 };
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class HingeLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* pred = context.Input<framework::Tensor>("Logits");
-    auto* label = context.Input<framework::Tensor>("Labels");
+    auto* pred = context.Input<phi::DenseTensor>("Logits");
+    auto* label = context.Input<phi::DenseTensor>("Labels");
     auto* dloss =
-        context.Input<framework::Tensor>(framework::GradVarName("Loss"));
+        context.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
     auto* dpred =
-        context.Output<framework::Tensor>(framework::GradVarName("Logits"));
+        context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
@@ -59,10 +58,8 @@ class HingeLossGradKernel : public framework::OpKernel<T> {
     if (dpred) {
       dpred->mutable_data<T>(context.GetPlace());
       auto dx = framework::EigenVector<T>::Flatten(*dpred);
-      auto alt_labels = static_cast<T>(2) * y - static_cast<T>(1);
-      dx.device(place) =
-          dl * ((x * alt_labels) < static_cast<T>(1)).template cast<T>() *
-          (-alt_labels);
+      EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(
+          place, dx, dl, x, y);
     }
   }
 };

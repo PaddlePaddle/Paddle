@@ -11,17 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
-
 #include "paddle/fluid/operators/math/context_project.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-template class ContextProjectFunctor<platform::CUDADeviceContext, float>;
-template class ContextProjectFunctor<platform::CUDADeviceContext, double>;
+template class ContextProjectFunctor<phi::GPUContext, float>;
+template class ContextProjectFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

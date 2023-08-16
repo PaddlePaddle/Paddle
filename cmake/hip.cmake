@@ -1,43 +1,153 @@
-if(NOT WITH_AMD_GPU)
-    return()
+if(NOT WITH_ROCM)
+  return()
 endif()
 
-include_directories("/opt/rocm/include")
-include_directories("/opt/rocm/hipblas/include")
-include_directories("/opt/rocm/hiprand/include")
-include_directories("/opt/rocm/rocrand/include")
-include_directories("/opt/rocm/rccl/include")
-include_directories("/opt/rocm/thrust")
+if(NOT DEFINED ENV{ROCM_PATH})
+  set(ROCM_PATH
+      "/opt/rocm"
+      CACHE PATH "Path to which ROCm has been installed")
+  set(HIP_PATH
+      ${ROCM_PATH}/hip
+      CACHE PATH "Path to which HIP has been installed")
+  set(HIP_CLANG_PATH
+      ${ROCM_PATH}/llvm/bin
+      CACHE PATH "Path to which clang has been installed")
+else()
+  set(ROCM_PATH
+      $ENV{ROCM_PATH}
+      CACHE PATH "Path to which ROCm has been installed")
+  set(HIP_PATH
+      ${ROCM_PATH}/hip
+      CACHE PATH "Path to which HIP has been installed")
+  set(HIP_CLANG_PATH
+      ${ROCM_PATH}/llvm/bin
+      CACHE PATH "Path to which clang has been installed")
+endif()
+set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
 
-list(APPEND EXTERNAL_LIBS "-L/opt/rocm/lib/ -lhip_hcc")
+find_package(HIP REQUIRED)
+include_directories(${ROCM_PATH}/include)
+message(STATUS "HIP version: ${HIP_VERSION}")
+message(STATUS "HIP_CLANG_PATH: ${HIP_CLANG_PATH}")
 
-set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -std=c++14" )
+macro(find_hip_version hip_header_file)
+  file(READ ${hip_header_file} HIP_VERSION_FILE_CONTENTS)
 
-if(WITH_DSO)
-  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_USE_DSO")
-endif(WITH_DSO)
+  string(REGEX MATCH "define HIP_VERSION_MAJOR +([0-9]+)" HIP_MAJOR_VERSION
+               "${HIP_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define HIP_VERSION_MAJOR +([0-9]+)" "\\1"
+                       HIP_MAJOR_VERSION "${HIP_MAJOR_VERSION}")
+  string(REGEX MATCH "define HIP_VERSION_MINOR +([0-9]+)" HIP_MINOR_VERSION
+               "${HIP_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define HIP_VERSION_MINOR +([0-9]+)" "\\1"
+                       HIP_MINOR_VERSION "${HIP_MINOR_VERSION}")
+  string(REGEX MATCH "define HIP_VERSION_PATCH +([0-9]+)" HIP_PATCH_VERSION
+               "${HIP_VERSION_FILE_CONTENTS}")
+  string(REGEX REPLACE "define HIP_VERSION_PATCH +([0-9]+)" "\\1"
+                       HIP_PATCH_VERSION "${HIP_PATCH_VERSION}")
 
-if(WITH_DOUBLE)
-  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_TYPE_DOUBLE")
-endif(WITH_DOUBLE)
+  if(NOT HIP_MAJOR_VERSION)
+    set(HIP_VERSION "???")
+    message(
+      WARNING "Cannot find HIP version in ${HIP_PATH}/include/hip/hip_version.h"
+    )
+  else()
+    math(
+      EXPR
+      HIP_VERSION
+      "${HIP_MAJOR_VERSION} * 10000000 + ${HIP_MINOR_VERSION} * 100000   + ${HIP_PATCH_VERSION}"
+    )
+    message(
+      STATUS
+        "Current HIP header is ${HIP_PATH}/include/hip/hip_version.h "
+        "Current HIP version is v${HIP_MAJOR_VERSION}.${HIP_MINOR_VERSION}.${HIP_PATCH_VERSION}. "
+    )
+  endif()
+endmacro()
+find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
 
-if(WITH_TESTING)
-  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_TESTING")
-endif(WITH_TESTING)
+macro(find_package_and_include PACKAGE_NAME)
+  find_package("${PACKAGE_NAME}" REQUIRED)
+  include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  message(STATUS "${PACKAGE_NAME} version: ${${PACKAGE_NAME}_VERSION}")
+endmacro()
 
-if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
-    list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})
-elseif(CMAKE_BUILD_TYPE  STREQUAL "RelWithDebInfo")
-    list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
-elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
-    list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_MINSIZEREL})
+find_package_and_include(miopen)
+find_package_and_include(rocblas)
+find_package_and_include(hiprand)
+find_package_and_include(rocrand)
+find_package_and_include(rccl)
+find_package_and_include(rocthrust)
+find_package_and_include(hipcub)
+find_package_and_include(rocprim)
+find_package_and_include(hipsparse)
+find_package_and_include(rocsparse)
+find_package_and_include(rocfft)
+
+# set CXX flags for HIP
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
+set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
+
+# define HIP_CXX_FLAGS
+list(APPEND HIP_CXX_FLAGS -fPIC)
+list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_HCC__=1)
+# Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
+list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
+list(APPEND HIP_CXX_FLAGS -Wno-macro-redefined)
+list(APPEND HIP_CXX_FLAGS -Wno-inconsistent-missing-override)
+list(APPEND HIP_CXX_FLAGS -Wno-exceptions)
+list(APPEND HIP_CXX_FLAGS -Wno-shift-count-negative)
+list(APPEND HIP_CXX_FLAGS -Wno-shift-count-overflow)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-command-line-argument)
+list(APPEND HIP_CXX_FLAGS -Wno-duplicate-decl-specifier)
+list(APPEND HIP_CXX_FLAGS -Wno-implicit-int-float-conversion)
+list(APPEND HIP_CXX_FLAGS -Wno-pass-failed)
+list(APPEND HIP_CXX_FLAGS -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-result)
+list(APPEND HIP_CXX_FLAGS -Wno-deprecated-declarations)
+list(APPEND HIP_CXX_FLAGS -Wno-format)
+list(APPEND HIP_CXX_FLAGS -Wno-dangling-gsl)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-value)
+list(APPEND HIP_CXX_FLAGS -Wno-braced-scalar-init)
+list(APPEND HIP_CXX_FLAGS -Wno-return-type)
+list(APPEND HIP_CXX_FLAGS -Wno-pragma-once-outside-header)
+
+if(WITH_CINN)
+  list(APPEND HIP_CXX_FLAGS -std=c++14)
+else()
+  list(APPEND HIP_CXX_FLAGS -std=c++17)
+endif()
+list(APPEND HIP_CXX_FLAGS --gpu-max-threads-per-block=1024)
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  list(APPEND HIP_CXX_FLAGS -g2)
+  list(APPEND HIP_CXX_FLAGS -O0)
+  list(APPEND HIP_HIPCC_FLAGS -fdebug-info-for-profiling)
 endif()
 
-if("x${HCC_HOME}" STREQUAL "x")
-  set(HCC_HOME "/opt/rocm/hcc")
+set(HIP_HCC_FLAGS ${HIP_CXX_FLAGS})
+set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
+# Ask hcc to generate device code during compilation so we can use
+# host linker to link.
+list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx908)
+list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx908)
+
+if(HIP_COMPILER STREQUAL clang)
+  set(hip_library_name amdhip64)
+else()
+  set(hip_library_name hip_hcc)
 endif()
+message(STATUS "HIP library name: ${hip_library_name}")
 
-set(CMAKE_HIP_LINK_EXECUTABLE "${HIP_HIPCC_CMAKE_LINKER_HELPER} ${HCC_HOME} <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
-set(CMAKE_HIP_CREATE_SHARED_LIBRARY "${HIP_HIPCC_CMAKE_LINKER_HELPER} ${HCC_HOME} <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -shared")
-set(CMAKE_HIP_CREATE_SHARED_MODULE "${HIP_HIPCC_CMAKE_LINKER_HELPER} ${HCC_HOME} <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> -shared")
+# set HIP link libs
+find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
+message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 
+include(thrust)

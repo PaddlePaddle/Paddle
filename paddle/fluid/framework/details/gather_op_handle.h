@@ -21,8 +21,16 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/platform/device_context.h"
+
+namespace paddle {
+namespace framework {
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -30,7 +38,8 @@ namespace details {
 
 struct GatherOpHandle : public OpHandleBase {
  public:
-  GatherOpHandle(const std::vector<Scope *> &local_scopes,
+  GatherOpHandle(ir::Node *node,
+                 const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places);
 
   std::string Name() const override;
@@ -39,6 +48,8 @@ struct GatherOpHandle : public OpHandleBase {
 
  protected:
   void RunImpl() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
 
  private:
   const std::vector<Scope *> &local_scopes_;

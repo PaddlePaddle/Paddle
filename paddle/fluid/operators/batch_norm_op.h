@@ -13,22 +13,105 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/layout_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-class BatchNormKernel : public framework::OpKernel<T> {
+using DataLayout = phi::DataLayout;
+
+template <typename T>
+using EigenArrayMap =
+    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using ConstEigenArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+template <typename T>
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
+template <typename T>
+using ConstEigenVectorArrayMap =
+    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
+
+class BatchNormOp : public framework::OperatorWithKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override;
 };
 
-template <typename DeviceContext, typename T>
-class BatchNormGradKernel : public framework::OpKernel<T> {
+class BatchNormGradOp : public framework::OperatorWithKernel {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override;
+};
+
+class BatchNormDoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+};
+
+class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override;
+};
+
+template <typename T>
+class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override;
+};
+
+template <typename T>
+class BatchNormDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override;
+};
+
+class BatchNormOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+      const override {
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Y"}};
+    return m;
+  }
 };
 
 }  // namespace operators

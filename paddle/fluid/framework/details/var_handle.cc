@@ -18,15 +18,22 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-VarHandleBase::~VarHandleBase() {}
+VarHandleBase::~VarHandleBase() = default;
+
+VarHandle::~VarHandle() { VLOG(4) << "deleting var handle " << DebugString(); }
 
 std::string VarHandle::DebugString() const {
   std::stringstream ss;
-  ss << name_ << ":" << place_;
+  ss << "name:" << name_ << ", place:" << place_ << ", version:" << version_
+     << ", scope_idx:" << scope_idx_;
   return ss.str();
 }
 
-std::string DummyVarHandle::DebugString() const { return "dummy"; }
+std::string DummyVarHandle::DebugString() const { return node_->Name(); }
+
+DummyVarHandle::~DummyVarHandle() {
+  VLOG(4) << "deleting dummy var handle " << DebugString();
+}
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

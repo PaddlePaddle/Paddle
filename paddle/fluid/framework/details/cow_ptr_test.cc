@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include "paddle/fluid/framework/details/cow_ptr.h"
+
 #include "gtest/gtest.h"
 
 namespace paddle {
@@ -28,6 +29,14 @@ TEST(COWPtr, all) {
   *ptr2.MutableData() = 10;
   ASSERT_EQ(ptr.Data(), 0);
   ASSERT_EQ(ptr2.Data(), 10);
+}
+
+TEST(COWPtr, change_old) {
+  COWPtr<int> ptr(new int{0});
+  COWPtr<int> ptr2 = ptr;
+  *ptr.MutableData() = 10;
+  ASSERT_EQ(ptr2.Data(), 0);
+  ASSERT_EQ(ptr.Data(), 10);
 }
 
 }  // namespace details

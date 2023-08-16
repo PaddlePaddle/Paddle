@@ -11,8 +11,21 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+
 namespace paddle {
 namespace operators {
 
@@ -27,7 +40,7 @@ class LoDRankTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
     VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
@@ -39,13 +52,14 @@ class LoDRankTableOp : public framework::OperatorBase {
 class LoDRankTableOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor) input lod tensor, must contain lod information.");
+    AddInput(
+        "X",
+        "(phi::DenseTensor) input lod tensor, must contain lod information.");
     AddOutput("Out", "(LoDRankTable) The rank table of specific level.");
     AddAttr<int>("level", "(int) the specific lod level to rank.")
         .SetDefault(0)
         .EqualGreaterThan(0);
-    AddComment(R"DOC(Create LoDRanTable by LoDTensor
+    AddComment(R"DOC(Create LoDRanTable by phi::DenseTensor
 
 LoD Rank Table stores the `level` of `lod` which is ordered by sequence
 length in descending order. It is useful when implement dynamic RNN and is
@@ -58,26 +72,30 @@ output operators.
 class LoDRankTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "LoDRankTable must has input X");
+    PADDLE_ENFORCE_EQ(
+        context->HasInput("X"),
+        true,
+        platform::errors::NotFound("LoDRankTable must have input X."));
   }
 };
 
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o : op_desc.Output("Out")) {
-      block->FindRecursiveOrCreateVar(o).SetType(
-          framework::proto::VarType::LOD_RANK_TABLE);
-    }
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SetOutputType("Out",
+                       framework::proto::VarType::LOD_RANK_TABLE,
+                       framework::ALL_ELEMENTS);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(lod_rank_table, paddle::operators::LoDRankTableOp,
-                  paddle::operators::LoDRankTableOpProtoMaker,
-                  paddle::operators::LoDRankTableInferShape,
-                  paddle::operators::LoDRankTableInferVarType,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    lod_rank_table,
+    paddle::operators::LoDRankTableOp,
+    paddle::operators::LoDRankTableOpProtoMaker,
+    paddle::operators::LoDRankTableInferShape,
+    paddle::operators::LoDRankTableInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

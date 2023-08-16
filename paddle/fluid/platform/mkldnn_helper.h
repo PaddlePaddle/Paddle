@@ -13,78 +13,159 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <mkldnn.h>
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/framework/operator.h"
 
+#include "dnnl.hpp"  // NOLINT
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/phi/common/place.h"
 namespace paddle {
+#ifdef PADDLE_WITH_DNNL
+using phi::OneDNNContext;
+#endif
 namespace platform {
 
-using MKLDNNStream = mkldnn::stream;
-using MKLDNNEngine = mkldnn::engine;
-using MKLDNNMemory = mkldnn::memory;
-using MKLDNNMemoryDescriptor = mkldnn::memory::desc;
-using MKLDNNPrimitive = mkldnn::primitive;
-using MKLDNNPrimitiveDesc = mkldnn::handle<mkldnn_primitive_desc_t>;
-
-typedef std::unique_ptr<MKLDNNStream> MKLDNNStreamPtr;
-typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
-typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
-typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
-typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
-
-template <typename Type>
-void* to_void_cast(const Type* t) {
-  return static_cast<void*>(const_cast<Type*>(t));
+inline void ClearMKLDNNCache(const platform::Place& place,
+                             void* ptr = nullptr) {
+  // Clear mkl-dnn cache,
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
+    dev_ctx->ResetBlobMap(ptr);
+  }
 }
 
-template <typename Type>
-void* to_void_reinterpret_cast(const Type* t) {
-  return reinterpret_cast<void*>(const_cast<Type*>(t));
+inline void DontClearMKLDNNCache(const platform::Place& place) {
+  // Clear mkl-dnn cache,
+  if (platform::is_cpu_place(place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
+    dev_ctx->BlockNextCacheClearing();
+  }
 }
 
-template <class Type>
-using tf_desc = typename Type::desc;
+// If MKLDNN build and CPU place then register suffix in DeviceContext
+inline void AttachPointerHashToMKLDNNKey(void* ptr,
+                                         const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    // Static vars will remember first executor and its thread
+    // so both of them need to be processed by the same thread within
+    // critical section
+    static std::mutex static_vars_barrier;
+    static_vars_barrier.lock();
+    static auto first_exec = ptr;
+    static auto first_thread = phi::funcs::ThreadIDasStr();
+    static_vars_barrier.unlock();
 
-template <class Type>
-using tf_pd = typename Type::primitive_desc;
+    if (first_exec != ptr) {
+      OneDNNContext::tls().set_key_suffix(
+          "E" + std::to_string(reinterpret_cast<uintptr_t>(ptr)));
+    }
+    // Let's register adress of current executor
+    OneDNNContext::tls().set_curr_exec(ptr);
 
-template <typename Type, typename Engine, typename... Args>
-std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
-                                                    Args&&... args) {
-  auto desc = tf_desc<Type>(mkldnn::prop_kind::forward, (args)...);
-  auto pd = new tf_pd<Type>(desc, e);
-  return std::shared_ptr<tf_pd<Type>>(pd);
+    // For first thread
+    if (first_thread == phi::funcs::ThreadIDasStr()) {
+      OneDNNContext::tls().disable_tid_in_key();
+    }
+  }
 }
 
-template <typename Type, typename Engine, typename Primitive, typename... Args>
-tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
-                                   Args&&... args) {
-  auto desc = tf_desc<Type>(args...);
-  return tf_pd<Type>(desc, e, p);
+inline void RegisterModelLayout(
+    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
+    const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    // If there is already registered NHWC then quit this call
+    // not to overwrite setting with analysis of internal "while" op block
+    if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
+        phi::DataLayout::kNHWC)
+      return;
+
+    VLOG(4) << "RegisterModelLayout for mkldnn";
+    auto check_attrib = [](std::unique_ptr<framework::OperatorBase>& op,
+                           const std::string& attrib_name) -> bool {
+      if (op->HasAttr(attrib_name)) {
+        auto data_format = op->Attr<std::string>(attrib_name);
+        OneDNNContext::tls().set_cur_paddle_data_layout(
+            data_format.compare("NHWC") == 0 ? phi::DataLayout::kNHWC
+                                             : phi::DataLayout::kNCHW);
+        return true;
+      } else {
+        return false;
+      }
+    };
+
+    for (auto& op : ops) {
+      if (check_attrib(op, std::string("data_format"))) {
+        return;
+      }
+      if (check_attrib(op, std::string("data_layout"))) {
+        return;
+      }
+    }
+  }
 }
 
-inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
-                                          mkldnn::memory::data_type data_type,
-                                          mkldnn::memory::format format) {
-  mkldnn::memory::dims tz = dims;
-  return mkldnn::memory::desc({tz}, data_type, format);
+inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
+  return (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8" ||
+          op->GetAttrIfExists<bool>("use_quantizer"));
 }
 
-inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_mkldnn = ctx.Attr<bool>("use_mkldnn");
-  return use_mkldnn && platform::is_cpu_place(ctx.GetPlace());
-}
-
-template <typename Type>
-mkldnn::memory::data_type MKLDNNGetDataType() {
-  return mkldnn::memory::data_undef;
-}
-
-template <>
-inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
-  return mkldnn::memory::f32;
+inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
+  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
 }
 
 }  // namespace platform
+
+inline std::string FindInputNameByVarName(framework::OpDesc* op,
+                                          const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->InputNames())
+    for (const auto& input_name : op->Input(name))
+      if (input_name == searched_name) ret = name;
+  return ret;
+}
+
+inline std::string FindOutputNameByVarName(framework::OpDesc* op,
+                                           const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->OutputNames())
+    for (const auto& output_name : op->Output(name))
+      if (output_name == searched_name) ret = name;
+  return ret;
+}
+
+inline bool FoundOneDNNKernel(const framework::OpDesc* op) {
+  auto op_type = op->Type();
+  auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
+  auto it = all_kernels.find(op_type);
+  if (it != all_kernels.end()) {
+    for (auto& kernel_pair : it->second) {
+      if (platform::is_cpu_place(kernel_pair.first.place_) &&
+          (kernel_pair.first.library_type_ ==
+           framework::LibraryType::kMKLDNN)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+inline bool FoundPhiOneDNNKernel(const framework::OpDesc* op) {
+  auto op_type = op->Type();
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(op_type));
+
+  for (auto& kernel_pair : phi_kernels)
+    if (kernel_pair.first.backend() == phi::Backend::ONEDNN) return true;
+
+  return false;
+}
+
 }  // namespace paddle

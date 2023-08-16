@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -25,11 +26,24 @@
 
 namespace paddle {
 namespace framework {
+class OpDesc;
+class Scope;
+namespace ir {
+class Node;
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 struct RPCOpHandle : public OpHandleBase {
-  RPCOpHandle(const framework::OpDesc& op_desc, const Scope* local_scope,
-              const platform::Place& place, const std::string& name);
+  RPCOpHandle(ir::Node* node,
+              const framework::OpDesc& op_desc,
+              Scope* local_scope,
+              const std::string& name,
+              const platform::Place& place);
 
   std::string Name() const override;
 
@@ -40,11 +54,13 @@ struct RPCOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<Scope*> GetLocalScopes() override { return {local_scope_}; }
+
  private:
   std::unique_ptr<OperatorBase> op_;
-  const Scope* local_scope_;
-  const platform::Place& place_;
+  Scope* local_scope_;
   const std::string name_;
+  platform::Place place_;
 };
 
 }  // namespace details

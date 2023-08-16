@@ -12,77 +12,119 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import os
+import sys
+import atexit
+
+# The legacy core need to be removed before "import core",
+# in case of users installing paddlepaddle without -U option
+core_suffix = 'so'
+if os.name == 'nt':
+    core_suffix = 'pyd'
+
+legacy_core = (
+    os.path.abspath(os.path.dirname(__file__)) + os.sep + 'core.' + core_suffix
+)
+if os.path.exists(legacy_core):
+    sys.stderr.write('Deleting legacy file ' + legacy_core + '\n')
+    try:
+        os.remove(legacy_core)
+    except Exception as e:
+        raise e
+
 # import all class inside framework into fluid module
-import framework
-from framework import *
+from . import framework
+from .framework import *
+
 # import all class inside executor into fluid module
-import executor
-from executor import *
+from . import executor
+from .executor import *
 
-import trainer
-from trainer import Trainer
-from trainer import BeginEpochEvent
-from trainer import EndEpochEvent
-from trainer import BeginStepEvent
-from trainer import EndStepEvent
+from . import data_feed_desc
+from .data_feed_desc import *
 
-import inferencer
-from inferencer import Inferencer
+from . import dataset
+from .dataset import *
 
-import io
-import evaluator
-import initializer
-import layers
-import nets
-import optimizer
-import backward
-import regularizer
-import average
-import metrics
-import transpiler
-from param_attr import ParamAttr, WeightNormParamAttr
-from data_feeder import DataFeeder
-from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace
-from transpiler import DistributeTranspiler, SimpleDistributeTranspiler, \
-    InferenceTranspiler, memory_optimize, release_memory
-from concurrency import (Go, make_channel, channel_send, channel_recv,
-                         channel_close, Select)
-from lod_tensor import create_lod_tensor, create_random_int_lodtensor
-import clip
-import profiler
-import unique_name
-import recordio_writer
-import parallel_executor
-from parallel_executor import *
+from . import trainer_desc
+
+from . import io
+from . import initializer
+from .initializer import set_global_initializer
+from . import layers
+from . import dygraph
+from . import backward
+from .backward import gradients
+from . import incubate
+from .param_attr import ParamAttr, WeightNormParamAttr
+from .data_feeder import DataFeeder
+
+from .core import LoDTensor, LoDTensorArray, Scope, _Scope
+from .core import (
+    CPUPlace,
+    XPUPlace,
+    CUDAPlace,
+    CUDAPinnedPlace,
+    IPUPlace,
+    CustomPlace,
+)
+from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
+
+from . import unique_name
+from . import compiler
+from .compiler import *
+from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from .dygraph.base import enable_dygraph, disable_dygraph
+from .dygraph.tensor_patch_methods import monkey_patch_tensor
+from .core import _cuda_synchronize
+from .trainer_desc import (
+    TrainerDesc,
+    DistMultiTrainer,
+    PipelineTrainer,
+    HeterPipelineTrainer,
+    MultiTrainer,
+    HeterXpuTrainer,
+)
+from .backward import append_backward
 
 Tensor = LoDTensor
+enable_imperative = enable_dygraph
+disable_imperative = disable_dygraph
 
-__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
-          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-          parallel_executor.__all__ + lod_tensor.__all__ + [
-              'io',
-              'initializer',
-              'layers',
-              'transpiler'
-              'nets',
-              'optimizer',
-              'learning_rate_decay',
-              'backward',
-              'regularizer',
-              'LoDTensor',
-              'CPUPlace',
-              'CUDAPlace',
-              'CUDAPinnedPlace',
-              'Tensor',
-              'ParamAttr',
-              'WeightNormParamAttr',
-              'DataFeeder',
-              'clip',
-              'profiler',
-              'unique_name',
-              'recordio_writer',
-          ]
+__all__ = (
+    framework.__all__
+    + executor.__all__
+    + trainer_desc.__all__
+    + lod_tensor.__all__
+    + data_feed_desc.__all__
+    + compiler.__all__
+    + backward.__all__
+    + [
+        'io',
+        'initializer',
+        'layers',
+        'dygraph',
+        'enable_dygraph',
+        'disable_dygraph',
+        'enable_imperative',
+        'disable_imperative',
+        'backward',
+        'LoDTensor',
+        'LoDTensorArray',
+        'CPUPlace',
+        'XPUPlace',
+        'CUDAPlace',
+        'CUDAPinnedPlace',
+        'IPUPlace',
+        'Tensor',
+        'ParamAttr',
+        'WeightNormParamAttr',
+        'DataFeeder',
+        'unique_name',
+        'Scope',
+        '_cuda_synchronize',
+    ]
+)
 
 
 def __bootstrap__():
@@ -93,9 +135,13 @@ def __bootstrap__():
         None
     """
     import sys
-    import core
     import os
+    import platform
+    from . import core
 
+    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
+    # unittest is always imported in numpy (maybe some versions not).
+    # so is_test is True and p2p is not inited.
     in_test = 'unittest' in sys.modules
 
     try:
@@ -109,27 +155,62 @@ def __bootstrap__():
             'speed will not be optimized if you use data parallel. It will '
             'fail if this PaddlePaddle binary is compiled with OpenBlas since'
             ' OpenBlas does not support multi-threads.'.format(num_threads),
-            file=sys.stderr)
+            file=sys.stderr,
+        )
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
 
+    flag_prefix = "FLAGS_"
     read_env_flags = [
-        'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope'
+        key[len(flag_prefix) :]
+        for key in core.globals().keys()
+        if key.startswith(flag_prefix)
     ]
-    if core.is_compiled_with_cuda():
-        read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_algo_use_autotune'
-        ]
-    core.init_gflags([sys.argv[0]] +
-                     ["--tryfromenv=" + ",".join(read_env_flags)])
-    core.init_glog(sys.argv[0])
+
+    def remove_flag_if_exists(name):
+        if name in read_env_flags:
+            read_env_flags.remove(name)
+
+    sysstr = platform.system()
+    if 'Darwin' in sysstr:
+        remove_flag_if_exists('use_pinned_memory')
+
+    if os.name == 'nt':
+        remove_flag_if_exists('cpu_deterministic')
+
+    if core.is_compiled_with_ipu():
+        # Currently we request all ipu available for training and testing
+        #   finer control of pod of IPUs will be added later
+        read_env_flags += []
+
+    core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
+    # Note(zhouwei25): sys may not have argv in some cases,
+    # Such as: use Python/C API to call Python from C++
+    try:
+        core.init_glog(sys.argv[0])
+    except Exception:
+        sys.argv = [""]
+        core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
-    core.init_devices(not in_test)
+    core.init_memory_method()
+    core.init_devices()
+    core.init_tensor_operants()
+    core.init_default_kernel_signatures()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
-layers.monkey_patch_variable()
+monkey_patch_variable()
 __bootstrap__()
+monkey_patch_tensor()
+
+# NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
+atexit.register(core.clear_executor_cache)
+
+# NOTE(Aganlengzi): clean up KernelFactory in advance manually.
+# NOTE(wangran16): clean up DeviceManager in advance manually.
+# Keep clear_kernel_factory running before clear_device_manager
+atexit.register(core.clear_device_manager)
+atexit.register(core.clear_kernel_factory)
+atexit.register(core.ProcessGroupIdMap.destroy)

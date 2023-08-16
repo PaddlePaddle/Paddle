@@ -13,130 +13,103 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <iostream>
-#include <vector>
+// #include <functional>
+// #include <iostream>
+// #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/variant.h"
+//
 
+#include "paddle/phi/common/place.h"
 namespace paddle {
 namespace platform {
 
-struct CPUPlace {
-  // WORKAROUND: for some reason, omitting this constructor
-  // causes errors with boost 1.59 and OSX
-  CPUPlace() {}
-
-  // needed for variant equality comparison
-  inline bool operator==(const CPUPlace &) const { return true; }
-  inline bool operator!=(const CPUPlace &) const { return false; }
-};
-
-struct CUDAPlace {
-  CUDAPlace() : CUDAPlace(0) {}
-  explicit CUDAPlace(int d) : device(d) {}
-
-  inline int GetDeviceId() const { return device; }
-  // needed for variant equality comparison
-  inline bool operator==(const CUDAPlace &o) const {
-    return device == o.device;
-  }
-  inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
-
-  int device;
-};
-
-struct CUDAPinnedPlace {
-  CUDAPinnedPlace() {}
-
-  // needed for variant equality comparison
-  inline bool operator==(const CUDAPinnedPlace &) const { return true; }
-  inline bool operator!=(const CUDAPinnedPlace &) const { return false; }
-};
-
-struct IsCUDAPlace : public boost::static_visitor<bool> {
-  bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const CUDAPlace &gpu) const { return true; }
-  bool operator()(const CUDAPinnedPlace &) const { return false; }
-};
-
-struct IsCPUPlace : public boost::static_visitor<bool> {
-  bool operator()(const CPUPlace &cpu) const { return true; }
-  bool operator()(const CUDAPlace &) const { return false; }
-  bool operator()(const CUDAPinnedPlace &) const { return false; }
-};
-
-struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
-  bool operator()(const CPUPlace &) const { return false; }
-  bool operator()(const CUDAPlace &) const { return false; }
-  bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
-};
-
-typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
+using Place = phi::Place;
+using CPUPlace = phi::CPUPlace;
+using CUDAPlace = phi::GPUPlace;
+using CUDAPinnedPlace = phi::GPUPinnedPlace;
+using XPUPlace = phi::XPUPlace;
+using IPUPlace = phi::IPUPlace;
+using CustomPlace = phi::CustomPlace;
 
 using PlaceList = std::vector<Place>;
 
-void set_place(const Place &);
-const Place &get_place();
-
-const CUDAPlace default_gpu();
-const CPUPlace default_cpu();
-const CUDAPinnedPlace default_cuda_pinned();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class PlaceHelper {
+ public:
+  static std::string GetDeviceType(const Place &place);
+  static size_t GetDeviceId(const Place &place);
+  static Place CreatePlace(const std::string &dev_type, size_t dev_id = 0);
+};
+#endif
 
 bool is_gpu_place(const Place &);
+bool is_xpu_place(const Place &);
+bool is_ipu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
+bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
-
-struct PlaceHash {
-  std::size_t operator()(const Place &p) const {
-    constexpr size_t num_dev_bits = 4;
-    std::hash<int> ihash;
-    size_t dev_id = 0;
-    if (is_gpu_place(p)) {
-      dev_id = boost::get<CUDAPlace>(p).device;
-    }
-    return ihash(dev_id << num_dev_bits | p.which());
-  }
-};
-
-std::ostream &operator<<(std::ostream &, const Place &);
-
-template <typename Visitor>
-struct PlaceVisitorWrapper
-    : public boost::static_visitor<typename Visitor::result_type> {
-  const Visitor &visitor_;
-  explicit PlaceVisitorWrapper(const Visitor &visitor) : visitor_(visitor) {}
-
-  typename Visitor::result_type operator()(const CPUPlace &cpu) const {
-    return visitor_(cpu);
-  }
-
-  typename Visitor::result_type operator()(const CUDAPlace &cuda) const {
-#ifdef PADDLE_WITH_CUDA
-    return visitor_(cuda);
-#else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
-    return typename Visitor::result_type();
-#endif
-  }
-
-  typename Visitor::result_type operator()(
-      const CUDAPinnedPlace &cuda_pinned) const {
-#ifdef PADDLE_WITH_CUDA
-    return visitor_(cuda_pinned);
-#else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda_pinned");
-    return typename Visitor::result_type();
-#endif
-  }
-};
 
 template <typename Visitor>
 typename Visitor::result_type VisitPlace(const Place &place,
                                          const Visitor &visitor) {
-  return boost::apply_visitor(PlaceVisitorWrapper<Visitor>(visitor), place);
+  switch (place.GetType()) {
+    case phi::AllocationType::GPU: {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::CUDAPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case phi::AllocationType::GPUPINNED: {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::CUDAPinnedPlace p;
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case phi::AllocationType::XPU: {
+#ifdef PADDLE_WITH_XPU
+      platform::XPUPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "Paddle is not compiled with XPU. Cannot visit xpu device"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case phi::AllocationType::IPU: {
+#ifdef PADDLE_WITH_IPU
+      platform::IPUPlace p(place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with IPU. Cannot visit ipu device"));
+      return typename Visitor::result_type();
+#endif
+    }
+    case phi::AllocationType::CUSTOM: {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      platform::CustomPlace p(place.GetDeviceType(), place.GetDeviceId());
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with CUSTOM. Cannot visit custom device"));
+#endif
+    }
+    default: {
+      platform::CPUPlace p;
+      return visitor(p);
+    }
+  }
 }
 
 }  // namespace platform

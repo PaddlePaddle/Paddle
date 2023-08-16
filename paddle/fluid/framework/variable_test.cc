@@ -12,30 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <memory>
-#include <string>
-
-#include "gtest/gtest.h"
 #include "paddle/fluid/framework/variable.h"
 
+#include "gtest/gtest.h"
+
+namespace paddle {
+namespace framework {
+
 TEST(Variable, GetMutable) {
-  using paddle::framework::Variable;
-
-  struct Tensor {
-    int content_;
-  };
-
   std::unique_ptr<Variable> v(new Variable());
 
-  Tensor* t = v->GetMutable<Tensor>();
-  t->content_ = 1234;
+  auto* t = v->GetMutable<String>();
+  *t = "1234";
 
-  const Tensor& tt = v->Get<Tensor>();
-  EXPECT_EQ(1234, tt.content_);
+  const auto& tt = v->Get<String>();
+  EXPECT_EQ("1234", tt);
 
-  std::string* s = v->GetMutable<std::string>();
-  *s = "hello";
+  try {
+    v->GetMutable<phi::DenseTensor>();
+  } catch (std::exception& e) {
+    return;
+  }
+  EXPECT_TRUE(false);
 
-  const std::string& ss = v->Get<std::string>();
-  EXPECT_EQ("hello", ss);
+  std::unique_ptr<Variable> v_ints(new Variable());
+  auto* v_t = v_ints->GetMutable<std::vector<int>>();
+  v_t->push_back(1);
+  v_t->push_back(2);
+
+  const auto& cv_t = v_ints->Get<std::vector<int>>();
+  EXPECT_EQ(cv_t[0], 1);
+  EXPECT_EQ(cv_t[1], 2);
 }
+
+}  // namespace framework
+}  // namespace paddle

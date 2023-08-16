@@ -33,12 +33,31 @@ class BlockingQueue {
     cv_.notify_one();
   }
 
+  void Push(T &&item) {
+    {
+      std::lock_guard<std::mutex> g(mutex_);
+      q_.emplace_back(std::move(item));
+    }
+    cv_.notify_one();
+  }
+
   template <typename U>
   void Extend(const U &items) {
     {
       std::lock_guard<std::mutex> g(mutex_);
       for (auto &item : items) {
         q_.emplace_back(item);
+      }
+    }
+    cv_.notify_all();
+  }
+
+  template <typename U>
+  void Extend(U &&items) {
+    {
+      std::lock_guard<std::mutex> g(mutex_);
+      for (auto &item : items) {
+        q_.emplace_back(std::move(item));
       }
     }
     cv_.notify_all();
@@ -56,12 +75,45 @@ class BlockingQueue {
     return ret;
   }
 
+  void PopAll(std::deque<T> *empty_queue) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] { return !q_.empty(); });
+    std::swap(*empty_queue, q_);
+  }
+
+  std::deque<T> PopAll() {
+    std::deque<T> ret;
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait(lock, [this] { return !q_.empty(); });
+      std::swap(ret, q_);
+    }
+    return ret;
+  }
+
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [=] { return !q_.empty(); });
     T rc(std::move(q_.front()));
     q_.pop_front();
     return rc;
+  }
+
+  void Pop(T *t) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [=] { return !q_.empty(); });
+    *t = std::move(q_.front());
+    q_.pop_front();
+  }
+
+  size_t Size() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return q_.size();
+  }
+
+  void Clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::deque<T>().swap(q_);
   }
 
  private:

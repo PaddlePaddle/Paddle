@@ -13,79 +13,93 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include <vector>
+#include "paddle/fluid/framework/op_kernel_type.h"
 
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace framework {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
-  PADDLE_ENFORCE_NE(from, to,
-                    "layout transform should transform different layout");
+  PADDLE_ENFORCE_NE(
+      from,
+      to,
+      platform::errors::InvalidArgument(
+          "Layout transform should transform between different layout."));
   if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::kNHWC && to == DataLayout::kNCHW) {
     return {0, 3, 1, 2};
   } else {
-    PADDLE_THROW("unsupported transform");
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Unsupported layout transform."));
   }
 }
 
-struct CastDataLayout {
-  CastDataLayout(const platform::DeviceContext* ctx,
-                 const std::vector<int>& axis, const framework::Tensor& in,
-                 framework::Tensor* out)
-      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
-  const framework::Tensor in_;
-  framework::Tensor* out_;
-  const platform::DeviceContext* ctx_;
-  const std::vector<int> axis_;
+template <typename T>
+void CastDataLayout::apply() {
+  auto place = ctx_->GetPlace();
 
-  template <typename T>
-  void operator()() {
-    auto place = ctx_->GetPlace();
-
-    if (platform::is_cpu_place(place)) {
-      operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
-      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
-      trans4(*context, in_, out_, axis_);
-    } else {
-      PADDLE_THROW("Unsupport CPU <-> GPU!");
-    }
+  if (platform::is_cpu_place(place)) {
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans4;
+    auto* context = static_cast<const phi::CPUContext*>(ctx_);
+    trans4(*context, in_, out_, axis_);
+  } else {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Unsupported data layout cast from CPU to GPU."));
   }
-};
+}
 
-void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type, const Tensor& in,
-                     Tensor* out) {
+void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
+                     const phi::KernelKey& expected_kernel_type,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out,
+                     const phi::Place& place) {
   PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_type_for_var.place_,
-                                      expected_kernel_type.place_),
-      "TransDataLayout only support DataLayout transform on same place!");
+      backends_are_same_class(kernel_type_for_var.backend(),
+                              expected_kernel_type.backend()),
+      platform::errors::PreconditionNotMet(
+          "TransDataLayout only support DataLayout transform on same place."));
 
-  PADDLE_ENFORCE(arity(in.dims()) == 4, "Input Arity only support 4!");
+  TransDataLayout(kernel_type_for_var.layout(),
+                  expected_kernel_type.layout(),
+                  place,
+                  in,
+                  out);
+}
+
+void TransDataLayout(DataLayout from_layout,
+                     DataLayout to_layout,
+                     phi::Place place,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      arity(in.dims()),
+      4,
+      platform::errors::InvalidArgument(
+          "Input dimension arity only can be 4, the input dimension is %s.",
+          in.dims()));
 
   auto& pool = platform::DeviceContextPool::Instance();
 
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
 
-  auto axis = GetAxis(kernel_type_for_var.data_layout_,
-                      expected_kernel_type.data_layout_);
+  auto axis = GetAxis(from_layout, to_layout);
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(make_ddim(dst_dim));
-  out->mutable_data(expected_kernel_type.place_, in.type());
+  out->Resize(phi::make_ddim(dst_dim));
+  out->mutable_data(place, in.dtype());
 
   framework::VisitDataType(
-      framework::ToDataType(in.type()),
-      CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
+      static_cast<proto::VarType::Type>(phi::TransToProtoVarType(in.dtype())),
+      CastDataLayout(pool.Get(place), axis, in, out));
 
-  out->set_layout(expected_kernel_type.data_layout_);
+  out->set_layout(to_layout);
 }
 
 }  // namespace framework

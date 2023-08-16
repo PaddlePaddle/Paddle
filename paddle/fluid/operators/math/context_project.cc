@@ -13,13 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/context_project.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-template class ContextProjectFunctor<platform::CPUDeviceContext, float>;
-template class ContextProjectFunctor<platform::CPUDeviceContext, double>;
+template class ContextProjectFunctor<phi::CPUContext, float>;
+template class ContextProjectFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

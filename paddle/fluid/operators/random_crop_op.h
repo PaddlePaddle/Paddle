@@ -15,11 +15,11 @@
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <thrust/random.h>
 #endif
 
@@ -30,16 +30,16 @@ template <typename DeviceContext>
 struct Random;
 
 template <>
-struct Random<platform::CPUDeviceContext> {
+struct Random<phi::CPUContext> {
   using Engine = std::minstd_rand;
 
   template <typename T>
   using UniformIntDist = std::uniform_int_distribution<T>;
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct Random<platform::CUDADeviceContext> {
+struct Random<phi::GPUContext> {
   using Engine = thrust::minstd_rand;
 
   template <typename T>
@@ -48,8 +48,12 @@ struct Random<platform::CUDADeviceContext> {
 #endif
 
 template <typename T>
-HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
-                                     const size_t* out_dims, int i, int rank,
+HOSTDEVICE inline void StridedMemcpy(const T* x,
+                                     const size_t* x_dims,
+                                     T* out,
+                                     const size_t* out_dims,
+                                     int i,
+                                     int rank,
                                      size_t prod_x_remain,
                                      size_t prod_out_remain,
                                      const size_t* offsets) {
@@ -60,7 +64,6 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-    PADDLE_ASSERT(x_stride == 1 && out_stride == 1);
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
       *out++ = *x++;
@@ -68,8 +71,8 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   } else {
     x += offset_i * x_stride;
     for (size_t j = 0; j < out_dim_i; ++j) {
-      StridedMemcpy<T>(x, x_dims, out, out_dims, i + 1, rank, x_stride,
-                       out_stride, offsets);
+      StridedMemcpy<T>(
+          x, x_dims, out, out_dims, i + 1, rank, x_stride, out_stride, offsets);
       x += x_stride;
       out += out_stride;
     }
@@ -90,16 +93,36 @@ struct RandomCropFunctor {
   size_t prod_x_ins_dims_;
   size_t prod_out_ins_dims_;
 
-  RandomCropFunctor(const T* x, T* out, const framework::DDim& x_dims,
-                    const framework::DDim& out_dims, int num_batchsize_dims,
+  RandomCropFunctor(const T* x,
+                    T* out,
+                    const framework::DDim& x_dims,
+                    const framework::DDim& out_dims,
+                    int num_batchsize_dims,
                     int64_t seed)
       : x_(x),
         out_(out),
         num_batchsize_dims_(num_batchsize_dims),
         rank_(x_dims.size()),
         seed_(seed) {
-    PADDLE_ENFORCE_EQ(x_dims.size(), out_dims.size());
-    PADDLE_ENFORCE_GT(rank_, num_batchsize_dims_);
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        out_dims.size(),
+        platform::errors::InvalidArgument(
+            "The dimensions of Input(X) must equal to be the dimensions"
+            "of Output(Out), but received dimensions of Input(X) is [%d],"
+            "received dimensions of Output(Out) is [%d].",
+            x_dims.size(),
+            out_dims.size()));
+    PADDLE_ENFORCE_GT(
+        rank_,
+        num_batchsize_dims_,
+        platform::errors::InvalidArgument(
+            "The dimensions of Input(X) must be greater than the diff"
+            "value of Input(X)'s dimensions minus Atrr(shape)'s dimensions,"
+            "But received Input(X)'s dimensions is [%d], received value of"
+            "Input(X)'s dimensions minus Attr(shape)'s dimensions is [%d].",
+            rank_,
+            num_batchsize_dims_));
     prod_batchsize_dims_ = 1;
     prod_x_ins_dims_ = 1;
     prod_out_ins_dims_ = 1;
@@ -109,7 +132,17 @@ struct RandomCropFunctor {
       x_dims_[i] = x_dim_i;
       out_dims_[i] = out_dim_i;
       if (i < static_cast<size_t>(num_batchsize_dims_)) {
-        PADDLE_ENFORCE_EQ(x_dim_i, out_dim_i);
+        PADDLE_ENFORCE_EQ(
+            x_dim_i,
+            out_dim_i,
+            platform::errors::InvalidArgument(
+                "The first [%d] dimension value of Input(X) and Output(Out)"
+                "must be equal, but received the [%d] dimension value of"
+                "Input(X) and Output(Out) respectively are [%d] and [%d].",
+                num_batchsize_dims_,
+                i,
+                x_dim_i,
+                out_dim_i));
         prod_batchsize_dims_ *= x_dim_i;
       } else {
         prod_x_ins_dims_ *= x_dim_i;
@@ -121,7 +154,7 @@ struct RandomCropFunctor {
   HOSTDEVICE void operator()(size_t ins_idx) {
     typename Random<DeviceContext>::Engine engine(seed_);
     engine.discard(ins_idx * (rank_ - num_batchsize_dims_));
-    size_t offsets[9];
+    size_t offsets[9] = {};
     for (int i = num_batchsize_dims_; i < rank_; ++i) {
       typename Random<DeviceContext>::template UniformIntDist<size_t> dist(
           0, x_dims_[i] - out_dims_[i]);
@@ -131,47 +164,65 @@ struct RandomCropFunctor {
     const T* x = x_ + ins_idx * prod_x_ins_dims_;
     T* out = out_ + ins_idx * prod_out_ins_dims_;
 
-    StridedMemcpy<T>(x, x_dims_ + num_batchsize_dims_, out,
-                     out_dims_ + num_batchsize_dims_, 0,
-                     rank_ - num_batchsize_dims_, prod_x_ins_dims_,
-                     prod_out_ins_dims_, offsets);
+    StridedMemcpy<T>(x,
+                     x_dims_ + num_batchsize_dims_,
+                     out,
+                     out_dims_ + num_batchsize_dims_,
+                     0,
+                     rank_ - num_batchsize_dims_,
+                     prod_x_ins_dims_,
+                     prod_out_ins_dims_,
+                     offsets);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RandomCropKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
-    auto& seed_tensor = detail::Ref(ctx.Input<framework::LoDTensor>("Seed"));
     int64_t seed = 0;
-    if (platform::is_cpu_place(seed_tensor.place())) {
-      seed = *seed_tensor.data<int64_t>();
+    auto& seed_tensor = GET_DATA_SAFELY(
+        ctx.Input<phi::DenseTensor>("Seed"), "Input", "Seed", "RandomCrop");
+    if (seed_tensor.IsInitialized()) {
+      if (platform::is_cpu_place(seed_tensor.place())) {
+        seed = *seed_tensor.template data<int64_t>();
+      } else {
+        LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
+                        "your program";
+        phi::DenseTensor cpu_seed;
+        framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
+        seed = *cpu_seed.data<int64_t>();
+      }
     } else {
-      LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
-                      "your program";
-      framework::LoDTensor cpu_seed;
-      framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
-      seed = *cpu_seed.data<int64_t>();
+      VLOG(5) << "WARNING: The input 'Seed' is not initialized, use attribute "
+                 "'startup_seed' instead.";
+      seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    auto& x = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
-    auto& out = detail::Ref(ctx.Output<framework::LoDTensor>("Out"));
+    auto& x = GET_DATA_SAFELY(
+        ctx.Input<phi::DenseTensor>("X"), "Input", "X", "RandomCrop");
+    auto& out = GET_DATA_SAFELY(
+        ctx.Output<phi::DenseTensor>("Out"), "Output", "Out", "RandomCrop");
 
     int num_batchsize_dims = x.dims().size() - shape.size();
     RandomCropFunctor<DeviceContext, T> functor(
-        x.data<T>(), out.mutable_data<T>(ctx.GetPlace()), x.dims(), out.dims(),
-        num_batchsize_dims, seed);
+        x.template data<T>(),
+        out.template mutable_data<T>(ctx.GetPlace()),
+        x.dims(),
+        out.dims(),
+        num_batchsize_dims,
+        seed);
     platform::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(),
         functor.prod_batchsize_dims_);
 
     for_range(functor);
 
-    Random<platform::CPUDeviceContext>::Engine engine(seed);
+    Random<phi::CPUContext>::Engine engine(seed);
     engine.discard(functor.prod_batchsize_dims_ *
                    (functor.rank_ - functor.num_batchsize_dims_));
-    *ctx.Output<framework::LoDTensor>("SeedOut")->mutable_data<int64_t>(
-        platform::CPUPlace()) = engine();
+    *ctx.Output<phi::DenseTensor>("SeedOut")->mutable_data<int64_t>(
+        phi::make_ddim({1}), platform::CPUPlace()) = engine();
   }
 };
 

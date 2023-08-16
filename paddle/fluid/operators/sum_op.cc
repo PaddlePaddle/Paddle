@@ -9,175 +9,184 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sum_op.h"
-
 #include <algorithm>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 class SumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
-
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SumOp should not be null.");
-    if (ctx->IsRuntime() &&
-        ctx->GetOutputsVarType("Out")[0] ==
-            framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      return;  // skip runtime infershape when is tensor array;
-    }
-
-    auto x_dims = ctx->GetInputsDim("X");
-    size_t N = x_dims.size();
-    PADDLE_ENFORCE_GT(N, 0, "Input tensors count should > 0.");
-    if (N == 1) {
-      VLOG(3) << "Warning: sum have only one input, may waste memory";
-    }
-
-    framework::DDim in_dim({0});
-    for (auto& x_dim : x_dims) {
-      if (framework::product(x_dim) == 0) {
-        continue;
-      }
-      if (framework::product(in_dim) == 0) {
-        in_dim = x_dim;
-      } else {
-        PADDLE_ENFORCE_EQ(in_dim, x_dim, "Input tensors must have same shape");
-      }
-    }
-    ctx->SetOutputDim("Out", in_dim);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
-    if (x_vars[0]->IsType<framework::LoDTensor>()) {
+    auto x_vars_name = ctx.InputNames("X");
+
+    PADDLE_ENFORCE_GT(
+        x_vars.size(),
+        0,
+        platform::errors::InvalidArgument("Input[X] should not be empty"));
+
+    PADDLE_ENFORCE_NOT_NULL(
+        x_vars[0],
+        platform::errors::NotFound("Input var[%s] should not be nullptr",
+                                   x_vars_name[0]));
+
+    if (x_vars[0]->IsType<phi::DenseTensor>()) {
       int dtype = -1;
-      for (auto& x_var : x_vars) {
-        auto& lod_tensor = x_var->Get<framework::LoDTensor>();
-        if (lod_tensor.numel() == 0) {
+      for (size_t idx = 0; idx < x_vars.size(); ++idx) {
+        PADDLE_ENFORCE_NOT_NULL(
+            x_vars[idx],
+            platform::errors::NotFound("Input var[%s] should not be nullptr",
+                                       x_vars_name[idx]));
+        auto tensor =
+            framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
+        if (!tensor->IsInitialized()) {
           continue;
         }
         if (dtype == -1) {
-          dtype = framework::ToDataType(lod_tensor.type());
+          dtype = framework::TransToProtoVarType(tensor->dtype());
         } else {
-          PADDLE_ENFORCE_EQ(dtype, framework::ToDataType(lod_tensor.type()));
+          PADDLE_ENFORCE_EQ(dtype,
+                            framework::TransToProtoVarType(tensor->dtype()),
+                            platform::errors::InvalidArgument(
+                                "The inputs type of sum op must be same"));
         }
       }
-      PADDLE_ENFORCE_NE(dtype, -1,
-                        "Sum operator should have at least one tensor");
+      PADDLE_ENFORCE_NE(dtype,
+                        -1,
+                        platform::errors::InvalidArgument(
+                            "Sum operator should have at least one tensor"));
 
-      return framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(dtype),
-          ctx.device_context());
-    } else if (x_vars[0]->IsType<framework::SelectedRows>()) {
+      auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
+
+      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
+      if (!((data_type == framework::proto::VarType::FP32 ||
+             data_type == framework::proto::VarType::BF16) &&
+            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
+        this->SetDnnFallback(true);
+      } else if (!std::all_of(x_vars.begin(),
+                              x_vars.end(),
+                              [](const framework::Variable* v) {
+                                return v->IsType<phi::DenseTensor>();
+                              })) {
+        this->SetDnnFallback(true);
+      }
+      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
+
+      return phi::KernelKey(data_type, ctx.GetPlace());
+    } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
-        auto& value = var->Get<framework::SelectedRows>().value();
+        auto& value = var->Get<phi::SelectedRows>().value();
         if (value.IsInitialized()) {
-          return framework::OpKernelType(framework::ToDataType(value.type()),
-                                         ctx.device_context());
+          return phi::KernelKey(framework::TransToProtoVarType(value.dtype()),
+                                ctx.GetPlace());
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
-      return framework::OpKernelType(framework::proto::VarType::FP32,
-                                     ctx.device_context());
+      return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
-          if (each.numel() != 0) {
-            return framework::OpKernelType(framework::ToDataType(each.type()),
-                                           ctx.device_context());
+          if (each.numel() != 0 && each.IsInitialized()) {
+            return phi::KernelKey(framework::TransToProtoVarType(each.dtype()),
+                                  ctx.GetPlace());
           }
         }
       }
-      PADDLE_THROW("Cannot find the input data type by all input data");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Expected each tensor in Input(x) in sum op has be initialized, but "
+          "some tensor in Input(x) is not be initialized, please check your "
+          "code.",
+          framework::ToTypeName(x_vars[0]->Type())));
     }
-    PADDLE_THROW("Unexpected branch. Input type is %s",
-                 x_vars[0]->Type().name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Expected type of Input(X) must be Tensor,  SelectedRows or "
+        "LodTensorArray. But got "
+        "unsupport type: %s.",
+        framework::ToTypeName(x_vars[0]->Type())));
   }
 };
 
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
+    AddInput(
+        "X",
+        "A Varaible list. The shape and data type of the list elements"
+        "should be consistent. Variable can be multi-dimensional Tensor"
+        "or phi::DenseTensor, and data types can be: float32, float64, int32, "
+        "int64.")
         .AsDuplicable();
-    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
-    AddComment(R"DOC(
-Sum operator.
-
-This operators sums the input tensors. All the inputs can carry the
-LoD (Level of Details) information. However, the output only shares
-the LoD information with the first input.
-)DOC");
+    AddOutput("Out",
+              "the sum of input :code:`x`. its shape and data types are "
+              "consistent with :code:`x`.");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "bfloat16"});
+    AddComment(
+        R"DOC(This OP is used to sum one or more Tensor or phi::DenseTensor
+                    of the input. If the input is phi::DenseTensor, the output only
+                    shares LoD information with the first input.)DOC");
   }
 };
 
 class SumOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto& inputs = op_desc.Input("X");
-    auto var_type = framework::proto::VarType::SELECTED_ROWS;
-
-    for (auto& name : op_desc.Input("X")) {
-      VLOG(10) << name << " "
-               << block->FindRecursiveOrCreateVar(name).GetType();
-    }
-
-    bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [block](const std::string& name) {
-          return block->FindRecursiveOrCreateVar(name).GetType() ==
-                 framework::proto::VarType::LOD_TENSOR;
-        });
-
-    auto is_tensor_array = [block](const std::string& name) {
-      return block->FindRecursiveOrCreateVar(name).GetType() ==
-             framework::proto::VarType::LOD_TENSOR_ARRAY;
-    };
-
-    bool any_input_is_tensor_array =
-        std::any_of(inputs.begin(), inputs.end(), is_tensor_array);
-    bool all_inputs_are_tensor_array =
-        std::all_of(inputs.begin(), inputs.end(), is_tensor_array);
-
-    if (any_input_is_tensor_array) {
-      if (!all_inputs_are_tensor_array) {
-        std::ostringstream os;
-        for (auto& each : inputs) {
-          os << "    " << each << " type is "
-             << block->FindRecursiveOrCreateVar(each).GetType() << "\n";
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    if (!ctx->IsDygraph()) {
+      auto var_type = framework::proto::VarType::SELECTED_ROWS;
+      if (VLOG_IS_ON(10)) {
+        for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
+          VLOG(10) << ctx->InputVarName("X", ind) << " "
+                   << ctx->GetInputType("X", ind);
         }
-        PADDLE_ENFORCE(all_inputs_are_tensor_array,
-                       "Not all inputs are tensor array:\n%s", os.str());
       }
-      var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
-    } else if (any_input_is_lod_tensor) {
-      var_type = framework::proto::VarType::LOD_TENSOR;
-    }
 
-    auto out_var_name = op_desc.Output("Out").front();
-    auto& out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    out_var.SetType(var_type);
-    auto& in_var = detail::Ref(block->FindVarRecursive(inputs.front()));
-    out_var.SetDataType(in_var.GetDataType());
+      if (ctx->InputTypeAnyOf("X",
+                              framework::proto::VarType::LOD_TENSOR_ARRAY)) {
+        if (!ctx->InputTypeAllOf("X",
+                                 framework::proto::VarType::LOD_TENSOR_ARRAY)) {
+          std::ostringstream os;
+          for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
+            os << "    " << ctx->InputVarName("X", ind) << " type is "
+               << ctx->GetInputType("X", ind) << "\n";
+          }
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Not all inputs are tensor array:\n%s", os.str()));
+        }
+        var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
+      } else if (ctx->InputTypeAnyOf("X",
+                                     framework::proto::VarType::LOD_TENSOR)) {
+        var_type = framework::proto::VarType::LOD_TENSOR;
+      }
+
+      ctx->SetOutputType("Out", var_type);
+      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
+    }
   }
 };
 
-class SumGradMaker : public framework::GradOpDescMakerBase {
+class SumGradDescMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
@@ -186,7 +195,9 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
     std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
     grad_ops.reserve(x_grads.size());
     auto og = OutputGrad("Out");
-    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
+    std::transform(x_grads.begin(),
+                   x_grads.end(),
+                   std::back_inserter(grad_ops),
                    [&og](const std::string& x_grad) {
                      auto* grad_op = new framework::OpDesc();
                      grad_op->SetType("scale");
@@ -195,19 +206,55 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
                      grad_op->SetAttr("scale", 1.0f);
                      return std::unique_ptr<framework::OpDesc>(grad_op);
                    });
+
     return grad_ops;
   }
 };
+
+class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
+ public:
+  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
+    auto x_grads = InputGrad("X", false);
+    using InputGradsType = decltype(x_grads);
+
+    if (!x_grads.empty()) {
+      auto node = this->NewGradNode();
+      node->reserve(x_grads.size());
+      auto og = OutputGrad("Out");
+      for (auto& x_grad : x_grads) {
+        imperative::TracedGradOp op(node);
+        op.SetType("scale");
+        op.SetInput("X", og);
+        op.SetOutput("Out", InputGradsType{x_grad});
+        op.SetAttr("scale", 1.0f);
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
+      }
+      return node;
+    } else {
+      return nullptr;
+    }
+  }
+};
+
+DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradMaker,
-                  ops::SumOpVarTypeInference);
-REGISTER_OP_CPU_KERNEL(
-    sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SumKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SumKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SumKernel<paddle::platform::CPUDeviceContext, int64_t>);
+namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(sum,
+                            AddNInferShapeFunctor,
+                            PD_INFER_META(phi::AddNTensorArrayInferMeta));
+
+REGISTER_OPERATOR(sum,
+                  ops::SumOp,
+                  ops::SumOpMaker,
+                  ops::SumGradDescMaker,
+                  ops::SumGradOpBaseMaker,
+                  ops::SumOpVarTypeInference,
+                  ops::SumInplaceInferer,
+                  AddNInferShapeFunctor);

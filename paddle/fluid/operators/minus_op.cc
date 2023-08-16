@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/minus_op.h"
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace paddle {
@@ -22,25 +24,40 @@ namespace operators {
 
 class MinusOp : public framework::OperatorWithKernel {
  public:
-  MinusOp(const std::string &type, const framework::VariableNameMap &inputs,
+  MinusOp(const std::string &type,
+          const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MinusOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of MinusOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MinusOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"),
+        true,
+        platform::errors::NotFound("Input(X) of MinusOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"),
+        true,
+        platform::errors::NotFound("Input(Y) of MinusOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"),
+        true,
+        platform::errors::NotFound("Output(Out) of MinusOp is not found."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(
-        x_dims, y_dims,
-        "Minus operator must take two tensor with same num of elements");
+    if (ctx->IsRuntime() ||
+        (phi::product(x_dims) > 0 && phi::product(y_dims) > 0)) {
+      PADDLE_ENFORCE_EQ(
+          x_dims,
+          y_dims,
+          platform::errors::InvalidArgument(
+              "Minus operator must take two tensor with same dim, but received "
+              "input X dim is:[%s], Y dim is:[%s]",
+              x_dims,
+              y_dims));
+    }
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -67,27 +84,27 @@ or not. But the output only shares the LoD information with input `X`.
   }
 };
 
-class MinusGradMaker : public framework::GradOpDescMakerBase {
+class MinusGradDescMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
-    auto x_g = InputGrad("X");
+    auto x_g = this->InputGrad("X");
     if (!x_g.empty()) {
       auto *x_g_op = new framework::OpDesc();
       x_g_op->SetType("scale");
-      x_g_op->SetInput("X", OutputGrad("Out"));
+      x_g_op->SetInput("X", this->OutputGrad("Out"));
       x_g_op->SetOutput("Out", x_g);
       x_g_op->SetAttr("scale", 1.0f);
       ops.emplace_back(x_g_op);
     }
 
-    auto y_g = InputGrad("Y");
+    auto y_g = this->InputGrad("Y");
     if (!y_g.empty()) {
       auto *y_g_op = new framework::OpDesc();
       y_g_op->SetType("scale");
-      y_g_op->SetInput("X", OutputGrad("Out"));
+      y_g_op->SetInput("X", this->OutputGrad("Out"));
       y_g_op->SetOutput("Out", y_g);
       y_g_op->SetAttr("scale", -1.0f);
       ops.emplace_back(y_g_op);
@@ -97,10 +114,49 @@ class MinusGradMaker : public framework::GradOpDescMakerBase {
   }
 };
 
+class MinusGradMaker : public imperative::GradOpBaseMakerBase {
+ public:
+  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
+    auto x_g = this->InputGrad("X");
+    auto y_g = this->InputGrad("Y");
+
+    auto node = this->NewGradNode();
+
+    if (!x_g.empty()) {
+      imperative::TracedGradOp op(node);
+      op.SetType("scale");
+      op.SetInput("X", this->OutputGrad("Out"));
+      op.SetOutput("Out", x_g);
+      op.SetAttr("scale", 1.0f);
+      op.SetDefaultAttrsMap(DefaultAttrsMap());
+    }
+
+    if (!y_g.empty()) {
+      imperative::TracedGradOp op(node);
+      op.SetType("scale");
+      op.SetInput("X", this->OutputGrad("Out"));
+      op.SetOutput("Out", y_g);
+      op.SetAttr("scale", -1.0f);
+      op.SetDefaultAttrsMap(DefaultAttrsMap());
+    }
+
+    return node;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker, ops::MinusGradMaker);
-REGISTER_OP_CPU_KERNEL(
-    minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OPERATOR(minus,
+                  ops::MinusOp,
+                  ops::MinusOpMaker,
+                  ops::MinusGradDescMaker,
+                  ops::MinusGradMaker);
+PD_REGISTER_STRUCT_KERNEL(minus, CPU, ALL_LAYOUT, ops::MinusKernel, float) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(minus, GPU, ALL_LAYOUT, ops::MinusKernel, float) {}
+#endif

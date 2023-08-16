@@ -19,37 +19,29 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SquaredL2DistanceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto* in1 = context.Input<Tensor>("Y");
-    auto* out0 = context.Output<Tensor>("sub_result");
-    auto* out1 = context.Output<Tensor>("Out");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+    auto* in1 = context.Input<phi::DenseTensor>("Y");
+    auto* out0 = context.Output<phi::DenseTensor>("sub_result");
+    auto* out1 = context.Output<phi::DenseTensor>("Out");
 
     auto in0_dims = in0->dims();
     auto in1_dims = in1->dims();
 
     int cols = in0->numel() / in0_dims[0];
     // reduce dimensions except the first
-    auto x =
-        EigenMatrix<T>::From(*in0, framework::make_ddim({in0_dims[0], cols}));
-    auto y =
-        EigenMatrix<T>::From(*in1, framework::make_ddim({in1_dims[0], cols}));
+    auto x = framework::EigenMatrix<T>::From(
+        *in0, phi::make_ddim({in0_dims[0], cols}));
+    auto y = framework::EigenMatrix<T>::From(
+        *in1, phi::make_ddim({in1_dims[0], cols}));
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
-    auto sub_result = EigenMatrix<T>::From(*out0);
-    auto z = EigenVector<T>::Flatten(*out1);
+    auto sub_result = framework::EigenMatrix<T>::From(*out0);
+    auto z = framework::EigenVector<T>::Flatten(*out1);
 
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
@@ -68,17 +60,30 @@ class SquaredL2DistanceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("sub_result");
-    auto* in1 = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x_g = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* y_g = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* in0 = context.Input<phi::DenseTensor>("sub_result");
+    auto* in1 = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_g = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* y_g = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
-    auto sub_result = EigenMatrix<T>::From(*in0);
-    auto out_grad = EigenMatrix<T>::From(*in1);
+    PADDLE_ENFORCE_NOT_NULL(
+        x_g,
+        platform::errors::NotFound(
+            "variable(%s) cannot be found "
+            "in scope for operator 'squared_l2_distance_grad'.",
+            framework::GradVarName("X")));
+    PADDLE_ENFORCE_NOT_NULL(
+        y_g,
+        platform::errors::NotFound(
+            "variable(%s) cannot be found "
+            "in scope for operator 'squared_l2_distance_grad'.",
+            framework::GradVarName("Y")));
+
+    auto sub_result = framework::EigenMatrix<T>::From(*in0);
+    auto out_grad = framework::EigenMatrix<T>::From(*in1);
 
     auto x_dims = x_g->dims();
     auto y_dims = y_g->dims();
@@ -92,31 +97,33 @@ class SquaredL2DistanceGradKernel : public framework::OpKernel<T> {
     // propagate back to input
     auto& eigen_place =
         *context.template device_context<DeviceContext>().eigen_device();
-    if (x_g) {
-      x_g->mutable_data<T>(context.GetPlace());
-      // eigen matrix
-      auto x_grad =
-          EigenMatrix<T>::From(*x_g, framework::make_ddim({x_dims[0], cols}));
-      // dimensions are same with subResult
-      x_grad.device(eigen_place) = grad_mat;
-    }
 
-    if (y_g) {
-      y_g->mutable_data<T>(context.GetPlace());
+    x_g->mutable_data<T>(context.GetPlace());
+    // eigen matrix
+    auto x_grad = framework::EigenMatrix<T>::From(
+        *x_g, phi::make_ddim({x_dims[0], cols}));
+    // dimensions are same with subResult
+    x_grad.device(eigen_place) = grad_mat;
 
-      PADDLE_ENFORCE_GE(sub_result.dimensions()[0], y_dims[0],
-                        "First dimension of gradient must be greater or "
-                        "equal than first dimension of target.");
+    y_g->mutable_data<T>(context.GetPlace());
 
-      if (sub_result.dimensions()[0] == y_dims[0]) {
-        auto y_grad =
-            EigenMatrix<T>::From(*y_g, framework::make_ddim({y_dims[0], cols}));
-        y_grad.device(eigen_place) = -1 * grad_mat;
-      } else {
-        auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
-        auto y_grad = EigenVector<T>::Flatten(*y_g);
-        y_grad.device(eigen_place) = col_sum_res;
-      }
+    PADDLE_ENFORCE_GE(sub_result.dimensions()[0],
+                      y_dims[0],
+                      platform::errors::InvalidArgument(
+                          "First dimension of gradient must be greater or "
+                          "equal than first dimension of target. But received "
+                          "gradient dimension = %d and target dimension is %d.",
+                          sub_result.dimensions()[0],
+                          y_dims[0]));
+
+    if (sub_result.dimensions()[0] == y_dims[0]) {
+      auto y_grad = framework::EigenMatrix<T>::From(
+          *y_g, phi::make_ddim({y_dims[0], cols}));
+      y_grad.device(eigen_place) = -1 * grad_mat;
+    } else {
+      auto col_sum_res = -1 * (grad_mat.sum(Eigen::array<int, 1>({{0}})));
+      auto y_grad = framework::EigenVector<T>::Flatten(*y_g);
+      y_grad.device(eigen_place) = col_sum_res;
     }
   }
 };

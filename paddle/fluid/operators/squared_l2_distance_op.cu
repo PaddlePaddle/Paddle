@@ -11,15 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
-
 #include "paddle/fluid/operators/squared_l2_distance_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    squared_l2_distance,
-    ops::SquaredL2DistanceKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(squared_l2_distance_grad,
-                        ops::SquaredL2DistanceGradKernel<
-                            paddle::platform::CUDADeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    squared_l2_distance, GPU, ALL_LAYOUT, ops::SquaredL2DistanceKernel, float) {
+}
+PD_REGISTER_STRUCT_KERNEL(squared_l2_distance_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SquaredL2DistanceGradKernel,
+                          float) {}

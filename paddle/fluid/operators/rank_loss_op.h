@@ -16,18 +16,19 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RankLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* out_t = ctx.Output<framework::Tensor>("Out");
-    auto* label_t = ctx.Input<framework::Tensor>("Label");
-    auto* left_t = ctx.Input<framework::Tensor>("Left");
-    auto* right_t = ctx.Input<framework::Tensor>("Right");
+    auto* out_t = ctx.Output<phi::DenseTensor>("Out");
+    auto* label_t = ctx.Input<phi::DenseTensor>("Label");
+    auto* left_t = ctx.Input<phi::DenseTensor>("Left");
+    auto* right_t = ctx.Input<phi::DenseTensor>("Right");
     out_t->mutable_data<T>(ctx.GetPlace());
 
     auto out = framework::EigenVector<T>::Flatten(*out_t);
@@ -36,24 +37,24 @@ class RankLossKernel : public framework::OpKernel<T> {
     auto right = framework::EigenVector<T>::Flatten(*right_t);
 
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    out.device(dev) =
-        (1. + (left - right).exp()).log() - label * (left - right);
+    EigenRankLoss<std::decay_t<decltype(dev)>, T>::Eval(
+        dev, out, label, left, right);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RankLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_left_t =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Left"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Left"));
     auto* d_right_t =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Right"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Right"));
 
-    auto* d_out_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* label_t = ctx.Input<framework::Tensor>("Label");
-    auto* left_t = ctx.Input<framework::Tensor>("Left");
-    auto* right_t = ctx.Input<framework::Tensor>("Right");
+    auto* d_out_t = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* label_t = ctx.Input<phi::DenseTensor>("Label");
+    auto* left_t = ctx.Input<phi::DenseTensor>("Left");
+    auto* right_t = ctx.Input<phi::DenseTensor>("Right");
 
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     auto d_out = framework::EigenVector<T>::Flatten(*d_out_t);
@@ -65,14 +66,15 @@ class RankLossGradKernel : public framework::OpKernel<T> {
     if (d_left_t) {
       d_left_t->mutable_data<T>(ctx.GetPlace());
       auto d_left = framework::EigenVector<T>::Flatten(*d_left_t);
-      d_left.device(dev) = d_out * (1. / (1. + (right - left).exp()) - label);
+      EigenRankLossGrad<std::decay_t<decltype(dev)>, T>::EvalLeft(
+          dev, d_left, d_out, label, left, right);
     }
     // compute d_right
     if (d_right_t) {
       d_right_t->mutable_data<T>(ctx.GetPlace());
       auto d_right = framework::EigenVector<T>::Flatten(*d_right_t);
-      d_right.device(dev) =
-          -d_out * (1.0 / (1. + (right - left).exp()) - label);
+      EigenRankLossGrad<std::decay_t<decltype(dev)>, T>::EvalRight(
+          dev, d_right, d_out, label, left, right);
     }
   }
 };

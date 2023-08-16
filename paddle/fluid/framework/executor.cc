@@ -14,16 +14,25 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include "paddle/fluid/framework/channel.h"
+#include <memory>
+
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/trainer_desc.pb.h"
+#include "paddle/fluid/framework/trainer_factory.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(benchmark);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
@@ -37,53 +46,59 @@ ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
     : prog_(prog), block_id_(block_id) {}
 
+void ExecutorPrepareContext::PrepareUnusedVars(
+    const std::vector<std::string>& keep_vars, bool force_disable_gc) {
+  // If gc is enabled and block size > 1
+  if (prog_.Size() > 1) {
+    operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+        prog_, block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+        prog_, block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+        prog_, block_id_, ops_);
+  }
+
+  force_disable_gc_ = force_disable_gc;
+  if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
+    return;
+  }
+
+  unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
+}
+
 ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
-void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
-  if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
-  } else if (var_type == proto::VarType::SELECTED_ROWS) {
-    var->GetMutable<SelectedRows>();
-  } else if (var_type == proto::VarType::FEED_MINIBATCH) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::FETCH_LIST) {
-    var->GetMutable<FeedFetchList>();
-  } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope>>();
-  } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
-    var->GetMutable<LoDRankTable>();
-  } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<LoDTensorArray>();
-  } else if (var_type == proto::VarType::PLACE_LIST) {
-    var->GetMutable<platform::PlaceList>();
-  } else if (var_type == proto::VarType::READER) {
-    var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::CHANNEL) {
-    var->GetMutable<ChannelHolder>();
-  } else if (var_type == proto::VarType::RAW) {
-    // GetMutable will be called in operator
-  } else {
-    PADDLE_THROW(
-        "Variable type %d is not in "
-        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
-        var_type);
-  }
+Executor::~Executor() {
+#ifdef PADDLE_WITH_DNNL
+  // Clear mkl-dnn cache,
+  // this is needed to have mkl-dnn unit tests working
+  platform::ClearMKLDNNCache(place_, this);
+#endif
 }
 
-void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
-                               int block_id) {
-  auto& global_block = pdesc.Block(block_id);
+void Executor::Close() {
+  // #ifdef PADDLE_WITH_DISTRIBUTE
+  //   // TODO(typhoonzero): complete message will need to use real trainer_id,
+  //   // except 0.
+  //   auto client =
+  //       paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+  //   client->SendComplete();
+  // #endif
+}
 
+void Executor::CreateVariables(const ProgramDesc& pdesc,
+                               Scope* scope,
+                               int block_id) {
+  VLOG(3) << "Creating Variables for block " << block_id;
+  auto& global_block = pdesc.Block(block_id);
   const Scope* ancestor_scope = scope;
   while (ancestor_scope->parent()) {
     ancestor_scope = ancestor_scope->parent();
   }
-
   if (ancestor_scope != scope) {
     for (auto& var : global_block.AllVars()) {
       if (var->Name() == framework::kEmptyVarName) {
@@ -92,14 +107,18 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
+
+        VLOG(3) << "Initialize Variable " << var->Name();
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+                << " global, which pointer is " << ptr << " type is "
+                << static_cast<int>(var->GetType());
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " locally, which pointer is " << ptr;
+                << " locally, which pointer is " << ptr << "Variable Type "
+                << static_cast<int>(var->GetType());
       }
     }
   } else {
@@ -112,11 +131,71 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   }
 }
 
-void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
-                   bool create_local_scope, bool create_vars) {
+std::shared_ptr<TrainerBase> Executor::InitForDataset(
+    const ProgramDesc& main_program,
+    const std::string& trainer_desc_str,
+    Scope* scope,
+    Dataset* dataset) {
+  VLOG(3) << "Start to InitForDataset in executor";
+  TrainerDesc trainer_desc;
+  bool success = trainer_desc.ParseFromString(trainer_desc_str);
+  PADDLE_ENFORCE_EQ(success,
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "Fail to parse TrainerDesc from string:\n%s",
+                        trainer_desc_str.c_str()));
+  VLOG(3) << "Going to create trainer, trainer class is "
+          << trainer_desc.class_name();
+  std::shared_ptr<TrainerBase> trainer;
+  trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
+  // initialize trainer
+  VLOG(3) << "Going to initialize trainer";
+  trainer->Initialize(trainer_desc, dataset);
+  VLOG(3) << "Set root scope here";
+  trainer->SetScope(scope);
+  // prepare training environment and helper environment
+  VLOG(3) << "Try to init train environment";
+  trainer->InitTrainerEnv(main_program, place_);
+  VLOG(3) << "Try to init other environment";
+  trainer->InitOtherEnv(main_program);
+  return trainer;
+}
+
+void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
+  PADDLE_ENFORCE_NOT_NULL(
+      trainer,
+      platform::errors::InvalidArgument(
+          "Trainer is nullptr, invoke InitForDataset first"));
+  // training and finalize training
+  VLOG(3) << "Trainer starts to run";
+  trainer->Run();
+}
+
+void Executor::ReleaseTrainer(std::shared_ptr<TrainerBase> trainer) {
+  VLOG(3) << "Trainer going to finalize";
+  trainer->Finalize();
+}
+
+void Executor::Run(const ProgramDesc& pdesc,
+                   Scope* scope,
+                   int block_id,
+                   bool create_local_scope,
+                   bool create_vars,
+                   const std::vector<std::string>& skip_ref_cnt_vars,
+                   bool force_disable_gc,
+                   bool keep_kid_scopes) {
+  LOG_FIRST_N(INFO, 1) << "Old Executor is Running.";
+  platform::RecordEvent record_run(
+      "Executor::Run", platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
-  auto ctx = Prepare(pdesc, block_id);
-  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
+  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+  auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::RegisterModelLayout(ctx->ops_, place_);
+#endif
+  RunPreparedContext(
+      ctx.get(), scope, create_local_scope, create_vars, keep_kid_scopes);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -127,36 +206,55 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
 // Return true if the block has feed operators and holder of matching info.
 static bool has_feed_operators(
     const BlockDesc& block,
-    const std::map<std::string, const LoDTensor*>& feed_targets,
+    const std::map<std::string, const phi::DenseTensor*>& feed_targets,
     const std::string& feed_holder_name) {
   size_t feed_count = 0;
   for (auto* op : block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       feed_count++;
       // The input variable's name of feed_op should be feed_holder_name.
-      PADDLE_ENFORCE_EQ(op->Input("X")[0], feed_holder_name,
-                        "Input to feed op should be '%s'", feed_holder_name);
+      PADDLE_ENFORCE_EQ(
+          op->Input("X")[0],
+          feed_holder_name,
+          platform::errors::PreconditionNotMet(
+              "Input to feed op should be '%s', but received '%s'.",
+              feed_holder_name,
+              op->Input("X")[0]));
       std::string feed_target_name = op->Output("Out")[0];
-      PADDLE_ENFORCE(
-          feed_targets.find(feed_target_name) != feed_targets.end(),
-          "Feed operator output name '%s' cannot be found in 'feed_targets'",
-          feed_target_name);
+      PADDLE_ENFORCE_NE(feed_targets.find(feed_target_name),
+                        feed_targets.end(),
+                        platform::errors::PreconditionNotMet(
+                            "Feed operator output name '%s' cannot be found in "
+                            "'feed_targets'",
+                            feed_target_name));
     }
   }
 
   if (feed_count > 0) {
     PADDLE_ENFORCE_EQ(
-        feed_count, feed_targets.size(),
-        "The number of feed operators should match 'feed_targets'");
+        feed_count,
+        feed_targets.size(),
+        platform::errors::PreconditionNotMet(
+            "The number of feed operators should match 'feed_targets', but "
+            "received feed_count: %zu, required feed_targets.size(): %zu.",
+            feed_count,
+            feed_targets.size()));
 
     if (!feed_holder_name.empty()) {
       // When feed operator are present, so should be feed_holder.
       auto var = block.FindVar(feed_holder_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
-                              feed_holder_name);
-      PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FEED_MINIBATCH,
-                        "'%s' variable should be 'FEED_MINIBATCH' type",
-                        feed_holder_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::PreconditionNotMet(
+              "Block should already have a '%s' variable", feed_holder_name));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(),
+          proto::VarType::FEED_MINIBATCH,
+          platform::errors::PreconditionNotMet(
+              "'%s' variable should be 'FEED_MINIBATCH' type, but received "
+              "'%s'.",
+              feed_holder_name,
+              DataTypeToString(var->GetType())));
     }
   }
 
@@ -171,59 +269,86 @@ static bool has_feed_operators(
 // Return true if the block has fetch operators and holder of matching info.
 static bool has_fetch_operators(
     const BlockDesc& block,
-    const std::map<std::string, LoDTensor*>& fetch_targets,
+    const std::map<std::string, FetchType*>& fetch_targets,
     const std::string& fetch_holder_name) {
   size_t fetch_count = 0;
   for (auto* op : block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       fetch_count++;
       // The output variable's name of fetch_op should be fetch_holder_name.
-      PADDLE_ENFORCE_EQ(op->Output("Out")[0], fetch_holder_name,
-                        "Output of fetch op should be '%s'", fetch_holder_name);
+      PADDLE_ENFORCE_EQ(
+          op->Output("Out")[0],
+          fetch_holder_name,
+          platform::errors::PreconditionNotMet(
+              "Output of fetch op should be '%s', but received '%s'.",
+              fetch_holder_name,
+              op->Output("Out")[0]));
       std::string fetch_target_name = op->Input("X")[0];
-      PADDLE_ENFORCE(
-          fetch_targets.find(fetch_target_name) != fetch_targets.end(),
-          "Fetch operator input name '%s' cannot be found in 'fetch_targets'",
-          fetch_target_name);
+      PADDLE_ENFORCE_NE(fetch_targets.find(fetch_target_name),
+                        fetch_targets.end(),
+                        platform::errors::NotFound(
+                            "Fetch operator input name '%s' cannot be found in "
+                            "'fetch_targets'.",
+                            fetch_target_name));
     }
   }
 
   if (fetch_count > 0) {
     PADDLE_ENFORCE_EQ(
-        fetch_count, fetch_targets.size(),
-        "The number of fetch operators should match 'fetch_targets'");
+        fetch_count,
+        fetch_targets.size(),
+        platform::errors::PreconditionNotMet(
+            "The number of fetch operators should match 'fetch_targets', but "
+            "received fetch_count: %zu, required fetch_targets.size(): %zu.",
+            fetch_count,
+            fetch_targets.size()));
 
     if (!fetch_holder_name.empty()) {
       // When fetch operator are present, so should be fetch_holder.
       auto var = block.FindVar(fetch_holder_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
-                              fetch_holder_name);
-      PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FETCH_LIST,
-                        "'%s' variable should be 'FETCH_LIST' type",
-                        fetch_holder_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::PreconditionNotMet(
+              "Block should already have a '%s' variable.", fetch_holder_name));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(),
+          proto::VarType::FETCH_LIST,
+          platform::errors::PreconditionNotMet(
+              "'%s' variable should be 'FETCH_LIST' type, but received '%s'.",
+              fetch_holder_name,
+              DataTypeToString(var->GetType())));
     }
   }
 
   return fetch_count > 0;
 }
 
-void Executor::Run(const ProgramDesc& program, Scope* scope,
-                   std::map<std::string, const LoDTensor*>* feed_targets,
-                   std::map<std::string, LoDTensor*>* fetch_targets,
-                   bool create_local_scope, bool create_vars,
+void Executor::Run(const ProgramDesc& program,
+                   Scope* scope,
+                   std::map<std::string, const phi::DenseTensor*>* feed_targets,
+                   std::map<std::string, FetchType*>* fetch_targets,
+                   bool create_local_scope,
+                   bool create_vars,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
+  platform::RecordEvent record_run(
+      "Executor::Run", platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
+  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
   bool has_feed_ops =
       has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
   bool has_fetch_ops =
       has_fetch_operators(program.Block(0), *fetch_targets, fetch_holder_name);
 
   ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
+  std::unique_ptr<ProgramDesc> unique_ptr_of_copy_program;
   if (!has_feed_ops || !has_fetch_ops) {
-    copy_program = std::unique_ptr<ProgramDesc>(new ProgramDesc(program)).get();
+    unique_ptr_of_copy_program = std::make_unique<ProgramDesc>(program);
+    copy_program = unique_ptr_of_copy_program.get();
   }
-
   auto* global_block = copy_program->MutableBlock(0);
 
   if (!has_feed_ops) {
@@ -273,39 +398,88 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   }
 
   auto ctx = Prepare(*copy_program, 0);
-  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
-                     create_local_scope, create_vars, feed_holder_name,
+  RunPreparedContext(ctx.get(),
+                     scope,
+                     feed_targets,
+                     fetch_targets,
+                     create_local_scope,
+                     create_vars,
+                     feed_holder_name,
                      fetch_holder_name);
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
-    const ProgramDesc& program, int block_id) {
-  auto* ctx = new ExecutorPrepareContext(program, block_id);
-  PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
+    const ProgramDesc& program,
+    int block_id,
+    const std::vector<std::string>& skip_ref_cnt_vars,
+    bool force_disable_gc) {
+  std::unique_ptr<ExecutorPrepareContext> ctx(
+      new ExecutorPrepareContext(program, block_id));
+  PADDLE_ENFORCE_LT(static_cast<size_t>(block_id),
+                    program.Size(),
+                    platform::errors::InvalidArgument(
+                        "Input block id = %d, but it should be less than "
+                        "program.size() which is %d",
+                        static_cast<size_t>(block_id),
+                        program.Size()));
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  return std::unique_ptr<ExecutorPrepareContext>(ctx);
+  ctx->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
+  return ctx;
 }
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
-    const ProgramDesc& program, const std::vector<int>& block_ids) {
+    const ProgramDesc& program,
+    const std::vector<int>& block_ids,
+    const std::vector<std::vector<std::string>>& skip_ref_cnt_vars,
+    bool force_disable_gc) {
+  PADDLE_ENFORCE_EQ(
+      skip_ref_cnt_vars.empty() || skip_ref_cnt_vars.size() == block_ids.size(),
+      true,
+      platform::errors::InvalidArgument("skip_ref_cnt_vars should be either "
+                                        "empty or equals to block number %d",
+                                        block_ids.size()));
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
+  size_t idx = 0;
   for (auto& bid : block_ids) {
+    PADDLE_ENFORCE_LT(static_cast<size_t>(bid),
+                      program.Size(),
+                      platform::errors::InvalidArgument(
+                          "Input block id = %zu, but it should be less than "
+                          "program.size() which is %zu",
+                          static_cast<size_t>(bid),
+                          program.Size()));
     auto* ctx = new ExecutorPrepareContext(program, bid);
-    PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
     auto& block = program.Block(bid);
     for (auto& op_desc : block.AllOps()) {
       ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
     }
+    if (skip_ref_cnt_vars.empty()) {
+      ctx->PrepareUnusedVars(std::vector<std::string>(), force_disable_gc);
+    } else {
+      ctx->PrepareUnusedVars(skip_ref_cnt_vars[idx], force_disable_gc);
+    }
     result.push_back(std::shared_ptr<ExecutorPrepareContext>(ctx));
+    ++idx;
   }
   return result;
 }
 
-void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars) {
+void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
+                                         Scope* scope,
+                                         int64_t start_op_index,
+                                         int64_t end_op_index,
+                                         bool create_local_scope,
+                                         bool create_vars,
+                                         bool keep_kids) {
+  platform::RecordEvent record_run("Executor::RunPartialPreparedContext",
+                                   platform::TracerEventType::UserDefined,
+                                   1);
+  platform::RecordBlock b(kProgramId);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope shouldn't be null"));
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -314,52 +488,142 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
-  for (auto& op : ctx->ops_) {
-    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
-    op->Run(*local_scope, place_);
-
-    if (FLAGS_benchmark) {
-      VLOG(2) << "Memory used after operator " + op->Type() + " running: "
-              << memory::memory_usage(place_);
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+  std::unique_ptr<GarbageCollector> gc;
+  if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
+    if (platform::is_gpu_place(place_)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (IsFastEagerDeletionModeEnabled()) {
+        gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place_,
+                                                             max_memory_size);
+      } else {
+        gc = std::make_unique<DefaultStreamGarbageCollector>(place_,
+                                                             max_memory_size);
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
+#endif
+    } else if (platform::is_cpu_place(place_)) {
+      gc = std::make_unique<CPUGarbageCollector>(place_, max_memory_size);
+    } else if (platform::is_xpu_place(place_)) {
+#ifdef PADDLE_WITH_XPU
+      gc = std::make_unique<XPUGarbageCollector>(place_, max_memory_size);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
+#endif
+    } else if (platform::is_ipu_place(place_)) {
+#ifdef PADDLE_WITH_IPU
+      gc = std::make_unique<IPUGarbageCollector>(place_, max_memory_size);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
+#endif
+    } else if (platform::is_custom_place(place_)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (IsFastEagerDeletionModeEnabled()) {
+        VLOG(4) << "Use unsafe fast gc for " << place_ << ".";
+        gc = std::make_unique<CustomDeviceUnsafeFastGarbageCollector>(
+            place_, max_memory_size);
+      } else {
+        VLOG(4) << "Use default stream gc for " << place_ << ".";
+        gc = std::make_unique<CustomDefaultStreamGarbageCollector>(
+            place_, max_memory_size);
+      }
+#else
+      PADDLE_THROW(platform::errors::Unimplemented("No CustomDevice gc found"));
+#endif
     }
   }
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  if (create_vars && create_local_scope) {
-    scope->DeleteScope(local_scope);
-  } else {
-    // Delete the local scopes created in operators.
-    scope->DropKids();
+
+  for (int64_t i = start_op_index; i < end_op_index; ++i) {
+    auto& op = ctx->ops_[i];
+    op->Run(*local_scope, place_);
+    if (gc) {
+      platform::RecordEvent record(
+          "CheckGC", platform::TracerEventType::UserDefined, 10);
+      DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
+    }
   }
-  if (FLAGS_benchmark) {
-    VLOG(2) << "-------------------------------------------------------";
-    VLOG(2) << "Memory used after deleting local scope: "
-            << memory::memory_usage(place_);
-    VLOG(2) << "-------------------------------------------------------";
+
+  auto callback = [scope, local_scope, keep_kids]() {
+    if (local_scope != scope) {
+      VLOG(4) << "Delete scope: " << local_scope;
+      scope->DeleteScope(local_scope);
+    } else {
+      if (!keep_kids) {
+        VLOG(4) << "Drop kids: " << scope;
+        // By default, we should delete all kid scopes after run executor
+        // because
+        // some operators may create local scope when running, such as while_op.
+        // But when while_op also create a local executor to run it's sub block,
+        // the sub scopes it created should not be dropped immediately, because
+        // while_grad_op will use some variables created during while_op run, so
+        // we need to keep the kids and wait for the outer executor to drop
+        // them.
+
+        scope->DropKids();
+      }
+      VLOG(4) << "Keep kids: " << scope;
+    }
+  };
+
+  if (gc) {
+    VLOG(4) << "Async deleting scope";
+    gc->DirectClearCallback(callback);
+  } else {
+    VLOG(4) << "Sync deleting scope";
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    callback();
   }
 }
 
+void Executor::RunPreparedContext(ExecutorPrepareContext* ctx,
+                                  Scope* scope,
+                                  bool create_local_scope,
+                                  bool create_vars,
+                                  bool keep_kids) {
+  int64_t start_op_index = 0;
+  int64_t end_op_index = ctx->ops_.size();
+  RunPartialPreparedContext(ctx,
+                            scope,
+                            start_op_index,
+                            end_op_index,
+                            create_local_scope,
+                            create_vars,
+                            keep_kids);
+}
+
 void Executor::RunPreparedContext(
-    ExecutorPrepareContext* ctx, Scope* scope,
-    std::map<std::string, const LoDTensor*>* feed_targets,
-    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
-    bool create_vars, const std::string& feed_holder_name,
+    ExecutorPrepareContext* ctx,
+    Scope* scope,
+    std::map<std::string, const phi::DenseTensor*>* feed_targets,
+    std::map<std::string, FetchType*>* fetch_targets,
+    bool create_local_scope,
+    bool create_vars,
+    const std::string& feed_holder_name,
     const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       has_feed_operators(global_block, *feed_targets, feed_holder_name),
-      "Program in ExecutorPrepareContext should has feed_ops.");
-  PADDLE_ENFORCE(
+      true,
+      platform::errors::PreconditionNotMet(
+          "Program in ExecutorPrepareContext should has feed_ops."));
+  PADDLE_ENFORCE_EQ(
       has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
-      "Program in the prepared context should has fetch_ops.");
+      true,
+      platform::errors::PreconditionNotMet(
+          "Program in the prepared context should has fetch_ops."));
 
   // map the data of feed_targets to feed_holder
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       std::string feed_target_name = op->Output("Out")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
-      SetFeedVariable(scope, *(*feed_targets)[feed_target_name],
-                      feed_holder_name, idx);
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
+      SetFeedVariable(
+          scope, *(*feed_targets)[feed_target_name], feed_holder_name, idx);
     }
   }
 
@@ -369,12 +633,27 @@ void Executor::RunPreparedContext(
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       std::string fetch_target_name = op->Input("X")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       *(*fetch_targets)[fetch_target_name] =
           GetFetchVariable(*scope, fetch_holder_name, idx);
     }
   }
 }
 
+void Executor::EnableMKLDNN(const ProgramDesc& program) {
+#ifdef PADDLE_WITH_DNNL
+  VLOG(3) << "use_mkldnn=True";
+  for (size_t bid = 0; bid < program.Size(); ++bid) {
+    auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
+    for (auto* op : block->AllOps()) {
+      if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op))
+        op->SetAttr("use_mkldnn", true);
+    }
+  }
+#else
+  LOG(WARNING)
+      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
+#endif
+}
 }  // namespace framework
 }  // namespace paddle

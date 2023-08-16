@@ -17,19 +17,31 @@ limitations under the License. */
 #include <algorithm>
 #include <fstream>
 #include <vector>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/pybind.h"
 
-DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
-DEFINE_bool(init_p2p, false, "Whether to init p2p.");
+// phi
+#include "paddle/phi/kernels/declarations.h"
+
+DEFINE_string(devices,  // NOLINT
+              "",
+              "The devices to be used which is joined by comma.");
+DEFINE_int32(math_num_threads,
+             1,
+             "Number of threads used to run math functions.");
 
 namespace paddle {
 namespace inference {
 
 void Init(const std::vector<std::string> argv) {
   framework::InitGflags(argv);
+  platform::SetNumThreads(FLAGS_math_num_threads);
   // init devices
   std::vector<int> devices;
   std::string token;
@@ -37,12 +49,15 @@ void Init(const std::vector<std::string> argv) {
   while (std::getline(tokenStream, token, ',')) {
     devices.push_back(std::stoi(token));
   }
-  framework::InitDevices(FLAGS_init_p2p, devices);
+  framework::InitDevices(devices);
 }
 
 void ReadBinaryFile(const std::string& filename, std::string* contents) {
   std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
+  PADDLE_ENFORCE_EQ(
+      fin.is_open(),
+      true,
+      platform::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
@@ -54,16 +69,19 @@ void ReadBinaryFile(const std::string& filename, std::string* contents) {
 bool IsPersistable(const framework::VarDesc* var) {
   if (var->Persistable() &&
       var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
-      var->GetType() != framework::proto::VarType::FETCH_LIST) {
+      var->GetType() != framework::proto::VarType::FETCH_LIST &&
+      var->GetType() != framework::proto::VarType::RAW) {
     return true;
   }
   return false;
 }
 
-void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
+void LoadPersistables(framework::Executor* executor,
+                      framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
-                      const std::string& param_filename) {
+                      const std::string& param_filename,
+                      bool model_from_memory = false) {
   const framework::BlockDesc& global_block = main_program.Block(0);
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
@@ -72,13 +90,20 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
 
   for (auto* var : global_block.AllVars()) {
     if (IsPersistable(var)) {
-      VLOG(3) << "persistable variable's name: " << var->Name();
+      VLOG(4) << "persistable variable's name: " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->GetShape());
       new_var->SetDataType(var->GetDataType());
-      new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
+      auto var_type = var->GetType();
+      new_var->SetType(var_type);
+
+      if ((var_type !=
+           framework::proto::VarType::Type::VarType_Type_SELECTED_ROWS) &&
+          (var_type != framework::proto::VarType::VOCAB)) {
+        new_var->SetLoDLevel(var->GetLoDLevel());
+      }
+
       new_var->SetPersistable(true);
 
       if (!param_filename.empty()) {
@@ -102,6 +127,7 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
     op->SetType("load_combine");
     op->SetOutput("Out", paramlist);
     op->SetAttr("file_path", {param_filename});
+    op->SetAttr("model_from_memory", {model_from_memory});
     op->CheckAttrs();
   }
 
@@ -120,23 +146,85 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
+  PADDLE_ENFORCE_EQ(
+      framework::IsProgramVersionSupported(main_program->Version()),
+      true,
+      platform::errors::Unavailable("Model version %ld is not supported.",
+                                    main_program->Version()));
 
-  LoadPersistables(executor, scope, *main_program, dirname, "");
+  // model_from_memory is false in separate parameters.
+  LoadPersistables(executor,
+                   scope,
+                   *main_program,
+                   dirname,
+                   "",
+                   false /* model_from_memory */);
   return main_program;
 }
 
-std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor* executor, framework::Scope* scope,
-    const std::string& prog_filename, const std::string& param_filename) {
-  std::string model_filename = prog_filename;
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
+                                             const std::string& prog_filename,
+                                             const std::string& param_filename,
+                                             bool load_params) {
   std::string program_desc_str;
-  ReadBinaryFile(model_filename, &program_desc_str);
+  ReadBinaryFile(prog_filename, &program_desc_str);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
-
-  LoadPersistables(executor, scope, *main_program, "", param_filename);
+  PADDLE_ENFORCE_EQ(
+      framework::IsProgramVersionSupported(main_program->Version()),
+      true,
+      platform::errors::Unavailable("Model version %ld is not supported.",
+                                    main_program->Version()));
+  if (load_params) {
+    LoadPersistables(executor,
+                     scope,
+                     *main_program,
+                     "",
+                     param_filename,
+                     false /* model_from_memory */);
+  }
   return main_program;
+}
+
+std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
+    framework::Executor* executor,
+    framework::Scope* scope,
+    const std::string& prog_buffer,
+    const std::string& param_buffer) {
+  std::unique_ptr<framework::ProgramDesc> main_program(
+      new framework::ProgramDesc(prog_buffer));
+  PADDLE_ENFORCE_EQ(
+      framework::IsProgramVersionSupported(main_program->Version()),
+      true,
+      platform::errors::Unavailable("Model version %ld is not supported.",
+                                    main_program->Version()));
+
+  LoadPersistables(executor,
+                   scope,
+                   *main_program,
+                   "",
+                   param_buffer,
+                   true /* model_filename */);
+  return main_program;
+}
+
+void SaveVars(const framework::Scope& scope,
+              const std::vector<std::string>& vars,
+              const std::string& dirname,
+              bool predicate) {
+  framework::ProgramDesc prog;
+  auto* block = prog.MutableBlock(0);
+  auto* op = block->AppendOp();
+  op->SetType("save_combine");
+  op->SetInput("X", vars);
+  op->SetAttr("file_path", dirname + "/param");
+  op->CheckAttrs();
+
+  platform::CPUPlace place;
+  framework::Executor exe(place);
+  exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }
 
 }  // namespace inference

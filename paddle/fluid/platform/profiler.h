@@ -15,74 +15,134 @@ limitations under the License. */
 #pragma once
 #include <forward_list>
 #include <list>
+#include <map>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/platform/device_context.h"
+
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/mem_tracing.h"
+#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
+
+#include "paddle/phi/api/profiler/profiler.h"
+
+namespace phi {
+namespace proto {
+class Profile;
+}
+}  // namespace phi
 
 namespace paddle {
 namespace platform {
 
-enum EventType { kMark, kPushRange, kPopRange };
+namespace proto {
+class Profile;
+}
 
-class Event {
+const int kEnableProfiler = 1;
+const int kDisableProfiler = 2;
+
+using ProfilerState = phi::ProfilerState;
+using TracerOption = phi::TracerOption;
+
+// Candidate keys to sort the profiling report
+enum class EventSortingKey {
+  kDefault,
+  kCalls,
+  kTotal,
+  kMin,
+  kMax,
+  kAve,
+  kCPUTime,
+  kGPUTime
+};
+
+struct MemoryProfierReport {
+  size_t alloc_times{0};
+  size_t alloc_size{0};
+  size_t free_times{0};
+  size_t free_size{0};
+};
+
+// The information of each event given in the profiling report
+struct EventItem {
+  std::string name;
+  int calls;
+  double total_time;
+  double max_time;
+  double ave_time;
+  double min_time;
+  double cpu_time;
+  double gpu_time;
+  float ratio;
+  EventRole role;
+};
+
+struct OverHead {
+  bool print_overhead = false;
+  bool print_explanation = false;
+  double elapsed_time = 0.;      // the elapsed time of all events
+  double accumulated_time = 0.;  // the accumulated time of all events
+  double compute_time = 0.0;
+  double framework_time = 0.0;
+  EventItem memcpy_item;
+  std::vector<EventItem> sub_memcpy_items;
+};
+
+struct MemEvenRecorder {
  public:
-  // The DeviceContext is used to get the cuda stream.
-  // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id,
-        const DeviceContext* dev_ctx);
-
-  const EventType& type() const;
-  std::string name() const { return name_; }
-  uint32_t thread_id() const { return thread_id_; }
-  bool has_cuda() const { return has_cuda_; }
-
-#ifdef PADDLE_WITH_CUDA
-  cudaEvent_t event() const { return event_; }
-  int device() const { return device_; }
-#endif
-
-  double CpuElapsedMs(const Event& e) const;
-  double CudaElapsedMs(const Event& e) const;
+  void PushMemRecord(const void* ptr, const Place& place, size_t size);
+  void PopMemRecord(const void* ptr, const Place& place);
+  void PushMemRecord(const void* ptr,
+                     const Place& place,
+                     size_t size,
+                     TracerMemEventType type,
+                     uint64_t current_allocated,
+                     uint64_t current_reserved,
+                     uint64_t peak_allocated,
+                     uint64_t peak_reserved);
+  void PopMemRecord(const void* ptr,
+                    const Place& place,
+                    size_t size,
+                    TracerMemEventType type,
+                    uint64_t current_allocated,
+                    uint64_t current_reserved,
+                    uint64_t peak_allocated,
+                    uint64_t peak_reserved);
+  void Flush();
+  static MemEvenRecorder& Instance() { return recorder; }
 
  private:
-  EventType type_;
-  std::string name_;
-  uint32_t thread_id_;
-  int64_t cpu_ns_;
-  bool has_cuda_;
-#ifdef PADDLE_WITH_CUDA
-  cudaEvent_t event_ = nullptr;
-  int device_ = -1;
-#endif
-};
+  struct RecordMemEvent {
+    RecordMemEvent(const Place& place, size_t bytes);
+    ~RecordMemEvent();
 
-enum ProfilerState {
-  kDisabled,  // disabled state
-  kCPU,       // CPU profiling state
-  kCUDA,      // GPU profiling state
-  kAll,       // Profile both CPU and GPU. (Currently experimental).
-};
+    Place place_;
+    size_t bytes_;
+    uint64_t start_ns_;
+    uint64_t end_ns_;
+    std::string alloc_in_;
+    std::string free_in_;
+  };
 
-void Mark(const std::string& name, const DeviceContext* dev_ctx);
-
-void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
-
-void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
-
-struct RecordEvent {
-  RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
-
-  ~RecordEvent();
-
-  bool is_enabled_;
-  uint64_t start_ns_;
-  // The device context is used by Event to get the current cuda stream.
-  const DeviceContext* dev_ctx_;
-  // Event name
-  std::string name_;
-  // Need to distinguish name by op type, block_id, program_id and perhaps
-  // different kernel invocations within an op.
-  std::string full_name_;
+  static MemEvenRecorder recorder;
+  std::map<Place,
+           std::unordered_map<const void*, std::unique_ptr<RecordMemEvent>>>
+      address_memevent_;
+  std::mutex mtx_;
+  MemEvenRecorder() {}
+  DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
 };
 
 struct RecordBlock {
@@ -95,36 +155,67 @@ struct RecordBlock {
   uint64_t start_ns_;
 };
 
-struct RecordThread {
-  explicit RecordThread(int thread_id);
-  ~RecordThread();
-};
+template <typename T>
+using EventList = phi::EventList<T>;
+
+void Mark(const std::string& name);
+void PushMemEvent(uint64_t start_ns,
+                  uint64_t end_ns,
+                  size_t bytes,
+                  const Place& place,
+                  const std::string& annotation);
+void PopMemEvent(uint64_t start_ns,
+                 uint64_t end_ns,
+                 size_t bytes,
+                 const Place& place,
+                 const std::string& annotation);
+
+using phi::PopEvent;
+using phi::PushEvent;
 
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();
 
-// Candidate keys to sort the profiling report
-enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
-
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
-
-// Clear the g_all_event_lists, which is total event lists of all threads.
+// Clear the phi::ProfilerHelper::g_all_event_lists, which is total event lists
+// of all threads.
 void ResetProfiler();
-
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
+// Disable profiler but return events instead of print it.
+void CompleteProfilerEvents(phi::proto::Profile* tracer_profile,
+                            std::vector<std::vector<Event>>* time_events,
+                            std::vector<std::vector<MemEvent>>* mem_events);
 
-const int kEnableProfiler = 1;
-const int kDisableProfiler = 2;
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.
 bool ShouldSendProfileState();
+std::string OpName(const framework::VariableNameMap& name_map,
+                   const std::string& type_name);
+void SetTracerOption(TracerOption option);
+platform::TracerOption GetTracerOption();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void DummyKernelAndEvent();
+#endif
+
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
+
+void NvprofEnableRecordEvent();
+void NvprofDisableRecordEvent();
+
+void EnableHostEventRecorder();
+void DisableHostEventRecorder();
+
+void EnableMemoryRecorder();
+void DisableMemoryRecorder();
+
+// Defined for UT
+std::string PrintHostEvents();
 
 }  // namespace platform
 }  // namespace paddle

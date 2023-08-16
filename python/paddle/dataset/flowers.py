@@ -14,7 +14,7 @@
 """
 This module will download dataset from
 http://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html
-and parse train/test set intopaddle reader creators.
+and parse train/test dataset into paddle reader creators.
 
 This set contains images of flowers belonging to 102 different categories.
 The images were acquired by searching the web and taking pictures. There are a
@@ -28,23 +28,23 @@ Graphics and Image Processing (2008)
 http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
-import cPickle
-import itertools
-import functools
-from common import download
-import tarfile
-import scipy.io as scio
-from paddle.dataset.image import *
-from paddle.reader import *
-import os
-import numpy as np
-from multiprocessing import cpu_count
-__all__ = ['train', 'test', 'valid']
 
-DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
-LABEL_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat'
-SETID_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat'
-DATA_MD5 = '33bfc11892f1e405ca193ae9a9f2a118'
+import functools
+import tarfile
+from multiprocessing import cpu_count
+
+from paddle.dataset.image import load_image_bytes, simple_transform
+from paddle.reader import map_readers, xmap_readers
+from paddle.utils import deprecated, try_import
+
+from .common import download
+
+__all__ = []
+
+DATA_URL = 'http://paddlemodels.bj.bcebos.com/flowers/102flowers.tgz'
+LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
+SETID_URL = 'http://paddlemodels.bj.bcebos.com/flowers/setid.mat'
+DATA_MD5 = '52808999861908f626f3c1f4e79d11fa'
 LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
 SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
 # In official 'readme', tstid is the flag of test data
@@ -62,7 +62,8 @@ def default_mapper(is_train, sample):
     img, label = sample
     img = load_image_bytes(img)
     img = simple_transform(
-        img, 256, 224, is_train, mean=[103.94, 116.78, 123.68])
+        img, 256, 224, is_train, mean=[103.94, 116.78, 123.68]
+    )
     return img.flatten().astype('float32'), label
 
 
@@ -70,13 +71,16 @@ train_mapper = functools.partial(default_mapper, True)
 test_mapper = functools.partial(default_mapper, False)
 
 
-def reader_creator(data_file,
-                   label_file,
-                   setid_file,
-                   dataset_name,
-                   mapper,
-                   buffered_size=1024,
-                   use_xmap=True):
+def reader_creator(
+    data_file,
+    label_file,
+    setid_file,
+    dataset_name,
+    mapper,
+    buffered_size=1024,
+    use_xmap=True,
+    cycle=False,
+):
     '''
     1. read images from tar file and
         merge images into batch files in 102flowers.tgz_batch/
@@ -96,35 +100,45 @@ def reader_creator(data_file,
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: data reader
     :rtype: callable
     '''
-    labels = scio.loadmat(label_file)['labels'][0]
-    indexes = scio.loadmat(setid_file)[dataset_name][0]
-    img2label = {}
-    for i in indexes:
-        img = "jpg/image_%05d.jpg" % i
-        img2label[img] = labels[i - 1]
-    file_list = batch_images_from_tar(data_file, dataset_name, img2label)
 
     def reader():
-        for file in open(file_list):
-            file = file.strip()
-            batch = None
-            with open(file, 'r') as f:
-                batch = cPickle.load(f)
-            data = batch['data']
-            labels = batch['label']
-            for sample, label in itertools.izip(data, batch['label']):
-                yield sample, int(label) - 1
+        scio = try_import('scipy.io')
+
+        labels = scio.loadmat(label_file)['labels'][0]
+        indexes = scio.loadmat(setid_file)[dataset_name][0]
+
+        img2label = {}
+        for i in indexes:
+            img = "jpg/image_%05d.jpg" % i
+            img2label[img] = labels[i - 1]
+
+        tf = tarfile.open(data_file)
+        mems = tf.getmembers()
+        file_id = 0
+        for mem in mems:
+            if mem.name in img2label:
+                image = tf.extractfile(mem).read()
+                label = img2label[mem.name]
+                yield image, int(label) - 1
 
     if use_xmap:
-        return xmap_readers(mapper, reader, cpu_count(), buffered_size)
+        return xmap_readers(mapper, reader, min(4, cpu_count()), buffered_size)
     else:
         return map_readers(mapper, reader)
 
 
-def train(mapper=train_mapper, buffered_size=1024, use_xmap=True):
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Flowers",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
+def train(mapper=train_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers training set reader.
     It returns a reader, each sample in the reader is
@@ -137,17 +151,30 @@ def train(mapper=train_mapper, buffered_size=1024, use_xmap=True):
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: train data reader
     :rtype: callable
     '''
     return reader_creator(
         download(DATA_URL, 'flowers', DATA_MD5),
         download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), TRAIN_FLAG, mapper,
-        buffered_size, use_xmap)
+        download(SETID_URL, 'flowers', SETID_MD5),
+        TRAIN_FLAG,
+        mapper,
+        buffered_size,
+        use_xmap,
+        cycle=cycle,
+    )
 
 
-def test(mapper=test_mapper, buffered_size=1024, use_xmap=True):
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Flowers",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
+def test(mapper=test_mapper, buffered_size=1024, use_xmap=True, cycle=False):
     '''
     Create flowers test set reader.
     It returns a reader, each sample in the reader is
@@ -160,16 +187,29 @@ def test(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     :type mapper: callable
     :param buffered_size: the size of buffer used to process images
     :type buffered_size: int
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: test data reader
     :rtype: callable
     '''
     return reader_creator(
         download(DATA_URL, 'flowers', DATA_MD5),
         download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), TEST_FLAG, mapper,
-        buffered_size, use_xmap)
+        download(SETID_URL, 'flowers', SETID_MD5),
+        TEST_FLAG,
+        mapper,
+        buffered_size,
+        use_xmap,
+        cycle=cycle,
+    )
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.vision.datasets.Flowers",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     '''
     Create flowers validation set reader.
@@ -189,8 +229,12 @@ def valid(mapper=test_mapper, buffered_size=1024, use_xmap=True):
     return reader_creator(
         download(DATA_URL, 'flowers', DATA_MD5),
         download(LABEL_URL, 'flowers', LABEL_MD5),
-        download(SETID_URL, 'flowers', SETID_MD5), VALID_FLAG, mapper,
-        buffered_size, use_xmap)
+        download(SETID_URL, 'flowers', SETID_MD5),
+        VALID_FLAG,
+        mapper,
+        buffered_size,
+        use_xmap,
+    )
 
 
 def fetch():

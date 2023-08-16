@@ -13,69 +13,102 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/flags.h"
+PADDLE_DEFINE_EXPORTED_bool(
+    benchmark,
+    false,
+    "Doing memory benchmark. It will make deleting scope synchronized, "
+    "and add some memory usage logs."
+    "Default cuda is asynchronous device, set to True will"
+    "force op run in synchronous mode.");
 
 namespace paddle {
 namespace platform {
 
-namespace detail {
-
-class PlacePrinter : public boost::static_visitor<> {
- public:
-  explicit PlacePrinter(std::ostream &os) : os_(os) {}
-  void operator()(const CPUPlace &) { os_ << "CPUPlace"; }
-  void operator()(const CUDAPlace &p) {
-    os_ << "CUDAPlace(" << p.device << ")";
-  }
-  void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
-
- private:
-  std::ostream &os_;
-};
-
-}  // namespace detail
-
-static Place the_default_place;
-
-void set_place(const Place &place) { the_default_place = place; }
-const Place &get_place() { return the_default_place; }
-
-const CUDAPlace default_gpu() { return CUDAPlace(0); }
-const CPUPlace default_cpu() { return CPUPlace(); }
-const CUDAPinnedPlace default_cuda_pinned() { return CUDAPinnedPlace(); }
-
 bool is_gpu_place(const Place &p) {
-  return boost::apply_visitor(IsCUDAPlace(), p);
+  return p.GetType() == phi::AllocationType::GPU;
+}
+
+bool is_xpu_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::XPU;
+}
+
+bool is_ipu_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::IPU;
 }
 
 bool is_cpu_place(const Place &p) {
-  return boost::apply_visitor(IsCPUPlace(), p);
+  return p.GetType() == phi::AllocationType::CPU;
 }
 
 bool is_cuda_pinned_place(const Place &p) {
-  return boost::apply_visitor(IsCUDAPinnedPlace(), p);
+  return p.GetType() == phi::AllocationType::GPUPINNED;
+}
+
+bool is_custom_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::CUSTOM;
 }
 
 bool places_are_same_class(const Place &p1, const Place &p2) {
-  return p1.which() == p2.which();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (is_custom_place(p1) && is_custom_place(p2)) {
+    return p1.GetDeviceType() == p2.GetDeviceType();
+  }
+#endif
+  return p1.GetType() == p2.GetType();
 }
 
 bool is_same_place(const Place &p1, const Place &p2) {
   if (places_are_same_class(p1, p2)) {
     if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
       return true;
+    } else if (is_xpu_place(p1)) {
+      return p1 == p2;
+    } else if (is_ipu_place(p1)) {
+      return p1 == p2;
+    } else if (is_custom_place(p1)) {
+      return p1 == p2;
     } else {
-      return boost::get<CUDAPlace>(p1) == boost::get<CUDAPlace>(p2);
+      return p1 == p2;
     }
   } else {
     return false;
   }
 }
 
-std::ostream &operator<<(std::ostream &os, const Place &p) {
-  detail::PlacePrinter printer(os);
-  boost::apply_visitor(printer, p);
-  return os;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+std::string PlaceHelper::GetDeviceType(const Place &place) {
+  if (is_cpu_place(place)) {
+    return "cpu";
+  } else if (is_gpu_place(place)) {
+    return "gpu";
+  } else if (is_xpu_place(place)) {
+    return "xpu";
+  } else if (is_custom_place(place)) {
+    return place.GetDeviceType();
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Unknown device type. Please check available devices by "
+        "paddle.device.get_available_device()"));
+  }
 }
+
+size_t PlaceHelper::GetDeviceId(const Place &place) {
+  return place.GetDeviceId();
+}
+
+Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
+  if (dev_type == "cpu") {
+    return platform::CPUPlace();
+  } else if (dev_type == "gpu") {
+    return platform::CUDAPlace(dev_id);
+  } else if (dev_type == "xpu") {
+    return platform::XPUPlace(dev_id);
+  } else {
+    return platform::CustomPlace(dev_type, dev_id);
+  }
+}
+#endif
 
 }  // namespace platform
 }  // namespace paddle

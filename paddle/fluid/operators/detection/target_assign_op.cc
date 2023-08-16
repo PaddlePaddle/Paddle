@@ -22,29 +22,51 @@ class TargetAssignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TargetAssignOp should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("MatchIndices"),
-                   "Input(MatchIndices) of TargetAssignOp should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of TargetAssignOp should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("MatchIndices"),
+        true,
+        platform::errors::InvalidArgument(
+            "Input(MatchIndices) of TargetAssignOp should not be null"));
 
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TargetAssignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutWeight"),
-                   "Output(OutWeight) of TargetAssignOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of TargetAssignOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("OutWeight"),
+        true,
+        platform::errors::InvalidArgument(
+            "Output(OutWeight) of TargetAssignOp should not be null."));
 
     auto in_dims = ctx->GetInputDim("X");
     auto mi_dims = ctx->GetInputDim("MatchIndices");
 
-    PADDLE_ENFORCE_EQ(in_dims.size(), 3, "The rank of Input(X) must be 3.");
-    PADDLE_ENFORCE_EQ(mi_dims.size(), 2,
-                      "The rank of Input(MatchIndices) must be 2.");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(),
+        3,
+        platform::errors::InvalidArgument(
+            "Expected the rank of Input(X) is 3. But received %d.",
+            in_dims.size()));
+    PADDLE_ENFORCE_EQ(mi_dims.size(),
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(MatchIndices) must be 2."));
 
     if (ctx->HasInput("NegIndices")) {
       auto neg_dims = ctx->GetInputDim("NegIndices");
-      PADDLE_ENFORCE_EQ(neg_dims.size(), 2,
-                        "The rank of Input(NegIndices) must be 2.");
-      PADDLE_ENFORCE_EQ(neg_dims[1], 1,
-                        "The last dimenstion of Out(NegIndices) must be 1.");
+      PADDLE_ENFORCE_EQ(neg_dims.size(),
+                        2,
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(NegIndices) must be 2."));
+      PADDLE_ENFORCE_EQ(
+          neg_dims[1],
+          1,
+          platform::errors::InvalidArgument(
+              "The last dimension of Out(NegIndices) must be 1."));
     }
 
     auto n = mi_dims[0];
@@ -55,11 +77,10 @@ class TargetAssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -67,7 +88,8 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), This input is a 3D LoDTensor with shape [M, P, K]. "
+             "(phi::DenseTensor), This input is a 3D phi::DenseTensor with "
+             "shape [M, P, K]. "
              "Some elements in X will be assigned to Out based on the "
              "MatchIndices and NegIndices.");
     AddInput("MatchIndices",
@@ -75,7 +97,8 @@ class TargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
              "with shape [N, P], If MatchIndices[i][j] is -1, the j-th entity "
              "of column is not matched to any entity of row in i-th instance.");
     AddInput("NegIndices",
-             "(LoDTensor, default LoDTensor<int>), The input negative example "
+             "(phi::DenseTensor, default phi::DenseTensor<int>), The input "
+             "negative example "
              "indices are an optional input with shape [Neg, 1], where Neg is "
              "the total number of negative example indices.")
         .AsDispensable();
@@ -109,7 +132,7 @@ If id = MatchIndices[i][j] > 0,
     Out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
     OutWeight[i][j] = 1.
 
-Otherwise, 
+Otherwise,
 
     Out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
     OutWeight[i][j] = 0.
@@ -127,10 +150,16 @@ for i-th instance and each `id` of NegIndices in this instance:
 };
 
 template <typename T, typename WT>
-struct NegTargetAssignFunctor<platform::CPUDeviceContext, T, WT> {
-  void operator()(const platform::CPUDeviceContext& ctx, const int* neg_indices,
-                  const size_t* lod, const int N, const int M, const int K,
-                  const int mismatch_value, T* out, WT* out_wt) {
+struct NegTargetAssignFunctor<phi::CPUContext, T, WT> {
+  void operator()(const phi::CPUContext& ctx,
+                  const int* neg_indices,
+                  const size_t* lod,
+                  const int N,
+                  const int M,
+                  const int K,
+                  const int mismatch_value,
+                  T* out,
+                  WT* out_wt) {
     for (int i = 0; i < N; ++i) {
       for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
         int id = neg_indices[j];
@@ -144,17 +173,19 @@ struct NegTargetAssignFunctor<platform::CPUDeviceContext, T, WT> {
   }
 };
 
-template struct NegTargetAssignFunctor<platform::CPUDeviceContext, int, float>;
-template struct NegTargetAssignFunctor<platform::CPUDeviceContext, float,
-                                       float>;
+template struct NegTargetAssignFunctor<phi::CPUContext, int, float>;
+template struct NegTargetAssignFunctor<phi::CPUContext, float, float>;
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(target_assign, ops::TargetAssignOp, ops::TargetAssignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(
+REGISTER_OPERATOR(
     target_assign,
-    ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, int, float>,
-    ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, float, float>);
+    ops::TargetAssignOp,
+    ops::TargetAssignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    target_assign, CPU, ALL_LAYOUT, ops::TargetAssignKernel, int, float) {}

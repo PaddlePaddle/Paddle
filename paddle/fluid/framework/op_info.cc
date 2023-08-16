@@ -17,13 +17,24 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-static OpInfoMap* g_op_info_map = nullptr;
-
+// C++11 removes the need for manual locking. Concurrent execution shall wait if
+// a static local variable is already being initialized.
+// https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
 OpInfoMap& OpInfoMap::Instance() {
-  if (g_op_info_map == nullptr) {
-    g_op_info_map = new OpInfoMap();
-  }
-  return *g_op_info_map;
+  static OpInfoMap g_op_info_map;
+  return g_op_info_map;
 }
+
+std::vector<std::string> OpInfoMap::GetUseDefaultGradOpDescMakerOps() const {
+  // Use set to sort op names
+  std::set<std::string> result_ops;
+  for (auto& pair : map_) {
+    if (pair.second.use_default_grad_op_desc_maker_) {
+      result_ops.insert(pair.first);
+    }
+  }
+  return std::vector<std::string>(result_ops.begin(), result_ops.end());
+}
+
 }  // namespace framework
 }  // namespace paddle

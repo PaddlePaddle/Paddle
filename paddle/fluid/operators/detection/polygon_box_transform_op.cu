@@ -13,42 +13,44 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 #define CUDA_BLOCK_SIZE 16
 
 template <typename T>
-__global__ void PolygonBoxTransformKernel(const int n, const int h, const int w,
-                                          const T* input, T* output) {
+__global__ void PolygonBoxTransformKernel(
+    const int n, const int h, const int w, const T* input, T* output) {
   int id_n = threadIdx.x + blockDim.x * blockIdx.x;
   int id_h = threadIdx.y + blockDim.y * blockIdx.y;
   int id_w = threadIdx.z + blockDim.z * blockIdx.z;
   if (id_n < n && id_h < h && id_w < w) {
     int id = id_n * h * w + w * id_h + id_w;
     if (id_n % 2 == 0) {
-      output[id] = id_w - input[id];
+      output[id] = id_w * 4 - input[id];
     } else {
-      output[id] = id_h - input[id];
+      output[id] = id_h * 4 - input[id];
     }
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
-    auto* in = ctx.Input<Tensor>("Input");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
+        platform::errors::InvalidArgument(
+            "The polygon_box_transform operator needs to be executed on GPU."));
+    auto* in = ctx.Input<phi::DenseTensor>("Input");
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
-    auto* out = ctx.Output<Tensor>("Output");
+    auto* out = ctx.Output<phi::DenseTensor>("Output");
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
     int batch_size = in_dims[0];
@@ -57,7 +59,8 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     dim3 threadsPerBlock(
         PADDLE_CUDA_NUM_THREADS / (CUDA_BLOCK_SIZE * CUDA_BLOCK_SIZE),
-        CUDA_BLOCK_SIZE, CUDA_BLOCK_SIZE);
+        CUDA_BLOCK_SIZE,
+        CUDA_BLOCK_SIZE);
     dim3 numBlocks((batch_size * geo_channels) / threadsPerBlock.x,
                    (height + threadsPerBlock.y - 1) / threadsPerBlock.y,
                    (width + threadsPerBlock.z - 1) / threadsPerBlock.z);
@@ -70,7 +73,10 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    polygon_box_transform,
-    paddle::operators::PolygonBoxTransformOpCUDAKernel<float>,
-    paddle::operators::PolygonBoxTransformOpCUDAKernel<double>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(polygon_box_transform,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PolygonBoxTransformOpCUDAKernel,
+                          float,
+                          double) {}

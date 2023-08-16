@@ -12,8 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -30,8 +42,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
     out.Resize({1});
     auto cpu = platform::CPUPlace();
     *out.mutable_data<int64_t>(cpu) = static_cast<int64_t>(x.size());
@@ -60,8 +71,9 @@ CPU and the length of LoDTensorArray should be used as control variables.
 class LoDArrayLengthInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"));
-    PADDLE_ENFORCE(context->HasOutput("Out"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "LDArrayLength");
+    OP_INOUT_CHECK(
+        context->HasOutput("Out"), "Output", "Out", "LoDArrayLength");
     context->SetOutputDim("Out", {1});
   }
 };
@@ -70,6 +82,10 @@ class LoDArrayLengthInferShape : public framework::InferShapeBase {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lod_array_length, ops::LoDArrayLengthOp,
-                  ops::LoDArrayLengthInferShape, ops::LoDArrayLengthProtoMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    lod_array_length,
+    ops::LoDArrayLengthOp,
+    ops::LoDArrayLengthInferShape,
+    ops::LoDArrayLengthProtoMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

@@ -14,45 +14,60 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+using DataLayout = phi::DataLayout;
+
 template <typename place, typename T>
 struct LRNFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& input, framework::Tensor* out,
-                  framework::Tensor* mid, int N, int C, int H, int W, int n,
-                  T k, T alpha, T beta);
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* out,
+                  phi::DenseTensor* mid,
+                  int N,
+                  int C,
+                  int H,
+                  int W,
+                  int n,
+                  T k,
+                  T alpha,
+                  T beta,
+                  const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LRNKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = framework::Tensor;
-
   // f(x) = x * ( k + alpha * SUM((x)^2) )^(-beta)
   // x represents inputs
   // f(x) represents outputs
   void Compute(const framework::ExecutionContext& ctx) const override {
     // input
-    const Tensor& x = *ctx.Input<Tensor>("X");
+    const phi::DenseTensor& x = *ctx.Input<phi::DenseTensor>("X");
     auto x_dims = x.dims();
 
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const phi::DataLayout data_layout =
+        phi::StringToDataLayout(data_layout_str);
     // NCHW
     int N = x_dims[0];
-    int C = x_dims[1];
-    int H = x_dims[2];
-    int W = x_dims[3];
+    int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
+    int H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
+    int W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
 
-    Tensor* out = ctx.Output<Tensor>("Out");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     // MidOut save the intermediate result for backward
-    Tensor* mid = ctx.Output<Tensor>("MidOut");
+    phi::DenseTensor* mid = ctx.Output<phi::DenseTensor>("MidOut");
     mid->mutable_data<T>(ctx.GetPlace());
 
     int n = ctx.Attr<int>("n");
@@ -60,23 +75,46 @@ class LRNKernel : public framework::OpKernel<T> {
     T beta = ctx.Attr<float>("beta");
     T k = ctx.Attr<float>("k");
 
-    PADDLE_ENFORCE(n > 0, "n should >= 0");
-    PADDLE_ENFORCE(alpha >= 0.0, "alpha should >= 0.0");
-    PADDLE_ENFORCE(beta >= 0.0, "beta should >= 0.0");
-    PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
+    PADDLE_ENFORCE_GE(
+        alpha,
+        0UL,
+        platform::errors::InvalidArgument("Argument(alpha) should >= 0.0, "
+                                          "but received alpha(%d) less than 0",
+                                          alpha));
+    PADDLE_ENFORCE_GE(
+        beta,
+        0UL,
+        platform::errors::InvalidArgument("Argument(beta) should >= 0.0, "
+                                          "but received beta(%d) less than 0",
+                                          beta));
+    PADDLE_ENFORCE_GE(
+        k,
+        0UL,
+        platform::errors::InvalidArgument("Argument(k) should >= 0.0, "
+                                          "but received k(%d) less than 0",
+                                          k));
 
     LRNFunctor<DeviceContext, T> f;
-    f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta);
+    f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta, data_layout);
   }
 };
 
 template <typename DeviceContext, typename T>
 struct LRNGradFunctor {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& x, const framework::Tensor& out,
-                  const framework::Tensor& mid, framework::Tensor* x_g,
-                  const framework::Tensor& out_g, int N, int C, int H, int W,
-                  int n, T alpha, T beta);
+                  const phi::DenseTensor& x,
+                  const phi::DenseTensor& out,
+                  const phi::DenseTensor& mid,
+                  phi::DenseTensor* x_g,
+                  const phi::DenseTensor& out_g,
+                  int N,
+                  int C,
+                  int H,
+                  int W,
+                  int n,
+                  T alpha,
+                  T beta,
+                  const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
 /**
@@ -98,35 +136,41 @@ struct LRNGradFunctor {
  * The upper and lower is the same as forward. The logic of the sum
  * is also the same as forward.
  */
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LRNGradKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor& x = *ctx.Input<Tensor>("X");
-    const Tensor& out = *ctx.Input<Tensor>("Out");
-    const Tensor& out_g = *ctx.Input<Tensor>(framework::GradVarName("Out"));
-    const Tensor& mid = *ctx.Input<Tensor>("MidOut");
+    const phi::DenseTensor& x = *ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor& out = *ctx.Input<phi::DenseTensor>("Out");
+    const phi::DenseTensor& out_g =
+        *ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    const phi::DenseTensor& mid = *ctx.Input<phi::DenseTensor>("MidOut");
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const phi::DataLayout data_layout =
+        phi::StringToDataLayout(data_layout_str);
 
-    auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto x_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());
 
     auto x_dims = x.dims();
     int N = x_dims[0];
-    int C = x_dims[1];
-    int H = x_dims[2];
-    int W = x_dims[3];
+    int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
+    int H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
+    int W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
 
     int n = ctx.Attr<int>("n");
     T alpha = ctx.Attr<T>("alpha");
     T beta = ctx.Attr<T>("beta");
 
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         !ctx.Attr<bool>("is_test"),
-        "is_test attribute should be set to False in training phase.");
+        true,
+        platform::errors::InvalidArgument(
+            "is_test attribute should be set to False in training phase. "
+            "but received is_test == True in training phase."));
 
     LRNGradFunctor<DeviceContext, T> f;
-    f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta);
+    f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta, data_layout);
   }
 };
 

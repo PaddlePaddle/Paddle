@@ -13,13 +13,36 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_zeros_like_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fill_zeros_like,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>);
+namespace plat = paddle::platform;
+
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}
+
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like2,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel2,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}

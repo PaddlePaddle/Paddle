@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -33,10 +32,16 @@ struct TargetAssignFunctor {
   T* out_;
   WT* out_wt_;
 
-  TargetAssignFunctor(const T* input, const int* match_indices,
-                      const size_t* lod, const int mismatch_value,
-                      const int64_t N, const int64_t M, const int64_t P,
-                      const int64_t K, T* out, WT* out_wt)
+  TargetAssignFunctor(const T* input,
+                      const int* match_indices,
+                      const size_t* lod,
+                      const int mismatch_value,
+                      const int64_t N,
+                      const int64_t M,
+                      const int64_t P,
+                      const int64_t K,
+                      T* out,
+                      WT* out_wt)
       : in_(input),
         match_indices_(match_indices),
         lod_(lod),
@@ -76,22 +81,31 @@ struct TargetAssignFunctor {
 
 template <typename DeviceContext, typename T, typename WT>
 struct NegTargetAssignFunctor {
-  void operator()(const platform::DeviceContext& ctx, const int* neg_indices,
-                  const size_t* lod, const int N, const int M, const int K,
-                  const int mismatch_value, T* out, WT* out_wt) const;
+  void operator()(const platform::DeviceContext& ctx,
+                  const int* neg_indices,
+                  const size_t* lod,
+                  const int N,
+                  const int M,
+                  const int K,
+                  const int mismatch_value,
+                  T* out,
+                  WT* out_wt) const;
 };
 
-template <typename DeviceContext, typename T, typename WT>
+template <typename T, typename DeviceContext, typename WT = float>
 class TargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* match_indices = ctx.Input<framework::Tensor>("MatchIndices");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* match_indices = ctx.Input<phi::DenseTensor>("MatchIndices");
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* out_wt = ctx.Output<framework::Tensor>("OutWeight");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out_wt = ctx.Output<phi::DenseTensor>("OutWeight");
 
-    PADDLE_ENFORCE_EQ(x->lod().size(), 1UL);
+    PADDLE_ENFORCE_EQ(x->lod().size(),
+                      1UL,
+                      platform::errors::InvalidArgument(
+                          "TargetAssignOp input(X) needs 1 level of LoD"));
     int mismatch_value = ctx.Attr<int>("mismatch_value");
 
     const T* x_data = x->data<T>();
@@ -106,25 +120,59 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     int64_t k = x->dims()[2];
 
     auto x_lod = x->lod().back();
-    size_t* x_lod_data = x_lod.MutableData(ctx.GetPlace());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    phi::MixVector<size_t> mixv_x_lod(&x_lod);
+    size_t* x_lod_data = mixv_x_lod.MutableData(ctx.GetPlace());
+#else
+    size_t* x_lod_data = x_lod.data();
+#endif
 
-    TargetAssignFunctor<T, WT> functor(x_data, match_idx_data, x_lod_data,
-                                       mismatch_value, n, m, p, k, out_data,
+    TargetAssignFunctor<T, WT> functor(x_data,
+                                       match_idx_data,
+                                       x_lod_data,
+                                       mismatch_value,
+                                       n,
+                                       m,
+                                       p,
+                                       k,
+                                       out_data,
                                        out_wt_data);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    mixv_x_lod.CopyToCPU();
+#endif
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(device_ctx, n * m);
     for_range(functor);
 
-    auto* neg_indices = ctx.Input<framework::LoDTensor>("NegIndices");
+    auto* neg_indices = ctx.Input<phi::DenseTensor>("NegIndices");
     if (neg_indices) {
-      PADDLE_ENFORCE_EQ(neg_indices->lod().size(), 1UL);
+      PADDLE_ENFORCE_EQ(
+          neg_indices->lod().size(),
+          1UL,
+          platform::errors::InvalidArgument(
+              "TargetAssignOp input(NegIndices) needs 1 level of LoD"));
       const int* neg_idx_data = neg_indices->data<int>();
       auto neg_lod = neg_indices->lod().back();
-      size_t* neg_lod_data = neg_lod.MutableData(ctx.GetPlace());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      phi::MixVector<size_t> mixv_neg_lod(&neg_lod);
+      size_t* neg_lod_data = mixv_neg_lod.MutableData(ctx.GetPlace());
+#else
+      size_t* neg_lod_data = neg_lod.data();
+#endif
       NegTargetAssignFunctor<DeviceContext, T, WT> neg_trg_functor;
-      neg_trg_functor(device_ctx, neg_idx_data, neg_lod_data, n, m, k,
-                      mismatch_value, out_data, out_wt_data);
+      neg_trg_functor(device_ctx,
+                      neg_idx_data,
+                      neg_lod_data,
+                      n,
+                      m,
+                      k,
+                      mismatch_value,
+                      out_data,
+                      out_wt_data);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      mixv_neg_lod.CopyToCPU();
+#endif
     }
   }
 };

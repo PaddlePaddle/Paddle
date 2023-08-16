@@ -14,41 +14,18 @@ limitations under the License. */
 #pragma once
 
 #include <curand.h>
-#include <dlfcn.h>
 
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/dynload/curand.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-extern std::once_flag curand_dso_flag;
-extern void *curand_dso_handle;
-#ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)                             \
-  struct DynLoad__##__name {                                                 \
-    template <typename... Args>                                              \
-    curandStatus_t operator()(Args... args) {                                \
-      using curandFunc = decltype(&::__name);                                \
-      std::call_once(curand_dso_flag, []() {                                 \
-        curand_dso_handle = paddle::platform::dynload::GetCurandDsoHandle(); \
-      });                                                                    \
-      void *p_##__name = dlsym(curand_dso_handle, #__name);                  \
-      return reinterpret_cast<curandFunc>(p_##__name)(args...);              \
-    }                                                                        \
-  };                                                                         \
+
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name)    \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CURAND_WRAP(__name) \
-  struct DynLoad__##__name {                     \
-    template <typename... Args>                  \
-    curandStatus_t operator()(Args... args) {    \
-      return __name(args...);                    \
-    }                                            \
-  };                                             \
-  extern DynLoad__##__name __name
-#endif
 
 #define CURAND_RAND_ROUTINE_EACH(__macro)      \
   __macro(curandCreateGenerator);              \
@@ -59,7 +36,7 @@ extern void *curand_dso_handle;
   __macro(curandGenerateNormal);               \
   __macro(curandDestroyGenerator);
 
-CURAND_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
+CURAND_RAND_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CURAND_WRAP);
 
 }  // namespace dynload
 }  // namespace platform

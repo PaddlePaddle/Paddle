@@ -13,11 +13,50 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
+
+#include "gtest/gtest-message.h"
+#include "gtest/gtest-test-part.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/block_desc.h"
+#include "gtest/gtest_pred_impl.h"
 
 namespace paddle {
 namespace framework {
+class VarDesc;
+
+TEST(ProgramDesc, block_desc_move) {
+  auto program = std::make_unique<ProgramDesc>();
+  auto* global_block = program->MutableBlock(0);
+
+  auto* op = global_block->AppendOp();
+  op->SetType("op_with_subblock");
+  op->SetAttr("sub_block", program->AppendBlock(*global_block));
+
+  std::vector<BlockDesc*> sub_blocks;
+  sub_blocks.push_back(program->AppendBlock(*global_block));
+  sub_blocks.push_back(program->AppendBlock(*global_block));
+  op->SetAttr("sub_blocks", sub_blocks);
+
+  program->Flush();
+
+  ProgramDesc program_move;
+  for (size_t i = 1; i < program->Size(); ++i) {
+    program_move.AppendBlock(program_move.Block(0));
+  }
+  for (size_t i = 0; i < program->Size(); ++i) {
+    program_move.MutableBlock(i)->MoveFrom(program->MutableBlock(i));
+  }
+  program = nullptr;
+  EXPECT_EQ(program_move.Size(), static_cast<size_t>(4));
+  op = program_move.Block(0).Op(0);
+  auto sub_block = op->GetAttrIfExists<BlockDesc*>("sub_block");
+  EXPECT_EQ(sub_block, program_move.MutableBlock(1));
+
+  sub_blocks = op->GetAttrIfExists<std::vector<BlockDesc*>>("sub_blocks");
+  EXPECT_EQ(sub_blocks.size(), static_cast<size_t>(2));
+  EXPECT_EQ(sub_blocks[0], program_move.MutableBlock(2));
+  EXPECT_EQ(sub_blocks[1], program_move.MutableBlock(3));
+}
+
 TEST(ProgramDesc, copy_ctor) {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
@@ -42,6 +81,19 @@ TEST(ProgramDesc, copy_ctor) {
   out->SetType(proto::VarType::LOD_TENSOR);
   op->SetOutput("Y", {out->Name()});
 
+  BlockDesc* new_block = program.AppendBlock(*global_block);
+  op = new_block->AppendOp();
+  op->SetType("mul");
+
+  op = global_block->AppendOp();
+  op->SetType("op_with_subblock");
+  op->SetAttr("sub_block", new_block);
+
+  std::vector<BlockDesc*> sub_blocks;
+  sub_blocks.push_back(program.AppendBlock(*global_block));
+  sub_blocks.push_back(program.AppendBlock(*global_block));
+  op->SetAttr("sub_blocks", sub_blocks);
+
   ProgramDesc program_copy(program);
 
   auto* global_block_copy = program_copy.MutableBlock(0);
@@ -64,6 +116,8 @@ TEST(ProgramDesc, copy_ctor) {
   assert_same_var("Y", y);
   assert_same_var("Out", out);
 
+  bool found_sub_block = false;
+  bool found_sub_blocks = false;
   for (size_t i = 0; i < global_block->OpSize(); ++i) {
     auto op_origin = global_block->Op(i);
     auto op_copy = global_block_copy->Op(i);
@@ -72,10 +126,30 @@ TEST(ProgramDesc, copy_ctor) {
     ASSERT_EQ(op_origin->Inputs(), op_copy->Inputs());
     ASSERT_EQ(op_origin->Outputs(), op_copy->Outputs());
 
-    ASSERT_EQ(op_copy->Proto()->SerializeAsString(),
-              op_origin->Proto()->SerializeAsString());
-  }
+    ASSERT_EQ(op_origin->Proto()->attrs().size(),
+              op_copy->Proto()->attrs().size());
+    for (auto it = op_origin->Proto()->attrs().begin();
+         it != op_origin->Proto()->attrs().end();
+         ++it) {
+      for (auto it_2 = op_copy->Proto()->attrs().begin();
+           it_2 != op_copy->Proto()->attrs().end();
+           ++it_2) {
+        if (it->name() == it_2->name()) {
+          ASSERT_TRUE(it_2->SerializeAsString() == it->SerializeAsString());
+        }
+      }
+    }
 
+    if (op->Type() == "op_with_subblock") {
+      ASSERT_EQ(1, op->GetBlockAttrId("sub_block"));
+      found_sub_block = true;
+
+      ASSERT_EQ(2UL, op->GetBlocksAttrIds("sub_blocks").size());
+      found_sub_blocks = true;
+    }
+  }
+  ASSERT_TRUE(found_sub_block);
+  ASSERT_TRUE(found_sub_blocks);
   // Not check block's protostr are same it because the order of vars could be
   // different and it is correct.
 }

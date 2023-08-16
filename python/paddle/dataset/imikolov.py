@@ -14,21 +14,25 @@
 """
 imikolov's simple dataset.
 
-This module will download dataset from 
+This module will download dataset from
 http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
-import paddle.dataset.common
+
 import collections
 import tarfile
 
-__all__ = ['train', 'test', 'build_dict', 'convert']
+import paddle.dataset.common
+from paddle.utils import deprecated
 
-URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+__all__ = []
+
+# URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 
-class DataType(object):
+class DataType:
     NGRAM = 1
     SEQ = 2
 
@@ -54,9 +58,10 @@ def build_dict(min_word_freq=50):
     train_filename = './simple-examples/data/ptb.train.txt'
     test_filename = './simple-examples/data/ptb.valid.txt'
     with tarfile.open(
-            paddle.dataset.common.download(paddle.dataset.imikolov.URL,
-                                           'imikolov',
-                                           paddle.dataset.imikolov.MD5)) as tf:
+        paddle.dataset.common.download(
+            paddle.dataset.imikolov.URL, 'imikolov', paddle.dataset.imikolov.MD5
+        )
+    ) as tf:
         trainf = tf.extractfile(train_filename)
         testf = tf.extractfile(test_filename)
         word_freq = word_count(testf, word_count(trainf))
@@ -64,11 +69,11 @@ def build_dict(min_word_freq=50):
             # remove <unk> for now, since we will set it as last index
             del word_freq['<unk>']
 
-        word_freq = filter(lambda x: x[1] > min_word_freq, word_freq.items())
+        word_freq = [x for x in word_freq.items() if x[1] > min_word_freq]
 
         word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*word_freq_sorted))
-        word_idx = dict(zip(words, xrange(len(words))))
+        word_idx = dict(list(zip(words, range(len(words)))))
         word_idx['<unk>'] = len(words)
 
     return word_idx
@@ -77,9 +82,12 @@ def build_dict(min_word_freq=50):
 def reader_creator(filename, word_idx, n, data_type):
     def reader():
         with tarfile.open(
-                paddle.dataset.common.download(
-                    paddle.dataset.imikolov.URL, 'imikolov',
-                    paddle.dataset.imikolov.MD5)) as tf:
+            paddle.dataset.common.download(
+                paddle.dataset.imikolov.URL,
+                'imikolov',
+                paddle.dataset.imikolov.MD5,
+            )
+        ) as tf:
             f = tf.extractfile(filename)
 
             UNK = word_idx['<unk>']
@@ -90,20 +98,27 @@ def reader_creator(filename, word_idx, n, data_type):
                     if len(l) >= n:
                         l = [word_idx.get(w, UNK) for w in l]
                         for i in range(n, len(l) + 1):
-                            yield tuple(l[i - n:i])
+                            yield tuple(l[i - n : i])
                 elif DataType.SEQ == data_type:
                     l = l.strip().split()
                     l = [word_idx.get(w, UNK) for w in l]
                     src_seq = [word_idx['<s>']] + l
                     trg_seq = l + [word_idx['<e>']]
-                    if n > 0 and len(src_seq) > n: continue
+                    if n > 0 and len(src_seq) > n:
+                        continue
                     yield src_seq, trg_seq
                 else:
-                    assert False, 'Unknow data type'
+                    raise AssertionError('Unknown data type')
 
     return reader
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Imikolov",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov training set creator.
@@ -120,10 +135,17 @@ def train(word_idx, n, data_type=DataType.NGRAM):
     :return: Training reader creator
     :rtype: callable
     """
-    return reader_creator('./simple-examples/data/ptb.train.txt', word_idx, n,
-                          data_type)
+    return reader_creator(
+        './simple-examples/data/ptb.train.txt', word_idx, n, data_type
+    )
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Imikolov",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov test set creator.
@@ -140,21 +162,16 @@ def test(word_idx, n, data_type=DataType.NGRAM):
     :return: Test reader creator
     :rtype: callable
     """
-    return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n,
-                          data_type)
+    return reader_creator(
+        './simple-examples/data/ptb.valid.txt', word_idx, n, data_type
+    )
 
 
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.text.datasets.Imikolov",
+    level=1,
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
     paddle.dataset.common.download(URL, "imikolov", MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    N = 5
-    word_dict = build_dict()
-    paddle.dataset.common.convert(path,
-                                  train(word_dict, N), 1000, "imikolov_train")
-    paddle.dataset.common.convert(path,
-                                  test(word_dict, N), 1000, "imikolov_test")

@@ -23,8 +23,6 @@ https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op.h
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 template <typename T>
 inline T sigmoid(T x) {
   return 1. / (1. + exp(-x));
@@ -35,17 +33,19 @@ inline T tanh(T x) {
   return 2. * sigmoid(2. * x) - 1.;
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LstmUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()),
+        true,
+        paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
 
-    auto* x_tensor = ctx.Input<framework::Tensor>("X");
-    auto* c_prev_tensor = ctx.Input<framework::Tensor>("C_prev");
-    auto* c_tensor = ctx.Output<framework::Tensor>("C");
-    auto* h_tensor = ctx.Output<framework::Tensor>("H");
+    auto* x_tensor = ctx.Input<phi::DenseTensor>("X");
+    auto* c_prev_tensor = ctx.Input<phi::DenseTensor>("C_prev");
+    auto* c_tensor = ctx.Output<phi::DenseTensor>("C");
+    auto* h_tensor = ctx.Output<phi::DenseTensor>("H");
 
     auto forget_bias = static_cast<T>(ctx.Attr<float>("forget_bias"));
 
@@ -78,29 +78,32 @@ class LstmUnitKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LstmUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()),
+        true,
+        paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
 
-    auto x_tensor = ctx.Input<Tensor>("X");
-    auto c_prev_tensor = ctx.Input<Tensor>("C_prev");
-    auto c_tensor = ctx.Input<Tensor>("C");
-    auto h_tensor = ctx.Input<Tensor>("H");
+    auto x_tensor = ctx.Input<phi::DenseTensor>("X");
+    auto c_prev_tensor = ctx.Input<phi::DenseTensor>("C_prev");
+    auto c_tensor = ctx.Input<phi::DenseTensor>("C");
 
-    auto hdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("H"));
-    auto cdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("C"));
+    auto hdiff_tensor =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("H"));
+    auto cdiff_tensor =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("C"));
 
-    auto xdiff_tensor = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto xdiff_tensor =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto c_prev_diff_tensor =
-        ctx.Output<Tensor>(framework::GradVarName("C_prev"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("C_prev"));
 
     auto* X = x_tensor->data<T>();
     auto* C_prev = c_prev_tensor->data<T>();
     auto* C = c_tensor->data<T>();
-    auto* H = h_tensor->data<T>();
 
     auto* H_diff = hdiff_tensor->data<T>();
     auto* C_diff = cdiff_tensor->data<T>();
@@ -138,7 +141,6 @@ class LstmUnitGradKernel : public framework::OpKernel<T> {
       C_prev += D;
       X += 4 * D;
       C += D;
-      H += D;
       C_diff += D;
       H_diff += D;
       X_diff += 4 * D;

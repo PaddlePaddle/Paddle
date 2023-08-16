@@ -20,13 +20,13 @@ PORT_LOCK_FILE=/tmp/paddle_test_ports.lock
 touch $PORT_FILE $PORT_LOCK_FILE 2>/dev/null
 chmod a+rw $PORT_FILE $PORT_LOCK_FILE 2>/dev/null
 
-# acquire a range of ports that not used by other runtests.sh currentlly.
+# acquire a range of ports that not used by other runtests.sh currently.
 # return 1 if ports is used by other, otherwise return 0.
 # NOTE: the acquire_ports/release_ports is interprocess mutexed.
 #
 # There are two parameter of this method
 # param 1: the begin of port range
-# param 2: the lenght of port range.
+# param 2: the length of port range.
 # so, the port range is [param1, param1+param2)
 acquire_ports(){
   (

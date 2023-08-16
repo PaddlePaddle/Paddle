@@ -12,8 +12,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include <string>
-#include <vector>
+#include "paddle/fluid/operators/ops_extra_info.h"
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -42,7 +43,10 @@ OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
 void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   std::unordered_set<std::string> names;
   auto checker = [&](const std::string& name) {
-    PADDLE_ENFORCE(!names.count(name), "[%s] is duplicated", name);
+    PADDLE_ENFORCE_EQ(
+        names.count(name),
+        0,
+        platform::errors::AlreadyExists("Attribute [%s] is duplicated.", name));
     names.insert(name);
   };
   for (auto& attr : proto_->attrs()) {
@@ -61,20 +65,55 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   proto_ = proto;
   op_checker_ = attr_checker;
   Make();
+  op_checker_->RecordExplicitCheckerNum();
+
+  const AttributeMap* extra_attrs_ptr = nullptr;
+  const std::string& op_type = proto->type();
+
+  const auto& extra_attr_map =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
+  if (!extra_attr_map.empty()) {
+    extra_attrs_ptr = &extra_attr_map;
+  }
+  op_checker_->InitDefaultAttributeMap(extra_attrs_ptr);
 
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(
           {static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kBackward),
-           static_cast<int>(OpRole::kOptimize), static_cast<int>(OpRole::kRPC),
+           static_cast<int>(OpRole::kOptimize),
+           static_cast<int>(OpRole::kRPC),
+           static_cast<int>(OpRole::kDist),
+           static_cast<int>(OpRole::kLRSched),
            static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kLoss) |
                static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kOptimize) |
+               static_cast<int>(OpRole::kLRSched),
            static_cast<int>(OpRole::kNotSpecified)})
-      .SetDefault(static_cast<int>(OpRole::kNotSpecified));
+      .SetDefault(static_cast<int>(OpRole::kNotSpecified))
+      .AsExtra();
   AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
                                     "Optimized for variable")
-      .SetDefault({});
+      .SetDefault({})
+      .AsExtra();
+
+  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namescope.")
+      .SetDefault("")
+      .AsExtra();
+
+  AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
+                                    "Callstack for Op Creation.")
+      .SetDefault({})
+      .AsExtra();
+  AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
+      .SetDefault("")
+      .AsExtra();
+
+  AddAttr<bool>(OpWithQuantAttrName(),
+                "Whether the operator has attributes used by quantization. ")
+      .SetDefault(false)
+      .AsExtra();
 
   Validate();
 }

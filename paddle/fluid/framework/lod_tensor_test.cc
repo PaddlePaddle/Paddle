@@ -12,19 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <glog/logging.h>
-#include <gtest/gtest.h>
-#include <algorithm>
-#include <memory>
-#include <vector>
-
 #include "paddle/fluid/framework/lod_tensor.h"
 
-#include "paddle/fluid/recordio/scanner.h"
-#include "paddle/fluid/recordio/writer.h"
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
+
+TEST(LoD, PrintLoDTensor) {
+  phi::DenseTensor tensor1;
+  tensor1.Resize({2});
+  tensor1.mutable_data<float>(platform::CPUPlace());
+  tensor1.data<float>()[0] = 0.2;
+  tensor1.data<float>()[1] = 0.5;
+  LOG(INFO) << tensor1;
+
+  phi::DenseTensor tensor2;
+  tensor2.Resize({2});
+  tensor2.mutable_data<int64_t>(platform::CPUPlace());
+  tensor2.data<int64_t>()[0] = 1;
+  tensor2.data<int64_t>()[1] = 2;
+  LOG(INFO) << tensor2;
+}
 
 TEST(LoD, data) {
   LoD lod{{0, 1, 2}};
@@ -37,9 +49,9 @@ TEST(LoD, data) {
   }
 }
 
-TEST(LodExpand, test) {
+TEST(LoD, ExpandLoD) {
   LoD lod{{0, 2}};
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());
@@ -88,7 +100,7 @@ TEST(LoD, AppendLoD) {
   origin.push_back(std::vector<size_t>({0, 1, 6}));
   origin.push_back(std::vector<size_t>({0, 2, 5, 7, 10, 12, 15}));
 
-  paddle::framework::AppendLoD(&origin, lod_lens);
+  phi::AppendLoD(&origin, lod_lens);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({0, 2, 4}));
@@ -120,7 +132,7 @@ TEST(LoD, SplitLoDTensor) {
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
 
   platform::CPUPlace place;
-  LoDTensor lod_tensor;
+  phi::DenseTensor lod_tensor;
   lod_tensor.Resize({20, 1});
   float* dst_ptr = lod_tensor.mutable_data<float>(place);
   for (int i = 0; i < lod_tensor.numel(); ++i) {
@@ -137,9 +149,29 @@ TEST(LoD, SplitLoDTensor) {
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
 
-  auto lods = lod_tensor.SplitLoDTensor(places);
+  auto lods = SplitLoDTensor(lod_tensor, places);
   EXPECT_EQ(lods[0].lod(), lod0);
   EXPECT_EQ(lods[1].lod(), lod1);
+}
+
+TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
+  LoD lod;
+  lod.push_back(std::vector<size_t>({0}));
+
+  platform::CPUPlace place;
+  phi::DenseTensor lod_tensor;
+  lod_tensor.Resize({0, 5});
+  lod_tensor.mutable_data<float>(place);
+  lod_tensor.set_lod(lod);
+
+  std::vector<platform::Place> places{platform::CPUPlace(),
+                                      platform::CPUPlace()};
+  LoD lod_res;
+  lod_res.push_back(std::vector<size_t>({0}));
+
+  auto lods = SplitLoDTensor(lod_tensor, places);
+  EXPECT_EQ(lods[0].lod(), lod_res);
+  EXPECT_EQ(lods[1].lod(), lod_res);
 }
 
 TEST(LoD, MergeLoDTensor) {
@@ -149,7 +181,7 @@ TEST(LoD, MergeLoDTensor) {
 
   platform::CPUPlace place;
 
-  LoDTensor lod_tensor0;
+  phi::DenseTensor lod_tensor0;
   LoD lod0;
   lod0.push_back(std::vector<size_t>({0, 2, 4}));
   lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
@@ -161,7 +193,7 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
-  LoDTensor lod_tensor1;
+  phi::DenseTensor lod_tensor1;
   LoD lod1;
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
@@ -172,10 +204,19 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
-  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1};
+  phi::DenseTensor lod_tensor2;
+  LoD lod2;
+  lod2.push_back(std::vector<size_t>({0}));
+  lod2.push_back(std::vector<size_t>({0}));
+  lod_tensor2.set_lod(lod2);
+  lod_tensor2.Resize({0});
+  dst_ptr = lod_tensor2.mutable_data<float>(place);
 
-  LoDTensor lod_tensor;
-  lod_tensor.MergeLoDTensor(lods, place);
+  std::vector<const phi::DenseTensor*> lods{
+      &lod_tensor0, &lod_tensor1, &lod_tensor2};
+
+  phi::DenseTensor lod_tensor;
+  MergeLoDTensor(&lod_tensor, lods, place);
   EXPECT_EQ(lod_tensor.lod(), lod);
 }
 
@@ -203,6 +244,11 @@ TEST(LoD, CheckLoD) {
   // check with underlying tensor storage.
   ASSERT_TRUE(CheckLoD(relative_lod, 5));
   ASSERT_FALSE(CheckLoD(relative_lod, 9));
+
+  // check whether lod is ascending-sorted (allow same items)
+  ASSERT_TRUE(CheckLoD({{0, 1, 2, 3, 4, 5}}, 5));
+  ASSERT_TRUE(CheckLoD({{0, 1, 3, 3, 4, 5}}, 5));
+  ASSERT_FALSE(CheckLoD({{0, 1, 3, 2, 5}}, 5));
 }
 
 TEST(LoD, CheckAbsLoD) {
@@ -228,50 +274,36 @@ TEST(LoD, CheckAbsLoD) {
   ASSERT_FALSE(CheckAbsLoD(abs_lod0));
 }
 
-template <typename T>
-static void TestRecordIO() {
-  LoDTensor tensor;
-  T* tmp = tensor.mutable_data<T>(make_ddim({4, 5}), platform::CPUPlace());
-  for (int i = 0; i < 20; ++i) {
-    tmp[i] = static_cast<T>(i);
-  }
+TEST(LoD, ConvertToLengthBasedLoD) {
+  LoD offset_lod;
+  offset_lod.push_back(std::vector<size_t>({0, 2}));
+  offset_lod.push_back(std::vector<size_t>({0, 1, 3}));
+  offset_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
 
-  std::stringstream* stream = new std::stringstream();
-  auto& ctx =
-      *platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-  {
-    recordio::Writer writer(stream, recordio::Compressor::kSnappy);
-    WriteToRecordIO(&writer, {tensor, tensor}, ctx);
-    WriteToRecordIO(&writer, {tensor, tensor}, ctx);
-    writer.Flush();
-  }
+  LoD length_lod = phi::ConvertToLengthBasedLoD(offset_lod);
 
-  auto assert_tensor_ok = [](const LoDTensor& tensor) {
-    for (int i = 0; i < 20; ++i) {
-      ASSERT_EQ(tensor.data<T>()[i], static_cast<T>(i));
-    }
-  };
+  LoD expected;
+  expected.push_back(std::vector<size_t>({2}));
+  expected.push_back(std::vector<size_t>({1, 2}));
+  expected.push_back(std::vector<size_t>({2, 2, 1}));
 
-  {
-    std::unique_ptr<std::istream> stream_ptr(stream);
-    recordio::Scanner scanner(std::move(stream_ptr));
-    auto tensors = ReadFromRecordIO(&scanner, ctx);
-    ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
-    assert_tensor_ok(tensors[0]);
-    assert_tensor_ok(tensors[1]);
-    tensors = ReadFromRecordIO(&scanner, ctx);
-    ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
-    assert_tensor_ok(tensors[0]);
-    assert_tensor_ok(tensors[1]);
-  }
+  EXPECT_EQ(length_lod, expected);
 }
 
-TEST(LoDTensor, RecordIO) {
-  TestRecordIO<int>();
-  TestRecordIO<int16_t>();
-  TestRecordIO<uint8_t>();
-  TestRecordIO<float>();
-  TestRecordIO<double>();
+TEST(LoD, ConvertToOffsetBasedLoD) {
+  LoD length_lod;
+  length_lod.push_back(std::vector<size_t>({2}));
+  length_lod.push_back(std::vector<size_t>({1, 2}));
+  length_lod.push_back(std::vector<size_t>({2, 2, 1}));
+
+  LoD offset_lod = ConvertToOffsetBasedLoD(length_lod);
+
+  LoD expected;
+  expected.push_back(std::vector<size_t>({0, 2}));
+  expected.push_back(std::vector<size_t>({0, 1, 3}));
+  expected.push_back(std::vector<size_t>({0, 2, 4, 5}));
+
+  EXPECT_EQ(offset_lod, expected);
 }
 
 }  // namespace framework

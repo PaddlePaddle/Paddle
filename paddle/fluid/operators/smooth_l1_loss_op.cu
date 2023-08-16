@@ -11,15 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
-#define EIGEN_USE_GPU
-
 #include "paddle/fluid/operators/smooth_l1_loss_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    smooth_l1_loss,
-    ops::SmoothL1LossKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    smooth_l1_loss_grad,
-    ops::SmoothL1LossGradKernel<paddle::platform::CUDADeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    smooth_l1_loss, GPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    smooth_l1_loss_grad, GPU, ALL_LAYOUT, ops::SmoothL1LossGradKernel, float) {}

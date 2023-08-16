@@ -13,8 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 syntax = "proto2";
-option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
+
+// Any incompatible changes to ProgramDesc and its dependencies should
+// raise the version defined version.h.
+//
+// Serailization and Deserialization codes should be modified in a way
+// that supports old versions following the version and compatibility policy.
+message Version { optional int64 version = 1 [ default = 0 ]; }
 
 enum AttrType {
   INT = 0;
@@ -27,7 +33,36 @@ enum AttrType {
   BOOLEANS = 7;
   BLOCK = 8;
   LONG = 9;
+  BLOCKS = 10;
+  LONGS = 11;
+  FLOAT64S = 12;
+  VAR = 13;
+  VARS = 14;
+  FLOAT64 = 15;
+  SCALAR = 16;
+  SCALARS = 17;
 }
+
+
+message Complex {
+  required double r = 1;
+  required double i = 2;
+};
+
+message Scalar {
+  enum Type {
+    BOOLEAN = 1;
+    LONG = 2;
+    FLOAT64 = 3;
+    COMPLEX128 = 4;
+  }
+  required Type type = 1;
+
+  optional bool b = 2;
+  optional int64 i = 3;
+  optional double r = 4;
+  optional Complex c = 5;
+};
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
@@ -46,6 +81,14 @@ message OpDesc {
     repeated bool bools = 11;
     optional int32 block_idx = 12;
     optional int64 l = 13;
+    repeated int32 blocks_idx = 14;
+    repeated int64 longs = 15;
+    repeated double float64s = 16;
+    optional string var_name = 17;
+    repeated string vars_name = 18;
+    optional double float64 = 19;
+    optional Scalar scalar = 20;
+    repeated Scalar scalars = 21;
   };
 
   message Var {
@@ -71,6 +114,8 @@ message OpProto {
     optional bool duplicable = 3 [ default = false ];
     optional bool intermediate = 4 [ default = false ];
     optional bool dispensable = 5 [ default = false ];
+    optional bool extra = 6 [ default = false ];
+    optional bool quant = 7 [ default = false ];
   }
 
   // AttrProto describes the C++ type Attribute.
@@ -82,6 +127,9 @@ message OpProto {
     // language binding has responsibility to fill that
     // attribute. End-User should not set that attribute.
     optional bool generated = 4 [ default = false ];
+    optional bool extra = 5 [ default = false ];
+    optional bool quant = 6 [ default = false ];
+    optional bool support_tensor = 7 [ default = false];
   }
 
   required string type = 1;
@@ -101,9 +149,13 @@ message VarType {
     FP16 = 4;
     FP32 = 5;
     FP64 = 6;
-    // Tensor<size_t> is used in C++.
+    // phi::DenseTensor<size_t> is used in C++.
     SIZE_T = 19;
     UINT8 = 20;
+    INT8 = 21;
+    BF16 = 22;
+    COMPLEX64 = 23;
+    COMPLEX128 = 24;
 
     // Other types that may need additional descriptions
     LOD_TENSOR = 7;
@@ -115,12 +167,22 @@ message VarType {
     LOD_TENSOR_ARRAY = 13;
     PLACE_LIST = 14;
     READER = 15;
-    CHANNEL = 16;
     // Any runtime decided variable type is raw
     // raw variables should manage their own allocations
     // in operators like nccl_op
     RAW = 17;
     TUPLE = 18;
+
+    STRING = 25;
+    STRINGS = 26;
+    VOCAB = 27;
+    FEED_LIST = 28;
+    // The data type of phi::StringTensor
+    PSTRING = 29;
+    // the data type of phi::SparseCooTensor
+    SPARSE_COO = 30;
+    // the data type of phi::SparseCsrTensor
+    SPARSE_CSR = 31;
   }
 
   required Type type = 1;
@@ -147,20 +209,35 @@ message VarType {
   message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
   optional ReaderDesc reader = 5;
 
-  message ChannelDesc {
-    required Type data_type = 1;
-    required int64 capacity = 2;
-  }
-  optional ChannelDesc channel = 6;
-
   message Tuple { repeated Type element_type = 1; }
   optional Tuple tuple = 7;
+
+  optional TensorDesc string = 8;
+  optional TensorDesc strings = 9;
+  optional TensorDesc vocab = 10;
+  optional TensorDesc sparse_coo = 11;
+  optional TensorDesc sparse_csr = 12;
 }
 
 message VarDesc {
+
+  message Attr {
+    required string name = 1;
+    required AttrType type = 2;
+    optional int32 i = 3;
+    optional string s = 4;
+    repeated int32 ints = 5;
+  };
+
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
+  // True if the variable is an input data and
+  // have to check the feed data shape and dtype
+  optional bool need_check_feed = 4 [ default = false ];
+  optional bool is_parameter = 5 [ default = false ];
+  optional bool stop_gradient = 6 [ default = false ];
+  repeated Attr attrs = 7;
 }
 
 message BlockDesc {
@@ -171,9 +248,25 @@ message BlockDesc {
   optional int32 forward_block_idx = 5 [ default = -1 ];
 }
 
+// In some cases, Paddle may perform operator definition iterations,
+// and the operator uses OpVersionMap for compatibility testing.
+message OpVersion { required int32 version = 1; }
+message OpVersionMap {
+  message OpVersionPair {
+    required string op_name = 1;
+    required OpVersion op_version = 2;
+  }
+  repeated OpVersionPair pair = 1;
+}
+
 // Please refer to
 // https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
 // for more details.
 // TODO(panyx0718): A model can have multiple programs. Need a
 // way to distinguish them. Maybe ID or name?
-message ProgramDesc { repeated BlockDesc blocks = 1; }
+message ProgramDesc {
+  reserved 2, 3; // For backward compatibility.
+  repeated BlockDesc blocks = 1;
+  optional Version version = 4;
+  optional OpVersionMap op_version_map = 5;
+}

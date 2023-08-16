@@ -16,44 +16,116 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 namespace details {
-ScaleLossGradOpHandle::ScaleLossGradOpHandle(size_t num_dev, Scope *scope,
+ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
+                                             size_t num_dev,
+                                             Scope *scope,
                                              platform::Place place,
-                                             platform::DeviceContext *dev_ctx)
-    : coeff_(static_cast<float>(1.0 / num_dev)), scope_(scope), place_(place) {
-  dev_ctxes_[place_] = dev_ctx;
+                                             platform::DeviceContext *dev_ctx,
+                                             proto::VarType::Type dtype)
+    : OpHandleBase(node),
+      coeff_(static_cast<float>(1.0 / num_dev)),
+      scope_(scope),
+      place_(place),
+      out_dtype_(dtype) {
+  this->SetDeviceContext(place_, dev_ctx);
 }
 
-ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
+ScaleLossGradOpHandle::~ScaleLossGradOpHandle() = default;
+
+struct ScaleLossGradFunctor {
+  float coeff_;
+  phi::DenseTensor *out_;
+  platform::Place place_;
+  proto::VarType::Type out_dtype_;
+  platform::DeviceContext *ctx_;
+
+  ScaleLossGradFunctor(float coeff,
+                       phi::DenseTensor *out,
+                       platform::Place place,
+                       proto::VarType::Type dtype,
+                       platform::DeviceContext *ctx)
+      : coeff_(coeff), out_(out), place_(place), out_dtype_(dtype), ctx_(ctx) {}
+
+  template <typename OutT>
+  void apply() const {
+    auto *out_data = out_->mutable_data<OutT>(place_);
+    if (platform::is_cpu_place(place_)) {
+      *out_data = static_cast<OutT>(coeff_);
+    } else if (platform::is_xpu_place(place_)) {
+#if defined(PADDLE_WITH_XPU)
+      OutT cast_coeff = static_cast<OutT>(coeff_);
+      memory::Copy(place_,
+                   out_data,
+                   platform::CPUPlace(),
+                   &cast_coeff,
+                   SizeOfType(out_dtype_));
+      VLOG(10) << place_ << "RUN Scale loss grad op";
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use XPU device since it's not compiled with XPU,"
+          "Please recompile or reinstall Paddle with XPU support."));
+#endif
+    } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      OutT cast_coeff = static_cast<OutT>(coeff_);
+      auto stream = static_cast<phi::GPUContext *>(ctx_)->stream();
+      memory::Copy(place_,
+                   out_data,
+                   platform::CPUPlace(),
+                   &cast_coeff,
+                   SizeOfType(out_dtype_),
+                   stream);
+      VLOG(10) << place_ << "RUN Scale loss grad op";
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CUDA device since it's not compiled with CUDA,"
+          "Please recompile or reinstall Paddle with GPU support."));
+#endif
+    }
+  }
+};
+
+std::string ScaleLossGradOpHandle::LossGradName() const {
+  return static_cast<VarHandle *>(this->outputs_[0])->name();
+}
 
 void ScaleLossGradOpHandle::RunImpl() {
-  // Doesn't wait any event
-  std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name_;
-  auto &local_scope = *scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::UserDefined, 2);
 
-  float *tmp = local_scope.FindVar(var_name)
-                   ->GetMutable<LoDTensor>()
-                   ->mutable_data<float>(make_ddim({1}), place_);
-
-  if (platform::is_cpu_place(place_)) {
-    *tmp = coeff_;
-  } else {
-#ifdef PADDLE_WITH_CUDA
-    this->RunAndRecordEvent([&] {
-      auto stream =
-          static_cast<platform::CUDADeviceContext *>(this->dev_ctxes_[place_])
-              ->stream();
-      memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
-                   platform::CPUPlace(), &coeff_, sizeof(float), stream);
-      VLOG(1) << place_ << "RUN Scale loss grad op";
-    });
-#endif
-  }
+  RunOnVar(local_exec_scopes_[0]->FindVar(LossGradName()), true);
 }
 
-std::string ScaleLossGradOpHandle::Name() const { return "Scale LossGrad"; }
+void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
+  auto *tensor = var->GetMutable<phi::DenseTensor>();
+  tensor->Resize(phi::make_ddim({1}));
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  ScaleLossGradFunctor func(
+      coeff_, tensor, place_, out_dtype_, this->dev_ctxes_.at(place_));
+  if (record_event) {
+    this->RunAndRecordEvent(
+        [&] { framework::VisitDataType(out_dtype_, func); });
+  } else {
+    framework::VisitDataType(out_dtype_, func);
+  }
+#else
+  ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_, nullptr);
+  framework::VisitDataType(out_dtype_, func);
+#endif
+}
+
+std::string ScaleLossGradOpHandle::Name() const { return "ScaleLossGrad"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

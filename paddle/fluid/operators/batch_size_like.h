@@ -15,57 +15,51 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
+
+using MetaTensor = framework::CompatMetaTensor;
 
 class BatchSizeLikeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of %s should not be null.", Type());
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of %s should not be null.", Type());
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", Type());
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", Type());
 
-    auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    PADDLE_ENFORCE_GT(shape.size(), 0);
-    std::vector<int64_t> shape_int64(shape.size(), 0);
-    std::transform(shape.begin(), shape.end(), shape_int64.begin(),
-                   [](int a) { return static_cast<int64_t>(a); });
-    auto output_dim = framework::make_ddim(shape_int64);
-
-    int input_dim_idx = ctx->Attrs().Get<int>("input_dim_idx");
-    PADDLE_ENFORCE_GE(input_dim_idx, 0);
-    PADDLE_ENFORCE_GT(ctx->GetInputDim("Input").size(), input_dim_idx);
-
-    int output_dim_idx = ctx->Attrs().Get<int>("output_dim_idx");
-    PADDLE_ENFORCE_GE(output_dim_idx, 0);
-    PADDLE_ENFORCE_GT(static_cast<int>(shape.size()), output_dim_idx);
-
-    output_dim[output_dim_idx] = ctx->GetInputDim("Input")[input_dim_idx];
-    ctx->SetOutputDim("Out", output_dim);
+    MetaTensor x(ctx->GetInputVarPtrs("Input")[0], ctx->IsRuntime());
+    MetaTensor out(ctx->GetOutputVarPtrs("Out")[0], ctx->IsRuntime());
+    auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    int x_batch_size_dim = ctx->Attrs().Get<int>("input_dim_idx");
+    int out_batch_size_dim = ctx->Attrs().Get<int>("output_dim_idx");
+    phi::BatchSizeLikeInferMeta(
+        x, shape, x_batch_size_dim, out_batch_size_dim, &out);
   }
 };
 
 class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final {
-    AddInput("Input",
-             "(Tensor) Tensor "
-             "whose input_dim_idx'th dimension specifies the batch_size");
+    AddInput(
+        "Input",
+        "Tensor whose input_dim_idx'th dimension specifies the batch_size");
     AddOutput("Out",
-              "(Tensor) Tensor of specified shape will be filled "
+              "Tensor of specified shape will be filled "
               "with the specified value");
-    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
+    AddAttr<std::vector<int>>("shape", "The shape of the output");
     AddAttr<int>("input_dim_idx",
-                 "(int, default 0) The index of input's batch size dimension")
+                 "default 0. The index of input's batch size dimension")
         .SetDefault(0);
     AddAttr<int>("output_dim_idx",
-                 "(int, default 0) The index of output's batch size dimension")
+                 "default 0. The index of output's batch size dimension")
         .SetDefault(0);
     Apply();
   }
@@ -73,6 +67,9 @@ class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
  protected:
   virtual void Apply() = 0;
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(BatchSizeLikeNoNeedBufferVarsInferer,
+                                    "Input");
 
 }  // namespace operators
 }  // namespace paddle

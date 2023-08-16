@@ -1,0 +1,1 @@
+collect_srcs(backends_srcs SRCS cudnn_workspace_helper.cc)

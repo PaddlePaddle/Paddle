@@ -15,14 +15,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUPTI
 
 #include "paddle/fluid/platform/dynload/cupti.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-std::once_flag cupti_dso_flag;
-void *cupti_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 

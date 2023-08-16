@@ -15,34 +15,18 @@
 Dataset package.
 """
 
-import mnist
-import imikolov
-import imdb
-import cifar
-import movielens
-import conll05
-import uci_housing
-import sentiment
-import wmt14
-import wmt16
-import mq2007
-import flowers
-import voc2012
-import image
+import paddle.dataset.mnist  # noqa: F401
+import paddle.dataset.imikolov  # noqa: F401
+import paddle.dataset.imdb  # noqa: F401
+import paddle.dataset.cifar  # noqa: F401
+import paddle.dataset.movielens  # noqa: F401
+import paddle.dataset.conll05  # noqa: F401
+import paddle.dataset.uci_housing  # noqa: F401
+import paddle.dataset.wmt14  # noqa: F401
+import paddle.dataset.wmt16  # noqa: F401
+import paddle.dataset.flowers  # noqa: F401
+import paddle.dataset.voc2012  # noqa: F401
+import paddle.dataset.image  # noqa: F401
 
-__all__ = [
-    'mnist',
-    'imikolov',
-    'imdb',
-    'cifar',
-    'movielens',
-    'conll05',
-    'sentiment',
-    'uci_housing',
-    'wmt14',
-    'wmt16',
-    'mq2007',
-    'flowers',
-    'voc2012',
-    'image',
-]
+# set __all__ as empty for not showing APIs under paddle.dataset
+__all__ = []

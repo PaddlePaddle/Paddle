@@ -1,5 +1,4 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -12,16 +11,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/row_conv_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using framework::Tensor;
-
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -30,20 +31,19 @@ class RowConvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of RowConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of RowConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of RowConvOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "row_conv");
+    OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "row_conv");
 
     auto x_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(
-        x_dims[1], filter_dims[1],
-        "The 2nd dimension of Input(X) and Input(Filter) should be same.");
+    PADDLE_ENFORCE_EQ(filter_dims.size(),
+                      2,
+                      platform::errors::InvalidArgument(
+                          "Input(Filter)'s dimensions should be 2. Received: "
+                          "Input(Filter)'s shape: [%s].",
+                          filter_dims));
+
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
   }
@@ -54,16 +54,16 @@ class RowConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of output(Out) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "row_conv_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "row_conv_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      auto x_dims = ctx->GetInputDim("X");
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+      ctx->SetOutputDim(x_grad_name, dout_dims);
     }
 
     auto filter_grad_name = framework::GradVarName("Filter");
@@ -78,62 +78,92 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor), the input(X) is a LodTensor, which supports "
+             "the input(X) is a LodTensor or tensor, LodTensor(X) supports "
              "variable time-length input sequences. The underlying tensor "
-             "in this LoDTensor is a matrix with shape (T x N), where T "
+             "in this phi::DenseTensor is a matrix with shape (T x N), where T "
              "is the total time steps in this mini-batch and N is the input "
-             "data dimension.");
+             "data dimension. the shape of Tensor input(X) has shape "
+             "(B x T x N), B is batch size;");
     AddInput("Filter",
-             "(Tensor), the input(Filter) is a learnable parameter. It "
+             "the input(Filter) is a learnable parameter. It "
              "is a 2-D tensor with shape (future_context x N), where, "
              "future_context is the future context length and N is the data "
              "dimension.");
     AddOutput("Out",
-              "(LoDTensor), the output(Out) is a LodTensor, which supports "
-              "variable time-length input sequences. The underlying tensor "
-              "in this LodTensor is a matrix with shape T x N, i.e., the "
-              "same shape as X.");
+              "the output(Out) is a LodTensor or Tensor, which has same type"
+              " and same shape as X.");
     AddComment(R"DOC(
-Row-convolution Operator.
+:strong:`Row-convolution operator`
 
-The row convolution is called lookahead convolution.  This operator was 
+The row convolution is called lookahead convolution.  This operator was
 introduced in the following paper for DeepSpeech2:
-http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf 
+http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
 
-The main motivation is that a bidirectional RNN, useful in DeepSpeech 
-like speech models, learns representation for a sequence by performing a 
-forward and a backward pass through the entire sequence. However, unlike 
+The main motivation is that a bidirectional RNN, useful in DeepSpeech
+like speech models, learns representation for a sequence by performing a
+forward and a backward pass through the entire sequence. However, unlike
 unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
-and low-latency setting. The lookahead convolution incorporates information 
-from future subsequences in a computationally efficient manner to improve 
-unidirectional recurrent neural networks. The row convolution operator is 
+and low-latency setting. The lookahead convolution incorporates information
+from future subsequences in a computationally efficient manner to improve
+unidirectional recurrent neural networks. The row convolution operator is
 different from the 1D sequence convolution, and is computed as follows:
 
-Given an input sequence $in$ of length $t$ and input dimension $d$, 
-and a filter ($W$) of size $context \times d$, 
+Given an input sequence $X$ of length $t$ and input dimension $D$,
+and a filter ($W$) of size $context \times D$,
 the output sequence is convolved as:
 
 $$
-out_{i, :} = \sum_{j=i}^{i + context} in_{j,:} \dot W_{i-j, :}
+out_{i} = \\sum_{j=i}^{i + context - 1} X_{j} \\cdot W_{j-i}
 $$
+
+In the above equation:
+
+* $Out_{i}$: The i-th row of output variable with shape [1, D].
+
+* $context$: Future context size.
+
+* $X_{j}$: The j-th row of input variable with shape [1, D].
+
+* $W_{j-i}$: The (j-i)-th row of parameters with shape [1, D].
+
+More details about row_conv please refer to
+the design document
+https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
 )DOC");
   }
 };
 
-template <typename T>
-class RowConvKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+template <typename T, typename DeviceContext>
+class RowConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
-    auto *filter = context.Input<Tensor>("Filter");
-    auto *out = context.Output<LoDTensor>("Out");
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *filter = context.Input<phi::DenseTensor>("Filter");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<T>(context.GetPlace());
 
-    auto batch_indices = x->lod()[0];
-    auto input_dim = x->dims()[1];  // 'in' is of size T x N
+    bool is_tensor = x->lod().empty();
+    int batch_size = 0;
+    if (is_tensor) {
+      batch_size = x->dims()[0];
+    } else {
+      batch_size = x->lod()[0].size() - 1;
+    }
+    phi::Vector<size_t> batch_indices(batch_size + 1);
+    int input_dim = 0;
+    int timesteps = 0;
+    if (is_tensor) {
+      for (int i = 0; i < batch_size + 1; i++) {
+        batch_indices[i] = i;
+      }
+      input_dim = x->dims()[2];
+      timesteps = x->dims()[1];
+    } else {
+      batch_indices = x->lod()[0];
+      input_dim = x->dims()[1];
+    }
     size_t num_sequence = batch_indices.size() - 1;
 
     auto future_context = filter->dims()[0];
@@ -142,11 +172,23 @@ class RowConvKernel<platform::CPUDeviceContext, T>
     for (size_t i = 0; i < num_sequence; i++) {
       int start = static_cast<int>(batch_indices[i]);
       int end = static_cast<int>(batch_indices[i + 1]);
-      int current_timesteps = end - start;
-      Tensor cur_input_sequence =
+      int current_timesteps = 0;
+      if (is_tensor) {
+        current_timesteps = timesteps;
+      } else {
+        current_timesteps = end - start;
+      }
+      // int current_timesteps = end - start;
+      phi::DenseTensor cur_input_sequence =
           x->Slice(start, end);  // Current input sequence
-      Tensor cur_output_sequence =
+      cur_input_sequence =
+          cur_input_sequence.Resize({current_timesteps, input_dim});
+
+      phi::DenseTensor cur_output_sequence =
           out->Slice(start, end);  // Current output sequence
+      cur_output_sequence =
+          cur_output_sequence.Resize({current_timesteps, input_dim});
+
       auto cip_seq = EigenMatrix<T>::From(cur_input_sequence);
       auto cot_seq = EigenMatrix<T>::From(cur_output_sequence);
 
@@ -167,22 +209,42 @@ class RowConvKernel<platform::CPUDeviceContext, T>
   }
 };
 
-template <typename T>
-class RowConvGradKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+template <typename T, typename DeviceContext>
+class RowConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
-    auto *filter = context.Input<Tensor>("Filter");
-    auto *d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *dx = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto *d_filter = context.Output<Tensor>(framework::GradVarName("Filter"));
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *filter = context.Input<phi::DenseTensor>("Filter");
+    auto *d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_filter =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
 
-    auto input_dim = x->dims()[1];  // 'x' is of size T x N
-    auto batch_indices = x->lod()[0];
+    auto &x_lod = x->lod();
+    bool is_tensor = x_lod.empty();
+    int batch_size = 0;
+    if (is_tensor) {
+      batch_size = x->dims()[0];
+    } else {
+      batch_size = x->lod()[0].size() - 1;
+    }
+    phi::Vector<size_t> batch_indices(batch_size + 1);
+    int timesteps = 0;
+    int input_dim = 0;
+    if (is_tensor) {
+      for (int i = 0; i < batch_size + 1; i++) {
+        batch_indices[i] = i;
+      }
+      input_dim = x->dims()[2];
+      timesteps = x->dims()[1];
+    } else {
+      batch_indices = x->lod()[0];
+      input_dim = x->dims()[1];
+    }
+
     size_t num_sequence = batch_indices.size() - 1;
     auto future_context = filter->dims()[0];
-
     if (d_filter) {
       d_filter->mutable_data<T>(context.GetPlace());
       auto dweights =
@@ -193,14 +255,20 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
         int start = static_cast<int>(batch_indices[i]);
         int end = static_cast<int>(batch_indices[i + 1]);
 
-        Tensor cur_input = x->Slice(start, end);  // Current input sequence
-        Tensor cur_doutput =
+        int current_timesteps = 0;
+        if (is_tensor) {
+          current_timesteps = timesteps;
+        } else {
+          current_timesteps = end - start;
+        }
+        phi::DenseTensor cur_input =
+            x->Slice(start, end);  // Current input sequence
+        cur_input = cur_input.Resize({current_timesteps, input_dim});
+        phi::DenseTensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
-
+        cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
         auto cur_ip = EigenMatrix<T>::From(cur_input);
         auto cur_dout = EigenMatrix<T>::From(cur_doutput);
-        int current_timesteps = end - start;
-
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
           for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -221,15 +289,23 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
         int start = static_cast<int>(batch_indices[i]);
         int end = static_cast<int>(batch_indices[i + 1]);
 
-        Tensor cur_doutput =
+        int current_timesteps = 0;
+        if (is_tensor) {
+          current_timesteps = timesteps;
+        } else {
+          current_timesteps = end - start;
+        }
+
+        phi::DenseTensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
-        Tensor cur_dinput =
+        cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
+        phi::DenseTensor cur_dinput =
             dx->Slice(start, end);  // Current input grad sequence
+        cur_dinput = cur_dinput.Resize({current_timesteps, input_dim});
 
         auto cur_dout = EigenMatrix<T>::From(cur_doutput);
         auto cur_dip = EigenMatrix<T>::From(cur_dinput);
         cur_dip.setZero();
-        int current_timesteps = end - start;
 
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
@@ -245,15 +321,35 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     }
   }
 };
+
+template <typename T>
+class RowConvGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("row_conv_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(row_conv,
+                  ops::RowConvOp,
+                  ops::RowConvOpMaker,
+                  ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
-REGISTER_OP_CPU_KERNEL(
-    row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    row_conv_grad,
-    ops::RowConvGradKernel<paddle::platform::CPUDeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    row_conv, CPU, ALL_LAYOUT, ops::RowConvKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    row_conv_grad, CPU, ALL_LAYOUT, ops::RowConvGradKernel, float) {}

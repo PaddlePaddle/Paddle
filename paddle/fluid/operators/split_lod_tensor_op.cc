@@ -13,8 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/lod_utils.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -37,12 +52,12 @@ class SplitLoDTensorOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
+    auto &x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
     auto *out_true =
-        scope.FindVar(Output("OutTrue"))->GetMutable<framework::LoDTensor>();
+        scope.FindVar(Output("OutTrue"))->GetMutable<phi::DenseTensor>();
     auto *out_false =
-        scope.FindVar(Output("OutFalse"))->GetMutable<framework::LoDTensor>();
+        scope.FindVar(Output("OutFalse"))->GetMutable<phi::DenseTensor>();
     auto level = static_cast<size_t>(Attr<int>("level"));
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
@@ -50,20 +65,21 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
+    std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
-#ifdef PADDLE_WITH_CUDA
-      framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
-                            cpu_mask.get());
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      framework::TensorCopy(
+          mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
-      PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Not support GPU, Please compile WITH_GPU option"));
 #endif
     }
     auto *mask_data = cpu_mask->data<bool>();
 
-    std::vector<std::vector<CopyRange>> copy_ranges(mask_dim[0]);
+    std::vector<std::vector<CopyRange>> copy_ranges(2);
 
     // set out_true/out_false lod
     for (size_t t = 0; t < 2; t++) {
@@ -81,7 +97,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
               x_lod, start_idx, start_idx + 1, level);
 
           auto &lod_length = lod_and_offset.first;
-          framework::AppendLoD(lod, lod_length);
+          phi::AppendLoD(lod, lod_length);
 
           size_t start_offset = lod_and_offset.second.first;
           size_t end_offset = lod_and_offset.second.second;
@@ -91,7 +107,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     }
 
     for (size_t t = 0; t < 2; ++t) {
-      framework::LoDTensor *out;
+      phi::DenseTensor *out;
       if (t == 0) {
         out = out_false;
       } else {
@@ -99,8 +115,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       }
       auto &ranges = copy_ranges[t];
       size_t height = std::accumulate(
-          ranges.begin(), ranges.end(), 0UL,
-          [](size_t a, const CopyRange &b) { return a + b.end - b.begin; });
+          ranges.begin(), ranges.end(), 0UL, [](size_t a, const CopyRange &b) {
+            return a + b.end - b.begin;
+          });
       auto x_dim = x.dims();
       x_dim[0] = static_cast<int64_t>(height);
       out->Resize(x_dim);
@@ -116,7 +133,9 @@ class SplitLoDTensorOp : public framework::OperatorBase {
                                 static_cast<int>(offset + len));
         framework::TensorCopy(x.Slice(static_cast<int>(each_range.begin),
                                       static_cast<int>(each_range.end)),
-                              x.place(), dev_ctx, &slice);
+                              x.place(),
+                              dev_ctx,
+                              &slice);
         offset += len;
       }
     }
@@ -126,59 +145,78 @@ class SplitLoDTensorOp : public framework::OperatorBase {
 class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input LoDTensor");
+    AddInput("X", "The input phi::DenseTensor");
     AddInput("Mask", "A bool column vector which mask the input");
-    AddOutput("OutTrue", "True branch of input LoDTensor");
-    AddOutput("OutFalse", "False branch of input LoDTensor");
+    AddOutput("OutTrue", "True branch of input phi::DenseTensor");
+    AddOutput("OutFalse", "False branch of input phi::DenseTensor");
     AddAttr<int>("level", "(int) the specific lod level to split.")
         .SetDefault(0)
         .EqualGreaterThan(0);
     AddComment(
         R"DOC(
-        Split a LoDTensor with a Mask at certain level. The input LoDTensor
+        Split a phi::DenseTensor with a Mask at certain level. The input phi::DenseTensor
         has 3 sequence at certain lod level. The Mask is a bool column vector,
         such as [0, 1, 0] at the same level. The first and third sequence will
-        be send to False Output LoDTensor; whereas the second sequence will
-        be send to True Output LoDTensor. Please refer to MergeLoDTensorOp.)DOC");
+        be send to False Output phi::DenseTensor; whereas the second sequence will
+        be send to True Output phi::DenseTensor. Please refer to MergeLoDTensorOp.)DOC");
   }
 };
 
 class SplitLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "SplitLoDTensorOp must has input X.");
-    PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "SplitLoDTensorOp must has input Mask.");
-    PADDLE_ENFORCE(context->HasOutput("OutTrue"),
-                   "SplitLoDTensorOp must has output OutTrue.");
-    PADDLE_ENFORCE(context->HasOutput("OutFalse"),
-                   "SplitLoDTensorOp must has output OutFalse.");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "SplitLoDTensor");
+    OP_INOUT_CHECK(
+        context->HasInput("Mask"), "Input", "Mask", "SplitLoDTensor");
+    OP_INOUT_CHECK(
+        context->HasOutput("OutTrue"), "Output", "OutTrue", "SplitLoDTensor");
+    OP_INOUT_CHECK(
+        context->HasOutput("OutFalse"), "Output", "OutFalse", "SplitLoDTensor");
 
     auto mask_dim = context->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(mask_dim.size(), 2);
-    PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+    PADDLE_ENFORCE_EQ(
+        mask_dim.size(),
+        2,
+        platform::errors::InvalidArgument(
+            "If you are using IfElse OP:"
+            "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+            "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+            "Please ensure that the cond should be a 2-D tensor and "
+            "the second dim size of cond should be 1. "
+            "But now the cond's shape is [",
+            *mask_dim.Get(),
+            "].\n"));
+    PADDLE_ENFORCE_EQ(mask_dim[1],
+                      1,
+                      platform::errors::InvalidArgument(
+                          "If you are using IfElse OP:"
+                          "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                          "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                          "Please ensure that the cond should be a 2-D tensor "
+                          "and the second dim size of cond should be 1. "
+                          "But now the cond's shape is [",
+                          *mask_dim.Get(),
+                          "].\n"));
 
     context->SetOutputDim("OutTrue", context->GetInputDim("X"));
     context->SetOutputDim("OutFalse", context->GetInputDim("X"));
   }
 };
 
-class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("merge_lod_tensor");
-    grad_op->SetInput("InTrue", OutputGrad("OutTrue"));
-    grad_op->SetInput("InFalse", OutputGrad("OutFalse"));
-    grad_op->SetInput("Mask", Input("Mask"));
-    grad_op->SetInput("X", Input("X"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("InTrue", this->OutputGrad("OutTrue"));
+    grad_op->SetInput("InFalse", this->OutputGrad("OutFalse"));
+    grad_op->SetInput("Mask", this->Input("Mask"));
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -186,7 +224,10 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(split_lod_tensor, ops::SplitLoDTensorOp,
-                  ops::SplitLoDTensorOpProtoMaker,
-                  ops::SplitLoDTensorInferShape,
-                  ops::SplitLoDTensorArrayGradMaker);
+REGISTER_OPERATOR(
+    split_lod_tensor,
+    ops::SplitLoDTensorOp,
+    ops::SplitLoDTensorOpProtoMaker,
+    ops::SplitLoDTensorInferShape,
+    ops::SplitLoDTensorArrayGradMaker<paddle::framework::OpDesc>,
+    ops::SplitLoDTensorArrayGradMaker<paddle::imperative::OpBase>);

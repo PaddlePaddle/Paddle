@@ -1,0 +1,43 @@
+MODEL:
+    name: "TSM"
+    format: "pkl"
+    num_classes: 400
+    seg_num: 8
+    seglen: 1
+    image_mean: [0.485, 0.456, 0.406]
+    image_std: [0.229, 0.224, 0.225]
+    num_layers: 50
+    topk: 5
+
+TRAIN:
+    epoch: 1
+    short_size: 256
+    target_size: 224
+    num_reader_threads: 12
+    buf_size: 1024
+    batch_size: 2 #128
+    use_gpu: True
+    num_gpus: 1 #8
+    filelist: "./data/dataset/kinetics/train.list"
+    learning_rate: 0.01
+    learning_rate_decay: 0.1
+    decay_epochs: [40, 60]
+    l2_weight_decay: 1e-4
+    momentum: 0.9
+    total_videos: 4000 #239781
+
+VALID:
+    short_size: 256
+    target_size: 224
+    num_reader_threads: 12
+    buf_size: 1024
+    batch_size: 32 #128
+    filelist: "./data/dataset/kinetics/val.list"
+
+TEST:
+    short_size: 256
+    target_size: 224
+    num_reader_threads: 12
+    buf_size: 1024
+    batch_size: 64
+    filelist: "./data/dataset/kinetics/test.list"

@@ -13,10 +13,24 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
+namespace framework {
+class InferShapeContext;
+class OpDesc;
+class Scope;
+template <typename T>
+class EmptyGradOpMaker;
+}  // namespace framework
+namespace imperative {
+class OpBase;
+}  // namespace imperative
+}  // namespace paddle
+
+namespace paddle {
 namespace operators {
 class DeleteVarOp : public framework::OperatorBase {
  public:
-  DeleteVarOp(const std::string &type, const framework::VariableNameMap &inputs,
+  DeleteVarOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -30,6 +44,11 @@ class DeleteVarOp : public framework::OperatorBase {
     auto delete_var_names = Inputs("X");
     const_cast<framework::Scope &>(scope).EraseVars(delete_var_names);
   }
+};
+
+class DeleteVarOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
 class DeleteVarOpInfoMaker : public framework::OpProtoAndCheckerMaker {
@@ -46,6 +65,10 @@ It should not be configured by users directly.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(delete_var, paddle::operators::DeleteVarOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  paddle::operators::DeleteVarOpInfoMaker);
+REGISTER_OPERATOR(
+    delete_var,
+    paddle::operators::DeleteVarOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::DeleteVarOpInfoMaker,
+    paddle::operators::DeleteVarOpShapeInference);

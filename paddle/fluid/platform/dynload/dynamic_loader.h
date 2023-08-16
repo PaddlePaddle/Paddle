@@ -13,20 +13,42 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
+#ifndef _WIN32
+#define DECLARE_TYPE(__name, ...) decltype(__name(__VA_ARGS__))
+#else
+#define DECLARE_TYPE(__name, ...) decltype(auto)
+#endif
+
 void* GetCublasDsoHandle();
+void* GetCublasLtDsoHandle();
 void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
+void* GetNvjpegDsoHandle();
+void* GetCusolverDsoHandle();
+void* GetCusparseDsoHandle();
+void* GetNVRTCDsoHandle();
+void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
-void* GetLapackDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
+void* GetMKLMLDsoHandle();
+void* GetLAPACKDsoHandle();
+void* GetOpDsoHandle(const std::string& dso_name);
+void* GetNvtxDsoHandle();
+void* GetCUFFTDsoHandle();
+void* GetMKLRTDsoHandle();
+void* GetROCFFTDsoHandle();
+void* GetCusparseLtDsoHandle();
+void* GetXPTIDsoHandle();
 
+void SetPaddleLibPath(const std::string&);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

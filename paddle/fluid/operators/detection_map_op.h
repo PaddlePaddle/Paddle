@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -55,34 +56,42 @@ inline void GetAccumulation(std::vector<std::pair<T, int>> in_pairs,
   }
 }
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class DetectionMAPOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_detect = ctx.Input<framework::LoDTensor>("DetectRes");
-    auto* in_label = ctx.Input<framework::LoDTensor>("Label");
-    auto* out_map = ctx.Output<framework::Tensor>("MAP");
+    auto* in_detect = ctx.Input<phi::DenseTensor>("DetectRes");
+    auto* in_label = ctx.Input<phi::DenseTensor>("Label");
+    auto* out_map = ctx.Output<phi::DenseTensor>("MAP");
 
-    auto* in_pos_count = ctx.Input<framework::Tensor>("PosCount");
-    auto* in_true_pos = ctx.Input<framework::LoDTensor>("TruePos");
-    auto* in_false_pos = ctx.Input<framework::LoDTensor>("FalsePos");
+    auto* in_pos_count = ctx.Input<phi::DenseTensor>("PosCount");
+    auto* in_true_pos = ctx.Input<phi::DenseTensor>("TruePos");
+    auto* in_false_pos = ctx.Input<phi::DenseTensor>("FalsePos");
 
-    auto* out_pos_count = ctx.Output<framework::Tensor>("AccumPosCount");
-    auto* out_true_pos = ctx.Output<framework::LoDTensor>("AccumTruePos");
-    auto* out_false_pos = ctx.Output<framework::LoDTensor>("AccumFalsePos");
+    auto* out_pos_count = ctx.Output<phi::DenseTensor>("AccumPosCount");
+    auto* out_true_pos = ctx.Output<phi::DenseTensor>("AccumTruePos");
+    auto* out_false_pos = ctx.Output<phi::DenseTensor>("AccumFalsePos");
 
     float overlap_threshold = ctx.Attr<float>("overlap_threshold");
     bool evaluate_difficult = ctx.Attr<bool>("evaluate_difficult");
     auto ap_type = GetAPType(ctx.Attr<std::string>("ap_type"));
     int class_num = ctx.Attr<int>("class_num");
 
-    auto label_lod = in_label->lod();
-    auto detect_lod = in_detect->lod();
-    PADDLE_ENFORCE_EQ(label_lod.size(), 1UL,
-                      "Only support one level sequence now.");
-    PADDLE_ENFORCE_EQ(label_lod[0].size(), detect_lod[0].size(),
-                      "The batch_size of input(Label) and input(Detection) "
-                      "must be the same.");
+    auto& label_lod = in_label->lod();
+    auto& detect_lod = in_detect->lod();
+    PADDLE_ENFORCE_EQ(
+        label_lod.size(),
+        1UL,
+        platform::errors::InvalidArgument("Only support LodTensor of lod_level "
+                                          "with 1 in label, but received %d.",
+                                          label_lod.size()));
+    PADDLE_ENFORCE_EQ(label_lod[0].size(),
+                      detect_lod[0].size(),
+                      platform::errors::InvalidArgument(
+                          "The batch_size of input(Label) and input(Detection) "
+                          "must be the same, but received %d:%d",
+                          label_lod[0].size(),
+                          detect_lod[0].size()));
 
     std::vector<std::map<int, std::vector<Box>>> gt_boxes;
     std::vector<std::map<int, std::vector<std::pair<T, Box>>>> detect_boxes;
@@ -93,27 +102,42 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     std::map<int, std::vector<std::pair<T, int>>> true_pos;
     std::map<int, std::vector<std::pair<T, int>>> false_pos;
 
-    auto* has_state = ctx.Input<framework::LoDTensor>("HasState");
+    auto* has_state = ctx.Input<phi::DenseTensor>("HasState");
     int state = 0;
     if (has_state) {
       state = has_state->data<int>()[0];
     }
 
     if (in_pos_count != nullptr && state) {
-      GetInputPos(*in_pos_count, *in_true_pos, *in_false_pos, &label_pos_count,
-                  &true_pos, &false_pos, class_num);
+      GetInputPos(*in_pos_count,
+                  *in_true_pos,
+                  *in_false_pos,
+                  &label_pos_count,
+                  &true_pos,
+                  &false_pos,
+                  class_num);
     }
 
-    CalcTrueAndFalsePositive(gt_boxes, detect_boxes, evaluate_difficult,
-                             overlap_threshold, &label_pos_count, &true_pos,
+    CalcTrueAndFalsePositive(gt_boxes,
+                             detect_boxes,
+                             evaluate_difficult,
+                             overlap_threshold,
+                             &label_pos_count,
+                             &true_pos,
                              &false_pos);
 
     int background_label = ctx.Attr<int>("background_label");
-    T map = CalcMAP(ap_type, label_pos_count, true_pos, false_pos,
-                    background_label);
+    T map = CalcMAP(
+        ap_type, label_pos_count, true_pos, false_pos, background_label);
 
-    GetOutputPos(ctx, label_pos_count, true_pos, false_pos, out_pos_count,
-                 out_true_pos, out_false_pos, class_num);
+    GetOutputPos(ctx,
+                 label_pos_count,
+                 true_pos,
+                 false_pos,
+                 out_pos_count,
+                 out_true_pos,
+                 out_false_pos,
+                 class_num);
 
     T* map_data = out_map->mutable_data<T>(ctx.GetPlace());
     map_data[0] = map;
@@ -158,19 +182,19 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     clipped_bbox->ymax = std::max(std::min(bbox.ymax, one), zero);
   }
 
-  void GetBoxes(const framework::LoDTensor& input_label,
-                const framework::LoDTensor& input_detect,
+  void GetBoxes(const phi::DenseTensor& input_label,
+                const phi::DenseTensor& input_detect,
                 std::vector<std::map<int, std::vector<Box>>>* gt_boxes,
                 std::vector<std::map<int, std::vector<std::pair<T, Box>>>>&
                     detect_boxes) const {
     auto labels = framework::EigenTensor<T, 2>::From(input_label);
     auto detect = framework::EigenTensor<T, 2>::From(input_detect);
 
-    auto label_lod = input_label.lod();
-    auto detect_lod = input_detect.lod();
+    auto& label_lod = input_label.lod();
+    auto& detect_lod = input_detect.lod();
 
     int batch_size = label_lod[0].size() - 1;
-    auto label_index = label_lod[0];
+    auto& label_index = label_lod[0];
 
     for (int n = 0; n < batch_size; ++n) {
       std::map<int, std::vector<Box>> boxes;
@@ -185,7 +209,13 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
             box.is_difficult = true;
           boxes[label].push_back(box);
         } else {
-          PADDLE_ENFORCE_EQ(input_label.dims()[1], 5);
+          PADDLE_ENFORCE_EQ(
+              input_label.dims()[1],
+              5,
+              platform::errors::InvalidArgument(
+                  "The input label width"
+                  " must be 5, but received %d, please check your input data",
+                  input_label.dims()[1]));
           Box box(labels(i, 1), labels(i, 2), labels(i, 3), labels(i, 4));
           boxes[label].push_back(box);
         }
@@ -211,9 +241,10 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       const std::map<int, int>& label_pos_count,
       const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
       const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
-      framework::Tensor* output_pos_count,
-      framework::LoDTensor* output_true_pos,
-      framework::LoDTensor* output_false_pos, const int class_num) const {
+      phi::DenseTensor* output_pos_count,
+      phi::DenseTensor* output_true_pos,
+      phi::DenseTensor* output_false_pos,
+      const int class_num) const {
     int true_pos_count = 0;
     int false_pos_count = 0;
     for (auto it = true_pos.begin(); it != true_pos.end(); ++it) {
@@ -226,12 +257,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
 
     int* pos_count_data = output_pos_count->mutable_data<int>(
-        framework::make_ddim({class_num, 1}), ctx.GetPlace());
+        phi::make_ddim({class_num, 1}), ctx.GetPlace());
 
     T* true_pos_data = output_true_pos->mutable_data<T>(
-        framework::make_ddim({true_pos_count, 2}), ctx.GetPlace());
+        phi::make_ddim({true_pos_count, 2}), ctx.GetPlace());
     T* false_pos_data = output_false_pos->mutable_data<T>(
-        framework::make_ddim({false_pos_count, 2}), ctx.GetPlace());
+        phi::make_ddim({false_pos_count, 2}), ctx.GetPlace());
     true_pos_count = 0;
     false_pos_count = 0;
     std::vector<size_t> true_pos_starts = {0};
@@ -274,12 +305,11 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
 
     output_true_pos->set_lod(true_pos_lod);
     output_false_pos->set_lod(false_pos_lod);
-    return;
   }
 
-  void GetInputPos(const framework::Tensor& input_pos_count,
-                   const framework::LoDTensor& input_true_pos,
-                   const framework::LoDTensor& input_false_pos,
+  void GetInputPos(const phi::DenseTensor& input_pos_count,
+                   const phi::DenseTensor& input_true_pos,
+                   const phi::DenseTensor& input_false_pos,
                    std::map<int, int>* label_pos_count,
                    std::map<int, std::vector<std::pair<T, int>>>* true_pos,
                    std::map<int, std::vector<std::pair<T, int>>>* false_pos,
@@ -289,10 +319,10 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       (*label_pos_count)[i] = pos_count_data[i];
     }
 
-    auto SetData = [](const framework::LoDTensor& pos_tensor,
+    auto SetData = [](const phi::DenseTensor& pos_tensor,
                       std::map<int, std::vector<std::pair<T, int>>>& pos) {
       const T* pos_data = pos_tensor.data<T>();
-      auto pos_data_lod = pos_tensor.lod()[0];
+      auto& pos_data_lod = pos_tensor.lod()[0];
       for (size_t i = 0; i < pos_data_lod.size() - 1; ++i) {
         for (size_t j = pos_data_lod[i]; j < pos_data_lod[i + 1]; ++j) {
           T score = pos_data[j * 2];
@@ -311,26 +341,30 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
       const std::vector<std::map<int, std::vector<Box>>>& gt_boxes,
       const std::vector<std::map<int, std::vector<std::pair<T, Box>>>>&
           detect_boxes,
-      bool evaluate_difficult, float overlap_threshold,
+      bool evaluate_difficult,
+      float overlap_threshold,
       std::map<int, int>* label_pos_count,
       std::map<int, std::vector<std::pair<T, int>>>* true_pos,
       std::map<int, std::vector<std::pair<T, int>>>* false_pos) const {
     int batch_size = gt_boxes.size();
     for (int n = 0; n < batch_size; ++n) {
-      auto image_gt_boxes = gt_boxes[n];
-      for (auto it = image_gt_boxes.begin(); it != image_gt_boxes.end(); ++it) {
+      auto& image_gt_boxes = gt_boxes[n];
+      for (auto& image_gt_box : image_gt_boxes) {
         size_t count = 0;
-        auto labeled_bboxes = it->second;
+        auto& labeled_bboxes = image_gt_box.second;
         if (evaluate_difficult) {
           count = labeled_bboxes.size();
         } else {
-          for (size_t i = 0; i < labeled_bboxes.size(); ++i)
-            if (!(labeled_bboxes[i].is_difficult)) ++count;
+          for (auto& box : labeled_bboxes) {
+            if (!box.is_difficult) {
+              ++count;
+            }
+          }
         }
         if (count == 0) {
           continue;
         }
-        int label = it->first;
+        int label = image_gt_box.first;
         if (label_pos_count->find(label) == label_pos_count->end()) {
           (*label_pos_count)[label] = count;
         } else {
@@ -371,8 +405,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
         auto matched_bboxes = image_gt_boxes.find(label)->second;
         std::vector<bool> visited(matched_bboxes.size(), false);
         // Sort detections in descend order based on scores
-        std::sort(pred_boxes.begin(), pred_boxes.end(),
-                  SortScorePairDescend<Box>);
+        std::sort(
+            pred_boxes.begin(), pred_boxes.end(), SortScorePairDescend<Box>);
         for (size_t i = 0; i < pred_boxes.size(); ++i) {
           T max_overlap = -1.0;
           size_t max_idx = 0;
@@ -409,7 +443,8 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  T CalcMAP(APType ap_type, const std::map<int, int>& label_pos_count,
+  T CalcMAP(APType ap_type,
+            const std::map<int, int>& label_pos_count,
             const std::map<int, std::vector<std::pair<T, int>>>& true_pos,
             const std::map<int, std::vector<std::pair<T, int>>>& false_pos,
             const int background_label) const {
@@ -418,8 +453,11 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     for (auto it = label_pos_count.begin(); it != label_pos_count.end(); ++it) {
       int label = it->first;
       int label_num_pos = it->second;
-      if (label_num_pos == background_label ||
-          true_pos.find(label) == true_pos.end()) {
+      if (label_num_pos == background_label) {
+        continue;
+      }
+      if (true_pos.find(label) == true_pos.end()) {
+        count++;
         continue;
       }
       auto label_true_pos = true_pos.find(label)->second;
@@ -466,7 +504,9 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
         mAP += average_precisions;
         ++count;
       } else {
-        LOG(FATAL) << "Unkown ap version: " << ap_type;
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unkown ap version %s. Now only supports integral and l1point.",
+            ap_type));
       }
     }
     if (count != 0) mAP /= count;

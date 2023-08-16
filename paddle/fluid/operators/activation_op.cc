@@ -13,62 +13,108 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/activation_op.h"
+
+#include <memory>
 #include <string>
-#include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/backward.h"
+
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
-  class OP_NAME##OpMaker                                                \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {            \
-   public:                                                              \
-    void Make() override {                                              \
-      AddInput("X", "Input of " #OP_NAME "operator");                   \
-      AddOutput("Out", "Output of" #OP_NAME "operator");                \
-      AddAttr<bool>("use_mkldnn",                                       \
-                    "(bool, default false) Only used in mkldnn kernel") \
-          .SetDefault(false);                                           \
-      AddComment(#OP_COMMENT);                                          \
-    }                                                                   \
+template <typename GradFunctor>
+static constexpr bool CanInplaceAct() {
+  return GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kDepOut ||
+         GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kNoDeps;
+}
+
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)           \
+  class OP_NAME##OpMaker                                            \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {        \
+   public:                                                          \
+    void Make() override {                                          \
+      AddInput("X",                                                 \
+               "Input of " #OP_NAME                                 \
+               " operator, an N-D Tensor, with data type float32, " \
+               "float64 or float16.");                              \
+      AddOutput("Out",                                              \
+                "Output of " #OP_NAME                               \
+                " operator, a Tensor with shape same as input.");   \
+      AddComment(OP_COMMENT);                                       \
+    }                                                               \
   }
 
-#define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
-  class OP_NAME##GradMaker                                                   \
-      : public ::paddle::framework::SingleGradOpDescMaker {                  \
-   public:                                                                   \
-    using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker; \
-                                                                             \
-   protected:                                                                \
-    std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {    \
-      auto* op = new ::paddle::framework::OpDesc();                          \
-      op->SetType(#KERNEL_TYPE "_grad");                                     \
-      op->SetInput("Out", Output("Out"));                                    \
-      op->SetInput(::paddle::framework::GradVarName("Out"),                  \
-                   OutputGrad("Out"));                                       \
-                                                                             \
-      op->SetAttrMap(Attrs());                                               \
-                                                                             \
-      op->SetOutput(::paddle::framework::GradVarName("X"), InputGrad("X"));  \
-      return std::unique_ptr<::paddle::framework::OpDesc>(op);               \
-    }                                                                        \
-  }
+template <ActBwdOpFwdDeps kDepValue, typename T>
+class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
-                                      const framework::OperatorWithKernel& oper,
-                                      const std::string& name) {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-  auto it = oper.Attrs().find("use_mkldnn");
-  if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library = framework::LibraryType::kMKLDNN;
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+
+    if ((static_cast<int>(kDepValue) &
+         static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
+        FLAGS_use_mkldnn ||
+        (op->HasAttr("use_mkldnn") &&
+         PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
+      op->SetInput("X", this->Input("X"));  // x
+    }
+
+    if (static_cast<int>(kDepValue) &
+        static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
+      op->SetInput("Out", this->Output("Out"));  // out
+    }
   }
-#endif
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
-      ctx.GetPlace(), layout, library);
+};
+// class HardSwishCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+//  public:
+//   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+//  protected:
+//   void Apply() override {
+//     paddle::Tensor x = this->GetSingleForwardInput("X");
+//     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+//     paddle::Tensor dx = this->GetSingleInputGrad("X");
+//     auto* dx_ptr = this->GetOutputPtr(&dx);
+//     std::string dx_name = this->GetOutputName(dx);
+//     VLOG(6) << "Runing hardswish_grad composite func";
+//     prim::hardswish_grad<prim::DescTensor>(x, out_grad, dx_ptr);
+//     this->RecoverOutputName(dx, dx_name);
+//   }
+// };
+
+phi::KernelKey GetKernelType(const framework::ExecutionContext& ctx,
+                             const framework::OperatorWithKernel& oper,
+                             const std::string& name) {
+  auto data_type = oper.IndicateVarDataType(ctx, name);
+  // FIXME(liuwei1031) temporarily disable the code to unblock users
+  // TODO(liuwei1031) figure out the reason behind
+  // https://github.com/PaddlePaddle/Paddle/issues/16096
+  // and re-enable this in the future
+  // #ifdef PADDLE_WITH_CUDA
+  //   auto it1 = oper.Attrs().find("use_cudnn");
+  //   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+  //     library = framework::LibraryType::kCUDNN;
+  //   }
+  // #endif
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -76,13 +122,24 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+ protected:
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
+  }
+};
+
+class ActivationOpInferVarType
+    : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+      const override {
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 
@@ -91,216 +148,15 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
+    auto out_grad_name = framework::GradVarName("Out");
+    ctx->ShareDim(out_grad_name, framework::GradVarName("X"));
+    ctx->ShareLoD(out_grad_name, framework::GradVarName("X"));
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+ protected:
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this, "Out");
-  }
-};
-
-__attribute__((unused)) constexpr char SigmoidDoc[] = R"DOC(
-Sigmoid Activation Operator
-
-$$out = \frac{1}{1 + e^{-x}}$$
-
-)DOC";
-
-__attribute__((unused)) constexpr char LogSigmoidDoc[] = R"DOC(
-Logsigmoid Activation Operator
-
-$$out = \log \frac{1}{1 + e^{-x}}$$
-
-)DOC";
-
-__attribute__((unused)) constexpr char ExpDoc[] = R"DOC(
-Exp Activation Operator.
-
-$out = e^x$
-
-)DOC";
-
-__attribute__((unused)) constexpr char ReluDoc[] = R"DOC(
-Relu Activation Operator.
-
-$out = \max(x, 0)$
-
-)DOC";
-
-__attribute__((unused)) constexpr char TanhDoc[] = R"DOC(
-Tanh Activation Operator.
-
-$$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
-
-)DOC";
-
-__attribute__((unused)) constexpr char TanhShrinkDoc[] = R"DOC(
-TanhShrink Activation Operator.
-
-$$out = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
-
-)DOC";
-
-__attribute__((unused)) constexpr char SqrtDoc[] = R"DOC(
-Sqrt Activation Operator.
-
-$out = \sqrt{x}$
-
-)DOC";
-
-__attribute__((unused)) constexpr char AbsDoc[] = R"DOC(
-Abs Activation Operator.
-
-$out = |x|$
-
-)DOC";
-
-__attribute__((unused)) constexpr char CeilDoc[] = R"DOC(
-Ceil Activation Operator.
-
-$out = ceil(x)$
-
-)DOC";
-
-__attribute__((unused)) constexpr char FloorDoc[] = R"DOC(
-Floor Activation Operator.
-
-$out = floor(x)$
-
-)DOC";
-
-__attribute__((unused)) constexpr char CosDoc[] = R"DOC(
-Cosine Activation Operator.
-
-$out = cos(x)$
-
-)DOC";
-
-__attribute__((unused)) constexpr char SinDoc[] = R"DOC(
-Sine Activation Operator.
-
-$out = sin(x)$
-
-)DOC";
-
-__attribute__((unused)) constexpr char RoundDoc[] = R"DOC(
-Round Activation Operator.
-
-$out = [x]$
-
-)DOC";
-
-__attribute__((unused)) constexpr char ReciprocalDoc[] = R"DOC(
-Reciprocal Activation Operator.
-
-$$out = \frac{1}{x}$$
-
-)DOC";
-
-__attribute__((unused)) constexpr char LogDoc[] = R"DOC(
-Log Activation Operator.
-
-$out = \ln(x)$
-
-Natural logarithm of x.
-
-)DOC";
-
-__attribute__((unused)) constexpr char SquareDoc[] = R"DOC(
-Square Activation Operator.
-
-$out = x^2$
-
-)DOC";
-
-__attribute__((unused)) constexpr char SoftplusDoc[] = R"DOC(
-Softplus Activation Operator.
-
-$out = \ln(1 + e^{x})$
-
-)DOC";
-
-__attribute__((unused)) constexpr char SoftsignDoc[] = R"DOC(
-Softsign Activation Operator.
-
-$$out = \frac{x}{1 + |x|}$$
-
-)DOC";
-
-class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of LeakyRelu operator");
-    AddOutput("Out", "Output of LeakyRelu operator");
-    AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
-    AddComment(R"DOC(
-LeakyRelu Activation Operator.
-
-$out = \max(x, \alpha * x)$
-
-)DOC");
-  }
-};
-
-class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of Softshrink operator");
-    AddOutput("Out", "Output of Softshrink operator");
-    AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
-    AddComment(R"DOC(
-Softshrink Activation Operator.
-
-$$
-out = \begin{cases} 
-    x - \lambda, \text{if } x > \lambda \\
-    x + \lambda, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
-
-)DOC");
-  }
-};
-
-class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of HardShrink operator");
-    AddOutput("Out", "Output of HardShrink operator");
-    AddAttr<float>("threshold", "The value of threshold for HardShrink")
-        .SetDefault(0.5f);
-    AddComment(R"DOC(
-HardShrink Activation Operator.
-
-$$
-out = \begin{cases} 
-    x, \text{if } x > \lambda \\
-    x, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
-
-)DOC");
-  }
-};
-
-class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of BRelu operator");
-    AddOutput("Out", "Output of BRelu operator");
-    AddAttr<float>("t_min", "The min marginal value of BRelu")
-        .SetDefault(static_cast<float>(0));
-    AddAttr<float>("t_max", "The max marginal value of BRelu")
-        .SetDefault(static_cast<float>(24));
-    AddComment(R"DOC(
-BRelu Activation Operator.
-
-$out = \max(\min(x, t_{min}), t_{max})$
-
-)DOC");
+    return GetKernelType(ctx, *this, framework::GradVarName("Out"));
   }
 };
 
@@ -314,234 +170,260 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SoftRelu Activation Operator.
 
-$out = \ln(1 + \exp(\max(\min(x, threshold), threshold))$
+$$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$$
 
 )DOC");
   }
 };
 
-class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
+class MishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of ELU operator");
-    AddOutput("Out", "Output of ELU operator");
-    AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
+    AddInput("X", "Input of Mish operator");
+    AddOutput("Out", "Output of Mish operator");
+    AddAttr<float>(
+        "threshold",
+        "Constant threshold of softplus in Mish operator. Approximate value "
+        "of softplus will be used if absolute value of input is greater than "
+        ":attr:`threshold`")
+        .SetDefault(20.f);
     AddComment(R"DOC(
-ELU Activation Operator.
+Mish Activation Operator.
 
-Applies the following element-wise computation on the input according to
-https://arxiv.org/abs/1511.07289.
+..  math::
+    softplus(x) = \begin{cases}
+            x, \text{if } x > \text{threshold} \\
+            \ln(1 + e^{x}),  \text{otherwise}
+          \end{cases}
 
-$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$
+    out = x * \tanh(softplus(x))
 
 )DOC");
   }
 };
 
-class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
+template <ActBwdOpFwdDeps kDepValue>
+class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
  public:
-  void Make() override {
-    AddInput("X", "Input of Relu6 operator");
-    AddOutput("Out", "Output of Relu6 operator");
-    AddAttr<float>("threshold", "The threshold value of Relu6")
-        .SetDefault(6.0f);
-    AddComment(R"DOC(
-Relu6 Activation Operator.
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-$out = \min(\max(0, x), 6)$
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (static_cast<int>(kDepValue) &
+        static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
+      if (ctx->HasOutput("DX")) {
+        ctx->ShareDim("X", "DX");
+        ctx->ShareLoD("X", "DX");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
+    }
+    if (static_cast<int>(kDepValue) &
+        static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
+      if (ctx->HasOutput("DOut")) {
+        ctx->ShareDim("Out", "DOut");
+        ctx->ShareLoD("Out", "DOut");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("Out", "DDOut");
+        ctx->ShareLoD("Out", "DDOut");
+      }
+      if (ctx->HasOutput("DOutNew")) {
+        ctx->ShareDim("Out", "DOutNew");
+        ctx->ShareLoD("Out", "DOutNew");
+      }
+    }
+  }
 
-)DOC");
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
   }
 };
 
-class PowOpMaker : public framework::OpProtoAndCheckerMaker {
+template <ActBwdOpFwdDeps kDepValue>
+class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
  public:
-  void Make() override {
-    AddInput("X", "Input of Pow operator");
-    AddOutput("Out", "Output of Pow operator");
-    AddAttr<float>("factor", "The exponential factor of Pow").SetDefault(1.0f);
-    AddComment(R"DOC(
-Pow Activation Operator.
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-$out = x^{factor}$
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (static_cast<int>(kDepValue) &
+        static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
+    }
+    if (static_cast<int>(kDepValue) &
+        static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("Out", "DDOut");
+        ctx->ShareLoD("Out", "DDOut");
+      }
+    }
+  }
 
-)DOC");
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
   }
 };
 
-class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
+template <ActBwdOpFwdDeps kDepValue>
+class ActivationOpTripleGrad : public framework::OperatorWithKernel {
  public:
-  void Make() override {
-    AddInput("X", "Input of STanh operator");
-    AddOutput("Out", "Output of STanh operator");
-    AddAttr<float>("scale_a", "The scale parameter of a for the input")
-        .SetDefault(2.0f / 3.0f);
-    AddAttr<float>("scale_b", "The scale parameter of b for the input")
-        .SetDefault(1.7159f);
-    AddComment(R"DOC(
-STanh Activation Operator.
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-$$out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (static_cast<int>(kDepValue) &
+        static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
+      if (ctx->HasOutput("DX")) {
+        ctx->ShareDim("X", "DX");
+        ctx->ShareLoD("X", "DX");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
+    }
+    if (static_cast<int>(kDepValue) &
+        static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
+      if (ctx->HasOutput("D_DOut")) {
+        ctx->ShareDim("Out", "D_DOut");
+        ctx->ShareLoD("Out", "D_DOut");
+      }
+      if (ctx->HasOutput("D_OutNew")) {
+        ctx->ShareDim("Out", "D_OutNew");
+        ctx->ShareLoD("Out", "D_OutNew");
+      }
+      if (ctx->HasOutput("D_DDx")) {
+        ctx->ShareDim("DDX", "D_DDx");
+        ctx->ShareLoD("DDX", "D_DDx");
+      }
+    }
+  }
 
-)DOC");
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
   }
 };
 
-class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of ThresholdedRelu operator");
-    AddOutput("Out", "Output of ThresholdedRelu operator");
-    AddAttr<float>("threshold", "The threshold location of activation")
-        .SetDefault(1.0f);
-    AddComment(R"DOC(
-ThresholdedRelu Activation Operator.
+DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInferer,
+                           {framework::GradVarName("Out"),  // dout
+                            framework::GradVarName("X")});  // dx
+DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInferer,
+                           {"DDX", "DDOut"});
+DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
+                           {"DDX", "D_DOut"});
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > threshold \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 
-)DOC");
-  }
-};
+#define DEFINE_ACTIVATION_CPU_KERNEL(op_name, functor, grad_functor)           \
+  template <typename T, typename DeviceContext>                                \
+  class op_name##Kernel : public ActivationKernel<DeviceContext, functor<T>> { \
+  };                                                                           \
+                                                                               \
+  template <typename T, typename DeviceContext>                                \
+  class op_name##GradKernel                                                    \
+      : public ActivationGradKernel<DeviceContext, grad_functor<T>> {};
 
-class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of HardSigmoid operator");
-    AddOutput("Out", "Output of HardSigmoid operator");
-    AddAttr<float>("slope", "Slope for linear approximation of sigmoid")
-        .SetDefault(0.2f);
-    AddAttr<float>("offset", "Offset for linear approximation of sigmoid")
-        .SetDefault(0.5f);
-    AddComment(R"DOC(
-HardSigmoid Activation Operator.
+DEFINE_ACTIVATION_CPU_KERNEL(SoftRelu, SoftReluFunctor, SoftReluGradFunctor)
 
-Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391), 
-which is much faster than sigmoid.
-
-$out = \max(0, \min(1, slope * x + shift))$
-
-The slope should be positive. The offset can be either positive or negative.
-The default slope and shift are set according to the above reference.
-It is recommended to use the defaults for this activation.
-
-)DOC");
-  }
-};
-
-class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of Swish operator");
-    AddOutput("Out", "Output of Swish operator");
-    AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
-    AddComment(R"DOC(
-Swish Activation Operator.
-
-$$out = \frac{x}{1 + e^{- \beta x}}$$
-
-)DOC");
-  }
-};
-
-REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
-REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
-REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
-REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
-REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
-REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
-REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
-REGISTER_ACTIVATION_OP_MAKER(Abs, AbsDoc);
-REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
-REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
-REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
-REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
-REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
-REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
-REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
-REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
-REGISTER_ACTIVATION_OP_MAKER(Softplus, SoftplusDoc);
-REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
-
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Sigmoid, sigmoid);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Relu, relu);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Exp, exp);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Tanh, tanh);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Ceil, ceil);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Floor, floor);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Sqrt, sqrt);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(SoftRelu, soft_relu);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Relu6, relu6);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(Reciprocal, reciprocal);
-REGISTER_ACTIVATION_OP_GRAD_MAKER(HardSigmoid, hard_sigmoid);
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-#define FOR_EACH_INPLACE_OP_FUNCTOR(__macro) \
-  __macro(Sigmoid, sigmoid);                 \
-  __macro(Relu, relu);                       \
-  __macro(Exp, exp);                         \
-  __macro(Tanh, tanh);                       \
-  __macro(Ceil, ceil);                       \
-  __macro(Floor, floor);                     \
-  __macro(Sqrt, sqrt);                       \
-  __macro(SoftRelu, soft_relu);              \
-  __macro(Relu6, relu6);                     \
-  __macro(Reciprocal, reciprocal);           \
-  __macro(HardSigmoid, hard_sigmoid);
+#define REGISTER_ACTIVATION_OP(KERNEL_TYPE, OP_NAME, functor, grad_functor) \
+  REGISTER_OPERATOR(                                                        \
+      KERNEL_TYPE,                                                          \
+      ops::ActivationOp,                                                    \
+      ops::OP_NAME##OpMaker,                                                \
+      ops::ActivationOpInferVarType,                                        \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
+                                 paddle::framework::OpDesc>,                \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
+                                 paddle::imperative::OpBase>,               \
+      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
+                       ops::ActFwdInplaceInferer,                           \
+                       void>::type);                                        \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                     \
+                    ops::ActivationOpGrad,                                  \
+                    ops::ActivationGradOpInplaceInferer);
 
-#define FOR_EACH_OP_FUNCTOR(__macro) \
-  __macro(LogSigmoid, logsigmoid);   \
-  __macro(SoftShrink, softshrink);   \
-  __macro(Abs, abs);                 \
-  __macro(Cos, cos);                 \
-  __macro(Sin, sin);                 \
-  __macro(Round, round);             \
-  __macro(Log, log);                 \
-  __macro(Square, square);           \
-  __macro(BRelu, brelu);             \
-  __macro(Pow, pow);                 \
-  __macro(STanh, stanh);             \
-  __macro(Softplus, softplus);       \
-  __macro(Softsign, softsign);       \
-  __macro(LeakyRelu, leaky_relu);    \
-  __macro(TanhShrink, tanh_shrink);  \
-  __macro(ELU, elu);                 \
-  __macro(HardShrink, hard_shrink);  \
-  __macro(Swish, swish);             \
-  __macro(ThresholdedRelu, thresholded_relu);
+#define REGISTER_ACTIVATION_OP_WITH_COMP(                              \
+    KERNEL_TYPE, OP_NAME, functor, grad_functor)                       \
+  REGISTER_OPERATOR(                                                   \
+      KERNEL_TYPE,                                                     \
+      ops::ActivationOp,                                               \
+      ops::OP_NAME##OpMaker,                                           \
+      ops::ActivationOpInferVarType,                                   \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
+                                 paddle::framework::OpDesc>,           \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
+                                 paddle::imperative::OpBase>,          \
+      ops::OP_NAME##CompositeGradOpMaker,                              \
+      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(), \
+                       ops::ActFwdInplaceInferer,                      \
+                       void>::type);                                   \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                \
+                    ops::ActivationOpGrad,                             \
+                    ops::ActivationGradOpInplaceInferer);
 
-#define REGISTER_INPLACE_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)        \
-  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp, \
-                    ::paddle::operators::OP_NAME##OpMaker,          \
-                    ::paddle::operators::OP_NAME##GradMaker);       \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
+FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 
-#define REGISTER_ACTIVATION_OP(OP_NAME, KERNEL_TYPE)                    \
-  REGISTER_OPERATOR(KERNEL_TYPE, ::paddle::operators::ActivationOp,     \
-                    ::paddle::operators::OP_NAME##OpMaker,              \
-                    ::paddle::framework::DefaultGradOpDescMaker<true>); \
-  REGISTER_OPERATOR(KERNEL_TYPE##_grad, ::paddle::operators::ActivationOpGrad)
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name)                \
+  PD_REGISTER_STRUCT_KERNEL(                                             \
+      act_type, CPU, ALL_LAYOUT, ops::op_name##Kernel, float, double) {} \
+  PD_REGISTER_STRUCT_KERNEL(act_type##_grad,                             \
+                            CPU,                                         \
+                            ALL_LAYOUT,                                  \
+                            ops::op_name##GradKernel,                    \
+                            float,                                       \
+                            double) {}
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, functor, grad_functor)   \
-  REGISTER_OP_CPU_KERNEL(                                                 \
-      act_type, ops::ActivationKernel<paddle::platform::CPUDeviceContext, \
-                                      ops::functor<float>>,               \
-      ops::ActivationKernel<paddle::platform::CPUDeviceContext,           \
-                            ops::functor<double>>);                       \
-  REGISTER_OP_CPU_KERNEL(                                                 \
-      act_type##_grad,                                                    \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
-                                ops::grad_functor<float>>,                \
-      ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,       \
-                                ops::grad_functor<double>>);
+REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
 
-FOR_EACH_OP_FUNCTOR(REGISTER_ACTIVATION_OP);
-FOR_EACH_INPLACE_OP_FUNCTOR(REGISTER_INPLACE_ACTIVATION_OP);
-FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CPU_KERNEL);
+REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
+
+/* ==========================  register checkpoint ===========================*/
+REGISTER_OP_VERSION(leaky_relu)
+    .AddCheckpoint(
+        R"ROC(fix leaky_relu, bahavior changed when alpha < 0 or alpha > 1)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .BugfixWithBehaviorChanged(
+                "leaky_relu calculate formula before checkponit: out = max(x, "
+                "alpha * x); after checkpoint: out = x if x > 0 else alpha * "
+                "x"));
+
+REGISTER_OP_VERSION(hard_shrink)
+    .AddCheckpoint(
+        R"ROC(fix hard_shrink, bahavior changed when threshold<0)ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .BugfixWithBehaviorChanged(
+                "hard_shrink calculate formula before checkponit: out = x * "
+                "((x < -threshold) + (x > threshold)); after checkpoint: out = "
+                "x * (((x < -threshold) + (x > threshold)) > 0)"));
+
+REGISTER_OP_VERSION(softplus).AddCheckpoint(
+    R"ROC(add new attributes [beta] and [threshold], and the formula is changed to "
+         " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
+         " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
+    paddle::framework::compatible::OpVersionDesc()
+        .NewAttr("beta", "The beta value of the new formula", 1.0f)
+        .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
+
+REGISTER_OP_VERSION(mish).AddCheckpoint(
+    R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "use_mkldnn",
+        "(bool, default false) Only used in mkldnn kernel",
+        false));
+
+/* ========================================================================== */

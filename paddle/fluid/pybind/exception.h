@@ -14,14 +14,34 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include "paddle/fluid/platform/enforce.h"
 #include "pybind11/pybind11.h"
+
+#define EAGER_TRY try {
+#define EAGER_CATCH_AND_THROW_RETURN_NULL             \
+  }                                                   \
+  catch (...) {                                       \
+    ThrowExceptionToPython(std::current_exception()); \
+    return nullptr;                                   \
+  }
+
+#define EAGER_CATCH_AND_THROW_RETURN_NEG              \
+  }                                                   \
+  catch (...) {                                       \
+    ThrowExceptionToPython(std::current_exception()); \
+    return -1;                                        \
+  }
 
 namespace paddle {
 namespace pybind {
 
 void BindException(pybind11::module* m);
+void ThrowExceptionToPython(std::exception_ptr p);
 
 }  // namespace pybind
 }  // namespace paddle

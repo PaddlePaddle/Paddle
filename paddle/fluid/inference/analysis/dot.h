@@ -20,6 +20,7 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -29,13 +30,13 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+static size_t dot_node_counter{0};
+
 /*
  * A Dot template that helps to build a DOT graph definition.
  */
 class Dot {
  public:
-  static size_t counter;
-
   struct Attr {
     std::string key;
     std::string value;
@@ -57,7 +58,10 @@ class Dot {
     Node(const std::string& name, const std::vector<Attr>& attrs)
         : name(name),
           attrs(attrs),
-          id_("node_" + std::to_string(Dot::counter++)) {}
+          id_("node_" + std::to_string(dot_node_counter++)) {}
+
+    Node(const std::string& name, const std::vector<Attr>& attrs, size_t id)
+        : name(name), attrs(attrs), id_("node_" + std::to_string(id)) {}
 
     std::string id() const { return id_; }
 
@@ -65,6 +69,10 @@ class Dot {
       std::stringstream ss;
       CHECK(!name.empty());
       ss << id_;
+      if (attrs.empty()) {
+        ss << "[label=" << '"' << name << '"' << "]";
+        return ss.str();
+      }
       for (size_t i = 0; i < attrs.size(); i++) {
         if (i == 0) {
           ss << "[label=" << '"' << name << '"' << " ";
@@ -84,7 +92,8 @@ class Dot {
     std::string target;
     std::vector<Attr> attrs;
 
-    Edge(const std::string& source, const std::string& target,
+    Edge(const std::string& source,
+         const std::string& target,
          const std::vector<Attr>& attrs)
         : source(source), target(target), attrs(attrs) {}
 
@@ -108,12 +117,21 @@ class Dot {
 
   explicit Dot(const std::vector<Attr>& attrs) : attrs_(attrs) {}
 
-  void AddNode(const std::string& name, const std::vector<Attr>& attrs) {
-    CHECK(!nodes_.count(name)) << "duplicate Node '" << name << "'";
-    nodes_.emplace(name, Node{name, attrs});
+  void AddNode(const std::string& id,
+               const std::vector<Attr>& attrs,
+               std::string label = "",
+               bool use_local_id = false) {
+    CHECK(!nodes_.count(id)) << "duplicate Node '" << id << "'";
+    if (label.empty()) label = id;
+    if (use_local_id) {
+      nodes_.emplace(id, Node{label, attrs, local_node_counter_++});
+    } else {
+      nodes_.emplace(id, Node{label, attrs});
+    }
   }
 
-  void AddEdge(const std::string& source, const std::string& target,
+  void AddEdge(const std::string& source,
+               const std::string& target,
                const std::vector<Attr>& attrs) {
     CHECK(!source.empty());
     CHECK(!target.empty());
@@ -148,6 +166,8 @@ class Dot {
   std::unordered_map<std::string, Node> nodes_;
   std::vector<Edge> edges_;
   std::vector<Attr> attrs_;
+
+  size_t local_node_counter_{0};
 };
 
 }  // namespace analysis

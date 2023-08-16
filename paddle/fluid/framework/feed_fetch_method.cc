@@ -13,45 +13,105 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
+
 #include <string>
-#include <vector>
+
 #include "glog/logging.h"
-#include "paddle/fluid/framework/variable.h"
+
+PHI_DECLARE_bool(enable_new_ir_in_executor);
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
 
-void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index) {
+class Variable;
+
+void SetFeedVariable(Scope* scope,
+                     const phi::DenseTensor& input,
+                     const std::string& var_name,
+                     size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
+  if (FLAGS_enable_new_ir_in_executor) {
+    // shared data with input tensor
+    auto feed_ele = scope->Var(var_name);
+    if (!feed_ele->IsType<phi::DenseTensor>()) {
+      VLOG(3) << "Reset " << var_name << " to phi::DenseTensor";
+      feed_ele->Clear();
+    }
+    auto val = feed_ele->GetMutable<phi::DenseTensor>();
+    val->ShareDataWith(input);
+    // set lod
+    val->set_lod(input.lod());
+  } else {
+    Variable* g_feed_value = scope->Var(var_name);
+    auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
+    if (index >= feed_inputs.size()) {
+      feed_inputs.resize(index + 1);
+    }
+    // shared data with input tensor
+    auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
+    val.ShareDataWith(input);
+    // set lod
+    val.set_lod(input.lod());
+  }
+}
+
+void SetFeedVariable(Scope* scope,
+                     const std::vector<std::string>& input,
+                     const std::string& var_name,
+                     size_t index) {
+  // If var_name Variable is not found in GlobalScope, a new variable will
+  // be created.
+  VLOG(3) << "SetFeedStringVariable name=" << var_name << " index=" << index;
   Variable* g_feed_value = scope->Var(var_name);
-  auto& feed_inputs =
-      *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
+  auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
   if (index >= feed_inputs.size()) {
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  feed_inputs[index].ShareDataWith(input);
-  // set lod
-  feed_inputs[index].set_lod(input.lod());
+  feed_inputs[index] = Strings(input);
 }
 
-LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
+FetchType& GetFetchVariable(const Scope& scope,
+                            const std::string& var_name,
                             size_t index) {
-  // Since we want to fetch LodTensor from a variable, the variable must
+  // Since we want to fetch FetchType from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = scope.FindVar(var_name);
-  PADDLE_ENFORCE(g_fetch_value->IsType<FeedFetchList>(),
-                 "Only %s can be invoked by GetFetchVariable",
-                 typeid(FeedFetchList).name());
-  auto& fetch_outputs = *g_fetch_value->GetMutable<FeedFetchList>();
+  PADDLE_ENFORCE_NOT_NULL(g_fetch_value,
+                          platform::errors::NotFound(
+                              "Variable %s is not found in scope.", var_name));
+  PADDLE_ENFORCE_EQ(g_fetch_value->IsType<FetchList>(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Only %s can be invoked by GetFetchVariable",
+                        typeid(FetchList).name()));
+  auto& fetch_outputs = *g_fetch_value->GetMutable<FetchList>();
   auto& tensor = fetch_outputs[index];
-  VLOG(3) << "Fetch " << var_name << " with index " << index
-          << " shape= " << tensor.dims();
-  PADDLE_ENFORCE_LT(index, fetch_outputs.size());
+  VLOG(3) << "Fetch " << var_name << " with index " << index;
+  PADDLE_ENFORCE_LT(index,
+                    fetch_outputs.size(),
+                    platform::errors::InvalidArgument(
+                        "index must less than fetch_outputs size."));
   return tensor;
+}
+
+phi::DenseTensor& GetVariableTensor(const Scope& scope,
+                                    const std::string& var_name) {
+  Variable* var = scope.FindVar(var_name);
+  PADDLE_ENFORCE_NOT_NULL(var,
+                          platform::errors::NotFound(
+                              "Variable %s is not found in scope.", var_name));
+  PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Only support DenseTensor in GetVariableTensor now."));
+  return *var->GetMutable<phi::DenseTensor>();
 }
 
 }  // namespace framework

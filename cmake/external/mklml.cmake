@@ -12,65 +12,100 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_MKLML})
-  return()
-ENDIF(NOT ${WITH_MKLML})
+include(ExternalProject)
+set(MKLML_INSTALL_DIR ${THIRD_PARTY_PATH}/install/mklml)
+set(MKLML_INC_DIR ${MKLML_INSTALL_DIR}/include)
+set(MKLML_LIB_DIR ${MKLML_INSTALL_DIR}/lib)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_LIB_DIR}")
+set(MKLML_DOWNLOAD_DIR
+    ${PADDLE_SOURCE_DIR}/third_party/mklml/${CMAKE_SYSTEM_NAME})
 
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with MKLML in Paddle yet."
-        "Force WITH_MKLML=OFF")
-    SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
+if(WIN32)
+  set(MKLML_FILE
+      "mklml_win_2019.0.5.20190502.zip"
+      CACHE STRING "" FORCE)
+  set(MKLML_URL
+      "https://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
+      CACHE STRING "" FORCE)
+  set(MKLML_URL_MD5 ff8c5237570f03eea37377ccfc95a08a)
+  set(MKLML_LIB ${MKLML_LIB_DIR}/mklml.lib)
+  set(MKLML_IOMP_LIB ${MKLML_LIB_DIR}/libiomp5md.lib)
+  set(MKLML_SHARED_LIB ${MKLML_LIB_DIR}/mklml.dll)
+  set(MKLML_SHARED_IOMP_LIB ${MKLML_LIB_DIR}/libiomp5md.dll)
+else()
+  #TODO(intel-huying):
+  #  Now enable csrmm function in mklml library temporarily,
+  #  it will be updated as offical version later.
+  set(MKLML_FILE
+      "csrmm_mklml_lnx_2019.0.5.tgz"
+      CACHE STRING "" FORCE)
+  set(MKLML_URL
+      "http://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
+      CACHE STRING "" FORCE)
+  set(MKLML_URL_MD5 bc6a7faea6a2a9ad31752386f3ae87da)
+  set(MKLML_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)
+  set(MKLML_IOMP_LIB ${MKLML_LIB_DIR}/libiomp5.so)
+  set(MKLML_SHARED_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)
+  set(MKLML_SHARED_IOMP_LIB ${MKLML_LIB_DIR}/libiomp5.so)
+endif()
 
-INCLUDE(ExternalProject)
+set(MKLML_PROJECT "extern_mklml")
+message(STATUS "MKLML_FILE: ${MKLML_FILE}, MKLML_URL: ${MKLML_URL}")
+set(MKLML_PREFIX_DIR ${THIRD_PARTY_PATH}/mklml)
 
-SET(MKLML_PROJECT       "extern_mklml")
-IF((NOT DEFINED MKLML_VER) OR (NOT DEFINED MKLML_URL))
-  MESSAGE(STATUS "use pre defined download url")
-  SET(MKLML_VER "mklml_lnx_2018.0.3.20180406" CACHE STRING "" FORCE)
-  SET(MKLML_URL "http://paddlepaddledeps.cdn.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
-ENDIF()
-MESSAGE(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
-SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
-SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
-SET(MKLML_DST_DIR       "mklml")
-SET(MKLML_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
-SET(MKLML_INSTALL_DIR   ${MKLML_INSTALL_ROOT}/${MKLML_DST_DIR})
-SET(MKLML_ROOT          ${MKLML_INSTALL_DIR})
-SET(MKLML_INC_DIR       ${MKLML_ROOT}/include)
-SET(MKLML_LIB_DIR       ${MKLML_ROOT}/lib)
-SET(MKLML_LIB           ${MKLML_LIB_DIR}/libmklml_intel.so)
-SET(MKLML_IOMP_LIB      ${MKLML_LIB_DIR}/libiomp5.so)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
+function(download_mklml)
+  message(
+    STATUS "Downloading ${MKLML_URL} to ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}")
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${MKLML_URL} ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
+    EXPECTED_MD5 ${MKLML_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${MKLML_FILE} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${MKLML_FILE} again"
+    )
+  endif()
+endfunction()
 
-INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
+# Download and check mklml.
+if(EXISTS ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE})
+  file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE} MKLML_MD5)
+  if(NOT MKLML_MD5 STREQUAL MKLML_URL_MD5)
+    # clean build file
+    file(REMOVE_RECURSE ${MKLML_PREFIX_DIR})
+    file(REMOVE_RECURSE ${MKLML_INSTALL_DIR})
+    download_mklml()
+  endif()
+else()
+  download_mklml()
+endif()
 
-FILE(WRITE ${MKLML_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(MKLML)\n"
-  "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY ${MKLML_VER}/include ${MKLML_VER}/lib \n"
-  "        DESTINATION ${MKLML_DST_DIR})\n")
-
+# Ninja Generator can not establish the correct dependency relationship
+# between the imported library with target, the product file
+# in the ExternalProject need to be specified manually, please refer to
+# https://stackoverflow.com/questions/54866067/cmake-and-ninja-missing-and-no-known-rule-to-make-it
+# It is the same to all other ExternalProject.
 ExternalProject_Add(
-    ${MKLML_PROJECT}
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                ${MKLML_SOURCE_DIR}
-    DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${MKLML_URL} -c -q -O ${MKLML_VER}.tgz 
-                          && tar zxf ${MKLML_VER}.tgz
-    DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
-    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${MKLML_INSTALL_ROOT}
-    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${MKLML_INSTALL_ROOT}
-)
+  ${MKLML_PROJECT}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  URL ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
+  URL_MD5 ${MKLML_URL_MD5}
+  DOWNLOAD_DIR ${MKLML_DOWNLOAD_DIR}
+  SOURCE_DIR ${MKLML_INSTALL_DIR}
+  PREFIX ${MKLML_PREFIX_DIR}
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  UPDATE_COMMAND ""
+  INSTALL_COMMAND ""
+  BUILD_BYPRODUCTS ${MKLML_LIB}
+  BUILD_BYPRODUCTS ${MKLML_IOMP_LIB})
 
-ADD_LIBRARY(mklml SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET mklml PROPERTY IMPORTED_LOCATION ${MKLML_LIB})
-ADD_DEPENDENCIES(mklml ${MKLML_PROJECT})
-LIST(APPEND external_project_dependencies mklml)
+include_directories(${MKLML_INC_DIR})
 
-IF(WITH_C_API)
-  INSTALL(FILES ${MKLML_LIB} ${MKLML_IOMP_LIB} DESTINATION lib)
-ENDIF()
+add_library(mklml SHARED IMPORTED GLOBAL)
+set_property(TARGET mklml PROPERTY IMPORTED_LOCATION ${MKLML_LIB})
+add_dependencies(mklml ${MKLML_PROJECT})

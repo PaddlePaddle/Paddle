@@ -19,11 +19,17 @@
 
 namespace paddle {
 namespace framework {
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace details {
 
 class VariableVisitor {
  public:
-  static Tensor &GetMutableTensor(Variable *var);
+  static phi::DenseTensor &GetMutableTensor(Variable *var);
 
   static void ShareDimsAndLoD(const Variable &src, Variable *trg);
 

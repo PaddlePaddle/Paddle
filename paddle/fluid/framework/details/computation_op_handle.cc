@@ -13,30 +13,44 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-
 #include <string>
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(allreduce_record_one_event);
 
 namespace paddle {
 namespace framework {
 namespace details {
-ComputationOpHandle::ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
-                                         platform::Place place)
-    : op_(framework::OpRegistry::CreateOp(op_desc)),
+struct VarHandleBase;
+
+ComputationOpHandle::ComputationOpHandle(ir::Node *node,
+                                         Scope *scope,
+                                         platform::Place place,
+                                         size_t scope_idx)
+    : OpHandleBase(node),
+      op_(framework::OpRegistry::CreateOp(*node->Op())),
       scope_(scope),
-      place_(place) {}
+      place_(place),
+      scope_idx_(scope_idx) {}
 
 void ComputationOpHandle::RunImpl() {
-  WaitInputVarGenerated(place_);
+  if (!FLAGS_allreduce_record_one_event) {
+    WaitInputVarGenerated(place_);
+  }
 
-  this->RunAndRecordEvent([this] {
-    op_->Run(*scope_->FindVar(kLocalExecScopeName)->Get<Scope *>(), place_);
-  });
+  auto run_func = [this]() { op_->Run(*local_exec_scopes_[0], place_); };
+
+  if (is_lock_and_record_event_free_ || FLAGS_allreduce_record_one_event) {
+    run_func();
+  } else {
+    this->RunAndRecordEvent(run_func);
+  }
 }
 
 bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
   bool need_wait =
-      in_var && in_var->generated_op_ &&
-      in_var->generated_op_->DeviceContext(place_) != dev_ctxes_[place_];
+      in_var && in_var->GeneratedOp() &&
+      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_.at(place_);
   return need_wait;
 }
 

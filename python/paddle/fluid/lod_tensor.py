@@ -12,178 +12,159 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import core
+from . import core
+from .data_feeder import DataToLoDTensorConverter
 import numpy as np
 
 __all__ = ['create_lod_tensor', 'create_random_int_lodtensor']
 
 
-def _validate_lod(lod, tensor_height=-1):
-    """Check whether the input length-based lod info is valid.
-
-    There are several things to check:
-    1. lod should be a list of lists. Empty list is fine.
-    2. The length of each sublist (a lod level) should be at least one.
-    3. Each element in each lod level should be an integer greater than 0.
-    4. The sum of one lod level should be equal to the length of the next lod level.
-    5. The sum of the last lod level should be equal to the tensor height. 
-       Bypass this check if user does not provide tensor_height as input.
-
-    Args:
-        lod: the length-based lod info, e.g., [[2, 3], [2, 1, 2, 3, 4]].
-        tensor_height: the outermost dimension of the tensor with which the input 
-            lod is associated with. 
-
-    Returns:
-        A boolean indicating whether the input lod is valid or not.
+def create_lod_tensor(data, recursive_seq_lens, place):
     """
-    assert isinstance(lod, list), "lod should be a list"
-    # Empty lod is fine
-    if len(lod) == 0:
-        return True
+    Create a LoDTensor from a numpy array, list or existing LoDTensor.
 
-    lod_sum = []
-    for level in lod:
-        assert isinstance(level, list), "each item in lod should be a list"
-        # Each level of lod should have at least one length info
-        if len(level) < 1:
-            return False
-        level_sum = 0
-        for lod_len in level:
-            # Each length in a level should be > 0
-            if lod_len <= 0:
-                return False
-            level_sum += lod_len
-        lod_sum.append(level_sum)
+    The implementation is as follows:
 
-    for idx, val in enumerate(lod_sum[:-1]):
-        # Each level's sum should be equal to 
-        # the number of items in the next level
-        if val != len(lod[idx + 1]):
-            return False
+    1. Check whether the length-based LoD, i.e., :code:`recursive_seq_lens`
+       is valid.
 
-    if tensor_height == -1:
-        return True
-    else:
-        # Last level's sum should be equal to the tensor height
-        return lod_sum[-1] == tensor_height
+    2. Convert :code:`recursive_seq_lens` to a offset-based LoD.
 
+    3. Based on :code:`place` , copy the :code:`data` from a numpy array, list
+       or existing LoDTensor to CPU or GPU device.
 
-def _convert_lod(lod):
-    """Convert a length-based lod to a offset-based lod.
+    4. Set offset-based LoD to the output LoDTensor.
 
-    If the length-based lod is [[2, 3], [2, 1, 2, 3, 4]],
-    then the offset-based lod is [[0, 2, 5], [0, 2, 3, 5, 8, 12]].
+    Suppose we want to create a LoDTensor to hold data for word sequences,
+    where each word is represented by an integer. If we want to create
+    a LoDTensor to represent two sentences, one of 2 words, and one of 3 words.
+
+    Then :code:`data` would be a numpy array of integers with shape (5, 1).
+    :code:`recursive_seq_lens` would be [[2, 3]], indicating the word number
+    in each sentence. This length-based :code:`recursive_seq_lens` [[2, 3]]
+    would be converted to offset-based LoD [[0, 2, 5]] inside the function
+    call.
+
+    Please reference :ref:`user_guide_lod_tensor` for more details regarding LoD.
 
     Args:
-        lod: a length-based lod info. 
+        data (numpy.ndarray|list|LoDTensor): a numpy array, a list or ad LoDTensor
+                holding the data to be copied.
+        recursive_seq_lens (list[list[int]]): a list of lists indicating the
+                length-based LoD info.
+        place (CPUPlace|CUDAPlace): CPU or GPU place indicating where the data
+                in the created LoDTensor will be stored.
 
     Returns:
-        A list of lists as the offset-based lod converted to from the input lod.
-    """
-    new_lod = []
-    for level in lod:
-        cur_len = 0
-        new_level = [cur_len]
-        for lod_len in level:
-            cur_len += lod_len
-            new_level.append(cur_len)
-        new_lod.append(new_level)
-    return new_lod
+         A LoDTensor with tensor data and recursive_seq_lens info.
 
+    Examples:
 
-def create_lod_tensor(data, lod, place):
-    """Create a lod tensor from a numpy array, a list, or an existing lod tensor.
+        .. code-block:: python
 
-    Create a lod tensor by doing the following:
-    1. Check that the length-based input lod is valid.
-    2. Convert the length-based lod to a offset-based LoD.
-    3. Copy the data from a numpy array, a list or a existing lod tensor to 
-       CPU or GPU device (based on input place).
-    4. Set the level of detail (LoD) using the offset-based LoD.
-    
-    Use example:
-    Suppose we want LoDTensor to hold data for sequences of word, where each word is
-    represented by an integer. If we want to create a LoDTensor to represent two 
-    sentences, one of 2 words, and one of 3 words. 
+            import paddle.fluid as fluid
+            import numpy as np
 
-    Then 'data' can be a numpy array of integers with shape (5, 1).
-    'lod' will be [[2, 3]], indicating the length(# of words) in each sentence.
-    This length-based input lod [[2, 3]] will be converted to offset-based lod [[0, 2, 5]]
-    inside the function call.
-
-    Please refer to 
-    github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/design/concepts/lod_tensor.md
-    for more details regarding LoD.
-
-    Args:
-        data: a numpy array or a LoDTensor or a list holding the data to be copied.
-        lod: a list of lists indicating the length-based LoD info specified by the user. 
-        place: CPU or GPU place indicating where the data in the new LoDTensor will be stored.
-
-    Returns:
-        A fluid LoDTensor object with tensor data and lod info.
+            t = fluid.create_lod_tensor(np.ndarray([5, 30]), [[2, 3]], fluid.CPUPlace())
     """
     if isinstance(data, core.LoDTensor):
-        return create_lod_tensor(np.array(data), lod, place)
+        return create_lod_tensor(np.array(data), recursive_seq_lens, place)
     elif isinstance(data, list):
-        # When input data is a list, it only deal with the case where the base element 
-        # is an index of shape [1] and dtype int64 (e.g., word id). Hence, the generated 
-        # LoDTensor will be of shape [n, 1] and dtype int64, where `n` is the total number 
-        # of words or other indexes in the sequence. 
-        new_lod = []
+        # dtype and shape are not important here,
+        # we only want to reuse code of DataToLoDTensorConverter
+        converter = DataToLoDTensorConverter(
+            place=place,
+            lod_level=len(recursive_seq_lens),
+            shape=[],
+            dtype=core.VarDesc.VarType.FP32,
+        )
+
+        new_recursive_seq_lens = []
         for seq in data:
-            new_lod.append(len(seq))
-        assert [new_lod] == lod, "data and lod do not match"
-        flattened_data = np.concatenate(data, axis=0).astype("int64")
-        flattened_data = flattened_data.reshape([len(flattened_data), 1])
-        return create_lod_tensor(flattened_data, lod, place)
+            new_recursive_seq_lens.append(len(seq))
+            converter.feed(seq)
+
+        assert [
+            new_recursive_seq_lens
+        ] == recursive_seq_lens, "data and recursive_seq_lens do not match"
+
+        arr = np.array(converter.data)
+
+        # FIXME(zjl): the original logic of create_lod_tensor would append
+        # 1 to the shape. Maybe it is not a right way? Currently, we only
+        # follow the previous logic
+        arr = arr.reshape(arr.shape + (1,))
+        tensor = core.LoDTensor()
+        tensor.set(arr, place)
+        tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+        return tensor
     elif isinstance(data, np.ndarray):
-        assert _validate_lod(lod,
-                             data.shape[0]), "the provided lod info is invalid"
         tensor = core.LoDTensor()
         tensor.set(data, place)
-        tensor.set_lod(_convert_lod(lod))
+        tensor.set_recursive_sequence_lengths(recursive_seq_lens)
+        assert (
+            tensor.has_valid_recursive_sequence_lengths()
+        ), "the provided lod info is invalid"
         return tensor
     else:
         raise TypeError(
-            "data should be either a LoDTensor, a Numpy array or a list")
+            "data should be either a LoDTensor, a Numpy array or a list"
+        )
 
 
-def create_random_int_lodtensor(lod, base_shape, place, low, high):
-    """Create a LoDTensor containing random integers.
+def create_random_int_lodtensor(
+    recursive_seq_lens, base_shape, place, low, high
+):
+    """
+        :api_attr: Static Graph
 
-    This function is frequently used in the book examples. So we revised it based on 
-    the new create_lod_tensor API and put it here in the lod_tensor module to simplify 
-    the code. 
+    Create a LoDTensor containing random integers.
 
-    The function does the following:
-    1. Calculate the overall shape of the LoDTensor based on the length-based 'lod' input 
-    and the shape of the basic element in 'base_shape'.
-    2. Create a numpy array of this shape.
-    3. Create the LoDTensor using create_lod_tensor API.
+    The implementation is as follows:
 
-    Suppose we want LoDTensor to hold data for sequences of word, where each word is
-    represented by an integer. If we want to create a LoDTensor to represent two 
-    sentences, one of 2 words, and one of 3 words. Then 'base_shape' is [1], input 
-    length-based 'lod' is [[2, 3]]. Then the overall shape of the LoDTensor would be 
-    [5, 1], holding 5 words for two sentences. 
+    1. Obtain the shape of output LoDTensor based on :code:`recursive_seq_lens`
+       and :code:`base_shape` . The first dimension of the shape is the total
+       length of sequences, while the other dimensions are the same as
+       :code:`base_shape` .
+
+    2. Create a numpy array of random integers, and parse the created numpy
+       array as parameter :code:`data` of :ref:`api_fluid_create_lod_tensor` to
+       create the output LoDTensor.
+
+    Suppose we want to create a LoDTensor to hold data for 2 sequences, where
+    the dimension of the sequences are [2, 30] and [3, 30] respectively.
+    The :code:`recursive_seq_lens` would be [[2, 3]], and :code:`base_shape`
+    would be [30] (the other dimensions excluding the sequence length).
+    Therefore, the shape of the output LoDTensor would be [5, 30], where
+    the first dimension 5 is the total lengths of the sequences, and the
+    other dimensions are :code:`base_shape`.
 
     Args:
-        data: a numpy array or a LoDTensor holding the data to be copied.
-        lod: a list of lists indicating the length-based LoD info specified by the user.
-        base_shape: the shape of the basic element to be held by the LoDTensor. 
-        place: CPU or GPU place indicating where the data in the new LoDTensor will be stored.
-        low: the lower bound of the random integers.
-        high: the upper bound of the random integers.
+        recursive_seq_lens (list[list[int]]): a list of lists indicating the
+                length-based LoD info.
+        base_shape (list[int]): the shape of the output LoDTensor excluding
+                the first dimension.
+        place (CPUPlace|CUDAPlace): CPU or GPU place indicating where
+                the data in the created LoDTensor will be stored.
+        low (int): the lower bound of the random integers.
+        high (int): the upper bound of the random integers.
 
     Returns:
-        A fluid LoDTensor object with tensor data and lod info. 
+        A LoDTensor with tensor data and recursive_seq_lens info, whose data
+        is inside [low, high].
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          t = fluid.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]],
+                    base_shape=[30], place=fluid.CPUPlace(), low=0, high=10)
+          print(t.shape()) # [5, 30]
     """
     assert isinstance(base_shape, list), "base_shape should be a list"
-    converted_lod = _convert_lod(lod)
     # append the total number of basic elements to the front of its shape
-    overall_shape = [converted_lod[-1][-1]] + base_shape
-    # the range of integer data elements is [low, high]    
+    overall_shape = [sum(recursive_seq_lens[-1])] + base_shape
+    # the range of integer data elements is [low, high]
     data = np.random.random_integers(low, high, overall_shape).astype("int64")
-    return create_lod_tensor(data, lod, place)
+    return create_lod_tensor(data, recursive_seq_lens, place)

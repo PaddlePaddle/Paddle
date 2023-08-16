@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -45,13 +46,16 @@ struct Registry {
   }
 
   template <typename ItemChild>
-  static void Register(const std::string& name) {
-    PADDLE_ENFORCE_EQ(items_.count(name), 0);
+  void Register(const std::string& name) {
+    PADDLE_ENFORCE_EQ(items_.count(name),
+                      0,
+                      platform::errors::AlreadyExists(
+                          "Item `%s` has beed registered.", name));
     items_[name] = new ItemChild;
   }
 
-  static ItemParent* Lookup(const std::string& name,
-                            const std::string& default_name = "") {
+  ItemParent* Lookup(const std::string& name,
+                     const std::string& default_name = "") {
     auto it = items_.find(name);
     if (it == items_.end()) {
       if (default_name == "")
@@ -70,11 +74,8 @@ struct Registry {
 
  private:
   Registry() = default;
-  static std::unordered_map<std::string, ItemParent*> items_;
+  std::unordered_map<std::string, ItemParent*> items_;
 };
-
-template <typename ItemParent>
-std::unordered_map<std::string, ItemParent*> Registry<ItemParent>::items_;
 
 }  // namespace inference
 }  // namespace paddle

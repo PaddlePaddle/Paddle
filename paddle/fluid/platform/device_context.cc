@@ -1,256 +1,254 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/platform/device_context.h"
 
-#include <string>
-#include <unordered_set>
-#include <vector>
+#include <functional>
+#include <memory>
+#include <set>
 
-#include "paddle/fluid/memory/memory.h"
+#include "glog/logging.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/generator.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#endif
 
 namespace paddle {
 namespace platform {
 
-DeviceContextPool* DeviceContextPool::pool = nullptr;
-
-platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
-  auto it = device_contexts_.find(place);
-  if (it == device_contexts_.end()) {
-    PADDLE_THROW(
-        "'Place' is not supported, Please re-compile with WITH_GPU "
-        "option");
+DeviceType Place2DeviceType(const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return platform::DeviceType::CPU;
+  } else if (platform::is_gpu_place(place)) {
+    return platform::DeviceType::CUDA;
+  } else if (platform::is_xpu_place(place)) {
+    return platform::DeviceType::XPU;
+  } else if (platform::is_ipu_place(place)) {
+    return platform::DeviceType::IPU;
+  } else if (platform::is_custom_place(place)) {
+    return platform::DeviceType::CUSTOM_DEVICE;
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported place %s to convert into platform::DeviceType.", place));
   }
-  return it->second.get();
 }
 
-DeviceContextPool::DeviceContextPool(
-    const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename DevCtx>
+typename std::enable_if<!std::is_same<DevCtx, phi::GPUContext>::value,
+                        DevCtx*>::type
+ConstructDevCtx(const phi::Place& p,
+                /*unused*/ int stream_priority UNUSED = 0) {
+  return new DevCtx(p);
+}
+
+template <typename DevCtx>
+typename std::enable_if<std::is_same<DevCtx, phi::GPUContext>::value,
+                        DevCtx*>::type
+ConstructDevCtx(const phi::Place& p, int stream_priority) {
+  return new DevCtx(p, /*init=*/true, stream_priority);
+}
+#else
+template <typename DevCtx>
+DevCtx* ConstructDevCtx(const phi::Place& p,
+                        /*unused*/ int stream_priority) {
+  return new DevCtx(p);
+}
+#endif
+
+template <typename DevCtx>
+inline std::unique_ptr<DeviceContext> CreateDeviceContext(
+    const phi::Place& p,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
   using PtrType = std::unique_ptr<DeviceContext>;
-  std::unordered_set<Place, PlaceHash> set;
+
+  DevCtx* dev_ctx = ConstructDevCtx<DevCtx>(p, stream_priority);
+  auto& instance = paddle::memory::allocation::AllocatorFacade::Instance();
+  if (p.GetType() == phi::AllocationType::GPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+    PADDLE_ENFORCE_NOT_NULL(
+        cuda_ctx,
+        phi::errors::InvalidArgument(
+            "Failed to dynamic_cast dev_ctx into phi::GPUContext."));
+
+    if (!disable_setting_default_stream_for_allocator) {
+      instance.SetDefaultStream(GPUPlace(p.GetDeviceId()), cuda_ctx->stream());
+    }
+    dev_ctx->SetAllocator(instance.GetAllocator(p, cuda_ctx->stream()).get());
+    dev_ctx->SetPinnedAllocator(
+        instance.GetAllocator(phi::GPUPinnedPlace()).get());
+
+    cuda_ctx->PartialInitWithAllocator();
+    dev_ctx->SetGenerator(phi::DefaultCUDAGenerator(p.GetDeviceId()).get());
+#endif
+  } else if (p.GetType() == phi::AllocationType::XPU) {
+#if defined(PADDLE_WITH_XPU)
+    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (p.GetType() == phi::AllocationType::CUSTOM) {
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    dev_ctx->SetAllocator(instance.GetAllocator(p, custom_ctx->stream()).get());
+    dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());
+#endif
+  } else {
+    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());
+  }
+  dev_ctx->SetHostGenerator(phi::DefaultCPUGenerator().get());
+  dev_ctx->SetHostAllocator(instance.GetAllocator(phi::CPUPlace()).get());
+  dev_ctx->SetZeroAllocator(instance.GetZeroAllocator(p).get());
+  dev_ctx->SetHostZeroAllocator(
+      instance.GetZeroAllocator(phi::CPUPlace()).get());
+  return PtrType(dev_ctx);
+}
+
+template <typename DevCtx>
+inline void EmplaceDeviceContext(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const phi::Place& place,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
+  // lazy evaluation. i.e., only create device context at first `Get`
+  place_to_device_context->emplace(
+      place,
+      std::async(std::launch::deferred,
+                 CreateDeviceContext<DevCtx>,
+                 place,
+                 disable_setting_default_stream_for_allocator,
+                 stream_priority));
+}
+
+void EmplaceDeviceContexts(
+    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
+        place_to_device_context,
+    const std::vector<phi::Place>& places,
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
+  PADDLE_ENFORCE_GT(
+      places.size(),
+      0,
+      phi::errors::InvalidArgument("The number of platform places should "
+                                   "be larger than 0. But received %d.",
+                                   places.size()));
+  std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);
   }
-
-  for (auto& p : set) {
-    if (platform::is_cpu_place(p)) {
-#ifdef PADDLE_WITH_MKLDNN
-      device_contexts_.emplace(
-          p, PtrType(new MKLDNNDeviceContext(boost::get<CPUPlace>(p))));
+  for (auto& place : set) {
+    if (place.GetType() == phi::AllocationType::CPU) {
+#ifdef PADDLE_WITH_DNNL
+      EmplaceDeviceContext<phi::OneDNNContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
 #else
-      device_contexts_.emplace(
-          p, PtrType(new CPUDeviceContext(boost::get<CPUPlace>(p))));
+      EmplaceDeviceContext<phi::CPUContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
 #endif
-    } else if (platform::is_gpu_place(p)) {
-#ifdef PADDLE_WITH_CUDA
-      device_contexts_.emplace(
-          p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
-#else
-      PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
-#endif
-    } else if (platform::is_cuda_pinned_place(p)) {
-#ifdef PADDLE_WITH_CUDA
-      device_contexts_.emplace(
-          p,
-          PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
+    } else if (place.GetType() == phi::AllocationType::GPU) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      EmplaceDeviceContext<phi::GPUContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          stream_priority);
 #else
       PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
+          phi::errors::Unimplemented("GPUPlace is not supported. Please "
+                                     "re-compile with WITH_GPU option."));
+#endif
+    } else if (place.GetType() == phi::AllocationType::XPU) {
+#ifdef PADDLE_WITH_XPU
+      EmplaceDeviceContext<phi::XPUContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(
+          phi::errors::Unimplemented("XPUPlace is not supported. Please "
+                                     "re-compile with WITH_XPU option."));
+#endif
+    } else if (place.GetType() == phi::AllocationType::CUSTOM) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      EmplaceDeviceContext<phi::CustomContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "CustomPlace is not supported. Please re-compile with "
+          "WITH_CUSTOM_DEVICE "
+          "option."));
+#endif
+    } else if (platform::is_cuda_pinned_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      EmplaceDeviceContext<CUDAPinnedDeviceContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported. Please re-compile with WITH_GPU "
+          "option."));
+#endif
+    } else if (platform::is_ipu_place(place)) {
+#ifdef PADDLE_WITH_IPU
+      EmplaceDeviceContext<IPUDeviceContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("IPUPlace is not supported. Please "
+                                          "re-compile with WITH_IPU option."));
 #endif
     }
   }
 }
 
-CPUDeviceContext::CPUDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
+#ifdef PADDLE_WITH_IPU
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {}
+
+const Place& IPUDeviceContext::GetPlace() const { return place_; }
+
+void IPUDeviceContext::Wait() const {
+  /*! \brief  Wait for all operations completion in the stream. */
 }
 
-CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-Place CPUDeviceContext::GetPlace() const { return place_; }
-
-#ifdef PADDLE_WITH_CUDA
-
-class EigenCudaStreamDevice : public Eigen::StreamInterface {
- public:
-  EigenCudaStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
-    Eigen::initializeDeviceProp();
-  }
-  ~EigenCudaStreamDevice() override {}
-
-  void Reinitialize(const cudaStream_t* cuda_stream, CUDAPlace place) {
-    stream_ = cuda_stream;
-    place_ = place;
-    device_prop_ = &Eigen::m_deviceProperties[place.device];
-  }
-
-  const cudaStream_t& stream() const override { return *stream_; }
-
-  const cudaDeviceProp& deviceProperties() const override {
-    return *device_prop_;
-  }
-
-  void* allocate(size_t num_bytes) const override {
-    return paddle::memory::Alloc(place_, num_bytes);
-  }
-
-  void deallocate(void* buffer) const override {
-    paddle::memory::Free(place_, buffer);
-  }
-
-  void* scratchpad() const override {
-    if (scratch_ == NULL) {
-      scratch_ = allocate(Eigen::kCudaScratchSize + sizeof(unsigned int));
-    }
-    return scratch_;
-  }
-
-  unsigned int* semaphore() const override {
-    if (semaphore_ == NULL) {
-      char* scratch =
-          static_cast<char*>(scratchpad()) + Eigen::kCudaScratchSize;
-      semaphore_ = reinterpret_cast<unsigned int*>(scratch);
-      PADDLE_ENFORCE(
-          cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
-    }
-    return semaphore_;
-  }
-
- private:
-  CUDAPlace place_;
-  const cudaStream_t* stream_;         // not owned;
-  const cudaDeviceProp* device_prop_;  // not owned;
-  mutable void* scratch_;
-  mutable unsigned int* semaphore_;
-};
-
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
-  SetDeviceId(place_.device);
-  compute_capability = GetCUDAComputeCapability(place_.device);
-  multi_process = GetCUDAMultiProcessors(place_.device);
-  max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
-  PADDLE_ENFORCE(cudaStreamCreate(&stream_));
-  eigen_stream_.reset(new EigenCudaStreamDevice());
-  eigen_stream_->Reinitialize(&stream_, place);
-  eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-  PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
-  PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
-  if (dynload::HasCUDNN()) {
-    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
-  } else {
-    cudnn_handle_ = nullptr;
-  }
-}
-
-CUDADeviceContext::~CUDADeviceContext() {
-  SetDeviceId(place_.device);
-  Wait();
-  PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
-  if (cudnn_handle_ != nullptr) {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-  }
-  eigen_stream_.reset();
-  eigen_device_.reset();
-  PADDLE_ENFORCE(cudaStreamDestroy(stream_));
-}
-
-Place CUDADeviceContext::GetPlace() const { return place_; }
-
-void CUDADeviceContext::Wait() const {
-  std::lock_guard<std::recursive_mutex> guard(mutex_);
-  PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
-  PADDLE_ENFORCE(cudaGetLastError());
-}
-
-int CUDADeviceContext::GetComputeCapability() const {
-  return compute_capability;
-}
-
-int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
-  return multi_process * max_threads_per_mp;
-}
-
-Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-cublasHandle_t CUDADeviceContext::cublas_handle() const {
-  return cublas_handle_;
-}
-
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
-
-cudaStream_t CUDADeviceContext::stream() const { return stream_; }
-
-CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-CUDAPinnedDeviceContext::CUDAPinnedDeviceContext(CUDAPinnedPlace place)
-    : place_(place) {
-  eigen_device_.reset(new Eigen::DefaultDevice());
-}
-
-Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
-  return eigen_device_.get();
-}
-
-Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
-#endif
-
-#ifdef PADDLE_WITH_MKLDNN
-MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobs_() {
-  p_blobs_.reset(new std::unordered_map<std::string, std::shared_ptr<void>>());
-}
-
-void MKLDNNDeviceContext::SetBlob(const std::string& name,
-                                  std::shared_ptr<void> data) const {
-  std::unordered_map<std::string, std::shared_ptr<void>>* p;
-  p = p_blobs_.get();
-
-  auto it = p->find(name);
-
-  if (it == p->end()) {
-    (*p)[name] = data;  // create new blob
-  } else {
-    it->second = data;  // set data to existing blob
-  }
-
-  return;
-}
-
-std::shared_ptr<void> MKLDNNDeviceContext::GetBlob(
-    const std::string& name) const {
-  std::unordered_map<std::string, std::shared_ptr<void>>* p;
-  p = p_blobs_.get();
-
-  auto it = p->find(name);
-
-  if (it != p->end()) {
-    return it->second;
-  }
-
-  return nullptr;
-}
+IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 

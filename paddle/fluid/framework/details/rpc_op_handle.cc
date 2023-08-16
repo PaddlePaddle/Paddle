@@ -14,35 +14,38 @@
 
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
 
-RPCOpHandle::RPCOpHandle(const framework::OpDesc &op_desc,
-                         const Scope *local_scope, const platform::Place &place,
-                         const std::string &name)
-    : op_(framework::OpRegistry::CreateOp(op_desc)),
+RPCOpHandle::RPCOpHandle(ir::Node *node,
+                         const framework::OpDesc &op_desc,
+                         Scope *local_scope,
+                         const std::string &name,
+                         const platform::Place &place)
+    : OpHandleBase(node),
+      op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),
-      place_(place),
-      name_(name) {}
+      name_(name),
+      place_(place) {}
 
 void RPCOpHandle::RunImpl() {
-  // TODO(wuyi): need further analysis whether wait VarDummyHandle.
-  // Wait input done
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
+
   for (auto *in : inputs_) {
-    auto &p = static_cast<VarHandle *>(in)->place_;
-    // FIXME(Yancey1989): need a better solution instead of use DebugString()
-    if (in->DebugString() == "dummy") {  // HACK
+    auto &p = static_cast<VarHandle *>(in)->place();
+    if (ir::IsControlDepVar(*in->Node())) {
       continue;
     }
-    if (in->generated_op_) {
-      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[p]);
+    if (in->GeneratedOp()) {
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(p));
     }
   }
-  auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
-  // FIXME(wuyi): can not use RunAndRecordEvent here, for it will cause dead
-  // lock.
-  op_->Run(*tmp_scope, place_);
+  this->RunAndRecordEvent([this] { op_->Run(*local_exec_scopes_[0], place_); });
 }
 
 std::string RPCOpHandle::Name() const { return name_; }

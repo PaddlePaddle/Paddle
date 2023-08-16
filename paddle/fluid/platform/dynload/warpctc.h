@@ -14,36 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
-#include "warpctc/include/ctc.h"
+#include "paddle/phi/backends/dynload/warpctc.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-extern std::once_flag warpctc_dso_flag;
-extern void* warpctc_dso_handle;
 
 /**
  * The following macro definition can generate structs
  * (for each function) to dynamic load warpctc routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                                      \
-  struct DynLoad__##__name {                                                   \
-    template <typename... Args>                                                \
-    auto operator()(Args... args) -> decltype(__name(args...)) {               \
-      using warpctcFunc = decltype(&::__name);                                 \
-      std::call_once(warpctc_dso_flag, []() {                                  \
-        warpctc_dso_handle = paddle::platform::dynload::GetWarpCTCDsoHandle(); \
-      });                                                                      \
-      void* p_##_name = dlsym(warpctc_dso_handle, #__name);                    \
-      return reinterpret_cast<warpctcFunc>(p_##_name)(args...);                \
-    }                                                                          \
-  };                                                                           \
+#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                    \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define DECLARE_DYNAMIC_LOAD_WARPCTC_WRAP(__name) \
@@ -53,7 +38,9 @@ extern void* warpctc_dso_handle;
   __macro(get_warpctc_version);       \
   __macro(ctcGetStatusString);        \
   __macro(compute_ctc_loss);          \
-  __macro(get_workspace_size)
+  __macro(compute_ctc_loss_double);   \
+  __macro(get_workspace_size);        \
+  __macro(get_workspace_size_double)
 
 WARPCTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WARPCTC_WRAP);
 

@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,427 +12,107 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import framework
+import math
+import functools
+from . import framework
+from . import core
+from .framework import (
+    in_dygraph_mode,
+    default_main_program,
+    _current_expected_place,
+)
+from .framework import program_guard
 import numpy as np
-import contextlib
+from .core import VarDesc
+from . import unique_name
+from .data_feeder import check_variable_and_dtype, check_type, check_dtype
+from paddle import _C_ops, _legacy_C_ops
+import paddle
 
-__all__ = [
-    'Constant', 'Uniform', 'Normal', 'Xavier', 'force_init_on_cpu',
-    'init_on_cpu', 'ConstantInitializer', 'UniformInitializer',
-    'NormalInitializer', 'XavierInitializer'
-]
+__all__ = ['set_global_initializer']
 
-_force_init_on_cpu_ = False
-
-
-def force_init_on_cpu():
-    return _force_init_on_cpu_
+_global_weight_initializer_ = None
+_global_bias_initializer_ = None
 
 
-@contextlib.contextmanager
-def init_on_cpu():
+def _global_weight_initializer():
     """
-    Switch program with `with` statement
+    Return the global weight initializer, The user doesn't need to use it.
+    """
+    return _global_weight_initializer_
+
+
+def _global_bias_initializer():
+    """
+    Return the global weight initializer, The user doesn't need to use it.
+    """
+    return _global_bias_initializer_
+
+
+def set_global_initializer(weight_init, bias_init=None):
+    """
+    This API is used to set up global model parameter initializer in framework.
+
+    After this API is invoked, the global initializer will takes effect in subsequent code.
+
+    The model parameters include ``weight`` and ``bias`` . In the framework, they correspond
+    to ``paddle.ParamAttr`` , which is inherited from ``paddle.Tensor`` , and is a persistable Variable.
+    This API only takes effect for model parameters, not for variables created through apis such as
+    :ref:`api_fluid_layers_create_global_var` , :ref:`api_fluid_layers_create_tensor`.
+
+    If the initializer is also set up by ``param_attr`` or ``bias_attr`` when creating a network layer,
+    the global initializer setting here will not take effect because it has a lower priority.
+
+    If you want to cancel the global initializer in framework, please set global initializer to ``None`` .
+
+    Args:
+        weight_init (Initializer): set the global initializer for ``weight`` of model parameters.
+        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters.
+            Default: None.
+
+    Returns:
+        None
 
     Examples:
-        >>> with init_on_cpu():
-        >>>   step = layers.create_global_var()
+        .. code-block:: python
 
-    """
-    global _force_init_on_cpu_
+            import paddle
+            import paddle.nn as nn
 
-    pre_state = force_init_on_cpu()
-    _force_init_on_cpu_ = True
-    yield
-    _force_init_on_cpu_ = pre_state
+            nn.initializer.set_global_initializer(nn.initializer.Uniform(), nn.initializer.Constant())
+            x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
+            # The weight of conv1 is initialized by Uniform
+            # The bias of conv1 is initialized by Constant
+            conv1 = nn.Conv2D(4, 6, (3, 3))
+            y_var1 = conv1(x_var)
 
-class Initializer(object):
-    """Base class for variable initializers
+            # If set param_attr/bias_attr too, global initializer will not take effect
+            # The weight of conv2 is initialized by Xavier
+            # The bias of conv2 is initialized by Normal
+            conv2 = nn.Conv2D(4, 6, (3, 3),
+                weight_attr=nn.initializer.XavierUniform(),
+                bias_attr=nn.initializer.Normal())
+            y_var2 = conv2(x_var)
 
-    Defines the common interface of variable initializers.
-    They add operations to the init program that are used
-    to initialize variables. Users should not use this class
-    directly, but need to use one of its implementations.
-    """
-
-    def __init_(self):
-        pass
-
-    def __call__(self, param, block):
-        """Add corresponding initialization operations to the network
-        """
-        raise NotImplementedError()
-
-    def _compute_fans(self, var):
-        """Compute the fan_in and the fan_out for layers
-
-        This method computes the fan_in and the fan_out
-        for neural network layers, if not specified. It is
-        not possible to perfectly estimate fan_in and fan_out.
-        This method will estimate it correctly for matrix multiply and
-        convolutions.
-
-        Args:
-            var: variable for which fan_in and fan_out have to be computed
-
-        Returns:
-            tuple of two integers (fan_in, fan_out)
-        """
-        shape = var.shape
-        if not shape or len(shape) == 0:
-            fan_in = fan_out = 1
-        elif len(shape) == 1:
-            fan_in = fan_out = shape[0]
-        elif len(shape) == 2:
-            # This is the case for simple matrix multiply
-            fan_in = shape[0]
-            fan_out = shape[1]
-        else:
-            # Assume this to be a convolutional kernel
-            # In PaddlePaddle, the shape of the kernel is like:
-            # [num_filters, num_filter_channels, ...] where the remaining
-            # dimensions are the filter_size
-            receptive_field_size = np.prod(shape[2:])
-            fan_in = shape[1] * receptive_field_size
-            fan_out = shape[0] * receptive_field_size
-
-        return (fan_in, fan_out)
-
-
-class ConstantInitializer(Initializer):
-    """Implements the constant initializer
+            # Cancel the global initializer in framework, it will takes effect in subsequent code
+            nn.initializer.set_global_initializer(None)
     """
 
-    def __init__(self, value=0.0, force_cpu=False):
-        """Constructor for ConstantInitializer
+    check_type(
+        weight_init,
+        'weight_init',
+        (paddle.nn.initializer.Initializer, type(None)),
+        'set_global_initializer',
+    )
+    global _global_weight_initializer_
+    _global_weight_initializer_ = weight_init
 
-        Args:
-            value: constant value to initialize the variable
-        """
-        assert value is not None
-        super(ConstantInitializer, self).__init__()
-        self._value = value
-        self._force_cpu = force_cpu
-
-    def __call__(self, var, block):
-        """Add constant initialization ops for a variable
-
-        Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
-
-        Returns:
-            the initialization op
-        """
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
-        op = block.prepend_op(
-            type="fill_constant",
-            outputs={"Out": var},
-            attrs={
-                "shape": var.shape,
-                "dtype": int(var.dtype),
-                "value": float(self._value),
-                'force_cpu': self._force_cpu or force_init_on_cpu()
-            })
-        var.op = op
-        return op
-
-
-class UniformInitializer(Initializer):
-    """Implements the random uniform distribution initializer
-    """
-
-    def __init__(self, low=-1.0, high=1.0, seed=0):
-        """Constructor for UniformInitializer
-
-        Args:
-            low: lower boundary of the uniform distribution
-            high: upper boundary of the uniform distribution
-            seed: random seed
-        """
-        assert low is not None
-        assert high is not None
-        assert high >= low
-        assert seed is not None
-        super(UniformInitializer, self).__init__()
-        self._low = low
-        self._high = high
-        self._seed = seed
-
-    def __call__(self, var, block):
-        """Add uniform distribution initialization ops for a variable
-
-        Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
-
-        Returns:
-            the initialization op
-        """
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
-        if self._seed == 0:
-            self._seed = block.program.random_seed
-        op = block.prepend_op(
-            type="uniform_random",
-            outputs={"Out": var},
-            attrs={
-                "shape": var.shape,
-                "dtype": int(var.dtype),
-                "min": self._low,
-                "max": self._high,
-                "seed": self._seed
-            })
-        var.op = op
-        return op
-
-
-class NormalInitializer(Initializer):
-    """Implements the  random Normal(Gaussian) distribution initializer
-    """
-
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
-        """Constructor for NormalInitializer
-
-        Args:
-            loc: mean of the normal distribution
-            scale: standard deviation of the normal distribution
-            seed: random seed
-        """
-        assert loc is not None
-        assert scale is not None
-        assert seed is not None
-        super(NormalInitializer, self).__init__()
-        self._mean = loc
-        self._std_dev = scale
-        self._seed = seed
-
-    def __call__(self, var, block):
-        """Add normal distribution initialization ops for a variable
-
-        Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
-
-        Returns:
-            the initialization op
-        """
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
-        if self._seed == 0:
-            self._seed = block.program.random_seed
-        op = block.prepend_op(
-            type="gaussian_random",
-            outputs={"Out": var},
-            attrs={
-                "shape": var.shape,
-                "dtype": int(var.dtype),
-                "mean": self._mean,
-                "std": self._std_dev,
-                "seed": self._seed
-            })
-        var.op = op
-        return op
-
-
-class XavierInitializer(Initializer):
-    """Implements the Xavier initializer
-
-    This class implements the Xavier weight initializer from the paper
-    Understanding the difficulty of training deep feedforward neural
-    networks[1] by Xavier Glorot and Yoshua Bengio.
-
-    This initializer is designed to keep the scale of the gradients
-    approximately same in all the layers. In case of Uniform distribution,
-    the range is [-x, x], where x = sqrt(6 / (fan_in + fan_out)).
-    In case of Normal distribution, the mean is 0 and the standard deviation
-    is sqrt(2/ (fan_in + fan_out)).
-
-    References:
-        [1] Understanding the difficulty of training deep feedforward neural
-            networks. International conference on artificial intelligence and
-            statistics.
-            (http://proceedings.mlr.press/v9/glorot10a.html)
-    """
-
-    def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
-        """Constructor for XavierInitializer
-
-        Args:
-            uniform: whether to use uniform or normal distribution
-            fan_in: fan_in for Xavier initialization. If None, it is
-                    inferred from the variable.
-            fan_out: fan_out for Xavier initialization. If None, it is
-                     inferred from the variable.
-            seed: random seed
-
-        Note: It is recommended to set fan_in and fan_out to None for
-              most cases.
-        """
-        assert uniform is not None
-        assert seed is not None
-        super(XavierInitializer, self).__init__()
-        self._uniform = uniform
-        self._fan_in = fan_in
-        self._fan_out = fan_out
-        self._seed = seed
-
-    def __call__(self, var, block):
-        """Add xavier initialization ops for a variable
-
-        Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
-
-        Returns:
-            the initialization op
-        """
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
-        f_in, f_out = self._compute_fans(var)
-
-        # If fan_in and fan_out are passed, use them
-        fan_in = f_in if self._fan_in is None else self._fan_in
-        fan_out = f_out if self._fan_out is None else self._fan_out
-
-        if self._seed == 0:
-            self._seed = block.program.random_seed
-
-        if self._uniform:
-            limit = np.sqrt(6.0 / float(fan_in + fan_out))
-            op = block.prepend_op(
-                type="uniform_random",
-                outputs={"Out": var},
-                attrs={
-                    "shape": var.shape,
-                    "dtype": int(var.dtype),
-                    "min": -limit,
-                    "max": limit,
-                    "seed": self._seed
-                })
-
-        else:
-            std = np.sqrt(2.0 / float(fan_in + fan_out))
-            op = block.prepend_op(
-                type="gaussian_random",
-                outputs={"Out": var},
-                attrs={
-                    "shape": var.shape,
-                    "dtype": int(var.dtype),
-                    "mean": 0.0,
-                    "std": std,
-                    "seed": self._seed
-                })
-        var.op = op
-        return op
-
-
-class MSRAInitializer(Initializer):
-    """Implements the MSRA initializer a.k.a. Kaiming Initializer
-
-    This class implements the weight initialization from the paper
-    Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-    ImageNet Classification[1] by Kaiming He, Xiangyu Zhang, Shaoqing Ren
-    and Jian Sun. This is a robust initialization method that particularly
-    considers the rectifier nonlinearities. In case of Uniform distribution,
-    the range is [-x, x], where x = sqrt(6 / fan_in). In case of Normal
-    distribution, the mean is 0 and the standard deviation
-    is sqrt(2/ fan_in).
-
-    References:
-        [1] Delving Deep into Rectifiers: Surpassing Human-Level Performance
-            on ImageNet Classification
-            (https://arxiv.org/abs/1502.01852)
-    """
-
-    def __init__(self, uniform=True, fan_in=None, seed=0):
-        """Constructor for MSRAInitializer
-
-        Args:
-            uniform: whether to use uniform or normal distribution
-            fan_in: fan_in for MSRAInitializer. If None, it is
-                    inferred from the variable.
-            seed: random seed
-
-        Note: It is recommended to set fan_in to None for most cases.
-        """
-        assert uniform is not None
-        assert seed is not None
-        super(MSRAInitializer, self).__init__()
-        self._uniform = uniform
-        self._fan_in = fan_in
-        self._seed = seed
-
-    def __call__(self, var, block):
-        """Add MSRA initialization ops for a variable
-
-        Args:
-            var: Variable that needs to be initialized
-            block: The block in which initialization ops
-                   should be added
-
-        Returns:
-            the initialization op
-        """
-        assert isinstance(var, framework.Variable)
-        assert isinstance(block, framework.Block)
-        f_in, f_out = self._compute_fans(var)
-
-        # If fan_in is passed, use it
-        fan_in = f_in if self._fan_in is None else self._fan_in
-
-        if self._seed == 0:
-            self._seed = block.program.random_seed
-
-        if self._uniform:
-            limit = np.sqrt(6.0 / float(fan_in))
-            op = block.prepend_op(
-                type="uniform_random",
-                outputs={"Out": var},
-                attrs={
-                    "shape": var.shape,
-                    "dtype": int(var.dtype),
-                    "min": -limit,
-                    "max": limit,
-                    "seed": self._seed
-                })
-
-        else:
-            std = np.sqrt(2.0 / float(fan_in))
-            op = block.prepend_op(
-                type="gaussian_random",
-                outputs={"Out": var},
-                attrs={
-                    "shape": var.shape,
-                    "dtype": int(var.dtype),
-                    "mean": 0.0,
-                    "std": std,
-                    "seed": self._seed
-                })
-        var.op = op
-        return op
-
-
-# We short the class name, since users will use the initializer with the package
-# name. The sample code:
-#
-# import paddle.fluid as fluid
-#
-# hidden = fluid.layers.fc(...,
-#                          param_attr=ParamAttr(fluid.initializer.Xavier()))
-#
-# It is no need to add an `Initializer` as the class suffix
-Constant = ConstantInitializer
-Uniform = UniformInitializer
-Normal = NormalInitializer
-Xavier = XavierInitializer
-MSRA = MSRAInitializer
+    check_type(
+        bias_init,
+        'bias_init',
+        (paddle.nn.initializer.Initializer, type(None)),
+        'set_global_initializer',
+    )
+    global _global_bias_initializer_
+    _global_bias_initializer_ = bias_init

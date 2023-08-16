@@ -14,10 +14,20 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+
+namespace paddle {
+namespace framework {
+class InferShapeContext;
+class ReaderBase;
+}  // namespace framework
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -25,22 +35,18 @@ namespace reader {
 
 static constexpr char kFileFormatSeparator[] = ".";
 
-using FileReaderCreator = std::function<framework::ReaderBase*(
-    const std::string&, const std::vector<framework::DDim>&)>;
+using FileReaderCreator =
+    std::function<framework::ReaderBase*(const std::string&)>;
 
 std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry();
 
 template <typename Reader>
 int RegisterFileReader(const std::string& filetype) {
-  FileReaderRegistry()[filetype] = [](
-      const std::string& fn, const std::vector<framework::DDim>& dims) {
-    return new Reader(fn, dims);
+  FileReaderRegistry()[filetype] = [](const std::string& fn) {
+    return new Reader(fn);
   };
   return 0;
 }
-
-std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
-    const std::string& file_name, const std::vector<framework::DDim>& dims);
 
 extern std::vector<framework::DDim> RestoreShapes(
     const std::vector<int>& shape_concat, const std::vector<int>& ranks);
@@ -60,8 +66,7 @@ class FileReaderInferShape : public framework::InferShapeBase {
 
 class FileReaderInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override;
+  void operator()(framework::InferVarTypeContext* ctx) const override;
 };
 
 // general infershape for decorated reader
@@ -73,8 +78,7 @@ class DecoratedReaderInferShape : public framework::InferShapeBase {
 // general var type inference for decorated reader
 class DecoratedReaderInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override;
+  void operator()(framework::InferVarTypeContext* ctx) const override;
 };
 
 class DecoratedReaderMakerBase : public framework::OpProtoAndCheckerMaker {
@@ -89,17 +93,23 @@ class DecoratedReaderMakerBase : public framework::OpProtoAndCheckerMaker {
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_FILE_READER_OPERATOR(op_name, ...)                  \
-  REGISTER_OPERATOR(op_name, __VA_ARGS__,                            \
-                    paddle::operators::reader::FileReaderInferShape, \
-                    paddle::framework::EmptyGradOpMaker,             \
-                    paddle::operators::reader::FileReaderInferVarType)
+#define REGISTER_FILE_READER_OPERATOR(op_name, ...)                    \
+  REGISTER_OPERATOR(                                                   \
+      op_name,                                                         \
+      __VA_ARGS__,                                                     \
+      paddle::operators::reader::FileReaderInferShape,                 \
+      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,  \
+      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>, \
+      paddle::operators::reader::FileReaderInferVarType)
 
-#define REGISTER_DECORATED_READER_OPERATOR(op_name, ...)                  \
-  REGISTER_OPERATOR(op_name, __VA_ARGS__,                                 \
-                    paddle::operators::reader::DecoratedReaderInferShape, \
-                    paddle::framework::EmptyGradOpMaker,                  \
-                    paddle::operators::reader::DecoratedReaderInferVarType)
+#define REGISTER_DECORATED_READER_OPERATOR(op_name, ...)               \
+  REGISTER_OPERATOR(                                                   \
+      op_name,                                                         \
+      __VA_ARGS__,                                                     \
+      paddle::operators::reader::DecoratedReaderInferShape,            \
+      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,  \
+      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>, \
+      paddle::operators::reader::DecoratedReaderInferVarType)
 
 #define REGISTER_FILE_READER(_filetype, _reader)            \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                           \

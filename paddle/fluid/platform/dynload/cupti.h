@@ -16,18 +16,16 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUPTI
 
 #include <cuda.h>
+#include <cuda_occupancy.h>
 #include <cupti.h>
-#include <dlfcn.h>
+
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/dynload/cupti.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-extern std::once_flag cupti_dso_flag;
-extern void *cupti_dso_handle;
 
 /**
  * The following macro definition can generate structs
@@ -36,30 +34,9 @@ extern void *cupti_dso_handle;
  *
  * note: default dynamic linked libs
  */
-#ifdef PADDLE_USE_DSO
-#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)                            \
-  struct DynLoad__##__name {                                               \
-    template <typename... Args>                                            \
-    inline CUptiResult CUPTIAPI operator()(Args... args) {                 \
-      using cuptiFunc = decltype(&::__name);                               \
-      std::call_once(cupti_dso_flag, []() {                                \
-        cupti_dso_handle = paddle::platform::dynload::GetCUPTIDsoHandle(); \
-      });                                                                  \
-      void *p_##__name = dlsym(cupti_dso_handle, #__name);                 \
-      return reinterpret_cast<cuptiFunc>(p_##__name)(args...);             \
-    }                                                                      \
-  };                                                                       \
+#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)              \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
-#else
-#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)            \
-  struct DynLoad__##__name {                               \
-    template <typename... Args>                            \
-    inline CUptiResult CUPTIAPI operator()(Args... args) { \
-      return __name(args...);                              \
-    }                                                      \
-  };                                                       \
-  extern DynLoad__##__name __name
-#endif
 
 #define CUPTI_ROUTINE_EACH(__macro)           \
   __macro(cuptiActivityEnable);               \
@@ -72,11 +49,11 @@ extern void *cupti_dso_handle;
   __macro(cuptiGetResultString);              \
   __macro(cuptiActivityGetNumDroppedRecords); \
   __macro(cuptiActivityFlushAll);             \
-  __macro(cuptiFinalize);                     \
   __macro(cuptiSubscribe);                    \
   __macro(cuptiUnsubscribe);                  \
   __macro(cuptiEnableCallback);               \
-  __macro(cuptiEnableDomain);
+  __macro(cuptiEnableDomain);                 \
+  __macro(cudaOccMaxActiveBlocksPerMultiprocessor);
 
 CUPTI_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUPTI_WRAP);
 

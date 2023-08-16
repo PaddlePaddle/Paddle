@@ -1,11 +1,29 @@
 # for paddle test case
 
 if(WITH_TESTING)
-  add_library(paddle_test_main STATIC TestMain.cpp)
-  add_dependencies(paddle_test_main paddle_proto ${external_project_dependencies})
-  add_library(paddle_test_util STATIC TestUtil.cpp)
-  add_dependencies(paddle_test_util paddle_proto ${external_project_dependencies})
-  if(NOT MOBILE_INFERENCE)
-    cc_library(paddle_gtest_main SRCS paddle_gtest_main.cc DEPS init memory gtest gflags)
+  set(paddle_gtest_main_deps
+      device_context
+      gtest
+      phi
+      init
+      memory
+      phi_utils
+      proto_desc)
+
+  if(WITH_GPU OR WITH_ROCM)
+    list(APPEND paddle_gtest_main_deps gpu_info)
+  endif()
+
+  cc_library(
+    paddle_gtest_main
+    SRCS paddle_gtest_main.cc
+    DEPS ${paddle_gtest_main_deps})
+
+  cc_library(
+    paddle_gtest_main_new
+    SRCS paddle_gtest_main.cc
+    DEPS gtest xxhash framework_proto eigen3 dlpack)
+  if(WITH_MKLDNN)
+    add_dependencies(paddle_gtest_main_new mkldnn)
   endif()
 endif()
