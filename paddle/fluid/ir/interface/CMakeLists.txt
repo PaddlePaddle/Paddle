@@ -2,6 +2,6 @@
 file(GLOB PD_INTERFACE_SRCS "*.cc")
 
 cc_library(
-  pd_interface
+  pd_interface NOT_FOR_INFER
   SRCS ${PD_INTERFACE_SRCS}
   DEPS ir framework_proto phi_utils)

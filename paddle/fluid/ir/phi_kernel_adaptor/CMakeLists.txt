@@ -2,6 +2,6 @@
 file(GLOB PHI_KERNEL_ADAPTOR_SRCS "*.cc")
 
 cc_library(
-  phi_kernel_adaptor
+  phi_kernel_adaptor NOT_FOR_INFER
   SRCS ${PHI_KERNEL_ADAPTOR_SRCS}
   DEPS program_translator ir phi_utils)

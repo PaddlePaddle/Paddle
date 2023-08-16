@@ -18,6 +18,6 @@ add_custom_command(
 file(GLOB PD_PROGRAM_TRANSLATOR_SRCS "*.cc")
 
 cc_library(
-  program_translator
+  program_translator NOT_FOR_INFER
   SRCS ${PD_PROGRAM_TRANSLATOR_SRCS} ${op_compat_source_file}
   DEPS proto_desc pd_dialect ir framework_proto)

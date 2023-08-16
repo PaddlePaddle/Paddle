@@ -74,7 +74,7 @@ add_custom_command(
 file(GLOB PD_DIALECT_SRCS "*.cc")
 
 cc_library(
-  pd_dialect
+  pd_dialect NOT_FOR_INFER
   SRCS ${PD_DIALECT_SRCS} ${op_source_file} ${api_source_file}
   DEPS phi
        phi_utils

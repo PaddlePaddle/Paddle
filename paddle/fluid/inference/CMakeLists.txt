@@ -34,6 +34,7 @@ endif()
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
+get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
 set(utils_modules pretty_log string_helper benchmark utf8proc)
 
 add_subdirectory(api)
@@ -100,8 +101,24 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
 
 # shared inference library deps
+list(REMOVE_DUPLICATES fluid_modules)
+# NOTE(Aurelius84): For inference library, some DEPS is usless
+# such as non-infer operator, cinn_xx related targets et.al.
 list(REMOVE_ITEM fluid_modules standalone_executor
-     interpretercore_garbage_collector)
+     interpretercore_garbage_collector run_program_op ssa_graph_executor)
+foreach(target ${fluid_modules})
+  list(FIND target "cinn_" is_found)
+  if(is_found GREATER -1)
+    list(REMOVE_ITEM fluid_modules target)
+  endif()
+endforeach()
+
+# NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
+# shared library to prune library size.
+if(NOT WITH_IR_DIALECT_ON_INFER)
+  list(REMOVE_ITEM fluid_modules ${not_infer_modules})
+endif()
+
 if(WIN32)
   set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
                             ${utils_modules})

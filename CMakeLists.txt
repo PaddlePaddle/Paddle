@@ -309,6 +309,9 @@ option(WITH_CUDNN_FRONTEND
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
+################################ New IR Configurations #######################################
+option(WITH_IR_DIALECT_ON_INFER
+       "Compile PaddlePaddle Inference SHARED LIB with New IR Dialect" OFF)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
