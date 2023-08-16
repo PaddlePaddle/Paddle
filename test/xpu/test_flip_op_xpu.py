@@ -43,11 +43,9 @@ class XPUTestFlipOp(XPUOpTestWrapper):
             self.init_attrs()
             x = np.random.uniform(-1, 1, self.in_shape).astype(self.dtype)
             out = np.flip(x, self.axis)
-            self.inputs = {
-                "X": OpTest.np_dtype_to_fluid_dtype(x)
-            }
+            self.inputs = {"X": OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {"Out": out}
-  
+
         def set_xpu(self):
             self.__class__.use_xpu = True
             self.__class__.no_need_check_grad = True
