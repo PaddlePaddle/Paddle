@@ -548,6 +548,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "conv2d_transpose_xpu_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "fast_layernorm_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
       "link_xpu_op_max_pass",

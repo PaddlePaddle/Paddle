@@ -197,4 +197,11 @@ void FastWhereXPUInferMeta(const MetaTensor& condition,
                            const MetaTensor& y,
                            MetaTensor* out);
 
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out);
+
 }  // namespace phi

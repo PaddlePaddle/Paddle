@@ -123,6 +123,15 @@
   backward : batch_norm_grad
   optional : reserve_space
 
+- op : c_concat
+  args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : CConcatInferMeta
+    param : [x, nranks]
+  kernel :
+    func : c_concat
+
 - op : cast
   args : (Tensor x, DataType dtype)
   output : Tensor
@@ -881,6 +890,7 @@
     data_type : x
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
+  optional : reserve_space
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})

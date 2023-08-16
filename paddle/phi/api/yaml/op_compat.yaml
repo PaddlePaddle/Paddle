@@ -429,6 +429,12 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : c_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -2718,7 +2724,7 @@
   inputs :
     {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
   outputs :
-    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
+    {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]

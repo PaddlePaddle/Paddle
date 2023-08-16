@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace cinn::optim {
+namespace phi {
 
-void IfSimplify(Expr* e);
+KernelSignature CEmbeddingGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("c_embedding_grad",
+                         {"W", "Ids", "Out@GRAD"},
+                         {"start_index"},
+                         {"W@GRAD"});
+}
 
-}  // namespace cinn::optim
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(c_embedding_grad,
+                           phi::CEmbeddingGradOpArgumentMapping);
