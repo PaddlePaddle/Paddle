@@ -27,45 +27,26 @@ std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
                                              const DenseTensor& input,
                                              const IntArray& sections,
                                              int64_t axis) {
-  size_t out_number = sections.size();
-  std::vector<DenseTensor> result(out_number);
-
-  std::vector<MetaTensor> out_meta;
-  std::vector<MetaTensor*> out_meta_ptr;
-
-  out_meta.reserve(out_number);
-  out_meta_ptr.reserve(out_number);
-  for (size_t i = 0; i < out_number; ++i) {
-    out_meta.emplace_back(result[i]);
-    out_meta_ptr.emplace_back(&out_meta.back());
-  }
-  SplitInferMeta(phi::MetaTensor(input), sections, axis, out_meta_ptr);
-
-  std::vector<DenseTensor*> outs;
-  for (size_t i = 0; i < out_number; ++i) {
-    outs.emplace_back(&result[i]);
-  }
+  std::vector<DenseTensor> result;
 
   if (phi::CPUContext::classof(&dev_ctx)) {
-    PD_VISIT_ALL_TYPES(input.dtype(), "SplitKernel", ([&] {
-                         SplitKernel<data_t>(
-                             static_cast<const CPUContext&>(dev_ctx),
-                             input,
-                             sections,
-                             axis,
-                             outs);
+    PD_VISIT_ALL_TYPES(input.dtype(), "Split", ([&] {
+                         Split<data_t>(static_cast<const CPUContext&>(dev_ctx),
+                                       input,
+                                       sections,
+                                       axis,
+                                       &result);
                        }));
     return result;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (phi::GPUContext::classof(&dev_ctx)) {
-    PD_VISIT_ALL_TYPES(input.dtype(), "SplitKernel", ([&] {
-                         SplitKernel<data_t>(
-                             static_cast<const GPUContext&>(dev_ctx),
-                             input,
-                             sections,
-                             axis,
-                             outs);
+    PD_VISIT_ALL_TYPES(input.dtype(), "Split", ([&] {
+                         Split<data_t>(static_cast<const GPUContext&>(dev_ctx),
+                                       input,
+                                       sections,
+                                       axis,
+                                       &result);
                        }));
     return result;
   }

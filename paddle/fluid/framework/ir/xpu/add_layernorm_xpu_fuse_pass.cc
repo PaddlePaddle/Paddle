@@ -91,7 +91,8 @@ AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
                    ->AsInput();
   auto ele_out = pattern->NewNode(ele_out_repr())
                      ->assert_is_op_output("elementwise_add", "Out")
-                     ->assert_is_op_input("layer_norm", "X");
+                     ->assert_is_op_input("layer_norm", "X")
+                     ->assert_has_n_outputs(1);
   ele_add->LinksFrom({add_x, add_y}).LinksTo({ele_out});
   auto l_norm = pattern->NewNode(l_norm_repr())->assert_is_op("layer_norm");
   auto norm_bias = pattern->NewNode(norm_bias_repr())

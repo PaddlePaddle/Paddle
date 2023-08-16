@@ -42,7 +42,7 @@ Tensor tanh_grad<DescTensor>(const Tensor& out, const Tensor& grad_out) {
 template <>
 Tensor mean_grad<DescTensor>(const Tensor& x,
                              const Tensor& out_grad,
-                             std::vector<int64_t> axis,
+                             const IntArray& axis,
                              bool keepdim,
                              bool reduce_all) {
   ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
@@ -54,11 +54,36 @@ Tensor mean_grad<DescTensor>(const Tensor& x,
           .dyn_cast<ir::OpResult>();
 
   ir::OpResult op_res = paddle::dialect::mean_grad(
-      x_res, out_grad_res, axis, keepdim, reduce_all);
+      x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
 
   return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
 }
 
+template <>
+std::tuple<Tensor, Tensor> add_grad<DescTensor>(const Tensor& x,
+                                                const Tensor& y,
+                                                const Tensor& out_grad,
+                                                int axis) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult y_res = std::static_pointer_cast<DescTensor>(y.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult out_grad_res =
+      std::static_pointer_cast<DescTensor>(out_grad.impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>();
+
+  std::tuple<ir::OpResult, ir::OpResult> op_res =
+      paddle::dialect::add_grad(x_res, y_res, out_grad_res, axis);
+
+  return std::make_tuple(
+      Tensor(std::make_shared<primitive::experimental::DescTensor>(
+          std::get<0>(op_res))),
+      Tensor(std::make_shared<primitive::experimental::DescTensor>(
+          std::get<1>(op_res))));
+}
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive

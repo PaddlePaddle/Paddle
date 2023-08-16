@@ -67,7 +67,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
                                kSlotSmallVectorSize>& tensors_vector,
     T* attr UNUSED) {
   // For lightly op like reduce
-  if (!(DesiredLayout() == phi::DataLayout::UNDEFINED)) {
+  if ((DesiredLayout() == phi::DataLayout::UNDEFINED)) {
     VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
@@ -85,7 +85,21 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
   // For lightly op like argmax
   return EagerLayoutAutotune<T1>(op_name, tensors_vector, axis);
 }
-
+template <>
+inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
+    const std::string& op_name,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
+                               kSlotSmallVectorSize>& tensors_vector,
+    paddle::experimental::IntArray* padddings,
+    std::string* attr) {
+  // for pad
+  if ((DesiredLayout() == phi::DataLayout::UNDEFINED)) {
+    VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
+    return std::make_shared<EagerLayoutTransformer>(
+        op_name, tensors_vector, tensors_vector[0][0].layout());
+  }
+  return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
+}
 template <>
 inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
@@ -104,8 +118,9 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
       auto data_type = tensors_vector[0][0].dtype();
       bool is_tune_fp32 =
           (data_type == phi::DataType::FLOAT32) && (*attr == "NHWC");
-      bool is_tune_fp16 =
-          (data_type == phi::DataType::FLOAT16) && (*attr == "NCHW");
+      bool is_tune_fp16 = (data_type == phi::DataType::FLOAT16 ||
+                           data_type == phi::DataType::BFLOAT16) &&
+                          (*attr == "NCHW");
       VLOG(4) << "LayoutAutoTune assert with dtype and layout, Current op : "
               << op_name;
       if (is_tune_fp32) {
