@@ -186,23 +186,27 @@ class TestComplex64DotOp(DotOp):
     def init_dtype(self):
         self.dtype = np.complex64
 
-    def init_shape(self):
-        self.shape = 100
-
     def init_input_output(self):
-        self.init_shape()
+        shape = 100
         self.x = (
-            np.random.random(self.shape) + 1j * np.random.random(self.shape)
+            np.random.random(shape) + 1j * np.random.random(shape)
         ).astype(self.dtype)
         self.y = (
-            np.random.random(self.shape) + 1j * np.random.random(self.shape)
+            np.random.random(shape) + 1j * np.random.random(shape)
         ).astype(self.dtype)
         self.out = np.dot(self.x, self.y).astype(self.dtype)
 
 
 class TestComplex64DotOp2D(TestComplex64DotOp):
-    def init_shape(self):
-        self.shape = (100, 100)
+    def init_input_output(self):
+        shape = (2, 100)
+        self.x = (
+            np.random.random(shape) + 1j * np.random.random(shape)
+        ).astype(self.dtype)
+        self.y = (
+            np.random.random(shape) + 1j * np.random.random(shape)
+        ).astype(self.dtype)
+        self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1)
 
 
 class TestComplex128DotOp(TestComplex64DotOp):
