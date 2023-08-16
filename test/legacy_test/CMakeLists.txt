@@ -1272,6 +1272,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_bucketize_api
     test_bincount_op
     test_c_embedding_op
     test_decayed_adagrad_op
@@ -1302,6 +1303,7 @@ set(STATIC_BUILD_TESTS
     test_prune_gate_by_capacity_op
     test_random_routing_op
     test_reduce_op
+    test_searchsorted_op
     test_segment_ops
     test_sparse_momentum_op
     test_sgd_op_bf16
@@ -1393,7 +1395,6 @@ foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
 endforeach()
 
 set(STRIED_TESTS
-    test_bucketize_api
     test_complex_getitem
     test_complex_grad_accumulated
     test_complex_simplenet
@@ -1409,7 +1410,6 @@ set(STRIED_TESTS
     test_real_imag_op
     test_reshape_op
     test_set_value_op
-    test_searchsorted_op
     test_signal
     test_slice_op
     test_solve_op
@@ -1418,8 +1418,7 @@ set(STRIED_TESTS
     test_unbind_op
     test_unsqueeze_op
     test_unsqueeze2_op
-    test_var_base
-    test_zero_dim_tensor)
+    test_var_base)
 
 foreach(STRIED_TEST ${STRIED_TESTS})
   py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
