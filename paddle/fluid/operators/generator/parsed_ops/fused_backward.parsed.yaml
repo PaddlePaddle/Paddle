@@ -1,0 +1,118 @@
+- name: fused_dropout_add_grad
+  inputs:
+  - typename: Tensor
+    name: seed_offset
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: Scalar, name: p, data_type: float}
+  - {typename: bool, name: is_test}
+  - {typename: str, name: mode}
+  - {typename: bool, name: fix_seed}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FusedDropoutAddGradInferMeta
+    param: [seed_offset, out_grad]
+  kernel:
+    func: [fused_dropout_add_grad]
+    param: [seed_offset, out_grad, p, is_test, mode, fix_seed]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {fused_dropout_add_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: fused_dropout_add
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    - {name: seed_tensor, typename: Tensor}
+    attrs:
+    - {name: p, typename: Scalar}
+    - {name: is_test, typename: bool}
+    - {name: mode, typename: str}
+    - {name: seed, typename: int}
+    - {name: fix_seed, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: seed_offset, typename: Tensor}
+- name: fused_rotary_position_embedding_grad
+  inputs:
+  - typename: Tensor
+    name: sin
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: cos
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_q_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_k_grad
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_v_grad
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: q_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: k_grad, optional: true, intermediate: false}
+  - {typename: Tensor, name: v_grad, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FusedRopeGradInferMeta
+    param: [sin, cos, out_q_grad, out_k_grad, out_v_grad]
+  kernel:
+    func: [fused_rotary_position_embedding_grad]
+    param: [sin, cos, out_q_grad, out_k_grad, out_v_grad]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_q_grad]
+      to_complex_flag: [false]
+    dispatch: {fused_rotary_position_embedding_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: fused_rotary_position_embedding
+    inputs:
+    - {name: q, typename: Tensor}
+    - {name: k, typename: Tensor}
+    - {name: v, typename: Tensor}
+    - {name: sin, typename: Tensor}
+    - {name: cos, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out_q, typename: Tensor}
+    - {name: out_k, typename: Tensor}
+    - {name: out_v, typename: Tensor}

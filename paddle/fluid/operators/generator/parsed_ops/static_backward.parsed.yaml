@@ -1,0 +1,1805 @@
+- name: amax_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [amax_grad]
+    param: [x, out, out_grad, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {amax_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: amax
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: IntArray}
+    - {name: keepdim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    - {name: in_dtype, typename: int}
+    - {name: out_dtype, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: amin_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [amin_grad]
+    param: [x, out, out_grad, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {amin_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: amin
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: IntArray}
+    - {name: keepdim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    - {name: in_dtype, typename: int}
+    - {name: out_dtype, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: assign_grad
+  inputs:
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  invoke: {func: assign, args: out_grad}
+  composite: {func_name: assign_grad, func_args: 'out_grad, x_grad'}
+  backward: null
+  forward:
+    name: assign
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: conv2d_transpose_double_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_x_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_filter_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: 'int[]', name: output_padding}
+  - {typename: IntArray, name: output_size, data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: padding_algorithm}
+  - {typename: int, name: groups}
+  - {typename: 'int[]', name: dilations}
+  - {typename: str, name: data_format}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: filter_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: grad_out_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv2dTransposeDoubleGradInferMeta
+    param: [x, filter, grad_out, grad_x_grad, grad_filter_grad, strides, paddings,
+      output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+  kernel:
+    func: [conv2d_transpose_double_grad]
+    param: [x, filter, grad_out, grad_x_grad, grad_filter_grad, strides, paddings,
+      output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {conv2d_transpose_double_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: conv2d_transpose_grad
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: filter, typename: Tensor}
+    - {name: bias, typename: Tensor}
+    - {name: grad_out, typename: Tensor}
+    attrs:
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: output_padding, typename: 'int[]'}
+    - {name: output_size, typename: IntArray}
+    - {name: padding_algorithm, typename: str}
+    - {name: groups, typename: int}
+    - {name: dilations, typename: 'int[]'}
+    - {name: data_format, typename: str}
+    outputs:
+    - {name: grad_x, typename: Tensor}
+    - {name: grad_filter, typename: Tensor}
+- name: conv2d_transpose_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: 'int[]', name: output_padding}
+  - {typename: IntArray, name: output_size, data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: padding_algorithm}
+  - {typename: int, name: groups}
+  - {typename: 'int[]', name: dilations}
+  - {typename: str, name: data_format}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: filter_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv2dTransposeGradInferMeta
+    param: [x, filter, out_grad, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+  kernel:
+    func: [conv2d_transpose_grad]
+    param: [x, filter, out_grad, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {conv2d_transpose_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: conv2d_transpose_double_grad
+  forward:
+    name: conv2d_transpose
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: filter, typename: Tensor}
+    - {name: bias, typename: Tensor}
+    attrs:
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: output_padding, typename: 'int[]'}
+    - {name: output_size, typename: IntArray}
+    - {name: padding_algorithm, typename: str}
+    - {name: groups, typename: int}
+    - {name: dilations, typename: 'int[]'}
+    - {name: data_format, typename: str}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: deformable_conv_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: offset
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: mask
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: 'int[]', name: dilations}
+  - {typename: int, name: deformable_groups}
+  - {typename: int, name: groups}
+  - {typename: int, name: im2col_step}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: offset_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: filter_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: mask_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: DeformableConvGradInferMeta
+    param: [x, offset, filter, mask, out_grad, strides, paddings, dilations, deformable_groups,
+      groups, im2col_step]
+  kernel:
+    func: [deformable_conv_grad]
+    param: [x, offset, filter, mask, out_grad, strides, paddings, dilations, deformable_groups,
+      groups, im2col_step]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {deformable_conv_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: deformable_conv
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: offset, typename: Tensor}
+    - {name: filter, typename: Tensor}
+    - {name: mask, typename: Tensor}
+    attrs:
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: dilations, typename: 'int[]'}
+    - {name: deformable_groups, typename: int}
+    - {name: groups, typename: int}
+    - {name: im2col_step, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: depthwise_conv2d_transpose_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: 'int[]', name: output_padding}
+  - {typename: IntArray, name: output_size, data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: padding_algorithm}
+  - {typename: int, name: groups}
+  - {typename: 'int[]', name: dilations}
+  - {typename: str, name: data_format}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: filter_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv2dTransposeGradInferMeta
+    param: [x, filter, out_grad, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+  kernel:
+    func: [depthwise_conv2d_transpose_grad]
+    param: [x, filter, out_grad, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {depthwise_conv2d_transpose_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: depthwise_conv2d_transpose
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: filter, typename: Tensor}
+    - {name: bias, typename: Tensor}
+    attrs:
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: output_padding, typename: 'int[]'}
+    - {name: output_size, typename: IntArray}
+    - {name: padding_algorithm, typename: str}
+    - {name: groups, typename: int}
+    - {name: dilations, typename: 'int[]'}
+    - {name: data_format, typename: str}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: einsum_grad
+  inputs:
+  - typename: Tensor[]
+    name: x_shape
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: inner_cache
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: str, name: equation}
+  outputs:
+  - {typename: 'Tensor[]', name: x_grad, size: x_shape.size(), optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedMultiInferMeta
+    param: [x_shape]
+  kernel:
+    func: [einsum_grad]
+    param: [x_shape, inner_cache, out_grad, equation]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {einsum_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: einsum
+    inputs:
+    - {name: x, typename: 'Tensor[]'}
+    attrs:
+    - {name: equation, typename: str}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: inner_cache, typename: 'Tensor[]'}
+    - {name: x_shape, typename: 'Tensor[]'}
+- name: elementwise_pow_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [elementwise_pow_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {elementwise_pow_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: elementwise_pow_grad, func_args: 'x, y, out_grad, x_grad,
+      y_grad'}
+  backward: null
+  forward:
+    name: elementwise_pow
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs:
+    - {name: axis, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: embedding_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: weight
+    optional: false
+    no_need_buffer: true
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int64_t, name: padding_idx, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: weight_grad, optional: false, intermediate: false}
+  no_need_buffer: [weight]
+  data_transform: null
+  infer_meta:
+    func: EmbeddingGradInferMeta
+    param: [x, weght]
+  kernel:
+    func: [embedding_grad, embedding_sparse_grad, sparse_weight_embedding_grad, sparse_weight_embedding_sparse_grad]
+    param: [x, weight, out_grad, padding_idx]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch:
+      embedding_grad:
+      - [dense, dense, dense]
+      - [dense]
+      embedding_sparse_grad:
+      - [dense, dense, dense]
+      - [selected_rows]
+      sparse_weight_embedding_grad:
+      - [selected_rows, dense, dense]
+      - [dense]
+      sparse_weight_embedding_sparse_grad:
+      - [selected_rows, dense, dense]
+      - [selected_rows]
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: embedding
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: weight, typename: Tensor}
+    attrs:
+    - {name: padding_idx, typename: int64_t}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: exponential__grad
+  inputs:
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  invoke: {func: full_like, args: 'out_grad, 0.0f'}
+  backward: null
+  forward:
+    name: exponential_
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: lam, typename: float}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: frobenius_norm_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [frobenius_norm_grad]
+    param: [x, out, out_grad, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {frobenius_norm_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: frobenius_norm
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: IntArray}
+    - {name: keepdim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    - {name: in_dtype, typename: int}
+    - {name: out_dtype, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: hardswish_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [hardswish_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {hardswish_grad: null}
+    force_backend: null
+  inplace: {x_grad: out_grad}
+  view: null
+  backward: null
+  forward:
+    name: hardswish
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: threshold, typename: float}
+    - {name: scale, typename: float}
+    - {name: offset, typename: float}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: matmul_double_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_x_grad
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_y_grad
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: transpose_x, default_value: 'false'}
+  - {typename: bool, name: transpose_y, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: grad_out_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GeneralTernaryGradInferMeta
+    param: [x, y, grad_out]
+  kernel:
+    func: [matmul_double_grad]
+    param: [x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {matmul_double_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: matmul_double_grad, func_args: 'x, y, grad_out, grad_x_grad,
+      grad_y_grad, transpose_x, transpose_y, x_grad, y_grad, grad_out_grad'}
+  backward: matmul_triple_grad
+  forward:
+    name: matmul_grad
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    - {name: grad_out, typename: Tensor}
+    attrs:
+    - {name: transpose_x, typename: bool}
+    - {name: transpose_y, typename: bool}
+    outputs:
+    - {name: grad_x, typename: Tensor}
+    - {name: grad_y, typename: Tensor}
+- name: matmul_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: transpose_x, default_value: 'false'}
+  - {typename: bool, name: transpose_y, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [matmul_grad]
+    param: [x, y, out_grad, transpose_x, transpose_y]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {matmul_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: matmul_double_grad
+  forward:
+    name: matmul
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs:
+    - {name: transpose_x, typename: bool}
+    - {name: transpose_y, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: matmul_triple_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_grad_x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_grad_y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_x_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_y_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grad_grad_out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: transpose_x, default_value: 'false'}
+  - {typename: bool, name: transpose_y, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: grad_out_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: grad_grad_x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: grad_grad_y_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GeneralQuinaryGradInferMeta
+    param: [x, y, grad_out, grad_grad_x, grad_grad_y]
+  kernel:
+    func: [matmul_triple_grad]
+    param: [x, y, grad_out, grad_grad_x, grad_grad_y, grad_x_grad, grad_y_grad, grad_grad_out_grad,
+      transpose_x, transpose_y]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {matmul_triple_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: matmul_double_grad
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    - {name: grad_out, typename: Tensor}
+    - {name: grad_grad_x, typename: Tensor}
+    - {name: grad_grad_y, typename: Tensor}
+    attrs:
+    - {name: transpose_x, typename: bool}
+    - {name: transpose_y, typename: bool}
+    outputs:
+    - {name: grad_x, typename: Tensor}
+    - {name: grad_y, typename: Tensor}
+    - {name: grad_grad_out, typename: Tensor}
+- name: max_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [max_grad]
+    param: [x, out, out_grad, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {max_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: max_grad, func_args: 'x, out, out_grad, axis, keepdim, reduce_all,
+      x_grad'}
+  backward: null
+  forward:
+    name: max
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: IntArray}
+    - {name: keepdim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    - {name: in_dtype, typename: int}
+    - {name: out_dtype, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: maximum_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [maximum_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {maximum_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: maximum_grad, func_args: 'x, y, out_grad, x_grad, y_grad'}
+  backward: null
+  forward:
+    name: maximum
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs:
+    - {name: axis, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: min_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [min_grad]
+    param: [x, out, out_grad, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {min_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: min
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: IntArray}
+    - {name: keepdim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    - {name: in_dtype, typename: int}
+    - {name: out_dtype, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: minimum_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [minimum_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {minimum_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: minimum_grad, func_args: 'x, y, out_grad, x_grad, y_grad'}
+  backward: null
+  forward:
+    name: minimum
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs:
+    - {name: axis, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: norm_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: norm
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis}
+  - {typename: float, name: epsilon}
+  - {typename: bool, name: is_test}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [norm_grad]
+    param: [x, norm, out_grad, axis, epsilon, is_test]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {norm_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: norm
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: int}
+    - {name: epsilon, typename: float}
+    - {name: is_test, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: norm, typename: Tensor}
+- name: pool2d_double_grad
+  inputs:
+  - typename: Tensor
+    name: grad_x_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: kernel_size, data_type: 'std::vector<int64_t>'}
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: bool, name: ceil_mode}
+  - {typename: bool, name: exclusive}
+  - {typename: str, name: data_format}
+  - {typename: str, name: pooling_type}
+  - {typename: bool, name: global_pooling}
+  - {typename: bool, name: adaptive}
+  - {typename: str, name: padding_algorithm}
+  outputs:
+  - {typename: Tensor, name: grad_out_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Pool2DInferMeta
+    param: [grad_x_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format,
+      pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel:
+    func: [pool2d_double_grad]
+    param: [grad_x_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format,
+      pooling_type, global_pooling, adaptive, padding_algorithm]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {pool2d_double_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: pool2d_grad
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: out, typename: Tensor}
+    - {name: grad_out, typename: Tensor}
+    attrs:
+    - {name: kernel_size, typename: IntArray}
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: ceil_mode, typename: bool}
+    - {name: exclusive, typename: bool}
+    - {name: data_format, typename: str}
+    - {name: pooling_type, typename: str}
+    - {name: global_pooling, typename: bool}
+    - {name: adaptive, typename: bool}
+    - {name: padding_algorithm, typename: str}
+    outputs:
+    - {name: grad_x, typename: Tensor}
+- name: pool2d_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: kernel_size, data_type: 'std::vector<int64_t>'}
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: bool, name: ceil_mode}
+  - {typename: bool, name: exclusive}
+  - {typename: str, name: data_format}
+  - {typename: str, name: pooling_type}
+  - {typename: bool, name: global_pooling}
+  - {typename: bool, name: adaptive}
+  - {typename: str, name: padding_algorithm}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [pool2d_grad]
+    param: [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive,
+      data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {pool2d_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: pool2d_double_grad
+  forward:
+    name: pool2d
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: kernel_size, typename: IntArray}
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: ceil_mode, typename: bool}
+    - {name: exclusive, typename: bool}
+    - {name: data_format, typename: str}
+    - {name: pooling_type, typename: str}
+    - {name: global_pooling, typename: bool}
+    - {name: adaptive, typename: bool}
+    - {name: padding_algorithm, typename: str}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: pool3d_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: ksize}
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: bool, name: ceil_mode}
+  - {typename: bool, name: exclusive}
+  - {typename: str, name: data_format}
+  - {typename: str, name: pooling_type}
+  - {typename: bool, name: global_pooling}
+  - {typename: bool, name: adaptive}
+  - {typename: str, name: padding_algorithm}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [pool3d_grad]
+    param: [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive,
+      data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {pool3d_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: pool3d
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: kernel_size, typename: 'int[]'}
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: ceil_mode, typename: bool}
+    - {name: exclusive, typename: bool}
+    - {name: data_format, typename: str}
+    - {name: pooling_type, typename: str}
+    - {name: global_pooling, typename: bool}
+    - {name: adaptive, typename: bool}
+    - {name: padding_algorithm, typename: str}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: prod_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: dims, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keep_dim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [prod_grad]
+    param: [x, out, out_grad, dims, keep_dim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {prod_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: prod_grad, func_args: 'x, out, out_grad, dims, keep_dim,
+      reduce_all, x_grad'}
+  backward: null
+  forward:
+    name: prod
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: dims, typename: IntArray}
+    - {name: keep_dim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    - {name: in_dtype, typename: int}
+    - {name: out_dtype, typename: DataType}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: rnn_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: pre_state
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: weight_list
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: sequence_length
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: dropout_state_out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: reserve
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: state_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: dropout_prob}
+  - {typename: bool, name: is_bidirec}
+  - {typename: int, name: input_size}
+  - {typename: int, name: hidden_size}
+  - {typename: int, name: num_layers}
+  - {typename: str, name: mode}
+  - {typename: int, name: seed}
+  - {typename: bool, name: is_test}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: 'Tensor[]', name: pre_state_grad, size: pre_state.size(), optional: false,
+    intermediate: false}
+  - {typename: 'Tensor[]', name: weight_list_grad, size: weight_list.size(), optional: false,
+    intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: RnnGradInferMeta
+    param: [x, pre_state, weight_list]
+  kernel:
+    func: [rnn_grad]
+    param: [x, pre_state, weight_list, sequence_length, out, dropout_state_out, reserve,
+      out_grad, state_grad, dropout_prob, is_bidirec, input_size, hidden_size, num_layers,
+      mode, seed, is_test]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {rnn_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: rnn
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: pre_state, typename: 'Tensor[]'}
+    - {name: weight_list, typename: 'Tensor[]'}
+    - {name: sequence_length, typename: Tensor}
+    attrs:
+    - {name: dropout_prob, typename: float}
+    - {name: is_bidirec, typename: bool}
+    - {name: input_size, typename: int}
+    - {name: hidden_size, typename: int}
+    - {name: num_layers, typename: int}
+    - {name: mode, typename: str}
+    - {name: seed, typename: int}
+    - {name: is_test, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: dropout_state_out, typename: Tensor}
+    - {name: state, typename: 'Tensor[]'}
+    - {name: reserve, typename: Tensor}
+- name: softmax_grad
+  inputs:
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out]
+  kernel:
+    func: [softmax_grad]
+    param: [out, out_grad, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {softmax_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: softmax_grad, func_args: 'out, out_grad, axis, x_grad'}
+  backward: null
+  forward:
+    name: softmax
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: strided_slice_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: true
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: axes}
+  - {typename: IntArray, name: starts, data_type: 'std::vector<int64_t>'}
+  - {typename: IntArray, name: ends, data_type: 'std::vector<int64_t>'}
+  - {typename: IntArray, name: strides, data_type: 'std::vector<int64_t>'}
+  - {typename: 'int[]', name: infer_flags}
+  - {typename: 'int[]', name: decrease_axis}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: [x]
+  data_transform: null
+  infer_meta:
+    func: GeneralUnaryGradInferMeta
+    param: [x]
+  kernel:
+    func: [strided_slice_grad]
+    param: [x, axes, starts, ends, strides]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {strided_slice_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: strided_slice
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axes, typename: 'int[]'}
+    - {name: starts, typename: IntArray}
+    - {name: ends, typename: IntArray}
+    - {name: strides, typename: IntArray}
+    - {name: infer_flags, typename: 'int[]'}
+    - {name: decrease_axis, typename: 'int[]'}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: sum_double_grad
+  inputs:
+  - typename: Tensor
+    name: grad_x_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: grad_out_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  invoke: {func: sum, args: 'grad_x_grad, axis, keepdim, reduce_all'}
+  backward: null
+  forward:
+    name: sum_grad
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: grad_out, typename: Tensor}
+    attrs:
+    - {name: axis, typename: IntArray}
+    - {name: keepdim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    outputs:
+    - {name: grad_x, typename: Tensor}
+- name: sum_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: true
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: [x]
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [sum_grad]
+    param: [x, out_grad, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {sum_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  composite: {func_name: sum_grad, func_args: 'x, out_grad, axis, keepdim, reduce_all,
+      x_grad'}
+  backward: sum_double_grad
+  forward:
+    name: sum
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: IntArray}
+    - {name: keepdim, typename: bool}
+    - {name: reduce_all, typename: bool}
+    - {name: in_dtype, typename: int}
+    - {name: out_dtype, typename: DataType}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: swish_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GeneralUnaryGradInferMeta
+    param: [x]
+  kernel:
+    func: [swish_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {swish_grad: null}
+    force_backend: null
+  inplace: {x_grad: out_grad}
+  view: null
+  backward: null
+  forward:
+    name: swish
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: tril_triu_grad
+  inputs:
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: diagonal}
+  - {typename: bool, name: lower}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out_grad]
+  kernel:
+    func: [tril_triu_grad]
+    param: [out_grad, diagonal, lower]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {tril_triu_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: tril_triu
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: diagonal, typename: int}
+    - {name: lower, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: unpool_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: indices
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: ksize}
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: IntArray, name: output_size, data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: data_format}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [unpool_grad]
+    param: [x, indices, out, out_grad, ksize, strides, paddings, output_size, data_format]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {unpool_grad: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: unpool
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: indices, typename: Tensor}
+    attrs:
+    - {name: ksize, typename: 'int[]'}
+    - {name: unpooling_type, typename: str}
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: output_size, typename: IntArray}
+    - {name: data_format, typename: str}
+    outputs:
+    - {name: out, typename: Tensor}

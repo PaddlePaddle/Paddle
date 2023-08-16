@@ -1,0 +1,2117 @@
+- name: all
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceInferMetaBase
+    param: [x, axis, keepdim, reduce_all, in_dtype, out_dtype]
+  kernel:
+    func: [all]
+    param: [x, axis, keepdim, reduce_all, in_dtype, out_dtype]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {all: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: all_gather
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: nranks, default_value: '0'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AllGatherInferMeta
+    param: [x, nranks]
+  kernel:
+    func: [all_gather]
+    param: [x, nranks]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {all_gather: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: all_reduce
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: reduce_type, default_value: '0'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AllReduceInferMeta
+    param: [x]
+  kernel:
+    func: [all_reduce]
+    param: [x, reduce_type]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {all_reduce: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: all_to_all
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AllToAllInferMeta
+    param: [x]
+  kernel:
+    func: [all_to_all]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {all_to_all: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: amax
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceInferMeta
+    param: [x, axis, keepdim]
+  kernel:
+    func: [amax_raw]
+    param: [x, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {amax_raw: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: amax_grad
+- name: amin
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceInferMeta
+    param: [x, axis, keepdim]
+  kernel:
+    func: [amin_raw]
+    param: [x, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {amin_raw: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: amin_grad
+- name: any
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceInferMetaBase
+    param: [x, axis, keepdim, reduce_all]
+  kernel:
+    func: [any_raw]
+    param: [x, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {any_raw: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: arange
+  inputs:
+  - typename: Tensor
+    name: start
+    optional: false
+    no_need_buffer: false
+    data_transform: {skip_trans_args: true, support_trans_dtype: false}
+  - typename: Tensor
+    name: end
+    optional: false
+    no_need_buffer: false
+    data_transform: {skip_trans_args: true, support_trans_dtype: false}
+  - typename: Tensor
+    name: step
+    optional: false
+    no_need_buffer: false
+    data_transform: {skip_trans_args: true, support_trans_dtype: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform:
+    skip_transform: [start, end, step]
+  infer_meta:
+    func: ArangeInferMeta
+    param: [start, end, step]
+  kernel:
+    func: [arange]
+    param: [start, end, step]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {arange: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: assign
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [assign]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {assign: null}
+    force_backend: null
+  inplace: {out: x}
+  view: null
+  backward: assign_grad
+- name: assign_value
+  inputs: []
+  attrs:
+  - {typename: 'int[]', name: shape}
+  - {typename: DataType, name: dtype}
+  - {typename: 'int[]', name: bool_values, default_value: '{}'}
+  - {typename: 'float[]', name: fp32_values, default_value: '{}'}
+  - {typename: 'int[]', name: int32_values, default_value: '{}'}
+  - {typename: 'int64_t[]', name: int64_values, default_value: '{}'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AssignValueInferMeta
+    param: [shape, dtype]
+  kernel:
+    func: [assign_value]
+    param: [shape, dtype, values]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {assign_value: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: broadcast
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: root, default_value: '0'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: DistBroadcastInferMeta
+    param: [x]
+  kernel:
+    func: [broadcast]
+    param: [x, root]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {broadcast: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: conv2d_transpose
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides, default_value: '{1, 1}'}
+  - {typename: 'int[]', name: paddings, default_value: '{0, 0}'}
+  - {typename: 'int[]', name: output_padding, default_value: '{}'}
+  - {typename: IntArray, name: output_size, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: padding_algorithm, default_value: '"EXPLICIT"'}
+  - {typename: int, name: groups, default_value: '1'}
+  - {typename: 'int[]', name: dilations, default_value: '{1, 1}'}
+  - {typename: str, name: data_format, default_value: '"NCHW"'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv2dTransposeInferMeta
+    param: [x, filter, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+  kernel:
+    func: [conv2d_transpose]
+    param: [x, filter, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {conv2d_transpose: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: conv2d_transpose_grad
+- name: decode_jpeg
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: str, name: mode, default_value: '"unchanged"'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: DecodeJpegInferMeta
+    param: [x, mode]
+  kernel:
+    func: [decode_jpeg]
+    param: [x, mode]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {decode_jpeg: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: deformable_conv
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: offset
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: mask
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides, default_value: '{1, 1}'}
+  - {typename: 'int[]', name: paddings, default_value: '{0, 0}'}
+  - {typename: 'int[]', name: dilations, default_value: '{1, 1}'}
+  - {typename: int, name: deformable_groups, default_value: '1'}
+  - {typename: int, name: groups, default_value: '1'}
+  - {typename: int, name: im2col_step, default_value: '64'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: DeformableConvInferMeta
+    param: [x, offset, filter, mask, strides, paddings, dilations, deformable_groups,
+      groups, im2col_step]
+  kernel:
+    func: [deformable_conv]
+    param: [x, offset, filter, mask, strides, paddings, dilations, deformable_groups,
+      groups, im2col_step]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {deformable_conv: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: deformable_conv_grad
+- name: depthwise_conv2d_transpose
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides, default_value: '{1, 1}'}
+  - {typename: 'int[]', name: paddings, default_value: '{0, 0}'}
+  - {typename: 'int[]', name: output_padding, default_value: '{}'}
+  - {typename: IntArray, name: output_size, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: padding_algorithm, default_value: '"EXPLICIT"'}
+  - {typename: int, name: groups, default_value: '1'}
+  - {typename: 'int[]', name: dilations, default_value: '{1, 1}'}
+  - {typename: str, name: data_format, default_value: '"NCHW"'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv2dTransposeInferMeta
+    param: [x, filter, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+  kernel:
+    func: [depthwise_conv2d_transpose]
+    param: [x, filter, strides, paddings, output_padding, output_size, padding_algorithm,
+      groups, dilations, data_format]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {depthwise_conv2d_transpose: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: depthwise_conv2d_transpose_grad
+- name: dist_concat
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: nranks, default_value: '1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: DistConcatInferMeta
+    param: [x, nranks]
+  kernel:
+    func: [dist_concat]
+    param: [x, nranks]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {dist_concat: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: einsum
+  inputs:
+  - typename: Tensor[]
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: str, name: equation}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: 'Tensor[]', name: inner_cache, size: x.size(), optional: false, intermediate: true}
+  - {typename: 'Tensor[]', name: xshape, size: x.size(), optional: false, intermediate: true}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: EinsumRawInferMeta
+    param: [x, equation]
+  kernel:
+    func: [einsum]
+    param: [x, equation]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {einsum: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: einsum_grad
+- name: elementwise_pow
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ElementwiseRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [elementwise_pow]
+    param: [x, y, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {elementwise_pow: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: elementwise_pow_grad
+- name: embedding
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: weight
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int64_t, name: padding_idx, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: EmbeddingInferMeta
+    param: [x, weight, padding_idx]
+  kernel:
+    func: [embedding, sparse_weight_embedding]
+    param: [x, weight, padding_idx]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [weight]
+      to_complex_flag: [false]
+    dispatch:
+      embedding:
+      - [dense, dense]
+      - [dense]
+      sparse_weight_embedding:
+      - [dense, selected_rows]
+      - [dense]
+    force_backend: null
+  inplace: null
+  view: null
+  backward: embedding_grad
+- name: empty
+  inputs: []
+  attrs:
+  - {typename: IntArray, name: shape, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: CreateInferMeta
+    param: [shape, dtype]
+  kernel:
+    func: [empty]
+    param: [shape, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {empty: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: equal
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  - {typename: bool, name: force_cpu, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: CompareRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [equal_raw]
+    param: [x, y, axis]
+    backend:
+      ordered: false
+      candidates: [x]
+    layout: null
+    data_type: null
+    dispatch: {equal_raw: null}
+    force_backend: force_cpu
+  inplace: null
+  view: null
+  backward: null
+- name: exponential_
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: lam, default_value: 1.0f}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [exponential]
+    param: [x, lam]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {exponential: null}
+    force_backend: null
+  inplace: {out: x}
+  view: null
+  backward: exponential__grad
+- name: eye
+  inputs: []
+  attrs:
+  - {typename: Scalar(int64_t), name: num_rows, data_type: int64_t}
+  - {typename: Scalar(int64_t), name: num_columns, default_value: '-1', data_type: int64_t}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: EyeInferMeta
+    param: [num_rows, num_columns, dtype]
+  kernel:
+    func: [eye]
+    param: [num_rows, num_columns, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {eye: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: floor_divide
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ElementwiseRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [floor_divide]
+    param: [x, y, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {floor_divide: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: frobenius_norm
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceInferMetaBase
+    param: [x, axis, keepdim, reduce_all]
+  kernel:
+    func: [frobenius_norm]
+    param: [x, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {frobenius_norm: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: frobenius_norm_grad
+- name: full_like
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: Scalar, name: value, default_value: '0.0', data_type: float}
+  - {typename: DataType, name: dtype, default_value: 'DataType::UNDEFINED'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FillAnyLikeInferMeta
+    param: [x, value, dtype]
+  kernel:
+    func: [full_like]
+    param: [x, value, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: true
+      candidates: [dtype, x]
+      to_complex_flag: [false, false]
+    dispatch: {full_like: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: gaussian
+  inputs: []
+  attrs:
+  - {typename: IntArray, name: shape, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: float, name: mean, default_value: .0f}
+  - {typename: float, name: std, default_value: 1.0f}
+  - {typename: int, name: seed, default_value: '0'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GaussianInferMeta
+    param: [shape, mean, std, seed, dtype]
+  kernel:
+    func: [gaussian]
+    param: [shape, mean, std, seed, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {gaussian: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: greater_equal
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  - {typename: bool, name: force_cpu, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: CompareRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [greater_equal_raw]
+    param: [x, y, axis]
+    backend:
+      ordered: false
+      candidates: [x]
+    layout: null
+    data_type: null
+    dispatch: {greater_equal_raw: null}
+    force_backend: force_cpu
+  inplace: null
+  view: null
+  backward: null
+- name: greater_than
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  - {typename: bool, name: force_cpu, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: CompareRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [greater_than_raw]
+    param: [x, y, axis]
+    backend:
+      ordered: false
+      candidates: [x]
+    layout: null
+    data_type: null
+    dispatch: {greater_than_raw: null}
+    force_backend: force_cpu
+  inplace: null
+  view: null
+  backward: null
+- name: hardswish
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: threshold, default_value: 6.0f}
+  - {typename: float, name: scale, default_value: 6.0f}
+  - {typename: float, name: offset, default_value: 3.0f}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [hardswish]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {hardswish: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: hardswish_grad
+- name: less_equal
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  - {typename: bool, name: force_cpu, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: CompareRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [less_equal_raw]
+    param: [x, y, axis]
+    backend:
+      ordered: false
+      candidates: [x]
+    layout: null
+    data_type: null
+    dispatch: {less_equal_raw: null}
+    force_backend: force_cpu
+  inplace: null
+  view: null
+  backward: null
+- name: less_than
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  - {typename: bool, name: force_cpu, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: CompareRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [less_than_raw]
+    param: [x, y, axis]
+    backend:
+      ordered: false
+      candidates: [x]
+    layout: null
+    data_type: null
+    dispatch: {less_than_raw: null}
+    force_backend: force_cpu
+  inplace: null
+  view: null
+  backward: null
+- name: linspace
+  inputs:
+  - typename: Tensor
+    name: start
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: stop
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: number
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: DataType, name: dtype}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: LinspaceInferMeta
+    param: [start, stop, number, dtype]
+  kernel:
+    func: [linspace]
+    param: [start, stop, number, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {linspace: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: matmul
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: transpose_x, default_value: 'false'}
+  - {typename: bool, name: transpose_y, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: MatmulInferMeta
+    param: [x, y, transpose_x, transpose_y]
+  kernel:
+    func: [matmul]
+    param: [x, y, transpose_x, transpose_y]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {matmul: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: matmul_grad
+- name: matrix_rank
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: tol_tensor
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: tol, default_value: 0.0f}
+  - {typename: bool, name: hermitian, default_value: 'false'}
+  - {typename: bool, name: use_default_tol, default_value: 'true'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: MatrixRankStaticInferMeta
+    param: [x, tol_tensor, use_default_tol, hermitian]
+  kernel:
+    func: [matrix_rank, matrix_rank_tol]
+    param: [x, tol_tensor, tol, hermitian, use_default_tol]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch:
+      matrix_rank:
+      - [dense]
+      - [dense]
+      matrix_rank_tol:
+      - [dense, dense]
+      - [dense]
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: max
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceIntArrayAxisInferMetaBase
+    param: [x, axis, keepdim, reduce_all]
+  kernel:
+    func: [max_raw]
+    param: [x, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {max_raw: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: max_grad
+- name: maximum
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ElementwiseRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [maximum]
+    param: [x, y, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {maximum: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: maximum_grad
+- name: min
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: int, name: out_dtype, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceIntArrayAxisInferMetaBase
+    param: [x, axis, keepdim, reduce_all]
+  kernel:
+    func: [min_raw]
+    param: [x, axis, keepdim, reduce_all]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {min_raw: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: min_grad
+- name: minimum
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ElementwiseRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [minimum]
+    param: [x, y, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {minimum: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: minimum_grad
+- name: norm
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis}
+  - {typename: float, name: epsilon, default_value: 1.0e-10f}
+  - {typename: bool, name: is_test, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: norm, optional: false, intermediate: true}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: NormInferMeta
+    param: [x, axis, epsilon, is_test]
+  kernel:
+    func: [norm]
+    param: [x, axis, epsilon, is_test]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {norm: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: norm_grad
+- name: not_equal
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  - {typename: bool, name: force_cpu, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: CompareRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [not_equal_raw]
+    param: [x, y, axis]
+    backend:
+      ordered: false
+      candidates: [x]
+    layout: null
+    data_type: null
+    dispatch: {not_equal_raw: null}
+    force_backend: force_cpu
+  inplace: null
+  view: null
+  backward: null
+- name: one_hot
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: Scalar(int), name: depth, default_value: '-1', data_type: int}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  - {typename: bool, name: allow_out_of_range, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: OneHotRawInferMeta
+    param: [x, depth, dtype, allow_out_of_range]
+  kernel:
+    func: [one_hot_raw]
+    param: [x, depth, dtype, allow_out_of_range]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {one_hot_raw: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: p_recv
+  inputs: []
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: peer, default_value: '0'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  - {typename: bool, name: dynamic_shape, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: PRecvInferMeta
+    param: [peer, dtype]
+  kernel:
+    func: [p_recv]
+    param: [peer, dtype, dynamic_shape]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {p_recv: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: p_recv_array
+  inputs: []
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: peer, default_value: '0'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  - {typename: 'int[]', name: out_shape, default_value: '{}'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: PRecvArrayInferMeta
+    param: [peer, dtype, out_shape]
+  kernel:
+    func: [p_recv_array]
+    param: [peer, dtype, out_shape]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {p_recv_array: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: pool2d
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: kernel_size, data_type: 'std::vector<int64_t>'}
+  - {typename: 'int[]', name: strides, default_value: '{1,1}'}
+  - {typename: 'int[]', name: paddings, default_value: '{0,0}'}
+  - {typename: bool, name: ceil_mode, default_value: 'false'}
+  - {typename: bool, name: exclusive, default_value: 'true'}
+  - {typename: str, name: data_format, default_value: '"NCHW"'}
+  - {typename: str, name: pooling_type, default_value: '""'}
+  - {typename: bool, name: global_pooling, default_value: 'false'}
+  - {typename: bool, name: adaptive, default_value: 'false'}
+  - {typename: str, name: padding_algorithm, default_value: '"EXPLICIT"'}
+  - {typename: bool, name: use_cudnn, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Pool2DInferMeta
+    param: [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format,
+      pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel:
+    func: [pool2d]
+    param: [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format,
+      pooling_type, global_pooling, adaptive, padding_algorithm]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {pool2d: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: pool2d_grad
+- name: pool3d
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: kernel_size}
+  - {typename: 'int[]', name: strides, default_value: '{1,1,1}'}
+  - {typename: 'int[]', name: paddings, default_value: '{0,0,0}'}
+  - {typename: bool, name: ceil_mode, default_value: 'false'}
+  - {typename: bool, name: exclusive, default_value: 'true'}
+  - {typename: str, name: data_format, default_value: '"NCDHW"'}
+  - {typename: str, name: pooling_type, default_value: '""'}
+  - {typename: bool, name: global_pooling, default_value: 'false'}
+  - {typename: bool, name: adaptive, default_value: 'false'}
+  - {typename: str, name: padding_algorithm, default_value: '"EXPLICIT"'}
+  - {typename: bool, name: use_cudnn, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: PoolInferMeta
+    param: [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format,
+      pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel:
+    func: [pool3d]
+    param: [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format,
+      pooling_type, global_pooling, adaptive, padding_algorithm]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {pool3d: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: pool3d_grad
+- name: prod
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: dims, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keep_dim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: DataType, name: out_dtype, default_value: 'DataType::UNDEFINED'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceIntArrayAxisInferMetaBase
+    param: [x, dims, keep_dim, reduce_all, out_dtype]
+  kernel:
+    func: [prod]
+    param: [x, dims, keep_dim, reduce_all, out_dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {prod: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: prod_grad
+- name: randint
+  inputs: []
+  attrs:
+  - {typename: int, name: low}
+  - {typename: int, name: high}
+  - {typename: IntArray, name: shape, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::INT64'}
+  - {typename: int, name: seed, default_value: '0'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: RandintInferMeta
+    param: [low, high, shape, dtype]
+  kernel:
+    func: [randint]
+    param: [low, high, shape, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {randint: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: randperm
+  inputs: []
+  attrs:
+  - {typename: int, name: n}
+  - {typename: DataType, name: dtype, default_value: 'DataType::INT64'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: RandpermInferMeta
+    param: [n, dtype]
+  kernel:
+    func: [randperm]
+    param: [n, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {randperm: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: reduce
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: root_id, default_value: '0'}
+  - {typename: int, name: reduce_type, default_value: '0'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: DistReduceInferMeta
+    param: [x]
+  kernel:
+    func: [reduce]
+    param: [x, root_id, reduce_type]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {reduce: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: reduce_scatter
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: nranks, default_value: '1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceScatterInferMeta
+    param: [x, nranks]
+  kernel:
+    func: [reduce_scatter]
+    param: [x, nranks]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {reduce_scatter: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: remainder
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ElementwiseRawInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [remainder]
+    param: [x, y, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {remainder: null}
+    force_backend: null
+  inplace: {out: x}
+  view: null
+  backward: null
+- name: rnn
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: pre_state
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: weight_list
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: sequence_length
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: dropout_prob, default_value: '0.0'}
+  - {typename: bool, name: is_bidirec, default_value: 'false'}
+  - {typename: int, name: input_size, default_value: '10'}
+  - {typename: int, name: hidden_size, default_value: '100'}
+  - {typename: int, name: num_layers, default_value: '1'}
+  - {typename: str, name: mode, default_value: '"RNN_TANH"'}
+  - {typename: int, name: seed, default_value: '0'}
+  - {typename: bool, name: is_test, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: dropout_state_out, optional: true, intermediate: false}
+  - {typename: 'Tensor[]', name: state, size: pre_state.size(), optional: false, intermediate: false}
+  - {typename: Tensor, name: reserve, optional: false, intermediate: true}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: RnnInferMeta
+    param: [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec,
+      input_size, hidden_size, num_layers, mode, seed, is_test]
+  kernel:
+    func: [rnn]
+    param: [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec,
+      input_size, hidden_size, num_layers, mode, seed, is_test]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {rnn: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: rnn_grad
+- name: share_buffer
+  inputs:
+  - typename: Tensor[]
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'bool[]', name: share_dims_and_dtype, default_value: '{}'}
+  outputs:
+  - {typename: 'Tensor[]', name: out, size: x.size(), optional: false, intermediate: false}
+  - {typename: 'Tensor[]', name: xout, size: x.size(), optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ShareBufferInferMeta
+    param: [x, share_dims_and_dtype]
+  kernel:
+    func: [share_buffer]
+    param: [x, share_dims_and_dtype]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {share_buffer: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: softmax
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: axis, default_value: '-1'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: SoftmaxInferMeta
+    param: [x, axis]
+  kernel:
+    func: [softmax]
+    param: [x, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {softmax: null}
+    force_backend: null
+  inplace: {out: x}
+  view: null
+  backward: softmax_grad
+- name: strided_slice
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: axes}
+  - {typename: IntArray, name: starts, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: IntArray, name: ends, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: IntArray, name: strides, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: 'int[]', name: infer_flags, default_value: '{}'}
+  - {typename: 'int[]', name: decrease_axis, default_value: '{}'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: StridedSliceRawInferMeta
+    param: [x, axes, starts, ends, strides]
+  kernel:
+    func: [strided_slice]
+    param: [x, axes, starts, ends, strides]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {strided_slice: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: strided_slice_grad
+- name: sum
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: IntArray, name: axis, default_value: '{0}', data_type: 'std::vector<int64_t>'}
+  - {typename: bool, name: keepdim, default_value: 'false'}
+  - {typename: bool, name: reduce_all, default_value: 'false'}
+  - {typename: int, name: in_dtype, default_value: '-1'}
+  - {typename: DataType, name: out_dtype, default_value: 'DataType::UNDEFINED'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: SumRawInferMeta
+    param: [x, axis, keepdim, reduce_all, out_dtype]
+  kernel:
+    func: [sum_raw]
+    param: [x, axis, keepdim, reduce_all, out_dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {sum_raw: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: sum_grad
+- name: swish
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [swish]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {swish: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: swish_grad
+- name: tril_indices
+  inputs: []
+  attrs:
+  - {typename: int, name: rows, default_value: '0'}
+  - {typename: int, name: cols, default_value: '0'}
+  - {typename: int, name: offset, default_value: '0'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::INT64'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: TrilIndicesInferMeta
+    param: [rows, cols, offset, dtype]
+  kernel:
+    func: [tril_indices]
+    param: [rows, cols, offset, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {tril_indices: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: tril_triu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: diagonal, default_value: '0'}
+  - {typename: bool, name: lower, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: TrilTriuInferMeta
+    param: [x, diagonal, lower]
+  kernel:
+    func: [tril_triu]
+    param: [x, diagonal, lower]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {tril_triu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: tril_triu_grad
+- name: triu_indices
+  inputs: []
+  attrs:
+  - {typename: int, name: row, default_value: '0'}
+  - {typename: int, name: col, default_value: '0'}
+  - {typename: int, name: offset, default_value: '0'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::INT64'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: TriuIndicesInferMeta
+    param: [row, col, offset, dtype]
+  kernel:
+    func: [triu_indices]
+    param: [row, col, offset, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {triu_indices: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: truncated_gaussian_random
+  inputs: []
+  attrs:
+  - {typename: 'int[]', name: shape}
+  - {typename: float, name: mean, default_value: .0f}
+  - {typename: float, name: std, default_value: 1.0f}
+  - {typename: int, name: seed, default_value: '0'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: TruncatedGaussianRandomInferMeta
+    param: [shape, mean, std, seed, dtype]
+  kernel:
+    func: [truncated_gaussian_random]
+    param: [shape, mean, std, seed, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {truncated_gaussian_random: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: uniform
+  inputs: []
+  attrs:
+  - {typename: IntArray, name: shape, default_value: '{}', data_type: 'std::vector<int64_t>'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  - {typename: Scalar, name: min, default_value: -1.0f, data_type: float}
+  - {typename: Scalar, name: max, default_value: 1.0f, data_type: float}
+  - {typename: int, name: seed, default_value: '0'}
+  - {typename: int, name: diag_num, default_value: '0'}
+  - {typename: int, name: diag_step, default_value: '0'}
+  - {typename: float, name: diag_val, default_value: 1.0f}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UniformRandomInferMeta
+    param: [shape, dtype]
+  kernel:
+    func: [uniform]
+    param: [shape, dtype, min, max, seed]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {uniform: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: unique
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: return_index, default_value: 'false'}
+  - {typename: bool, name: return_inverse, default_value: 'false'}
+  - {typename: bool, name: return_counts, default_value: 'false'}
+  - {typename: 'int[]', name: axis, default_value: '{}'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::INT64'}
+  - {typename: bool, name: is_sorted, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: indices, optional: true, intermediate: false}
+  - {typename: Tensor, name: inverse, optional: false, intermediate: false}
+  - {typename: Tensor, name: counts, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UniqueRawInferMeta
+    param: [x, return_index, return_inverse, return_counts, axis, dtype, is_sorted]
+  kernel:
+    func: [unique]
+    param: [x, return_index, return_inverse, return_counts, axis, dtype, is_sorted]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {unique: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: unpool
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: indices
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: ksize}
+  - {typename: str, name: unpooling_type}
+  - {typename: 'int[]', name: strides, default_value: '{1,1}'}
+  - {typename: 'int[]', name: paddings, default_value: '{0,0}'}
+  - {typename: IntArray, name: output_size, default_value: '{0,0}', data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: data_format, default_value: '"NCHW"'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: UnpoolInferMeta
+    param: [x, indices, ksize, strides, paddings, output_size, data_format]
+  kernel:
+    func: [unpool]
+    param: [x, indices, ksize, strides, paddings, output_size, data_format]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {unpool: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: unpool_grad

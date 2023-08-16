@@ -1,0 +1,970 @@
+- name: add_act_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: act_type}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: out_max, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AddActXPUInferMeta
+    param: [x, x_max, y, y_max, act_type]
+  kernel:
+    func: [add_act_xpu]
+    param: [x, x_max, y, y_max, act_type]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {add_act_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: add_layernorm_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: scale
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: begin_norm_axis}
+  - {typename: float, name: epsilon}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: mean, optional: false, intermediate: false}
+  - {typename: Tensor, name: variance, optional: false, intermediate: false}
+  - {typename: Tensor, name: z_add, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: AddLayernormXPUInferMeta
+    param: [x, y, scale, bias, begin_norm_axis, epsilon]
+  kernel:
+    func: [add_layernorm_xpu]
+    param: [x, y, scale, bias, begin_norm_axis, epsilon]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {add_layernorm_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: conv1d_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: branch
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: branch_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: paddings}
+  - {typename: str, name: padding_algorithm}
+  - {typename: int, name: dilations}
+  - {typename: int, name: strides}
+  - {typename: int, name: groups}
+  - {typename: int, name: act_type}
+  - {typename: float, name: act_param}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: out_max, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv1dXPUInferMeta
+    param: [x, x_max, filter, filter_max, bias, branch, branch_max, paddings, padding_algorithm,
+      dilations, strides, groups, act_type, act_param]
+  kernel:
+    func: [conv1d_xpu]
+    param: [x, x_max, filter, filter_max, bias, branch, branch_max, paddings, padding_algorithm,
+      dilations, strides, groups, act_type, act_param]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {conv1d_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: conv2d_transpose_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: 'int[]', name: output_padding}
+  - {typename: IntArray, name: output_size, data_type: 'std::vector<int64_t>'}
+  - {typename: str, name: padding_algorithm}
+  - {typename: int, name: groups}
+  - {typename: 'int[]', name: dilations}
+  - {typename: str, name: data_format}
+  - {typename: bool, name: has_bias}
+  - {typename: bool, name: with_act}
+  - {typename: str, name: act_type}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: out_max, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv2dTransposeXPUInferMeta
+    param: [x, x_max, filter, filter_max, bias, strides, paddings, output_padding,
+      output_size, padding_algorithm, groups, dilations, data_format, has_bias, with_act,
+      act_type]
+  kernel:
+    func: [conv2d_transpose_xpu]
+    param: [x, x_max, filter, filter_max, bias, strides, paddings, output_padding,
+      output_size, padding_algorithm, groups, dilations, data_format, has_bias, with_act,
+      act_type]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {conv2d_transpose_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: conv2d_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: filter_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: branch
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: branch_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: paddings}
+  - {typename: 'int[]', name: dilations}
+  - {typename: 'int[]', name: strides}
+  - {typename: str, name: padding_algorithm}
+  - {typename: int, name: groups}
+  - {typename: int, name: act_type}
+  - {typename: float, name: act_param}
+  - {typename: DataType, name: out_dtype}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: out_max, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: Conv2dXPUInferMeta
+    param: [x, x_max, filter, filter_max, bias, branch, branch_max, paddings, dilations,
+      strides, padding_algorithm, groups, act_type, act_param, out_dtype]
+  kernel:
+    func: [conv2d_xpu]
+    param: [x, x_max, filter, filter_max, bias, branch, branch_max, paddings, dilations,
+      strides, padding_algorithm, groups, act_type, act_param, out_dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {conv2d_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: embedding_with_eltwise_add_xpu
+  inputs:
+  - typename: Tensor[]
+    name: ids
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: tables
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: mask
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int64_t, name: padding_idx}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: seq_lod, optional: true, intermediate: false}
+  - {typename: Tensor, name: max_seq_len, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: EmbeddingWithEltwiseAddXPUInferMeta
+    param: [ids, tables, mask, padding_idx]
+  kernel:
+    func: [embedding_with_eltwise_add_xpu]
+    param: [ids, tables, mask, padding_idx]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [tables]
+      to_complex_flag: [false]
+    dispatch: {embedding_with_eltwise_add_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: fast_where_xpu
+  inputs:
+  - typename: Tensor
+    name: condition
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FastWhereXPUInferMeta
+    param: [condition, x, y]
+  kernel:
+    func: [fast_where_xpu]
+    param: [condition, x, y]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {fast_where_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: fc_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: w
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: w_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: in_num_col_dims}
+  - {typename: bool, name: transpose_x}
+  - {typename: float, name: alpha}
+  - {typename: float, name: beta}
+  - {typename: int, name: act_type}
+  - {typename: float, name: act_alpha}
+  - {typename: DataType, name: out_dtype}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: out_max, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FcXPUInferMeta
+    param: [x, x_max, w, w_max, bias, in_num_col_dims, transpose_x, alpha, beta, act_type,
+      act_alpha, out_dtype]
+  kernel:
+    func: [fc_xpu]
+    param: [x, x_max, w, w_max, bias, in_num_col_dims, transpose_x, alpha, beta, act_type,
+      act_alpha, out_dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {fc_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: fused_bias_act
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: dequant_scales
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: shift
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: smooth
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: str, name: act_method, default_value: '"gelu"'}
+  - {typename: str, name: compute_dtype, default_value: '"default"'}
+  - {typename: float, name: quant_scale, default_value: '-1'}
+  - {typename: int, name: quant_round_type, default_value: '1'}
+  - {typename: float, name: quant_max_bound, default_value: '127.0'}
+  - {typename: float, name: quant_min_bound, default_value: '-127.0'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FusedBiasActInferMeta
+    param: [x, bias, dequant_scales, shift, smooth, act_method, compute_dtype, quant_scale,
+      quant_round_type, quant_max_bound, quant_min_bound]
+  kernel:
+    func: [fused_bias_act]
+    param: [x, bias, dequant_scales, shift, smooth, act_method, compute_dtype, quant_scale,
+      quant_round_type, quant_max_bound, quant_min_bound]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {fused_bias_act: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: fused_dropout_add
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: y
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: seed_tensor
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: Scalar, name: p, data_type: float}
+  - {typename: bool, name: is_test}
+  - {typename: str, name: mode}
+  - {typename: int, name: seed, default_value: '0'}
+  - {typename: bool, name: fix_seed, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: seed_offset, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FusedDropoutAddInferMeta
+    param: [x, y]
+  kernel:
+    func: [fused_dropout_add]
+    param: [x, y, seed_tensor, p, is_test, mode, seed, fix_seed]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {fused_dropout_add: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: fused_dropout_add_grad
+- name: fused_linear_param_grad_add
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: dout
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: dweight
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: dbias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: multi_precision, default_value: 'true'}
+  - {typename: bool, name: has_bias, default_value: 'true'}
+  outputs:
+  - {typename: Tensor, name: dweight_out, optional: false, intermediate: false}
+  - {typename: Tensor, name: dbias_out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FusedLinearParamGradAddInferMeta
+    param: [x, dout, dweight, dbias, multi_precision, has_bias]
+  kernel:
+    func: [fused_linear_param_grad_add]
+    param: [x, dout, dweight, dbias, multi_precision, has_bias]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dout]
+      to_complex_flag: [false]
+    dispatch: {fused_linear_param_grad_add: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: fused_multi_transformer_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ln_scale
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ln_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: qkvw
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: qkvw_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: qkv_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: out_linear_w
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: out_linear_wmax
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: out_linear_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn_ln_scale
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn_ln_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn1_weight
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn1_weight_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn1_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn2_weight
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn2_weight_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ffn2_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: cache_kv
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: pre_caches
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: rotary_pos_emb
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: time_step
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: seq_lengths
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: src_mask
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: gather_index
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: pre_layer_norm}
+  - {typename: int, name: rotary_emb_dims}
+  - {typename: float, name: epsilon}
+  - {typename: float, name: dropout_rate}
+  - {typename: bool, name: is_test}
+  - {typename: str, name: dropout_implementation}
+  - {typename: str, name: act_method}
+  - {typename: bool, name: trans_qkvw}
+  - {typename: int, name: ring_id}
+  - {typename: int, name: gather_axis}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: 'Tensor[]', name: cache_kv_out, size: out_linear_w.size(), optional: false,
+    intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FusedMultiTransformerXpuInferMeta
+    param: [x, ln_scale, ln_bias, qkvw, qkvw_max, qkv_bias, out_linear_w, out_linear_wmax,
+      out_linear_bias, ffn_ln_scale, ffn_ln_bias, ffn1_weight, ffn1_weight_max, ffn1_bias,
+      ffn2_weight, ffn2_weight_max, ffn2_bias, cache_kv, pre_caches, rotary_pos_emb,
+      time_step, seq_lengths, src_mask, gather_index, pre_layer_norm, rotary_emb_dims,
+      epsilon, dropout_rate, is_test, dropout_implementation, act_method, trans_qkvw,
+      ring_id, gather_axis]
+  kernel:
+    func: [fused_multi_transformer_xpu]
+    param: [x, ln_scale, ln_bias, qkvw, qkvw_max, qkv_bias, out_linear_w, out_linear_wmax,
+      out_linear_bias, ffn_ln_scale, ffn_ln_bias, ffn1_weight, ffn1_weight_max, ffn1_bias,
+      ffn2_weight, ffn2_weight_max, ffn2_bias, cache_kv, pre_caches, rotary_pos_emb,
+      time_step, seq_lengths, src_mask, gather_index, pre_layer_norm, rotary_emb_dims,
+      epsilon, dropout_rate, is_test, dropout_implementation, act_method, trans_qkvw,
+      ring_id, gather_axis]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {fused_multi_transformer_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: fused_rotary_position_embedding
+  inputs:
+  - typename: Tensor
+    name: q
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: k
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: v
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: sin
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: cos
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out_q, optional: false, intermediate: false}
+  - {typename: Tensor, name: out_k, optional: true, intermediate: false}
+  - {typename: Tensor, name: out_v, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: FusedRopeInferMeta
+    param: [q, k, v, sin, cos]
+  kernel:
+    func: [fused_rotary_position_embedding]
+    param: [q, k, v, sin, cos]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [q]
+      to_complex_flag: [false]
+    dispatch: {fused_rotary_position_embedding: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: fused_rotary_position_embedding_grad
+- name: generate_sequence_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: DataType, name: dtype}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: GenerateSequenceXPUInferMeta
+    param: [x, dtype]
+  kernel:
+    func: [generate_sequence_xpu]
+    param: [x, dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {generate_sequence_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: multi_encoder_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: fc_weight
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: fc_weight_max
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: fc_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ln_scale
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: ln_bias
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: mask
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: seq_lod
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: max_seq_len
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: layer_num}
+  - {typename: bool, name: norm_before}
+  - {typename: int, name: hidden_dim}
+  - {typename: int, name: head_num}
+  - {typename: int, name: size_per_head}
+  - {typename: int, name: ffn_hidden_dim_scale}
+  - {typename: int, name: act_type}
+  - {typename: int, name: relative_type}
+  - {typename: int, name: slice_idx}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: x_fp16, optional: true, intermediate: false}
+  - {typename: Tensor, name: out_fp16, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: MultiEncoderXPUInferMeta
+    param: [x, fc_weight, fc_weight_max, fc_bias, ln_scale, ln_bias, mask, seq_lod,
+      max_seq_len, layer_num, norm_before, hidden_dim, head_num, size_per_head, ffn_hidden_dim_scale,
+      act_type, relative_type, slice_idx]
+  kernel:
+    func: [multi_encoder_xpu]
+    param: [x, fc_weight, fc_weight_max, fc_bias, ln_scale, ln_bias, mask, seq_lod,
+      max_seq_len, layer_num, norm_before, hidden_dim, head_num, size_per_head, ffn_hidden_dim_scale,
+      act_type, relative_type, slice_idx]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {multi_encoder_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: yolo_box_xpu
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x_max
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: grid
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: stride
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: anchor_grid
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: offset}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  - {typename: Tensor, name: out_max, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: YoloBoxXPUInferMeta
+    param: [x, x_max, grid, stride, anchor_grid, offset]
+  kernel:
+    func: [yolo_box_xpu]
+    param: [x, x_max, grid, stride, anchor_grid, offset]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {yolo_box_xpu: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
