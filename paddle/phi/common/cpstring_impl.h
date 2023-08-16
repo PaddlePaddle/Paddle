@@ -77,7 +77,8 @@ HOSTDEVICE static inline uint32_t swap32(uint32_t host_int) {
 }
 #endif
 
-#if PD_PSTRING_LITTLE_ENDIAN || (defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__))
+#if PD_PSTRING_LITTLE_ENDIAN || \
+    (defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__))
 #define PD_le32toh(x) x
 #else  // PD_PSTRING_LITTLE_ENDIAN
 #define PD_le32toh(x) swap32(x)
