@@ -2724,7 +2724,7 @@
   inputs :
     {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
   outputs :
-    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
+    {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
@@ -2901,6 +2901,8 @@
     {x : X, indices: Indices}
   outputs :
     out : Out
+  attrs :
+   padding : paddings
   int_array :
     output_size:
       data_type : int

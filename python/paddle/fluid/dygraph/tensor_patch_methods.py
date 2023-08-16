@@ -732,7 +732,7 @@ def monkey_patch_tensor():
             item = (item,)
 
         for slice_item in item:
-            if isinstance(slice_item, (list, np.ndarray, Variable)):
+            if isinstance(slice_item, (list, np.ndarray, Variable, range)):
                 return True
             elif isinstance(slice_item, slice):
                 if (
