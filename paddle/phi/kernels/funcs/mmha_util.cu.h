@@ -12,12 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/***************************************************************************************************
+ * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights
+ *reserved. SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *POSSIBILITY OF SUCH DAMAGE.
+ *
+ **************************************************************************************************/
+/*! \file
+    \brief Functor used by mmha kernel.
+*/
+
 #ifndef PADDLE_WITH_HIP
 
 #pragma once
-
-#ifndef MMHA_UTIL_CU_H_
-#define MMHA_UTIL_CU_H_
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define ENABLE_BF16
@@ -27,36 +59,14 @@
 #include <cuda_fp16.h>
 #include <float.h>
 #include <cub/cub.cuh>
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
-#include "paddle/fluid/operators/fused/attn_gemm.h"
-#include "paddle/fluid/operators/fused/fmha_ref.h"
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
-#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
-
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/phi/common/datatype_traits.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 namespace fusion {
 
 namespace {  // NOLINT
-namespace plat = paddle::platform;
-using float16 = plat::float16;
-using bfloat16 = plat::bfloat16;
 
 struct Float8_ {
   float2 x;
@@ -1706,6 +1716,5 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
 
 }  // namespace fusion
 }  // namespace phi
-#endif
 
 #endif  // PADDLE_WITH_HIP

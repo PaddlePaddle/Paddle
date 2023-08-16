@@ -3763,14 +3763,14 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& x,
                                         const MetaTensor& rotary_tensor,
                                         const MetaTensor& beam_cache_offset,
                                         const MetaTensor& qkv_out_scale,
-                                        const MetaTensor& out_linear_shift,
-                                        const MetaTensor& out_linear_smooth,
+                                        const MetaTensor& out_shift,
+                                        const MetaTensor& out_smooth,
                                         int seq_len,
                                         int rotary_emb_dims,
                                         const bool split_kv,
                                         const int head_kv,
                                         const bool use_neox_rotary_style,
-                                        const float out_linear_in_scale,
+                                        const float out_scale,
                                         const int quant_round_type,
                                         const float quant_max_bound,
                                         const float quant_min_bound,
@@ -3789,12 +3789,10 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& x,
   }
   int dim_head = x_dims[2];
 
-  if (sequence_lengths) {
-    out->set_dims({bsz, num_head, dim_head});
-  } else {
-    out->set_dims({bsz, 1, num_head, dim_head});
-  }
-  if (out_linear_in_scale > 0) {
+
+  out->set_dims({bsz, num_head, dim_head});
+
+  if (out_scale > 0) {
     out->set_dtype(DataType::INT8);
   } else {
     out->set_dtype(x_dtype);

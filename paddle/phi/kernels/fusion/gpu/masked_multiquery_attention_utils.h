@@ -12,7 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #ifndef PADDLE_WITH_HIP
+/***************************************************************************************************
+  * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights
+  *reserved. SPDX-License-Identifier: BSD-3-Clause
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions are met:
+  *
+  * 1. Redistributions of source code must retain the above copyright notice,
+  *this list of conditions and the following disclaimer.
+  *
+  * 2. Redistributions in binary form must reproduce the above copyright notice,
+  * this list of conditions and the following disclaimer in the documentation
+  * and/or other materials provided with the distribution.
+  *
+  * 3. Neither the name of the copyright holder nor the names of its
+  * contributors may be used to endorse or promote products derived from
+  * this software without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  *ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  *LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  *CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  *SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  *INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  *CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  *ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  *POSSIBILITY OF SUCH DAMAGE.
+  *
+  **************************************************************************************************/
+ /*! \file
+     \brief Template for mmha kernel.
+ */
+#ifndef PADDLE_WITH_HIP
 #pragma once
 
 #include "glog/logging.h"
@@ -271,9 +305,9 @@ inline __device__ void convert_from_float(float4 &dst, float4 src) {  // NOLINT
   dst = src;
 }
 
-inline __device__ void convert_from_float(plat::float16 &dst,  // NOLINT
+inline __device__ void convert_from_float(phi::float16 &dst,  // NOLINT
                                           float src) {
-  dst = static_cast<plat::float16>(src);
+  dst = static_cast<phi::float16>(src);
 }
 
 inline __device__ void convert_from_float(uint4 &dst, Float8_ src) {  // NOLINT
@@ -1009,8 +1043,8 @@ void fmqa_impl(const phi::GPUContext &dev_ctx,
           params, dev_ctx.stream(), load_func, store_func);
       break;
     default:
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
-          "Dim_head = %d is unsupport!", dim_head));
+      PADDLE_THROW(
+           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
 }
 
@@ -1284,3 +1318,5 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
 
 }  // namespace fusion
 }  // namespace phi
+
+#endif

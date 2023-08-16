@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def masked_multiquery_attention(
@@ -27,14 +26,14 @@ def masked_multiquery_attention(
     rotary_tensor=None,
     beam_cache_offset=None,
     qkv_out_scale=None,
-    out_linear_shift=None,
-    out_linear_smooth=None,
+    out_shift=None,
+    out_smooth=None,
     seq_len=1,
     rotary_emb_dims=0,
     kv_split=False,
     head_kv=1,
     use_neox_rotary_style=False,
-    out_linear_in_scale=-1,
+    out_scale=-1,
     quant_round_type=1,
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
@@ -70,8 +69,8 @@ def masked_multiquery_attention(
         cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`.
         rotary_tensor (Tensor, optional): The rotary_tensor tensor. the shape is `[batch\_size, 1, 1, sequence\_length, dim_head]`.
         qkv_out_scale (Tensor, optional): The qkv_out_scale tensor. the shape is `[3, num\_head, dim\_head]]`.
-        out_linear_shift (Tensor, optional): The out_linear_shift tensor.
-        out_linear_smooth (Tensor, optional): The out_linear_smooth tensor.
+        out_shift (Tensor, optional): The out_linear_shift tensor.
+        out_smooth (Tensor, optional): The out_linear_smooth tensor.
         beam_size (int, optional): The beam_size of beam search. Default 1.
         rotary_emb_dims (int, optional): The rotary_emb_dims. Default 0.
         kv_split(bool, optional): whether q and kv are splited. Default False.
@@ -79,7 +78,7 @@ def masked_multiquery_attention(
         mask_broadcast_num_heads (bool, optional): A flag indicating whether broadcast is needed of src_mask num_head dim or not. Default True.
         compute_bias (bool, optional): A flag indicating whether bias is computed or not. Default False.
         use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
-        out_linear_in_scale (float, optional): The out_linear_in_scale.
+        out_scale (float, optional): The out_linear_in_scale.
         quant_round_type (int, optional): The quant_round_type. Default 1.
         quant_max_bound (float, optional): The quant_max_bound. Default 127.0.
         quant_min_bound (float, optional): The quant_min_bound. Default -127.0.
@@ -121,14 +120,14 @@ def masked_multiquery_attention(
             rotary_tensor,
             beam_cache_offset,        
             qkv_out_scale,
-            out_linear_shift,
-            out_linear_smooth,
+            out_shift,
+            out_smooth,
             seq_len,
             rotary_emb_dims,
             kv_split,
             head_kv,
             use_neox_rotary_style,
-            out_linear_in_scale,
+            out_scale,
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
@@ -139,28 +138,28 @@ def masked_multiquery_attention(
     inputs = {}
     inputs['x'] = x
     inputs['cache_kv'] = cache_kv
-    if kv_input:
+    if kv_input is not None:
         inputs['kv_input'] = kv_input
-    if src_mask:
+    if src_mask is not None:
         inputs['src_mask'] = src_mask
-    if sequence_lengths:
+    if sequence_lengths is not None:
         inputs['sequence_lengths'] = sequence_lengths
-    if rotary_tensor:
+    if rotary_tensor is not None:
         inputs['rotary_tensor'] = rotary_tensor
     beam_cache_offset_flag = False
-    if beam_cache_offset:
+    if beam_cache_offset is not None:
         inputs['beam_cache_offset'] = beam_cache_offset
         beam_cache_offset_flag = True
     else:
         beam_cache_offset = helper.create_variable_for_type_inference(
             dtype="int"
         )
-    if qkv_out_scale:
+    if qkv_out_scale is not None:
         inputs['qkv_out_scale'] = qkv_out_scale
-    if out_linear_shift:
-        inputs['out_linear_shift'] = out_linear_shift
-    if out_linear_smooth:
-        inputs['out_linear_smooth'] = out_linear_smooth
+    if out_shift is not None:
+        inputs['out_shift'] = out_shift
+    if out_smooth is not None:
+        inputs['out_smooth'] = out_smooth
 
     outputs = {
         'out': out,
@@ -177,7 +176,7 @@ def masked_multiquery_attention(
             'kv_split': kv_split,
             'head_kv': head_kv,
             'use_neox_rotary_style': use_neox_rotary_style,
-            'out_linear_in_scale': out_linear_in_scale,
+            'out_scale': out_scale,
             'quant_round_type': quant_round_type,
             'quant_max_bound': quant_max_bound,
             'quant_min_bound': quant_min_bound,
@@ -185,6 +184,6 @@ def masked_multiquery_attention(
     )
     return (
         (out, cache_kv, beam_cache_offset)
-        if beam_cache_offset_flag
+        if beam_cache_offset_flag is not None
         else (out, cache_kv)
     )

@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 
 #include "paddle/phi/kernels/fusion/gpu/masked_multiquery_attention.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -32,24 +30,32 @@ void MMQAKernel(const Context& dev_ctx,
                 const paddle::optional<DenseTensor>& rotary_tensor,
                 const paddle::optional<DenseTensor>& beam_cache_offset,
                 const paddle::optional<DenseTensor>& qkv_out_scale,
-                const paddle::optional<DenseTensor>& out_linear_shift,
-                const paddle::optional<DenseTensor>& out_linear_smooth,
+                const paddle::optional<DenseTensor>& out_shift,
+                const paddle::optional<DenseTensor>& out_smooth,
                 int seq_len,
                 int rotary_emb_dims,
                 const bool split_kv,
                 const int head_kv,
                 const bool use_neox_rotary_style,
-                const float out_linear_in_scale,
+                const float out_scale,
                 const int quant_round_type,
                 const float quant_max_bound,
                 const float quant_min_bound,
                 DenseTensor* out,
                 DenseTensor* cache_kv_out,
                 DenseTensor* beam_cache_offset_out) {
+#ifndef PADDLE_WITH_HIP
   Masked_multiquery_attention_params<T> params;
   const auto& x_dims = x.dims();
   int bsz = x_dims[0];
-  int num_head = 0;
+  int cache_bsz = cache_kv.dims()[1];
+  int num_head = cache_kv.dims()[2];
+  int max_seq_len = cache_kv.dims()[3];
+  int dim_head = cache_kv.dims()[4];
+  int timestep = max_seq_len;
+  float inv_sqrt_dh = 1. / sqrt(dim_head);
+  bool mask_broadcast_num_heads = true;
+
   if (split_kv) {
     num_head = x_dims[1];
   } else {
@@ -60,7 +66,7 @@ void MMQAKernel(const Context& dev_ctx,
   } else {
     params.cum_offsets = nullptr;
   }
-  bool mask_broadcast_num_heads = true;
+  
   if (src_mask) {
     if (src_mask->dims()[1] == 1) {
       mask_broadcast_num_heads = true;
@@ -74,23 +80,21 @@ void MMQAKernel(const Context& dev_ctx,
           num_head,
           src_mask->dims()[1]));
     }
+    params.attn_mask = src_mask->data<T>();
+    params.mask_length = src_mask->dims()[3];
    }
-  int dim_head = x_dims[2];
-  int timestep = src_mask->dims()[3] - 1;
-  int cache_bsz = cache_kv.dims()[1];
-  int max_seq_len = cache_kv.dims()[3];
-  float inv_sqrt_dh = 1. / sqrt(dim_head);
 
-  if (out_linear_in_scale > 0) {
+
+  if (out_scale > 0) {
     dev_ctx.template Alloc<int8_t>(out);
   } else {
     dev_ctx.template Alloc<T>(out);
   }
-  params.attn_mask = src_mask->data<T>();
+  
   params.mask_broadcast_num_heads = mask_broadcast_num_heads;
   params.cache_kv = const_cast<T*>(cache_kv_out->data<T>());
   params.neox_rotary_style = use_neox_rotary_style;
-  params.mask_length = src_mask->dims()[3];
+  
 
   // params.mqa = mqa;
   if (sequence_lengths) {
@@ -105,6 +109,7 @@ void MMQAKernel(const Context& dev_ctx,
   if (beam_cache_offset) {
     params.beam_cache_offset = beam_cache_offset->data<int>();
     params.beam_width = beam_cache_offset->dims()[1];
+    timestep = src_mask->dims()[3] - 1;
   }
 
   params.add_qkv_bias = false;
@@ -118,18 +123,18 @@ void MMQAKernel(const Context& dev_ctx,
   params.rotary_emb_dims = rotary_emb_dims;
   params.head_kv = head_kv;
   params.split_kv = split_kv;
-  if (out_linear_shift) {
+  if (out_shift) {
     DispatchFMQA<T>(dev_ctx,
                     x,
-                    *(out_linear_shift.get_ptr()),
-                    *(out_linear_smooth.get_ptr()),
+                    *(out_shift.get_ptr()),
+                    *(out_smooth.get_ptr()),
                     params,
                     num_head,
                     dim_head,
                     out,
                     kv_input.get_ptr(),
                     qkv_out_scale.get_ptr(),
-                    out_linear_in_scale,
+                    out_scale,
                     quant_round_type,
                     quant_max_bound,
                     quant_min_bound);
@@ -142,20 +147,31 @@ void MMQAKernel(const Context& dev_ctx,
                     out,
                     kv_input.get_ptr(),
                     qkv_out_scale.get_ptr(),
-                    out_linear_in_scale,
+                    out_scale,
                     quant_round_type,
                     quant_max_bound,
                     quant_min_bound);
   }
+#endif
 }
 
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(masked_multiquery_attention,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::fusion::MMQAKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+
+#if CUDA_VERSION >= 11000
+ PD_REGISTER_KERNEL(masked_multiquery_attention,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::fusion::MMQAKernel,
+                    float,
+                    phi::dtype::float16,
+                    phi::dtype::bfloat16) {}
+ #else
+ PD_REGISTER_KERNEL(masked_multiquery_attention,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::fusion::MMQAKernel,
+                    float,
+                    phi::dtype::float16) {}
+ #endif
