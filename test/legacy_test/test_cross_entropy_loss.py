@@ -24,6 +24,18 @@ from paddle.fluid import Program, program_guard
 
 
 def label_smooth(label, C, epsilon, is_onehot=True):
+    """
+    Smooths the labels, commonly used in machine learning and deep learning to address label noise issues.
+
+    Args:
+        label: Labels, of type np.ndarray, with shape (batch_size, C)
+        C: Number of classes
+        epsilon: Smoothing factor, should be greater than or equal to 0 and less than or equal to 1
+        is_onehot: Whether the labels are in one-hot encoding, default is True
+
+    Returns:
+        smooth_labels: Smoothed labels, of type np.ndarray, with the same shape as label
+    """
     assert epsilon >= 0.0 and epsilon <= 1.0, "epsilon should be in [0.0, 1.0]"
     confidence = 1.0 - epsilon
 
