@@ -32,6 +32,12 @@ TensorDistAttr GetInferedDistAttr(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const bool trans_axis);
 
+void FillMatmulOperandNotation(const int x_ndim,
+                               const int y_ndim,
+                               std::string* x_axes,
+                               std::string* y_axes,
+                               std::string* out_axes);
+
 class MatmulSPMDRule : public SPMDRuleBase {
  public:
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>

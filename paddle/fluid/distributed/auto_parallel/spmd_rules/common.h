@@ -64,6 +64,11 @@ class SPMDRuleBase {
                 const std::vector<DistTensorSpec>& output_specs,
                 const paddle::framework::AttributeMap& attrs);
 
+  // deprecated, to be remove in future
+  virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+  InferBackward(const std::vector<DistTensorSpec>& output_specs,
+                const paddle::framework::AttributeMap& attrs);
+
   template <typename T>
   inline const T ExtractAttr(
       const std::string& name,
