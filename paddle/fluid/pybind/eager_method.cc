@@ -1138,10 +1138,8 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "The `get_tensor()` method of (Dist)Tensor is not supported in the "
-        "current "
-        "PaddlePaddle, please recompile and installPaddlePaddle with the "
-        "option "
-        "of `WITH_DISTRIBUTE=ON`."));
+        "current PaddlePaddle, please recompile and installPaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
     RETURN_PY_NONE

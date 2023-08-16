@@ -111,9 +111,8 @@ void EmptyDistTensorInitializer(
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "The initialization of empty (Dist)Tensor is not supported in the "
-      "current "
-      "PaddlePaddle, please recompile and install PaddlePaddle with the option "
-      "of `WITH_DISTRIBUTE=ON`."));
+      "current PaddlePaddle, please recompile and install PaddlePaddle "
+      "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
 }
 
