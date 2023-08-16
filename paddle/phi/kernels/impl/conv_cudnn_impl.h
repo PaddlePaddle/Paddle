@@ -19,9 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
-#elif defined(PADDLE_WITH_MUSA)
-// TODO
-#else
+#elif defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
