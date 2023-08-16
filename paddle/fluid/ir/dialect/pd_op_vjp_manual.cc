@@ -115,10 +115,11 @@ std::vector<std::vector<ir::OpResult>> AddOp::Vjp(
   std::vector<std::vector<ir::OpResult>> res(2, std::vector<ir::OpResult>(1));
   for (size_t i = 0; i < 2; ++i) {
     if (tensor_res[i][0].defined()) {
-      res[i][0] = std::static_pointer_cast<primitive::experimental::StaticTensor>(
-                      tensor_res[i][0].impl())
-                      ->getValue()
-                      .dyn_cast<ir::OpResult>();
+      res[i][0] =
+          std::static_pointer_cast<primitive::experimental::StaticTensor>(
+              tensor_res[i][0].impl())
+              ->getValue()
+              .dyn_cast<ir::OpResult>();
     }
   }
   return res;
@@ -140,10 +141,11 @@ std::vector<std::vector<ir::OpResult>> Add_Op::Vjp(
   std::vector<std::vector<ir::OpResult>> res(2, std::vector<ir::OpResult>(1));
   for (size_t i = 0; i < 2; ++i) {
     if (tensor_res[i][0].defined()) {
-      res[i][0] = std::static_pointer_cast<primitive::experimental::StaticTensor>(
-                      tensor_res[i][0].impl())
-                      ->getValue()
-                      .dyn_cast<ir::OpResult>();
+      res[i][0] =
+          std::static_pointer_cast<primitive::experimental::StaticTensor>(
+              tensor_res[i][0].impl())
+              ->getValue()
+              .dyn_cast<ir::OpResult>();
     }
   }
   return res;

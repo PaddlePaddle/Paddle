@@ -25,7 +25,7 @@ namespace primitive {
 namespace experimental {
 
 class StaticTensor : public phi::ExtendedTensor,
-                   public phi::TypeInfoTraits<phi::TensorBase, StaticTensor> {
+                     public phi::TypeInfoTraits<phi::TensorBase, StaticTensor> {
  public:
   explicit StaticTensor(ir::Value value)
       : value_(value),
