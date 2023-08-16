@@ -26,13 +26,15 @@ limitations under the License. */
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
-#include "paddle/phi/distributed/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
 namespace phi {
 namespace distributed {
+
+using SpmdInfo =
+    std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>;
 
 class InferSpmdContext {
  public:
@@ -108,6 +110,26 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
       return infer_spmd_fn(args...);
     }
   };
+};
+
+// SpmdRuleFactory manage the spmd rules and cache the propagate results
+// TODO(chenweihang): Add spmd caching impl later
+class SpmdRuleFactory {
+ public:
+  static SpmdRuleFactory& Instance();
+
+  bool ContainsInferSpmdFn(const std::string& kernel_name) const;
+
+  void InsertInferSpmdFn(std::string kernel_name, InferSpmdFn fn);
+
+  const InferSpmdFn& GetInferSpmdFn(const std::string& kernel_name) const;
+
+ private:
+  SpmdRuleFactory() = default;
+
+  paddle::flat_hash_map<std::string, InferSpmdFn> infer_spmd_fn_map_;
+
+  DISABLE_COPY_AND_ASSIGN(SpmdRuleFactory);
 };
 
 }  // namespace distributed

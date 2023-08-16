@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/distributed/binary.h"
 
+#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/infermeta/distributed/utils.h"
 
 namespace phi {

@@ -16,15 +16,12 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace distributed {
 
 // SPMD info is the special meta info of DIstTensor
-// Since the auto-parallel InferSPMD also infer and update the dist attr
-// of the input, the input also needs to be changeable
 SpmdInfo MatmulInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          bool trans_x,
