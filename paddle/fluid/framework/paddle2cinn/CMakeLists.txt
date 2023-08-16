@@ -6,8 +6,7 @@ pass_library(
   subgraph_detector
   cinn_compiler
   phi
-  enforce
-  gflags)
+  enforce)
 
 pass_library(cinn_zero_tensor_trick_pass base)
 
