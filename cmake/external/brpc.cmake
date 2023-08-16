@@ -14,16 +14,27 @@
 
 include(ExternalProject)
 
-find_package(OpenSSL REQUIRED)
+set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib .so)
+set(REFERENCE_LIBSSL_STATIC_LIBRARY_PATH /usr/lib /usr/local)
+find_library(
+  SSL_LIBRARY
+  NAMES libssl.a
+  PATHS ${REFERENCE_LIBSSL_STATIC_LIBRARY_PATH})
 
-message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
-message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
+set(REFERENCE_LIBCRYPTO_STATIC_LIBRARY_PATH /usr/lib /usr/local)
+find_library(
+  CRYPTO_LIBRARY
+  NAMES libcrypto.a
+  PATHS ${REFERENCE_LIBCRYPTO_STATIC_LIBRARY_PATH})
+
+message(STATUS "ssl:" ${SSL_LIBRARY})
+message(STATUS "crypto:" ${CRYPTO_LIBRARY})
 
 add_library(ssl SHARED IMPORTED GLOBAL)
-set_property(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
+set_property(TARGET ssl PROPERTY IMPORTED_LOCATION ${SSL_LIBRARY})
 
 add_library(crypto SHARED IMPORTED GLOBAL)
-set_property(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
+set_property(TARGET crypto PROPERTY IMPORTED_LOCATION ${CRYPTO_LIBRARY})
 
 set(BRPC_PREFIX_DIR ${THIRD_PARTY_PATH}/brpc)
 set(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
@@ -40,6 +51,22 @@ include_directories(${BRPC_INCLUDE_DIR})
 set(BRPC_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/brpc)
 set(BRPC_URL https://github.com/apache/brpc.git)
 set(BRPC_TAG 1.4.0)
+
+if(NOT EXISTS ${BRPC_SOURCE_DIR})
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${BRPC_TAG} ${BRPC_URL}
+                          ${BRPC_SOURCE_DIR})
+else()
+  # check git tag
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} -C ${BRPC_SOURCE_DIR} describe --tags
+    OUTPUT_VARIABLE CURRENT_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(NOT ${CURRENT_TAG} STREQUAL ${BRPC_TAG})
+    message(STATUS "Checkout brpc to ${BRPC_TAG}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} -C ${BRPC_SOURCE_DIR} checkout -q
+                            ${BRPC_TAG})
+  endif()
+endif()
 
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
 set(prefix_path
