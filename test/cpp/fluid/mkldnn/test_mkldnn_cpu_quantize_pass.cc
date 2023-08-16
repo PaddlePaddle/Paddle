@@ -106,7 +106,7 @@ TEST(cpuQuantizePass, ConvReLU6) {
   for (const auto& pass : PreGraphPasses) {
     auto pass_ = paddle::framework::ir::PassRegistry::Instance().Get(pass);
     if (pass == "cpu_quantize_pass") {
-      pass_->Set("quant_var_scales", scales.get());
+      pass_->Set("quant_var_scales", scales);
     }
     graph.reset(pass_->Apply(graph.release()));
   }
