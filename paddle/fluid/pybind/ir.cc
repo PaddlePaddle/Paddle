@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
@@ -102,18 +103,23 @@ void BindProgram(py::module *m) {
           "__init__",
           [](Program &self) { new (&self) Program(ir::IrContext::Instance()); })
       .def("__str__",
-           [](Program &self) {
+           [](const std::shared_ptr<Program> &self) {
              std::ostringstream print_stream;
-             self.Print(print_stream);
+             self->Print(print_stream);
              return print_stream.str();
            })
-      .def("parameters_num", &Program::parameters_num)
-      .def("block",
-           py::overload_cast<>(&Program::block),
-           return_value_policy::reference)
-      .def("block",
-           py::overload_cast<>(&Program::block, py::const_),
-           return_value_policy::reference);
+      .def("parameters_num",
+           [](const std::shared_ptr<Program> &self) {
+             return self->parameters_num();
+           })
+      .def(
+          "block",
+          [](std::shared_ptr<Program> self) { return self->block(); },
+          return_value_policy::reference)
+      .def(
+          "block",
+          [](const std::shared_ptr<Program> &self) { return self->block(); },
+          return_value_policy::reference);
 }
 
 void BindBlock(py::module *m) {
@@ -390,7 +396,14 @@ void BindUtils(pybind11::module *m) {
          []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
-  m->def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram, R"DOC(
+  m->def(
+      "translate_to_new_ir",
+      [](const ::paddle::framework::ProgramDesc &legacy_program) {
+        std::shared_ptr<Program> ret =
+            std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
+        return ret;
+      },
+      R"DOC(
         Convert Fluid Program to New IR Program.
 
         Args:
