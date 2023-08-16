@@ -3661,6 +3661,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& v,
                         const MetaTensor& sin,
                         const MetaTensor& cos,
+                        bool use_neox_rotary_style,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
