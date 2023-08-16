@@ -36,15 +36,16 @@ Tensor tanh_grad<StaticTensor>(const Tensor& out, const Tensor& grad_out) {
 
   ir::OpResult op_res = paddle::dialect::tanh_grad(out_res, grad_out_res);
 
-  return Tensor(std::make_shared<primitive::experimental::StaticTensor>(op_res));
+  return Tensor(
+      std::make_shared<primitive::experimental::StaticTensor>(op_res));
 }
 
 template <>
 Tensor mean_grad<StaticTensor>(const Tensor& x,
-                             const Tensor& out_grad,
-                             const IntArray& axis,
-                             bool keepdim,
-                             bool reduce_all) {
+                               const Tensor& out_grad,
+                               const IntArray& axis,
+                               bool keepdim,
+                               bool reduce_all) {
   ir::OpResult x_res = std::static_pointer_cast<StaticTensor>(x.impl())
                            ->getValue()
                            .dyn_cast<ir::OpResult>();
@@ -56,14 +57,15 @@ Tensor mean_grad<StaticTensor>(const Tensor& x,
   ir::OpResult op_res = paddle::dialect::mean_grad(
       x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
 
-  return Tensor(std::make_shared<primitive::experimental::StaticTensor>(op_res));
+  return Tensor(
+      std::make_shared<primitive::experimental::StaticTensor>(op_res));
 }
 
 template <>
 std::tuple<Tensor, Tensor> add_grad<StaticTensor>(const Tensor& x,
-                                                const Tensor& y,
-                                                const Tensor& out_grad,
-                                                int axis) {
+                                                  const Tensor& y,
+                                                  const Tensor& out_grad,
+                                                  int axis) {
   ir::OpResult x_res = std::static_pointer_cast<StaticTensor>(x.impl())
                            ->getValue()
                            .dyn_cast<ir::OpResult>();
