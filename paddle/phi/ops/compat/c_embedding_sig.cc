@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/dialect/shape/shape_dialect.h"
-#include "paddle/ir/dialect/shape/shape_op.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace ir {
-namespace dialect {
-ShapeDialect::ShapeDialect(IrContext *context)
-    : Dialect(name(), context, TypeId::get<ShapeDialect>()) {
-  initialize();
+namespace phi {
+
+KernelSignature CEmbeddingGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("c_embedding_grad",
+                         {"W", "Ids", "Out@GRAD"},
+                         {"start_index"},
+                         {"W@GRAD"});
 }
 
-void ShapeDialect::initialize() { RegisterOps<SymbolicDim>(); }
+}  // namespace phi
 
-}  // namespace dialect
-}  // namespace ir
-
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::ShapeDialect)
+PD_REGISTER_ARG_MAPPING_FN(c_embedding_grad,
+                           phi::CEmbeddingGradOpArgumentMapping);

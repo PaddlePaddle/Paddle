@@ -605,9 +605,7 @@ void BuildRuntimeContext(
     auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
     if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
         type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
-      std::vector<paddle::framework::Variable*> vec_tmp = {var};
-
-      runtime_ctx->outputs[legacy_arg_name] = vec_tmp;
+      runtime_ctx->outputs[legacy_arg_name] = {var};
     } else if (type.isa<ir::VectorType>()) {
       auto var_ref = var->Get<paddle::framework::VariableRefArray>();
       std::vector<paddle::framework::Variable*> vec_tmp;
