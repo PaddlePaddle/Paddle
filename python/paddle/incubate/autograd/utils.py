@@ -56,11 +56,14 @@ def prim_enabled():
             >>> paddle.enable_static()
             >>> enable_prim()
 
-            >>> print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
             >>> disable_prim()
 
-            >>> print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     return prim_option.get_status()
 
@@ -84,7 +87,9 @@ def enable_prim():
             >>> paddle.enable_static()
             >>> enable_prim()
 
-            >>> print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
+
     """
     prim_option.set_status(True)
 
@@ -108,11 +113,14 @@ def disable_prim():
             >>> paddle.enable_static()
             >>> enable_prim()
 
-            >>> print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
             >>> disable_prim()
 
-            >>> print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     prim_option.set_status(False)
 
