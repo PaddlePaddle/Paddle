@@ -188,18 +188,17 @@ class OpCall {
   OpCall(const Op* op,
          const std::vector<const Tensor*>& inputs,
          const std::vector<const Tensor*>& outputs)
-      : op_type_name_(op->name()), inputs_(inputs), outputs_(outputs),
+      : op_name_(op->name()), inputs_(inputs), outputs_(outputs),
         attributes_(op->attribute()) {}
 
-  const std::string& name() const { return op_type_name_; }
+  const std::string& name() const { return op_name_; }
 
   const std::vector<const Tensor*>& inputs() const { return inputs_; }
 
   const std::vector<const Tensor*>& outputs() const { return outputs_; }
 
  private:
-  // const Op* op_;
-  std::string op_type_name_;
+  std::string op_name_;
   std::vector<const Tensor*> inputs_;
   std::vector<const Tensor*> outputs_;
   std::unordered_map<std::string, Attribute> attributes_;
