@@ -1393,6 +1393,7 @@ foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
 endforeach()
 
 set(STRIED_TESTS
+    test_bucketize_api
     test_complex_getitem
     test_complex_grad_accumulated
     test_complex_simplenet
@@ -1417,7 +1418,8 @@ set(STRIED_TESTS
     test_unbind_op
     test_unsqueeze_op
     test_unsqueeze2_op
-    test_var_base)
+    test_var_base
+    test_zero_dim_tensor)
 
 foreach(STRIED_TEST ${STRIED_TESTS})
   py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
