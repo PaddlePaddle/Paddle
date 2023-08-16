@@ -376,13 +376,14 @@ bool FindFlag(const std::string& name) {
   return FlagRegistry::Instance()->HasFlag(name);
 }
 
-void SetFlagsFromEnv(const std::vector<std::string>& envs, bool error_fatal) {
+void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal) {
   bool success = true;
-  for (const std::string& env_var_name : envs) {
+  for (const std::string& flag_name : flags) {
+    std::string env_var_name = std::string("FLAGS_") + flag_name;
     std::string env_var_value;
     if (GetValueFromEnv(env_var_name, &env_var_value)) {
       success =
-          FlagRegistry::Instance()->SetFlagValue(env_var_name, env_var_value);
+          FlagRegistry::Instance()->SetFlagValue(flag_name, env_var_value);
     } else if (error_fatal) {
       LOG_FLAG_ERROR("environment variable \"" + env_var_name +
                      "\" is not set.");
@@ -474,16 +475,16 @@ void ParseCommandLineFlags(int* pargc, char*** pargv) {
     if (name == "fromenv" || name == "tryfromenv") {
       // Value of --fromenv or --tryfromenv should be
       // a comma separated list of env var names.
-      std::vector<std::string> env_var_names;
+      std::vector<std::string> env_flag_names;
       for (size_t start_pos = 0, end_pos = 0; end_pos != std::string::npos;
            start_pos = end_pos + 1) {
         end_pos = value.find(',', start_pos);
-        env_var_names.push_back(value.substr(start_pos, end_pos - start_pos));
+        env_flag_names.push_back(value.substr(start_pos, end_pos - start_pos));
       }
       if (name == "fromenv") {
-        SetFlagsFromEnv(env_var_names, true);
+        SetFlagsFromEnv(env_flag_names, true);
       } else {
-        SetFlagsFromEnv(env_var_names, false);
+        SetFlagsFromEnv(env_flag_names, false);
       }
       continue;
     }
