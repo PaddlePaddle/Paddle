@@ -213,9 +213,9 @@ def compute_fbank_matrix(
 
             >>> import paddle
 
-            >>> n_mfcc = 23
-            >>> n_mels = 51
-            >>> paddle_dct = paddle.audio.functional.create_dct(n_mfcc, n_mels)
+            >>> sr = 23
+            >>> n_fft = 51
+            >>> paddle_dct = paddle.audio.functional.compute_fbank_matrix(sr, n_fft)
     """
 
     if f_max is None:
