@@ -280,7 +280,7 @@ def run_check():
 
     try:
         if len(device_list) > 1:
-            if use_custom is True:
+            if use_custom:
                 import os
 
                 os.environ['PADDLE_DISTRI_BACKEND'] = "xccl"

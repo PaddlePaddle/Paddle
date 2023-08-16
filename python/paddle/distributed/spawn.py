@@ -110,10 +110,8 @@ def _get_default_nprocs():
         return core.get_xpu_device_count()
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
-    elif 'npu' in device:
-        return core.get_custom_device_count('npu')
-    elif 'mlu' in device:
-        return core.get_custom_device_count('mlu')
+    elif device in core.get_available_custom_device():
+        return core.get_custom_device_count(device.split(":")[0])
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
@@ -130,7 +128,7 @@ def _get_default_backend():
         return 'bkcl'
     elif 'cpu' in device:
         return 'gloo'
-    elif 'npu' or 'mlu' in device:
+    elif device in core.get_available_custom_device():
         return 'xccl'
     else:
         raise RuntimeError(
