@@ -20,6 +20,9 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 namespace phi {
+
+class DenseTensorUtils;
+
 namespace distributed {
 
 using auto_parallel::TensorDistAttr;
@@ -116,6 +119,8 @@ class DistTensor final
   const Place& place() const override;
 
  private:
+  friend class phi::DenseTensorUtils;
+
   // The global dimensions(shape)
   DDim dims_;
   // The distributed attributes

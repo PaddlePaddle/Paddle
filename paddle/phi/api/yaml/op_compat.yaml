@@ -429,6 +429,12 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : c_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -1230,6 +1236,10 @@
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
 - op : grad_add
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -2714,7 +2724,7 @@
   inputs :
     {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
   outputs :
-    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
+    {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
@@ -2891,6 +2901,8 @@
     {x : X, indices: Indices}
   outputs :
     out : Out
+  attrs :
+   padding : paddings
   int_array :
     output_size:
       data_type : int

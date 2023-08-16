@@ -49,7 +49,9 @@ namespace translator {
 
 namespace {
 
-using ResultIdx = size_t;
+using IdxInOp = size_t;
+using IdxInVector = size_t;
+using ResultIdx = std::tuple<IdxInOp, IdxInVector>;
 using OpDesc = paddle::framework::OpDesc;
 using BlockDesc = paddle::framework::BlockDesc;
 using VarDesc = paddle::framework::VarDesc;
@@ -325,18 +327,15 @@ void OpTranscriber::InsertSliceOperationForInput(
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
-    auto& name = n.first;
     auto& args = n.second;
 
     for (const auto& arg_name : args) {
       bool check =
-          param_map->count(arg_name) != 0 || !yaml_input_set.count(arg_name);
-      IR_ENFORCE(check,
-                 "arg %s.%s as input should be exists before prasing %s",
-                 name,
-                 arg_name,
-                 op_desc.Type());
-      auto defining_info = (*param_map)[arg_name];
+          param_map->count(arg_name) != 0 && !yaml_input_set.count(arg_name);
+      if (!check) {
+        continue;
+      }
+      auto defining_info = param_map->at(arg_name);
       if (defining_info.generated_by_vector) {
         InsertSliceOperationForTarget(
             ctx, param_map, program, defining_info, arg_name);
@@ -391,7 +390,8 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       }
     }
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
-             << legacy_input_name << " " << legacy_input_vars.size();
+             << legacy_input_name << " " << legacy_input_vars.size() << "["
+             << legacy_input_vars << "]";
 
     if (legacy_input_vars.empty() && mutable_attributes != nullptr &&
         mutable_attributes->count(info.name) != 0) {
@@ -507,7 +507,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
         ir::Type translated_var_type =
             type_translator[var->GetType()](ctx, *var);
         op_output_types.push_back(translated_var_type);
-        arg_to_idx[var->Name()] = cur_output_idx;
+        arg_to_idx[var->Name()] = {cur_output_idx, 0};
         continue;
       }
     }
@@ -535,7 +535,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
 
       ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
 
-      arg_to_idx[var_name] = cur_output_idx;
+      arg_to_idx[var_name] = {cur_output_idx, 0};
       op_output_types.push_back(translated_var_type);
 
       // if src type is Vector<Tesnor>
@@ -544,10 +544,12 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                << "[" << op_desc.Type() << "]" << info.name << " :"
                << info.type_name << " var: " << legacy_output_name;
       std::vector<ir::Type> types;
-      for (const auto& var_name : legacy_output_vars) {
+      for (IdxInVector idx_in_vec = 0; idx_in_vec < legacy_output_vars.size();
+           idx_in_vec++) {
+        const auto& var_name = legacy_output_vars[idx_in_vec];
         if (var_name == kEmptyVarName) {
           types.emplace_back(nullptr);
-          arg_to_idx[var_name] = cur_output_idx;
+          arg_to_idx[var_name] = {cur_output_idx, idx_in_vec};
           continue;
         }
         VarDesc* var = block->FindVarRecursive(var_name);
@@ -557,7 +559,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
         ir::Type translated_var_type =
             type_translator[var->GetType()](ctx, *var);
         types.push_back(translated_var_type);
-        arg_to_idx[var_name] = cur_output_idx;
+        arg_to_idx[var_name] = {cur_output_idx, idx_in_vec};
       }
       ir::Type vec_type = ir::VectorType::get(ctx, types);
       op_output_types.push_back(vec_type);
@@ -613,45 +615,16 @@ void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
                                           const OpDesc& op_desc,
                                           ir::Operation* operation,
                                           const OpOutputMapping& arg_to_idx) {
-  for (const auto& n : op_desc.Outputs()) {
-    auto& name = n.first;
+  for (const auto& [arg_name, idx] : arg_to_idx) {
+    const auto& [idx_in_op, idx_in_vec] = idx;
     VLOG(10) << "[output recording]"
-             << "[" << op_desc.Type() << "]" << name;
-    const auto& args = n.second;
-    size_t idx_in_vector = 0;
-    for (const auto& arg_name : args) {
-      if (arg_name == kEmptyVarName) {
-        idx_in_vector++;
-        continue;
-      }
-      auto idx_iter = arg_to_idx.find(arg_name);
-      if (idx_iter == arg_to_idx.end()) {
-        VLOG(4) << "[output recording]"
-                << "[" << op_desc.Type() << "][skip]" << arg_name;
-        continue;
-      }
-      auto idx = idx_iter->second;
-      VLOG(10) << "[output recording]"
-               << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
+             << "[" << op_desc.Type() << "]" << arg_name << " " << idx_in_op
+             << " " << idx_in_vec;
+    ir::OpResult value = operation->result(idx_in_op);
+    bool generated_by_vector = value.type().isa<ir::VectorType>();
 
-      ir::OpResult value = operation->result(idx);
-      bool generated_by_vector = value.type().isa<ir::VectorType>();
-
-      // Specially process TensorArray, this because we cannot distinguish it
-      // with Vector<DenseTensor> by other conditions but we cannot support it
-      // like Vector<DenseTensor>
-      if (args.size() == 1) {
-        VarDesc* var = op_desc.Block()->FindVarRecursive(args[0]);
-        if (var->GetType() ==
-            paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
-          generated_by_vector = false;
-        }
-      }
-
-      (*param_map)[arg_name] = VariableDefiningInfo(
-          value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
-      idx_in_vector++;
-    }
+    (*param_map)[arg_name] = VariableDefiningInfo(
+        value, generated_by_vector, generated_by_vector ? idx_in_vec : -1);
   }
 }
 
@@ -1176,6 +1149,25 @@ struct AddNOpTranscriber : public OpTranscriber {
   }
 };
 
+struct TrilAndTriuOpTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    bool lower = PADDLE_GET_CONST(bool, op_desc.GetAttr("lower"));
+    std::string target_op_name = "";
+    if (lower) {
+      target_op_name = "pd.tril";
+    } else {
+      target_op_name = "pd.triu";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op tril_triu should have corresponding OpInfo pd.tril or pd.triu.");
+    }
+
+    return op_info;
+  }
+};
+
 ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
                                           TranslationContext* param_map,
                                           const OpDesc& op_desc,
@@ -1355,8 +1347,8 @@ struct ElementwiseTranscriber : public OpTranscriber {
       for (int i = 0; i <= append_size; i++) {
         y_new_shape.push_back(1);
       }
-      dialect::Reshape_Op reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      dialect::ReshapeOp reshape_op =
+          builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
       VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
               << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
@@ -1371,11 +1363,23 @@ struct ElementwiseTranscriber : public OpTranscriber {
       auto concat_op =
           builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
       auto y_new_shape = concat_op.out();
-      auto reshape_op =
-          builder.Build<dialect::Reshape_Op>(y_value, y_new_shape);
+      auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
       y_new = reshape_op.out();
     }
     return {x_value, y_new};
+  }
+};
+
+struct GradAddOpTranscriber : public ElementwiseTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    const std::string& target_op_name = "pd.add";
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+    }
+
+    return op_info;
   }
 };
 
@@ -1408,9 +1412,10 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     if (idx_iter == arg_to_idx.end()) {
       IR_THROW("op[%s] should have got its y_grad", op_desc.Type());
     }
-    auto idx = idx_iter->second;
+    auto [idx_in_op, idx_in_vec] = idx_iter->second;
     VLOG(10) << "[output recording]"
-             << "[" << op_desc.Type() << "]" << y_grad_var_name << " " << idx;
+             << "[" << op_desc.Type() << "]" << y_grad_var_name << " "
+             << idx_in_op << " " << idx_in_vec;
 
     auto y_names = op_desc.Input("Y", true);
     auto y_name = y_names[0];
@@ -1434,9 +1439,9 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
-    ir::OpResult value = operation->result(idx);
+    ir::OpResult value = operation->result(idx_in_op);
     ir::Builder builder(ctx, operation->GetParent());
-    auto reshape_op = builder.Build<dialect::Reshape_Op>(value, y_shape);
+    auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
     (*param_map)[y_grad_var_name] =
         VariableDefiningInfo(reshape_op.out(), false, -1);
   }
@@ -1450,6 +1455,7 @@ OpTranslator::OpTranslator() {
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
@@ -1460,6 +1466,7 @@ OpTranslator::OpTranslator() {
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
+  special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable

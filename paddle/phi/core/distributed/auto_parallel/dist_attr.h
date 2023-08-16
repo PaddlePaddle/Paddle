@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
@@ -32,18 +33,6 @@ namespace distributed {
 namespace auto_parallel {
 
 constexpr const char* kDefault = "default";
-
-enum class ReduceType : std::uint8_t {
-  SUM = 0,
-  AVG,
-  MAX,
-  MIN,
-  PRODUCT,
-  ANY,
-  ALL
-};
-constexpr const char* ReduceTypeStrings[] = {
-    "SUM", "AVG", "MAX", "MIN", "PRODUCT", "ANY", "ALL"};
 
 class TensorDistAttr {
  public:
@@ -81,7 +70,7 @@ class TensorDistAttr {
 
   // by each dim
   void set_partial_status(const std::vector<int64_t>& dims,
-                          const ReduceType& type = ReduceType::SUM);
+                          const ReduceType& type = ReduceType::kRedSum);
   // all
   void clean_partial_status();
 

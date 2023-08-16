@@ -62,7 +62,10 @@ void BuildRuntimeContext(
 std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name,
+    const paddle::framework::Scope* scope);
 
 template <typename Context,
           typename InType,
