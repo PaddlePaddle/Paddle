@@ -427,7 +427,6 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     }
 
     auto op_desc = local_program.MutableBlock(0)->AppendOp();
-    std::cerr << "shadow output " << name << std::endl;
     op_desc->SetType("shadow_output");
     op_desc->SetAttr("name", name);
     op_desc->SetInput("x", {name});
@@ -439,7 +438,6 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
   program_translator.Translate();
 
-  program->Print(std::cout);
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
   ir_res->Print(std::cout);
@@ -471,7 +469,6 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
 
   for (auto &var_name : set_parameter_names) {
     if (scope->FindVar(var_name)) {
-      std::cerr << "var name " << var_name << std::endl;
       auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
       phi::AllocationType place(phi::AllocationType::UNDEFINED);
       if (tensor.initialized()) {
@@ -515,9 +512,9 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
                                                            program.get());
   program_translator.Translate();
 
-  program->Print(std::cout);
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
 
+  res->Print(std::cout);
   return res;
 }
 
