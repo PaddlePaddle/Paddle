@@ -93,6 +93,7 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
 
   return std::make_shared<DistTensor>(
       std::make_shared<DenseTensor>(out_physical_tensor_cur_rank),
+      out_physical_tensor_cur_rank.meta(),
       out_dist_attr);
 }
 

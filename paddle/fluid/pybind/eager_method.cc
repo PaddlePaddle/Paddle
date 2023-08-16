@@ -249,6 +249,27 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            place,
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
+#ifdef PADDLE_WITH_DISTRIBUTE
+    } else if (self->tensor.is_dist_tensor()) {
+      // TODO(chenweihang): deal with DistTensor as local DenseTensor now,
+      // if the local DenseTensor is shard or partial, do gather or reduce?
+      VLOG(6) << "Getting DistTensor's numpy value";
+      auto* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      auto& dense_tensor = dist_tensor->value();
+      cpu_tensor.set_meta(dense_tensor.meta());
+      // deep copy
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor.Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      // deep copy
+      paddle::memory::Copy(place,
+                           cpu_tensor.Holder()->ptr(),
+                           place,
+                           dense_tensor.Holder()->ptr(),
+                           dense_tensor.Holder()->size());
+#endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -290,6 +311,22 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       dense_tensor->Holder()->ptr(),
                                       dense_tensor->Holder()->size(),
                                       kind);
+#ifdef PADDLE_WITH_DISTRIBUTE
+    } else if (self->tensor.is_dist_tensor()) {
+      VLOG(6) << "Getting DistTensor's numpy value";
+      auto* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      auto& dense_tensor = dist_tensor->value();
+      cpu_tensor.set_meta(dense_tensor.meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor.Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::platform::GpuMemcpySync(cpu_tensor.Holder()->ptr(),
+                                      dense_tensor.Holder()->ptr(),
+                                      dense_tensor.Holder()->size(),
+                                      kind);
+#endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
