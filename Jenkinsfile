@@ -65,7 +65,7 @@ pipeline {
         container('main') {
           sh """#!/bin/bash
           cd ${env.paddle_musa_working_dir}
-          /bin/bash ci/build.sh -j64
+          /opt/conda/condabin/conda run -n py38 --no-capture-output /bin/bash ci/build.sh -j64
           """
         }
       }
@@ -78,7 +78,7 @@ pipeline {
           cd ${env.paddle_musa_working_dir}/build
           ctest -V -R system_allocator_test
           """
-          // sh '/bin/bash --login -c "cd build && ctest -V -R system_allocator_test"'
+          // sh '/bin/bash --login -c "/opt/conda/condabin/conda run -n py38 --no-capture-output cd build && ctest -V -R system_allocator_test"'
         }
       }
     }

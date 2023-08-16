@@ -85,7 +85,7 @@ fi
 
 git diff --name-only ${ref_revision} | xargs touch
 
-find build -name "CMakeCache*" | xargs rm
+rm build -rf
 export MAX_JOBS=${MAX_JOBS}
 WITH_MKL=ON WITH_AVX=ON WITH_TESTING=ON python setup.py install 
 # WITH_MKL=ON WITH_AVX=ON PY_VERSION=3.8 /bin/bash paddle/scripts/paddle_build.sh build_only ${MAX_JOBS}
