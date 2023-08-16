@@ -393,7 +393,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
+                import paddle.base as fluid
                 import numpy as np
 
                 t = fluid.Tensor()
@@ -413,7 +413,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                  import paddle.fluid as fluid
+                  import paddle.base as fluid
                   import numpy as np
 
                   t = fluid.Tensor()
@@ -517,7 +517,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as fluid
                  import numpy as np
 
                  t = fluid.Tensor()
@@ -566,7 +566,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as fluid
                  import numpy as np
 
                  t = fluid.Tensor()
@@ -594,7 +594,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as fluid
                  import numpy as np
 
                  t = fluid.Tensor()
@@ -623,7 +623,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as fluid
                  import numpy as np
 
                  t = fluid.Tensor()
@@ -647,7 +647,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Examples:
                .. code-block:: python
 
-                 import paddle.fluid as fluid
+                 import paddle.base as fluid
                  import numpy as np
 
                  t = fluid.Tensor()
@@ -824,7 +824,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  import paddle
                  tensor = paddle.ones([3,3])
                  metainfo = tensor.value().get_tensor()._share_cuda()
-                 tensor_from_shared = paddle.to_tensor(paddle.fluid.core.LoDTensor._new_shared_cuda(metainfo))
+                 tensor_from_shared = paddle.to_tensor(paddle.base.core.LoDTensor._new_shared_cuda(metainfo))
 
         )DOC")
 #endif
@@ -945,7 +945,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  import paddle
                  tensor = paddle.ones([3,3])
                  metainfo = tensor.value().get_tensor()._share_filename()
-                 tensor_from_shared = paddle.to_tensor(paddle.fluid.core.LoDTensor._new_shared_filename(metainfo))
+                 tensor_from_shared = paddle.to_tensor(paddle.base.core.LoDTensor._new_shared_filename(metainfo))
 
         )DOC")
       .def("_shared_incref",
