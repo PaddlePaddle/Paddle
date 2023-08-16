@@ -20,6 +20,12 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
+namespace phi {
+namespace distributed {
+class DistTensor;
+}  // namespace distributed
+}  // namespace phi
+
 namespace paddle {
 namespace experimental {
 
@@ -164,6 +170,17 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
                   (target != Backend::GPUDNN ? target : Backend::GPU));
   return ret;
 }
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+/* ------------------ for auto parallel ----------------------- */
+
+// TODO(chenweihang): impl Reshard input and output function
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+#endif
 
 }  // namespace experimental
 }  // namespace paddle

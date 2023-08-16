@@ -389,6 +389,15 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  phi::DDim dim = x.dims();
+  dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
+  if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
+  out->set_dims(dim);
+  out->set_layout(x.layout());
+  out->set_dtype(x.dtype());
+}
+
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   auto dims = x.dims();
   auto rank = dims.size();
