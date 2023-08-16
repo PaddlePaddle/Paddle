@@ -253,14 +253,9 @@ def normalize_program(program, feed_vars, fetch_vars):
             )
             break
 
-    # fix the bug that the activation op's output as target will be pruned.
-    # will affect the inference performance.
-    # TODO(Superjomn) add an IR pass to remove 1-scale op.
     with program_guard(program):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
-            if var.dtype != paddle.bool:
-                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
 
