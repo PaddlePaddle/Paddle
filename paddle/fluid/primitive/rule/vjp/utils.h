@@ -87,17 +87,5 @@ static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
   return get_reduce_dims_from_out(out_dims, x_dims);
 }
 
-static std::vector<Tensor*> get_details_outputs_ptr(
-    const std::vector<Tensor>& outputs,
-    const std::vector<bool>& stop_gradients) {
-  std::vector<Tensor*> outputs_ptr(outputs.size(), nullptr);
-  for (size_t i = 0; i < outputs.size(); i++) {
-    if (!stop_gradients[i]) {
-      outputs_ptr[i] = &outputs[i];
-    }
-  }
-  return outputs_ptr;
-}
-
 }  // namespace primitive
 }  // namespace paddle
