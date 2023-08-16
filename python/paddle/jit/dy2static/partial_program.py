@@ -283,8 +283,6 @@ class PartialProgramLayer:
             )
             if self._hooker:
                 infer_program = self._hooker.after_infer(infer_program)
-            print("========= infer_program =========")
-            print(infer_program)
             return infer_program
         else:
             train_program = self._append_backward_desc(
@@ -292,8 +290,6 @@ class PartialProgramLayer:
             )
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
-            print("========= train_program =========")
-            print(train_program)
             return train_program
 
     @switch_to_static_graph
