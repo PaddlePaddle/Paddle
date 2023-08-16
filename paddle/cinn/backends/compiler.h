@@ -24,7 +24,7 @@
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/llvm/simple_jit.h"
-#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
+#include "paddle/cinn/hlir/framework/parallel_compiler.h"
 #include "paddle/cinn/lang/packed_func.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
@@ -43,7 +43,8 @@ namespace backends {
  */
 class CompilationInfoDumper {
  public:
-  explicit CompilationInfoDumper(const hlir::framework::CompilationResult& info)
+  explicit CompilationInfoDumper(
+      const hlir::framework::ParallelCompiler::CompilationResult& info)
       : info_(info) {
     DumpLoweredFunc();
     DumpSourceCode();
@@ -51,27 +52,17 @@ class CompilationInfoDumper {
     DumpInstruction();
   }
 
-  static void DumpLoweredFuncByGroupIndex(const ir::LoweredFunc& lowered_func,
-                                          const int gidx);
-  static void DumpSourceCodeByGroupIndex(const std::string& source_code,
-                                         const int gidx);
-  static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
-                                      const int gidx);
-  static void DumpInstructionByGroupIndex(
-      const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
-      const int gidx);
-
  private:
   void DumpLoweredFunc();
   void DumpSourceCode();
   void DumpPtxCode();
   void DumpInstruction();
-  static void Dump(const std::string& base_path,
-                   const int idx,
-                   const std::string& file_name,
-                   const std::string& content);
+  void Dump(const std::string& base_path,
+            const int idx,
+            const std::string& file_name,
+            const std::string& content);
 
-  const hlir::framework::CompilationResult& info_;
+  const hlir::framework::ParallelCompiler::CompilationResult& info_;
 };
 
 class SourceCodePrint {
