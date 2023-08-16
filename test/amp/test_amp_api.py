@@ -20,7 +20,7 @@ from amp_base_models import AmpTestBase
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import core
+from paddle.base import core
 from paddle.static import amp
 
 
@@ -162,7 +162,7 @@ class TestGradScaler(AmpTestBase):
         scaler.minimize(optimizer, scaled)
         optimizer.clear_grad()
         paddle.amp.debugging.disable_operator_stats_collection()
-        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_list = paddle.base.core.get_low_precision_op_list()
 
         self.assertEqual(scaler._enable, False)
         self.assertEqual(scaler._use_dynamic_loss_scaling, False)

@@ -143,7 +143,7 @@ def visit_all_module(mod, func):
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
         return
 
-    if mod_name.startswith('paddle.fluid.core'):
+    if mod_name.startswith('paddle.base.core'):
         return
 
     if mod in visited_modules:

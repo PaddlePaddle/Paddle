@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid" > signature.txt
+    ./print_signature  "paddle.base" > signature.txt
 """
 
 import argparse

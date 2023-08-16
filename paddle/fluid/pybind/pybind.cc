@@ -1102,7 +1102,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
-  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // though we have not `import paddle.base as fluid`. So we add this API
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
@@ -1238,7 +1238,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle.base as fluid
           # create tensor from a scope and set value to it.
           param = scope.var('Param').get_tensor()
           param_array = np.full((height, row_numel), 5.0).astype("float32")
@@ -2141,7 +2141,7 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle.base as fluid
 
           arr = fluid.LoDTensorArray()
 )DOC");
@@ -2185,7 +2185,7 @@ All parameter, weight, gradient are variables in Paddle.
              Examples:
                  .. code-block:: python
 
-                   import paddle.fluid as fluid
+                   import paddle.base as fluid
                    import numpy as np
 
                    arr = fluid.LoDTensorArray()
