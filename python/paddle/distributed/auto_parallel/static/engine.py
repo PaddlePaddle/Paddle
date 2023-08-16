@@ -1733,6 +1733,7 @@ class Engine:
         Examples:
 
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.vision.transforms as T
                 >>> from paddle.distributed.fleet import auto

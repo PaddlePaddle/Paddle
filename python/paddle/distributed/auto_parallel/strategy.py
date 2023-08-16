@@ -164,7 +164,7 @@ class Strategy(BaseConfig):
             >>> sharding.enabled = True
             >>> sharding.stage = 2
             >>> sharding.degree = 2
-            >>> assert sharding.enabled == True
+            >>> assert sharding.enable == True
             >>> assert sharding.stage == 2
             >>> assert sharding.degree == 2
 
