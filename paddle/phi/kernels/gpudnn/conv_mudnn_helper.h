@@ -42,29 +42,10 @@ struct SearchAlgorithm<dynload::Convolution::Algorithm> {
 };
 
 
-void InternalMemFree(void* ptr) {
-  if (!ptr) {
-    return;
-  }
-  musaFree(ptr);
-}
-
-dynload::MemoryHandler InternalMemAlloc(size_t s) {
-  void* data = nullptr;
-  if (s) {
-    musaMalloc(&data, s);
-  }
-  return dynload::MemoryHandler(data, InternalMemFree);
-}
-
-
-#if 0
 template <>
-struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
-  using perf_t = miopenConvAlgoPerf_t;
-  using algo_t = miopenConvBwdDataAlgorithm_t;
+struct SearchAlgorithm<dynload::Convolution::AlgorithmBwdData> {
+  using algo_t = dynload::Convolution::AlgorithmBwdData;
 
-  template <typename T>
   static algo_t Find(const ConvArgs& args,
                      bool exhaustive_search,
                      bool deterministic,
@@ -74,47 +55,42 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
 
     auto workspace_handle = ctx.cudnn_workspace_handle();
 
-    int find_count;
-    miopenConvAlgoPerf_t find_result;
-    auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::miopenFindConvolutionBackwardDataAlgorithm(
-              args.handle,
-              args.odesc.desc(),
-              args.o->data<T>(),
-              args.wdesc.desc(),
-              args.w->data<T>(),
-              args.cdesc.desc(),
-              args.idesc.desc(),
-              const_cast<T*>(args.x->data<T>()),
-              kNUM_CUDNN_BWD_DATA_ALGS,
-              &find_count,
-              &find_result,
-              cudnn_workspace_ptr,
-              workspace_size,
-              false));
+    auto mudnn_find_func = [&](void* mudnn_workspace_ptr) {
+          args.cdesc.desc()->GetRecommendBackwardDataAlgorithm(
+              *args.handle, 
+              algo, 
+              *args.idesc.desc(), 
+              *args.odesc.desc(), 
+              *args.wdesc.desc());
     };
 
-    workspace_handle.RunFuncSync(cudnn_find_func, workspace_size);
-    algo = find_result.bwd_data_algo;
-    VLOG(3) << "choose algo " << algo;
+    workspace_handle.RunFuncSync(mudnn_find_func, workspace_size);
     return algo;
   }
 
   static size_t GetWorkspaceSize(const ConvArgs& args) {
-    size_t workspace_size = 0;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenConvolutionBackwardDataGetWorkSpaceSize(
-            args.handle,
-            args.odesc.desc(),
-            args.wdesc.desc(),
-            args.cdesc.desc(),
-            args.idesc.desc(),
-            &workspace_size));
-    return workspace_size;
+    return 0;
   }
 };
 
+
+static void InternalMemFree(void* ptr) {
+  if (!ptr) {
+    return;
+  }
+  musaFree(ptr);
+}
+
+static dynload::MemoryHandler InternalMemAlloc(size_t s) {
+  void* data = nullptr;
+  if (s) {
+    musaMalloc(&data, s);
+  }
+  return dynload::MemoryHandler(data, InternalMemFree);
+}
+
+
+#if 0
 template <>
 struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
   using perf_t = miopenConvAlgoPerf_t;

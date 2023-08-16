@@ -82,11 +82,11 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                 groups,
                 compute_format};
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   // MIOPEN need to set groups in cdesc in miopen_desc.h
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn(), groups);
-#else  // CUDA & MUSA
+#else
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn());
 #endif
@@ -99,7 +99,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
       phi::dynload::cudnnSetConvolutionGroupCount(args.cdesc.desc(), groups));
   groups = 1;
 #endif
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   // MIOPEN do not set groups in wdesc after set groups in cdesc
   groups = 1;
 #endif

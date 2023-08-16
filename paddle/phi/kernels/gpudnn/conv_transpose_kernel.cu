@@ -30,7 +30,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_mudnn_helper.h"
+#else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
@@ -176,7 +179,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -191,7 +194,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   size_t workspace_size = 0;
 #ifdef PADDLE_WITH_HIP
   miopenConvBwdDataAlgorithm_t algo{};
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+  dynload::Convolution::AlgorithmBwdData algo;
+#else
   cudnnConvolutionBwdDataAlgo_t algo{};
 #endif
   // ------------------- cudnn conv algorithm ---------------------
@@ -227,7 +232,11 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+  SearchResult<dynload::Convolution::AlgorithmBwdData> bwd_result;
+  using search = SearchAlgorithm<dynload::Convolution::AlgorithmBwdData>;
+  bwd_result.algo = search::Find(args, false, deterministic, workspace_size, ctx);
+#else
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
@@ -262,7 +271,18 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+  workspace_handle.RunFunc(
+    [&](void* cudnn_workspace) {
+      args.cdesc.desc()->RunBwdData(*handle,
+                                    *args.idesc.desc(),
+                                    *args.odesc.desc(),
+                                    *args.wdesc.desc(),
+                                    bwd_result.algo,
+                                    InternalMemAlloc);
+      },
+      workspace_size);
+#else
   ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                 args,
                                                 bwd_result,
