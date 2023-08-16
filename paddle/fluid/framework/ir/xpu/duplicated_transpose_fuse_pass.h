@@ -54,7 +54,9 @@ class DuplicatedTransposeFusePass : public FusePassBase {
  private:
   void DuplicatedTranspose(ir::Graph* graph) const;
 
-  const std::string name_scope_{"two_transpose_fuse_pass"};
+  const std::string name_scope_{"duplicated_transpose_fuse_pass"};
+
+  mutable int delete_op_count{0};
 };
 
 }  // namespace ir

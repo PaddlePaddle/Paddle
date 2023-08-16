@@ -48,9 +48,20 @@ class TestTransposeFusePass(PassAutoScanTest):
             outputs={"Out": ["transpose_out2"]},
             attrs={"axis": [0, 3, 2, 1]},
         )
+
+        transpose_op3 = OpConfig(
+            type='transpose2',
+            inputs={
+                "X": ["transpose_out2"],
+            },
+            outputs={"Out": ["transpose_out3"]},
+            attrs={"axis": [0, 1, 3, 2]},
+        )
+
         ops = [
             transpose_op1,
             transpose_op2,
+            transpose_op3,
         ]
 
         program_config = ProgramConfig(
@@ -59,13 +70,15 @@ class TestTransposeFusePass(PassAutoScanTest):
             inputs={
                 "transpose_in": TensorConfig(shape=in_shape),
             },
-            outputs=["transpose_out2"],
+            outputs=["transpose_out3"],
         )
         return program_config
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=25, passes=["two_transpose_fuse_pass"]
+            quant=False,
+            max_examples=25,
+            passes=["duplicated_transpose_fuse_pass"],
         )
 
 
