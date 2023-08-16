@@ -156,7 +156,7 @@ int XPUConvScaleFusePass::ApplyImpl(ir::Graph* graph,
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle XPUConv2dScaleFusePass";
+    VLOG(4) << "handle XPUConvScaleFusePass";
     /* declare operator node's name */
     GET_IR_NODE(xpu_conv);
     GET_IR_NODE(scale);
@@ -226,13 +226,22 @@ int XPUConvScaleFusePass::ApplyImpl(ir::Graph* graph,
         conv_bias_ptr[i] = (conv_bias_ptr[i] + bias_val) * scale_val;
       }
     }
-
     // Generate conv2d_xpu op
     auto* conv2d_xpu_op_desc = xpu_conv->Op();
+    // update filter && filter_max
+    Node* filter_int16 = nullptr;
+    Node* filter_max = nullptr;
+    PrepareWeight<int16_t>(
+        graph, scope, block, conv_filter, &filter_int16, &filter_max, false);
+    conv2d_xpu_op_desc.SetInput("filter", {filter_int16->Name()});
+    conv2d_xpu_op_desc.SetInput("filter_max", {filter_max->Name()});
+    // update conv_bias
     if (conv_with_bias) {
       IR_NODE_UNLINK(conv_bias, xpu_conv);
     }
     conv2d_xpu_op_desc->SetInput("bias", {conv_bias_node->Name()});
+    IR_NODE_LINK_TO(filter_int16, xpu_conv);
+    IR_NODE_LINK_TO(filter_max, xpu_conv);
     IR_NODE_LINK_TO(conv_bias_node, xpu_conv);
     // link xpu_conv to ops which are behind scale
     auto scale_out_link_nodes = scale_out->outputs;
@@ -243,7 +252,8 @@ int XPUConvScaleFusePass::ApplyImpl(ir::Graph* graph,
       IR_NODE_LINK_TO(conv_out, out_link_node);
     }
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {scale, scale_out};
+    std::unordered_set<const Node*> delete_nodes = {
+        conv_filter, scale, scale_out};
     if (conv_with_bias) {
       delete_nodes.insert(conv_bias);
     }
