@@ -54,7 +54,7 @@ pipeline {
             sh """#!/bin/bash
             cd ${env.paddle_musa_working_dir}
             git config --global --add safe.directory "*"
-            BRANCH=origin/develop /bin/bash tools/codestyle/pre_commit.sh
+            /opt/conda/condabin/conda run -n py38 --no-capture-output BRANCH=origin/develop /bin/bash tools/codestyle/pre_commit.sh
             #git diff --name-only origin/develop..HEAD | xargs pre-commit run --files
             """
         }

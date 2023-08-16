@@ -84,9 +84,9 @@ RUN pip3.7 --no-cache-dir install --upgrade pip && \
     pip3.8 --no-cache-dir install --upgrade pip && \
     pip3.9 --no-cache-dir install --upgrade pip
 
-RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 && \
-    pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 && \
-    pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0
+RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 clang-format==13.0.0  && \
+    pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 clang-format==13.0.0 
 
 # install Paddle requirements
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
@@ -100,11 +100,6 @@ RUN pip3.7 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna
     pip3.8 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip3.9 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     rm -rf /root/requirements.txt
-
-# clang-format 3.8
-RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
-    tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
-    cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
 
 # ccache 3.7.9
 RUN cd /opt && wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
