@@ -1117,13 +1117,31 @@ def dot(x, y, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             op_type,
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             op_type,
         )
 

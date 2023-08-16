@@ -185,13 +185,17 @@ class TestDygraph(unittest.TestCase):
 class TestComplex64DotOp(DotOp):
     def init_dtype(self):
         self.dtype = np.complex64
-        
+
     def init_shape(self):
         self.shape = 100
 
     def init_input_output(self):
-        self.x = (np.random.random(self.shape) + 1j * np.random.random(self.shape)).astype(self.dtype)
-        self.y = (np.random.random(self.shape) + 1j * np.random.random(self.shape)).astype(self.dtype)
+        self.x = (
+            np.random.random(self.shape) + 1j * np.random.random(self.shape)
+        ).astype(self.dtype)
+        self.y = (
+            np.random.random(self.shape) + 1j * np.random.random(self.shape)
+        ).astype(self.dtype)
         self.out = np.dot(self.x, self.y).astype(self.dtype)
 
 
