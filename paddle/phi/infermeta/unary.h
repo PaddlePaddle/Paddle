@@ -107,7 +107,7 @@ void CIdentityInferMeta(const MetaTensor& x,
                         bool use_calc_stream,
                         bool use_model_parallel,
                         MetaTensor* out);
-                        
+
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
 void CropInferMeta(const MetaTensor& x,
