@@ -344,6 +344,19 @@ void NewIRInterpreter::UpdateSyncOpNum() {
   VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
 }
 
+void NewIRInterpreter::UpdateNcclOpNum() {
+  static std::set<std::string> nccl_op_set = {"pd.sync_batch_norm_",
+                                              "pd.sync_batch_norm"};
+  int64_t nccl_op_num = 0;
+  for (auto& ins : vec_instruction_base_) {
+    if (nccl_op_set.count(ins->Name())) {
+      nccl_op_num = nccl_op_num + 1;
+    }
+  }
+  nccl_op_num_ = nccl_op_num;
+  VLOG(4) << "Update nccl op num, nccl op num is: " << nccl_op_num;
+}
+
 // Note(zhangbo):
 // When there is a KQueueSync type OP in the model, breadth traversal is better
 // than depth traversal. For example: OP(O) ->(direct_run)-> OP(A)
@@ -851,7 +864,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run ||
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 0 ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
@@ -866,7 +879,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run ||
+    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 0 ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1181,6 +1194,9 @@ void NewIRInterpreter::PreAnalysis() {
 
   UpdateSyncOpNum();
   VLOG(4) << "Done UpdateSyncOpNum";
+
+  UpdateNcclOpNum();
+  VLOG(4) << "Done UpdateNcclOpNum";
 }
 
 ::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
