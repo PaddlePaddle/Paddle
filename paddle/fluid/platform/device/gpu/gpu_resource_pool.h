@@ -55,6 +55,7 @@ class CudaStreamResourcePool {
 class CudaEventResourcePool {
  public:
   std::shared_ptr<CudaEventObject> New(int dev_idx);
+  // static std::shared_ptr<CudaEventObject> NewTmp(int dev_idx);
 
   static CudaEventResourcePool &Instance();
 

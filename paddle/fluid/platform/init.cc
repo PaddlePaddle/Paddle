@@ -61,6 +61,11 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
+#if defined(PADDLE_WITH_CUDA) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#endif
+
 PHI_DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
     multiple_of_cupti_buffer_size,
@@ -447,6 +452,50 @@ void InitMemoryMethod() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
+
+#if defined(PADDLE_WITH_CUDA) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+    // memory_method->get_allocator =
+    // paddle::memory::allocation::AllocatorFacade::GetAllocatorTmp;
+    // memory_method->get_host_allocator =
+    // paddle::memory::allocation::AllocatorFacade::GetHostAllocatorTmp;
+    // memory_method->get_zero_allocator =
+    // paddle::memory::allocation::AllocatorFacade::GetZeroAllocatorTmp;
+    // memory_method->get_pinned_allocator =
+    // paddle::memory::allocation::AllocatorFacade::GetPinnedAllocatorTmp;
+    // memory_method->get_new_cuda_event =
+    // paddle::platform::CudaEventResourcePool::NewTmp;
+    memory_method->get_allocator = [](int device_id,
+                                      cudaStream_t stream) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPlace(device_id), stream)
+          .get();
+    };
+    memory_method->get_host_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_zero_allocator = [](int device_id) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::GPUPlace(device_id))
+          .get();
+    };
+    memory_method->get_host_zero_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_pinned_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPinnedPlace())
+          .get();
+    };
+    memory_method->get_new_cuda_event = [](int device_id) {
+      return paddle::platform::CudaEventResourcePool::Instance().New(device_id);
+    };
+#endif
+
     memory_method->emplace_device_contexts =
         paddle::platform::EmplaceDeviceContexts;
     memory_method->init_devices = InitDevices;

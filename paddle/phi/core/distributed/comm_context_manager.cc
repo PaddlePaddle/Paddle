@@ -18,7 +18,7 @@
 #include <string>
 #include "glog/logging.h"
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
+// #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/enforce.h"
@@ -31,6 +31,7 @@
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -76,35 +77,50 @@ void CommContextManager::CreateNCCLCommContext(
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::GPUContext> dev_ctx(
         new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));
-    dev_ctx->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(phi::GPUPlace(CommContextManager::device_id),
-                          dev_ctx->stream())
-            .get());
-    dev_ctx->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(phi::CPUPlace())
-            .get());
+    // *******************************************************************************
+    dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
+        CommContextManager::device_id, dev_ctx->stream()));
+    dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());
     dev_ctx->SetZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(phi::GPUPlace(CommContextManager::device_id))
-            .get());
-    dev_ctx->SetHostZeroAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(phi::CPUPlace())
-            .get());
-    dev_ctx->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(phi::GPUPinnedPlace())
-            .get());
+        phi::memory_utils::GetZeroAllocator(CommContextManager::device_id));
+    dev_ctx->SetHostZeroAllocator(phi::memory_utils::GetHostZeroAllocator());
+    dev_ctx->SetPinnedAllocator(phi::memory_utils::GetPinnedAllocator());
     dev_ctx->PartialInitWithAllocator();
-
-    std::shared_ptr<paddle::platform::CudaEventObject> compute_event(
-        paddle::platform::CudaEventResourcePool::Instance().New(
-            CommContextManager::device_id));
-    std::shared_ptr<paddle::platform::CudaEventObject> comm_event(
-        paddle::platform::CudaEventResourcePool::Instance().New(
-            CommContextManager::device_id));
+    // *******************************************************************************
+    // dev_ctx->SetAllocator(
+    //     paddle::memory::allocation::AllocatorFacade::Instance()
+    //         .GetAllocator(phi::GPUPlace(CommContextManager::device_id),
+    //                       dev_ctx->stream())
+    //         .get());
+    // dev_ctx->SetHostAllocator(
+    //     paddle::memory::allocation::AllocatorFacade::Instance()
+    //         .GetAllocator(phi::CPUPlace())
+    //         .get());
+    // dev_ctx->SetZeroAllocator(
+    //     paddle::memory::allocation::AllocatorFacade::Instance()
+    //         .GetZeroAllocator(phi::GPUPlace(CommContextManager::device_id))
+    //         .get());
+    // dev_ctx->SetHostZeroAllocator(
+    //     paddle::memory::allocation::AllocatorFacade::Instance()
+    //         .GetZeroAllocator(phi::CPUPlace())
+    //         .get());
+    // dev_ctx->SetPinnedAllocator(
+    //     paddle::memory::allocation::AllocatorFacade::Instance()
+    //         .GetAllocator(phi::GPUPinnedPlace())
+    //         .get());
+    // dev_ctx->PartialInitWithAllocator();
+    // *******************************************************************************
+    auto compute_event =
+        phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
+    auto comm_event =
+        phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
+    // *******************************************************************************
+    // std::shared_ptr<paddle::platform::CudaEventObject> compute_event(
+    //     paddle::platform::CudaEventResourcePool::Instance().New(
+    //         CommContextManager::device_id));
+    // std::shared_ptr<paddle::platform::CudaEventObject> comm_event(
+    //     paddle::platform::CudaEventResourcePool::Instance().New(
+    //         CommContextManager::device_id));
 
     nccl_comm_context->SetDevContext(std::move(dev_ctx));
     nccl_comm_context->SetComputeEvent(std::move(compute_event));

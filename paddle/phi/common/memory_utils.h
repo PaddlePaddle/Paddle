@@ -24,6 +24,13 @@
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
 
+#if defined(PADDLE_WITH_CUDA) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#include <cuda_runtime.h>
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#endif
+
 namespace phi {
 
 struct MemoryInterface {
@@ -150,6 +157,17 @@ struct MemoryInterface {
       const std::vector<phi::Place>& places,
       bool disable_setting_default_stream_for_allocator,
       int stream_priority);
+
+#if defined(PADDLE_WITH_CUDA) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+  phi::Allocator* (*get_allocator)(int device_id, cudaStream_t stream);
+  phi::Allocator* (*get_host_allocator)();
+  phi::Allocator* (*get_zero_allocator)(int device_id);
+  phi::Allocator* (*get_host_zero_allocator)();
+  phi::Allocator* (*get_pinned_allocator)();
+  std::shared_ptr<std::remove_pointer<paddle::gpuEvent_t>::type> (
+      *get_new_cuda_event)(int device_id);
+#endif
 };
 
 class MemoryUtils {
@@ -323,6 +341,34 @@ class MemoryUtils {
             "Fluid. You can call InitMemoryMethod() for initialization."));
   }
 
+#if defined(PADDLE_WITH_CUDA) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+  const phi::Allocator* GetAllocator(int device_id, cudaStream_t stream) {
+    return memory_method_->get_allocator(device_id, stream);
+  }
+
+  const phi::Allocator* GetHostAllocator() {
+    return memory_method_->get_host_allocator();
+  }
+
+  const phi::Allocator* GetZeroAllocator(int device_id) {
+    return memory_method_->get_zero_allocator(device_id);
+  }
+
+  const phi::Allocator* GetHostZeroAllocator() {
+    return memory_method_->get_host_zero_allocator();
+  }
+
+  const phi::Allocator* GetPinnedAllocator() {
+    return memory_method_->get_pinned_allocator();
+  }
+
+  std::shared_ptr<paddle::platform::CudaEventObject> GetCudaEvent(
+      int device_id) {
+    return memory_method_->get_new_cuda_event(device_id);
+  }
+#endif
+
  private:
   MemoryUtils() = default;
 
@@ -384,6 +430,22 @@ void EmplaceDeviceContexts(
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
+
+#if defined(PADDLE_WITH_CUDA) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+const Allocator* GetAllocator(int device_id, phi::gpuStream_t stream);
+
+const Allocator* GetHostAllocator();
+
+const Allocator* GetZeroAllocator(int device_id);
+
+const Allocator* GetHostZeroAllocator();
+
+const Allocator* GetPinnedAllocator();
+
+std::shared_ptr<std::remove_pointer<paddle::gpuEvent_t>::type> GetCudaEvent(
+    int device_id);
+#endif
 
 class Buffer {
  public:

@@ -123,6 +123,10 @@ std::shared_ptr<CudaEventObject> CudaEventResourcePool::New(int dev_idx) {
   return pool_[dev_idx]->New();
 }
 
+// std::shared_ptr<CudaEventObject> CudaEventResourcePool::NewTmp(int dev_idx) {
+//   return CudaEventResourcePool::Instance().New(dev_idx);
+// }
+
 }  // namespace platform
 }  // namespace paddle
 
