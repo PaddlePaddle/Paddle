@@ -344,12 +344,15 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags_native.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
-copy(
-  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/extension.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/)
+
+if(NOT WITH_GFLAGS)
+  copy(
+    inference_lib_dist
+    SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags_native.h
+    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
+endif()
 
 # the include path of phi needs to be changed to adapt to inference api path
 add_custom_command(
