@@ -69,16 +69,15 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-void EmptyDistTensorInitializer(
-    TensorObject* self,
-    const std::string& name,
-    const paddle::platform::Place& place,
-    const std::shared_ptr<TensorDistAttr>& dist_attr,
-    bool persistable = false,
-    int stop_gradient = -1,
-    framework::proto::VarType::Type dtype =
-        paddle::framework::proto::VarType::FP32,
-    const std::vector<int>& dims = {0}) {
+void EmptyDistTensorInitializer(TensorObject* self,
+                                const std::string& name,
+                                const paddle::platform::Place& place,
+                                const TensorDistAttr& dist_attr,
+                                bool persistable = false,
+                                int stop_gradient = -1,
+                                framework::proto::VarType::Type dtype =
+                                    paddle::framework::proto::VarType::FP32,
+                                const std::vector<int>& dims = {0}) {
   auto ddims = phi::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
@@ -89,18 +88,9 @@ void EmptyDistTensorInitializer(
 
   std::shared_ptr<DistTensor> dist_tensor = nullptr;
   if (dims.size() == 1 && dims[0] == 0) {
-    std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
-    dist_tensor = std::make_shared<DistTensor>(
-        allocation_ptr,
-        phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                             ddims),
-        dist_attr);
+    dist_tensor = std::make_shared<DistTensor>(ddims, dist_attr);
   } else {
-    dist_tensor = std::make_shared<DistTensor>(
-        std::make_shared<phi::Allocation>(),
-        phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-                             ddims),
-        dist_attr);
+    dist_tensor = std::make_shared<DistTensor>(ddims, dist_attr);
   }
   self->tensor.set_impl(dist_tensor);
 
@@ -219,9 +209,6 @@ void InitDistTensorWithNumpyValue(TensorObject* self,
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
-
-  // TODO(dev): dist_tensor meta is not equal to dense tensor meta
-  dist_tensor_ptr->set_meta(impl_ptr->meta());
 }
 #endif
 
@@ -284,12 +271,11 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-void InitDistTensorWithTensor(
-    TensorObject* self,
-    const paddle::Tensor& src,
-    const paddle::platform::Place& place,
-    const std::string& name,
-    const std::shared_ptr<TensorDistAttr>& dist_attr) {
+void InitDistTensorWithTensor(TensorObject* self,
+                              const paddle::Tensor& src,
+                              const paddle::platform::Place& place,
+                              const std::string& name,
+                              const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE(src.is_dense_tensor(),
                  paddle::platform::errors::InvalidArgument(
                      "DistTensor can only initialize by DenseTensor"));
@@ -297,13 +283,15 @@ void InitDistTensorWithTensor(
   if (place == src.place()) {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
+    self->tensor.set_impl(
+        std::make_shared<DistTensor>(tensor->dims(), dist_attr, *tensor));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
-    self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
+    self->tensor.set_impl(
+        std::make_shared<DistTensor>(tensor->dims(), dist_attr, *tensor));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }
   if (src.get_autograd_meta()) {
@@ -414,13 +402,13 @@ paddle::platform::Place ParsePlace(
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-std::shared_ptr<TensorDistAttr> ParseDistAttrArgs(
+TensorDistAttr ParseDistAttrArgs(
     std::unordered_map<std::string, PyObject*> kws_map,
     std::unordered_map<std::string, Py_ssize_t> kw_order_map,
     PyObject* args,
     bool flag_kwargs,
     Py_ssize_t args_num) {
-  std::shared_ptr<TensorDistAttr> dist_attr = nullptr;
+  TensorDistAttr dist_attr;
   if (kw_order_map["dist_attr"] <= args_num) {
     dist_attr = CastPyArg2DistAttr(
         PyTuple_GET_ITEM(args, kw_order_map["dist_attr"] - 1),
@@ -528,10 +516,10 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
       "stop_gradient", kws_map, kw_order_map, args, flag_kwargs, args_num);
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  std::shared_ptr<TensorDistAttr> dist_attr =
+  TensorDistAttr dist_attr =
       ParseDistAttrArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
-  if (dist_attr) {
+  if (!dist_attr.empty()) {
     EmptyDistTensorInitializer(
         py_tensor_ptr, act_name, place, dist_attr, persistable, stop_gradient);
     InitDistTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
@@ -570,7 +558,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  std::shared_ptr<TensorDistAttr> dist_attr =
+  TensorDistAttr dist_attr =
       ParseDistAttrArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
 #endif
 
@@ -593,7 +581,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
       }
     }
 #ifdef PADDLE_WITH_DISTRIBUTE
-    if (dist_attr) {
+    if (!dist_attr.empty()) {
       InitDistTensorWithTensor(
           py_tensor_ptr, src_tensor, place, act_name, dist_attr);
     } else {

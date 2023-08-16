@@ -46,8 +46,7 @@ std::shared_ptr<DistTensor> ConstructReplicatedDistCPU(
   std::vector<float> vec(num_of_elems);
   memcpy(input_dense_ptr, vec.data(), num_of_elems * sizeof(float));
 
-  std::shared_ptr<TensorDistAttr> dist_attr =
-      std::make_shared<TensorDistAttr>(shape);
+  TensorDistAttr dist_attr = TensorDistAttr(shape);
 
   std::vector<int64_t> dims_mapping(shape.size(), -1);
   dist_attr->set_dims_mapping(dims_mapping);
@@ -79,8 +78,7 @@ std::shared_ptr<DistTensor> ConstructReplicatedDistGPU(
   memcpy(input_dense_ptr, vec.data(), num_of_elems * sizeof(float));
   phi::Copy(*dev_ctx, input_dense, gpu_place, true, &input_dense_gpu);
 
-  std::shared_ptr<TensorDistAttr> dist_attr =
-      std::make_shared<TensorDistAttr>(shape);
+  TensorDistAttr dist_attr = TensorDistAttr(shape);
 
   std::vector<int64_t> dims_mapping(shape.size(), -1);
   dist_attr->set_dims_mapping(dims_mapping);
@@ -106,8 +104,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_cpu_1d_mesh) {
   std::shared_ptr<DistTensor> input =
       ConstructReplicatedDistCPU(context, tensor_shape, mesh);
 
-  std::shared_ptr<TensorDistAttr> out_dist_attr =
-      std::make_shared<TensorDistAttr>(tensor_shape);
+  TensorDistAttr out_dist_attr = TensorDistAttr(tensor_shape);
   std::vector<int64_t> out_dims_mapping = {-1, 0};
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(mesh);
@@ -134,8 +131,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_gpu_1d_mesh) {
   std::vector<std::string> dim_names = {"x"};
   ProcessMesh mesh(mesh_shape, process_ids, dim_names);
 
-  std::shared_ptr<TensorDistAttr> out_dist_attr =
-      std::make_shared<TensorDistAttr>(tensor_shape);
+  TensorDistAttr out_dist_attr = TensorDistAttr(tensor_shape);
   std::vector<int64_t> out_dims_mapping = {0, -1, -1};
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(mesh);
@@ -168,8 +164,7 @@ TEST(reshard_r_to_s, r_to_s_diff_placement) {
 
   std::vector<int64_t> out_process_ids = {2, 3, 4, 5};
   ProcessMesh out_mesh(mesh_shape, out_process_ids, dim_names);
-  std::shared_ptr<TensorDistAttr> out_dist_attr =
-      std::make_shared<TensorDistAttr>(tensor_shape);
+  TensorDistAttr out_dist_attr = TensorDistAttr(tensor_shape);
   std::vector<int64_t> out_dims_mapping = {-1, 0};
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(out_mesh);
@@ -191,8 +186,7 @@ TEST(reshard_r_to_s, r_to_s_same_placement_nd_mesh) {
   std::shared_ptr<DistTensor> input =
       ConstructReplicatedDistCPU(context, tensor_shape, mesh);
 
-  std::shared_ptr<TensorDistAttr> out_dist_attr =
-      std::make_shared<TensorDistAttr>(tensor_shape);
+  TensorDistAttr out_dist_attr = TensorDistAttr(tensor_shape);
   std::vector<int64_t> out_dims_mapping = {1, 0};
   out_dist_attr->set_dims_mapping(out_dims_mapping);
   out_dist_attr->set_process_mesh(mesh);

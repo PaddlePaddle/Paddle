@@ -14,13 +14,15 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
+#include <iostream>
+
 #include "gtest/gtest.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "test/cpp/phi/core/allocator.h"
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 namespace tests {
 
 TEST(dist_tensor, constructor) {
@@ -32,27 +34,20 @@ TEST(dist_tensor, constructor) {
   DDim dims({3, 4});
   DenseTensorMeta meta(dtype, dims);
 
-  auto dist_attr = std::make_shared<TensorDistAttr>(phi::vectorize(dims));
+  auto dist_attr = TensorDistAttr(phi::vectorize(dims));
 
-  DistTensor x1(alloc, meta, dist_attr);
-  EXPECT_TRUE(x1.defined());
-  EXPECT_TRUE(x1.initialized());
+  // copy construct
+  DenseTensor x1(alloc, meta);
+  DistTensor dist_x1(dims, dist_attr, x1);
+  EXPECT_TRUE(dist_x1.defined());
+  EXPECT_TRUE(dist_x1.initialized());
 
-  DistTensor x2(alloc, DenseTensorMeta(dtype, dims), dist_attr);
-  EXPECT_TRUE(x2.defined());
-  EXPECT_TRUE(x2.initialized());
-
-  DistTensor x3(x2.value().Holder(), meta, dist_attr);
-  EXPECT_TRUE(x3.defined());
-  EXPECT_TRUE(x3.initialized());
-
-  auto a = std::make_shared<DenseTensor>(alloc, DenseTensorMeta(dtype, dims));
-  DistTensor x4(a, dist_attr);
-  EXPECT_TRUE(x4.defined());
-  EXPECT_TRUE(x4.initialized());
+  // empty construct
+  DistTensor dist_x2(dims, dist_attr);
+  EXPECT_TRUE(!dist_x2.defined());
+  EXPECT_TRUE(!dist_x2.initialized());
 }
 
 }  // namespace tests
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

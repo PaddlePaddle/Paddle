@@ -238,7 +238,7 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    return ToPyObject(dist_tensor->dist_attr().get());
+    return ToPyObject(&dist_tensor->dist_attr());
 #else
     RETURN_PY_NONE
 #endif

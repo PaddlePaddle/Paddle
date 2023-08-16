@@ -25,20 +25,19 @@
 namespace phi {
 namespace distributed {
 
-bool RToSReshardFunction::IsSuitable(
-    const DistTensor& in,
-    const std::shared_ptr<TensorDistAttr>& out_dist_attr) {
+bool RToSReshardFunction::IsSuitable(const DistTensor& in,
+                                     const TensorDistAttr& out_dist_attr) {
   bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  const auto& in_dims_mapping = in_dist_attr->dims_mapping();
-  const auto& out_dims_mapping = out_dist_attr->dims_mapping();
+  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
+  const auto& out_dims_mapping = out_dist_attr.dims_mapping();
 
   flag &= IsDimsMappingReplicated(in_dims_mapping);
   flag &= IsDimsMappingShard(out_dims_mapping);
 
-  const auto& in_process_mesh = in_dist_attr->process_mesh();
-  const auto& out_process_mesh = out_dist_attr->process_mesh();
+  const auto& in_process_mesh = in_dist_attr.process_mesh();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   flag &= (in_process_mesh.ndim() == 1);
   flag &= (out_process_mesh.ndim() == 1);
@@ -50,9 +49,9 @@ bool RToSReshardFunction::IsSuitable(
 std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
     phi::DeviceContext* dev_ctx,
     const DistTensor& in,
-    const std::shared_ptr<TensorDistAttr>& out_dist_attr) {
-  const auto& out_dims_mapping = out_dist_attr->dims_mapping();
-  const auto& out_process_mesh = out_dist_attr->process_mesh();
+    const TensorDistAttr& out_dist_attr) {
+  const auto& out_dims_mapping = out_dist_attr.dims_mapping();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
 
   DenseTensor out_physical_tensor_cur_rank;
@@ -92,8 +91,7 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
   out_physical_tensor_cur_rank = split_out_vec[coord_in_mesh[mesh_axis]];
 
   return std::make_shared<DistTensor>(
-      std::make_shared<DenseTensor>(out_physical_tensor_cur_rank),
-      out_dist_attr);
+      in.dims(), out_dist_attr, std::move(out_physical_tensor_cur_rank));
 }
 
 }  // namespace distributed
