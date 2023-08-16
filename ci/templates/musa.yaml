@@ -27,7 +27,7 @@ spec:
   containers:
   - name: main
     tty: true
-    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:v0.1.0
+    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:latest
     imagePullPolicy: Always
     env:
     - name: PADDLE_MUSA_REPO_PATH
