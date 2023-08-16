@@ -176,65 +176,59 @@ void ParallelCompiler::Task::Lowering() {
 void ParallelCompiler::Task::CodegenAndJit() {
   VLOG(2) << "Start Codegen and JIT with Group [" << start_gidx << "-"
           << stop_gidx << ") at thread" << std::this_thread::get_id();
-  backends::RuntimeSymbols symbols;
-  std::vector<ir::Module> ir_modules;
-  std::vector<ir::Module> h_modules;
   for (int i = 0; i < lowered_funcs.size(); ++i) {
     // build module
     ir::Module::Builder builder(common::UniqName("module"), context->target);
     builder.AddFunction(lowered_funcs[i].front());
     auto ir_module = builder.Build();
-    ir_modules.push_back(ir_module);
+    if (context->target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
-    auto splited_module = backends::SplitCudaAndHostModule(ir_module);
-    auto hmodule = std::get<0>(splited_module);
-    auto dmodule = std::get<1>(splited_module);
-    h_modules.push_back(hmodule);
+      auto splited_module = backends::SplitCudaAndHostModule(ir_module);
+      auto hmodule = std::get<0>(splited_module);
+      auto dmodule = std::get<1>(splited_module);
 
-    VLOG(3) << "Host Code:\n" << hmodule;
-    VLOG(3) << "Device Code:\n" << dmodule;
-    backends::CodeGenCUDA_Dev codegen(context->target);
-    auto cuda_c = codegen.Compile(dmodule);
-    CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
-                           << dmodule;
+      VLOG(3) << "Host Code:\n" << hmodule;
+      VLOG(3) << "Device Code:\n" << dmodule;
+      backends::CodeGenCUDA_Dev codegen(context->target);
+      auto cuda_c = codegen.Compile(dmodule);
+      CHECK(!cuda_c.empty())
+          << "Compile CUDA C code failed from device module:\n"
+          << dmodule;
 
-    using runtime::cuda::CUDAModule;
-    backends::nvrtc::Compiler compiler;
-    auto ptx = compiler(cuda_c);
-    CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    // load cumodule
-    cumodule = std::make_unique<CUDAModule>(ptx,
-                                            compiler.compile_to_cubin()
-                                                ? CUDAModule::Kind::CUBIN
-                                                : CUDAModule::Kind::PTX);
-    // dump code to file
-    source_codes.emplace_back(cuda_c);
-    source_ptxs.emplace_back(ptx);
-    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(cuda_c,
-                                                                start_gidx + i);
-    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx,
-                                                             start_gidx + i);
+      using runtime::cuda::CUDAModule;
+      backends::nvrtc::Compiler compiler;
+      auto ptx = compiler(cuda_c);
+      CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
+      // load cumodule
+      cumodule = std::make_unique<CUDAModule>(ptx,
+                                              compiler.compile_to_cubin()
+                                                  ? CUDAModule::Kind::CUBIN
+                                                  : CUDAModule::Kind::PTX);
+      // dump code to file
+      source_codes.emplace_back(cuda_c);
+      source_ptxs.emplace_back(ptx);
+      backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+          cuda_c, start_gidx + i);
+      backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx,
+                                                               start_gidx + i);
 
-    // register kernel
-    for (auto& fn : dmodule.functions()) {
-      auto cufunc = cumodule->GetFunction(0, fn->name);
-      CHECK(cufunc);
-      symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
+      // register kernel
+      backends::RuntimeSymbols symbols;
+      for (auto& fn : dmodule.functions()) {
+        auto cufunc = cumodule->GetFunction(0, fn->name);
+        CHECK(cufunc);
+        symbols.RegisterVar(fn->name + "_ptr_",
+                            reinterpret_cast<void*>(cufunc));
+      }
+      engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
+                                                 std::move(symbols));
+      engine->Link<backends::CodeGenCUDA_Host>(hmodule);
+#endif
+    } else {
+      engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());
+      engine->Link<backends::CodeGenX86>(ir_module);
     }
-#endif
   }
-#ifdef CINN_WITH_CUDA
-  engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
-                                             std::move(symbols));
-  for (auto& hmodule : h_modules) {
-    engine->Link<backends::CodeGenCUDA_Host>(hmodule);
-  }
-#else
-  engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());
-  for (auto& irmodule : ir_modules) {
-    engine->Link<backends::CodeGenX86>(irmodule);
-  }
-#endif
 }
 
 void ParallelCompiler::Task::BuildInstruction() {
