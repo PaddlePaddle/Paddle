@@ -73,7 +73,7 @@ SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
-  // step2.2: infer output dimsmapping from merged input dimsmapping
+  // step2.2: infer output dims mapping from merged input dims mapping
   std::vector<int64_t> output_dims_mapping =
       GetDimsMappingForAxes(output_axes, axis_to_dim_map);
 
@@ -94,7 +94,7 @@ SplitSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   new_input_dims_mapping[axis] = -1;
   new_input_dist_attrs[0].set_dims_mapping(new_input_dims_mapping);
 
-  // Step2.4  handle input tensor partial (TODO)
+  // Step3 Handle input tensor partial (TODO)
   VLOG(4) << "SplitSPMDRule InferForward: ";
   for (int64_t i = 0; i < ninputs; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
@@ -116,10 +116,107 @@ std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 SplitSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
                              const std::vector<DistTensorSpec>& output_specs,
                              const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of SplitPMDRule is NOT implemented yet."));
+  // step0: Verify Input Args Based on Elementwise Logic
+  int64_t ninputs = input_specs.size();
+  int64_t noutputs = output_specs.size();
+  PADDLE_ENFORCE_EQ(
+      ninputs,
+      1,
+      phi::errors::InvalidArgument("The size of InputSpec in split must "
+                                   "be equal to 1, but got [%d].",
+                                   ninputs));
+  VerifySpecs(output_specs, "split");
 
-  return {};
+  // check whether the size of output_specs equals
+  // to the specified split num in op attributes
+  int64_t specified_split_num = -1;
+  // split api uses num or sections as attribute
+  if (attrs.find("num") != attrs.end()) {
+    specified_split_num = ExtractAttr<int64_t>("num", attrs);
+  } else if (attrs.find("sections") != attrs.end()) {
+    std::vector<int64_t> sections =
+        ExtractAttr<std::vector<int64_t>>("sections", attrs);
+    specified_split_num = sections.size();
+  }
+  PADDLE_ENFORCE_EQ(
+      noutputs,
+      specified_split_num,
+      phi::errors::InvalidArgument("The size of OutputSpec [%d] is not equal "
+                                   "to the specified split number [%d]",
+                                   noutputs,
+                                   specified_split_num));
+
+  // check whether all dims mapping in output_specs are the same
+  const std::vector<int64_t>& dims_mapping0 = output_specs[0].dims_mapping();
+  for (int64_t i = 1; i < noutputs; i++) {
+    const std::vector<int64_t>& dims_mapping = output_specs[i].dims_mapping();
+    if (!std::equal(
+            dims_mapping0.begin(), dims_mapping0.end(), dims_mapping.begin())) {
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Not all dims_mappings in "
+                                       "output_specs are the same."));
+    }
+  }
+
+  // step1: Build Einsum Notation
+  int64_t ndim = input_specs[0].shape().size();
+  int64_t axis = ExtractAttr<int>("axis", attrs);
+  if (axis < 0) {
+    axis += ndim;
+  }
+  std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
+
+  // get einsum notation for input, use a special
+  // notation 'k' to mark the splitted axis in input
+  std::string input_axes = alphabet.substr(0, ndim);
+  input_axes[axis] = 'k';
+
+  // get einsum notation for output
+  std::string output_axes(input_axes);
+  // the splitted axis cannot be sharded, set its notation
+  // with the special '1' to set its dim mapping to -1.
+  output_axes[axis] = '1';
+
+  // step2: Sharding Propogation
+  // step2.1: merge input shardings
+  std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
+  axes_sharding_info = {{output_axes, dims_mapping0}};
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors(axes_sharding_info);
+
+  // step2.2: infer input dims mapping from output dims mapping
+  // the split axis in input is set to -1.
+  std::vector<int64_t> input_dims_mapping =
+      GetDimsMappingForAxes(input_axes, axis_to_dim_map, true);
+
+  std::vector<TensorDistAttr> output_dist_attrs;
+  for (int64_t i = 0; i < noutputs; i++) {
+    output_dist_attrs.emplace_back(output_specs[i].dist_attr());
+  }
+
+  // step2.3 get new dist attribute for input. the splitted
+  // cannot be sharded, if it is sharded, set it to replicated.
+  TensorDistAttr input_dist_attr(input_specs[0].dist_attr());
+  input_dist_attr.set_dims_mapping(input_dims_mapping);
+
+  // step3 Handle input tensor partial (TODO)
+
+  VLOG(4) << "SplitSPMDRule InferBackward: ";
+  for (int64_t i = 0; i < noutputs; i++) {
+    VLOG(4) << "Output" << std::to_string(i) << " shape: ["
+            << str_join(output_specs[i].shape()) << "] "
+            << "einsum_notation: " << output_axes << " dims_mapping: ["
+            << str_join(output_specs[i].dims_mapping()) << "]";
+  }
+  for (int64_t i = 0; i < ninputs; i++) {
+    VLOG(4) << "Input" << std::to_string(i) << " shape: ["
+            << str_join(input_specs[i].shape()) << "] "
+            << "einsum_notation: " << input_axes << " dims_mapping: ["
+            << str_join(input_dims_mapping) << "]";
+  }
+  VLOG(4) << std::endl;
+
+  return {{input_dist_attr}, output_dist_attrs};
 }
 
 }  // namespace auto_parallel
