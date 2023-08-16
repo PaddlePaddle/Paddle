@@ -63,7 +63,7 @@ class DistTensor final
     value_ = std::make_unique<DenseTensor>(*dense_tensor);
   }
 
-  ~DistTensor() = default;
+  virtual ~DistTensor() = default;
 
   static const char* name() { return "DistTensor"; }
 
