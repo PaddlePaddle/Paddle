@@ -84,7 +84,7 @@ TEST(cpuQuantizePass, ConvReLU6) {
   relu6_op->SetOutput("Out", {"relu-Out"});
 
   auto place = phi::CPUPlace();
-  std::unique_ptr<VarQuantScale> scales(new VarQuantScale());
+  VarQuantScale* scales = new VarQuantScale();
   phi::DenseTensor scale_input_tensor;
   phi::DenseTensor scale_weight_tensor;
   scale_input_tensor.Resize({1});
