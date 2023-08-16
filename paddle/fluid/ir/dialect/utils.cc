@@ -20,6 +20,8 @@ namespace dialect {
 const std::unordered_set<std::string> LegacyOpList = {
     "pd.fused_softmax_mask_upper_triangle",
     "pd.fused_softmax_mask_upper_triangle_grad",
+    "pd.load_combine",
+    "pd.c_concat",
     "pd.load_combine"};
 
 enum class AttrType {

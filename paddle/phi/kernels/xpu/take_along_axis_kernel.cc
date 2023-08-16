@@ -64,10 +64,6 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   int r = XPU_SUCCESS;
 #ifndef PADDLE_WITH_XPU_PLUGIN
-  LOG(WARNING) << "Add -DWITH_XPU_PLUGIN=ON to build "
-                  "xpu::plugin::take_along_axis(), or use "
-                  "xpu::gather_element() instead, which leads low performance "
-                  "in some cases.";
   if (index_type == DataType::INT32) {
     r = xpu::gather_element<XPUType, int>(
         dev_ctx.x_context(),

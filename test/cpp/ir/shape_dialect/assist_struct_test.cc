@@ -19,8 +19,8 @@
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
-#include "paddle/ir/dialect/shape/shape_dialect.h"
-#include "paddle/ir/dialect/shape/shape_op.h"
+#include "paddle/ir/dialect/shape/ir/shape_dialect.h"
+#include "paddle/ir/dialect/shape/ir/shape_op.h"
 
 TEST(assist_struct_test, symbolic_dim) {
   ir::IrContext *ctx = ir::IrContext::Instance();
