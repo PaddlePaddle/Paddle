@@ -15,7 +15,7 @@
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/fluid/primitive/backend/static_backend.h"
-#include "paddle/fluid/primitive/type/desc_tensor.h"
+#include "paddle/fluid/primitive/type/static_tensor.h"
 #include "paddle/ir/core/operation.h"
 // TODO(wanghao107):
 //  op's vjp will be auto generated.
@@ -32,14 +32,14 @@ std::vector<std::vector<paddle::Tensor>> tanh_vjp(
       1, std::vector<paddle::Tensor>(1));
   // get tanh_grad res.
   Tensor op_res =
-      backend::experimental::tanh_grad<primitive::experimental::DescTensor>(
+      backend::experimental::tanh_grad<primitive::experimental::StaticTensor>(
           out, grad_out);
 
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
   // Support set stop_gradients for all ops.
   ir::Operation* grad_op =
-      std::static_pointer_cast<primitive::experimental::DescTensor>(
+      std::static_pointer_cast<primitive::experimental::StaticTensor>(
           op_res.impl())
           ->getValue()
           .dyn_cast<ir::OpResult>()
@@ -77,14 +77,14 @@ std::vector<std::vector<paddle::Tensor>> mean_vjp(
       1, std::vector<paddle::Tensor>(1));
   // get mean_grad res.
   Tensor op_res =
-      backend::experimental::mean_grad<primitive::experimental::DescTensor>(
+      backend::experimental::mean_grad<primitive::experimental::StaticTensor>(
           x, out_grad, axis, keepdim, reduce_all);
 
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
   // Support set stop_gradients for all ops.
   ir::Operation* grad_op =
-      std::static_pointer_cast<primitive::experimental::DescTensor>(
+      std::static_pointer_cast<primitive::experimental::StaticTensor>(
           op_res.impl())
           ->getValue()
           .dyn_cast<ir::OpResult>()
@@ -121,14 +121,14 @@ std::vector<std::vector<paddle::Tensor>> add_vjp(
       2, std::vector<paddle::Tensor>(1));
   // get mean_grad res.
   std::tuple<Tensor, Tensor> op_res =
-      backend::experimental::add_grad<primitive::experimental::DescTensor>(
+      backend::experimental::add_grad<primitive::experimental::StaticTensor>(
           x, y, out_grad, axis);
 
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
   // Support set stop_gradients for all ops.
   ir::Operation* grad_op =
-      std::static_pointer_cast<primitive::experimental::DescTensor>(
+      std::static_pointer_cast<primitive::experimental::StaticTensor>(
           std::get<0>(op_res).impl())
           ->getValue()
           .dyn_cast<ir::OpResult>()
