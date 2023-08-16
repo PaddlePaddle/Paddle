@@ -135,12 +135,8 @@ OpInfoTuple {op_name}::GetOpInfo() {{
 }}
 """
 CONSTRUCT_INPUT_INFO_TEMPLATE = """paddle::dialect::OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute})"""
-CONSTRUCT_OUTPUT_INFO_TEMPLATE = (
-    """paddle::dialect::OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
-)
-CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = (
-    """paddle::dialect::OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
-)
+CONSTRUCT_OUTPUT_INFO_TEMPLATE = """paddle::dialect::OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
+CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = """paddle::dialect::OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
 
 
 DEFINE_OP_TYPE_ID = """
