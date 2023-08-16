@@ -22,7 +22,17 @@
 namespace cinn {
 namespace common {
 
-// DFS Topological order walker
+// DFS Topological order walker.
+// Try to walk in a depth first manner while ensuring topological order.
+// For example:
+//   Graph:
+//     0 -> 1
+//     2 -> 3
+//     0 -> 3
+//     1 -> 3
+//     3 -> 4
+//   Start nodes: 0, 2
+//   Walking order: 0 -> 1 -> 2 -> 3 -> 4
 template <typename NodeType,
           typename NodeHash = std::hash<NodeType>,
           typename NodeEqual = std::equal_to<NodeType>>
@@ -39,11 +49,23 @@ class DfsTopoWalker final {
                 const NodesVisitorType& VisitNextNodes)
       : VisitPreNodes_(VisitPreNodes), VisitNextNodes_(VisitNextNodes) {}
 
+  // Start walking from 1 node and make every effort to access all nodes that
+  // meet the walking rules.
+  // If there are more than 1 nodes with a degree of 0 in a graph,
+  // only one part will be accessed.
+  // If you want to access the entire graph,
+  // you need to provide all starting nodes.
   void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
     std::array<NodeType, 1> nodes{node};
     (*this)(nodes.begin(), nodes.end(), NodeHandler);
   }
 
+  // Start walking from a collection of node and make every effort to access all
+  // nodes that meet the walking rules.
+  // If there are other start nodes in a graph,
+  // some nodes on the graph will not be accessed.
+  // If you want to access the entire graph,
+  // you need to provide all starting nodes.
   template <typename NodeIt>
   void operator()(NodeIt begin,
                   NodeIt end,
