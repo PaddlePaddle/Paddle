@@ -190,6 +190,7 @@ class TestComplex64DotOp(DotOp):
         self.shape = 100
 
     def init_input_output(self):
+        self.init_shape()
         self.x = (
             np.random.random(self.shape) + 1j * np.random.random(self.shape)
         ).astype(self.dtype)
