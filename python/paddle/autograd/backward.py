@@ -71,7 +71,7 @@ def prepare_grad_outputs(
     else check whether outputs shape and dtype is same to grad_outputs, otherwise raise error.
 
     if only part of op's outputs in outputs, add fill_0 op to create other grad_outputs.
-    eg: slice.
+    eg: split.
 
     update value_to_valuegrad and op_to_opgrad.
 
@@ -323,7 +323,7 @@ def append_backward_ops(
 
 
         op_vjp is:
-        v11_g <- slice_op <- v1_g <- op_g <- v3_g
+        v11_g <- split_op <- v1_g <- op_g <- v3_g
         v12_g <-
                              v2_g <-
 
@@ -338,22 +338,22 @@ def append_backward_ops(
     else continue to next op.
     '''
 
-    def make_output_grad(op, slice_op):
+    def make_output_grad(op, split_op):
         zero_flag = [False] * op.num_results()
         for i, value in enumerate(op.results()):
             if (
                 value not in state.value_to_valuegrad
                 or state.value_to_valuegrad[value] is None
             ):
-                if slice_op is not None and value == slice_op.operand_source(0):
+                if split_op is not None and value == split_op.operand_source(0):
                     # pattern case:
-                    # this fwd_op's output is vectorType, it will slice to
-                    # Type by builtin.slice op, so need get from slice op's ouput
-                    slice_zero_flag, slice_output_grad = make_output_grad(
-                        slice_op, None
+                    # this fwd_op's output is vectorType, it will split to
+                    # Type by builtin.split op, so need get from split op's ouput
+                    split_zero_flag, split_output_grad = make_output_grad(
+                        split_op, None
                     )
-                    zero_flag[i] = all(slice_zero_flag)
-                    grad_value = [op_list[0] for op_list in slice_output_grad]
+                    zero_flag[i] = all(split_zero_flag)
+                    grad_value = [op_list[0] for op_list in split_output_grad]
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
@@ -429,8 +429,8 @@ def append_backward_ops(
 
     # make op to op pattern, there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
-    # [op2 , builtin.slice] (op2's inputs are not vectorType, one output is vectorType)
-    # [builtin.combine , op3 , buitin.slice] (op3's one input and one output are vectorType)
+    # [op2 , builtin.split] (op2's inputs are not vectorType, one output is vectorType)
+    # [builtin.combine , op3 , buitin.split] (op3's one input and one output are vectorType)
     # [op4] (op4's inputs and outputs are not vectorType)
     # einsum has twp vectorType outputs, special pattern
 
@@ -439,7 +439,7 @@ def append_backward_ops(
         if op.name() == "builtin.combine":
             pattern_effective_op_list.append([op])
             pattern_effective_op_list[-1].append(effective_forward_op[idx + 1])
-        elif op.name() == "builtin.slice":
+        elif op.name() == "builtin.split":
             pattern_effective_op_list[-1].append(op)
         else:
             if (
@@ -450,7 +450,7 @@ def append_backward_ops(
 
     for op_pattern in pattern_effective_op_list:
         combine_op = None
-        slice_op = None
+        split_op = None
         if len(op_pattern) == 1:
             op = op_pattern[0]
         elif len(op_pattern) == 2:
@@ -459,16 +459,16 @@ def append_backward_ops(
                 op = op_pattern[1]
             else:
                 op = op_pattern[0]
-                slice_op = op_pattern[1]
+                split_op = op_pattern[1]
         else:
             combine_op = op_pattern[0]
             op = op_pattern[1]
-            slice_op = op_pattern[2]
+            split_op = op_pattern[2]
 
         if paddle.framework.core.has_vjp(op):
             # prepare output_grad
             output_grad_list = []  # (opresult)
-            zero_flag, output_grad = make_output_grad(op, slice_op)
+            zero_flag, output_grad = make_output_grad(op, split_op)
             output_grad_list.append(output_grad)
 
             # all(zero_flag) support this op has no contribution for grad

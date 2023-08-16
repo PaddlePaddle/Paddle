@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/builtin_transforms/dead_code_elimination_pass.h"
+#include "paddle/ir/transforms/dead_code_elimination_pass.h"
 
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/program.h"
