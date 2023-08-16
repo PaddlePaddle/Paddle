@@ -20,6 +20,7 @@ from op_build_gen import gen_build_func_str
 from op_interface_gen import (
     gen_exclusive_interface_str,
     gen_op_infer_meta_str,
+    gen_op_vjp_str,
     vjp_interface_gen_op_list,
 )
 from op_member_func_gen import gen_op_get_inputs_outputs_str
@@ -285,6 +286,9 @@ class OpInfoParser:
         self.attribute_type_list = self.parse_attribute_type_list()
         self.attribute_build_arg_type_list = (
             self.parse_attribute_build_arg_type_list()
+        )
+        self.attribute_gen_arg_type_list = (
+            self.parse_attribute_gen_arg_type_list()
         )
         self.attribute_data_type_list = self.parse_attribute_data_type_list()
         self.attribute_default_value_list = (
@@ -581,6 +585,17 @@ class OpInfoParser:
             if 'IntArray' in temp_type:
                 if 'data_type' in attribute_info:
                     temp_type = "const " + attribute_info['data_type'] + "&"
+            type_list.append(self.get_phi_dtype_name(temp_type))
+        return type_list
+
+    def parse_attribute_gen_arg_type_list(self):
+        type_list = []
+        for attribute_info in self.op_yaml_item['attrs']:
+            assert (
+                attribute_info['typename'] in self.attr_types_map
+            ), f"{self.op_phi_name} : Attr type error."
+
+            temp_type = self.attr_types_map[attribute_info['typename']][1]
             type_list.append(self.get_phi_dtype_name(temp_type))
         return type_list
 
@@ -1038,12 +1053,17 @@ def OpGenerator(
             op_vjp_str = ''
 
             # TODO(chenzhiyang) add vjp gen code
-            # if op_info.backward_name and op_info.op_phi_name[0] in vjp_interface_gen_op_list:
-            #     op_vjp_str = gen_op_vjp_str(op_class_name,
-            #                                 op_info.backward_name,
-            #                                 op_name,
-            #                                 op_info_items[op_info.op_phi_name[0]],
-            #                                 op_info_items[op_info.backward_name])
+            if (
+                op_info.backward_name
+                and op_info.op_phi_name[0] in vjp_interface_gen_op_list
+            ):
+                op_vjp_str = gen_op_vjp_str(
+                    op_class_name,
+                    op_info.backward_name,
+                    op_name,
+                    op_info_items[op_info.op_phi_name[0]],
+                    op_info_items[op_info.backward_name],
+                )
 
             ops_name_list.append(op_class_name)
             ops_declare_list.append(op_declare_str)
