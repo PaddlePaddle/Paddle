@@ -23,10 +23,10 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph import base, to_variable
-from paddle.fluid.framework import Program, default_main_program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph import base, to_variable
+from paddle.base.framework import Program, default_main_program, program_guard
 from paddle.incubate.layers.nn import (
     batch_fc,
     partial_concat,
@@ -65,10 +65,10 @@ class LayerTest(unittest.TestCase):
     def get_static_graph_result(
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
-        exe = fluid.Executor(self._get_place(force_to_use_cpu))
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(self._get_place(force_to_use_cpu))
+        exe.run(base.default_startup_program())
         return exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed=feed,
             fetch_list=fetch_list,
             return_numpy=(not with_lod),
@@ -76,7 +76,7 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
-        with fluid.dygraph.guard(
+        with base.dygraph.guard(
             self._get_place(force_to_use_cpu=force_to_use_cpu)
         ):
             paddle.seed(self.seed)
@@ -440,7 +440,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2).astype("float32")
-            weight_attr = fluid.ParamAttr(
+            weight_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             conv2d1 = paddle.nn.Conv2DTranspose(3, 3, [2, 2])
@@ -570,7 +570,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             custom_weight = np.random.randn(6, 3, 3).astype("float32")
-            weight_attr = fluid.ParamAttr(
+            weight_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             btp1 = paddle.nn.Bilinear(3, 3, 6)
@@ -642,7 +642,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")
-            weight_attr = fluid.ParamAttr(
+            weight_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
@@ -665,10 +665,10 @@ class TestLayer(LayerTest):
 
     def test_one_hot(self):
         with self.dynamic_graph():
-            label = fluid.dygraph.to_variable(np.array([[1], [1], [3], [0]]))
+            label = base.dygraph.to_variable(np.array([[1], [1], [3], [0]]))
             one_hot_label1 = paddle.nn.functional.one_hot(label, 4)
             one_hot_label2 = paddle.nn.functional.one_hot(
-                label, fluid.dygraph.to_variable(np.array([4]))
+                label, base.dygraph.to_variable(np.array([4]))
             )
             np.testing.assert_array_equal(
                 one_hot_label1.numpy(), one_hot_label2.numpy()
@@ -676,22 +676,22 @@ class TestLayer(LayerTest):
 
     def test_split(self):
         with self.dynamic_graph():
-            input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
+            input = base.dygraph.to_variable(np.random.random((3, 8, 5)))
             x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
             x00, x11 = paddle.split(
                 input,
                 num_or_sections=2,
-                axis=fluid.dygraph.to_variable(np.array([1])),
+                axis=base.dygraph.to_variable(np.array([1])),
             )
             np.testing.assert_array_equal(x0.numpy(), x00.numpy())
             np.testing.assert_array_equal(x1.numpy(), x11.numpy())
 
     def test_topk(self):
         with self.dynamic_graph():
-            input = fluid.dygraph.to_variable(np.random.random((13, 11)))
+            input = base.dygraph.to_variable(np.random.random((13, 11)))
             top5_values1, top5_indices1 = paddle.topk(input, k=5)
             top5_values2, top5_indices2 = paddle.topk(
-                input, k=fluid.dygraph.to_variable(np.array([5]))
+                input, k=base.dygraph.to_variable(np.array([5]))
             )
             np.testing.assert_array_equal(
                 top5_values1.numpy(), top5_values2.numpy()
@@ -740,7 +740,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
-            weight_attr = fluid.ParamAttr(
+            weight_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             conv3d1 = paddle.nn.Conv3D(
@@ -801,7 +801,7 @@ class TestLayer(LayerTest):
             )
             static_ret = self.get_static_graph_result(
                 feed={
-                    'X': fluid.create_lod_tensor(
+                    'X': base.create_lod_tensor(
                         data=input, recursive_seq_lens=[[1, 1]], place=place
                     )
                 },
@@ -822,7 +822,7 @@ class TestLayer(LayerTest):
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={
-                    'X': fluid.create_lod_tensor(
+                    'X': base.create_lod_tensor(
                         data=input, recursive_seq_lens=[[1, 1]], place=place
                     )
                 },
@@ -917,7 +917,7 @@ class TestLayer(LayerTest):
             )
             static_ret = self.get_static_graph_result(
                 feed={
-                    'Weight': fluid.create_lod_tensor(
+                    'Weight': base.create_lod_tensor(
                         data=input, recursive_seq_lens=[[1, 1]], place=place
                     ),
                 },
@@ -933,7 +933,7 @@ class TestLayer(LayerTest):
             ret = spectralNorm(Weight)
             static_ret2 = self.get_static_graph_result(
                 feed={
-                    'Weight': fluid.create_lod_tensor(
+                    'Weight': base.create_lod_tensor(
                         data=input, recursive_seq_lens=[[1, 1]], place=place
                     )
                 },
@@ -987,7 +987,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
             custom_weight = np.random.randn(3, 3, 2, 2, 2).astype("float32")
-            weight_attr = fluid.ParamAttr(
+            weight_attr = base.ParamAttr(
                 initializer=paddle.nn.initializer.Assign(custom_weight)
             )
             conv3d1 = paddle.nn.Conv3DTranspose(
@@ -1190,17 +1190,17 @@ class TestLayer(LayerTest):
                 lambda: less_than_branch(a, b),
             )
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             ret = exe.run(fetch_list=[out])
             static_res = ret[0]
 
         with self.dynamic_graph():
-            a = fluid.dygraph.to_variable(np.array([0.1]).astype('float32'))
-            b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
+            a = base.dygraph.to_variable(np.array([0.1]).astype('float32'))
+            b = base.dygraph.to_variable(np.array([0.23]).astype('float32'))
             out = paddle.static.nn.cond(
                 a < b,
                 lambda: less_than_branch(a, b),
@@ -1260,11 +1260,11 @@ class TestLayer(LayerTest):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             static_res1, static_res2 = exe.run(fetch_list=[out_1, out_2])
 
         with self.dynamic_graph():
@@ -1334,11 +1334,11 @@ class TestLayer(LayerTest):
             )
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             static_res1, static_res2, static_res3 = exe.run(
                 fetch_list=[out_1, out_2, out_3]
             )
@@ -1424,10 +1424,10 @@ class TestLayer(LayerTest):
             fc_out = paddle.nn.Linear(32 * 32, 10)(data_new)
             predict = paddle.nn.functional.softmax(fc_out)
             result = paddle.static.accuracy(input=predict, label=label, k=5)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
 
-            exe.run(fluid.default_startup_program())
+            exe.run(base.default_startup_program())
             # x = np.random.rand(3, 32, 32).astype("float32")
             # y = np.array([[1], [0], [1]])
 
@@ -1559,8 +1559,8 @@ class TestBook(LayerTest):
 
     def make_fit_a_line(self):
         with program_guard(
-            fluid.default_main_program(),
-            startup_program=fluid.default_startup_program(),
+            base.default_main_program(),
+            startup_program=base.default_startup_program(),
         ):
             x = self._get_data(name='x', shape=[13], dtype='float32')
             y_predict = paddle.nn.Linear(13, 1)(x)
@@ -1573,7 +1573,7 @@ class TestBook(LayerTest):
 
     def make_recognize_digits_mlp(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             # Change g_program, so the rest layers use `g_program`
             images = self._get_data(name='pixel', shape=[784], dtype='float32')
@@ -1594,7 +1594,7 @@ class TestBook(LayerTest):
 
     def make_conv2d_transpose(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             img = self._get_data(name='pixel', shape=[3, 2, 2], dtype='float32')
             return paddle.static.nn.conv2d_transpose(
@@ -1603,7 +1603,7 @@ class TestBook(LayerTest):
 
     def make_recognize_digits_conv(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             images = self._get_data(
                 name='pixel', shape=[1, 28, 28], dtype='float32'
@@ -1650,7 +1650,7 @@ class TestBook(LayerTest):
 
     def make_word_embedding(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             dict_size = 10000
             embed_size = 32
@@ -1710,7 +1710,7 @@ class TestBook(LayerTest):
 
     def make_pool2d(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
             return paddle.nn.functional.max_pool2d(
@@ -1719,7 +1719,7 @@ class TestBook(LayerTest):
 
     def make_pool2d_infershape(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             theta = self._get_data("theta", shape=[2, 3], dtype='float32')
             x = paddle.nn.functional.affine_grid(
@@ -1731,7 +1731,7 @@ class TestBook(LayerTest):
 
     def make_softmax(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             data = self._get_data(name='data', shape=[10], dtype='float32')
             hid = paddle.nn.Linear(10, 20)(data)
@@ -1776,7 +1776,7 @@ class TestBook(LayerTest):
 
     def make_multiplex(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x1 = self._get_data(name='x1', shape=[4], dtype='float32')
             x2 = self._get_data(name='x2', shape=[4], dtype='float32')
@@ -1786,7 +1786,7 @@ class TestBook(LayerTest):
 
     def make_softmax_with_cross_entropy(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[16], dtype='float32')
             y = self._get_data(name='label', shape=[1], dtype='int64')
@@ -1823,7 +1823,7 @@ class TestBook(LayerTest):
 
     def make_scatter(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(
                 name='x', shape=[3, 3], append_batch_size=False, dtype='float32'
@@ -1841,7 +1841,7 @@ class TestBook(LayerTest):
             return out
 
     def make_one_hot(self):
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
+        with base.framework._dygraph_place_guard(place=base.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
             one_hot_label = paddle.nn.functional.one_hot(label, 10)
             return one_hot_label
@@ -1849,7 +1849,7 @@ class TestBook(LayerTest):
     def make_label_smooth(self):
         # TODO(minqiyang): support gpu ut
         self._force_to_use_cpu = True
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
+        with base.framework._dygraph_place_guard(place=base.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
             one_hot_label = paddle.nn.functional.one_hot(label, 10)
             smooth_label = F.label_smooth(label=one_hot_label, epsilon=0.1)
@@ -1857,7 +1857,7 @@ class TestBook(LayerTest):
 
     def make_topk(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             data = self._get_data(name="label", shape=[200], dtype="float32")
             values, indices = paddle.topk(data, k=5)
@@ -1866,7 +1866,7 @@ class TestBook(LayerTest):
 
     def make_l2_normalize(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
             output = paddle.nn.functional.normalize(x, axis=1)
@@ -1874,7 +1874,7 @@ class TestBook(LayerTest):
 
     def make_shape(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
@@ -1884,7 +1884,7 @@ class TestBook(LayerTest):
 
     def make_pad2d(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
@@ -1901,7 +1901,7 @@ class TestBook(LayerTest):
 
     def make_mish(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = self._get_data(name="input", shape=[16], dtype="float32")
             out = paddle.nn.functional.mish(input, name='mish')
@@ -1909,7 +1909,7 @@ class TestBook(LayerTest):
 
     def make_cross_entropy(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(name="x", shape=[30, 10], dtype="float32")
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
@@ -1926,7 +1926,7 @@ class TestBook(LayerTest):
 
     def make_uniform_random_batch_size_like(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = self._get_data(
                 name="input", shape=[13, 11], dtype='float32'
@@ -1936,14 +1936,14 @@ class TestBook(LayerTest):
 
     def make_gaussian_random(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             out = random.gaussian(shape=[20, 30])
             return out
 
     def make_sum(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = self._get_data(
                 name="input", shape=[13, 11], dtype='float32'
@@ -1958,7 +1958,7 @@ class TestBook(LayerTest):
         axes = [0, 1, 2]
 
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = self._get_data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32'
@@ -1969,7 +1969,7 @@ class TestBook(LayerTest):
 
     def make_scale_variable(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = self._get_data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32'
@@ -1985,7 +1985,7 @@ class TestBook(LayerTest):
 
     def make_bilinear_tensor_product_layer(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             data = self._get_data(name='data', shape=[4], dtype="float32")
 
@@ -1997,7 +1997,7 @@ class TestBook(LayerTest):
 
     def make_batch_norm(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             data = self._get_data(
                 name='data', shape=[32, 128, 128], dtype="float32"
@@ -2007,7 +2007,7 @@ class TestBook(LayerTest):
 
     def make_batch_norm_momentum_variable(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             data = self._get_data(
                 name='data', shape=[32, 128, 128], dtype="float32"
@@ -2023,7 +2023,7 @@ class TestBook(LayerTest):
 
     def make_range(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             paddle.arange(0, 10, 2, 'int32')
             paddle.arange(0.1, 10.0, 0.2, 'float32')
@@ -2042,7 +2042,7 @@ class TestBook(LayerTest):
 
     def make_spectral_norm(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             weight = self._get_data(
                 name='weight',
@@ -2055,7 +2055,7 @@ class TestBook(LayerTest):
 
     def make_kldiv_loss(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(
                 name='x',
@@ -2076,7 +2076,7 @@ class TestBook(LayerTest):
 
     def make_pixel_shuffle(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
             out = paddle.nn.functional.pixel_shuffle(x, upscale_factor=3)
@@ -2084,7 +2084,7 @@ class TestBook(LayerTest):
 
     def make_mse_loss(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
@@ -2093,7 +2093,7 @@ class TestBook(LayerTest):
 
     def make_square_error_cost(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
@@ -2161,13 +2161,13 @@ class TestBook(LayerTest):
             out = batch_fc(
                 input=input,
                 param_size=[16, 3, 10],
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     learning_rate=1.0,
                     name="w_0",
                     initializer=paddle.nn.initializer.XavierNormal(),
                 ),
                 bias_size=[16, 10],
-                bias_attr=fluid.ParamAttr(
+                bias_attr=base.ParamAttr(
                     learning_rate=1.0,
                     name="b_0",
                     initializer=paddle.nn.initializer.XavierNormal(),
@@ -2188,7 +2188,7 @@ class TestBook(LayerTest):
                 input=input,
                 rank_offset=rank_offset,
                 rank_param_shape=[18, 3],
-                rank_param_attr=fluid.ParamAttr(
+                rank_param_attr=base.ParamAttr(
                     learning_rate=1.0,
                     name="ubm_rank_param.w_0",
                     initializer=paddle.nn.initializer.XavierNormal(),
@@ -2261,7 +2261,7 @@ class TestBook(LayerTest):
 
     def test_addmm(self):
         with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
+            base.default_main_program(), base.default_startup_program()
         ):
             input = paddle.static.data(
                 name='input_data',
@@ -2313,14 +2313,14 @@ class ExampleNet(paddle.nn.Layer):
 
 class TestLayerParameterTrainableSet(unittest.TestCase):
     def test_layer_parameter_set(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             net = ExampleNet()
             self.assertFalse(net.weight.trainable)
 
 
 class TestLayerTrainingAttribute(unittest.TestCase):
     def test_set_train_eval_in_dynamic_mode(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             net = paddle.nn.Dropout()
             net.train()
             self.assertTrue(net.training)
@@ -2359,7 +2359,7 @@ class MySuperLayer(paddle.nn.Layer):
 
 class TestSubLayerCount(unittest.TestCase):
     def test_sublayer(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             mySuperlayer = MySuperLayer()
             self.assertTrue(len(mySuperlayer.sublayers()) == 3)
             self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)

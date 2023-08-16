@@ -38,28 +38,28 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/distributed/fleet/__init__.py"
            "python/paddle/distributed/fleet/launch.py"
            "python/requirements.txt"
-           "python/paddle/fluid/__init__.py"
-           "python/paddle/fluid/compiler.py"
-           "python/paddle/fluid/parallel_executor.py"
-           "python/paddle/fluid/framework.py"
-           "python/paddle/fluid/backward.py"
+           "python/paddle/base/__init__.py"
+           "python/paddle/base/compiler.py"
+           "python/paddle/base/parallel_executor.py"
+           "python/paddle/base/framework.py"
+           "python/paddle/base/backward.py"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
            "paddle/fluid/framework/unused_var_check.cc"
-           "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/check_shape_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/compile_vs_runtime_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/no_check_set_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/op_threshold_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
+           "python/paddle/base/tests/unittests/white_list/no_grad_set_white_list.py"
            "tools/print_signatures.py"
            "tools/sampcd_processor.py"
            "tools/check_pr_approval.py"
            "paddle/scripts/paddle_build.bat"
            "tools/windows/run_unittests.sh"
            "tools/parallel_UT_rule.py"
-           "python/paddle/fluid/dygraph/layers.py"
+           "python/paddle/base/dygraph/layers.py"
            "paddle/fluid/eager/grad_node_info.h"
            "paddle/fluid/eager/grad_node_info.cc"
            "paddle/fluid/eager/grad_tensor_holder.h"
@@ -142,7 +142,7 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "third_party" ];then
           echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}.\n"
           check_approval 1 risemeup1 tianshuo78520a
-      elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
+      elif [ "${API_FILE}" == "python/paddle/base/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
           check_approval 1 lanxianghit phlrain luotao1 Aurelius84 qili93
       elif [ "${API_FILE}" == "python/requirements.txt" ];then
@@ -341,9 +341,9 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     check_approval 1 From00 zhiqiu
 fi
 
-HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/fluid" || true`
+HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/base" || true`
 if [ "${HAS_MODIFIED_PY_FLUID}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/fluid, because fluid API is going to be removed.\n"
+    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/base, because fluid API is going to be removed.\n"
     check_approval 1 zoooo0820 jeff41404
 fi
 

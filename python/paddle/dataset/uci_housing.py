@@ -51,7 +51,7 @@ feature_names = [
 UCI_TRAIN_DATA = None
 UCI_TEST_DATA = None
 
-FLUID_URL_MODEL = 'https://github.com/PaddlePaddle/book/raw/develop/01.fit_a_line/fluid/fit_a_line.fluid.tar'
+FLUID_URL_MODEL = 'https://github.com/PaddlePaddle/book/raw/develop/01.fit_a_line/base/fit_a_line.base.tar'
 FLUID_MD5_MODEL = '6e6dd637ccd5993961f68bfbde46090b'
 
 
@@ -150,9 +150,9 @@ def test():
     return reader
 
 
-def fluid_model():
+def base_model():
     parameter_tar = paddle.dataset.common.download(
-        FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.fluid.tar'
+        FLUID_URL_MODEL, 'uci_housing', FLUID_MD5_MODEL, 'fit_a_line.base.tar'
     )
 
     tar = tarfile.TarFile(parameter_tar, mode='r')

@@ -18,7 +18,7 @@ from _collections import defaultdict
 
 import paddle
 from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.fluid import framework
+from paddle.base import framework
 from paddle.framework import core
 from paddle.static import Parameter, Program
 

@@ -19,7 +19,7 @@ from paddle.distributed.communication.group import (
     _warn_cur_rank_not_in_group,
 )
 from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
-from paddle.fluid import data_feeder
+from paddle.base import data_feeder
 
 
 def _reduce_in_dygraph(

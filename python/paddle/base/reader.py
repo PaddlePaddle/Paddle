@@ -46,7 +46,7 @@ from .layers.io import (
 )
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
-from paddle.fluid.framework import _set_expected_place, _current_expected_place
+from paddle.base.framework import _set_expected_place, _current_expected_place
 import logging
 import warnings
 
@@ -147,7 +147,7 @@ class DataLoaderBase:
                 "this means the input data contains nested lists with different lengths. "
                 "\n\t* Check the reader function passed to 'decorate_batch_generator'"
                 " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."
+                "'base.create_lod_tensor' to convert it to a LoD-Tensor."
             )
         return arr
 
@@ -327,7 +327,7 @@ class DataLoader:
                 label = static.data(name='label', shape=[None, 1], dtype='int64')
 
                 # Define DataLoader
-                loader = paddle.fluid.io.DataLoader.from_generator(feed_list=[image, label], capacity=16, iterable=ITERABLE)
+                loader = paddle.base.io.DataLoader.from_generator(feed_list=[image, label], capacity=16, iterable=ITERABLE)
 
                 # Define network
                 loss = simple_net(image, label)
@@ -401,7 +401,7 @@ class DataLoader:
                 adam = opt.Adam(learning_rate=0.001, parameters=dp_layer.parameters())
 
                 # create data loader
-                loader = paddle.fluid.io.DataLoader.from_generator(capacity=5)
+                loader = paddle.base.io.DataLoader.from_generator(capacity=5)
                 loader.set_batch_generator(random_batch_reader())
 
                 for epoch_id in range(EPOCH_NUM):
@@ -478,7 +478,7 @@ class DataLoader:
                     use_var=[image, label])
                 dataset.set_filelist(['a.txt', 'b.txt', 'c.txt'])
 
-                loader = paddle.fluid.io.DataLoader.from_dataset(dataset, static.cpu_places())
+                loader = paddle.base.io.DataLoader.from_dataset(dataset, static.cpu_places())
         """
         return DatasetLoader(dataset, places, drop_last)
 
@@ -1151,9 +1151,9 @@ class PyReader(DataLoaderBase):
 
     Examples:
         1. If iterable = False, the created PyReader object is almost the
-           same as :code:`fluid.layers.py_reader()`. Operators would be
+           same as :code:`base.layers.py_reader()`. Operators would be
            inserted into the program. User should call :code:`start()`
-           before each epoch and catch :code:`fluid.core.EOFException`
+           before each epoch and catch :code:`base.core.EOFException`
            thrown by :code:`Executor.run()` when epoch ends. Once the
            exception is caught, user should call :code:`reset()` to reset
            the reader manually.
@@ -1161,7 +1161,7 @@ class PyReader(DataLoaderBase):
         .. code-block:: python
 
            import paddle
-           import paddle.fluid as fluid
+           import paddle.base as base
            import numpy as np
 
            paddle.enable_static()
@@ -1191,7 +1191,7 @@ class PyReader(DataLoaderBase):
            image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
 
-           reader = fluid.io.PyReader(feed_list=[image, label],
+           reader = base.io.PyReader(feed_list=[image, label],
                                       capacity=4,
                                       iterable=False)
 
@@ -1199,14 +1199,14 @@ class PyReader(DataLoaderBase):
            reader.decorate_sample_list_generator(
                paddle.batch(user_defined_reader, batch_size=BATCH_SIZE))
            loss = network(image, label)
-           executor = fluid.Executor(fluid.CPUPlace())
-           executor.run(fluid.default_startup_program())
+           executor = base.Executor(base.CPUPlace())
+           executor.run(base.default_startup_program())
            for i in range(EPOCH_NUM):
                reader.start()
                while True:
                    try:
                        executor.run(feed=None)
-                   except fluid.core.EOFException:
+                   except base.core.EOFException:
                        reader.reset()
                        break
 
@@ -1220,7 +1220,7 @@ class PyReader(DataLoaderBase):
         .. code-block:: python
 
            import paddle
-           import paddle.fluid as fluid
+           import paddle.base as base
            import numpy as np
 
            paddle.enable_static()
@@ -1247,16 +1247,16 @@ class PyReader(DataLoaderBase):
 
            image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-           reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
+           reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True, return_list=False)
 
            user_defined_reader = reader_creator_random_image(784, 784)
            reader.decorate_sample_list_generator(
                paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
-                   fluid.core.CPUPlace())
+                   base.core.CPUPlace())
 
            loss = network(image, label)
-           executor = fluid.Executor(fluid.CPUPlace())
-           executor.run(fluid.default_startup_program())
+           executor = base.Executor(base.CPUPlace())
+           executor.run(base.default_startup_program())
 
            for _ in range(EPOCH_NUM):
                for data in reader():
@@ -1269,7 +1269,7 @@ class PyReader(DataLoaderBase):
         .. code-block:: python
 
            import paddle
-           import paddle.fluid as fluid
+           import paddle.base as base
            import numpy as np
 
            ITER_NUM = 5
@@ -1282,9 +1282,9 @@ class PyReader(DataLoaderBase):
                            np.random.random_integers(low=0, high=9, size=[1])
                return reader
 
-           place = fluid.CPUPlace()
-           with fluid.dygraph.guard(place):
-               py_reader = fluid.io.PyReader(capacity=2, return_list=True)
+           place = base.CPUPlace()
+           with base.dygraph.guard(place):
+               py_reader = base.io.PyReader(capacity=2, return_list=True)
                user_defined_reader = reader_creator_random_image(784, 784)
                py_reader.decorate_sample_list_generator(
                    paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
@@ -1328,7 +1328,7 @@ class PyReader(DataLoaderBase):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 BATCH_SIZE = 10
@@ -1338,18 +1338,18 @@ class PyReader(DataLoaderBase):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
                 image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
+                reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
 
-                executor = fluid.Executor(fluid.CPUPlace())
-                executor.run(fluid.default_startup_program())
+                executor = base.Executor(base.CPUPlace())
+                executor.run(base.default_startup_program())
                 for i in range(3):
                     reader.start()
                     while True:
                         try:
                             executor.run(feed=None)
-                        except fluid.core.EOFException:
+                        except base.core.EOFException:
                             reader.reset()
                             break
 
@@ -1358,14 +1358,14 @@ class PyReader(DataLoaderBase):
 
     def reset(self):
         '''
-        Reset the reader object when :code:`fluid.core.EOFException` raises.
+        Reset the reader object when :code:`base.core.EOFException` raises.
         Can only call when the reader object is not iterable.
 
         Example:
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 BATCH_SIZE = 10
@@ -1375,18 +1375,18 @@ class PyReader(DataLoaderBase):
                         yield np.random.uniform(low=0, high=255, size=[784, 784]),
 
                 image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
-                reader = fluid.io.PyReader(feed_list=[image], capacity=4, iterable=False)
+                reader = base.io.PyReader(feed_list=[image], capacity=4, iterable=False)
                 reader.decorate_sample_list_generator(
                     paddle.batch(generator, batch_size=BATCH_SIZE))
 
-                executor = fluid.Executor(fluid.CPUPlace())
-                executor.run(fluid.default_startup_program())
+                executor = base.Executor(base.CPUPlace())
+                executor.run(base.default_startup_program())
                 for i in range(3):
                     reader.start()
                     while True:
                         try:
                             executor.run(feed=None)
-                        except fluid.core.EOFException:
+                        except base.core.EOFException:
                             reader.reset()
                             break
 
@@ -1420,7 +1420,7 @@ class PyReader(DataLoaderBase):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 EPOCH_NUM = 3
@@ -1447,15 +1447,15 @@ class PyReader(DataLoaderBase):
 
                 image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-                reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
+                reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
                 reader.decorate_sample_generator(user_defined_generator,
                                                  batch_size=BATCH_SIZE,
-                                                 places=[fluid.CPUPlace()])
+                                                 places=[base.CPUPlace()])
                 loss = network(image, label)
-                executor = fluid.Executor(fluid.CPUPlace())
-                executor.run(fluid.default_startup_program())
+                executor = base.Executor(base.CPUPlace())
+                executor.run(base.default_startup_program())
 
                 for _ in range(EPOCH_NUM):
                     for data in reader():
@@ -1485,7 +1485,7 @@ class PyReader(DataLoaderBase):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 paddle.enable_static()
@@ -1514,16 +1514,16 @@ class PyReader(DataLoaderBase):
 
                 image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-                reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
+                reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
                 reader.decorate_sample_list_generator(
                     paddle.batch(user_defined_generator, batch_size=BATCH_SIZE),
-                    fluid.core.CPUPlace())
+                    base.core.CPUPlace())
 
                 loss = network(image, label)
-                executor = fluid.Executor(fluid.core.CPUPlace())
-                executor.run(fluid.default_startup_program())
+                executor = base.Executor(base.core.CPUPlace())
+                executor.run(base.default_startup_program())
 
                 for _ in range(EPOCH_NUM):
                     for data in reader():
@@ -1551,7 +1551,7 @@ class PyReader(DataLoaderBase):
             .. code-block:: python
 
                 import paddle
-                import paddle.fluid as fluid
+                import paddle.base as base
                 import numpy as np
 
                 paddle.enable_static()
@@ -1582,14 +1582,14 @@ class PyReader(DataLoaderBase):
 
                 image = paddle.static.data(name='image', shape=[None, 784, 784], dtype='float32')
                 label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-                reader = fluid.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
+                reader = base.io.PyReader(feed_list=[image, label], capacity=4, iterable=True)
 
                 user_defined_generator = random_image_and_label_generator(784, 784)
-                reader.decorate_batch_generator(user_defined_generator, fluid.CPUPlace())
+                reader.decorate_batch_generator(user_defined_generator, base.CPUPlace())
 
                 loss = network(image, label)
-                executor = fluid.Executor(fluid.CPUPlace())
-                executor.run(fluid.default_startup_program())
+                executor = base.Executor(base.CPUPlace())
+                executor.run(base.default_startup_program())
 
                 for _ in range(EPOCH_NUM):
                     for data in reader():

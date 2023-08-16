@@ -23,7 +23,7 @@ import paddle
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-from paddle.fluid import core
+from paddle.base import core
 
 from ...backup_env import getenv_or_backup
 

@@ -18,9 +18,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import BatchNorm, Linear
 
 
@@ -76,12 +76,12 @@ class ConvBNPool(paddle.nn.Layer):
 
         filter_size = 3
         conv_std_0 = (2.0 / (filter_size**2 * channels[0])) ** 0.5
-        conv_param_0 = fluid.ParamAttr(
+        conv_param_0 = base.ParamAttr(
             initializer=paddle.nn.initializer.Normal(0.0, conv_std_0)
         )
 
         conv_std_1 = (2.0 / (filter_size**2 * channels[1])) ** 0.5
-        conv_param_1 = fluid.ParamAttr(
+        conv_param_1 = base.ParamAttr(
             initializer=paddle.nn.initializer.Normal(0.0, conv_std_1)
         )
 
@@ -199,14 +199,14 @@ class EncoderNet(paddle.nn.Layer):
     ):
         super().__init__()
         self.rnn_hidden_size = rnn_hidden_size
-        para_attr = fluid.ParamAttr(
+        para_attr = base.ParamAttr(
             initializer=paddle.nn.initializer.Normal(0.0, 0.02)
         )
-        bias_attr = fluid.ParamAttr(
+        bias_attr = base.ParamAttr(
             initializer=paddle.nn.initializer.Normal(0.0, 0.02),
             learning_rate=2.0,
         )
-        if fluid.framework.in_dygraph_mode():
+        if base.framework.in_dygraph_mode():
             h_0 = np.zeros(
                 (Config.batch_size, rnn_hidden_size), dtype="float32"
             )
@@ -247,7 +247,7 @@ class EncoderNet(paddle.nn.Layer):
 
     def forward(self, inputs):
         conv_features = self.ocr_convs(inputs)
-        # sliced_feature = fluid.layers.im2sequence(
+        # sliced_feature = base.layers.im2sequence(
         #    input=conv_features,
         #    stride=[1, 1],
         #    filter_size=[conv_features.shape[2], 1])
@@ -445,7 +445,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             )
 
         def run_dygraph():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            base.set_flags({'FLAGS_sort_sum_gradient': True})
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
             ocr_attention = OCRAttention()
@@ -506,10 +506,10 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
             return dy_out, dy_param_init_value, dy_param_value
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             (
                 eager_out,
                 eager_param_init_value,
@@ -519,10 +519,10 @@ class TestDygraphOCRAttention(unittest.TestCase):
         with new_program_scope():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             ocr_attention = OCRAttention()
 
@@ -564,7 +564,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 use_softmax=False,
             )
             static_avg_loss = paddle.sum(cost)
-            # param_grad_list = fluid.backward.append_backward(static_avg_loss)
+            # param_grad_list = base.backward.append_backward(static_avg_loss)
             optimizer.minimize(static_avg_loss)
 
             static_param_init_value = {}
@@ -578,7 +578,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     )
 
             out = exe.run(
-                fluid.default_startup_program(),
+                base.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
 
@@ -594,7 +594,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     static_label_out = label_out_np
                     static_label_out = static_label_out.reshape((-1, 1))
                     out = exe.run(
-                        fluid.default_main_program(),
+                        base.default_main_program(),
                         feed={
                             "pixel": image_np,
                             "label_in": static_label_in,

@@ -21,8 +21,8 @@ import google.protobuf.text_format
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.distributed.fleet.utils.log_util import logger
-from paddle.fluid.framework import _global_flags
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.base.framework import _global_flags
+from paddle.base.wrapped_decorator import wrap_decorator
 
 __all__ = []
 

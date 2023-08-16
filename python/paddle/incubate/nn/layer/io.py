@@ -13,7 +13,7 @@
 # limitations under the License.
 import paddle
 
-from ....fluid.framework import Variable
+from ....base.framework import Variable
 from ....framework import LayerHelper, core
 
 
@@ -55,9 +55,9 @@ class ListenAndServ:
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import paddle
-            with fluid.program_guard(main):
+            with base.program_guard(main):
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
                 with serv.do():
@@ -68,7 +68,7 @@ class ListenAndServ:
                     paddle.nn.initializer.Constant(value=1.0)(x, main.global_block())
                     paddle.scale(x=x, scale=10.0, out=out_var)
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(main)
     """
 

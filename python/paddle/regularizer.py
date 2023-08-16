@@ -14,8 +14,8 @@
 
 
 from paddle import _C_ops
-from paddle.fluid import framework
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.base import framework
+from paddle.base.framework import in_dygraph_mode
 
 __all__ = ['L1Decay', 'L2Decay']
 
