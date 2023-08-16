@@ -634,11 +634,10 @@
   args : (str name, IntArray shape, DataType dtype, Place place)
   output : Tensor(out)
   infer_meta :
-    func : FeedWithPlaceInferMeta
-    param : [dtype]
+    func : DataInferMeta
   kernel:
     func : data
-    param : [dtype]
+    param : [name, shape, dtype]
     data_type : dtype
     backend : place
 
