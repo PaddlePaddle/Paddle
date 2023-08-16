@@ -42,11 +42,6 @@ ENV PATH=/opt/cmake-3.16/bin:${PATH}
 ARG MUSA_TOOLKITS_URL
 ARG MUDNN_URL
 
-# clang-format 3.8
-RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
-    tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
-    cp -r * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
-
 # MUSA deps
 RUN wget --no-check-certificate ${MUSA_TOOLKITS_URL} -O /root/musa_toolkits_install.tar.gz && \
     cd /root && \
@@ -85,8 +80,8 @@ RUN mkdir /opt/conda && ./${CONDA_FILE} -b -f -p "/opt/conda" && rm -rf ${CONDA_
 ENV PATH=/opt/conda/bin:${PATH}
 RUN conda init bash
 
-# install pylint and pre-commit
-RUN /opt/conda/bin/pip install pre-commit pylint pytest astroid
+# install pylint clang-format cpplint and pre-commit
+RUN /opt/conda/bin/pip install pre-commit pylint pytest astroid clang-format==13.0.0 cpplint==1.6.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # install Paddle requirement
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
