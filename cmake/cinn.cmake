@@ -218,7 +218,8 @@ function(gen_cinncore LINKTYPE)
     schedule_desc_proto
     absl
     isl
-    ginac)
+    ginac
+    gflags)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(NOT CINN_ONLY)

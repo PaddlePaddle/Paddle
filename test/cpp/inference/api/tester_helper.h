@@ -107,20 +107,20 @@ PD_DEFINE_bool(ipu_enable_half_partial, false, "enable half partial");
 namespace paddle {
 namespace inference {
 
-using paddle::framework::proto::VarType;
-using float16 = paddle::platform::float16;
+using ::paddle::framework::proto::VarType;
+using float16 = ::paddle::platform::float16;
 
 template <typename T>
-constexpr paddle::PaddleDType GetPaddleDType();
+constexpr ::paddle::PaddleDType GetPaddleDType();
 
 template <>
-constexpr paddle::PaddleDType GetPaddleDType<int64_t>() {
-  return paddle::PaddleDType::INT64;
+constexpr ::paddle::PaddleDType GetPaddleDType<int64_t>() {
+  return ::paddle::PaddleDType::INT64;
 }
 
 template <>
-constexpr paddle::PaddleDType GetPaddleDType<float>() {
-  return paddle::PaddleDType::FLOAT32;
+constexpr ::paddle::PaddleDType GetPaddleDType<float>() {
+  return ::paddle::PaddleDType::FLOAT32;
 }
 
 void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
@@ -525,7 +525,7 @@ void PredictionWarmUp(PaddlePredictor *predictor,
   PrintTime(
       batch_size, 1, num_threads, tid, batch_latency, iterations, data_type);
   if (FLAGS_enable_profile) {
-    paddle::platform::ResetProfiler();
+    ::paddle::platform::ResetProfiler();
   }
 }
 
@@ -753,7 +753,7 @@ float CompareAccuracyOne(
     if (output_slots[i][compared_idx].lod.size() > 0)
       throw std::invalid_argument("CompareAccuracy: output has nonempty LoD.");
 
-    if (output_slots[i][compared_idx].dtype != paddle::PaddleDType::FLOAT32)
+    if (output_slots[i][compared_idx].dtype != ::paddle::PaddleDType::FLOAT32)
       throw std::invalid_argument(
           "CompareAccuracy: output is of a wrong type.");
 
@@ -1160,7 +1160,7 @@ static bool CompareTensor(const phi::DenseTensor &a,
   return true;
 }
 
-void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
+void ConvertFP32toFP16(::paddle::PaddleTensor &tensor  // NOLINT
 ) {
   int num = 1;
   for (auto dim : tensor.shape) {
@@ -1181,7 +1181,7 @@ void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
   tensor.dtype = PaddleDType::FLOAT16;
 }
 
-void ConvertFP16toFP32(paddle::PaddleTensor &tensor  // NOLINT
+void ConvertFP16toFP32(::paddle::PaddleTensor &tensor  // NOLINT
 ) {
   int num = 1;
   for (auto dim : tensor.shape) {
