@@ -30,9 +30,6 @@ from .utils import (
 )
 from .variable_trans_func import to_static_variable
 
-# TODO(MarioLulab):
-# ADD static pylayer here ?
-
 __all__ = []
 
 

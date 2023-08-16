@@ -32,7 +32,6 @@ import numpy as np
 
 import paddle
 from paddle import fluid  # noqa: F401
-from paddle.autograd.py_layer import PyLayerMeta
 from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
@@ -1497,14 +1496,6 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
-
-
-def is_pylayer(func):
-    """predict whether a function is a function from PyLayer."""
-    func_self = getattr(func, '__self__', None)
-    if func_self and isinstance(func.__self__, PyLayerMeta):
-        return True
-    return False
 
 
 @signature_safe_contextmanager
