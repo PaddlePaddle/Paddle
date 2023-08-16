@@ -62,10 +62,10 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle.base as base
             import numpy as np
 
-            t = fluid.create_lod_tensor(np.ndarray([5, 30]), [[2, 3]], fluid.CPUPlace())
+            t = base.create_lod_tensor(np.ndarray([5, 30]), [[2, 3]], base.CPUPlace())
     """
     if isinstance(data, core.LoDTensor):
         return create_lod_tensor(np.array(data), recursive_seq_lens, place)
@@ -128,7 +128,7 @@ def create_random_int_lodtensor(
        :code:`base_shape` .
 
     2. Create a numpy array of random integers, and parse the created numpy
-       array as parameter :code:`data` of :ref:`api_fluid_create_lod_tensor` to
+       array as parameter :code:`data` of :ref:`api_base_create_lod_tensor` to
        create the output LoDTensor.
 
     Suppose we want to create a LoDTensor to hold data for 2 sequences, where
@@ -156,10 +156,10 @@ def create_random_int_lodtensor(
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle.base as base
 
-          t = fluid.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]],
-                    base_shape=[30], place=fluid.CPUPlace(), low=0, high=10)
+          t = base.create_random_int_lodtensor(recursive_seq_lens=[[2, 3]],
+                    base_shape=[30], place=base.CPUPlace(), low=0, high=10)
           print(t.shape()) # [5, 30]
     """
     assert isinstance(base_shape, list), "base_shape should be a list"

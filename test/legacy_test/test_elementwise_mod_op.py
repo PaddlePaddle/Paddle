@@ -23,8 +23,8 @@ from eager_op_test import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestElementwiseModOp(OpTest):
@@ -41,8 +41,8 @@ class TestElementwiseModOp(OpTest):
         self.init_axis()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -178,10 +178,10 @@ class TestElementwiseModBF16Op(OpTest):
         self.init_axis()
         self.inputs = {
             'X': convert_float_to_uint16(
-                OpTest.np_dtype_to_fluid_dtype(self.x)
+                OpTest.np_dtype_to_base_dtype(self.x)
             ),
             'Y': convert_float_to_uint16(
-                OpTest.np_dtype_to_fluid_dtype(self.y)
+                OpTest.np_dtype_to_base_dtype(self.y)
             ),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
@@ -217,7 +217,7 @@ class TestRemainderOp(unittest.TestCase):
         return paddle.remainder(x, y, name)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
             y = paddle.static.data(name='y', shape=[2, 3], dtype='int64')
 
@@ -225,7 +225,7 @@ class TestRemainderOp(unittest.TestCase):
             self.assertEqual(('div_res' in y_1.name), True)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([2, 3, 8, 7]).astype('int64')
             np_y = np.array([1, 5, 3, 3]).astype('int64')
             x = paddle.to_tensor(np_x)

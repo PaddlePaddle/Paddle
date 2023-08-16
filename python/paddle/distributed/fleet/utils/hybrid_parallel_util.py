@@ -22,7 +22,7 @@ from paddle.distributed.parallel import (
 )
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.base import core
 
 from .log_util import logger
 
@@ -73,7 +73,7 @@ def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
         # need to div nranks
         if scale is not None:
             div_factor = paddle.to_tensor(scale, dtype=coalesced_grad.dtype)
-            paddle.fluid.framework._dygraph_tracer().trace_op(
+            paddle.base.framework._dygraph_tracer().trace_op(
                 type="elementwise_div",
                 inputs={'X': coalesced_grad, 'Y': div_factor},
                 outputs={'Out': coalesced_grad},

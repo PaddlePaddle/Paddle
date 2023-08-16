@@ -19,7 +19,7 @@ from simple_nets import simple_fc_net_with_inputs
 
 import paddle
 from paddle.device.cuda.graphs import CUDAGraph
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.base.dygraph.base import switch_to_static_graph
 
 
 def can_use_cuda_graph():

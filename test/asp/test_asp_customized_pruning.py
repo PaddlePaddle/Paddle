@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.incubate import asp as sparsity
 from paddle.incubate.asp.supported_layer_list import (
     supported_layers_and_prune_func_map,
@@ -188,8 +188,8 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
 
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
 
         self.customer_prefix = "customer_layer"
 
@@ -215,14 +215,14 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
             )
             return img, label, prediction
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             self.img, self.label, self.predict = build_model()
             self.supported_layer_count_ref = 5
 
         self.place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             self.place = paddle.CUDAPlace(0)
-        self.exe = fluid.Executor(self.place)
+        self.exe = base.Executor(self.place)
 
         sparsity.add_supported_layer(self.customer_prefix, my_own_pruning)
 
@@ -236,7 +236,7 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
         supported_layer_count = 0
         for param in self.main_program.global_block().all_parameters():
             mat = np.array(
-                fluid.global_scope().find_var(param.name).get_tensor()
+                base.global_scope().find_var(param.name).get_tensor()
             )
             if sparsity.asp.ASPHelper._is_supported_layer(
                 self.main_program, param.name
@@ -265,7 +265,7 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
         self.assertEqual(supported_layer_count, self.supported_layer_count_ref)
 
     def test_training_pruning(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
                 paddle.nn.functional.cross_entropy(
                     input=self.predict,
@@ -288,13 +288,13 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
         supported_layer_count = 0
         for param in self.main_program.global_block().all_parameters():
             mat = np.array(
-                fluid.global_scope().find_var(param.name).get_tensor()
+                base.global_scope().find_var(param.name).get_tensor()
             )
             if sparsity.asp.ASPHelper._is_supported_layer(
                 self.main_program, param.name
             ):
                 mat_mask = np.array(
-                    fluid.global_scope()
+                    base.global_scope()
                     .find_var(sparsity.asp.ASPHelper._get_mask_name(param.name))
                     .get_tensor()
                 )

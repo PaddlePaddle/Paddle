@@ -22,7 +22,7 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
 from paddle.dataset import wmt16
-from paddle.fluid import core
+from paddle.base import core
 
 os.environ['CPU_NUM'] = str(4)
 

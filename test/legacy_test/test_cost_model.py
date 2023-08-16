@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle.cost_model import CostModel
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 

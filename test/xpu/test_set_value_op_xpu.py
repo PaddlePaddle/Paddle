@@ -29,7 +29,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 
 
 class XPUTestSetValueOp(XPUOpTestWrapper):
@@ -1638,7 +1638,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         def test_inplace(self):
             paddle.disable_static()
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 a.stop_gradient = False
@@ -1662,7 +1662,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             paddle.disable_static()
 
             a_grad_1, b_grad_1, a_grad_2, b_grad_2 = 0, 1, 2, 3
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 b = paddle.rand(shape=[1, 4])
@@ -1673,7 +1673,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 a_grad_1 = a.grad.numpy()
                 b_grad_1 = b.grad.numpy()
 
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 b = paddle.rand(shape=[1, 4])

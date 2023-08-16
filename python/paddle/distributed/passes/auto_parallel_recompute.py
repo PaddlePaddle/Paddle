@@ -16,7 +16,7 @@ import logging
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.backward import (
+from paddle.base.backward import (
     ProgramStats,
     _append_grad_suffix_,
     _find_op_path_,

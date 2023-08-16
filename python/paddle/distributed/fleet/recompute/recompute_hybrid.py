@@ -158,7 +158,7 @@ class _HPRecomputeFunction(PyLayer):
                 # Note:
                 #  If not marked non_differentiable, all output tensors' attr `stop gradient`
                 #  will be reset to `False` in c++ backend.
-                #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
+                #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/base/pybind/eager_py_layer.cc#L388
                 if framework.in_dynamic_mode() and state:
                     ctx.mark_non_differentiable(arg)
             else:
@@ -175,7 +175,7 @@ class _HPRecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # Restore inputs
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices

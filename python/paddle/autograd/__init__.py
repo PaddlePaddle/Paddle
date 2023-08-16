@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.dygraph.base import grad  # noqa: F401
-from ..fluid.dygraph.base import enable_grad  # noqa: F401
-from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
-from ..fluid.dygraph.base import is_grad_enabled  # noqa: F401
-from ..fluid.dygraph.base import set_grad_enabled  # noqa: F401
+from ..base.dygraph.base import grad  # noqa: F401
+from ..base.dygraph.base import enable_grad  # noqa: F401
+from ..base.dygraph.base import no_grad_ as no_grad  # noqa: F401
+from ..base.dygraph.base import is_grad_enabled  # noqa: F401
+from ..base.dygraph.base import set_grad_enabled  # noqa: F401
 from . import backward_mode  # noqa: F401
 from .autograd import jacobian, hessian  # noqa: F401
 from .backward_mode import backward  # noqa: F401

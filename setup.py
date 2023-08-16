@@ -219,10 +219,10 @@ class DevelopCommand(DevelopCommandBase):
     def run(self):
         # copy proto and .so to python_source_dir
         fluid_proto_binary_path = (
-            paddle_binary_dir + '/python/paddle/fluid/proto/'
+            paddle_binary_dir + '/python/paddle/base/proto/'
         )
         fluid_proto_source_path = (
-            paddle_source_dir + '/python/paddle/fluid/proto/'
+            paddle_source_dir + '/python/paddle/base/proto/'
         )
         distributed_proto_binary_path = (
             paddle_binary_dir + '/python/paddle/distributed/fleet/proto/'
@@ -237,8 +237,8 @@ class DevelopCommand(DevelopCommandBase):
             distributed_proto_binary_path, distributed_proto_source_path
         )
         shutil.copy(
-            paddle_binary_dir + '/python/paddle/fluid/libpaddle.so',
-            paddle_source_dir + '/python/paddle/fluid/',
+            paddle_binary_dir + '/python/paddle/base/libpaddle.so',
+            paddle_source_dir + '/python/paddle/base/',
         )
         dynamic_library_binary_path = paddle_binary_dir + '/python/paddle/libs/'
         dynamic_library_source_path = paddle_source_dir + '/python/paddle/libs/'
@@ -913,7 +913,7 @@ def get_package_data_and_package_dir():
             'paddle.fluid.proto': env_dict.get("PADDLE_BINARY_DIR")
             + '/paddle/fluid/framework',
             'paddle.fluid': env_dict.get("PADDLE_BINARY_DIR")
-            + '/python/paddle/fluid',
+            + '/python/paddle/base',
         }
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
@@ -1159,14 +1159,14 @@ def get_package_data_and_package_dir():
                 commands = [
                     "install_name_tool -id '@loader_path/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/fluid/'
+                    + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
                 commands.append(
                     "install_name_tool -add_rpath '@loader_path/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/fluid/'
+                    + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
@@ -1188,7 +1188,7 @@ def get_package_data_and_package_dir():
                 commands = [
                     "patchelf --set-rpath '$ORIGIN/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
-                    + '/python/paddle/fluid/'
+                    + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]

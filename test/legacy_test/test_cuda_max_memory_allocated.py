@@ -20,7 +20,7 @@ from paddle.device.cuda import (
     max_memory_allocated,
     memory_allocated,
 )
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):

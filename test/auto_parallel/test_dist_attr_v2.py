@@ -33,7 +33,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     _copy_dist_attr_to_cpp_for_graph,
 )
 from paddle.distributed.fleet import auto
-from paddle.fluid.core import OperatorDistAttr, TensorDistAttr
+from paddle.base.core import OperatorDistAttr, TensorDistAttr
 
 paddle.enable_static()
 
@@ -129,7 +129,7 @@ def get_program():
         )
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.fluid.io.DataLoader.from_generator(
+        dataloader = paddle.base.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=4 * batch_size, iterable=False
         )
         dataloader.set_batch_generator(

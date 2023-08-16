@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class ElementwiseMulOp(OpTest):
@@ -39,8 +39,8 @@ class ElementwiseMulOp(OpTest):
         self.if_enable_cinn()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
@@ -107,8 +107,8 @@ class TestComplexElementwiseMulOpWithCheckGrad(ElementwiseMulOp):
         self.if_enable_cinn()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {'axis': self.axis}
@@ -182,10 +182,10 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.axis = -1
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(
+            'X': OpTest.np_dtype_to_base_dtype(
                 convert_float_to_uint16(self.x)
             ),
-            'Y': OpTest.np_dtype_to_fluid_dtype(
+            'Y': OpTest.np_dtype_to_base_dtype(
                 convert_float_to_uint16(self.y)
             ),
         }
@@ -302,8 +302,8 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.y = np.random.uniform(0.1, 1, [17, 17]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
@@ -327,8 +327,8 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
         self.y = np.random.rand(100).astype(self.dtype)
         self.out = self.x * self.y.reshape(100, 1, 1)
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
@@ -500,8 +500,8 @@ class TestComplexElementwiseMulOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}

@@ -14,10 +14,10 @@
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.core import VarDesc
-from paddle.fluid.dygraph import no_grad
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base import core
+from paddle.base.core import VarDesc
+from paddle.base.dygraph import no_grad
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import in_dynamic_mode
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
@@ -66,7 +66,7 @@ def _to_dtype(t, dtype):
         t_used = t
 
     if dtype is not None and dtype != t_used.dtype:
-        with paddle.fluid.framework._dygraph_place_guard(place=t_used.place):
+        with paddle.base.framework._dygraph_place_guard(place=t_used.place):
             t_casted = t_used.cast(dtype=dtype)
     else:
         t_casted = t_used

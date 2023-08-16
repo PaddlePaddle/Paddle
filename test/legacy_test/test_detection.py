@@ -18,22 +18,22 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph import base
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph import base
+from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
 
 
 @contextlib.contextmanager
 def new_program_scope(main=None, startup=None, scope=None):
-    prog = main if main else fluid.Program()
-    startup_prog = startup if startup else fluid.Program()
-    scope = scope if scope else fluid.core.Scope()
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(prog, startup_prog):
-            with fluid.unique_name.guard():
+    prog = main if main else base.Program()
+    startup_prog = startup if startup else base.Program()
+    scope = scope if scope else base.core.Scope()
+    with base.scope_guard(scope):
+        with base.program_guard(prog, startup_prog):
+            with base.unique_name.guard():
                 yield
 
 
@@ -58,17 +58,17 @@ class LayerTest(unittest.TestCase):
     @contextlib.contextmanager
     def static_graph(self):
         with new_program_scope():
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            base.default_startup_program().random_seed = self.seed
+            base.default_main_program().random_seed = self.seed
             yield
 
     def get_static_graph_result(
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
-        exe = fluid.Executor(self._get_place(force_to_use_cpu))
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(self._get_place(force_to_use_cpu))
+        exe.run(base.default_startup_program())
         return exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed=feed,
             fetch_list=fetch_list,
             return_numpy=(not with_lod),
@@ -76,11 +76,11 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
-        with fluid.dygraph.guard(
+        with base.dygraph.guard(
             self._get_place(force_to_use_cpu=force_to_use_cpu)
         ):
-            fluid.default_startup_program().random_seed = self.seed
-            fluid.default_main_program().random_seed = self.seed
+            base.default_startup_program().random_seed = self.seed
+            base.default_main_program().random_seed = self.seed
             yield
 
 

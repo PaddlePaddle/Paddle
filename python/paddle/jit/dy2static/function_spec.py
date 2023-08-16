@@ -18,8 +18,8 @@ import inspect
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
 
@@ -299,7 +299,7 @@ def _replace_value_with_input_spec(args):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec.from_tensor(input_var)
             input_var.stop_gradient = stop_gradient
-        elif isinstance(input_var, paddle.fluid.framework.Variable):
+        elif isinstance(input_var, paddle.base.framework.Variable):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec(
                 input_var.shape, input_var.dtype, input_var.name
