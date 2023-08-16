@@ -299,6 +299,9 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
       *expr = node->stmts[0];
       Visit(expr, expr);
     } else {
+      for (auto& s : node->stmts) {
+        Visit(&s, &s);
+      }
       std::vector<Expr> stmts;
       for (auto& s : node->stmts) {
         if (s.As<ir::Block>()) {
@@ -308,7 +311,6 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
             stmts.push_back(inner_stmt);
           }
         } else {
-          IRMutator<>::Visit(&s, &s);
           stmts.push_back(s);
         }
       }
