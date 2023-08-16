@@ -405,7 +405,7 @@ void RnnKernel(const Context &dev_ctx,
 PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float, double) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }

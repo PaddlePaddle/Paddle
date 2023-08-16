@@ -59,7 +59,7 @@ PD_REGISTER_KERNEL(softmax_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(softmax_grad,
                    GPUDNN,
                    ALL_LAYOUT,

@@ -25,8 +25,14 @@ elseif(WITH_ROCM)
 elseif(WITH_MUSA)
   musa_library(
     gpu_info
-    SRCS gpu_info.cc
-    DEPS phi glog enforce monitor dynload_cuda)
+    SRCS
+    gpu_info.cc
+    DEPS
+    phi
+    glog
+    enforce
+    monitor
+    dynload_cuda)
 endif()
 
 cc_library(
