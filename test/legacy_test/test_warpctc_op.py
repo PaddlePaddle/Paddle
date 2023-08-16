@@ -548,6 +548,8 @@ class TestWarpCTCOpError(unittest.TestCase):
                     input_lengths=logits_length,
                     label_lengths=label_length,
                     reduction='none',
+                    use_log_softmax=True,
+                    zero_infinity=False,
                 )
 
             self.assertRaises(TypeError, test_logits_Variable)
@@ -560,6 +562,8 @@ class TestWarpCTCOpError(unittest.TestCase):
                     input_lengths=logits_length,
                     label_lengths=label_length,
                     reduction='none',
+                    use_log_softmax=True,
+                    zero_infinity=False,
                 )
 
             self.assertRaises(TypeError, test_label_Variable)
@@ -572,6 +576,8 @@ class TestWarpCTCOpError(unittest.TestCase):
                     input_lengths=logits_length_data,
                     label_lengths=label_length,
                     reduction='none',
+                    use_log_softmax=True,
+                    zero_infinity=False,
                 )
 
             self.assertRaises(TypeError, test_logits_len_Variable)
@@ -584,6 +590,8 @@ class TestWarpCTCOpError(unittest.TestCase):
                     input_lengths=logits_length,
                     label_length=label_length_data,
                     reduction='none',
+                    use_log_softmax=True,
+                    zero_infinity=False,
                 )
 
             self.assertRaises(TypeError, test_label_len_Variable)
@@ -602,6 +610,8 @@ class TestWarpCTCOpError(unittest.TestCase):
                 input_lengths=None,
                 label_lengths=None,
                 reduction='none',
+                use_log_softmax=True,
+                zero_infinity=False,
             )
 
         paddle.disable_static()
@@ -611,9 +621,10 @@ class TestWarpCTCOpError(unittest.TestCase):
 
 class TestCTCLossAPICase(unittest.TestCase):
     def test_class_api(self):
+        # print("slajiaioajia")
         self.batch_size = 3
         self.num_classes = 15
-        self.logits_length = np.array([3, 3, 3], dtype=np.int64)
+        self.logits_length = np.array([3, 3, 1], dtype=np.int64)
         self.labels_length = np.array([0, 1, 2], dtype=np.int64)
         self.blank = 0
         self.norm_by_times = False
@@ -623,6 +634,8 @@ class TestCTCLossAPICase(unittest.TestCase):
             1.0,
             [max(self.logits_length), self.batch_size, self.num_classes],
         ).astype("float32")
+
+
         softmax = np.apply_along_axis(stable_softmax, -1, logits)
         # labels should not be blank
         labels = np.random.randint(
@@ -631,7 +644,7 @@ class TestCTCLossAPICase(unittest.TestCase):
             [self.batch_size, max(self.labels_length)],
             dtype="int32",
         )
-
+        
         ctc = CTCForward(
             softmax,
             self.logits_length,
@@ -653,6 +666,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
             softmax, labels, logits_length, labels_length
         )
+    
         loss_pd = loss_pd.numpy()
         paddle.enable_static()
         loss_np = np.squeeze(loss_np, axis=-1)

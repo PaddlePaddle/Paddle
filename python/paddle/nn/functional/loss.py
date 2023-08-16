@@ -1767,6 +1767,8 @@ def ctc_loss(
     blank=0,
     reduction='mean',
     norm_by_times=False,
+    use_log_softmax=True,
+    zero_infinity=False,
 ):
     """
 
@@ -1895,7 +1897,11 @@ def ctc_loss(
                 },
             )
             return loss_out
-
+        
+    if not use_log_softmax:
+        raise ValueError(
+            'Expected log_probs is an unscaled probability sequence. It not need to go through the log_softmax operation.'
+            )
     loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
@@ -1906,6 +1912,10 @@ def ctc_loss(
         loss_out = paddle.mean(loss_out / label_lengths)
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
+    if zero_infinity:
+        for p in loss_out:
+            if paddle.isinf(p):
+                p.stop_gradient = True
     return loss_out
 
 
