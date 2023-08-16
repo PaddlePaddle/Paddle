@@ -394,17 +394,11 @@ void SetFlagsFromEnv(const std::vector<std::string>& envs, bool error_fatal) {
   }
 }
 
-static bool command_line_parsed = false;
 static bool allow_undefined_flags = false;
 
 void AllowUndefinedFlags() { allow_undefined_flags = true; }
 
 void ParseCommandLineFlags(int* pargc, char*** pargv) {
-  if (command_line_parsed) {
-    LOG_FLAG_FATAL_ERROR("ParseCommandLineFlags should only be called once.");
-  }
-  command_line_parsed = true;
-
   assert(*pargc > 0);
   size_t argv_num = *pargc - 1;
   std::vector<std::string> argvs(*pargv + 1, *pargv + *pargc);
