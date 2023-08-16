@@ -430,13 +430,13 @@ def GenBuildOutputs(
     build_output_str += "\n  std::vector<ir::Type> argument_outputs;"
 
     CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE = """
-  ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
+  ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), paddle::dialect::TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
   argument_outputs.push_back({name}_dense_tensor_type);
 """
     CREATE_OUTPUT_VEC_DENSE_TENSOR_TEMPLATE = """
   std::vector<ir::Type> {name}_types;
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
-    {name}_types.push_back(paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(vec_dense_{name}[i].dtype()), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
+    {name}_types.push_back(paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), paddle::dialect::TransToIrDataType(vec_dense_{name}[i].dtype()), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
   }}
   ir::Type {name}_vector_type = ir::VectorType::get(ir::IrContext::Instance(), {name}_types);
   argument_outputs.push_back({name}_vector_type);

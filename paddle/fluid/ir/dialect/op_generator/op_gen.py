@@ -129,17 +129,17 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{"{kernel_key_dtype}"}}, {{{inplace}}}, {{{view}}});
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{"{kernel_key_dtype}"}}, {{{inplace}}}, {{{view}}});
 
   return std::make_tuple(inputs, attributes, outputs, run_time_info);
 }}
 """
-CONSTRUCT_INPUT_INFO_TEMPLATE = """OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute})"""
+CONSTRUCT_INPUT_INFO_TEMPLATE = """paddle::dialect::OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute})"""
 CONSTRUCT_OUTPUT_INFO_TEMPLATE = (
-    """OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
+    """paddle::dialect::OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
 )
 CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = (
-    """OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
+    """paddle::dialect::OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
 )
 
 
