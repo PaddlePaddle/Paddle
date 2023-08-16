@@ -466,10 +466,10 @@ class LayerHelperBase:
             stop_gradient=stop_gradient,
         )
 
-    def create_global_variable_for_type_inference(
+    def _create_global_variable_for_type_inference(
         self, dtype, stop_gradient=False, shape=None
     ):
-        """Create a temporary variable that should be type inferred layer.
+        """Create a global variable that should be type inferred layer.
 
         Note:
             The default type will be set to LOD_TENSOR. However, when
