@@ -367,7 +367,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
     }
   }
 
-  // add fetch with place op to program
+  // add data op to program
   auto *block = local_program.MutableBlock(0);
   for (auto &in_t : x) {
     auto name = in_t.name();
