@@ -2901,6 +2901,8 @@
     {x : X, indices: Indices}
   outputs :
     out : Out
+  attrs :
+   padding : paddings
   int_array :
     output_size:
       data_type : int
