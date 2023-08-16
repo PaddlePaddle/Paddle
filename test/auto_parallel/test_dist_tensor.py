@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+import paddle.nn.functional as F
 
 
 class TestDistTensor(unittest.TestCase):
@@ -50,6 +51,37 @@ class TestDistTensor(unittest.TestCase):
         )
         self.assertEqual(dist_tensor_with_numpy.dist_attr, dist_attr)
         self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
+
+
+class TestDistTensorForDygraphAPI(unittest.TestCase):
+    def check_tensor_eq(self, a, b):
+        np1 = a.numpy()
+        np2 = b.numpy()
+        np.testing.assert_allclose(np1, np2, rtol=1e-05)
+
+    def create_local_and_dist_tensor_pair(self, np_array):
+        local_t = paddle.to_tensor(np_array, dtype='float32')
+
+        mesh = dist.ProcessMesh([0], dim_names=["x"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
+        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
+
+        local_t.stop_gradient = False
+        dist_t.stop_gradient = False
+
+        return local_t, dist_t
+
+    def test_relu_api_for_dist_tensor(self):
+        x = np.random.random(size=[4, 4]).astype("float32")
+        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
+        local_out = F.relu(local_in)
+        dist_out = F.relu(dist_in)
+        self.check_tensor_eq(local_out, dist_out)
+
+        # test backward
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in.grad, dist_in.grad)
 
 
 if __name__ == "__main__":
