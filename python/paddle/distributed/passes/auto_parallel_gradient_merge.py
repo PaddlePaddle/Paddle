@@ -33,12 +33,11 @@ from .pass_base import PassBase, PassType, register_pass
 world_process_group = get_world_process_group()
 
 
-def _remove_and_get_optimizer_op(main_program, dist_context):
+def _remove_and_get_optimizer_op(main_program, temp_block, dist_context):
     # 1 create tmp block
     # 2 mv optimizer op from global program to tmp block
     # 3 del the op from dist_context
     main_block = main_program.global_block()
-    temp_block = main_program._create_block()
     removed_op_idx = []
     optimize_ops_desc = []
     for idx, op in enumerate(main_block.ops):
@@ -305,7 +304,12 @@ def parse_program(
     main_program, startup_program, params_grads, k_steps, avg, dist_context
 ):
     # 1 remove optimizer_op from main_program
-    optimize_ops_desc = _remove_and_get_optimizer_op(main_program, dist_context)
+    # It is wrong to use 'paddle.static.Program().global_block()' in the function '_remove_and_get_optimizer_op',
+    # because in this case, the temp_block will be deleted after the function finishes.
+    temp_block = paddle.static.Program().global_block()
+    optimize_ops_desc = _remove_and_get_optimizer_op(
+        main_program, temp_block, dist_context
+    )
 
     # back to block 0
     main_program._rollback()

@@ -38,6 +38,7 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_py_reader",
     "depend",
     "fetch_v2",
+    "send_v2",
     "nop"};
 
 std::set<std::string> StaticBuildBlackList = {
@@ -56,9 +57,6 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   // is_operator_base = (kernelCode >> 6) & 1
   // is_custom_op = (kernelCode >> 5) & 1
   // use_mkldnn = (kernelCode >> 4) & 1
-  // has_fluid_kernel = (kernelCode >> 3) & 1
-  // has_structed_kernel = (kernelCode >> 2) & 1
-  // need_move_to_phi = (kernelCode >> 1) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
@@ -78,20 +76,14 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       use_mkldnn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
     }
-    bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
-    bool has_structured_kernel =
-        phi::KernelFactory::Instance().HasStructuredKernel(op_type);
-    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
-
-    KernelCode kernel_code =
-        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
-        (use_mkldnn << 4) + (has_fluid_kernel << 3) +
-        (has_structured_kernel << 2) + (need_move_to_phi << 1);
+    // skip 'fluid_kernel' and 'structured_kernel' analysis temptly.
+    KernelCode kernel_code = (in_black_list << 7) + (is_operator_base << 6) +
+                             (is_custom_op << 5) + (use_mkldnn << 4);
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn || need_move_to_phi) {
+          is_custom_op || use_mkldnn) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -104,10 +96,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
          << ", is_operator_base = " << (item.second >> 6 & 1)
          << ", is_custom_op = " << (item.second >> 5 & 1)
-         << ", use_mkldnn = " << (item.second >> 4 & 1)
-         << ", has_fluid_kernel = " << (item.second >> 3 & 1)
-         << ", has_structed_kerenl = " << (item.second >> 2 & 1)
-         << ", need_move_to_phi = " << (item.second >> 1 & 1) << "]\n";
+         << ", use_mkldnn = " << (item.second >> 4 & 1) "]\n";
     }
     VLOG(1) << ss.str();
   }
