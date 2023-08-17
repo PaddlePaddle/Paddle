@@ -36,26 +36,24 @@ std::vector<std::vector<ir::OpResult>> ConcatOp::Vjp(
       op_obj.x().GetDefiningOp()->dyn_cast<ir::CombineOp>();
   std::vector<Tensor> x;
   for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {
-    x.emplace_back(std::make_shared<primitive::experimental::DescTensor>(
-        combine_op_obj.inputs()[idx]));
+    x.emplace_back(
+        std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
   }
 
-  Tensor out_grad(
-      std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
-  Tensor axis(
-      std::make_shared<primitive::experimental::DescTensor>(op_obj.axis()));
+  Tensor out_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+  Tensor axis(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
+
   std::vector<std::vector<Tensor>> tensor_res =
-      primitive::experimental::concat_vjp(x, out_grad, axis, stop_gradients);
+      primitive::concat_vjp(x, out_grad, axis, stop_gradients);
+
   std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>());
-  std::cout << "ConcatOp::Vjp called 4" << std::endl;
-  res[0] = std::vector<ir::OpResult>(tensor_res[0].size());
+  res[0].resize(tensor_res[0].size());
   for (uint64_t idx = 0; idx < tensor_res[0].size(); idx++) {
     if (tensor_res[0][idx].defined()) {
-      res[0][idx] =
-          std::static_pointer_cast<primitive::experimental::DescTensor>(
-              tensor_res[0][idx].impl())
-              ->getValue()
-              .dyn_cast<ir::OpResult>();
+      res[0][idx] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[0][idx].impl())
+                        ->getValue()
+                        .dyn_cast<ir::OpResult>();
     }
   }
   return res;

@@ -244,22 +244,22 @@ Tensor sum_grad<LazyTensor>(const Tensor& x,
 }
 
 template <>
-std::vector<Tensor> concat_grad<DescTensor>(const std::vector<Tensor>& x,
+std::vector<Tensor> concat_grad<LazyTensor>(const std::vector<Tensor>& x,
                                             const Tensor& out_grad,
                                             const Tensor& axis) {
   std::vector<ir::OpResult> x_res;
   for (uint64_t idx = 0; idx < x.size(); idx++) {
-    x_res.emplace_back(std::static_pointer_cast<DescTensor>(x[idx].impl())
+    x_res.emplace_back(std::static_pointer_cast<LazyTensor>(x[idx].impl())
                            ->getValue()
                            .dyn_cast<ir::OpResult>());
   }
 
   ir::OpResult out_grad_res =
-      std::static_pointer_cast<DescTensor>(out_grad.impl())
+      std::static_pointer_cast<LazyTensor>(out_grad.impl())
           ->getValue()
           .dyn_cast<ir::OpResult>();
 
-  ir::OpResult axis_res = std::static_pointer_cast<DescTensor>(axis.impl())
+  ir::OpResult axis_res = std::static_pointer_cast<LazyTensor>(axis.impl())
                               ->getValue()
                               .dyn_cast<ir::OpResult>();
 
@@ -269,7 +269,7 @@ std::vector<Tensor> concat_grad<DescTensor>(const std::vector<Tensor>& x,
   std::vector<Tensor> op_result;
   for (uint64_t idx = 0; idx < op_res.size(); idx++) {
     op_result.emplace_back(
-        std::make_shared<primitive::experimental::DescTensor>(op_res[idx]));
+        std::make_shared<primitive::LazyTensor>(op_res[idx]));
   }
   return op_result;
 }

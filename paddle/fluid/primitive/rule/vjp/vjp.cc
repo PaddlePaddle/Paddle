@@ -156,15 +156,10 @@ std::vector<std::vector<paddle::Tensor>> concat_vjp(
   std::vector<std::vector<paddle::Tensor>> vjp_res(1, std::vector<Tensor>());
   // get concat_grad res.
   std::vector<Tensor> op_res =
-      backend::experimental::concat_grad<primitive::experimental::LazyTensor>(
-          x, out_grad, axis);
+      backend::concat_grad<primitive::LazyTensor>(x, out_grad, axis);
 
-  // set op stop_gradient info
-  // TODO(wanghao107): Replace with more generic code.
-  // Support set stop_gradients for all ops.
   ir::Operation* grad_op =
-      std::static_pointer_cast<primitive::experimental::LazyTensor>(
-          op_res[0].impl())
+      std::static_pointer_cast<primitive::LazyTensor>(op_res[0].impl())
           ->getValue()
           .dyn_cast<ir::OpResult>()
           .owner();
