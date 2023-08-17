@@ -153,16 +153,16 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     }
 
     // use rotate_half mode
-    int stride = head_dim / 2;
+    int stride_r = head_dim / 2;
 #pragma unroll
     for (int iter = 0; iter < 3; iter++) {
       if (iter > num_inputs) break;
       // get value_index and rotate_half_index
       int index_v = index;
-      int index_r =
-          (index % head_dim) < stride ? (index + stride) : (index - stride);
-      MPType sign_r = (index % head_dim) < stride ? static_cast<MPType>(-1)
-                                                  : static_cast<MPType>(1);
+      int index_r = (index % head_dim) < stride_r ? (index + stride_r)
+                                                  : (index - stride_r);
+      MPType sign_r = (index % head_dim) < stride_r ? static_cast<MPType>(-1)
+                                                    : static_cast<MPType>(1);
       const T* input_v = ins_data[iter] + index_v;
       const T* input_r = ins_data[iter] + index_r;
       VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
