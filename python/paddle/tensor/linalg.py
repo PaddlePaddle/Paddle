@@ -1593,13 +1593,13 @@ def bmm(x, y, name=None):
                     x_shape, y_shape
                 )
             )
-        if x_shape[2] != y_shape[1]:
+        if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
             raise ValueError(
                 "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape
                 )
             )
-        if x_shape[0] != y_shape[0]:
+        if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
             raise ValueError(
                 "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape
@@ -2433,7 +2433,14 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
             # one can verify : X = P @ L @ U ;
     """
-
+    if x.ndim < 2:
+        raise ValueError(
+            f"The shape of x should be (*, M, N), but received ndim is [{x.ndim} < 2]"
+        )
+    if y.ndim < 1:
+        raise ValueError(
+            f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
+        )
     if in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U

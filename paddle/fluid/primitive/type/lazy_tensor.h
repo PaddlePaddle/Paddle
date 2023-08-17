@@ -23,14 +23,14 @@
 namespace paddle {
 namespace primitive {
 
-class DescTensor : public phi::ExtendedTensor,
-                   public phi::TypeInfoTraits<phi::TensorBase, DescTensor> {
+class LazyTensor : public phi::ExtendedTensor,
+                   public phi::TypeInfoTraits<phi::TensorBase, LazyTensor> {
  public:
-  explicit DescTensor(ir::Value value)
+  explicit LazyTensor(ir::Value value)
       : value_(value),
         dims_(value.type().dyn_cast<dialect::DenseTensorType>().dims()) {}
 
-  static const char* name() { return "DescTensor"; }
+  static const char* name() { return "LazyTensor"; }
 
   const phi::DDim& dims() const override { return dims_; }
 

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/primitive/rule/vjp/utils.h"
-#include "paddle/fluid/primitive/type/desc_tensor.h"
+#include "paddle/fluid/primitive/type/lazy_tensor.h"
 
 namespace paddle {
 namespace primitive {
 template <>
-void set_output<DescTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
+void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
 }
 
