@@ -90,7 +90,7 @@ void DuplicatedTransposeFusePass::DuplicatedTranspose(ir::Graph* graph) const {
     if (axis1.empty()) return;
     auto axis2 = transpose_2->Op()->GetAttrIfExists<std::vector<int>>("axis");
     if (axis2.empty()) return;
-    for (int i = 0; i < axis2.size(); i++) {
+    for (size_t i = 0; i < axis2.size(); i++) {
       axis2[i] = axis1[axis2[i]];
     }
     transpose_op_desc.SetAttr("axis", axis2);
