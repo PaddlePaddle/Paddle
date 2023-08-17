@@ -131,11 +131,16 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
     for (uint32_t i = 0; i < op->num_operands(); ++i) {
       AddOperandToWorklist(op->operand_source(i));
     }
-    for (uint32_t i = 0; i < op->num_regions(); ++i) {
-      auto& region = op->region(i);
-      for (auto& block : region) {
-        for (auto& op_item : *block) {
-          RemoveFromWorklist(op_item);
+
+    if (op->num_regions() == 0) {
+      RemoveFromWorklist(op);
+    } else {
+      for (uint32_t i = 0; i < op->num_regions(); ++i) {
+        auto& region = op->region(i);
+        for (auto& block : region) {
+          for (auto& op_item : *block) {
+            RemoveFromWorklist(op_item);
+          }
         }
       }
     }

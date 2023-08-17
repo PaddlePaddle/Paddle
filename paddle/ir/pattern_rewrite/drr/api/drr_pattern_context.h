@@ -36,12 +36,12 @@ class ResultPatternGraph;
 
 class Attribute {
  public:
-  explicit Attribute(const std::string& id) : attr_id_(id) {}
+  explicit Attribute(const std::string& name) : attr_name_(name) {}
 
-  const std::string& id() const { return attr_id_; }
+  const std::string& name() const { return attr_name_; }
 
  private:
-  std::string attr_id_;
+  std::string attr_name_;
 };
 
 class TensorShape {
@@ -118,16 +118,17 @@ class Op {
 
   Tensor& operator()(const Tensor& arg) const;
   Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
+  void operator()(const std::vector<const Tensor*>& args,
+                  const std::vector<const Tensor*>& outputs) const;
   // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
   // Tensor& arg2) const; const Tensor& operator()(const Tensor& arg0, const
   // Tensor& arg1, const Tensor& arg2, const Tensor& arg3) const; const Tensor&
   // operator()(const Tensor& arg0, const Tensor& arg1, const Tensor& arg2,
   // const Tensor& arg3, const Tensor& arg4) const;
-  // void operator()(const std::vector<Tensor>& args, const
-  // std::vector<Tensor*>& outputs) const;
 
  private:
   friend class DrrPatternContext;
+  friend class OpCall;
 
   Op(const std::string& op_type_name,
      const std::unordered_map<std::string, Attribute>& attributes,
@@ -135,6 +136,10 @@ class Op {
       : op_type_name_(op_type_name),
         attributes_(attributes),
         pattern_graph_(pattern_graph) {}
+
+  const std::unordered_map<std::string, Attribute>& attributes() const {
+    return attributes_;
+  }
 
   static int64_t count;
 
@@ -187,18 +192,26 @@ class OpCall {
   OpCall(const Op* op,
          const std::vector<const Tensor*>& inputs,
          const std::vector<const Tensor*>& outputs)
-      : op_(op), inputs_(inputs), outputs_(outputs) {}
+      : op_name_(op->op_type_name_),
+        inputs_(inputs),
+        outputs_(outputs),
+        attributes_(op->attributes_) {}
 
-  const std::string& name() const { return op_->name(); }
+  const std::string& name() const { return op_name_; }
 
   const std::vector<const Tensor*>& inputs() const { return inputs_; }
 
   const std::vector<const Tensor*>& outputs() const { return outputs_; }
 
+  const std::unordered_map<std::string, Attribute>& attributes() const {
+    return attributes_;
+  }
+
  private:
-  const Op* op_;
+  std::string op_name_;
   std::vector<const Tensor*> inputs_;
   std::vector<const Tensor*> outputs_;
+  std::unordered_map<std::string, Attribute> attributes_;
 };
 
 class ResultPattern {
