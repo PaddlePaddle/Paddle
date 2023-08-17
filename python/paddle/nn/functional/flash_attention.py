@@ -416,6 +416,7 @@ def scaled_dot_product_attention(
     attn_mask=None,
     dropout_p=0.0,
     is_causal=False,
+    return_softmax=False,
     training=True,
     name=None,
 ):
@@ -446,11 +447,16 @@ def scaled_dot_product_attention(
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
                         The dtype can be float61 or bfloat16.
-        attn_mask(Tensor,optional): A float mask of the same type as query,
+        attn_mask(Tensor, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
-        dropout_p(float): The dropout ratio.
-        is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase.
+                        Default is None.
+        dropout_p(float, optional): The dropout ratio. Default is 0.0.
+        is_causal(bool, optional): Whether enable causal mode. Default is False.
+        return_softmax(bool, optional): Whether to return softmax. Default is False.
+                        Note: return_softmax will increase the memory usage and
+                        slow down the training or inference spped, and it is not
+                        fully supported now.
+        training(bool, optional): Whether it is in the training phase. Default is True.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -459,6 +465,7 @@ def scaled_dot_product_attention(
         out(Tensor): The attention tensor.
                     4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
                     The dtype can be float16 or bfloat16.
+        softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
     Examples:
         .. code-block:: python
@@ -466,26 +473,35 @@ def scaled_dot_product_attention(
             >>> # doctest: +SKIP()
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
-            >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
+            >>> output, _ = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
             >>> # doctest: -SKIP
     """
     if attn_mask is None:
-        out, _ = flash_attention(query, key, value, dropout_p, is_causal)
-    else:
-        fixed_seed_offset = (None,)
-        return_softmax = False
-        rng_name = ""
-        out, _ = _C_ops.flash_attn(
+        out, softmax = flash_attention(
             query,
             key,
             value,
-            fixed_seed_offset,
-            attn_mask,
             dropout_p,
             is_causal,
-            return_softmax,
-            not training,
-            rng_name,
+            return_softmax=return_softmax,
+            training=training,
+            name=name,
         )
-    return out
+    else:
+        if in_dynamic_mode():
+            fixed_seed_offset = (None,)
+            rng_name = ""
+            out, softmax = _C_ops.flash_attn(
+                query,
+                key,
+                value,
+                fixed_seed_offset,
+                attn_mask,
+                dropout_p,
+                is_causal,
+                return_softmax,
+                not training,
+                rng_name,
+            )
+    return out, softmax if return_softmax else None
