@@ -30,6 +30,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout_q,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
+                         bool use_neox_rotary_style,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
@@ -89,18 +90,33 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   }
 
   int sign = -1;
-  VectorizedFusedRopeKernel<T, MPType, vec_size>
-      <<<grid, block, 0, stream>>>(ins_data,
-                                   sin_cos_data,
-                                   flag_sin_cos,
-                                   sign,
-                                   batch_size,
-                                   seq_len,
-                                   num_heads,
-                                   head_dim,
-                                   outs_data,
-                                   num_inputs,
-                                   div_c);
+  if (use_neox_rotary_style) {
+    VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  } else {
+    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     flag_sin_cos,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     num_heads,
+                                     head_dim,
+                                     outs_data,
+                                     num_inputs,
+                                     div_c);
+  }
 }
 
 }  // namespace fusion
