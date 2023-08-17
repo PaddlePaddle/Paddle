@@ -663,7 +663,6 @@ class AllocatorFacadePrivate {
             << " for StreamSafeCustomDeviceAllocator(" << allocator.get()
             << ") in " << place;
   }
-
 #endif
 
  private:
