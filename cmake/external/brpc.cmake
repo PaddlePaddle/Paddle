@@ -15,6 +15,7 @@
 include(ExternalProject)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib .so)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
 set(REFERENCE_LIBSSL_STATIC_LIBRARY_PATH /usr/lib /usr/local)
 find_library(
   SSL_LIBRARY
