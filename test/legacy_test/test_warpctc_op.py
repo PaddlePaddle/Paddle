@@ -596,6 +596,34 @@ class TestWarpCTCOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_label_len_Variable)
 
+            def test_use_log_softmax_Variable():
+                label_length_data = np.array([3] * 16).astype("int64")
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label,
+                    input_lengths=logits_length,
+                    label_length=label_length_data,
+                    reduction='none',
+                    use_log_softmax=False,
+                    zero_infinity=False,
+                )
+
+            self.assertRaises(TypeError, test_use_log_softmax_Variable)
+
+            def test_zero_infinity_Variable():
+                label_length_data = np.array([3] * 16).astype("int64")
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label,
+                    input_lengths=logits_length,
+                    label_length=label_length_data,
+                    reduction='none',
+                    use_log_softmax=True,
+                    zero_infinity=True,
+                )
+
+            self.assertRaises(TypeError, test_zero_infinity_Variable)
+
     def test_dygraph_errors(self):
         def test_dygraph_with_lod():
             logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
@@ -621,7 +649,6 @@ class TestWarpCTCOpError(unittest.TestCase):
 
 class TestCTCLossAPICase(unittest.TestCase):
     def test_class_api(self):
-        # print("slajiaioajia")
         self.batch_size = 3
         self.num_classes = 15
         self.logits_length = np.array([3, 3, 1], dtype=np.int64)
