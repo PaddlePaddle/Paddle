@@ -34,23 +34,18 @@ class ParallelCompiler {
  public:
   struct Task {
     Task(ParallelCompiler* compiler, CompilationContext* context)
-        : compiler(compiler), context(context) {}
+        : pcompiler(compiler), context(context) {}
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();
 
-    ParallelCompiler* compiler;
+    ParallelCompiler* pcompiler;
     CompilationContext* context;
 
     CompilationStatus status = CompilationStatus::SUCCESS;
     std::string message;
 
-    int start_gidx;
-    int stop_gidx;
-    std::vector<std::unique_ptr<Instruction>> instructions;
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-    std::vector<std::string> source_codes;
-    std::vector<std::string> source_ptxs;
+    int group_id;
 
     std::unique_ptr<backends::ExecutionEngine> engine;
 #ifdef CINN_WITH_CUDA
@@ -65,11 +60,15 @@ class ParallelCompiler {
  private:
   void SplitTask();
   void LaunchTask();
-  void RunTask(Task* task);
-  CompilationResult MergeResult();
+  void RunTask();
 
+  int GetTaskIdx();
+
+  int task_idx_{0};
+  std::mutex mtx_;
   std::vector<Task> tasks_;
   CompilationContext* context_;
+  CompilationResult result_;
 };
 
 }  // namespace framework

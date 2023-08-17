@@ -102,15 +102,13 @@ struct CompilationContext {
 struct CompilationResult {
   CompilationStatus status;
   std::string message;
-  std::unique_ptr<Program> runtime_program;
   std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   std::vector<std::string> source_codes;
   std::vector<std::string> source_ptxs;
   std::vector<std::unique_ptr<Instruction>> instructions;
+  std::unique_ptr<Program> runtime_program;
 
-  void InsertErrorMsgTo(std::vector<std::string>* arr,
-                        const std::string& msg,
-                        const int times = 1);
+  void InitCompilationResult(int group_size);
 };
 
 }  // namespace framework

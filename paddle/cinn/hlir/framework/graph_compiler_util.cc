@@ -30,12 +30,12 @@ void CompilationContext::SetAttachedSourceCode(const std::string& code) {
   attached_source_code = code;
 }
 
-void CompilationResult::InsertErrorMsgTo(std::vector<std::string>* arr,
-                                         const std::string& msg,
-                                         const int times) {
-  for (int i = 0; i < times; ++i) {
-    arr->emplace_back(msg);
-  }
+void CompilationResult::InitCompilationResult(int group_size) {
+  status = CompilationStatus::SUCCESS;
+  lowered_funcs.resize(group_size);
+  source_codes.resize(group_size);
+  source_ptxs.resize(group_size);
+  instructions.resize(group_size);
 }
 
 }  // namespace framework

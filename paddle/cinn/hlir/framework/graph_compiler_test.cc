@@ -255,10 +255,6 @@ TEST(GraphCompilerTest, TestLowering) {
   CompilationResult result = gc.Lowering();
 
   ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
-  CHECK_GT(result.lowered_funcs.size(), 0);
-  CHECK_EQ(result.source_codes.size(), 0);
-  CHECK_EQ(result.source_ptxs.size(), 0);
-  CHECK_EQ(result.instructions.size(), 0);
 }
 
 TEST(GraphCompilerTest, TestCodegenAndJit) {
@@ -279,10 +275,6 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   CompilationResult result = gc.CodegenAndJit();
 
   ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
-  CHECK_GT(result.lowered_funcs.size(), 0);
-  CHECK_GT(result.source_codes.size(), 0);
-  CHECK_GT(result.source_ptxs.size(), 0);
-  CHECK_EQ(result.instructions.size(), 0);
 }
 
 TEST(GraphCompilerTest, TestBuildInstruction) {
@@ -303,10 +295,6 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   CompilationResult result = gc.BuildInstruction();
 
   ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
-  CHECK_GT(result.lowered_funcs.size(), 0);
-  CHECK_GT(result.source_codes.size(), 0);
-  CHECK_GT(result.source_ptxs.size(), 0);
-  CHECK_GT(result.instructions.size(), 0);
 }
 
 #endif
