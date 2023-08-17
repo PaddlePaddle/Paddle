@@ -19,18 +19,18 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename MPType, int VecSize = 2>
-__global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
-                                          phi::Array<const T*, 2> sin_cos_data,
-                                          bool flag_sin_cos,
-                                          bool use_neox_rotary_style,
-                                          int sign,
-                                          int batch_size,
-                                          int seq_len,
-                                          int num_heads,
-                                          int head_dim,
-                                          phi::Array<T*, 3> outs_data,
-                                          int num_inputs,
-                                          MPType div_c) {
+__global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
+    phi::Array<const T*, 3> ins_data,
+    phi::Array<const T*, 2> sin_cos_data,
+    bool flag_sin_cos,
+    int sign,
+    int batch_size,
+    int seq_len,
+    int num_heads,
+    int head_dim,
+    phi::Array<T*, 3> outs_data,
+    int num_inputs,
+    MPType div_c) {
   int index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
   int stride = gridDim.x * blockDim.x * VecSize;
   int size = batch_size * seq_len * num_heads * head_dim;
@@ -71,56 +71,112 @@ __global__ void VectorizedFusedRopeKernel(phi::Array<const T*, 3> ins_data,
       }
     }
 
-    if (use_neox_rotary_style) {
+    // use rotate_every_two mode
 #pragma unroll
-      for (int iter = 0; iter < 3; iter++) {
-        if (iter > num_inputs) break;
-        const T* input = ins_data[iter] + index;
-        VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
+    for (int iter = 0; iter < 3; iter++) {
+      if (iter > num_inputs) break;
+      const T* input = ins_data[iter] + index;
+      VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
 
 #pragma unroll
-        for (int nx = 0; nx < kVectorsPerThread; ++nx) {
-          int pr_index = nx * 2;
-          int ls_index = pr_index + 1;
+      for (int nx = 0; nx < kVectorsPerThread; ++nx) {
+        int pr_index = nx * 2;
+        int ls_index = pr_index + 1;
 
-          MPType p0 = static_cast<MPType>(input[pr_index]);
-          MPType p1 = static_cast<MPType>(input[ls_index]);
+        MPType p0 = static_cast<MPType>(input[pr_index]);
+        MPType p1 = static_cast<MPType>(input[ls_index]);
 
-          result[pr_index] =
-              cos_value[pr_index] * p0 - sign * sin_value[ls_index] * p1;
-          result[ls_index] =
-              cos_value[ls_index] * p1 + sign * sin_value[pr_index] * p0;
+        result[pr_index] =
+            cos_value[pr_index] * p0 - sign * sin_value[ls_index] * p1;
+        result[ls_index] =
+            cos_value[ls_index] * p1 + sign * sin_value[pr_index] * p0;
 
-          store[pr_index] = static_cast<T>(result[pr_index]);
-          store[ls_index] = static_cast<T>(result[ls_index]);
-        }
-        out[0] = *(reinterpret_cast<VecType*>(store));
+        store[pr_index] = static_cast<T>(result[pr_index]);
+        store[ls_index] = static_cast<T>(result[ls_index]);
+      }
+      out[0] = *(reinterpret_cast<VecType*>(store));
+    }
+  }
+}
+
+template <typename T, typename MPType, int VecSize = 2>
+__global__ void VectorizedFusedRopeWithRotateHalfKernel(
+    phi::Array<const T*, 3> ins_data,
+    phi::Array<const T*, 2> sin_cos_data,
+    bool flag_sin_cos,
+    int sign,
+    int batch_size,
+    int seq_len,
+    int num_heads,
+    int head_dim,
+    phi::Array<T*, 3> outs_data,
+    int num_inputs,
+    MPType div_c) {
+  int index = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  int stride = gridDim.x * blockDim.x * VecSize;
+  int size = batch_size * seq_len * num_heads * head_dim;
+  MPType sin_value[VecSize];
+  MPType cos_value[VecSize];
+  MPType result[VecSize];
+  T store[VecSize];
+  using VecType = phi::AlignedVector<T, VecSize>;
+  constexpr int kVectorsPerThread = VecSize / 2;
+
+  for (; index < size; index += stride) {
+    if (flag_sin_cos) {
+#pragma unroll
+      for (int nx = 0; nx < VecSize; ++nx) {
+        int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+        int pos_seq = index_wc / (num_heads * head_dim);
+        int pos_head = index_wc % head_dim;
+        int index_sc = pos_seq * head_dim + pos_head;
+        const T* sin_input = sin_cos_data[0] + index_sc;
+        const T* cos_input = sin_cos_data[1] + index_sc;
+
+        sin_value[nx] = static_cast<MPType>(sin_input[0]);
+        cos_value[nx] = static_cast<MPType>(cos_input[0]);
       }
     } else {
-      int stride = head_dim / 2;
 #pragma unroll
-      for (int iter = 0; iter < 3; iter++) {
-        if (iter > num_inputs) break;
-        int index_v = index;
-        int index_r =
-            (index % head_dim) < stride ? (index + stride) : (index - stride);
-        MPType sign_r = (index % head_dim) < stride ? static_cast<MPType>(-1)
-                                                    : static_cast<MPType>(1);
-        const T* input_v = ins_data[iter] + index_v;
-        const T* input_r = ins_data[iter] + index_r;
-        VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
-
-#pragma unroll
-        for (int nx = 0; nx < VecSize; ++nx) {
-          MPType p0 = static_cast<MPType>(input_v[nx]);
-          MPType p1 = static_cast<MPType>(input_r[nx]);
-
-          result[nx] = cos_value[nx] * p0 + sign * sign_r * sin_value[nx] * p1;
-
-          store[nx] = static_cast<T>(result[nx]);
-        }
-        out[0] = *(reinterpret_cast<VecType*>(store));
+      for (int nx = 0; nx < VecSize; ++nx) {
+        // get sin_index and cos_index
+        int index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+        int pos_seq = index_wc / (num_heads * head_dim);
+        MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
+        MPType indicses =
+            static_cast<MPType>(1) /
+            pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
+        MPType value = pos_seq * indicses;
+        sin_value[nx] = sin(value);
+        cos_value[nx] = cos(value);
       }
+    }
+
+    // use rotate_half mode
+    int stride = head_dim / 2;
+#pragma unroll
+    for (int iter = 0; iter < 3; iter++) {
+      if (iter > num_inputs) break;
+      // get value_index and rotate_half_index
+      int index_v = index;
+      int index_r =
+          (index % head_dim) < stride ? (index + stride) : (index - stride);
+      MPType sign_r = (index % head_dim) < stride ? static_cast<MPType>(-1)
+                                                  : static_cast<MPType>(1);
+      const T* input_v = ins_data[iter] + index_v;
+      const T* input_r = ins_data[iter] + index_r;
+      VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
+
+#pragma unroll
+      for (int nx = 0; nx < VecSize; ++nx) {
+        MPType p0 = static_cast<MPType>(input_v[nx]);
+        MPType p1 = static_cast<MPType>(input_r[nx]);
+
+        result[nx] = cos_value[nx] * p0 + sign * sign_r * sin_value[nx] * p1;
+
+        store[nx] = static_cast<T>(result[nx]);
+      }
+      out[0] = *(reinterpret_cast<VecType*>(store));
     }
   }
 }
