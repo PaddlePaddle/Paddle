@@ -2675,7 +2675,7 @@ def cross_entropy(
                                                                     reduction=reduction)
             print(paddle_loss_mean)
             # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        1.11043464)
+            #        1.12226281)
 
         .. code-block:: python
 

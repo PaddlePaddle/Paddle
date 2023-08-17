@@ -381,7 +381,7 @@ class CrossEntropyLoss(Layer):
             ...                                                       reduction=reduction)
             >>> print(paddle_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            1.13397690)
+            1.13879701)
 
     """
 
