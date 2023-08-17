@@ -96,6 +96,8 @@ API_LIST = [
     'expand',
     'tile',
     'add_grad',
+    'divide_grad',
+    'sum_grad',
 ]
 OP_RESULT = 'ir::OpResult'
 VECTOR_TYPE = 'ir::VectorType'
