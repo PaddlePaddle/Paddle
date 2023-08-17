@@ -115,20 +115,6 @@ def paddle_fused_rotary_position_embedding(
     return r_query, r_key, r_value
 
 
-def paddle_fused_rotary_position_embedding_rotate_half(init_q, init_k, init_v):
-    q, k, v = deal_qkv(init_q, init_k, init_v)
-
-    sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], 1)
-
-    query = mult_qkv_rotate_half(q, cos_tensor, sin_tensor)
-    value = mult_qkv_rotate_half(v, cos_tensor, sin_tensor)
-    key = mult_qkv_rotate_half(k, cos_tensor, sin_tensor)
-
-    r_query, r_key, r_value = deal_qkv(query, key, value)
-
-    return r_query, r_key, r_value
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
     "core is not compiled with CUDA ",
