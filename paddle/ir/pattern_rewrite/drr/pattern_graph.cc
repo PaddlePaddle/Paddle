@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <queue>
+
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 

@@ -14,6 +14,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <memory>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/ir/pass/pass.h"
@@ -105,18 +106,13 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op.out(), "out", 0);
 }
 
-std::unique_ptr<RemoveRedundentReshapePattern> CreateDrrPatternRewritePass(
-    ir::IrContext *ir_ctx) {
-  return std::make_unique<RemoveRedundentReshapePattern>(ir_ctx, 1);
-}
-
-class TestPass : public ir::Pass {
+class DrrPatternRewritePass : public ir::Pass {
  public:
-  TestPass() : ir::Pass("TestPass", 1) {}
+  DrrPatternRewritePass() : ir::Pass("DrrPatternRewritePass", 1) {}
 
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
-    ps.Add(std::move(CreateDrrPatternRewritePass(context)));
+    ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -147,7 +143,7 @@ TEST(DrrTest, drr) {
   EXPECT_EQ(program.block()->size(), 7u);
 
   ir::PassManager pm(ctx);
-  pm.AddPass(std::make_unique<TestPass>());
+  pm.AddPass(std::make_unique<DrrPatternRewritePass>());
   pm.AddPass(ir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();

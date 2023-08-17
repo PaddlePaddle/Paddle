@@ -121,9 +121,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
         for (auto* drr_brother_op : drr_brother_ops) {
           if (drr_visited.count(drr_brother_op) == 0) {
             std::pair<bool, ir::Operation*> found{false, nullptr};
-            for (auto it = ir_input_value.begin(); it != ir_input_value.end();
-                 ++it) {
-              auto* ir_op = (*it).owner();
+            for (auto& it : ir_input_value) {
+              auto* ir_op = it.owner();
               if (ir_visited.count(ir_op)) {
                 continue;
               }
@@ -197,9 +196,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
         for (auto* drr_child_op : drr_child_ops) {
           if (drr_visited.count(drr_child_op) == 0) {
             std::pair<bool, ir::Operation*> found{false, nullptr};
-            for (auto it = ir_output_value.begin(); it != ir_output_value.end();
-                 ++it) {
-              auto* ir_op = (*it).owner();
+            for (auto& it : ir_output_value) {
+              auto* ir_op = it.owner();
               if (ir_visited.count(ir_op)) {
                 continue;
               }
