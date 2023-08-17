@@ -23,7 +23,28 @@ namespace cinn {
 namespace ast_gen_ius {
 
 ir::Expr AstGen::Build(const ir::Tensor& tensor) {
-  if (tensor->is_call_node()) {
+  const std::vector<ir::Var>& axis = tensor->axis();
+  const std::vector<ir::Expr>& shape = tensor->shape;
+  size_t axis_len = axis.size();
+  CHECK_EQ(shape.size(), axis_len)
+      << "Internal Error: Tensor has different shape and axis length in AstGen";
+  ir::Expr body = tensor->body();
+  for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
+    ir::Var loop_var = axis[i];
+    ir::Expr loop_extent = shape[i];
+    body = ir::For::Make(loop_var,
+                         Expr(0),
+                         loop_extent,
+                         ir::ForType::Serial,
+                         ir::DeviceAPI::Host,
+                         ir::Block::Make({body}));
+  }
+  return body;
+
+  /*
+  if (tensor->is_placeholder_node()) {
+    return tensor;
+  } else if (tensor->is_call_node()) {
     return tensor->operation->as<ir::CallOp>()->call_expr;
   } else if (tensor->is_compute_node()) {
     const ir::ComputeOp* compute_op = tensor->operation->as<ir::ComputeOp>();
@@ -46,7 +67,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor) {
   } else {
     LOG(FATAL)
         << "Internal Error: unimplemented Tensor operation in AstGen::Build";
-  }
+  }*/
 }
 
 }  // namespace ast_gen_ius
