@@ -58,6 +58,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   // use_mkldnn = (kernelCode >> 4) & 1
   // has_fluid_kernel = (kernelCode >> 3) & 1
   // has_structed_kernel = (kernelCode >> 2) & 1
+  // need_move_to_phi = (kernelCode >> 1) & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
@@ -80,16 +81,17 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
+    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
 
-    KernelCode kernel_code = (in_black_list << 7) + (is_operator_base << 6) +
-                             (is_custom_op << 5) + (use_mkldnn << 4) +
-                             (has_fluid_kernel << 3) +
-                             (has_structured_kernel << 2);
+    KernelCode kernel_code =
+        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
+        (use_mkldnn << 4) + (has_fluid_kernel << 3) +
+        (has_structured_kernel << 2) + (need_move_to_phi << 1);
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
            !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn) {
+          is_custom_op || use_mkldnn || need_move_to_phi) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -104,7 +106,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
          << ", is_custom_op = " << (item.second >> 5 & 1)
          << ", use_mkldnn = " << (item.second >> 4 & 1)
          << ", has_fluid_kernel = " << (item.second >> 3 & 1)
-         << ", has_structed_kerenl = " << (item.second >> 2 & 1) << "]\n";
+         << ", has_structed_kerenl = " << (item.second >> 2 & 1)
+         << ", need_move_to_phi = " << (item.second >> 1 & 1) << "]\n";
     }
     VLOG(1) << ss.str();
   }
@@ -470,6 +473,13 @@ void FakeInitializeOutputsForFunctionKernel(
                   (in_dtype == DataType::BOOL || in_dtype == DataType::INT32)
                       ? DataType::INT64
                       : in_dtype;
+            }
+          } else if (op_type == "searchsorted") {
+            bool out_int32 = op.Attr<bool>("out_int32");
+            if (out_int32) {
+              dtype = DataType::INT32;
+            } else {
+              dtype = DataType::INT64;
             }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
