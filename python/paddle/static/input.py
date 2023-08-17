@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
 from paddle.fluid import Variable, core
@@ -98,7 +97,7 @@ def data(name, shape, dtype=None, lod_level=0):
             shape[i] = -1
 
     if dtype:
-        out = helper.create_global_variable(
+        return helper.create_global_variable(
             name=name,
             shape=shape,
             dtype=dtype,
@@ -109,7 +108,7 @@ def data(name, shape, dtype=None, lod_level=0):
             need_check_feed=True,
         )
     else:
-        out = helper.create_global_variable(
+        return helper.create_global_variable(
             name=name,
             shape=shape,
             dtype=paddle.get_default_dtype(),
@@ -119,21 +118,6 @@ def data(name, shape, dtype=None, lod_level=0):
             is_data=True,
             need_check_feed=True,
         )
-
-    if os.environ.get("FLAGS_enable_new_ir_in_executor", None):
-        helper = LayerHelper('data', **locals())
-        helper.append_op(
-            type='data',
-            inputs={},
-            outputs={'out': out},
-            attrs={
-                'index': 0,
-                'dtype': 0,
-                'place': 0,
-                'name': name,
-            },
-        )
-    return out
 
 
 class InputSpec:
