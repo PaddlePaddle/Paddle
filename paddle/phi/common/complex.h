@@ -467,6 +467,29 @@ HOSTDEVICE inline complex<T> tanh(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> exp(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  return complex<T>(thrust::exp(thrust::complex<T>(a)));
+#else
+  return complex<T>(std::exp(std::complex<T>(a)));
+#endif
+}
+
+template <typename T>
+HOSTDEVICE inline complex<T> expm1(const complex<T>& a) {
+#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+  // thrust does not support expm1
+  return complex<T>(thrust::exp(thrust::complex<T>(a)) - 1);
+#else
+  // expm1 in C++ does not support complex types
+  return complex<T>(
+	    std::exp(std::complex<T>(a)) - static_cast<std::complex<T>>(1));
+#endif
+}
+
+template <typename T>
 HOSTDEVICE inline complex<T> conj(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
