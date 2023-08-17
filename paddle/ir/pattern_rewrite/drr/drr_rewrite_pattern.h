@@ -83,7 +83,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     while (!drr_q.empty()) {
       if (!Matched) {
         break;
-        }
+      }
       IR_ENFORCE(drr_q.size() == ir_q.size());
       // if (drr_q.size() != ir_q.size()) {
       //   Matched = false;
@@ -180,11 +180,6 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
 
       for (size_t i = 0; i < drr_output_tensors.size(); ++i) {
         if (!Matched) break;
-
-        if (drr_output_tensors[i]->consumers().empty()){
-          continue;
-        }
-
         // check child ops
         auto drr_child_ops = drr_output_tensors[i]->consumers();
         auto ir_output_value = ir_node->result(i);
@@ -271,9 +266,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
       const MatchContextImpl& src_match_ctx,
       ir::PatternRewriter& rewriter) const {  // NOLINT
     MatchContextImpl res_match_ctx;
-    // add input tensors info for res_match_ctx;
-    const auto& input_tensors = result_pattern_graph.input_tensors();
-    for (const auto& in_tensor : input_tensors) {
+    // add input tensors info for res_match_ctx
+    for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
       res_match_ctx.BindIrValue(
           in_tensor,
           std::make_shared<IrValue>(src_match_ctx.GetIrValue(in_tensor)));
@@ -282,8 +276,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     // topo order visit result_pattern_graph
     GraphTopo graph_topo_visit(&result_pattern_graph);
     graph_topo_visit.WalkGraphNodesTopoOrder(
-        [&rewriter, &res_match_ctx](const OpCall& op_call) {
-          CreateOperation(op_call, rewriter, &res_match_ctx);
+        [&src_match_ctx, &rewriter, &res_match_ctx](const OpCall& op_call) {
+          CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
         });
 
     return res_match_ctx;

@@ -17,13 +17,13 @@
 #include <memory>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 #include "paddle/ir/pattern_rewrite/drr/drr_rewrite_pattern.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
-
 
 struct RemoveRedundentReshapeFunctor {
   void operator()(ir::drr::DrrPatternContext *ctx) {
@@ -86,33 +86,34 @@ class FoldBroadcastToConstantPattern
       FoldBroadcastToConstantFunctor>::DrrRewritePattern;
 };
 
-struct RemoveRedundentTransposeFunctor{
-  void operator()(ir::drr::DrrPatternContext *ctx){
+struct RemoveRedundentTransposeFunctor {
+  void operator()(ir::drr::DrrPatternContext *ctx) {
     // Source pattern: 待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &transpose1 = pat.Op("pd.transpose", {{"perm", pat.Attr("perm_1")}});
-    const auto &transpose2 = pat.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
-    
+    const auto &transpose1 =
+        pat.Op("pd.transpose", {{"perm", pat.Attr("perm_1")}});
+    const auto &transpose2 =
+        pat.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
+
     pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
     // Result patterns: 要替换的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &tranpose_continuous = res.Op("pd.transpose",
-     {{"perm", pat.Attr("perm_2")}}); // TODO  先简单用perm2替换
+    const auto &tranpose_continuous =
+        res.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
 
     res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
   }
 };
 
 class RemoveRedundentTransposePattern
-    : public ir::drr::DrrRewritePattern<paddle::dialect::TransposeOp, 
+    : public ir::drr::DrrRewritePattern<paddle::dialect::TransposeOp,
                                         RemoveRedundentTransposeFunctor> {
-  public:
-    using ir::drr::DrrRewritePattern<
-        paddle::dialect::TransposeOp,
-        RemoveRedundentTransposeFunctor>::DrrRewritePattern;
+ public:
+  using ir::drr::DrrRewritePattern<
+      paddle::dialect::TransposeOp,
+      RemoveRedundentTransposeFunctor>::DrrRewritePattern;
 };
-
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
@@ -132,13 +133,15 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::ReluOp relu_op =
       builder.Build<paddle::dialect::ReluOp>(reshape_op_second.out());
 
-  paddle::dialect::TransposeOp transpose_op_first = 
-      builder.Build<paddle::dialect::TransposeOp>(relu_op.out(), std::vector<int>{0, 2, 1, 3});
+  paddle::dialect::TransposeOp transpose_op_first =
+      builder.Build<paddle::dialect::TransposeOp>(relu_op.out(),
+                                                  std::vector<int>{0, 2, 1, 3});
 
-  paddle::dialect::TransposeOp transpose_op_second = 
-      builder.Build<paddle::dialect::TransposeOp>(transpose_op_first.out(), std::vector<int>{0, 1, 2, 3});
- 
-  paddle::dialect::ReluOp relu_op_second = 
+  paddle::dialect::TransposeOp transpose_op_second =
+      builder.Build<paddle::dialect::TransposeOp>(transpose_op_first.out(),
+                                                  std::vector<int>{0, 1, 2, 3});
+
+  paddle::dialect::ReluOp relu_op_second =
       builder.Build<paddle::dialect::ReluOp>(transpose_op_second.out());
 
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
