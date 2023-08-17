@@ -18,7 +18,7 @@ from paddle.framework import in_dynamic_mode
 
 
 def fused_rotary_position_embedding(
-    q, k, v, sin=None, cos=None, use_neox_rotary_style=True
+    q, k=None, v=None, sin=None, cos=None, use_neox_rotary_style=True
 ):
     r"""
     Fused rotary position embedding.
@@ -57,3 +57,7 @@ def fused_rotary_position_embedding(
         return _C_ops.fused_rotary_position_embedding(
             q, k, v, sin, cos, use_neox_rotary_style
         )
+
+    raise RuntimeError(
+        "This feature is currently supported only in dynamic mode and with CUDAPlace."
+    )
