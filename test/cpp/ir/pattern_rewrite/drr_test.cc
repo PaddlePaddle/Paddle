@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/ir/builtin_transforms/dead_code_elimination_pass.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
@@ -148,6 +149,7 @@ TEST(DrrTest, drr) {
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
+  pm.AddPass(ir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
