@@ -133,6 +133,9 @@ class Engine:
                 "'model must be sub classes of `paddle.nn.Layer` or any callable function."
             )
         self._model = model
+        self._parameter_list = (
+            None if not model else [p.name for p in model.parameters()]
+        )
 
         if (
             loss
@@ -765,9 +768,9 @@ class Engine:
             self._dist_contexts[mode],
         )
         if not all_ranks:
-            parallelizer.parallel(self._cur_rank)
+            parallelizer.parallel(self._cur_rank, self._parameter_list)
         else:
-            parallelizer.parallel_all()
+            parallelizer.parallel_all(self._parameter_list)
 
     def _init_dist_context(self, mode):
         # Init dist_context['mode'] with the first planned dist_context

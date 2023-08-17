@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/phi/kernels/dgc_momentum_kernel.h"
 
-namespace cinn::optim {
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/dgc_momentum_kernel_impl.h"
 
-void IfSimplify(Expr* e);
-
-}  // namespace cinn::optim
+PD_REGISTER_KERNEL(
+    dgc_momentum, CPU, ALL_LAYOUT, phi::DGCMomentumKernel, float) {}

@@ -36,6 +36,7 @@ PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(mean, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(mean_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace framework {
@@ -230,6 +231,7 @@ TEST(VJP, ConcatBackwardTest) {
 
   auto place = platform::CPUPlace();
   Scope scope;
+
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
   std::stringstream os;
@@ -265,5 +267,133 @@ TEST(VJP, ConcatBackwardTest) {
   ASSERT_EQ(grad_out_tensor_1.data<float>()[1], 1.0);
 }
 
+TEST(VJP, AddBackwardTest) {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+
+  std::shared_ptr<ir::Builder> builder =
+      paddle::dialect::APIBuilder::Instance().GetBuilder();
+  paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
+  paddle::dialect::FullOp op2 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
+  paddle::dialect::AddOp op3 =
+      builder->Build<paddle::dialect::AddOp>(op1.out(), op2.out());
+
+  paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
+
+  std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
+  std::vector<std::vector<ir::OpResult>> out_grads{{op4.out()}};
+
+  ir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd.add");
+  auto add_vjp_interface_impl =
+      op3_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+  add_vjp_interface_impl->vjp_(op3.operation(), out_grads, stop_gradients);
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = platform::CPUPlace();
+  Scope scope;
+
+  ProgramDesc prog_desc;
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string prefix_str = os.str();
+  test_core.SetSkipGcVars({prefix_str + "_inner_var_2",
+                           prefix_str + "_inner_var_4",
+                           prefix_str + "_inner_var_5"});
+  test_core.Run({});
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_2")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_2")
+                ->Get<phi::DenseTensor>();
+  auto dx =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_4")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_4")
+                ->Get<phi::DenseTensor>();
+
+  auto dy =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_5")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_5")
+                ->Get<phi::DenseTensor>();
+  ASSERT_EQ(out_tensor.data<float>()[0], 4.0);
+  ASSERT_EQ(dx.data<float>()[0], 1.0);
+  ASSERT_EQ(dy.data<float>()[0], 1.0);
+}
+
+TEST(VJP, Add_BackwardTest) {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+
+  std::shared_ptr<ir::Builder> builder =
+      paddle::dialect::APIBuilder::Instance().GetBuilder();
+  paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
+  paddle::dialect::FullOp op2 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
+  paddle::dialect::Add_Op op3 =
+      builder->Build<paddle::dialect::Add_Op>(op1.out(), op2.out());
+
+  paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
+
+  std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
+  std::vector<std::vector<ir::OpResult>> out_grads{{op4.out()}};
+
+  ir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd.add_");
+  auto add_inplace_vjp_interface_impl =
+      op3_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+  add_inplace_vjp_interface_impl->vjp_(
+      op3.operation(), out_grads, stop_gradients);
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  auto place = platform::CPUPlace();
+  Scope scope;
+
+  ProgramDesc prog_desc;
+  InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string prefix_str = os.str();
+  test_core.SetSkipGcVars({prefix_str + "_inner_var_0",
+                           prefix_str + "_inner_var_3",
+                           prefix_str + "_inner_var_4"});
+  test_core.Run({});
+  auto out_tensor =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_0")
+                ->Get<phi::DenseTensor>();
+  auto dx =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_3")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_3")
+                ->Get<phi::DenseTensor>();
+
+  auto dy =
+      test_core.local_scope() == nullptr
+          ? scope.FindVar(prefix_str + "_inner_var_4")->Get<phi::DenseTensor>()
+          : test_core.local_scope()
+                ->FindVar(prefix_str + "_inner_var_4")
+                ->Get<phi::DenseTensor>();
+  ASSERT_EQ(out_tensor.data<float>()[0], 4.0);
+  ASSERT_EQ(dx.data<float>()[0], 1.0);
+  ASSERT_EQ(dy.data<float>()[0], 1.0);
+}
 }  // namespace framework
 }  // namespace paddle

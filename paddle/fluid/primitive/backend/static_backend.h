@@ -42,6 +42,12 @@ template <typename T>
 std::vector<Tensor> concat_grad(const std::vector<Tensor>& x,
                                 const Tensor& out_grad,
                                 const Tensor& axis);
+
+template <typename T>
+std::tuple<Tensor, Tensor> add_grad(const Tensor& x,
+                                    const Tensor& y,
+                                    const Tensor& out_grad,
+                                    int axis);
 }  // namespace experimental
 }  // namespace backend
 }  // namespace primitive
