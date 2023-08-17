@@ -94,7 +94,7 @@ def shape(input):
             >>> inputs = paddle.static.data(name="x", shape=[3, 100, 100], dtype="float32")
             >>> output = paddle.shape(inputs)
 
-            >>> exe = paddle.static.Executor(paddle.CPUPlace)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
 
             >>> img = np.ones((3, 100, 100)).astype(np.float32)
