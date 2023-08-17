@@ -2702,8 +2702,8 @@ def cross_entropy(
                                                                     label_smoothing=label_smoothing,
                                                                     reduction=reduction)
             print(paddle_loss_mean)
-            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            1.12226281)
+            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            # 1.12226281)
 
     """
 
@@ -2736,7 +2736,7 @@ def cross_entropy(
             )
         )
 
-    if soft_label is True:
+    if soft_label:
         # converting the label to one-hot encoding
         # for 1d case, converting label's shape from [N] to [N, C]
         # for 2d case, converting label's shape from [N, d_1, ..., d_k] to [N, d_1, ..., d_k, C]
