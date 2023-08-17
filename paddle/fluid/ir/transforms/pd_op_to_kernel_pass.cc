@@ -704,10 +704,16 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                       << kernel_key.backend();
               // build memcopy op
               auto out_place = phi::TransToPhiPlace(kernel.InputAt(i).backend);
+              auto new_in_alloc_type =
+                  new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>();
               auto out_type = dialect::AllocatedDenseTensorType::get(
                   ctx,
                   out_place,
-                  cur_in.type().dyn_cast<dialect::DenseTensorType>());
+                  new_in_alloc_type.dtype(),
+                  new_in_alloc_type.dims(),
+                  new_in_alloc_type.data_layout(),
+                  new_in_alloc_type.lod(),
+                  new_in_alloc_type.offset());
               new_in = AddPlaceTransferOp(new_in,
                                           out_type,
                                           place,
