@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
-
 #include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <memory>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/ir/pass/pass.h"
@@ -22,6 +22,7 @@
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 #include "paddle/ir/pattern_rewrite/drr/drr_rewrite_pattern.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/ir/transforms/dead_code_elimination_pass.h"
 
 
 struct RemoveRedundentReshapeFunctor {
@@ -29,17 +30,17 @@ struct RemoveRedundentReshapeFunctor {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &reshape = pat.Op("pd.reshape");
-
-    pat.Tensor("ret") = reshape(reshape(pat.Tensor("arg0"), pat.Tensor("shape0")), pat.Tensor("shape1"));
+    reshape({&pat.Tensor("arg0"), &pat.Tensor("shape0")},
+            {&pat.Tensor("out1"), &pat.Tensor("xshape_0")});
+    reshape({&pat.Tensor("out1"), &pat.Tensor("shape1")},
+            {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
 
     // Result patterns：要替换为的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
-
-    //
-    res.Tensor("ret") = res.Op("pd.reshape")(res.Tensor("arg0"), res.Tensor("shape1"));
+    res.Op("pd.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
+                         {&res.Tensor("ret"), &res.Tensor("xshape_1")});
   }
 };
-
 
 class RemoveRedundentReshapePattern
     : public ir::drr::DrrRewritePattern<paddle::dialect::ReshapeOp,
@@ -143,18 +144,21 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }
 
+//
 std::unique_ptr<RemoveRedundentTransposePattern> CreateDrrPatternRewritePass(
     ir::IrContext *ir_ctx) {
   return std::make_unique<RemoveRedundentTransposePattern>(ir_ctx, 1);
 }
 
-class TestPass : public ir::Pass {
+
+class DrrPatternRewritePass : public ir::Pass {
  public:
-  TestPass() : ir::Pass("TestPass", 1) {}
+  DrrPatternRewritePass() : ir::Pass("DrrPatternRewritePass", 1) {}
 
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
-    ps.Add(std::move(CreateDrrPatternRewritePass(context)));
+    ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
+    ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -185,7 +189,8 @@ TEST(DrrTest, drr) {
   EXPECT_EQ(program.block()->size(), 10u);
 
   ir::PassManager pm(ctx);
-  pm.AddPass(std::make_unique<TestPass>());
+  pm.AddPass(std::make_unique<DrrPatternRewritePass>());
+  pm.AddPass(ir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 

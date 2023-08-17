@@ -372,7 +372,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
 
     // ------------------ op creation and placement ---------------------------
 
-    OpDesc ln_op_desc;
+    OpDesc ln_op_desc(x_mean->Op()->Block());
     ln_op_desc.SetType("layer_norm");
     ln_op_desc.SetInput("X", {x->Name()});
     ln_op_desc.SetInput("Scale", {new_gamma_node->Name()});

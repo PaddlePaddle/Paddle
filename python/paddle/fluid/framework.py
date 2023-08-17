@@ -1016,32 +1016,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         dtype = np.dtype(np_dtype)
 
     if ir.core._use_new_ir_api():
-        if dtype == np.float32:
-            return core.DataType.FLOAT32
-        elif dtype == np.float64:
-            return core.DataType.FLOAT64
-        elif dtype == np.float16:
-            return core.DataType.FLOAT16
-        elif dtype == np.int32:
-            return core.DataType.INT32
-        elif dtype == np.int16:
-            return core.DataType.INT16
-        elif dtype == np.int64:
-            return core.DataType.INT64
-        elif dtype == np.bool_:
-            return core.DataType.BOOL
-        elif dtype == np.uint16:
-            # since there is still no support for bfloat16 in NumPy,
-            # uint16 is used for casting bfloat16
-            return core.DataType.UINT16
-        elif dtype == np.uint8:
-            return core.DataType.UINT8
-        elif dtype == np.int8:
-            return core.DataType.INT8
-        elif dtype == np.complex64:
-            return core.DataType.COMPLEX64
-        elif dtype == np.complex128:
-            return core.DataType.COMPLEX128
+        if dtype in ir.core.np_type_to_paddle_type.keys():
+            return ir.core.np_type_to_paddle_type[dtype]
         else:
             raise ValueError("Not supported numpy dtype %s" % dtype)
     else:
@@ -3597,6 +3573,10 @@ def _stride_in_no_check_dy2st_diff():
 
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
+    if (
+        op_type == "while"
+    ):  # dont' need check while, while is only a wrapper of inner ops, we will stuck in inner op.
+        return
     if outputs is not None:
         for k, v in outputs.items():
             if isinstance(v, Variable):
@@ -7169,6 +7149,8 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             **kwargs,
         )
         self.trainable = kwargs.get('trainable', True)
+
+        self.stop_gradient = not self.trainable
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 

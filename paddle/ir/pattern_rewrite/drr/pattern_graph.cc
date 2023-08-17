@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <queue>
+
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
@@ -25,7 +26,7 @@ namespace drr {
 const drr::OpCall &PatternGraph::AddOpCall(
     const std::shared_ptr<drr::OpCall> &op_call) {
   owned_op_call_.push_back(op_call);
-  for (const auto &input : op_call->inputs()) {
+  for (const auto *input : op_call->inputs()) {
     const auto &tensor_id = input->name();
     IR_ENFORCE(id2owned_tensor_.count(tensor_id));
     id2owned_tensor_.at(tensor_id)->AddConsumer(op_call.get());
@@ -102,11 +103,10 @@ void PatternGraph::Print() const {
   }
   std::cout << "\n" << std::endl;
 
-  std::cout << "OpCalls:" << std::endl;
   for (const auto &op_call : owned_op_call_) {
     std::cout << "  " << op_call->name() << " : ";
     std::cout << "inputs[ ";
-    for (const auto &input : op_call->inputs()) {
+    for (const auto *input : op_call->inputs()) {
       std::cout << input->name() << " ";
     }
     std::cout << "], ";
@@ -120,29 +120,31 @@ void PatternGraph::Print() const {
   std::cout << std::endl;
 }
 
-
 const OpCall *SourcePatternGraph::AnchorNode() const {
   return id2owned_tensor_.at(*output_tensors_.begin())->producer();
 }
 
-
-void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)> &VisitNode) const {
+void GraphTopo::WalkGraphNodesTopoOrder(
+    const std::function<void(const OpCall &)> &VisitNode) const {
   // graph data
-  const std::unordered_set<ir::drr::PatternGraph::id_type> &inputs_tensor = graph_->input_tensors();
-  const std::unordered_map<ir::drr::PatternGraph::id_type,std::shared_ptr<ir::drr::Tensor>> &id2owned_tensor = graph_->id2owend_tensor();
-  const std::vector<std::shared_ptr<OpCall>> &owend_opcall = graph_->owned_op_call();
+  const std::unordered_set<ir::drr::PatternGraph::id_type> &inputs_tensor =
+      graph_->input_tensors();
+  const std::unordered_map<ir::drr::PatternGraph::id_type,
+                           std::shared_ptr<ir::drr::Tensor>> &id2owned_tensor =
+      graph_->id2owend_tensor();
+  const std::vector<std::shared_ptr<OpCall>> &owend_opcall =
+      graph_->owned_op_call();
 
   std::queue<const ir::drr::OpCall *> opcall_queue;
-  std::unordered_map<const ir::drr::OpCall *, std::unordered_set<std::string>> opcall_dependent; 
-  
-  // init opcall_dependent;
-  for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall){
+  std::unordered_map<const ir::drr::OpCall *, std::unordered_set<std::string>>
+      opcall_dependent;
 
-    if (opcall_sptr.get()->inputs().empty()){ // opcall inputs is empty
+  // init opcall_dependent;
+  for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall) {
+    if (opcall_sptr.get()->inputs().empty()) {  // opcall inputs is empty
       opcall_queue.push(opcall_sptr.get());
-    }
-    else{
-      for(const auto &pre_depd_tensor : opcall_sptr.get()->inputs()){
+    } else {
+      for (const auto &pre_depd_tensor : opcall_sptr.get()->inputs()) {
         opcall_dependent[opcall_sptr.get()].insert(pre_depd_tensor->name());
       }
     }
@@ -150,12 +152,13 @@ void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)
 
   // init queue
   for (const auto &tensor_id : inputs_tensor) {
-    const std::string& tensor_name = id2owned_tensor.at(tensor_id).get()->name();
+    const std::string &tensor_name =
+        id2owned_tensor.at(tensor_id).get()->name();
 
-    for(const auto &tensor_comsumer : id2owned_tensor.at(tensor_id).get()->consumers()){
-
+    for (const auto &tensor_comsumer :
+         id2owned_tensor.at(tensor_id).get()->consumers()) {
       opcall_dependent[tensor_comsumer].erase(tensor_name);
-      if (opcall_dependent[tensor_comsumer].empty()){
+      if (opcall_dependent[tensor_comsumer].empty()) {
         opcall_queue.push(tensor_comsumer);
       }
     }
@@ -168,19 +171,14 @@ void GraphTopo::WalkGraphNodesTopoOrder(const std::function<void(const OpCall &)
 
     // update opcall_dependent
     for (const auto &output_tensor : opcall->outputs()) {
-
-      for (const auto &tensor_comsumer : output_tensor->consumers()){
-
+      for (const auto &tensor_comsumer : output_tensor->consumers()) {
         opcall_dependent[tensor_comsumer].erase(output_tensor->name());
-        if (opcall_dependent[tensor_comsumer].empty()){
+        if (opcall_dependent[tensor_comsumer].empty()) {
           opcall_queue.push(tensor_comsumer);
         }
       }
-
     }
   }
-
-  return; 
 }
 
 }  // namespace drr

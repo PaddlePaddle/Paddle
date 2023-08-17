@@ -83,10 +83,9 @@ void Op::operator()(const Tensor& arg, const Tensor* out) const {
   pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
 }
 
-void Op::operator()(const std::vector<const Tensor*>& args, const std::vector<const Tensor*>& outputs) const{
-  std::vector<const Tensor*> inputs(args);
-  std::vector<const Tensor*> outputs_(outputs);
-  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs_));
+void Op::operator()(const std::vector<const Tensor*>& args,
+                    const std::vector<const Tensor*>& outputs) const {
+  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, args, outputs));
 }
 
 Tensor& Op::operator()(const Tensor& arg) const {
@@ -101,7 +100,7 @@ Tensor& Op::operator()(const Tensor& arg) const {
 Tensor& Op::operator()(const Tensor& arg1, const Tensor& arg2) const {
   std::vector<const Tensor*> inputs{&arg1, &arg2};
   auto& out = pattern_graph_->AddTmpTensor(std::shared_ptr<Tensor>(new Tensor(
-    "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
+      "tmp_" + op_type_name_ + "_" + std::to_string(count++), pattern_graph_)));
   std::vector<const Tensor*> outputs{&out};
   pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, inputs, outputs));
   return out;
@@ -121,8 +120,7 @@ int64_t Op::count = 0;
 void Tensor::operator=(Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
   IR_ENFORCE(this->pattern_graph_ == other.pattern_graph_);
-  if (other.name_.substr(0, 4) == "tmp_" &&
-      name_.substr(0, 4) != "tmp_") {
+  if (other.name_.substr(0, 4) == "tmp_" && name_.substr(0, 4) != "tmp_") {
     other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);
   }
 }

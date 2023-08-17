@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
+#include <array>
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
@@ -24,10 +25,10 @@ bool ReshapeStride(const DDim& old_dims,
                    DDim& new_stride) {  // NOLINT
   int64_t numel = product(old_dims);
   if (numel < 0) {
-    int64_t tmp[2];
+    std::array<int64_t, 2> tmp;
     tmp[0] = 1;
     tmp[1] = new_dims.size();
-    new_stride = DDim(tmp, 2);
+    new_stride = DDim(tmp.data(), 2);
     return true;
   } else if (numel == 0) {
     if (old_dims == new_dims) {
