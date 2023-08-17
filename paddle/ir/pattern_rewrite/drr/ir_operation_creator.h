@@ -60,6 +60,18 @@ Operation* CreateOperation(const OpCall& op_call,
         std::make_shared<IrValue>(reshape_op->result(1)));
     return reshape_op;
   }
+  else if(op_call.name() == "pd.transpose") {
+      const auto& inputs = op_call.inputs();
+      std::vector<Value> ir_values = GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+      Operation* transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(
+          ir_values[0].dyn_cast<ir::OpResult>(),
+          std::vector<int>{0, 2, 1, 3});
+      res_match_ctx->BindIrValue(
+        op_call.outputs()[0]->name(),
+        std::make_shared<IrValue>(transpose_op->result(0)));
+      return transpose_op;
+  }
+
   LOG(ERROR) << "Unknown op " << op_call.name();
   return nullptr;
 }
