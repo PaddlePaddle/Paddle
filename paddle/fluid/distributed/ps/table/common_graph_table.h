@@ -626,7 +626,7 @@ class GraphTable : public Table {
                                                 const std::string &node_type,
                                                 int idx,
                                                 bool load_slot = true);
-  std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path,
+  std::pair<uint64_t, uint64_t> parse_node_file_parallel(const std::string &path,
                                                 bool load_slot = true);
   int32_t add_graph_node(int idx,
                          std::vector<uint64_t> &id_list,      // NOLINT
