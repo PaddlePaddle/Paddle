@@ -23,13 +23,13 @@ void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
 """
 
 OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
-    {input_type} {input_name}(std::make_shared<primitive::experimental::DescTensor>(op_obj.{input_name}()));"""
+    {input_type} {input_name}(std::make_shared<primitive::experimental::StaticTensor>(op_obj.{input_name}()));"""
 
 OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
-    Tensor {output_grad_name}(std::make_shared<primitive::experimental::DescTensor>(out_grads[{idx1}][{idx2}]));"""
+    Tensor {output_grad_name}(std::make_shared<primitive::experimental::StaticTensor>(out_grads[{idx1}][{idx2}]));"""
 
 OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
-    std::vector<Tensor> {output_grad_name}(std::make_shared<primitive::experimental::DescTensor>(out_grads[{idx1}]));"""
+    std::vector<Tensor> {output_grad_name}(std::make_shared<primitive::experimental::StaticTensor>(out_grads[{idx1}]));"""
 
 OP_VJP_ATTRIBUTE_TEMPLATE = """
     {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().data();"""
@@ -48,7 +48,7 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
         res[i].resize(tensor_res[i].size());
         for (size_t j = 0; j < tensor_res[i].size(); ++j) {{
             if(tensor_res[i][j].defined()){{
-                res[i][j] = std::static_pointer_cast<primitive::experimental::DescTensor>(tensor_res[i][j].impl())->getValue().dyn_cast<ir::OpResult>();
+                res[i][j] = std::static_pointer_cast<primitive::experimental::StaticTensor>(tensor_res[i][j].impl())->getValue().dyn_cast<ir::OpResult>();
             }}
         }}
     }}"""
