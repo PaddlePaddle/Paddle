@@ -19,7 +19,12 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
-using namespace ::musa::dnn;
+using ::musa::dnn::Convolution;
+using ::musa::dnn::Handle;
+using ::musa::dnn::MemoryHandler;
+using ::musa::dnn::Pooling;
+using ::musa::dnn::Softmax;
+using ::musa::dnn::Tensor;
 
 extern bool HasCUDNN();
 

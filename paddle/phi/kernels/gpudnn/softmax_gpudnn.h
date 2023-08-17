@@ -1079,10 +1079,10 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   ScopedTensorDescriptor out_scoped_desc;
   auto& odesc = out_scoped_desc.descriptor<T>(out_data, layout, tensor_dims);
   backends::gpu::ScopedSoftmaxDescriptor softmax_desc;
-  auto mode = log_mode ? dynload::Softmax::Mode::LOGSOFTMAX : 
-                         dynload::Softmax::Mode::SOFTMAX;
-  auto algo = log_mode ? dynload::Softmax::Algorithm::DIRECT :
-                         dynload::Softmax::Algorithm::ACCURATE;
+  auto mode = log_mode ? dynload::Softmax::Mode::LOGSOFTMAX
+                       : dynload::Softmax::Mode::SOFTMAX;
+  auto algo = log_mode ? dynload::Softmax::Algorithm::DIRECT
+                       : dynload::Softmax::Algorithm::ACCURATE;
   softmax_desc.descriptor(mode, algo, axis).Run(*handle, odesc, idesc);
 #else
   cudnnTensorDescriptor_t desc = scoped_desc.descriptor<T>(layout, tensor_dims);

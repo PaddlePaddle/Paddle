@@ -156,8 +156,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
 #elif defined(PADDLE_WITH_MUSA)
   SearchResult<dynload::Convolution::Algorithm> fwd_result;
   using search = SearchAlgorithm<dynload::Convolution::Algorithm>;
-  fwd_result.algo = search::Find(
-      args, exhaustive_search, deterministic, workspace_size, ctx);
+  fwd_result.algo =
+      search::Find(args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search = SearchAlgorithm<ConvKind::kForward>;
@@ -205,7 +205,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
 #elif defined(PADDLE_WITH_MUSA)
   workspace_handle.RunFunc(
       [&](void* workspace_ptr) {
-        args.cdesc.desc()->Run(*handle, 
+        args.cdesc.desc()->Run(*handle,
                                *args.odesc.desc(),
                                *args.idesc.desc(),
                                *args.wdesc.desc(),
@@ -628,7 +628,7 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -669,7 +669,7 @@ PD_REGISTER_KERNEL(conv3d,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
                    ALL_LAYOUT,

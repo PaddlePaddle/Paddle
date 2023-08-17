@@ -14,18 +14,20 @@ limitations under the License. */
 
 #pragma once
 #ifdef PADDLE_WITH_MUSA
-#include <mudnn.h>
 #include <glog/logging.h>
-
-#include <mutex>  // NOLINT
-
+#include <mudnn.h>
 #include "paddle/phi/backends/dynload/mudnn.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-using namespace ::musa::dnn;
+using ::musa::dnn::Convolution;
+using ::musa::dnn::Handle;
+using ::musa::dnn::MemoryHandler;
+using ::musa::dnn::Pooling;
+using ::musa::dnn::Softmax;
+using ::musa::dnn::Tensor;
 
 extern bool HasCUDNN();
 
@@ -34,4 +36,3 @@ extern bool HasCUDNN();
 }  // namespace paddle
 
 #endif
-

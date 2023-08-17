@@ -23,9 +23,9 @@
 #include <string>
 #include <vector>
 
+#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/api/ext/exception.h"
 
 namespace phi {
 namespace backends {
@@ -71,11 +71,10 @@ inline dynload::Tensor::Type ToCudnnDataType(const phi::DataType& t) {
       type = dynload::Tensor::Type::DOUBLE;
       break;
     default:
-      PD_THROW("Don't support this data type "); 
+      PD_THROW("Don't support this data type ");
   }
   return type;
 }
-
 
 #if 0
 class ActivationDescriptor {
@@ -146,7 +145,8 @@ class TensorDescriptor {
     desc_->SetNdInfo(transformed_dims.size(), transformed_dims.data());
   }
 
-  void set(const phi::DenseTensor& tensor, const dynload::Tensor::Format format) {
+  void set(const phi::DenseTensor& tensor,
+           const dynload::Tensor::Format format) {
     auto dims = phi::vectorize<int>(tensor.dims());
     auto dtype = ToCudnnDataType(tensor.dtype());
     set(dims, format, dtype);
@@ -209,7 +209,8 @@ class ConvolutionDescriptor {
            bool allow_tf32,
            const int groups = 1) {
     allow_tf32_ = allow_tf32;
-    desc_->SetNdInfo(pads.size(), pads.data(), strides.data(), dilations.data());
+    desc_->SetNdInfo(
+        pads.size(), pads.data(), strides.data(), dilations.data());
     desc_->SetComputeMode(dynload::Convolution::ComputeMode::ALL);
     desc_->SetGroups(groups);
   }

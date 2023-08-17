@@ -179,7 +179,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || \
+    defined(PADDLE_WITH_MUSA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -235,7 +236,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 #elif defined(PADDLE_WITH_MUSA)
   SearchResult<dynload::Convolution::AlgorithmBwdData> bwd_result;
   using search = SearchAlgorithm<dynload::Convolution::AlgorithmBwdData>;
-  bwd_result.algo = search::Find(args, false, deterministic, workspace_size, ctx);
+  bwd_result.algo =
+      search::Find(args, false, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
@@ -273,13 +275,13 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   }
 #elif defined(PADDLE_WITH_MUSA)
   workspace_handle.RunFunc(
-    [&](void* cudnn_workspace) {
-      args.cdesc.desc()->RunBwdData(*handle,
-                                    *args.idesc.desc(),
-                                    *args.odesc.desc(),
-                                    *args.wdesc.desc(),
-                                    bwd_result.algo,
-                                    InternalMemAlloc);
+      [&](void* cudnn_workspace) {
+        args.cdesc.desc()->RunBwdData(*handle,
+                                      *args.idesc.desc(),
+                                      *args.odesc.desc(),
+                                      *args.wdesc.desc(),
+                                      bwd_result.algo,
+                                      InternalMemAlloc);
       },
       workspace_size);
 #else
@@ -373,7 +375,7 @@ void Conv3dTransposeGPUDNNKernel(const Context& ctx,
 
 using float16 = phi::dtype::float16;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(conv2d_transpose,
                    GPUDNN,
@@ -405,7 +407,7 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    double,
                    float16,
                    phi::dtype::bfloat16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(conv2d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,

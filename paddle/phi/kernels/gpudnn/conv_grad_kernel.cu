@@ -151,7 +151,8 @@ void ConvCudnnGradKernelImplV7(
   int iwo_groups = groups;
   int c_groups = 1;
 
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || \
+    defined(PADDLE_WITH_MUSA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -179,7 +180,8 @@ void ConvCudnnGradKernelImplV7(
         args1, exhaustive_search, deterministic, workspace_size, ctx);
 #elif defined(PADDLE_WITH_MUSA)
     using search1 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdData>;
-    bwd_result.algo = search1::Find(args1, exhaustive_search, deterministic, workspace_size, ctx);
+    bwd_result.algo = search1::Find(
+        args1, exhaustive_search, deterministic, workspace_size, ctx);
 #else
     using search1 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result = search1::Find<T>(ctx, args1, exhaustive_search, deterministic);
@@ -208,7 +210,8 @@ void ConvCudnnGradKernelImplV7(
         args2, exhaustive_search, deterministic, workspace_size, ctx);
 #elif defined(PADDLE_WITH_MUSA)
     using search2 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdFilter>;
-    filter_result.algo = search2::Find(args2, exhaustive_search, deterministic, workspace_size, ctx);
+    filter_result.algo = search2::Find(
+        args2, exhaustive_search, deterministic, workspace_size, ctx);
 #else
     using search2 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result =
@@ -292,12 +295,12 @@ void ConvCudnnGradKernelImplV7(
 #elif defined(PADDLE_WITH_MUSA)
     workspace_handle.RunFunc(
         [&](void* cudnn_workspace_ptr) {
-            args1.cdesc.desc()->RunBwdData(*handle,
-                                           *args1.idesc.desc(),
-                                           *args1.odesc.desc(),
-                                           *args1.wdesc.desc(),
-                                           bwd_result.algo,
-                                           InternalMemAlloc);
+          args1.cdesc.desc()->RunBwdData(*handle,
+                                         *args1.idesc.desc(),
+                                         *args1.odesc.desc(),
+                                         *args1.wdesc.desc(),
+                                         bwd_result.algo,
+                                         InternalMemAlloc);
         },
         workspace_size);
 #else
@@ -343,12 +346,12 @@ void ConvCudnnGradKernelImplV7(
 #elif defined(PADDLE_WITH_MUSA)
     workspace_handle.RunFunc(
         [&](void* cudnn_workspace_ptr) {
-            args2.cdesc.desc()->RunBwdFilter(*handle,
-                                             *args2.wdesc.desc(),
-                                             *args2.idesc.desc(),
-                                             *args2.odesc.desc(),
-                                             filter_result.algo,
-                                             InternalMemAlloc);
+          args2.cdesc.desc()->RunBwdFilter(*handle,
+                                           *args2.wdesc.desc(),
+                                           *args2.idesc.desc(),
+                                           *args2.odesc.desc(),
+                                           filter_result.algo,
+                                           InternalMemAlloc);
         },
         workspace_size);
 #else
@@ -1037,7 +1040,8 @@ void ConvCudnnGradGradKernel(
 
   int iwo_group = groups;
   int c_group = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || \
+    defined(PADDLE_WITH_MUSA)
   iwo_group = 1;
   c_group = groups;
   groups = 1;
@@ -1131,7 +1135,8 @@ void ConvCudnnGradGradKernel(
           args1, exhaustive_search, false, workspace_size, ctx);
 #elif defined(PADDLE_WITH_MUSA)
       using search1 = SearchAlgorithm<dynload::Convolution::Algorithm>;
-      fwd_result1.algo = search1::Find(args1, exhaustive_search, false, workspace_size, ctx);
+      fwd_result1.algo =
+          search1::Find(args1, exhaustive_search, false, workspace_size, ctx);
 #else
       using search1 = SearchAlgorithm<ConvKind::kForward>;
       fwd_result1 = search1::Find<T>(ctx, args1, exhaustive_search, false);
@@ -1159,7 +1164,8 @@ void ConvCudnnGradGradKernel(
           args2, exhaustive_search, false, workspace_size, ctx);
 #elif defined(PADDLE_WITH_MUSA)
       using search2 = SearchAlgorithm<dynload::Convolution::Algorithm>;
-      fwd_result2.algo = search2::Find(args2, exhaustive_search, false, workspace_size, ctx);
+      fwd_result2.algo =
+          search2::Find(args2, exhaustive_search, false, workspace_size, ctx);
 #else
       using search2 = SearchAlgorithm<ConvKind::kForward>;
       fwd_result2 = search2::Find<T>(ctx, args2, exhaustive_search, false);
@@ -1188,7 +1194,8 @@ void ConvCudnnGradGradKernel(
         args3, exhaustive_search, deterministic, workspace_size, ctx);
 #elif defined(PADDLE_WITH_MUSA)
     using search3 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdFilter>;
-    filter_result.algo = search3::Find(args3, exhaustive_search, deterministic, workspace_size, ctx);
+    filter_result.algo = search3::Find(
+        args3, exhaustive_search, deterministic, workspace_size, ctx);
 #else
     using search3 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result =
@@ -1218,7 +1225,8 @@ void ConvCudnnGradGradKernel(
         args4, exhaustive_search, deterministic, workspace_size, ctx);
 #elif defined(PADDLE_WITH_MUSA)
     using search4 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdData>;
-    data_result.algo = search4::Find(args4, exhaustive_search, deterministic, workspace_size, ctx);
+    data_result.algo = search4::Find(
+        args4, exhaustive_search, deterministic, workspace_size, ctx);
 #else
     using search4 = SearchAlgorithm<ConvKind::kBackwardData>;
     data_result =
@@ -1278,15 +1286,15 @@ void ConvCudnnGradGradKernel(
           workspace_size);
 #elif defined(PADDLE_WITH_MUSA)
       workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          args1.cdesc.desc()->Run(*handle,
-                                  *args1.odesc.desc(),
-                                  *args1.idesc.desc(),
-                                  *args1.wdesc.desc(),
-                                  fwd_result1.algo,
-                                  InternalMemAlloc);
-        },
-        workspace_size);
+          [&](void* workspace_ptr) {
+            args1.cdesc.desc()->Run(*handle,
+                                    *args1.odesc.desc(),
+                                    *args1.idesc.desc(),
+                                    *args1.wdesc.desc(),
+                                    fwd_result1.algo,
+                                    InternalMemAlloc);
+          },
+          workspace_size);
 #else
       ConvRunner<T, ConvKind::kForward>::Apply(ctx,
                                                args1,
@@ -1326,15 +1334,15 @@ void ConvCudnnGradGradKernel(
           workspace_size);
 #elif defined(PADDLE_WITH_MUSA)
       workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          args2.cdesc.desc()->Run(*handle,
-                                  *args2.odesc.desc(),
-                                  *args2.idesc.desc(),
-                                  *args2.wdesc.desc(),
-                                  fwd_result2.algo,
-                                  InternalMemAlloc);
-        },
-        workspace_size);
+          [&](void* workspace_ptr) {
+            args2.cdesc.desc()->Run(*handle,
+                                    *args2.odesc.desc(),
+                                    *args2.idesc.desc(),
+                                    *args2.wdesc.desc(),
+                                    fwd_result2.algo,
+                                    InternalMemAlloc);
+          },
+          workspace_size);
 
 #else
       ConvRunner<T, ConvKind::kForward>::Apply(ctx,
@@ -1380,7 +1388,7 @@ void ConvCudnnGradGradKernel(
         },
         workspace_size);
 #elif defined(PADDLE_WITH_MUSA)
-      workspace_handle.RunFunc(
+    workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           args3.cdesc.desc()->RunBwdFilter(*handle,
                                            *args3.wdesc.desc(),
@@ -1430,7 +1438,7 @@ void ConvCudnnGradGradKernel(
         },
         workspace_size);
 #elif defined(PADDLE_WITH_MUSA)
-      workspace_handle.RunFunc(
+    workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           args4.cdesc.desc()->RunBwdData(*handle,
                                          *args4.idesc.desc(),
@@ -1549,7 +1557,7 @@ void Conv3DCudnnDoubleGradKernel(
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(conv2d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -1635,7 +1643,7 @@ PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(conv2d_grad,
                    GPUDNN,
                    ALL_LAYOUT,

@@ -21,10 +21,9 @@
 #include "paddle/phi/backends/gpu/rocm/miopen_desc.h"
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #elif defined(PADDLE_WITH_MUSA)
-#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
 #include "paddle/phi/backends/gpu/musa/mudnn_desc.h"
-
-#else  // CUDA
+#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
+#else
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #endif

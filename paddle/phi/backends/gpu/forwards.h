@@ -75,17 +75,17 @@ using ncclComm_t = struct ncclComm *;
 // Forward declaration of MUSA runtime types.
 using musaStream_t = struct MUstream_st *;
 using musaEvent_t = struct MUevent_st *;
-using mublasHandle_t = struct _mublasHandle_t*;
+using mublasHandle_t = struct _mublasHandle_t *;
 namespace musa {
 namespace dnn {
-  struct Handle;
+struct Handle;
 }
-}
-using mudnnHandle_t = musa::dnn::Handle*;
+}  // namespace musa
+using mudnnHandle_t = musa::dnn::Handle *;
 // TODO(@caizhi): using correct type
-using musolverDnHandle_t = bool**;
-using mublasLtHandle_t = struct _mublasHandle_t*;
-using musparseHandle_t = struct _musparse_handle*;
+using musolverDnHandle_t = bool **;
+using mublasLtHandle_t = struct _mublasHandle_t *;
+using musparseHandle_t = struct _musparse_handle *;
 
 /// Forward declaration of ROCM types.
 #include <cstddef>

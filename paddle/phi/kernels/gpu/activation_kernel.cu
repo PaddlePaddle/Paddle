@@ -178,7 +178,7 @@ void SwishKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(relu,
                    GPU,
                    ALL_LAYOUT,
@@ -186,7 +186,7 @@ PD_REGISTER_KERNEL(relu,
                    float,
                    double,
                    phi::dtype::float16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(relu,
                    GPU,
                    ALL_LAYOUT,

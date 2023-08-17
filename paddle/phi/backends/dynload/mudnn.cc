@@ -23,7 +23,6 @@ bool HasCUDNN() {
   return true;
 }
 
-
 }  // namespace dynload
 }  // namespace phi
 #endif

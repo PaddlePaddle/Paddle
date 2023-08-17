@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
 
-
 DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
@@ -212,7 +211,8 @@ class ScopedTensorDescriptor {
         dynload::Tensor::Format::NCHW,
         phi::errors::InvalidArgument("format should ONLY be NCHW in MUDNN."));
 
-    desc_.SetNdInfo(dims_with_group.size(), dims_with_group.data(), strides.data());
+    desc_.SetNdInfo(
+        dims_with_group.size(), dims_with_group.data(), strides.data());
     desc_.SetType(type);
     desc_.SetFormat(format);
 
@@ -224,7 +224,7 @@ class ScopedTensorDescriptor {
                                      const std::vector<int>& dims,
                                      const int groups = 1) {
     descriptor(
-      GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
+        GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims, groups);
     return desc_;
   }
 
@@ -270,7 +270,6 @@ class ScopedTensorDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedTensorDescriptor);
 };
 
-
 class ScopedPoolingDescriptor {
  public:
   ScopedPoolingDescriptor() {}
@@ -296,20 +295,21 @@ class ScopedPoolingDescriptor {
             kernel.size(),
             strides.size()));
     const std::vector<int> dilation(kernel.size(), 1);
-    desc_.SetNdInfo(kernel.size(), kernel.data(), pads.data(), strides.data(), dilation.data());
+    desc_.SetNdInfo(kernel.size(),
+                    kernel.data(),
+                    pads.data(),
+                    strides.data(),
+                    dilation.data());
     desc_.SetMode(GetPoolingMode(mode));
     return desc_;
   }
 
-  dynload::Pooling& desc() {
-    return desc_;
-  }
+  dynload::Pooling& desc() { return desc_; }
 
  private:
   dynload::Pooling desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedPoolingDescriptor);
 };
-
 
 class ScopedSoftmaxDescriptor {
  public:
@@ -325,15 +325,12 @@ class ScopedSoftmaxDescriptor {
     return desc_;
   }
 
-  dynload::Softmax& desc() {
-    return desc_;
-  }
+  dynload::Softmax& desc() { return desc_; }
 
  private:
   dynload::Softmax desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedSoftmaxDescriptor);
 };
-
 
 #if 0
 class ScopedActivationDescriptor {
@@ -390,8 +387,7 @@ class ScopedActivationDescriptor {
   cudnnActivationDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
-#endif // 0
-
+#endif  // 0
 
 }  // namespace gpu
 }  // namespace backends

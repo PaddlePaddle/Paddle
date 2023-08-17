@@ -170,7 +170,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || \
+    defined(PADDLE_WITH_MUSA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -308,12 +309,12 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     }
 #elif defined(PADDLE_WITH_MUSA)
     auto cudnn_func = [&](void* cudnn_workspace) {
-        args1.cdesc.desc()->Run(*handle,
-                                *args1.odesc.desc(),
-                                *args1.idesc.desc(),
-                                *args1.wdesc.desc(),
-                                fwd_result.algo,
-                                InternalMemAlloc);
+      args1.cdesc.desc()->Run(*handle,
+                              *args1.odesc.desc(),
+                              *args1.idesc.desc(),
+                              *args1.wdesc.desc(),
+                              fwd_result.algo,
+                              InternalMemAlloc);
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
 #else
@@ -375,12 +376,12 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     }
 #elif PADDLE_WITH_MUSA
     auto cudnn_func = [&](void* cudnn_workspace) {
-        args2.cdesc.desc()->RunBwdFilter(*handle,
-                                         *args2.wdesc.desc(),
-                                         *args2.idesc.desc(),
-                                         *args2.odesc.desc(),
-                                         filter_result.algo,
-                                         InternalMemAlloc);
+      args2.cdesc.desc()->RunBwdFilter(*handle,
+                                       *args2.wdesc.desc(),
+                                       *args2.idesc.desc(),
+                                       *args2.odesc.desc(),
+                                       filter_result.algo,
+                                       InternalMemAlloc);
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
 #else
@@ -647,7 +648,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 
   int iwo_group = groups;
   int c_group = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || \
+    defined(PADDLE_WITH_MUSA)
   iwo_group = 1;
   c_group = groups;
   groups = 1;
@@ -891,13 +893,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #elif defined(PADDLE_WITH_MUSA)
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
-          args1.cdesc.desc()->RunBwdData(
-            *handle,
-            *args1.idesc.desc(),
-            *args1.odesc.desc(),
-            *args1.wdesc.desc(),
-            bwd_result1.algo,
-            InternalMemAlloc);
+          args1.cdesc.desc()->RunBwdData(*handle,
+                                         *args1.idesc.desc(),
+                                         *args1.odesc.desc(),
+                                         *args1.wdesc.desc(),
+                                         bwd_result1.algo,
+                                         InternalMemAlloc);
         },
         workspace_size);
 #else
@@ -956,13 +957,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #elif defined(PADDLE_WITH_MUSA)
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
-          args2.cdesc.desc()->RunBwdData(
-            *handle,
-            *args2.idesc.desc(),
-            *args2.odesc.desc(),
-            *args2.wdesc.desc(),
-            bwd_result2.algo,
-            InternalMemAlloc);
+          args2.cdesc.desc()->RunBwdData(*handle,
+                                         *args2.idesc.desc(),
+                                         *args2.odesc.desc(),
+                                         *args2.wdesc.desc(),
+                                         bwd_result2.algo,
+                                         InternalMemAlloc);
         },
         workspace_size);
 #else
@@ -1038,13 +1038,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #elif defined(PADDLE_WITH_MUSA)
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
-          args3.cdesc.desc()->RunBwdFilter(
-            *handle,
-            *args3.wdesc.desc(),
-            *args3.idesc.desc(),
-            *args3.odesc.desc(),
-            filter_result.algo,
-            InternalMemAlloc);
+          args3.cdesc.desc()->RunBwdFilter(*handle,
+                                           *args3.wdesc.desc(),
+                                           *args3.idesc.desc(),
+                                           *args3.odesc.desc(),
+                                           filter_result.algo,
+                                           InternalMemAlloc);
         },
         workspace_size);
 #else
@@ -1090,13 +1089,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #elif defined(PADDLE_WITH_MUSA)
     workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
-          args4.cdesc.desc()->Run(
-            *handle,
-            *args4.idesc.desc(),
-            *args4.wdesc.desc(),
-            *args4.odesc.desc(),
-            fwd_result.algo,
-            InternalMemAlloc);
+          args4.cdesc.desc()->Run(*handle,
+                                  *args4.idesc.desc(),
+                                  *args4.wdesc.desc(),
+                                  *args4.odesc.desc(),
+                                  fwd_result.algo,
+                                  InternalMemAlloc);
         },
         workspace_size);
 #else
@@ -1154,7 +1152,7 @@ void Conv3dTransposeGradGPUDNNKernel(const Context& ctx,
 
 using float16 = phi::dtype::float16;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    GPUDNN,
@@ -1200,7 +1198,7 @@ PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    double,
                    float16,
                    phi::dtype::bfloat16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    GPUDNN,
                    ALL_LAYOUT,

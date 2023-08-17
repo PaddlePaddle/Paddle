@@ -212,10 +212,8 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                                     pool_workernel_size_));
   PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
 #elif defined(PADDLE_WITH_MUSA)
-  pool_desc.desc().Run(*handle,
-                       output_desc.desc(),
-                       input_desc.desc(),
-                       indices_desc.desc());
+  pool_desc.desc().Run(
+      *handle, output_desc.desc(), input_desc.desc(), indices_desc.desc());
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::cudnnPoolingForward(handle,
@@ -305,13 +303,13 @@ void Pool3dGPUDNNKernel(const Context& ctx,
 
 using phi::dtype::float16;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(
     pool2d, GPUDNN, ALL_LAYOUT, phi::Pool2dGPUDNNKernel, float, float16) {}
 PD_REGISTER_KERNEL(
     pool3d, GPUDNN, ALL_LAYOUT, phi::Pool3dGPUDNNKernel, float, float16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(pool2d,
                    GPUDNN,
                    ALL_LAYOUT,

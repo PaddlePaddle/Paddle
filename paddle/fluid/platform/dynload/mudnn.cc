@@ -20,7 +20,6 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-
 MUDNN_DNN_ROUTINE_EACH(DEFINE_WRAP);
 
 bool HasCUDNN() { return phi::dynload::HasCUDNN(); }
@@ -28,4 +27,3 @@ bool HasCUDNN() { return phi::dynload::HasCUDNN(); }
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
-
