@@ -15,11 +15,9 @@
 #include "test_helper.h"  // NOLINT
 #include "test_suite.h"   // NOLINT
 
-PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
-PD_DEFINE_string(datadir, "", "dataset.");
-PD_DEFINE_string(truth_data,
-                 "",
-                 "Directory of the inference data truth result");
+DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_string(datadir, "", "dataset.");
+DEFINE_string(truth_data, "", "Directory of the inference data truth result");
 
 namespace paddle_infer {
 
@@ -194,7 +192,7 @@ TEST(tensorrt_tester_ernie_xnli, oss_varlen_truth_data_int8) {
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  paddle::flags::ParseCommandLineFlags(&argc, &argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
 #if IS_TRT_VERSION_GE(7200)
   return RUN_ALL_TESTS();

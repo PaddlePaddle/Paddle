@@ -14,7 +14,7 @@
 
 #include "test_suite.h"  // NOLINT
 
-PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_string(modeldir, "", "Directory of the inference model.");
 
 namespace paddle_infer {
 
@@ -183,6 +183,6 @@ TEST(mkldnn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  paddle::flags::ParseCommandLineFlags(&argc, &argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

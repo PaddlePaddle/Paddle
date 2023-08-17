@@ -38,11 +38,13 @@ include_directories("${PADDLE_LIB}/")
 set(PADDLE_LIB_THIRD_PARTY_PATH "${PADDLE_LIB}/third_party/install/")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/include")
 
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
@@ -52,11 +54,6 @@ if(WITH_ONNXRUNTIME)
 
   link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib")
   link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib")
-endif()
-
-if(WITH_GFLAGS)
-  include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
-  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 endif()
 
 if(WIN32)
@@ -227,7 +224,7 @@ if(NOT WIN32)
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      ${flags_dep}
+      gflags
       protobuf
       xxhash
       cryptopp
@@ -238,7 +235,7 @@ else()
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      ${flags_dep}
+      gflags
       libprotobuf
       xxhash
       cryptopp-static
