@@ -40,7 +40,8 @@ HOSTDEVICE inline int64_t BinarySearch(const T *x, int64_t num, const T &val) {
 
 template <typename T1, typename T2>
 HOSTDEVICE inline size_t LowerBound(const T1 *x, size_t num, const T2 &val) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)  // @{ Group LowerBound
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__) || \
+    defined(__MUSACC__)  // @{ Group LowerBound
   // The following code is from
   // https://en.cppreference.com/w/cpp/algorithm/lower_bound
   auto *first = x;
@@ -63,7 +64,8 @@ HOSTDEVICE inline size_t LowerBound(const T1 *x, size_t num, const T2 &val) {
 
 template <typename T1, typename T2>
 HOSTDEVICE inline size_t UpperBound(const T1 *x, size_t num, const T2 &val) {
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)  // @{ Group UpperBound
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__) || \
+    defined(__MUSACC__)  // @{ Group UpperBound
   // The following code is from
   // https://en.cppreference.com/w/cpp/algorithm/upper_bound
   auto *first = x;

@@ -26,7 +26,8 @@ namespace imperative {
 class OpBase;
 }  // namespace imperative
 }  // namespace paddle
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
@@ -34,7 +35,8 @@ namespace paddle {
 namespace operators {
 
 static size_t CUDADevCount() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   return platform::GetGPUDeviceCount();
 #else
   return 0UL;

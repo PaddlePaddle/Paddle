@@ -16,7 +16,7 @@ limitations under the License. */
 #pragma once
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_XPU_KP)
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_XPU_KP)
 
 #include <array>
 #include <functional>
@@ -108,11 +108,13 @@ class PADDLE_API GPUContext : public DeviceContext,
   /*! \brief  Return cublas handle in the device context. */
   blasHandle_t cublas_handle() const;
 
+#ifndef PADDLE_WITH_MUSA
   /*! \brief  Return cublasLt handle in the device context. */
   blasLtHandle_t cublaslt_handle() const;
 
   /*! \brief  Return cusolver handle in the device context. */
   solverHandle_t cusolver_dn_handle() const;
+#endif
 
   /*! \brief  Return cusparse handle in the device context. */
   sparseHandle_t cusparse_handle() const;
@@ -232,14 +234,18 @@ class PADDLE_API GPUContext : public DeviceContext,
   void SetBlasTF32Handle(blasHandle_t);
   void SetBlasTF32Handle(std::function<blasHandle_t()>&&);
 
+#ifndef PADDLE_WITH_MUSA
   void SetBlasLtHandle(blasLtHandle_t);
   void SetBlasLtHandle(std::function<blasLtHandle_t()>&&);
+#endif
 
   void SetDnnHandle(dnnHandle_t);
   void SetDnnHandle(std::function<dnnHandle_t()>&&);
 
+#ifndef PADDLE_WITH_MUSA
   void SetSolverHandle(solverHandle_t);
   void SetSolverHandle(std::function<solverHandle_t()>&&);
+#endif
 
   void SetSparseHandle(sparseHandle_t);
   void SetSparseHandle(std::function<sparseHandle_t()>&&);
@@ -276,7 +282,8 @@ using GPUDNNContext = GPUContext;
 // because we want to implement a KPS-based kernel and make it run
 // on GPU and XPU at the same time, so we need KPSContext when registering
 // KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 using KPSContext = GPUContext;
 #endif
 
@@ -287,7 +294,8 @@ struct DefaultDevice;
 }  // namespace Eigen
 
 namespace phi {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 // Currently, GPUPinnedContext is only used to data copying.
 class GPUPinnedContext
     : public DeviceContext,

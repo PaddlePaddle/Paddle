@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #else
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -25,7 +25,7 @@ limitations under the License. */
 
 namespace phi {
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 __host__ __device__ T zeta(T x, T q) {
   /*

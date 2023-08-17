@@ -15,7 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/selected_rows/full_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 #include "paddle/phi/common/bfloat16.h"
@@ -54,7 +55,8 @@ PD_REGISTER_KERNEL(full_sr,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(full_sr,
                    GPU,
                    ALL_LAYOUT,

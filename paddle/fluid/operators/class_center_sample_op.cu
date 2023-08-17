@@ -19,6 +19,11 @@
 #include <hipcub/hipcub.hpp>
 typedef hiprandState curandState;
 namespace cub = hipcub;
+
+#elif defined(PADDLE_WITH_MUSA)
+#include <murand.h>
+#include <murand_kernel.h>
+#include <cub/cub.cuh>
 #else
 #include <curand.h>
 #include <curand_kernel.h>
@@ -71,6 +76,11 @@ __global__ void RandomSampleClassCenter(const int64_t n,
   hiprand_init(local_seed, id, increment, &localState);
   CUDA_KERNEL_LOOP(i, n) {
     buffer[i] = static_cast<T>(hiprand(&localState) % max_val);
+  }
+#elif defined(PADDLE_WITH_MUSA)
+  murand_init(local_seed, id, increment, &localState);
+  CUDA_KERNEL_LOOP(i, n) {
+    buffer[i] = static_cast<T>(murand(&localState) % max_val);
   }
 #else
   curand_init(local_seed, id, increment, &localState);

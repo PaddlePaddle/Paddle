@@ -38,6 +38,16 @@ limitations under the License. */
 #include <thrust/system_error.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <mublas.h>
+#include <mudnn.h>
+#include <mufft.h>
+#include <murand.h>
+#include <musparse.h>
+#include <thrust/system/musa/error.h>
+#include <thrust/system_error.h>
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <miopen/miopen.h>
@@ -98,7 +108,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/phi/core/enforce.h"
 // Note: this header for simplify HIP and CUDA type string
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
 #include "paddle/phi/core/flags.h"

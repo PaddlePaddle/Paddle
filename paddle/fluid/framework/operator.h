@@ -575,7 +575,8 @@ class ExecutionContext : public phi::KernelContext {
     return device_context_;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   const inline phi::GPUContext& cuda_device_context() const {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
                       true,

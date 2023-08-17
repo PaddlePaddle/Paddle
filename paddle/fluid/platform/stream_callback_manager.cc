@@ -24,11 +24,14 @@ static void StreamCallbackFunc(gpuStream_t stream,
                                gpuError_t status,
                                void *user_data)
 #endif
+#ifdef PADDLE_WITH_MUSA
+    static void MUSART_CB StreamCallbackFunc(void *user_data)
+#endif
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
-    static void CUDART_CB StreamCallbackFunc(void *user_data)
+        static void CUDART_CB StreamCallbackFunc(void *user_data)
 #else
-    static void CUDART_CB
+        static void CUDART_CB
     StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void *user_data)
 #endif
 #endif
@@ -58,6 +61,10 @@ void StreamCallbackManager<Stream>::AddCallback(
   PADDLE_ENFORCE_GPU_SUCCESS(
       hipStreamAddCallback(stream_, StreamCallbackFunc, func, 0));
 #endif
+#ifdef PADDLE_WITH_MUSA
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      musaLaunchHostFunc(stream_, StreamCallbackFunc, func));
+#endif
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -71,7 +78,8 @@ void StreamCallbackManager<Stream>::AddCallback(
 
 template <typename Stream>
 void StreamCallbackManager<Stream>::Wait() const {
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_MUSA)
   platform::GpuStreamSync(stream_);
 #endif
   {
@@ -83,6 +91,9 @@ void StreamCallbackManager<Stream>::Wait() const {
 }
 
 #ifdef PADDLE_WITH_CUDA
+template struct StreamCallbackManager<gpuStream_t>;
+#endif
+#ifdef PADDLE_WITH_MUSA
 template struct StreamCallbackManager<gpuStream_t>;
 #endif
 #ifdef PADDLE_WITH_HIP

@@ -117,7 +117,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
                                              context.template Alloc<T>(XGrad),
                                              MIOPEN_SOFTMAX_ACCURATE,
                                              MIOPEN_SOFTMAX_MODE_INSTANCE));
-#else
+#elif defined(PADDLE_WITH_MUSA)
   cudnnTensorDescriptor_t cudnn_y_desc =
       yDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_xgrad_desc =

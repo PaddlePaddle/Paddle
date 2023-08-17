@@ -56,6 +56,7 @@ option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
+option(WITH_MUSA "Compile PaddlePaddle with MUSA platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
@@ -88,6 +89,9 @@ if(WITH_GPU AND WITH_XPU_XFT)
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
+endif()
+if(WITH_GPU AND WITH_MUSA)
+  message(FATAL_ERROR "Error when compile CUDA and MUSA at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
@@ -346,6 +350,7 @@ if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
    AND NOT WITH_GPU
    AND NOT WITH_ROCM
+   AND NOT WITH_MUSA
    AND NOT WITH_XPU
    AND NOT WITH_XPU_KP
    AND NOT WITH_XPU_XFT
@@ -499,6 +504,31 @@ else()
     message(
       WARNING
         "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used."
+    )
+  endif()
+endif()
+
+if(WITH_MUSA)
+  include(musa)
+  include(mudnn)
+endif()
+
+if(NOT WITH_MUSA AND WITH_MCCL)
+  message(
+    WARNING "Disable MCCL when compiling without MUSA. Force WITH_MCCL=OFF.")
+  set(WITH_MCCL
+      OFF
+      CACHE STRING "Disable MCCL when compiling without MUSA" FORCE)
+endif()
+
+if(WITH_MCCL)
+  add_definitions("-DPADDLE_WITH_MCCL")
+  include(mccl)
+else()
+  if(WITH_MUSA)
+    message(
+      WARNING
+        "If the environment is multi-card, the WITH_MCCL option needs to be turned on, otherwise only a single card can be used."
     )
   endif()
 endif()

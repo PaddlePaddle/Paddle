@@ -186,7 +186,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
     AppendPassWithCheck(strategy_.fuse_bn_add_act_ops_, "fuse_bn_add_act_pass");
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+     defined(PADDLE_WITH_MUSA)) &&                            \
     !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
 #endif
@@ -545,7 +546,8 @@ USE_PASS(fused_feedforward_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+     defined(PADDLE_WITH_MUSA)) &&                            \
     !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
 #endif

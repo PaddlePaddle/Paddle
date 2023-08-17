@@ -26,7 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -77,7 +78,8 @@ int* TestBuddyAllocator(BuddyAllocator* allocator,
   return nullptr;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 TEST(BuddyAllocator, GpuFraction) {
   // In a 16 GB machine, the pool size will be about 160 MB
   FLAGS_fraction_of_gpu_memory_to_use = 0.01;
@@ -244,6 +246,9 @@ TEST(BuddyAllocator, AllocFromAvailable) {
 #ifdef PADDLE_WITH_HIP
   hipError_t result = hipMalloc(&p, available >> 1);
   EXPECT_TRUE(result == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+  musaError_t result = musaMalloc(&p, available >> 1);
+  EXPECT_TRUE(result == musaSuccess);
 #else
   cudaError_t result = cudaMalloc(&p, available >> 1);
   EXPECT_TRUE(result == cudaSuccess);
@@ -263,6 +268,8 @@ TEST(BuddyAllocator, AllocFromAvailable) {
   if (p) {
 #ifdef PADDLE_WITH_HIP
     EXPECT_TRUE(hipFree(p) == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+    EXPECT_TRUE(musaFree(p) == musaSuccess);
 #else
     EXPECT_TRUE(cudaFree(p) == cudaSuccess);
 #endif
@@ -278,6 +285,8 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
 
 #ifdef PADDLE_WITH_HIP
   EXPECT_TRUE(hipMalloc(&p, static_cast<size_t>(1) << 30) == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+  EXPECT_TRUE(musaMalloc(&p, static_cast<size_t>(1) << 30) == musaSuccess);
 #else
   EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(1) << 30) == cudaSuccess);
 #endif
@@ -294,6 +303,8 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   if (p) {
 #ifdef PADDLE_WITH_HIP
     EXPECT_TRUE(hipFree(p) == hipSuccess);
+#elif defined(PADDLE_WITH_MUSA)
+    EXPECT_TRUE(musaFree(p) == musaSuccess);
 #else
     EXPECT_TRUE(cudaFree(p) == cudaSuccess);
 #endif

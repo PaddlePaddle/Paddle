@@ -64,7 +64,9 @@ if(WITH_DGC)
   set(dgc_deps dgc)
 endif()
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
 endif()
 
@@ -90,8 +92,14 @@ if(WITH_ROCM)
     SRCS stream_callback_manager.cc
     DEPS simple_threadpool enforce)
 endif()
+if(WITH_MUSA)
+  musa_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS
+               simple_threadpool enforce)
+endif()
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 else()
   set(STREAM_CALLBACK_DEPS)
@@ -137,7 +145,9 @@ cc_library(
   SRCS collective_helper.cc gen_comm_id_helper.cc
   DEPS framework_proto device_context enforce)
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   target_link_libraries(device_context gpu_resource_pool)
 endif()
 
@@ -235,6 +245,13 @@ if(WITH_ROCM)
     DEPS device_context gpu_info)
 endif()
 
+if(WITH_MUSA)
+  musa_library(device_event_gpu SRCS device_event_gpu.cc DEPS device_event_base)
+  set(DEVICE_EVENT_LIBS
+      device_event_gpu
+      CACHE INTERNAL "device event libs")
+endif()
+
 cc_library(timer SRCS timer.cc)
 cc_test(
   timer_test
@@ -281,6 +298,20 @@ elseif(WITH_ROCM)
          stats
          op_proto_maker
          shape_inference)
+elseif(WITH_MUSA)
+  musa_library(
+    profiler
+    SRCS
+    profiler.cc
+    profiler.cu
+    DEPS
+    phi
+    gpu_info
+    enforce
+    new_profiler
+    stats
+    op_proto_maker
+    shape_inference)
 elseif(WITH_XPU)
   cc_library(
     profiler
@@ -337,6 +368,10 @@ if(WITH_GPU)
     cuda_device_guard
     SRCS cuda_device_guard.cc
     DEPS gpu_info)
+endif()
+
+if(WITH_MUSA)
+  musa_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 endif()
 
 if(WITH_ROCM)

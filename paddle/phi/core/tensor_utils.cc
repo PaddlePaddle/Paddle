@@ -58,7 +58,8 @@ void Copy(const Context& dev_ctx,
 #ifdef PADDLE_WITH_MKLDNN
     dst->set_layout(src.layout());
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   } else if (dst_place.GetType() == AllocationType::GPU ||
              dst_place.GetType() == AllocationType::GPUPINNED) {
     dst_ptr = dev_ctx.Alloc(
@@ -99,7 +100,8 @@ void Copy(const Context& dev_ctx,
   if (src_place.GetType() == AllocationType::CPU &&
       dst_place.GetType() == AllocationType::CPU) {
     memory_utils::Copy(src_place, dst_ptr, src_place, src_ptr, size);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   } else if ((src_place.GetType() == AllocationType::CPU ||
               src_place.GetType() == AllocationType::GPUPINNED) &&  // NOLINT
              (dst_place.GetType() == AllocationType::CPU ||
@@ -386,7 +388,8 @@ template void Copy(const DeviceContext& dev_ctx,
                    bool blocking,
                    TensorArray* dst);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template void Copy(const GPUContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,
@@ -468,7 +471,8 @@ void TensorFromVector(const std::vector<T>& src,
   if (dst_place.GetType() == AllocationType::CPU) {
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
     memory_utils::Copy(dst_place,
                        dst_ptr,
@@ -522,7 +526,8 @@ void TensorFromVector(const std::vector<bool>& src,
   if (dst_place.GetType() == AllocationType::CPU) {
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
     memory_utils::Copy(dst_place,
                        dst_ptr,
@@ -614,7 +619,8 @@ void TensorFromArray(const T* src,
   if (dst_place.GetType() == AllocationType::CPU) {
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
     memory_utils::Copy(dst_place,
                        dst_ptr,
@@ -714,7 +720,8 @@ void TensorToVector(const phi::DenseTensor& src,
   if (src.place().GetType() == AllocationType::CPU) {
     memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (src.place().GetType() == AllocationType::GPU) {  // NOLINT
     memory_utils::Copy(dst_place,
                        dst_ptr,
@@ -756,7 +763,8 @@ void TensorToVector(const phi::DenseTensor& src,
   if (src.place().GetType() == AllocationType::CPU) {
     memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (src.place().GetType() == AllocationType::GPU) {  // NOLINT
     memory_utils::Copy(dst_place,
                        dst_ptr,

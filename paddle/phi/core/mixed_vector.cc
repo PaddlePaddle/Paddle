@@ -33,7 +33,8 @@ template <typename T>
 void CopyToCPUHelper(std::vector<T> *cpu_,
                      phi::Allocator::AllocationPtr *gpu_,
                      size_t *gpu_memory_size_) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // COPY GPU Data To CPU
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get((*gpu_)->place()));
@@ -55,7 +56,8 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
                              phi::Allocator::AllocationPtr *gpu_,
                              size_t *gpu_memory_size_,
                              const phi::Place &place) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   void *src = cpu_->data();
   *gpu_memory_size_ = cpu_->size() * sizeof(T);  // sizeof(T)
   (*gpu_) = memory_utils::Alloc(place, *gpu_memory_size_);

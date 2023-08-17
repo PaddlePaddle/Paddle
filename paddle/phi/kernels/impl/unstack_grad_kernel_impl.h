@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/stack_functor.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_vector.h>
 #endif
 namespace phi {
@@ -39,7 +39,7 @@ void UnStackGradKernel(const Context &dev_ctx,
   for (auto i = 0; i < axis; ++i) pre *= dim[i];
   for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   int total_num = pre * n * post;
 
   thrust::device_vector<const T *> device_x_vec(x_datas);

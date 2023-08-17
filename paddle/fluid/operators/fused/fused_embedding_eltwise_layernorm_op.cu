@@ -46,6 +46,8 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     int device_id;
 #ifdef PADDLE_WITH_HIP
     hipGetDevice(&device_id);
+#elif defined(PADDLE_WITH_MUSA)
+    musaGetDevice(&device_id);
 #else
     cudaGetDevice(&device_id);
 #endif
@@ -76,6 +78,17 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
                    sizeof(int64_t) * input_num,
                    hipMemcpyHostToDevice,
                    device_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemcpyAsync(in_ids_d,
+                    in1s.data(),
+                    sizeof(int64_t) * input_num,
+                    musaMemcpyHostToDevice,
+                    device_ctx.stream());
+    musaMemcpyAsync(in_embs_d,
+                    in2s.data(),
+                    sizeof(int64_t) * input_num,
+                    musaMemcpyHostToDevice,
+                    device_ctx.stream());
 #else
     cudaMemcpyAsync(in_ids_d,
                     in1s.data(),

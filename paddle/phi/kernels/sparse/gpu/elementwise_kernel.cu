@@ -43,6 +43,8 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
   const IntT* y_indices_ptr = y_indices.data<IntT>();
 #ifdef PADDLE_WITH_HIP
   bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  bool is_same = thrust::equal(thrust::musa::par.on(dev_ctx.stream()),
 #else
   bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
 #endif

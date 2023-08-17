@@ -150,6 +150,34 @@ void FusedSeqpoolCVM(const framework::ExecutionContext
                            lods.size() * sizeof(size_t *),
                            hipMemcpyHostToDevice,
                            stream);
+#elif defined(PADDLE_WITH_MUSA)
+  T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
+  platform::GpuMemcpyAsync(gpu_input_values,
+                           input_data.data(),
+                           input_data.size() * sizeof(T *),
+                           musaMemcpyHostToDevice,
+                           stream);
+  T **gpu_output_values =
+      reinterpret_cast<T **>(&gpu_input_values[input_data.size()]);
+  platform::GpuMemcpyAsync(gpu_output_values,
+                           output_data.data(),
+                           output_data.size() * sizeof(T *),
+                           musaMemcpyHostToDevice,
+                           stream);
+  T **gpu_seqpool_output_values =
+      reinterpret_cast<T **>(&gpu_output_values[output_data.size()]);
+  platform::GpuMemcpyAsync(gpu_seqpool_output_values,
+                           seqpool_output_data.data(),
+                           seqpool_output_data.size() * sizeof(T *),
+                           musaMemcpyHostToDevice,
+                           stream);
+  size_t **lods_values = reinterpret_cast<size_t **>(
+      &gpu_seqpool_output_values[seqpool_output_data.size()]);
+  platform::GpuMemcpyAsync(lods_values,
+                           lods.data(),
+                           lods.size() * sizeof(size_t *),
+                           musaMemcpyHostToDevice,
+                           stream);
 #else
   T **gpu_input_values = reinterpret_cast<T **>(temp_ptr->ptr());
   platform::GpuMemcpyAsync(gpu_input_values,
@@ -355,6 +383,37 @@ void FusedSeqpoolCVMGrad(const framework::ExecutionContext &ctx,
                            lods.data(),
                            lods.size() * sizeof(size_t *),
                            hipMemcpyHostToDevice,
+                           stream);
+#elif defined(PADDLE_WITH_MUSA)
+  T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());
+  platform::GpuMemcpyAsync(gpu_out_grads_values,
+                           out_grads_data.data(),
+                           out_grads_data.size() * sizeof(T *),
+                           musaMemcpyHostToDevice,
+                           stream);
+
+  T **gpu_in_grads_values =
+      reinterpret_cast<T **>(&gpu_out_grads_values[out_grads_data.size()]);
+  platform::GpuMemcpyAsync(gpu_in_grads_values,
+                           in_grads_data.data(),
+                           in_grads_data.size() * sizeof(T *),
+                           musaMemcpyHostToDevice,
+                           stream);
+
+  T **gpu_cvm_values =
+      reinterpret_cast<T **>(&gpu_in_grads_values[in_grads_data.size()]);
+  platform::GpuMemcpyAsync(gpu_cvm_values,
+                           cvm_data.data(),
+                           cvm_data.size() * sizeof(T *),
+                           musaMemcpyHostToDevice,
+                           stream);
+
+  size_t **lods_values =
+      reinterpret_cast<size_t **>(&gpu_cvm_values[cvm_data.size()]);
+  platform::GpuMemcpyAsync(lods_values,
+                           lods.data(),
+                           lods.size() * sizeof(size_t *),
+                           musaMemcpyHostToDevice,
                            stream);
 #else
   T **gpu_out_grads_values = reinterpret_cast<T **>(temp_ptr->ptr());

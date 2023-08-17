@@ -1006,7 +1006,6 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
   }
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-
   blas.MatMul(x_matrix, y_matrix, out);
   if (z_dim.size() != 2) {
     out->Resize(z_dim);

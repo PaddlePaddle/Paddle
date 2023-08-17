@@ -300,6 +300,9 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
 #ifdef PADDLE_WITH_HIP
     hipMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
     hipMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
+    musaMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
 #else
     cudaMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
     cudaMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);

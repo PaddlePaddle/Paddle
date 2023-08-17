@@ -43,6 +43,15 @@ limitations under the License. */
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/mublas.h"
+#include "paddle/phi/backends/dynload/mudnn.h"
+#include "paddle/phi/backends/dynload/musparse.h"
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+#include "paddle/phi/backends/dynload/mccl.h"
+#endif  // !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
@@ -119,6 +128,9 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), stream()));
@@ -143,11 +155,22 @@ static void StreamCallbackFunc(gpuStream_t stream,
                                gpuError_t status,
                                void* user_data)
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+#if MUSA_VERSION >= 10000
+    static void StreamCallbackFunc(void* user_data)
+#else
+    static void StreamCallbackFunc(cudaStream_t stream,
+                                   cudaError_t status,
+                                   void* user_data)
+#endif
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
-    static void CUDART_CB StreamCallbackFunc(void* user_data)
+        static void CUDART_CB StreamCallbackFunc(void* user_data)
 #else
-    static void CUDART_CB
+        static void CUDART_CB
     StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void* user_data)
 #endif
 #endif
@@ -170,6 +193,8 @@ void DnnWorkspaceHandle::RunFuncSync(
     std::lock_guard<std::mutex> guard(*mtx_);
 #ifdef PADDLE_WITH_HIP
     auto status = hipMalloc(&workspace_ptr, size);
+#elif defined(PADDLE_WITH_MUSA)
+    auto status = musaMalloc(&workspace_ptr, size);
 #else
     auto status = cudaMalloc(&workspace_ptr, size);
 #endif
@@ -178,6 +203,8 @@ void DnnWorkspaceHandle::RunFuncSync(
       phi::backends::gpu::GpuStreamSync(stream_);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipFree(workspace_ptr));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaFree(workspace_ptr));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(workspace_ptr));
 #endif
@@ -248,7 +275,9 @@ struct GPUContext::Impl {
       DestoryInternalWorkspace();
       DestoryInternalEigenDevice();
       phi::DestroySparseHandle(sparse_handle_);
+#ifndef PADDLE_WITH_MUSA
       phi::DestroySolverHandle(solver_handle_);
+#endif
       phi::DestroyDnnHandle(dnn_handle_);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (nccl_comm_) {
@@ -264,7 +293,9 @@ struct GPUContext::Impl {
       phi::DestroyBlasHandle(blas_handle_);
       phi::DestroyBlasHandle(blas_tensor_core_handle_);
       phi::DestroyBlasHandle(blas_tf32_tensor_core_handle_);
+#ifndef PADDLE_WITH_MUSA
       phi::DestroyBlasLtHandle(blaslt_handle_);
+#endif
     }
     if (stream_owned_ && stream_) {
       delete stream_;
@@ -425,6 +456,7 @@ struct GPUContext::Impl {
     blas_tf32_tensor_core_handle_creator_ = std::move(handle_creator);
   }
 
+#ifndef PADDLE_WITH_MUSA
   void SetBlasLtHandle(blasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
 
   void SetBlasLtHandle(std::function<blasLtHandle_t()>&& handle_creator) {
@@ -443,6 +475,7 @@ struct GPUContext::Impl {
     PD_CHECK(blaslt_handle_ != nullptr, "the gpu blasLt handle is nullptr.");
     return blaslt_handle_;
   }
+#endif
 
   dnnHandle_t GetDnnHandle() {
     std::call_once(flag_dnn_, [&]() {
@@ -464,7 +497,7 @@ struct GPUContext::Impl {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDestroy(dnn_handle_));
       dnn_handle_ = nullptr;
     }
-#else
+#elif defined(PADDLE_WITH_CUDA)
     if (owned_ && dnn_handle_ != nullptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDestroy(dnn_handle_));
       dnn_handle_ = nullptr;
@@ -478,6 +511,7 @@ struct GPUContext::Impl {
     dnn_handle_creator_ = std::move(handle_creator);
   }
 
+#ifndef PADDLE_WITH_MUSA
   solverHandle_t GetSolverHandle() {
     std::call_once(flag_slover_, [&]() {
       if (!solver_handle_) {
@@ -497,6 +531,7 @@ struct GPUContext::Impl {
   void SetSolverHandle(std::function<solverHandle_t()>&& handle_creator) {
     solver_handle_creator_ = std::move(handle_creator);
   }
+#endif
 
   sparseHandle_t GetSparseHandle() {
     std::call_once(flag_sparse_, [&]() {
@@ -529,7 +564,19 @@ struct GPUContext::Impl {
       break;
     }
 #endif  // !defined(_WIN32)
-#else   // PADDLE_WITH_HIP
+
+#elif defined(PADDLE_WITH_MUSA)
+    musaError_t e_sync = musaSuccess;
+#if !defined(_WIN32)
+    e_sync = musaStreamSynchronize(stream());
+#else
+    while (e_sync = musaStreamQuery(stream())) {
+      if (e_sync == musaErrorNotReady) continue;
+      break;
+    }
+#endif  // !defined(_WIN32)
+
+#else  // PADDLE_WITH_MUSA
     cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
     e_sync = cudaStreamSynchronize(stream());
@@ -539,7 +586,7 @@ struct GPUContext::Impl {
       break;
     }
 #endif  // !defined(_WIN32)
-#endif  // PADDLE_WITH_HIP
+#endif  // PADDLE_WITH_CUDA
 
     PADDLE_ENFORCE_GPU_SUCCESS(e_sync);
   }
@@ -547,6 +594,8 @@ struct GPUContext::Impl {
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream(), ev, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(stream(), ev, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream(), ev, 0));
 #endif
@@ -678,6 +727,8 @@ struct GPUContext::Impl {
   void RecordEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream()));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(ev, stream()));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream()));
 #endif
@@ -709,10 +760,16 @@ struct GPUContext::Impl {
         cudaStreamAddCallback(stream(), internal::StreamCallbackFunc, func, 0));
 #endif
 #endif
+
+#ifdef PADDLE_WITH_MUSA
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        musaLaunchHostFunc(stream(), internal::StreamCallbackFunc, func));
+#endif
   }
 
   void WaitStreamCallback() const {
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_MUSA)
     phi::backends::gpu::GpuStreamSync(stream());
 #endif
     {
@@ -764,12 +821,16 @@ struct GPUContext::Impl {
   std::function<blasHandle_t()> blas_tensor_core_handle_creator_{nullptr};
   blasHandle_t blas_tf32_tensor_core_handle_{nullptr};
   std::function<blasHandle_t()> blas_tf32_tensor_core_handle_creator_{nullptr};
+#ifndef PADDLE_WITH_MUSA
   blasLtHandle_t blaslt_handle_{nullptr};
   std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
+#endif
   dnnHandle_t dnn_handle_{nullptr};
   std::function<dnnHandle_t()> dnn_handle_creator_{nullptr};
+#ifndef PADDLE_WITH_MUSA
   solverHandle_t solver_handle_{nullptr};
   std::function<solverHandle_t()> solver_handle_creator_{nullptr};
+#endif
   sparseHandle_t sparse_handle_{nullptr};
   std::function<sparseHandle_t()> sparse_handle_creator_{nullptr};
   DnnWorkspaceHandle* workspace_{nullptr};
@@ -839,6 +900,7 @@ blasHandle_t GPUContext::cublas_handle() const {
   return impl_->GetBlasHandle();
 }
 
+#ifndef PADDLE_WITH_MUSA
 blasLtHandle_t GPUContext::cublaslt_handle() const {
   return impl_->GetBlasLtHandle();
 }
@@ -846,6 +908,7 @@ blasLtHandle_t GPUContext::cublaslt_handle() const {
 solverHandle_t GPUContext::cusolver_dn_handle() const {
   return impl_->GetSolverHandle();
 }
+#endif
 
 sparseHandle_t GPUContext::cusparse_handle() const {
   return impl_->GetSparseHandle();
@@ -965,6 +1028,7 @@ void GPUContext::SetBlasTF32Handle(std::function<blasHandle_t()>&& func) {
   impl_->SetBlasTF32Handle(std::move(func));
 }
 
+#ifndef PADDLE_WITH_MUSA
 void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
   impl_->SetBlasLtHandle(blaslt);
 }
@@ -972,6 +1036,7 @@ void GPUContext::SetBlasLtHandle(blasLtHandle_t blaslt) {
 void GPUContext::SetBlasLtHandle(std::function<blasLtHandle_t()>&& func) {
   impl_->SetBlasLtHandle(std::move(func));
 }
+#endif
 
 void GPUContext::SetDnnHandle(dnnHandle_t handle) {
   impl_->SetDnnHandle(handle);
@@ -981,6 +1046,7 @@ void GPUContext::SetDnnHandle(std::function<dnnHandle_t()>&& func) {
   impl_->SetDnnHandle(std::move(func));
 }
 
+#ifndef PADDLE_WITH_MUSA
 void GPUContext::SetSolverHandle(solverHandle_t handle) {
   impl_->SetSolverHandle(handle);
 }
@@ -988,6 +1054,7 @@ void GPUContext::SetSolverHandle(solverHandle_t handle) {
 void GPUContext::SetSolverHandle(std::function<solverHandle_t()>&& func) {
   impl_->SetSolverHandle(std::move(func));
 }
+#endif
 
 void GPUContext::SetSparseHandle(sparseHandle_t handle) {
   impl_->SetSparseHandle(handle);
@@ -1046,7 +1113,8 @@ void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
 
 void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 GPUPinnedContext::GPUPinnedContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }

@@ -30,7 +30,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
-#else
+#elif defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
@@ -191,7 +191,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   size_t workspace_size = 0;
 #ifdef PADDLE_WITH_HIP
   miopenConvBwdDataAlgorithm_t algo{};
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnConvolutionBwdDataAlgo_t algo{};
 #endif
   // ------------------- cudnn conv algorithm ---------------------
@@ -227,7 +227,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
@@ -262,7 +262,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
-#else   // PADDLE_WITH_HIP
+#else  // CUDA & MUSA
   ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                 args,
                                                 bwd_result,
@@ -276,7 +276,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                                                 workspace_size,
                                                 &workspace_handle,
                                                 false);
-#endif  // PADDLE_WITH_HIP
+#endif
 
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(ctx, &transformed_out, out, starts, ends, axes);
@@ -385,7 +385,7 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    double,
                    float16,
                    phi::dtype::bfloat16) {}
-#else
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(conv2d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,

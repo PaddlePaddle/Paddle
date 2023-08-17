@@ -178,6 +178,8 @@ void SliceCooGPUCompute(const Context& dev_ctx,
   d_out_nnz_indices.Resize({out_nnz});
 #ifdef PADDLE_WITH_HIP
   thrust::sort(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::sort(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -322,6 +324,8 @@ void SliceCsrTensor2D(const Context& dev_ctx,
                                                         out_crows_data);
 #ifdef PADDLE_WITH_HIP
   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::inclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -471,6 +475,8 @@ void SliceCsrTensor3D(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::inclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -536,6 +542,8 @@ void SliceCsrTensor3D(const Context& dev_ctx,
   int64_t out_nnz =
 #ifdef PADDLE_WITH_HIP
       thrust::reduce(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+      thrust::reduce(thrust::musa::par.on(dev_ctx.stream()),
 #else
       thrust::reduce(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -545,6 +553,8 @@ void SliceCsrTensor3D(const Context& dev_ctx,
     int64_t st = i * (out_n_rows + 1);
 #ifdef PADDLE_WITH_HIP
     thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+    thrust::inclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
     thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -554,6 +564,8 @@ void SliceCsrTensor3D(const Context& dev_ctx,
   }
 #ifdef PADDLE_WITH_HIP
   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::inclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif

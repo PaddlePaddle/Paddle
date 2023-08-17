@@ -29,6 +29,11 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+using gpuStream_t = musaStream_t;
+#endif
+
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
@@ -396,7 +401,8 @@ class PADDLE_API Tensor final {
    */
   void set_impl(std::shared_ptr<phi::TensorBase>&& impl);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   /**
    * @brief Get the stream where the tensor is currently located
    * This is a deprecated method and may be removed in the future!

@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/stack_functor.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_vector.h>
 #endif
 
@@ -44,7 +44,7 @@ void UnStackKernel(const Context &dev_ctx,
   int total_num = dy->numel();
   int post = total_num / (n * pre);
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   thrust::device_vector<T *> device_dx_vec(dx_datas);
   auto dx_data_arr = device_dx_vec.data().get();
 #else
@@ -52,7 +52,7 @@ void UnStackKernel(const Context &dev_ctx,
 #endif
   phi::funcs::StackGradFunctorForRange(
       dev_ctx, dx_data_arr, dy_data, total_num, n, post);
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   // Wait() must be called because device_dx_vec may be destructed before
   // kernel ends
   dev_ctx.Wait();

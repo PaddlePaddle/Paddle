@@ -39,7 +39,9 @@ template <typename T, typename DeviceContext>
 class CSyncCalcStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+     defined(PADDLE_WITH_MUSA)) &&                            \
+    !defined(_WIN32)
 
     auto place = ctx.GetPlace();
     auto dev_ctx = static_cast<phi::GPUContext*>(

@@ -52,7 +52,8 @@ PD_REGISTER_KERNEL(shape_sr,
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(shape_sr,
                    GPU,
                    ALL_LAYOUT,

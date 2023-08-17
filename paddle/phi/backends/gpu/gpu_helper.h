@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/backends/gpu/musa/musa_helper.h"
 #else
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #endif

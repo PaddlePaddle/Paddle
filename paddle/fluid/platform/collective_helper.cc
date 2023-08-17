@@ -174,6 +174,8 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
     for (int i = 0; i < kDevices; i++) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipSetDevice(i));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaSetDevice(i));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(i));
 #endif

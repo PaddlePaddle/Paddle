@@ -22,14 +22,19 @@
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <murand_kernel.h>
+#include <musa_runtime.h>
+#endif
 
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #define WARP_SIZE 64
-#else
+#else  // MUSA & CUDA
 #define WARP_SIZE 32
 #endif
 

@@ -58,7 +58,8 @@ TEST(TensorCopy, Tensor) {
   }
   EXPECT_TRUE(dst_tensor.layout() == src_tensor.layout());
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     phi::DenseTensor src_tensor;
     phi::DenseTensor gpu_tensor;
@@ -153,7 +154,8 @@ TEST(TensorFromVector, Tensor) {
     delete cpu_place;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     phi::DenseTensor cpu_tensor;
@@ -232,7 +234,8 @@ TEST(TensorToVector, Tensor) {
       EXPECT_EQ(src_ptr[i], dst[i]);
     }
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     phi::DenseTensor gpu_tensor;
@@ -323,7 +326,8 @@ TEST(TensorFromDLPack, Tensor) {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     phi::DenseTensor cpu_tensor;
@@ -489,7 +493,8 @@ TEST(Tensor, FromAndToStream) {
     EXPECT_EQ(dst_tensor.dims(), src_tensor.dims());
     delete place;
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     phi::DenseTensor gpu_tensor;
     gpu_tensor.Resize({2, 3});

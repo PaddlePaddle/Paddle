@@ -35,6 +35,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
+#elif defined(PADDLE_WITH_MUSA)
+// TODO(Xiaokang Shang)
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
@@ -216,6 +218,12 @@ class RecordedGpuMallocHelper {
     } else {
       result = hipMalloc(ptr, size);
     }
+#elif defined(PADDLE_WITH_MUSA)
+    if (UNLIKELY(malloc_managed_memory)) {
+      result = musaMallocManaged(ptr, size);
+    } else {
+      result = musaMalloc(ptr, size);
+    }
 #else
     phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     if (UNLIKELY(malloc_managed_memory)) {
@@ -262,6 +270,9 @@ class RecordedGpuMallocHelper {
 #ifdef PADDLE_WITH_HIP
     auto err = hipFree(ptr);
     if (err != hipErrorDeinitialized) {
+#elif defined(PADDLE_WITH_MUSA)
+    auto err = musaFree(ptr);
+    if (err != musaErrorInvalidValue) {
 #else
     auto err = cudaFree(ptr);
     VLOG(10) << "[cudaFree] size=" << static_cast<double>(size) / (1 << 20)
@@ -309,6 +320,8 @@ class RecordedGpuMallocHelper {
       CUDADeviceGuard guard(dev_id_);
 #ifdef PADDLE_WITH_HIP
       auto result = hipMemGetInfo(actual_avail, actual_total);
+#elif defined(PADDLE_WITH_MUSA)
+      auto result = musaMemGetInfo(actual_avail, actual_total);
 #else
       auto result = cudaMemGetInfo(actual_avail, actual_total);
 #endif

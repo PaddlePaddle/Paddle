@@ -175,7 +175,8 @@ class FleetWrapper {
 // Push dense variables to server in async mode
 // Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
 // Param<out>: push_sparse_status
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   void PushDenseVarsAsync(
       const Scope& scope,
       const uint64_t table_id,

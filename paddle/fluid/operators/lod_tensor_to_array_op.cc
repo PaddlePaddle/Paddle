@@ -66,7 +66,8 @@ struct LoDTensorToArrayFunctor {
     if (std::is_same<Place, platform::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       Apply(static_cast<phi::GPUContext *>(dev_ctx));
 #else
       PADDLE_THROW(

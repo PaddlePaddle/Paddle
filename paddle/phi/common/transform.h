@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/hostdevice.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
 #include "thrust/device_ptr.h"
@@ -92,7 +92,7 @@ struct Transform<phi::CPUContext> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 
 // PointerToThrustDevicePtr has two specializations, one casts a (CUDA
 // device) pointer into thrust::device_ptr, the other keeps rest types
@@ -153,6 +153,12 @@ struct Transform<phi::GPUContext> {
                       CastToCUDATransformIterator(last),
                       CastToCUDATransformIterator(result),
                       op);
+#elif defined(__MUSACC__)
+    thrust::transform(thrust::musa::par.on(context.stream()),
+                      CastToCUDATransformIterator(first),
+                      CastToCUDATransformIterator(last),
+                      CastToCUDATransformIterator(result),
+                      op);
 #else
     thrust::transform(thrust::cuda::par.on(context.stream()),
                       CastToCUDATransformIterator(first),
@@ -179,6 +185,13 @@ struct Transform<phi::GPUContext> {
                           "The CUDA Transform must be used in GPU place."));
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
+                      CastToCUDATransformIterator(first1),
+                      CastToCUDATransformIterator(last1),
+                      CastToCUDATransformIterator(first2),
+                      CastToCUDATransformIterator(result),
+                      op);
+#elif defined(__MUSACC__)
+    thrust::transform(thrust::musa::par.on(context.stream()),
                       CastToCUDATransformIterator(first1),
                       CastToCUDATransformIterator(last1),
                       CastToCUDATransformIterator(first2),

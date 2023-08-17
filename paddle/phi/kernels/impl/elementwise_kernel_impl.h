@@ -17,7 +17,8 @@
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__) || \
+    defined(__xpu__)
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #endif
 

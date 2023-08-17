@@ -63,7 +63,8 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
 }
 
 const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
   static int64_t num_cuda_devices = -1;
   static std::once_flag num_devices_init_flag;
@@ -278,7 +279,8 @@ uint64_t Generator::Random64() {
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
     uint64_t increment_offset) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t cur_offset = this->state_.thread_offset;
   this->state_.thread_offset += increment_offset;

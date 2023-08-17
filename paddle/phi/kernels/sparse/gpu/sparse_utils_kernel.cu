@@ -19,6 +19,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/rocsparse.h"
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/backends/dynload/musparse.h"
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -132,6 +134,8 @@ void DenseToCooKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::remove(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -228,7 +232,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   if (x.nnz() <= 0) {
 #ifdef PADDLE_WITH_HIP
     DenseTensor indices = phi::Empty<int>(dev_ctx, {sparse_dim, non_zero_num});
-#else
+#else  // MUSA and CUDA
     DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
 #endif
     DenseTensor values = phi::EmptyLike<T, GPUContext>(dev_ctx, x.values());
@@ -243,7 +247,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   const auto& csr_cols = Cast<IntT>(dev_ctx, x.cols(), DataType::INT32);
   const int* csr_crows_data = csr_crows.template data<int>();
   const int* csr_cols_data = csr_cols.template data<int>();
-#else
+#else  // MUSA & CUDA
   const auto& csr_crows = x.crows();
   const auto& csr_cols = x.cols();
   const IntT* csr_crows_data = csr_crows.data<IntT>();
@@ -260,7 +264,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   int* coo_indices = indices.data<int>();
   int* coo_rows_data = coo_indices;
   int* coo_cols_data = coo_rows_data + non_zero_num;
-#else
+#else  // MUSA & CUDA
   DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
   DenseTensor offsets = phi::Empty<IntT>(dev_ctx, {batches});
   IntT* coo_indices = indices.data<IntT>();
@@ -278,6 +282,15 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
     PADDLE_THROW(
         phi::errors::Unimplemented("'rocsparse_csr2coo' only supports batches "
                                    "with a value of 1 currently."));
+#elif defined(PADDLE_WITH_MUSA)
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
+    GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(
+        csr_crows_data, rows, batches, offsets_ptr);
+
+    thrust::exclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
+                           offsets_ptr,
+                           offsets_ptr + batches,
+                           offsets_ptr);
 #else
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
     GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(
@@ -299,7 +312,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
                                     coo_rows_data,
                                     rocsparse_index_base_zero);
   });
-#else
+#else  // MUSA & CUDA
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
   config.block_per_grid.y = batches;
   ConvertCsrCrowsToCooRows<IntT>
@@ -310,7 +323,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
                                      csr_cols_data,
 #ifdef PADDLE_WITH_HIP
                                      sizeof(int) * non_zero_num,
-#else
+#else  // MUSA & CUDA
                                      sizeof(IntT) * non_zero_num,
 #endif
                                      gpuMemcpyDeviceToDevice,

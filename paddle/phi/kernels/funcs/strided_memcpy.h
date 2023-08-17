@@ -57,7 +57,7 @@ inline void CopyWithContext(const Context& ctx,
                             const void* src,
                             size_t num) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   memory_utils::Copy(dst_place, dst, src_place, src, num, ctx.stream());
 #else
   PADDLE_THROW(

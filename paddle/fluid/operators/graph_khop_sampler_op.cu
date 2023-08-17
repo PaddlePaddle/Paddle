@@ -32,6 +32,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
+#elif defined(PADDLE_WITH_MUSA)
+#include <murand_kernel.h>
+#include <musa_runtime.h>
 #else
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
@@ -95,6 +98,12 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
                threadIdx.y * WARP_SIZE + threadIdx.x,
                0,
                &rng);
+#elif defined(PADDLE_WITH_MUSA)
+  murandState rng;
+  murand_init(rand_seed * gridDim.x + blockIdx.x,
+              threadIdx.y * WARP_SIZE + threadIdx.x,
+              0,
+              &rng);
 #else
   curandState rng;
   curand_init(rand_seed * gridDim.x + blockIdx.x,
@@ -128,6 +137,8 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
       for (int idx = k + threadIdx.x; idx < deg; idx += WARP_SIZE) {
 #ifdef PADDLE_WITH_HIP
         const int num = hiprand(&rng) % (idx + 1);
+#elif defined(PADDLE_WITH_MUSA)
+        const int num = murand(&rng) % (idx + 1);
 #else
         const int num = curand(&rng) % (idx + 1);
 #endif

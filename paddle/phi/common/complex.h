@@ -26,6 +26,11 @@
 #include <thrust/complex.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <muComplex.h>
+#include <thrust/complex.h>
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_complex.h>
 #include <thrust/complex.h>  // NOLINT
@@ -37,7 +42,8 @@
 #define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 // todo
 #define PADDLE_WITH_CUDA_OR_HIP_COMPLEX
 #endif
@@ -62,7 +68,8 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   HOSTDEVICE complex(T real, T imag) : real(real), imag(imag) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
   template <typename T1>
   HOSTDEVICE inline explicit complex(const thrust::complex<T1>& c) {
@@ -82,6 +89,15 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
 
   HOSTDEVICE inline explicit operator hipDoubleComplex() const {
     return make_hipDoubleComplex(real, imag);
+  }
+
+#elif defined(PADDLE_WITH_MUSA)
+  HOSTDEVICE inline explicit operator muFloatComplex() const {
+    return make_muFloatComplex(real, imag);
+  }
+
+  HOSTDEVICE inline explicit operator muDoubleComplex() const {
+    return make_muDoubleComplex(real, imag);
   }
 #else
   HOSTDEVICE inline explicit operator cuFloatComplex() const {
@@ -187,7 +203,7 @@ template <typename T>
 HOSTDEVICE inline complex<T> operator+(const complex<T>& a,
                                        const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::complex<T>(a) + thrust::complex<T>(b));
 #else
   return complex<T>(a.real + b.real, a.imag + b.imag);
@@ -198,7 +214,7 @@ template <typename T>
 HOSTDEVICE inline complex<T> operator-(const complex<T>& a,
                                        const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::complex<T>(a) - thrust::complex<T>(b));
 #else
   return complex<T>(a.real - b.real, a.imag - b.imag);
@@ -209,7 +225,7 @@ template <typename T>
 HOSTDEVICE inline complex<T> operator*(const complex<T>& a,
                                        const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::complex<T>(a) * thrust::complex<T>(b));
 #else
   return complex<T>(a.real * b.real - a.imag * b.imag,
@@ -221,7 +237,7 @@ template <typename T>
 HOSTDEVICE inline complex<T> operator/(const complex<T>& a,
                                        const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::complex<T>(a) / thrust::complex<T>(b));
 #else
   T denominator = b.real * b.real + b.imag * b.imag;
@@ -233,7 +249,7 @@ HOSTDEVICE inline complex<T> operator/(const complex<T>& a,
 template <typename T>
 HOSTDEVICE inline complex<T> operator-(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(-thrust::complex<T>(a.real, a.imag));
 #else
   complex<T> res;
@@ -247,7 +263,7 @@ template <typename T>
 HOSTDEVICE inline complex<T>& operator+=(complex<T>& a,  // NOLINT
                                          const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   a = complex<T>(thrust::complex<T>(a.real, a.imag) +=
                  thrust::complex<T>(b.real, b.imag));
   return a;
@@ -262,7 +278,7 @@ template <typename T>
 HOSTDEVICE inline complex<T>& operator-=(complex<T>& a,  // NOLINT
                                          const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   a = complex<T>(thrust::complex<T>(a.real, a.imag) -=
                  thrust::complex<T>(b.real, b.imag));
   return a;
@@ -277,7 +293,7 @@ template <typename T>
 HOSTDEVICE inline complex<T>& operator*=(complex<T>& a,  // NOLINT
                                          const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   a = complex<T>(thrust::complex<T>(a.real, a.imag) *=
                  thrust::complex<T>(b.real, b.imag));
   return a;
@@ -292,7 +308,7 @@ template <typename T>
 HOSTDEVICE inline complex<T>& operator/=(complex<T>& a,  // NOLINT
                                          const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   a = complex<T>(thrust::complex<T>(a.real, a.imag) /=
                  thrust::complex<T>(b.real, b.imag));
   return a;
@@ -355,7 +371,7 @@ HOSTDEVICE inline complex<T>(min)(const complex<T>& a, const complex<T>& b) {
 template <typename T>
 HOSTDEVICE inline bool(isnan)(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return ::isnan(a.real) || ::isnan(a.imag);
 #else
   return std::isnan(a.real) || std::isnan(a.imag);
@@ -365,7 +381,7 @@ HOSTDEVICE inline bool(isnan)(const complex<T>& a) {
 template <typename T>
 HOSTDEVICE inline bool isinf(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return ::isinf(a.real) || ::isinf(a.imag);
 #else
   return std::isinf(a.real) || std::isinf(a.imag);
@@ -375,7 +391,7 @@ HOSTDEVICE inline bool isinf(const complex<T>& a) {
 template <typename T>
 HOSTDEVICE inline bool isfinite(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return ::isfinite(a.real) || ::isfinite(a.imag);
 #else
   return std::isfinite(a.real) || std::isfinite(a.imag);
@@ -385,7 +401,7 @@ HOSTDEVICE inline bool isfinite(const complex<T>& a) {
 template <typename T>
 HOSTDEVICE inline T abs(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return thrust::abs(thrust::complex<T>(a));
 #else
   return std::abs(std::complex<T>(a));
@@ -395,7 +411,7 @@ HOSTDEVICE inline T abs(const complex<T>& a) {
 template <typename T>
 HOSTDEVICE inline T arg(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return thrust::arg(thrust::complex<T>(a));
 #else
   return std::arg(std::complex<T>(a));
@@ -405,7 +421,7 @@ HOSTDEVICE inline T arg(const complex<T>& a) {
 template <typename T>
 HOSTDEVICE inline complex<T> pow(const complex<T>& a, const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::pow(thrust::complex<T>(a), thrust::complex<T>(b)));
 #else
   return complex<T>(std::pow(std::complex<T>(a), std::complex<T>(b)));
@@ -415,7 +431,7 @@ HOSTDEVICE inline complex<T> pow(const complex<T>& a, const complex<T>& b) {
 template <typename T>
 HOSTDEVICE inline complex<T> sqrt(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::sqrt(thrust::complex<T>(a)));
 #else
   return complex<T>(std::sqrt(std::complex<T>(a)));
@@ -425,7 +441,7 @@ HOSTDEVICE inline complex<T> sqrt(const complex<T>& a) {
 template <typename T>
 HOSTDEVICE inline complex<T> tanh(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::tanh(thrust::complex<T>(a)));
 #else
   return complex<T>(std::tanh(std::complex<T>(a)));
@@ -435,7 +451,7 @@ HOSTDEVICE inline complex<T> tanh(const complex<T>& a) {
 template <typename T>
 HOSTDEVICE inline complex<T> log(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIPCC__) || defined(__MUSACC__))
   return complex<T>(thrust::log(thrust::complex<T>(a)));
 #else
   return complex<T>(std::log(std::complex<T>(a)));

@@ -18,10 +18,14 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
@@ -42,6 +46,9 @@ namespace platform {
 void SynchronizeDevice() {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#endif
+#ifdef PADDLE_WITH_MUSA
+  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #endif
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
@@ -161,7 +168,8 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                            std::string("%s"),
                            kv.second.c_str());
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   std::vector<int32_t> device_ids = GetSelectedDevices();
   for (auto index = 0u; index < device_ids.size(); index++) {

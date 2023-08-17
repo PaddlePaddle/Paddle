@@ -27,8 +27,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
@@ -62,7 +66,8 @@ class Event {
   void set_name(std::string name) { name_ = name; }
   void set_role(EventRole role) { role_ = role; }
   std::string attr() const { return attr_; }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifndef PADDLE_WITH_CUPTI
   gpuEvent_t event() const { return event_; }
   int device() const { return device_; }
@@ -81,7 +86,8 @@ class Event {
   int64_t cpu_ns_;
   bool visited_status_{false};
   std::string attr_;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;
 
@@ -137,12 +143,15 @@ class MemEvent {
 };
 
 class CudaEvent {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
  public:
   CudaEvent() {
 #ifdef PADDLE_WITH_HIP
     hipEventCreateWithFlags(&event_, flags_);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventCreateWithFlags(&event_, flags_);
 #else
     cudaEventCreateWithFlags(&event_, flags_);
 #endif
@@ -152,6 +161,8 @@ class CudaEvent {
   explicit CudaEvent(unsigned int flags) : flags_(flags) {
 #ifdef PADDLE_WITH_HIP
     hipEventCreateWithFlags(&event_, flags_);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventCreateWithFlags(&event_, flags_);
 #else
     cudaEventCreateWithFlags(&event_, flags_);
 #endif
@@ -161,6 +172,8 @@ class CudaEvent {
   ~CudaEvent() {
 #ifdef PADDLE_WITH_HIP
     hipEventDestroy(event_);
+#elif defined(PADDLE_WITH_MUSA)
+    musaEventDestroy(event_);
 #else
     cudaEventDestroy(event_);
 #endif
@@ -169,6 +182,8 @@ class CudaEvent {
   void Record(gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(event_, stream));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventRecord(event_, stream));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(event_, stream));
 #endif
@@ -181,6 +196,14 @@ class CudaEvent {
       return true;
     }
     if (err == hipErrorNotReady) {
+      return false;
+    }
+#elif defined(PADDLE_WITH_MUSA)
+    gpuError_t err = musaEventQuery(event_);
+    if (err == musaSuccess) {
+      return true;
+    }
+    if (err == musaErrorNotReady) {
       return false;
     }
 #else
@@ -199,6 +222,8 @@ class CudaEvent {
   void Synchronize() {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventSynchronize(event_));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaEventSynchronize(event_));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(event_));
 #endif
@@ -208,6 +233,8 @@ class CudaEvent {
  private:
 #ifdef PADDLE_WITH_HIP
   unsigned int flags_ = hipEventDefault;
+#elif defined(PADDLE_WITH_MUSA)
+  unsigned int flags_ = musaEventDefault;
 #else
   unsigned int flags_ = cudaEventDefault;
 #endif

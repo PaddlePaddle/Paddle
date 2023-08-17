@@ -217,7 +217,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
       layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
       layout, vectorize<int>(transformed_output.dims()));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
       layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
@@ -238,7 +238,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   miopenPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
 #endif
@@ -269,7 +269,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                                                               input_grad_data,
                                                               pool_workspace));
     PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
-#else
+#elif defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnPoolingBackward(handle,
                                                              cudnn_pool_desc,
                                                              &alpha,
@@ -424,7 +424,7 @@ PD_REGISTER_KERNEL(pool3d_grad,
                    phi::Pool3dGradGPUDNNKernel,
                    float,
                    float16) {}
-#else
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(pool2d_grad,
                    GPUDNN,
                    ALL_LAYOUT,

@@ -15,7 +15,8 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
@@ -23,6 +24,10 @@
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
 
+#elif defined(PADDLE_WITH_MUSA)
+#include <musa_runtime.h>
+#include "paddle/fluid/platform/dynload/mublas.h"
+using mudnnHandle_t = class Handle*;
 #else
 #include <cuda_runtime.h>
 
@@ -34,19 +39,49 @@
 namespace paddle {
 
 #ifdef PADDLE_WITH_HIP
-#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
+
+#elif defined(PADDLE_WITH_MUSA)
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
+  using GPU_TYPE = MUSA_TYPE;
 #else  // CDUA
 
-#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
   using GPU_TYPE = CUDA_TYPE;
 #endif
 
-DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t);
-DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t);
-DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t);
-DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind);
-DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t);
+DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t, musaStream_t);
+DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t, musaError_t);
+DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t, musaEvent_t);
+DECLARE_TYPE_FOR_GPU(gpuMemcpyKind,
+                     cudaMemcpyKind,
+                     hipMemcpyKind,
+                     musaMemcpyKind);
+DECLARE_TYPE_FOR_GPU(gpuDeviceProp,
+                     cudaDeviceProp,
+                     hipDeviceProp_t,
+                     musaDeviceProp);
+
+DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
+DECLARE_TYPE_FOR_GPU(blasHandle_t,
+                     cublasHandle_t,
+                     rocblas_handle,
+                     mublasHandle_t);
+
+using CUDAGraphID = unsigned long long;  // NOLINT
+
+#undef DECLARE_TYPE_FOR_GPU
+
+// TODO(Xiaokang Shang): confirm mudnn type
+#ifndef PADDLE_WITH_MUSA
+#ifdef PADDLE_WITH_HIP
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+  using GPU_TYPE = ROCM_TYPE;
+#elif defined(PADDLE_WITH_CUDA)
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
+  using GPU_TYPE = CUDA_TYPE;
+#endif
 
 DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
 DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
@@ -80,32 +115,33 @@ DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
 DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
                      cudnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t);
-
-DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
-
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
 DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
-
-using CUDAGraphID = unsigned long long;  // NOLINT
-
 #undef DECLARE_TYPE_FOR_GPU
+#endif
 
 #ifdef PADDLE_WITH_HIP
-#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
   constexpr auto GPU_CV = ROCM_CV;
+#elif defined(PADDLE_WITH_MUSA)
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
+  constexpr auto GPU_CV = MUSA_CV;
 #else  // CDUA
 
-#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
+#define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV, MUSA_CV) \
   constexpr auto GPU_CV = CUDA_CV;
 #endif
 
 DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
                          cudaErrorMemoryAllocation,
-                         hipErrorOutOfMemory);
-DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
-DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
+                         hipErrorOutOfMemory,
+                         musaErrorMemoryAllocation);
+DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady,
+                         cudaErrorNotReady,
+                         hipErrorNotReady,
+                         musaErrorNotReady);
+DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess, musaSuccess);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace paddle

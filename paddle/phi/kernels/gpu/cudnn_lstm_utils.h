@@ -26,6 +26,9 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/gpu/miopen_lstm_cache.h"
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/kernels/gpu/mudnn_lstm_cache.h"
+#endif
 
 namespace phi {
 

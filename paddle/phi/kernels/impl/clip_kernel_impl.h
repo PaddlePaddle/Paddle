@@ -18,7 +18,7 @@
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/clip_kernel.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #endif
 
@@ -60,7 +60,7 @@ void ClipKernel(const Context& dev_ctx,
   const T* x_data = x.data<T>();
   int64_t numel = x.numel();
   if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
     std::vector<const DenseTensor*> ins = {&x};
     std::vector<DenseTensor*> outs = {out};
     auto functor = ClipFunctor<T>(min_, max_);

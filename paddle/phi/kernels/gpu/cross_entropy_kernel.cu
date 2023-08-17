@@ -19,6 +19,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
+#ifdef __MUSACC__
+#include "cub/cub.cuh"
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
@@ -763,6 +766,8 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
+#elif defined(PADDLE_WITH_MUSA)
+    mudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif
@@ -783,11 +788,19 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
         MIOPEN_SOFTMAX_LOG,
         mode));
 #else
+#ifdef PADDLE_WITH_MUSA
+    auto mode = axis == rank - 1 ? MUDNN_SOFTMAX_MODE_INSTANCE
+                                 : MUDNN_SOFTMAX_MODE_CHANNEL;
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnSoftmaxForward(
+        handle,
+        MUDNN_SOFTMAX_LOG,
+#else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxForward(
         handle,
         CUDNN_SOFTMAX_LOG,
+#endif
         mode,
         phi::backends::gpu::CudnnDataType<T>::kOne(),
         descp,
@@ -1199,6 +1212,8 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
+#elif defined(PADDLE_WITH_MUSA)
+    mudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #else
     cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
 #endif
@@ -1465,6 +1480,13 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(cross_entropy_with_softmax,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CrossEntropyWithSoftmaxKernel,
+                   float,
+                   phi::dtype::float16) {}
+#elif defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
                    ALL_LAYOUT,

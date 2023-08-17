@@ -19,7 +19,7 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 #endif
 
@@ -153,7 +153,7 @@ inline std::vector<T> get_new_data_from_tensor(
   return vec_new_data;
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 using phi::kps::details::FastDivMod;
 
 struct FastDivModForInterpolate {

@@ -87,6 +87,8 @@ void AllCloseKernel(const Context& dev_ctx,
   grid = (grid > block) ? block : grid;
 #ifdef PADDLE_WITH_HIP
   hipMemset(out_data, true, sizeof(bool));
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(out_data, true, sizeof(bool));
 #else
   cudaMemset(out_data, true, sizeof(bool));
 #endif

@@ -23,7 +23,8 @@ limitations under the License. */
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/macros.h"  // import FLT_MAX
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #endif
 
@@ -115,7 +116,8 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
  * This is different from average pooling. So we rewrite the max_pool_grad:
  * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename PoolProcess, typename T>
 class Pool2dDirectCUDAFunctor {
  public:
@@ -211,7 +213,8 @@ class MaxPool2dGradFunctor {
                   DenseTensor* input_grad);
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename PoolProcess, typename T>
 class Pool3dDirectCUDAFunctor {
  public:

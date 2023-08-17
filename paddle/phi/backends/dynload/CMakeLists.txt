@@ -30,6 +30,17 @@ if(WITH_ROCM)
     rocsparse.cc)
 endif()
 
+if(WITH_MUSA)
+  list(
+    APPEND
+    MUSA_SRCS
+    mudnn.cc
+    mublas.cc
+    musparse.cc
+    murand.cc
+    mccl.cc)
+endif()
+
 # There is no macOS version of NCCL.
 # Disable nvrtc and cuda_driver api on macOS, and only do an early test on Linux and Windows.
 if(NOT APPLE)
@@ -45,6 +56,9 @@ if(NOT APPLE)
     if(CUPTI_FOUND)
       list(APPEND HIP_SRCS cupti.cc)
     endif()
+  endif()
+  if(WITH_MUSA)
+    list(APPEND MUSA_SRCS musartc.cc musa_driver.cc)
   endif()
 endif()
 
@@ -93,6 +107,8 @@ if(WITH_ROCM)
   collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${HIP_SRCS})
 elseif(WITH_GPU)
   collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${CUDA_SRCS})
+elseif(WITH_MUSA)
+  collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${MUSA_SRCS})
 else()
   collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS})
 endif()

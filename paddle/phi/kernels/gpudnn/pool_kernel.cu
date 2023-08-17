@@ -111,7 +111,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
     out_dims_vec[3] = output->dims()[2];
     out_dims_vec[4] = output->dims()[3];
     transformed_output.Resize(make_ddim(out_dims_vec));
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
     layout = GPUDNNDataLayout::kNCHW;
@@ -155,7 +155,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
       layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
       layout, vectorize<int>(transformed_output.dims()));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
       layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
@@ -172,7 +172,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   miopenPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
 #endif
@@ -200,7 +200,7 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                                     pool_workspace,
                                     pool_workernel_size_));
   PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::cudnnPoolingForward(handle,
                                    cudnn_pool_desc,
@@ -295,7 +295,7 @@ PD_REGISTER_KERNEL(
     pool2d, GPUDNN, ALL_LAYOUT, phi::Pool2dGPUDNNKernel, float, float16) {}
 PD_REGISTER_KERNEL(
     pool3d, GPUDNN, ALL_LAYOUT, phi::Pool3dGPUDNNKernel, float, float16) {}
-#else
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(pool2d,
                    GPUDNN,
                    ALL_LAYOUT,

@@ -93,6 +93,8 @@ float CalculateEstOccupancy(uint32_t DeviceId,
   return occupancy;
 }
 
+#elif defined(PADDLE_WITH_MUSA)
+
 #else
 
 float CalculateEstOccupancy(uint32_t DeviceId,

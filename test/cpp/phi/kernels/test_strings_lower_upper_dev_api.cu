@@ -20,7 +20,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#if (defined(__NVCC__) || defined(__HIPCC__))
+#if (defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__))
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
 #endif

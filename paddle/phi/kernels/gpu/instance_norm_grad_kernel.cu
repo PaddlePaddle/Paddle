@@ -401,7 +401,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
       phi::dynload::miopenCreateTensorDescriptor(&data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::miopenCreateTensorDescriptor(&in_param_desc_));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t in_param_desc_;
 
@@ -427,7 +427,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
       const_cast<int *>(strides.data())));
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenDeriveBNTensorDescriptor(
       in_param_desc_, data_desc_, miopenBNSpatial));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
       data_desc_,
       CudnnDataType<T>::type,
@@ -464,7 +464,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
         epsilon,
         saved_mean_data,
         saved_var_data));
-#else
+#elif defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBatchNormalizationBackward(
         dev_ctx.cudnn_handle(),
         CUDNN_BATCHNORM_SPATIAL,
@@ -511,7 +511,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
       phi::dynload::miopenDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::miopenDestroyTensorDescriptor(in_param_desc_));
-#else
+#elif defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -642,6 +642,21 @@ PD_REGISTER_KERNEL(instance_norm_double_grad,
                    phi::InstanceNormDoubleGradKernel,
                    float,
                    phi::dtype::float16) {}
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(instance_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(instance_norm_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormDoubleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 #elif CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
@@ -659,7 +674,7 @@ PD_REGISTER_KERNEL(instance_norm_double_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else
+#else  // CUDA
 PD_REGISTER_KERNEL(instance_norm_grad,
                    GPU,
                    ALL_LAYOUT,

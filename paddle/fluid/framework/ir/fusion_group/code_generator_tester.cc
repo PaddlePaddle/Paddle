@@ -27,7 +27,8 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 namespace paddle {
 namespace framework {

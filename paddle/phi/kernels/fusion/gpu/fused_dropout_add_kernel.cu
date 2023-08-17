@@ -91,6 +91,10 @@ __global__ void VectorizedDropoutForward(const size_t n,
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, increment, &state);
   using SType = hiprandStatePhilox4_32_10_t;
+#elif defined(PADDLE_WITH_MUSA)
+  murand_state_philox4x32_10 state;
+  murand_init(seed, idx + THREAD_ID_X, increment, &state);
+  using SType = murand_state_philox4x32_10;
 #else
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx + THREAD_ID_X, increment, &state);

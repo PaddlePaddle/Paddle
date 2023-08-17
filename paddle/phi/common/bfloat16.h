@@ -26,6 +26,14 @@
 #include <cuda.h>
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
+#if defined(__MUSACC__)
+#define PADDLE_MUSA_BF16
+#include <musa_bf16.h>
+#endif
+
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define PADDLE_CUDA_BF16
 #include <cuda_bf16.h>
@@ -61,6 +69,13 @@ struct PADDLE_ALIGN(2) bfloat16 {
     tempRes = reinterpret_cast<uint32_t*>(&val);
     res = *tempRes;
     x = res >> 16;
+#elif defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_MUSA_BF16)
+    __mt_bfloat16 tmp = __float2bfloat16(val);
+    x = *reinterpret_cast<uint16_t*>(&tmp);
+#else
+    std::memcpy(&x, reinterpret_cast<char*>(&val) + 2, 2);
+#endif
 #else
 #if defined(PADDLE_CUDA_BF16)
     __nv_bfloat16 tmp = __float2bfloat16(val);
@@ -154,6 +169,16 @@ struct PADDLE_ALIGN(2) bfloat16 {
     uint16_t* temp_ptr = reinterpret_cast<uint16_t*>(&temp);
     res = *temp_ptr;
     return res;
+#elif defined(PADDLE_WITH_MUSA)
+#ifdef PADDLE_MUSA_BF16
+    return __bfloat162float(*reinterpret_cast<const __mt_bfloat16*>(&x));
+#else
+    float val = 0.f;
+    uint16_t temp = x;
+    std::memcpy(
+        reinterpret_cast<char*>(&val) + 2, reinterpret_cast<char*>(&temp), 2);
+    return val;
+#endif
 #else
 #ifdef PADDLE_CUDA_BF16
     return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
@@ -170,6 +195,12 @@ struct PADDLE_ALIGN(2) bfloat16 {
 #ifdef PADDLE_CUDA_BF16
   HOSTDEVICE inline __nv_bfloat16 to_nv_bfloat16() const {
     return *reinterpret_cast<const __nv_bfloat16*>(&x);
+  }
+#endif
+
+#ifdef PADDLE_MUSA_BF16
+  HOSTDEVICE inline __mt_bfloat16 to_mt_bfloat16() const {
+    return *reinterpret_cast<const __mt_bfloat16*>(&x);
   }
 #endif
 

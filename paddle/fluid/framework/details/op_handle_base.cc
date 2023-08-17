@@ -31,11 +31,14 @@ std::string OpHandleBase::DebugString() const {
 }
 
 OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   for (auto &ev : events_) {
     if (ev.second) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(ev.second));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(ev.second));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(ev.second));
 #endif
@@ -45,13 +48,17 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
 }
 
 void OpHandleBase::InitCUDA() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   for (auto &p : dev_ctxes_) {
     int dev_id = p.first.device;
     platform::SetDeviceId(dev_id);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipEventCreateWithFlags(&events_[dev_id], hipEventDisableTiming));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        musaEventCreateWithFlags(&events_[dev_id], musaEventDisableTiming));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
@@ -136,7 +143,8 @@ void OpHandleBase::InitXPU() {
 }
 
 void OpHandleBase::Run(DeviceType use_device) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (events_.empty() && use_device == p::kCUDA && dev_ctxes_.size() > 0) {
     InitCUDA();
   }
@@ -172,7 +180,8 @@ void OpHandleBase::Run(DeviceType use_device) {
 }
 
 void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   PADDLE_ENFORCE_NOT_NULL(
       waited_ctx,
       platform::errors::InvalidArgument("Argument waited_ctx is NULL."));
@@ -188,6 +197,8 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
     for (auto &ev : events_) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(stream, ev.second, 0));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(stream, ev.second, 0));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(stream, ev.second, 0));
 #endif
@@ -221,12 +232,16 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
       if (in_var_handle) {
         auto &place = in_var_handle->place();
         if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
           auto stream =
               static_cast<phi::GPUContext *>(dev_ctxes_.at(place))->stream();
 #ifdef PADDLE_WITH_HIP
           PADDLE_ENFORCE_GPU_SUCCESS(
               hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#elif defined(PADDLE_WITH_MUSA)
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              musaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #else
           PADDLE_ENFORCE_GPU_SUCCESS(
               cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
@@ -248,7 +263,8 @@ void OpHandleBase::WaitInputVarGenerated(bool wait_for_feed) {
         if (in_var_handle) {
           auto &place = in_var_handle->place();
           if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
             platform::DeviceContextPool &pool =
                 platform::DeviceContextPool::Instance();
             auto stream =
@@ -273,13 +289,17 @@ void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
       auto *in_var_handle = dynamic_cast<VarHandle *>(in_var);
       if (in_var_handle) {
         if (platform::is_gpu_place(in_var_handle->place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
           auto stream = static_cast<phi::GPUContext *>(
                             dev_ctxes_.at(in_var_handle->place()))
                             ->stream();
 #ifdef PADDLE_WITH_HIP
           PADDLE_ENFORCE_GPU_SUCCESS(
               hipStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
+#elif defined(PADDLE_WITH_MUSA)
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              musaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
 #else
           PADDLE_ENFORCE_GPU_SUCCESS(
               cudaStreamWaitEvent(stream, in_var_handle->GetEvent(), 0));
@@ -311,7 +331,8 @@ bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
   callback();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (!events_.empty()) {  // Use event
     for (auto &p : dev_ctxes_) {
       auto dev_id = p.first.device;
@@ -320,6 +341,9 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
@@ -331,7 +355,8 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 
 void OpHandleBase::RunAndRecordEvent(platform::Place p,
                                      const std::function<void()> &callback) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (platform::is_cpu_place(p) || events_.empty()) {
     callback();
   } else {

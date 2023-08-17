@@ -86,11 +86,18 @@ function(version version_file)
     "WITH_MKLDNN: ${WITH_MKLDNN}\n"
     "WITH_GPU: ${WITH_GPU}\n"
     "WITH_ROCM: ${WITH_ROCM}\n"
+    "WITH_MUSA: ${WITH_MUSA}\n"
     "WITH_IPU: ${WITH_IPU}\n")
   if(WITH_GPU)
     file(APPEND ${version_file}
          "CUDA version: ${CUDA_VERSION}\n"
          "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
+  endif()
+  if(WITH_MUSA)
+    file(
+      APPEND ${version_file}
+      "MUSA version: v${MUSA_MAJOR_VERSION}.${MUSA_MINOR_VERSION}.${MUSA_PATCH_VERSION}\n"
+      "MUDNN version: v${MUDNN_MAJOR_VERSION}.${MUDNN_MINOR_VERSION}\n")
   endif()
   if(WITH_ROCM)
     file(APPEND ${version_file}

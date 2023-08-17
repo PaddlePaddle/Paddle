@@ -117,7 +117,8 @@ void MemcpyKernel(const Context& dev_ctx,
       dev_ctx.HostAlloc(out, out->dtype());
       Copy(dev_ctx, x, CPUPlace(), true, out);
       break;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     case 1: /* CUDAPlace */
       dev_ctx.Alloc(out, x.dtype());
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
@@ -162,7 +163,8 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy,
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_h2d,
                                  GPU,
                                  ALL_LAYOUT,

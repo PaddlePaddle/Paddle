@@ -129,7 +129,8 @@ void TensorFromArray(const T* src,
   if (platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
@@ -175,7 +176,8 @@ void TensorFromVector(const std::vector<T>& src,
   if (platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
@@ -304,7 +306,8 @@ void TensorToVector(const phi::DenseTensor& src,
   if (platform::is_cpu_place(src.place())) {
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,
@@ -346,7 +349,8 @@ inline void TensorToVector(const phi::DenseTensor& src,
   if (platform::is_cpu_place(src.place())) {
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place,
                  dst_ptr,

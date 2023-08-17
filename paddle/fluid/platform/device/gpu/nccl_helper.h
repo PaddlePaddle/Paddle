@@ -32,6 +32,9 @@
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
+#ifdef PADDLE_WITH_MCCL
+#include "paddle/fluid/platform/dynload/mccl.h"
+#endif
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"

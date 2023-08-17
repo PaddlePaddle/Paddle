@@ -17,6 +17,9 @@
 #ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
+#ifdef __MUSACC__
+#include <murand_kernel.h>
+#endif
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
 #endif
@@ -43,9 +46,12 @@ __global__ void bernoulli_cuda_kernel(
 #if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
   curand_init(seed, thread_idx, offset, &state);
-#else
+#elif defined(__HIPCC__)
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, thread_idx, offset, &state);
+#elif defined(__MUSACC__)
+  murand_state_philox4x32_10 state;
+  murand_init(seed, thread_idx, offset, &state);
 #endif
 
   size_t total_thread = gridDim.x * blockDim.x;

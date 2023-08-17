@@ -17,9 +17,12 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#elif defined(PADDLE_WITH_MUSA)
+#include <musa_runtime.h>
 #else
 #include <hip/hip_runtime.h>
 #endif
@@ -30,7 +33,8 @@ namespace paddle {
 PD_REGISTER_API(from_blob)
 
 phi::Place GetPlaceFromPtr(void* data) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
   cudaPointerAttributes attr;
@@ -43,6 +47,12 @@ phi::Place GetPlaceFromPtr(void* data) {
       phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
                                  "supported when CUDA version >= 10.0."));
 #endif
+#elif defined(PADDLE_WITH_MUSA)
+  musaPointerAttributes attr;
+  musaError_t status = musaPointerGetAttributes(&attr, data);
+  if (status == musaSuccess && attr.type == musaMemoryTypeDevice) {
+    return phi::GPUPlace(attr.device);
+  }
 #else
   hipPointerAttribute_t attr;
   hipError_t status = hipPointerGetAttributes(&attr, data);

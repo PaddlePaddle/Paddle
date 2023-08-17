@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/random.h>
 
 #include "paddle/phi/core/generator.h"
@@ -113,7 +113,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
   return vec_new_shape;
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 
 template <typename T>
 struct UniformGenerator {

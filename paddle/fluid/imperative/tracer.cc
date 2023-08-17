@@ -106,7 +106,8 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
     if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       gc.reset(new framework::DefaultStreamGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
@@ -116,7 +117,8 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
     } else if (platform::is_cuda_pinned_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       gc.reset(new framework::CUDAPinnedGarbageCollector(place, 0));
 
       VLOG(10) << "Created GarbageCollector at " << place;
@@ -274,7 +276,8 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   try {
     if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       platform::SetDeviceId(place.device);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(

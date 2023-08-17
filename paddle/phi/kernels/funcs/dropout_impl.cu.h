@@ -24,6 +24,10 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <murand_kernel.h>
+#include <musa_runtime.h>
+#endif
 
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 
@@ -142,6 +146,10 @@ __global__ void VectorizedRandomGenerator(const size_t n,
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, increment, &state);
   using SType = hiprandStatePhilox4_32_10_t;
+#elif defined(PADDLE_WITH_MUSA)
+  murand_state_philox4x32_10 state;
+  murand_init(seed, idx + THREAD_ID_X, increment, &state);
+  using SType = murand_state_philox4x32_10;
 #else
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx + THREAD_ID_X, increment, &state);
@@ -212,6 +220,10 @@ __global__ void VectorizedGeneratorMask(const size_t n,
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, increment, &state);
   using SType = hiprandStatePhilox4_32_10_t;
+#elif defined(PADDLE_WITH_MUSA)
+  murand_state_philox4x32_10 state;
+  murand_init(seed, idx + THREAD_ID_X, increment, &state);
+  using SType = murand_state_philox4x32_10;
 #else
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx + THREAD_ID_X, increment, &state);
@@ -295,6 +307,11 @@ void DropoutFwGPUKernelDriver(
           hipMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemsetAsync(mask_data, 0, x_numel * sizeof(*mask_data), stream));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
@@ -430,6 +447,8 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
     if (upscale_in_train && dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
       hipMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
+#elif defined(PADDLE_WITH_MUSA)
+      musaMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
 #else
       cudaMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
 #endif

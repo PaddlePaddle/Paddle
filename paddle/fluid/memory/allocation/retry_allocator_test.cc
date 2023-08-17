@@ -19,7 +19,8 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #endif
 
@@ -114,7 +115,8 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     platform::CUDAPlace p(0);
     RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);

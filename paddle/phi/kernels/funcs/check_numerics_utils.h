@@ -86,7 +86,7 @@ HOSTDEVICE static void PrintAndThrowError(const char* debug_info,
                                           int64_t num_nan,
                                           int64_t num_inf,
                                           int64_t num_zero) {
-#if !defined(__HIPCC__) && !defined(__CUDA_ARCH__)
+#if !defined(__HIPCC__) && !defined(__CUDA_ARCH__) && !defined(__MUSA_ARCH__)
   PADDLE_THROW(phi::errors::PreconditionNotMet(
       "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
       "%s.",

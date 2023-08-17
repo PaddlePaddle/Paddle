@@ -19,6 +19,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include <cub/block/block_scan.cuh>
 #endif
+#ifdef __MUSACC__
+#include <cub/block/block_scan.cuh>
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
@@ -603,6 +606,8 @@ inline void CallThrustScan(const GPUContext& dev_ctx,
                            int* h_offsets_ptr) {
 #ifdef PADDLE_WITH_HIP
   thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::exclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -836,6 +841,8 @@ int ProductRuleBook(const Context& dev_ctx,
     // 2. remove -1
 #ifdef PADDLE_WITH_HIP
     IntT* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+    IntT* last = thrust::remove(thrust::musa::par.on(dev_ctx.stream()),
 #else
     IntT* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -884,6 +891,8 @@ int ProductRuleBook(const Context& dev_ctx,
         index_flags_ptr, index_flags.numel(), out_index_table_ptr);
 #ifdef PADDLE_WITH_HIP
     thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+    thrust::exclusive_scan(thrust::musa::par.on(dev_ctx.stream()),
 #else
     thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif

@@ -16,10 +16,13 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#elif defined(PADDLE_WITH_MUSA)
+#include <musa_runtime.h>
 #else
 #include <hip/hip_runtime.h>
 #endif

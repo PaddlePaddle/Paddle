@@ -137,7 +137,7 @@ PD_REGISTER_KERNEL(layer_norm_grad,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }
 }
-#else
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(layer_norm_grad,
                    GPU,
                    ALL_LAYOUT,

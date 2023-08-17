@@ -97,7 +97,7 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
         args:
             - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
-            - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
+            - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens,-whitespace/braces,-build/include
             - --quiet
         # Exclude third-party libraries
         exclude:  |

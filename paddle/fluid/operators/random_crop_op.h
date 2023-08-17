@@ -19,7 +19,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include <thrust/random.h>
 #endif
 
@@ -37,7 +38,8 @@ struct Random<phi::CPUContext> {
   using UniformIntDist = std::uniform_int_distribution<T>;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <>
 struct Random<phi::GPUContext> {
   using Engine = thrust::minstd_rand;

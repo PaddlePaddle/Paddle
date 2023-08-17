@@ -283,7 +283,8 @@ REGISTER_OP_CPU_KERNEL(expand_grad,
                        ops::ExpandGradKernel<phi::CPUContext, double>,
                        ops::ExpandGradKernel<phi::CPUContext, int>,
                        ops::ExpandGradKernel<phi::CPUContext, int64_t>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 REGISTER_OP_CUDA_KERNEL(
     expand,
     ops::ExpandKernel<phi::GPUContext, float>,

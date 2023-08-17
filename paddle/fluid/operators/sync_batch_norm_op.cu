@@ -320,6 +320,24 @@ PD_REGISTER_KERNEL(sync_batch_norm,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(sync_batch_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SyncBatchNormKernel,
+                   float,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(sync_batch_norm,
@@ -376,6 +394,18 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(sync_batch_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SyncBatchNormGradKernel,
+                   float,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
+  }
+}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(sync_batch_norm_grad,
@@ -404,6 +434,12 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo,
                    phi::sparse::SyncBatchNormCooKernel,
                    float,
                    phi::dtype::float16) {}
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(sync_batch_norm_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SyncBatchNormCooKernel,
+                   float,
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_coo,
                    GPU,
@@ -421,6 +457,12 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    phi::sparse::SyncBatchNormCooGradKernel,
                    float,
                    phi::dtype::float16) {}
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SyncBatchNormCooGradKernel,
+                   float,
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    GPU,

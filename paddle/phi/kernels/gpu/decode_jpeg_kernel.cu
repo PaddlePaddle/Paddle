@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP) && \
+    !defined(PADDLE_WITH_MUSA)
 
 #include "paddle/phi/kernels/decode_jpeg_kernel.h"
 

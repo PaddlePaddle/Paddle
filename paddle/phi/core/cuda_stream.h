@@ -28,6 +28,11 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+using gpuStream_t = musaStream_t;
+#endif
+
 #include "glog/logging.h"
 
 #include "paddle/phi/core/enforce.h"
@@ -73,6 +78,9 @@ class CUDAStream {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
         &stream, static_cast<unsigned int>(flag), priority));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreateWithPriority(
+        &stream, static_cast<unsigned int>(flag), priority));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
         &stream, static_cast<unsigned int>(flag), priority));
@@ -92,6 +100,8 @@ class CUDAStream {
       backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(raw_stream()));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(raw_stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(raw_stream()));
 #endif
@@ -110,6 +120,14 @@ class CUDAStream {
       return true;
     }
     if (err == hipErrorNotReady) {
+      return false;
+    }
+#elif defined(PADDLE_WITH_MUSA)
+    musaError_t err = musaStreamQuery(raw_stream());
+    if (err == musaSuccess) {
+      return true;
+    }
+    if (err == musaErrorNotReady) {
       return false;
     }
 #else
@@ -134,6 +152,8 @@ class CUDAStream {
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamWaitEvent(raw_stream(), ev, 0));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaStreamWaitEvent(raw_stream(), ev, 0));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamWaitEvent(raw_stream(), ev, 0));
 #endif
@@ -146,6 +166,8 @@ class CUDAStream {
       backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
       hipStreamDestroy(raw_stream());
+#elif defined(PADDLE_WITH_MUSA)
+      musaStreamDestroy(raw_stream());
 #else
       cudaStreamDestroy(raw_stream());
 #endif

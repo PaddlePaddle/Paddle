@@ -31,6 +31,10 @@ limitations under the License. */
 #include <cuda.h>
 #include <curand_kernel.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <murand_kernel.h>
+#include <musa.h>
+#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>

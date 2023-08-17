@@ -35,6 +35,17 @@ limitations under the License. */
 #include <thrust/system_error.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <mublas.h>
+#include <mudnn.h>
+#include <mufft.h>
+#include <murand.h>
+#include <musparse.h>
+#include <thrust/system/musa/error.h>
+#include <thrust/system_error.h>
+using mudnnStatus_t = ::musa::dnn::Status;
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hiprand.h>
 #include <miopen/miopen.h>
@@ -75,6 +86,17 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/mublas.h"
+#include "paddle/phi/backends/dynload/mudnn.h"
+#include "paddle/phi/backends/dynload/murand.h"
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
+#include <error.h>
+
+#include "paddle/phi/backends/dynload/mccl.h"
+#endif  // __APPLE__
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/hipfft.h"
 #include "paddle/phi/backends/dynload/hiprand.h"
@@ -90,7 +112,8 @@ limitations under the License. */
 // Note: these headers for simplify demangle type string
 #include "paddle/phi/core/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
 
@@ -389,6 +412,17 @@ struct EnforceNotMet : public std::exception {
              #_IS_NOT_ERROR,                                       \
              ##__VA_ARGS__);                                       \
       abort();                                                     \
+    }                                                              \
+  } while (0)
+#elif defined(__MUSACC__)
+#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)               \
+  do {                                                             \
+    if (!(_IS_NOT_ERROR)) {                                        \
+      printf("Error: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__,                                             \
+             __LINE__,                                             \
+             #_IS_NOT_ERROR,                                       \
+             ##__VA_ARGS__);                                       \
     }                                                              \
   } while (0)
 #else
@@ -829,6 +863,273 @@ inline void retry_sleep(unsigned milliseconds) {
 
 #undef DEFINE_EXTERNAL_API_TYPE
 #endif  // PADDLE_WITH_CUDA
+
+/************************************************************************/
+/**************************** MUSA ERROR ********************************/
+#ifdef PADDLE_WITH_MUSA
+
+namespace details {
+
+template <typename T>
+struct ExternalApiType {};
+
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
+  template <>                                         \
+  struct ExternalApiType<type> {                      \
+    using Type = type;                                \
+    static constexpr Type kSuccess = success_value;   \
+  }
+
+DEFINE_EXTERNAL_API_TYPE(musaError_t, musaSuccess);
+DEFINE_EXTERNAL_API_TYPE(murandStatus_t, MURAND_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(mudnnStatus_t, ::musa::dnn::Status::SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(mublasStatus_t, MUBLAS_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(musparseStatus_t, MUSPARSE_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(mufftResult_t, MUFFT_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(MUresult, MUSA_SUCCESS);
+
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+DEFINE_EXTERNAL_API_TYPE(mcclResult_t, mcclSuccess);
+#endif
+
+}  // namespace details
+
+/*************** MUSA ERROR ***************/
+inline bool is_error(musaError_t e) { return e != musaSuccess; }
+
+inline std::string build_musa_error_msg(musaError_t e) {
+  std::ostringstream sout;
+  sout << "MUSA error(" << e << "), " << musaGetErrorString(e) << ". ";
+  return sout.str();
+}
+
+/*************** MURAND ERROR ***************/
+inline bool is_error(murandStatus_t stat) {
+  return stat != MURAND_STATUS_SUCCESS;
+}
+
+inline const char* murandGetErrorString(murandStatus_t stat) {
+  switch (stat) {
+    case MURAND_STATUS_SUCCESS:
+      return "MURAND_STATUS_SUCCESS";
+    case MURAND_STATUS_VERSION_MISMATCH:
+      return "MURAND_STATUS_VERSION_MISMATCH";
+    case MURAND_STATUS_NOT_CREATED:
+      return "MURAND_STATUS_NOT_CREATED";
+    case MURAND_STATUS_ALLOCATION_FAILED:
+      return "MURAND_STATUS_ALLOCATION_FAILED";
+    case MURAND_STATUS_TYPE_ERROR:
+      return "MURAND_STATUS_TYPE_ERROR";
+    case MURAND_STATUS_OUT_OF_RANGE:
+      return "MURAND_STATUS_OUT_OF_RANGE";
+    case MURAND_STATUS_LENGTH_NOT_MULTIPLE:
+      return "MURAND_STATUS_LENGTH_NOT_MULTIPLE";
+    case MURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
+      return "MURAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+    case MURAND_STATUS_LAUNCH_FAILURE:
+      return "MURAND_STATUS_LAUNCH_FAILURE";
+    case MURAND_STATUS_INTERNAL_ERROR:
+      return "MURAND_STATUS_INTERNAL_ERROR";
+    case MURAND_STATUS_NOT_IMPLEMENTED:
+      return "MURAND_STATUS_NOT_IMPLEMENTED";
+    default:
+      return "Unknown murand status";
+  }
+}
+
+inline std::string build_musa_error_msg(murandStatus_t stat) {
+  std::ostringstream sout;
+  sout << "MURAND error: " << murandGetErrorString(stat) << ".";
+  return sout.str();
+}
+
+/*************** MUBLAS ERROR ***************/
+inline bool is_error(mublasStatus_t stat) {
+  return stat != MUBLAS_STATUS_SUCCESS;
+}
+
+inline const char* mublasGetErrorString(mublasStatus_t stat) {
+  switch (stat) {
+    case MUBLAS_STATUS_SUCCESS:
+      return "MUBLAS_STATUS_SUCCESS";
+    case MUBLAS_STATUS_INVALID_HANDLE:
+      return "MUBLAS_STATUS_INVALID_HANDLE";
+    case MUBLAS_STATUS_NOT_IMPLEMENTED:
+      return "MUBLAS_STATUS_NOT_IMPLEMENTED";
+    case MUBLAS_STATUS_INVALID_POINTER:
+      return "MUBLAS_STATUS_INVALID_POINTER";
+    case MUBLAS_STATUS_INVALID_SIZE:
+      return "MUBLAS_STATUS_INVALID_SIZE";
+    case MUBLAS_STATUS_MEMORY_ERROR:
+      return "MUBLAS_STATUS_MEMORY_ERROR";
+    case MUBLAS_STATUS_INTERNAL_ERROR:
+      return "MUBLAS_STATUS_INTERNAL_ERROR";
+    case MUBLAS_STATUS_PERF_DEGRADED:
+      return "MUBLAS_STATUS_PERF_DEGRADED";
+    case MUBLAS_STATUS_SIZE_QUERY_MISMATCH:
+      return "MUBLAS_STATUS_SIZE_QUERY_MISMATCH";
+    case MUBLAS_STATUS_SIZE_INCREASED:
+      return "MUBLAS_STATUS_SIZE_INCREASED";
+    case MUBLAS_STATUS_SIZE_UNCHANGED:
+      return "MUBLAS_STATUS_SIZE_UNCHANGED";
+    case MUBLAS_STATUS_INVALID_VALUE:
+      return "MUBLAS_STATUS_INVALID_VALUE";
+    case MUBLAS_STATUS_CONTINUE:
+      return "MUBLAS_STATUS_CONTINUE";
+    default:
+      return "Unknown mublas status";
+  }
+}
+inline std::string build_musa_error_msg(mublasStatus_t stat) {
+  std::ostringstream sout;
+  sout << "MUBLAS error: " << mublasGetErrorString(stat) << ".";
+  return sout.str();
+}
+
+/*************** MUSPARSE ERROR ***************/
+inline bool is_error(musparseStatus_t stat) {
+  return stat != MUSPARSE_STATUS_SUCCESS;
+}
+
+inline const char* musparseGetErrorString(musparseStatus_t stat) {
+  switch (stat) {
+    case MUSPARSE_STATUS_SUCCESS:
+      return "MUSPARSE_STATUS_SUCCESSS";
+    case MUSPARSE_STATUS_INVALID_HANDLE:
+      return "MUSPARSE_STATUS_INVALID_HANDLE";
+    case MUSPARSE_STATUS_NOT_IMPLEMENTED:
+      return "MUSPARSE_STATUS_NOT_IMPLEMENTED";
+    case MUSPARSE_STATUS_INVALID_POINTER:
+      return "MUSPARSE_STATUS_INVALID_POINTER";
+    case MUSPARSE_STATUS_INVALID_SIZE:
+      return "MUSPARSE_STATUS_INVALID_SIZE";
+    case MUSPARSE_STATUS_MEMORY_ERROR:
+      return "MUSPARSE_STATUS_MEMORY_ERROR";
+    case MUSPARSE_STATUS_INTERNAL_ERROR:
+      return "MUSPARSE_STATUS_INTERNAL_ERROR";
+    case MUSPARSE_STATUS_INVALID_VALUE:
+      return "MUSPARSE_STATUS_INVALID_VALUE";
+    case MUSPARSE_STATUS_ARCH_MISMATCH:
+      return "MUSPARSE_STATUS_ARCH_MISMATCH";
+    case MUSPARSE_STATUS_ZERO_PIVOT:
+      return "MUSPARSE_STATUS_ZERO_PIVOT";
+    case MUSPARSE_STATUS_NOT_INITIALIZED:
+      return "MUSPARSE_STATUS_NOT_INITIALIZED";
+    case MUSPARSE_STATUS_TYPE_MISMATCH:
+      return "MUSPARSE_STATUS_TYPE_MISMATCH";
+    case MUSPARSE_STATUS_REQUIRES_SORTED_STORAGE:
+      return "MUSPARSE_STATUS_REQUIRES_SORTED_STORAGE";
+    default:
+      return "Unknown musparse status";
+  }
+}
+
+inline std::string build_musa_error_msg(musparseStatus_t stat) {
+  std::ostringstream sout;
+  sout << "MUSparse error: " << musparseGetErrorString(stat) << ".";
+  return sout.str();
+}
+
+/**************** MCCL ERROR ****************/
+#if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+inline bool is_error(mcclResult_t mccl_result) {
+  return mccl_result != mcclSuccess;
+}
+
+inline std::string build_musa_error_msg(mcclResult_t mccl_result) {
+  std::ostringstream sout;
+  sout << "MCCL error(" << mccl_result << "), "
+       << phi::dynload::mcclGetErrorString(mccl_result) << ". ";
+  if (errno == ENOSPC || errno == EAGAIN) {
+    std::string detail(strerror(errno));
+    detail += "\nPlease try one of the following solutions:";
+    detail += "\n1. export MCCL_SHM_DISABLE=1;";
+    detail += "\n2. export MCCL_P2P_LEVEL=SYS;";
+    detail +=
+        "\n3. Increase shared memory by setting the -shm-size "
+        "option when starting docker container, e.g., setting "
+        " -shm-size=2g.\n";
+    sout << " Detail: " + detail;
+  }
+  return sout.str();
+}
+#endif  // not(__APPLE__) and PADDLE_WITH_MCCL
+
+#define PADDLE_ENFORCE_GPU_SUCCESS(COND)                   \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      auto __summary__ = phi::errors::External(            \
+          ::phi::enforce::build_musa_error_msg(__cond__)); \
+      __THROW_ERROR_INTERNAL__(__summary__);               \
+    }                                                      \
+  } while (0)
+
+#define PADDLE_WARN_GPU_SUCCESS(COND)                      \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      ::phi::enforce::ThrowWarnInternal(                   \
+          ::phi::enforce::build_musa_error_msg(__cond__)); \
+    }                                                      \
+  } while (0)
+
+#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                              \
+  do {                                                                      \
+    auto res = musaGetLastError();                                          \
+    if (UNLIKELY(res != musaSuccess)) {                                     \
+      auto msg = ::phi::enforce::build_musa_error_msg(res);                 \
+      PADDLE_THROW(                                                         \
+          phi::errors::Fatal("MUSA error after kernel (%s): %s", OP, msg)); \
+    }                                                                       \
+  } while (0)
+
+inline void retry_sleep(unsigned milliseconds) {
+#ifdef _WIN32
+  Sleep(milliseconds);
+#else
+  if (milliseconds < 1000) {
+    // usleep argument must be less than 1,000,000. Reference:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/usleep.html
+    usleep(milliseconds * 1000);
+  } else {
+    // clip to sleep in seconds because we can not and don't have to
+    // sleep for exact milliseconds
+    sleep(milliseconds / 1000);
+  }
+#endif
+}
+
+#define PADDLE_RETRY_CUDA_SUCCESS(COND)                                 \
+  do {                                                                  \
+    auto __cond__ = (COND);                                             \
+    int retry_count = 1;                                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                    \
+    constexpr auto __success_type__ =                                   \
+        ::phi::enforce::details::ExternalApiType<                       \
+            __CUDA_STATUS_TYPE__>::kSuccess;                            \
+    while (UNLIKELY(__cond__ != __success_type__) && retry_count < 5) { \
+      phi::enforce::retry_sleep(10000);                                 \
+      __cond__ = (COND);                                                \
+      ++retry_count;                                                    \
+    }                                                                   \
+    if (UNLIKELY(__cond__ != __success_type__)) {                       \
+      auto __summary__ = phi::errors::External(                         \
+          ::phi::enforce::build_musa_error_msg(__cond__));              \
+      __THROW_ERROR_INTERNAL__(__summary__);                            \
+    }                                                                   \
+  } while (0)
+
+#undef DEFINE_EXTERNAL_API_TYPE
+#endif  // PADDLE_WITH_MUSA
 
 /**************************************************************************/
 /***************************** HIP ERROR **********************************/

@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_ptr.h>
 #include <thrust/functional.h>
 #include <thrust/reduce.h>
@@ -64,7 +64,7 @@ void SequenceMaskKernel(const Context& ctx,
     if (x_numel == 0) {
       maxlen = 0;
     } else {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
       VLOG(10)
           << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
       maxlen = static_cast<int>(

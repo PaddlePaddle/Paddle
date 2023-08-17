@@ -46,7 +46,8 @@ const uint16_t* GetCharcasesMap() {
   return reinterpret_cast<const uint16_t*>(utils_map[0]);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 const uint8_t* GetGPUUniflagMap() {
   if (utils_map[3] == nullptr) {
@@ -57,6 +58,10 @@ const uint8_t* GetGPUUniflagMap() {
     hipMalloc(reinterpret_cast<void**>(&gpu_uniflag), size);
     phi::backends::gpu::GpuMemcpySync(
         gpu_uniflag, cpu_uniflag, size, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMalloc(reinterpret_cast<void**>(&gpu_uniflag), size);
+    phi::backends::gpu::GpuMemcpySync(
+        gpu_uniflag, cpu_uniflag, size, musaMemcpyHostToDevice);
 #else
     cudaMalloc(reinterpret_cast<void**>(&gpu_uniflag), size);
     phi::backends::gpu::GpuMemcpySync(
@@ -76,6 +81,10 @@ const uint16_t* GetGPUCharcasesMap() {
     hipMalloc(reinterpret_cast<void**>(&gpu_charcases), size);
     phi::backends::gpu::GpuMemcpySync(
         gpu_charcases, cpu_charcases, size, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMalloc(reinterpret_cast<void**>(&gpu_charcases), size);
+    phi::backends::gpu::GpuMemcpySync(
+        gpu_charcases, cpu_charcases, size, musaMemcpyHostToDevice);
 #else
     cudaMalloc(reinterpret_cast<void**>(&gpu_charcases), size);
     phi::backends::gpu::GpuMemcpySync(

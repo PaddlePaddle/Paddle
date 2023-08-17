@@ -123,7 +123,8 @@ static int8_t GetCorrectDeviceIdByPlaceType(
   switch (place_type) {
     case paddle::PlaceType::kCPU:
       return 0;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     case paddle::PlaceType::kGPU:
       return phi::backends::gpu::GetCurrentDeviceId();
 #endif
@@ -169,7 +170,8 @@ bool operator==(PlaceType place_type, const Place &place) {
 
 GPUPlace DefaultGPUPlace() {
   return GPUPlace(
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       phi::backends::gpu::GetCurrentDeviceId());
 #else
       0);

@@ -95,7 +95,7 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
 
   int64_t limit = x.numel();
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   if (platform::is_gpu_place(place)) {
     auto &cuda_dev_ctx = dynamic_cast<phi::GPUContext &>(dev_ctx);
     functor(cuda_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
@@ -107,7 +107,7 @@ static bool TestLeakyReluGradGradMain(const framework::DDim &dim,
     functor(cpu_dev_ctx, &x, out, &ddx, &ddout, dout, dx);
     platform::ForRange<phi::CPUContext> for_range(cpu_dev_ctx, limit);
     for_range(actual_functor);
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   }
 #endif
 

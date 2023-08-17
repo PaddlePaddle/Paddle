@@ -64,7 +64,8 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (!cpu_place) {
     DenseTensor length;
     length.Resize(phi::make_ddim({1}));
@@ -77,6 +78,11 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
                                          segment_ids_ptr + num_indices - 1,
                                          sizeof(IndexT),
                                          hipMemcpyDeviceToHost));
+#elif defined(PADDLE_WITH_MUSA)
+    PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpy(length_data,
+                                          segment_ids_ptr + num_indices - 1,
+                                          sizeof(IndexT),
+                                          musaMemcpyDeviceToHost));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(length_data,
                                           segment_ids_ptr + num_indices - 1,

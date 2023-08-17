@@ -42,6 +42,15 @@ inline void CopyBCastOff(const BroadCastInfo& bcast_info,
             bcast_info.r_offset.data(),
             sizeof(int64_t) * bcast_info.out_len,
             hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(thrust::raw_pointer_cast(l_bcastoff->data()),
+             bcast_info.l_offset.data(),
+             sizeof(int64_t) * bcast_info.out_len,
+             musaMemcpyHostToDevice);
+  musaMemcpy(thrust::raw_pointer_cast(r_bcastoff->data()),
+             bcast_info.r_offset.data(),
+             sizeof(int64_t) * bcast_info.out_len,
+             musaMemcpyHostToDevice);
 #else
   cudaMemcpy(thrust::raw_pointer_cast(l_bcastoff->data()),
              bcast_info.l_offset.data(),

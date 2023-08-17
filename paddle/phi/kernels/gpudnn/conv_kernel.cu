@@ -23,6 +23,8 @@
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
+#elif defined(PADDLE_WITH_MUSA)
+
 #else
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
@@ -84,7 +86,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   // MIOPEN need to set groups in cdesc in miopen_desc.h
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn(), groups);
-#else
+#else  // CUDA & MUSA
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn());
 #endif
@@ -151,7 +153,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   workspace_size = search::GetWorkspaceSize(args);
   fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
-#else
+#elif defined(PADDLE_WITH_CUDA)
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search = SearchAlgorithm<ConvKind::kForward>;
   fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
@@ -195,7 +197,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                                                    workspace_size));
       },
       workspace_size);
-#else
+#else  // CUDA & MUSA
   ConvRunner<T, ConvKind::kForward>::Apply(ctx,
                                            args,
                                            fwd_result,
@@ -363,7 +365,7 @@ void ConvCudnnKernel(const Context& ctx,
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = phi::backends::gpu::DataLayout::kNCHW;
 #else
@@ -651,7 +653,7 @@ PD_REGISTER_KERNEL(conv3d,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
                    ALL_LAYOUT,

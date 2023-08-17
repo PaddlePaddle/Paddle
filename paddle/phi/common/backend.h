@@ -138,7 +138,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
   } else if (s == std::string("KPS")) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     // NOTE(chenweihang) KPS is not yet a complete backend, and it still needs
     // to be converted
     // to GPU in the GPU environment

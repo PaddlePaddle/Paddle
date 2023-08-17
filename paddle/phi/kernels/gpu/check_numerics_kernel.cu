@@ -399,6 +399,12 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
                                                 op_var.length() + 1,
                                                 hipMemcpyHostToDevice,
                                                 ctx.stream()));
+#elif defined(__MUSACC__)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaMemcpyAsync(gpu_str_ptr,
+                                                 iter->first.c_str(),
+                                                 op_var.length() + 1,
+                                                 musaMemcpyHostToDevice,
+                                                 ctx.stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
                                                  iter->first.c_str(),
@@ -494,6 +500,11 @@ void CheckNumericsKernel(const Context& ctx,
                          const std::string& output_dir,
                          DenseTensor* stats,
                          DenseTensor* values) {
+#ifdef PADDLE_WITH_MUSA
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "OP check_numerics is unsupported for MUSA backend now!"));
+  return;
+#else
   int dev_id = tensor.place().device;
   VLOG(6) << "op_type=" << op_type << ", var_name=" << var_name
           << ", dev_id=gpu:" << dev_id << ", numel=" << tensor.numel()
@@ -591,6 +602,7 @@ void CheckNumericsKernel(const Context& ctx,
   if (check_nan_inf_level == 0 && stack_height_limit > 0) {
     PrintStack<T>(ctx, *stats, op_type, var_name, dev_id);
   }
+#endif
 #endif
 }
 

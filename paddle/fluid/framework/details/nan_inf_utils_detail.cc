@@ -183,7 +183,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
   if (platform::is_gpu_place(tensor->place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

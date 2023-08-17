@@ -19,6 +19,10 @@
 
 #include "cub/cub.cuh"
 #endif
+#ifdef __MUSACC__
+#include <murand_kernel.h>
+#include "cub/cub.cuh"
+#endif
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
 
@@ -71,6 +75,11 @@ __global__ void SwapRepeatKernel(keyT* key_out_data,
   curand_init(seed, idx, offset, &state);
   for (int i = repeat_size - 1; i > 0; i--) {
     uint32_t r = curand(&state) % (i + 1);
+#elif defined(__MUSACC__)
+  murand_state_philox4x32_10 state;
+  murand_init(seed, idx, offset, &state);
+  for (int i = repeat_size - 1; i > 0; i--) {
+    uint32_t r = murand(&state) % (i + 1);
 #elif __HIPCC__
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx, offset, &state);

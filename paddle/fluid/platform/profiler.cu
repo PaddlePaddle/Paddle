@@ -16,6 +16,10 @@ limitations under the License. */
 #include <cuda.h>
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -50,6 +54,20 @@ void DummyKernelAndEvent() {
       hipLaunchKernelGGL(DummyKernel, dim3(1), dim3(1), 0, stream, ptr);
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
       PADDLE_ENFORCE_GPU_SUCCESS(hipFree(ptr));
+    });
+  }
+#elif defined(PADDLE_WITH_MUSA)
+  for (int i = 0; i < 5; i++) {
+    ForEachDevice([](int d) {
+      platform::SetDeviceId(d);
+      musaStream_t stream;
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&stream));
+      Mark("_cuda_startup_");
+      int *ptr;
+      PADDLE_ENFORCE_GPU_SUCCESS(musaMalloc(&ptr, sizeof(int)));
+      DummyKernel<<<1, 1, 0, stream>>>(ptr);
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamSynchronize(stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(musaFree(ptr));
     });
   }
 #else

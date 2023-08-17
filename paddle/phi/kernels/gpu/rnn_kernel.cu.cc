@@ -63,7 +63,7 @@ void RNNInferece(bool has_seq_length,
                                                 last_c_data,
                                                 workspace_data->data<uint8_t>(),
                                                 workspace_size));
-#else
+#elif defined(PADDLE_WITH_CUDA)
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnRNNForwardInference(handle,
                                                rnn->rnn_desc(),
@@ -154,7 +154,7 @@ void RnnKernel(const Context &dev_ctx,
     rnn_mode = miopenRNNRELU;
   else if (mode == "RNN_TANH")
     rnn_mode = miopenRNNTANH;
-#else
+#elif defined(PADDLE_WITH_CUDA)
   gpuRNNMode_t rnn_mode = CUDNN_LSTM;
   if (mode == "LSTM")
     rnn_mode = CUDNN_LSTM;
@@ -188,7 +188,7 @@ void RnnKernel(const Context &dev_ctx,
   T *last_c_data = nullptr;
 #ifdef PADDLE_WITH_HIP
   if (rnn_mode == miopenLSTM) {
-#else
+#elif defined(PADDLE_WITH_CUDA)
   if (rnn_mode == CUDNN_LSTM) {
 #endif
     init_c_data = pre_state[1]->data<T>();
@@ -331,7 +331,7 @@ void RnnKernel(const Context &dev_ctx,
           workspace_size,
           reserve_data,
           reserve_size));
-#else
+#elif defined(PADDLE_WITH_CUDA)
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnRNNForwardTraining(handle,
                                                 rnn.rnn_desc(),
@@ -405,7 +405,7 @@ void RnnKernel(const Context &dev_ctx,
 PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
-#else
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float, double) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }

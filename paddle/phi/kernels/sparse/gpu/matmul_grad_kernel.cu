@@ -68,7 +68,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, dy, static_cast<T>(0.0f));
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), x_csr, dout, static_cast<T>(0), dy);
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
     sparse_blas.SPMM(
         true, false, static_cast<T>(1), x, dout, static_cast<T>(0), dy);
 #endif
@@ -84,6 +84,10 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
                                  "rocsparse_sddmm with transpose, which is "
                                  "supported from "
                                  "ROCM 4.3.0"));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "backward of 'sparse.matmul' use musparseSDDMM, which is supported from "
+      "MUSA"));
 #endif
 #endif
 }
@@ -135,6 +139,10 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                                  "rocsparse_sddmm with transpose, which is "
                                  "supported from "
                                  "ROCM 4.3.0"));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "backward of 'sparse.matmul' use musparseSDDMM, which is supported from "
+      "MUSA"));
 #endif
 #endif
 }

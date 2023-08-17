@@ -46,7 +46,7 @@ __inline__ __device__ T WarpAllReduce(T val) {
   for (int mask = ThreadGroupWidth / 2; mask > 0; mask /= 2) {
 #if PADDLE_WITH_HIP
     val = Functor<T>()(val, __shfl_xor(0xffffffff, val, mask));
-#else
+#else  // CUDA & MUSA
     val = Functor<T>()(val, __shfl_xor_sync(0xffffffff, val, mask));
 #endif
   }
@@ -66,6 +66,22 @@ inline void GetNumBlocks(int64_t block_size,
   int tpm;
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
       &tpm, hipDeviceAttributeMaxThreadsPerMultiProcessor, dev));
+  *num_blocks = std::max<int>(
+      1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
+}
+#elif defined(PADDLE_WITH_MUSA)
+inline void GetNumBlocks(int64_t block_size,
+                         int64_t max_blocks,
+                         int64_t waves,
+                         int* num_blocks) {
+  int dev;
+  PADDLE_ENFORCE_GPU_SUCCESS(musaGetDevice(&dev));
+  int sm_count;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      musaDeviceGetAttribute(&sm_count, musaDevAttrMultiProcessorCount, dev));
+  int tpm;
+  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceGetAttribute(
+      &tpm, musaDevAttrMaxThreadsPerMultiProcessor, dev));
   *num_blocks = std::max<int>(
       1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
 }
@@ -193,6 +209,12 @@ inline hipError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                                       const int64_t num_col,
                                       const SourceType* in,
                                       SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+inline musaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
+                                       const int64_t num_row,
+                                       const int64_t num_col,
+                                       const SourceType* in,
+                                       SourceType* out) {
 #else
 inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                                        const int64_t num_row,
@@ -222,6 +244,8 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
           dev_ctx, num_row, num_col, in, out);
 #if PADDLE_WITH_HIP
   return hipPeekAtLastError();
+#elif defined(PADDLE_WITH_MUSA)
+  return musaPeekAtLastError();
 #else
   return cudaPeekAtLastError();
 #endif
@@ -240,6 +264,12 @@ inline hipError_t DispatchLogsumexpWarpWithPadding(const Context& dev_ctx,
                                                    const int64_t num_col,
                                                    const SourceType* in,
                                                    SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+inline musaError_t DispatchLogsumexpWarpWithPadding(const Context& dev_ctx,
+                                                    const int64_t num_row,
+                                                    const int64_t num_col,
+                                                    const SourceType* in,
+                                                    SourceType* out) {
 #else
 inline cudaError_t DispatchLogsumexpWarpWithPadding(const Context& dev_ctx,
                                                     const int64_t num_row,
@@ -276,6 +306,13 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_col,
                           const SourceType* in,
                           SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+typename std::enable_if<VecSize == 1, musaError_t>::type
+DispatchLogsumexpWarpCols(const Context& dev_ctx,
+                          const int64_t num_row,
+                          const int64_t num_col,
+                          const SourceType* in,
+                          SourceType* out) {
 #else
 typename std::enable_if<VecSize == 1, cudaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
@@ -287,6 +324,8 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   if (num_col <= 0) {
 #if PADDLE_WITH_HIP
     return hipErrorInvalidValue;
+#elif defined(PADDLE_WITH_MUSA)
+    return musaErrorInvalidValue;
 #else
     return cudaErrorInvalidValue;
 #endif
@@ -367,6 +406,8 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
 #undef HANDLE_COL
 #if PADDLE_WITH_HIP
   return hipErrorInvalidValue;
+#elif defined(PADDLE_WITH_MUSA)
+  return musaErrorInvalidValue;
 #else
   return cudaErrorInvalidValue;
 #endif
@@ -375,6 +416,13 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
 template <typename T, typename SourceType, typename Context, int VecSize>
 #if PADDLE_WITH_HIP
 typename std::enable_if<VecSize == 2, hipError_t>::type
+DispatchLogsumexpWarpCols(const Context& dev_ctx,
+                          const int64_t num_row,
+                          const int64_t num_col,
+                          const SourceType* in,
+                          SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+typename std::enable_if<VecSize == 2, musaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_row,
                           const int64_t num_col,
@@ -391,6 +439,8 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   if (num_col <= 0) {
 #if PADDLE_WITH_HIP
     return hipErrorInvalidValue;
+#elif defined(PADDLE_WITH_MUSA)
+    return musaErrorInvalidValue;
 #else
     return cudaErrorInvalidValue;
 #endif
@@ -455,6 +505,8 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
 #undef HANDLE_COL
 #if PADDLE_WITH_HIP
   return hipErrorInvalidValue;
+#elif defined(PADDLE_WITH_MUSA)
+  return musaErrorInvalidValue;
 #else
   return cudaErrorInvalidValue;
 #endif
@@ -467,6 +519,12 @@ inline hipError_t DispatchLogsumexpWarp(const Context& dev_ctx,
                                         const int64_t num_col,
                                         const SourceType* in,
                                         SourceType* out) {
+#elif defined(PADDLE_WITH_MUSA)
+inline musaError_t DispatchLogsumexpWarp(const Context& dev_ctx,
+                                         const int64_t num_row,
+                                         const int64_t num_col,
+                                         const SourceType* in,
+                                         SourceType* out) {
 #else
 inline cudaError_t DispatchLogsumexpWarp(const Context& dev_ctx,
                                          const int64_t num_row,

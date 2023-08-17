@@ -89,6 +89,8 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 // 3. sort (indices, values index)
 #ifdef PADDLE_WITH_HIP
   thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+  thrust::sort_by_key(thrust::musa::par.on(dev_ctx.stream()),
 #else
   thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
@@ -100,6 +102,8 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
   thrust::pair<IntT*, int*> new_end =
 #ifdef PADDLE_WITH_HIP
       thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#elif defined(PADDLE_WITH_MUSA)
+      thrust::unique_by_key(thrust::musa::par.on(dev_ctx.stream()),
 #else
       thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
 #endif

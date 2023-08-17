@@ -40,6 +40,85 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+# FIXME(@MTAI): compilation error will occur when compiling the following files.
+# This need to be fixed later.
+if(WITH_MUSA)
+  list(
+    REMOVE_ITEM
+    kernel_cu
+    "fusion/gpu/fused_softmax_mask_grad_kernel.cu"
+    "fusion/gpu/fused_softmax_mask_kernel.cu"
+    "gpu/batch_norm_grad_kernel.cu"
+    "gpu/batch_norm_kernel.cu"
+    "gpu/cholesky_grad_kernel.cu"
+    "gpu/cholesky_solve_grad_kernel.cu"
+    "gpu/conv_grad_kernel.cu"
+    "gpu/conv_kernel.cu"
+    "gpu/cross_entropy_grad_kernel.cu"
+    "gpu/cross_entropy_kernel.cu"
+    "gpu/conv_transpose_grad_kernel.cu"
+    "gpu/conv_transpose_kernel.cu"
+    "gpu/cudnn_lstm_grad_kernel.cu"
+    "gpu/cudnn_lstm_kernel.cu"
+    "gpu/depthwise_conv_grad_kernel.cu"
+    "gpu/depthwise_conv_kernel.cu"
+    "gpu/dist_kernel.cu"
+    "gpu/elementwise_divide_grad_kernel.cu"
+    "gpu/elementwise_grad_kernel.cu"
+    "gpu/elementwise_multiply_grad_kernel.cu"
+    "gpu/erfinv_kernel.cu"
+    "gpu/exponential_kernel.cu"
+    "gpu/fft_grad_kernel.cu"
+    "gpu/fft_kernel.cu"
+    "gpu/fused_softmax_mask_grad_kernel.cu"
+    "gpu/gaussian_kernel.cu"
+    "gpu/gelu_grad_kernel.cu"
+    "gpu/gelu_kernel.cu"
+    "gpu/histogram_kernel.cu"
+    "gpu/instance_norm_grad_kernel.cu"
+    "gpu/instance_norm_kernel.cu"
+    "gpu/interpolate_grad_kernel.cu"
+    "gpu/kthvalue_grad_kernel.cu"
+    "gpu/kthvalue_kernel.cu"
+    "gpu/layer_norm_grad_kernel.cu"
+    "gpu/layer_norm_kernel.cu"
+    "gpu/llm_int8_mat_mul_kernel.cu"
+    "gpu/log_softmax_grad_kernel.cu"
+    "gpu/log_softmax_kernel.cu"
+    "gpu/lstsq_kernel.cu"
+    "gpu/nanmedian_kernel.cu"
+    "gpu/rnn_grad_kernel.cu.cc"
+    "gpu/rnn_kernel.cu.cc"
+    "gpu/slogdeterminant_grad_kernel.cu"
+    "gpu/softmax_grad_kernel.cu"
+    "gpu/softmax_kernel.cu"
+    "gpu/solve_grad_kernel.cu"
+    "gpu/solve_kernel.cu"
+    "gpu/spectral_norm_grad_kernel.cu"
+    "gpu/spectral_norm_kernel.cu"
+    "gpu/stft_kernel.cu"
+    "gpu/svd_grad_kernel.cu"
+    "gpu/top_k_grad_kernel.cu"
+    "gpu/top_k_kernel.cu"
+    "gpu/truncated_gaussian_random_kernel.cu"
+    "gpudnn/affine_grid_grad_kernel.cu"
+    "gpudnn/affine_grid_kernel.cu"
+    "gpudnn/softmax_grad_kernel.cu"
+    "gpudnn/softmax_kernel.cu"
+    "gpudnn/conv_grad_kernel.cu"
+    "gpudnn/conv_kernel.cu"
+    "gpudnn/conv_transpose_grad_kernel.cu"
+    "gpudnn/conv_transpose_kernel.cu"
+    "gpudnn/pool_grad_kernel.cu"
+    "gpudnn/pool_kernel.cu"
+    "sparse/gpu/softmax_grad_kernel.cu"
+    "sparse/gpu/softmax_kernel.cu"
+    "sparse/gpu/conv_kernel.cu"
+    "sparse/gpu/pool_kernel.cu"
+    "strings/gpu/strings_copy_kernel.cu"
+    "strings/gpu/strings_lower_upper_kernel.cu")
+endif()
+
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
 endif()
@@ -117,7 +196,9 @@ file(
   "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc"
   "sparse/xpu/*.cc")
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   collect_srcs(kernels_srcs SRCS ${kernel_cu})
   kernel_declare("${kernel_cu}")
 endif()

@@ -44,7 +44,9 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+     defined(PADDLE_WITH_MUSA)) &&                            \
+    !defined(_WIN32)
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     phi::DenseTensor& total_keys_tensor = keys_tensor[device_id];
@@ -70,6 +72,15 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
               slot_lengths_lod.data(),
               slot_lengths.size() * sizeof(int64_t),
               hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemcpy(gpu_keys,
+               keys.data(),
+               keys.size() * sizeof(uint64_t*),
+               musaMemcpyHostToDevice);
+    musaMemcpy(gpu_len,
+               slot_lengths_lod.data(),
+               slot_lengths.size() * sizeof(int64_t),
+               musaMemcpyHostToDevice);
 #else
     cudaMemcpy(gpu_keys,
                keys.data(),
@@ -153,7 +164,9 @@ void BoxWrapper::PushSparseGradCase(
     PADDLE_THROW(platform::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+     defined(PADDLE_WITH_MUSA)) &&                            \
+    !defined(_WIN32)
     int device_id = place.GetDeviceId();
     phi::DenseTensor& cached_total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys =

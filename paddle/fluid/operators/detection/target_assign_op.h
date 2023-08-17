@@ -120,7 +120,8 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     int64_t k = x->dims()[2];
 
     auto x_lod = x->lod().back();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     phi::MixVector<size_t> mixv_x_lod(&x_lod);
     size_t* x_lod_data = mixv_x_lod.MutableData(ctx.GetPlace());
 #else
@@ -137,7 +138,8 @@ class TargetAssignKernel : public framework::OpKernel<T> {
                                        k,
                                        out_data,
                                        out_wt_data);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     mixv_x_lod.CopyToCPU();
 #endif
 
@@ -154,7 +156,8 @@ class TargetAssignKernel : public framework::OpKernel<T> {
               "TargetAssignOp input(NegIndices) needs 1 level of LoD"));
       const int* neg_idx_data = neg_indices->data<int>();
       auto neg_lod = neg_indices->lod().back();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       phi::MixVector<size_t> mixv_neg_lod(&neg_lod);
       size_t* neg_lod_data = mixv_neg_lod.MutableData(ctx.GetPlace());
 #else
@@ -170,7 +173,8 @@ class TargetAssignKernel : public framework::OpKernel<T> {
                       mismatch_value,
                       out_data,
                       out_wt_data);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       mixv_neg_lod.CopyToCPU();
 #endif
     }

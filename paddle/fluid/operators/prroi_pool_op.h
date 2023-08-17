@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #endif
 
@@ -85,7 +85,7 @@ inline HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data,
   return sum_out;
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 DEVICE void PrRoIPoolingDistributeDiff(T* diff,
                                        const T top_diff,
@@ -163,7 +163,7 @@ HOSTDEVICE void PrRoIPoolingMatDistributeDiff(T* diff,
   PrRoIPoolingDistributeDiff<T>(diff, top_diff, e_h, e_w, h0, w0, tmp);
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 DEVICE void AccumulateRois(T* offset, T data) {
   phi::CudaAtomicAdd(offset, data);
@@ -175,7 +175,7 @@ inline HOSTDEVICE void AccumulateRois(T* offset, T data) {
 }
 #endif
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 DEVICE T MaxFunctor(const T x, const T y) {
   return max(x, y);

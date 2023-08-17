@@ -175,7 +175,8 @@ class Blas {
              T* c,
              const int* ldc) const;
 
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(PADDLE_WITH_MUSA)
   template <typename T>
   void MatMulWithHead(const phi::DenseTensor& mat_a,
                       const MatDescriptor& dim_a,
@@ -303,7 +304,7 @@ class Blas {
                    int batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
                            CBLAS_TRANSPOSE transB,
@@ -360,7 +361,8 @@ class Blas {
             T* B,
             int ldb) const;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   template <typename T>
   void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
 
@@ -445,7 +447,8 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template CSRMM<T>(args...);
   }
 
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(PADDLE_WITH_MUSA)
   template <typename... ARGS>
   void MatMulWithHead(ARGS... args) const {
     Base()->template MatMulWithHead<T>(args...);
@@ -543,7 +546,8 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template TRSM<T>(args...);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   template <typename... ARGS>
   void BatchedGETRF(ARGS... args) const {
     Base()->template BatchedGETRF<T>(args...);
@@ -592,4 +596,7 @@ inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
 #endif
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/blas/blas_impl.hip.h"
+#endif
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/kernels/funcs/blas/blas_impl.mu.h"
 #endif

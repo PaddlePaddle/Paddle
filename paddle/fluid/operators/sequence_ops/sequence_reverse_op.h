@@ -136,7 +136,8 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     const size_t *lod;
     size_t lod_count = x.lod()[0].size();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (platform::is_gpu_place(ctx.GetPlace())) {
       auto xlod = x.lod()[0];
       phi::MixVector<size_t> mixv_xlod(&xlod);
@@ -144,7 +145,8 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     } else {
 #endif
       lod = x.lod()[0].data();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     }
 #endif
 

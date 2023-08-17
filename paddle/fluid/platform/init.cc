@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
@@ -172,7 +173,8 @@ void InitDevices() {
 #endif
     /*Init all available devices by default */
     std::vector<int> devices;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     try {
       // use user specified GPUs in single-node multi-process mode.
       devices = platform::GetSelectedDevices();
@@ -215,7 +217,8 @@ void InitDevices(const std::vector<int> devices) {
       continue;
     }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     places.emplace_back(platform::CUDAPlace(devices[i]));
 #endif
 #ifdef PADDLE_WITH_XPU
@@ -226,7 +229,8 @@ void InitDevices(const std::vector<int> devices) {
 #endif
   }
   places.emplace_back(platform::CPUPlace());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -441,14 +445,15 @@ void InitMemoryMethod() {
     memory_method->allocation_deleter =
         paddle::memory::allocation::Allocator::AllocationDeleter;
 #if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
     memory_method->copy_with_stream =
         paddle::memory::Copy<phi::Place, phi::Place>;
 #endif
     memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
     memory_method->device_memory_stat_current_value =
         paddle::memory::DeviceMemoryStatCurrentValue;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
     memory_method->emplace_device_contexts =

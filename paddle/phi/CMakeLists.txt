@@ -123,6 +123,9 @@ if(WITH_GPU)
 elseif(WITH_ROCM)
   hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
   target_link_libraries(phi ${PHI_DEPS})
+elseif(WITH_MUSA)
+  musa_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
+  target_link_libraries(phi ${PHI_DEPS})
 elseif(WITH_XPU_KP)
   xpu_library(
     phi ${PHI_BUILD_TYPE}

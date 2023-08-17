@@ -45,7 +45,8 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 )";
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 TEST(DeviceCode, cuda) {
   if (!phi::dynload::HasNVRTC() || !phi::dynload::HasCUDADriver()) {
     return;

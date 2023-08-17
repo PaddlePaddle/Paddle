@@ -21,6 +21,9 @@
 #ifdef __NVCC__
 #include <cub/cub.cuh>
 #endif
+#ifdef __MUSACC__
+#include <cub/cub.cuh>
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
@@ -228,6 +231,8 @@ ThrustCumsumKernel(const Context& dev_ctx,
                    bool exclusive) {
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
+#elif defined(__MUSACC__)
+  const auto& policy = thrust::musa::par.on(dev_ctx.stream());
 #else
   const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
 #endif

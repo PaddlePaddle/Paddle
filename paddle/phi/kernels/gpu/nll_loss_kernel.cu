@@ -37,6 +37,8 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
 #ifdef PADDLE_WITH_HIP
   hipMemset(total_weight_data, 0, sizeof(T));
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemset(total_weight_data, 0, sizeof(T));
 #else
   cudaMemset(total_weight_data, 0, sizeof(T));
 #endif

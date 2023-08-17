@@ -17,9 +17,12 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 
 #ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __MUSACC__
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

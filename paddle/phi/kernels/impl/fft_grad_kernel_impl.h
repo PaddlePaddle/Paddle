@@ -94,7 +94,7 @@ void FFTC2RGradKernel(const Context& ctx,
       out_grad.dims()[axes.back()] - x_grad->dims()[axes.back()];
   const phi::DDim strides = phi::stride(x_grad->dims());
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   const thrust::device_vector<int64_t> strides_g(phi::vectorize(strides));
   const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
 #else

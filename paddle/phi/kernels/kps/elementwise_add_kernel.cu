@@ -21,6 +21,8 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
+#include <mudnn.h>
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -72,7 +74,7 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
        y.dtype() == phi::DataType::FLOAT16)) {
@@ -81,7 +83,7 @@ void AddKernel(const Context& dev_ctx,
   } else {
 #endif
     AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
   }
 #endif
 }

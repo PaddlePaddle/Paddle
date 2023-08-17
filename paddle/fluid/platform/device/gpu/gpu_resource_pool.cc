@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -30,6 +31,9 @@ CudaStreamResourcePool::CudaStreamResourcePool() {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipStreamCreateWithFlags(&stream, hipStreamNonBlocking));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaStreamCreateWithFlags(&stream, musaStreamNonBlocking));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
@@ -41,6 +45,8 @@ CudaStreamResourcePool::CudaStreamResourcePool() {
       platform::SetDeviceId(dev_idx);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(stream));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
 #endif
@@ -82,6 +88,9 @@ CudaEventResourcePool::CudaEventResourcePool() {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipEventCreateWithFlags(&event, hipEventDisableTiming));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaEventCreateWithFlags(&event, musaEventDisableTiming));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
@@ -93,6 +102,8 @@ CudaEventResourcePool::CudaEventResourcePool() {
       platform::SetDeviceId(dev_idx);
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaEventDestroy(event));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(event));
 #endif

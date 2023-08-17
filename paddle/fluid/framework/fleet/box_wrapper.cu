@@ -161,6 +161,11 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
             values.data(),
             values.size() * sizeof(float*),
             hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+  musaMemcpy(gpu_values,
+             values.data(),
+             values.size() * sizeof(float*),
+             musaMemcpyHostToDevice);
 #else
   cudaMemcpy(gpu_values,
              values.data(),

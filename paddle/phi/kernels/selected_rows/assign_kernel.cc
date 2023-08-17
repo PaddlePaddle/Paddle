@@ -41,7 +41,8 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
                                  GPU,
                                  ALL_LAYOUT,

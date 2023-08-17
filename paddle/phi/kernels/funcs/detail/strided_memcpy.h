@@ -17,7 +17,8 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/device_context.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
@@ -41,7 +42,8 @@ struct StridedMemcpyFunctor<T, 0> {
       auto& cpu_place = place;
       memory_utils::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
     } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       auto& gpu_place = place;
       auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
       memory_utils::Copy(
@@ -68,7 +70,8 @@ struct StridedMemcpyFunctor<T, 1> {
       memory_utils::Copy(
           cpu_place, dst, cpu_place, src, sizeof(T) * dst_dim[0]);
     } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       auto& gpu_place = place;
       auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
       memory_utils::Copy(gpu_place,

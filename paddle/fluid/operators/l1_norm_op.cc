@@ -96,7 +96,8 @@ PD_REGISTER_STRUCT_KERNEL(l1_norm, CPU, ALL_LAYOUT, ops::L1NormKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(
     l1_norm_grad, CPU, ALL_LAYOUT, ops::L1NormGradKernel, float) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_STRUCT_KERNEL(l1_norm, GPU, ALL_LAYOUT, ops::L1NormKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(
     l1_norm_grad, GPU, ALL_LAYOUT, ops::L1NormGradKernel, float) {}

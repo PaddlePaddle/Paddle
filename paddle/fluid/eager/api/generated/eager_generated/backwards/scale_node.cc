@@ -132,7 +132,8 @@ void ScaleAPI(const paddle::Tensor& x,
                                          bias_after_scale,
                                          dense_out.get());
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   } else if (expected_kernel_place == paddle::platform::CUDAPlace()) {
     auto* dev_ctx =
         dynamic_cast<phi::GPUContext*>(pool.Get(expected_kernel_place));

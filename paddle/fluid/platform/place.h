@@ -57,7 +57,8 @@ typename Visitor::result_type VisitPlace(const Place &place,
                                          const Visitor &visitor) {
   switch (place.GetType()) {
     case phi::AllocationType::GPU: {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       platform::CUDAPlace p(place.GetDeviceId());
       return visitor(p);
 #else
@@ -67,7 +68,8 @@ typename Visitor::result_type VisitPlace(const Place &place,
 #endif
     }
     case phi::AllocationType::GPUPINNED: {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       platform::CUDAPinnedPlace p;
       return visitor(p);
 #else

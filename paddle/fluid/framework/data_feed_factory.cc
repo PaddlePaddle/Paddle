@@ -70,7 +70,9 @@ REGISTER_DATAFEED_CLASS(MultiSlotDataFeed);
 REGISTER_DATAFEED_CLASS(MultiSlotInMemoryDataFeed);
 REGISTER_DATAFEED_CLASS(PaddleBoxDataFeed);
 REGISTER_DATAFEED_CLASS(SlotRecordInMemoryDataFeed);
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+     defined(PADDLE_WITH_MUSA)) &&                            \
+    !defined(_WIN32)
 REGISTER_DATAFEED_CLASS(MultiSlotFileInstantDataFeed);
 #endif
 }  // namespace framework

@@ -188,7 +188,8 @@ HOSTDEVICE inline void GetUTF8Str(const uint32_t* unicode_str,
 const uint8_t* GetUniFlagMap();
 const uint16_t* GetCharcasesMap();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 const uint8_t* GetGPUUniflagMap();
 const uint16_t* GetGPUCharcasesMap();

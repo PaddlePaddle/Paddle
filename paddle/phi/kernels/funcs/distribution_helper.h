@@ -17,6 +17,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
+#ifdef __MUSACC__
+#include <murand_kernel.h>
+#endif
 #ifdef __HIPCC__
 #include <hiprand_kernel.h>
 #endif
@@ -28,7 +31,7 @@ limitations under the License. */
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/hostdevice.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
@@ -49,7 +52,7 @@ struct exponential_transform {
   explicit exponential_transform(T lambda) : lambda_(lambda) {}
 
   HOSTDEVICE inline T operator()(T val) const {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
     T log = -std::numeric_limits<T>::epsilon() / 2;
     if (val < static_cast<T>(1.) - std::numeric_limits<T>::epsilon() / 2) {
       if (std::is_same<T, double>::value) {
@@ -113,7 +116,7 @@ struct normal_transform {
   T std_;
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 
 namespace kps = phi::kps;
 
@@ -186,6 +189,69 @@ struct normal_distribution<double> {
   static constexpr int kReturnsCount = 2;
 };
 
+#elif defined(__MUSACC__)
+template <typename T>
+struct uniform_distribution {
+  __device__ inline T operator()(murand_state_philox4x32_10 *state) const {
+    return static_cast<T>(murand_uniform(state));
+  }
+  static constexpr int kReturnsCount = 1;
+};
+
+template <>
+struct uniform_distribution<float> {
+  __device__ inline float4 operator()(murand_state_philox4x32_10 *state) const {
+    return murand_uniform4(state);
+  }
+  static constexpr int kReturnsCount = 4;
+};
+
+template <>
+struct uniform_distribution<double> {
+  __device__ inline double2 operator()(
+      murand_state_philox4x32_10 *state) const {
+    return murand_uniform2_double(state);
+  }
+  static constexpr int kReturnsCount = 2;
+};
+
+template <>
+struct uniform_distribution<uint32_t> {
+  __device__ inline uint4 operator()(murand_state_philox4x32_10 *state) const {
+    return murand4(state);
+  }
+  static constexpr int kReturnsCount = 4;
+};
+
+template <>
+struct uniform_distribution<uint64_t> {
+  __device__ inline ulonglong2 operator()(
+      murand_state_philox4x32_10 *state) const {
+    ulonglong2 result;
+    uint4 rand = murand4(state);
+    result.x = (uint64_t)rand.x << 32 | rand.y;
+    result.y = (uint64_t)rand.z << 32 | rand.w;
+    return result;
+  }
+  static constexpr int kReturnsCount = 2;
+};
+
+template <>
+struct normal_distribution<float> {
+  __device__ inline float4 operator()(murand_state_philox4x32_10 *state) const {
+    return murand_normal4(state);
+  }
+  static constexpr int kReturnsCount = 4;
+};
+
+template <>
+struct normal_distribution<double> {
+  __device__ inline double2 operator()(
+      murand_state_philox4x32_10 *state) const {
+    return murand_normal2_double(state);
+  }
+  static constexpr int kReturnsCount = 2;
+};
 #else
 template <typename T>
 struct uniform_distribution {
@@ -268,6 +334,10 @@ __global__ void DistributionKernel(size_t size,
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx + THREAD_ID_X, offset, &state);
   using SType = curandStatePhilox4_32_10_t;
+#elif defined(__MUSACC__)
+  murand_state_philox4x32_10 state;
+  murand_init(seed, idx + THREAD_ID_X, offset, &state);
+  using SType = murand_state_philox4x32_10;
 #else
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx + THREAD_ID_X, offset, &state);

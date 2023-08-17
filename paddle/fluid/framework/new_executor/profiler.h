@@ -42,7 +42,8 @@ class ProfilerGuard {
  private:
   void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
     if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       auto cuda_place = place;
       cost_info_->device_memory_bytes =
           platform::RecordedGpuMallocSize(cuda_place.device);

@@ -17,6 +17,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
+#ifdef __MUSACC__
+#include "cub/cub.cuh"
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
@@ -289,7 +292,15 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
-#else
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CrossEntropyWithSoftmaxGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+#else  // CUDA
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,

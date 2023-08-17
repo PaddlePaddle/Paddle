@@ -20,6 +20,9 @@ limitations under the License. */
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
+#ifdef __MUSACC__
+#include "cub/cub.cuh"
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 #endif
@@ -1126,6 +1129,15 @@ bool SortTopk(const phi::GPUContext& ctx,
                  << hipGetErrorString(err);
       return false;
     }
+#elif defined(__MUSACC__)
+    if (err != musaSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "cub::DeviceSegmentedRadixSort::SortPairsDescending to "
+                    "calculate "
+                    "temp_storage_bytes, status: "
+                 << musaGetErrorString(err);
+      return false;
+    }
 #else
     if (err != cudaSuccess) {
       LOG(ERROR)
@@ -1157,6 +1169,14 @@ bool SortTopk(const phi::GPUContext& ctx,
                     "hipcub::DeviceSegmentedRadixSort::SortPairs to calculate "
                     "temp_storage_bytes, status: "
                  << hipGetErrorString(err);
+      return false;
+    }
+#elif defined(__MUSACC__)
+    if (err != musaSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "cub::DeviceSegmentedRadixSort::SortPairs to calculate "
+                    "temp_storage_bytes, status: "
+                 << musaGetErrorString(err);
       return false;
     }
 #else
@@ -1197,6 +1217,16 @@ bool SortTopk(const phi::GPUContext& ctx,
                  << ", status: " << hipGetErrorString(err);
       return false;
     }
+#elif defined(__MUSACC__)
+    if (err != musaSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "cub::DeviceSegmentedRadixSort::SortPairsDescending to "
+                    "sort input, "
+                    "temp_storage_bytes: "
+                 << temp_storage_bytes
+                 << ", status: " << musaGetErrorString(err);
+      return false;
+    }
 #else
     if (err != cudaSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
@@ -1231,6 +1261,16 @@ bool SortTopk(const phi::GPUContext& ctx,
                     "temp_storage_bytes: "
                  << temp_storage_bytes
                  << ", status: " << hipGetErrorString(err);
+      return false;
+    }
+#elif defined(__MUSACC__)
+    if (err != musaSuccess) {
+      LOG(ERROR) << "TopKOP failed as could not launch "
+                    "cub::DeviceSegmentedRadixSort::SortPairs to "
+                    "sort input, "
+                    "temp_storage_bytes: "
+                 << temp_storage_bytes
+                 << ", status: " << musaGetErrorString(err);
       return false;
     }
 #else

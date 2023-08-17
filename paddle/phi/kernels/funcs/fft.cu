@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#ifdef PADDLE_WITH_CUDA
 #include <cmath>
 
 #include "paddle/phi/kernels/funcs/fft.h"
@@ -104,7 +104,7 @@ inline bool use_cache(const int64_t* signal_size) {
   }
   return using_cache;
 }
-#elif defined(PADDLE_WITH_HIP)
+#elif defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 inline bool use_cache(const int64_t* signal_size) { return true; }
 #endif
 
@@ -200,6 +200,11 @@ void exec_fft(const phi::GPUContext& ctx,
       phi::dynload::hipfftSetStream(config->plan(), ctx.stream()));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::hipfftSetWorkArea(config->plan(), workspace_tensor.data()));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mufftSetStream(config->plan(), ctx.stream()));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::mufftSetWorkArea(config->plan(), workspace_tensor.data()));
 #endif
 
   // execution of fft plan
@@ -344,3 +349,4 @@ template struct FFTR2CFunctor<phi::GPUContext, double, complex128_t>;
 
 }  // namespace funcs
 }  // namespace phi
+#endif

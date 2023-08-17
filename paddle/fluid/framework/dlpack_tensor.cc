@@ -96,7 +96,8 @@ struct DLDeviceVisitor {
   }
 
   inline ::DLDevice operator()(const platform::CUDAPlace &place) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     ::DLDevice device;
     device.device_type = kDLGPU;
     device.device_id = place.device;
@@ -108,7 +109,8 @@ struct DLDeviceVisitor {
   }
 
   inline ::DLDevice operator()(const platform::CUDAPinnedPlace &place) const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     ::DLDevice device;
     device.device_type = kDLCPUPinned;
     device.device_id = 0;

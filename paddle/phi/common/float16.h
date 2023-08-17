@@ -37,6 +37,10 @@
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif  // PADDLE_WITH_MUSA
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -44,6 +48,11 @@
 #if defined(__CUDACC__) && CUDA_VERSION >= 7050
 #define PADDLE_CUDA_FP16
 #include <cuda_fp16.h>
+#endif
+
+#if defined(__MUSACC__)
+#define PADDLE_CUDA_FP16
+#include <musa_fp16.h>
 #endif
 
 #ifdef __HIPCC__
@@ -82,8 +91,10 @@ struct PADDLE_ALIGN(2) float16 {
 // Constructors
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline explicit float16(const half& h) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
+    CUDA_VERSION >= 9000
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
 #else
     x = h.x;
@@ -101,8 +112,9 @@ struct PADDLE_ALIGN(2) float16 {
 #endif
 
   HOSTDEVICE inline explicit float16(float val) {
-#if defined(PADDLE_CUDA_FP16) && \
-    (defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
+#if defined(PADDLE_CUDA_FP16) &&                  \
+    (defined(__HIPCC__) || defined(__MUSACC__) || \
+     (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
     half tmp = __float2half(val);
     x = *reinterpret_cast<uint16_t*>(&tmp);
 
@@ -144,7 +156,8 @@ struct PADDLE_ALIGN(2) float16 {
 // Assignment operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline float16& operator=(const half& rhs) {
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
+    CUDA_VERSION >= 9000
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&rhs))->x;
 #else
     x = rhs.x;
@@ -218,7 +231,8 @@ struct PADDLE_ALIGN(2) float16 {
 // Conversion operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline half to_half() const {
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
+    CUDA_VERSION >= 9000
     __half_raw h;
     h.x = x;
     return half(h);
@@ -237,8 +251,9 @@ struct PADDLE_ALIGN(2) float16 {
 #endif
 
   HOSTDEVICE inline operator float() const {
-#if defined(PADDLE_CUDA_FP16) && \
-    (defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
+#if defined(PADDLE_CUDA_FP16) &&                  \
+    (defined(__HIPCC__) || defined(__MUSACC__) || \
+     (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
     half tmp = *reinterpret_cast<const half*>(this);
     return __half2float(tmp);
 
@@ -395,7 +410,7 @@ DEVICE inline half operator-(const half& a) {
 #endif
 }
 
-#ifndef PADDLE_WITH_HIP  // not defined __HIP_NO_HALF_OPERATORS__
+#ifdef PADDLE_WITH_CUDA  // not defined __HIP_NO_HALF_OPERATORS__
 DEVICE inline half& operator+=(half& a, const half& b) {  // NOLINT
   a = a + b;
   return a;
@@ -1017,6 +1032,7 @@ struct is_floating_point<phi::dtype::float16>
           std::is_same<
               phi::dtype::float16,
               typename std::remove_cv<phi::dtype::float16>::type>::value> {};
+
 template <>
 struct is_signed<phi::dtype::float16> {
   static const bool value = true;

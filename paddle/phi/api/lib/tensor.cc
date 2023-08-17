@@ -359,7 +359,8 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
   impl_ = std::move(impl);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 gpuStream_t Tensor::stream() const {
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
   auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(

@@ -25,7 +25,7 @@ namespace phi {
 using gpuRNNMode_t = miopenRNNMode_t;
 using gpuDnnHandle_t = miopenHandle_t;
 using gpuDnnDataType_t = miopenDataType_t;
-#else
+#elif defined(PADDLE_WITH_CUDA)
 using gpuRNNMode_t = cudnnRNNMode_t;
 using gpuDnnHandle_t = cudnnHandle_t;
 using gpuDnnDataType_t = cudnnDataType_t;

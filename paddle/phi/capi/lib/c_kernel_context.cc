@@ -30,7 +30,8 @@ PD_DeviceContext* PD_KernelContextGetDeviceContext(PD_KernelContext* ctx) {
   } else if (dev_ctx_type == phi::AllocationType::CPU) {
     return reinterpret_cast<PD_DeviceContext*>(const_cast<phi::CPUContext*>(
         &kernel_context->GetDeviceContext<phi::CPUContext>()));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   } else if (dev_ctx_type == phi::AllocationType::GPU) {
     return reinterpret_cast<PD_DeviceContext*>(const_cast<phi::GPUContext*>(
         &kernel_context->GetDeviceContext<phi::GPUContext>()));

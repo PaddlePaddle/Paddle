@@ -60,7 +60,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
 #if defined(PADDLE_WITH_MKLDNN)
           || arg_type == std::type_index(typeid(const OneDNNContext&))
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
           || arg_type == std::type_index(typeid(const GPUContext&))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
           || arg_type == std::type_index(typeid(const XPUContext&))
@@ -1401,7 +1402,8 @@ struct KernelRegistrar {
                                             meta_kernel_fn,        \
                                             BACKEND_LIST)
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #define _DEVICE GPU,
 #elif defined(PADDLE_WITH_XPU)
 #define _DEVICE XPU,

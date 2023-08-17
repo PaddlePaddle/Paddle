@@ -19,7 +19,8 @@ limitations under the License. */
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
@@ -63,7 +64,8 @@ PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place) {
   return const_cast<phi::Allocator*>(&dev_ctx->GetAllocator());
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place) {
   PADDLE_ENFORCE_EQ(place.GetType(),
                     phi::AllocationType::GPU,

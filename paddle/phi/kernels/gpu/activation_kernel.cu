@@ -186,7 +186,7 @@ PD_REGISTER_KERNEL(relu,
                    float,
                    double,
                    phi::dtype::float16) {}
-#else
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(relu,
                    GPU,
                    ALL_LAYOUT,

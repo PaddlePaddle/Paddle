@@ -1526,7 +1526,9 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
 #endif
 }
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+     defined(PADDLE_WITH_MUSA)) &&                            \
+    !defined(_WIN32)
 template <typename T>
 void PrivateInstantDataFeed<T>::PutToFeedVec() {
   for (size_t i = 0; i < use_slots_.size(); ++i) {

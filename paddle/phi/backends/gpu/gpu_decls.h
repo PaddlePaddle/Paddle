@@ -20,18 +20,39 @@
 namespace phi {
 
 #ifdef PADDLE_WITH_HIP
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
+  using GPU_TYPE = ROCM_TYPE;
+
+#elif defined(PADDLE_WITH_MUSA)
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
+  using GPU_TYPE = MUSA_TYPE;
+#else
+#define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE, MUSA_TYPE) \
+  using GPU_TYPE = CUDA_TYPE;
+#endif  // PADDLE_WITH_CDUA
+
+DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t, musaStream_t);
+DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t, musaEvent_t);
+DECLARE_TYPE_FOR_GPU(sparseHandle_t,
+                     cusparseHandle_t,
+                     rocsparse_handle,
+                     musparseHandle_t);
+DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
+DECLARE_TYPE_FOR_GPU(blasHandle_t,
+                     cublasHandle_t,
+                     rocblas_handle,
+                     mublasHandle_t);
+#undef DECLARE_TYPE_FOR_GPU
+
+#ifndef PADDLE_WITH_MUSA
+#ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
 
-#else  // PADDLE_WITH_CDUA
-
+#else
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = CUDA_TYPE;
-#endif
-
-DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t);
-DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t);
-
+#endif  // PADDLE_WITH_CDUA
 DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
                      cudnnActivationStruct,
                      miopenActivationDescriptor);
@@ -56,19 +77,13 @@ DECLARE_TYPE_FOR_GPU(dnnPoolingDescriptor_t,
 DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
                      cudnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t);
-
-DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
 
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
 DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
-
 DECLARE_TYPE_FOR_GPU(solverHandle_t, cusolverDnHandle_t, rocsolver_handle);
-
-DECLARE_TYPE_FOR_GPU(sparseHandle_t, cusparseHandle_t, rocsparse_handle);
-
 #undef DECLARE_TYPE_FOR_GPU
+#endif
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
@@ -109,7 +109,7 @@ DenseTensor Diagonal(const DeviceContext& context,
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
     thrust::device_vector<int64_t> diag_vec(vectorize(dig_stride));
     const int64_t* diag_arr = thrust::raw_pointer_cast(diag_vec.data());
     thrust::device_vector<int64_t> ret_vec(ret_strides);
@@ -146,7 +146,7 @@ std::vector<T> ComputeDimStride(const std::vector<T> dim) {
   return dim_strides;
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T, int X_DIM_SIZE, int OUT_DIM_SIZE>
 __global__ void DiagonalCuda(const T* data1,
                              T* data2,

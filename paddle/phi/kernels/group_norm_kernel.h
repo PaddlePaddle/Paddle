@@ -33,7 +33,8 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* mean,
                      DenseTensor* variance);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename T, typename AccT = T>
 class GroupNormDirectCUDAFunctor {
  public:

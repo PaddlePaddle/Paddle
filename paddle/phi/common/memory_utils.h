@@ -118,7 +118,8 @@ struct MemoryInterface {
   int64_t (*device_memory_stat_current_value)(const std::string& stat_type,
                                               int dev_id);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   /**
    * @brief get the memory usage of current GPU device.
    *
@@ -271,7 +272,8 @@ class MemoryUtils {
     return memory_method_->device_memory_stat_current_value(stat_type, dev_id);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   void GpuMemoryUsage(size_t* available, size_t* total) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NOT_NULL(
@@ -372,7 +374,8 @@ void Copy(const Place& dst_place,
 
 int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
 

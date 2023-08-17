@@ -22,6 +22,17 @@ elseif(WITH_ROCM)
     cudnn_desc_test
     SRCS cudnn_desc_test.cc
     DEPS dynload_cuda)
+elseif(WITH_MUSA)
+  musa_library(
+    gpu_info
+    SRCS
+    gpu_info.cc
+    DEPS
+    phi
+    glog
+    enforce
+    monitor
+    dynload_cuda)
 endif()
 
 cc_library(

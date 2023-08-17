@@ -54,7 +54,7 @@ class Array {
   }
 
   HOSTDEVICE inline T &at(size_t i) {
-#if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
+#if !defined(__CUDA_ARCH__) && !defined(__HIPCC__) && !defined(__MUSACC__)
     PADDLE_ENFORCE_LT(
         i, N, phi::errors::OutOfRange("Array index out of bounds."));
 #endif
@@ -62,7 +62,7 @@ class Array {
   }
 
   HOSTDEVICE inline const T &at(size_t i) const {
-#if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
+#if !defined(__CUDA_ARCH__) && !defined(__HIPCC__) && !defined(__MUSACC__)
     PADDLE_ENFORCE_LT(
         i, N, phi::errors::OutOfRange("Array index out of bounds."));
 #endif
@@ -103,7 +103,7 @@ class Array<T, 0> {
   HOSTDEVICE inline T *GetMutable() { return nullptr; }
 
   HOSTDEVICE inline T &operator[](size_t) {
-#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__) || defined(__MUSA_ARCH__)
     // HIP and CUDA will have compile error, if use "obj()"
     // function declared in block scope cannot have 'static' storage class
     static T obj{};
@@ -114,7 +114,7 @@ class Array<T, 0> {
   }
 
   HOSTDEVICE inline const T &operator[](size_t) const {
-#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+#if defined(__HIPCC__) || defined(__CUDA_ARCH__) || defined(__MUSA_ARCH__)
     // HIP and CUDA will have compile error, if use "obj()"
     // function declared in block scope cannot have 'static' storage class
     static const T obj{};

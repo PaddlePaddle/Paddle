@@ -18,6 +18,9 @@
 #ifdef __NVCC__
 #include <cuda_runtime_api.h>  // NOLINT
 #endif
+#ifdef __MUSACC__
+#include <musa_runtime_api.h>  // NOLINT
+#endif
 
 class RandomNumGen {
  public:

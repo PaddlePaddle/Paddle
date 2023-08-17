@@ -114,7 +114,8 @@ TEST(DenseTensor, MutableData) {
     EXPECT_EQ(static_cast<int>(p2[0]), 1);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     phi::DenseTensor src_tensor;
     float* p1 = nullptr;
@@ -168,7 +169,8 @@ TEST(DenseTensor, ShareDataWith) {
     ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     phi::DenseTensor src_tensor;
     phi::DenseTensor dst_tensor;
@@ -206,7 +208,8 @@ TEST(DenseTensor, Slice) {
     EXPECT_EQ(src_data_address + 3 * 4 * 1 * sizeof(int), slice_data_address);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
@@ -295,7 +298,8 @@ TEST(DenseTensor, Split) {
       EXPECT_EQ(src_data_address + 2 * 2 * i * sizeof(int), split_data_address);
     }
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(phi::make_ddim({6, 4}),
@@ -357,7 +361,8 @@ TEST(DenseTensor, Chunk) {
       EXPECT_EQ(src_data_address + 2 * 2 * i * sizeof(int), split_data_address);
     }
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   {
     phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(phi::make_ddim({6, 4}),

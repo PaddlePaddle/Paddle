@@ -23,7 +23,8 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 __global__ void SerializeStringsData(const phi::dtype::pstring* src_str,
                                      uint8_t* strings_data,
                                      int32_t* strings_offset,
@@ -83,6 +84,9 @@ int GetAllStringsSize(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   phi::backends::gpu::GpuMemcpyAsync(
       &num, nums_ptr, sizeof(int), hipMemcpyDeviceToHost, dev_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+  phi::backends::gpu::GpuMemcpyAsync(
+      &num, nums_ptr, sizeof(int), musaMemcpyDeviceToHost, dev_ctx.stream());
 #else
   phi::backends::gpu::GpuMemcpyAsync(
       &num, nums_ptr, sizeof(int), cudaMemcpyDeviceToHost, dev_ctx.stream());
@@ -146,7 +150,8 @@ void DeserializeOnCPU(const Context& dev_ctx,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void SerializeOnGPU(const phi::GPUContext& dev_ctx,
                     const StringTensor& src,
                     DenseTensor* dst) {
@@ -179,6 +184,9 @@ void DeserializeOnGPU(const phi::GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   phi::backends::gpu::GpuMemcpySync(
       &numel, strings_data, sizeof(numel), hipMemcpyDeviceToHost);
+#elif defined(PADDLE_WITH_MUSA)
+  phi::backends::gpu::GpuMemcpySync(
+      &numel, strings_data, sizeof(numel), musaMemcpyDeviceToHost);
 #else
   phi::backends::gpu::GpuMemcpySync(
       &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);

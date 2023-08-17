@@ -63,6 +63,8 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   if (reduce_op == "SUM" || reduce_op == "MEAN") {
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_output, 0, memset_bytes);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(p_output, 0, memset_bytes);
 #else
     cudaMemset(p_output, 0, memset_bytes);
 #endif
@@ -138,6 +140,8 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_dst_count, 0, input_size * sizeof(int));
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(p_dst_count, 0, input_size * sizeof(int));
 #else
     cudaMemset(p_dst_count, 0, input_size * sizeof(int));
 #endif

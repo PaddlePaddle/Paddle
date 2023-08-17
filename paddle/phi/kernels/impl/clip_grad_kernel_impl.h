@@ -18,7 +18,7 @@
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/clip_kernel.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #endif
 
@@ -47,7 +47,7 @@ void ClipGradKernel(const Context& dev_ctx,
   auto max_ = max.to<T>();
   auto min_ = min.to<T>();
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   std::vector<const DenseTensor*> ins = {&out_grad, &x};
   std::vector<DenseTensor*> outs = {x_grad};
   auto functor = ClipGradFunctor<T>(min_, max_);

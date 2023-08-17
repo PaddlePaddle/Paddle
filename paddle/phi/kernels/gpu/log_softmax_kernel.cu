@@ -47,6 +47,13 @@ PD_REGISTER_KERNEL(log_softmax,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+#elif defined(PADDLE_WITH_MUSA)
+PD_REGISTER_KERNEL(log_softmax,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogSoftmaxKernel,
+                   float,
+                   phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(log_softmax,
                    GPU,

@@ -49,7 +49,8 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    bool) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(full_batch_size_like,
                    GPU,
                    ALL_LAYOUT,

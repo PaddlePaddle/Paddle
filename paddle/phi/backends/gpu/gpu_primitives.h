@@ -16,6 +16,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -58,7 +61,8 @@ CUDA_ATOMIC_WRAPPER(Add, int64_t) {
       static_cast<unsigned long long int>(val));            // NOLINT
 }
 
-#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600)
+#if defined(__HIPCC__) || defined(__MUSACC__) || \
+    (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600)
 USE_CUDA_ATOMIC(Add, double);
 #else
 CUDA_ATOMIC_WRAPPER(Add, double) {

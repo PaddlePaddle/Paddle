@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <mutex>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 

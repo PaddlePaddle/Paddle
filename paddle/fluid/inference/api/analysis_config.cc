@@ -32,7 +32,8 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
@@ -100,7 +101,8 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   int device_id,
                                   Precision precision_mode) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
@@ -630,7 +632,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 }
 
 void AnalysisConfig::EnableCUDNN() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   use_cudnn_ = use_gpu_;
 #else
   LOG(ERROR) << "Please compile with CUDA first to use cuDNN";
@@ -928,7 +931,8 @@ void AnalysisConfig::Update() {
   }
 
   if (use_gpu() && use_cudnn_) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (!enable_ir_optim_) {
       LOG(ERROR) << "EnableCUDNN() only works when IR optimization is enabled.";
     } else {
@@ -1145,7 +1149,8 @@ void AnalysisConfig::SetCpuMathLibraryNumThreads(
 }
 
 float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // Get the GPU memory details and calculate the fraction of memory for the
   // GPU memory pool.
   size_t gpu_total, gpu_available;

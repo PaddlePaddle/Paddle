@@ -641,7 +641,8 @@ void BuildOpFuncList(const platform::Place& place,
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key = framework::TransPhiKernelKeyToOpKernelType(
             op_with_kernel->GetExpectedKernelType(exec_ctx));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
         if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
                                            expected_kernel_key.data_type_)) {
           expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;

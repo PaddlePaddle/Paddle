@@ -48,7 +48,8 @@ BufferedReader::BufferedReader(
       buffer_size_(buffer_size),
       pin_memory_(pin_memory) {
   VLOG(1) << "BufferedReader";
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (platform::is_gpu_place(place_) && !pin_memory) {
     int dev_idx = place_.device;
     compute_stream_ =
@@ -118,7 +119,8 @@ void BufferedReader::ReadAsync(size_t i) {
       return -1UL;
     }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)  // @{ Group GPU Place
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)  // @{ Group GPU Place
     if (platform::is_gpu_place(place_)) {
       TensorVec &cuda = cuda_buffer_[i];
       if (cuda.empty()) {
@@ -197,6 +199,11 @@ void BufferedReader::ReadAsync(size_t i) {
             hipEventRecord(events_[i].get(), compute_stream_));
         PADDLE_ENFORCE_GPU_SUCCESS(
             hipStreamWaitEvent(stream_.get(), events_[i].get(), 0));
+#elif defined(PADDLE_WITH_MUSA)
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            musaEventRecord(events_[i].get(), compute_stream_));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            musaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(
             cudaEventRecord(events_[i].get(), compute_stream_));

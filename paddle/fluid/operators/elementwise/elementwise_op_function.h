@@ -32,9 +32,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #ifdef __NVCC__
 #include <cuda.h>
+#elif defined(__MUSACC__)
+#include <musa.h>
 #elif defined(__HIPCC__)
 #include <hip/hip_runtime.h>
 #endif
@@ -311,7 +313,7 @@ static void FusedElemwiseAndActBroadcast2CPU(const T *x,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T,
           typename CompoundFunctor,
           bool BcastY,
@@ -516,7 +518,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
     int h = pre;
     int w = n;
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
                                         CompoundFunctor,
                                         BcastY,
@@ -551,7 +553,7 @@ void FusedElemwiseAndActComputeWithBroadcast(
     }
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
       FusedElemwiseAndActBroadcast2CUDA<T,
                                         CompoundFunctor,
                                         BcastY,
@@ -880,7 +882,7 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T,
           typename DX_OP,
           typename DY_OP,
@@ -1273,7 +1275,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     int w = n;
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
       FusedElemwiseAndActGradBroadcast1CUDA<T,
                                             DX_OP,
                                             DY_OP,
@@ -1324,7 +1326,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     }
   } else {
     if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
       FusedElemwiseAndActGradBroadcast2CUDA<T,
                                             DX_OP,
                                             DY_OP,
@@ -1594,7 +1596,7 @@ static inline std::vector<int> GetReduceDim(const framework::DDim &in,
   return phi::funcs::GetReduceDim(in, out, axis);
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 
 template <typename T, typename Functor>
 void GetGradXAndYOut(const phi::GPUContext &dev_ctx,

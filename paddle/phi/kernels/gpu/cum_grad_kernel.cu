@@ -22,6 +22,9 @@
 #ifdef __NVCC__
 #include <cub/cub.cuh>
 #endif
+#ifdef __MUSACC__
+#include <cub/cub.cuh>
+#endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
@@ -63,7 +66,7 @@ void CumsumGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(cumsum_grad,
                    GPU,
                    ALL_LAYOUT,

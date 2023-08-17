@@ -26,6 +26,10 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/backends/dynload/nvrtc.h"
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include "paddle/phi/backends/dynload/musa_driver.h"
+#include "paddle/phi/backends/dynload/musartc.h"
+#endif
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/hiprtc.h"
 #include "paddle/phi/backends/dynload/rocm_driver.h"
@@ -48,7 +52,8 @@ class DeviceCode {
   std::string kernel_;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 class GPUDeviceCode : public DeviceCode {
  public:
   explicit GPUDeviceCode(const Place& place,
@@ -68,6 +73,8 @@ class GPUDeviceCode : public DeviceCode {
  private:
 #ifdef PADDLE_WITH_HIP
   bool CheckNVRTCResult(hiprtcResult result, std::string function);
+#elif defined(PADDLE_WITH_MUSA)
+  bool CheckNVRTCResult(mtrtcResult result, std::string function);
 #else
   bool CheckNVRTCResult(nvrtcResult result, std::string function);
 #endif
@@ -82,6 +89,9 @@ class GPUDeviceCode : public DeviceCode {
 #ifdef PADDLE_WITH_HIP
   hipModule_t module_;
   hipFunction_t function_;
+#elif defined(PADDLE_WITH_MUSA)
+  MUmodule module_;
+  MUfunction function_;
 #else
   CUmodule module_;
   CUfunction function_;

@@ -478,7 +478,7 @@ struct DeviceIndependenceTensorOperations {
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(phi::make_ddim(out_shape));
     if (platform::is_gpu_place(context.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
       // ElementwiseComputeEx in two branches.
       ElementwiseComputeEx<SubFunctor<InT>, DeviceContext, InT>(

@@ -221,6 +221,9 @@ struct LookupTableV2GradCUDAFunctor {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx.stream()));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx.stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx.stream()));

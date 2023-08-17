@@ -48,7 +48,8 @@ DECLARE_bool(benchmark);
 DECLARE_uint64(executor_log_deps_every_microseconds);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 PHI_DECLARE_bool(enable_new_ir_in_executor);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 

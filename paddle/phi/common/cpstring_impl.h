@@ -26,7 +26,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/macros.h"
 
-#if (defined(__NVCC__) || defined(__HIPCC__))
+#if (defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__))
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
 #define HOST __host__
@@ -77,7 +77,8 @@ HOSTDEVICE static inline uint32_t swap32(uint32_t host_int) {
 }
 #endif
 
-#if PD_PSTRING_LITTLE_ENDIAN || (defined(__NVCC__) || defined(__HIPCC__))
+#if PD_PSTRING_LITTLE_ENDIAN || \
+    (defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__))
 #define PD_le32toh(x) x
 #else  // PD_PSTRING_LITTLE_ENDIAN
 #define PD_le32toh(x) swap32(x)
@@ -209,7 +210,7 @@ HOSTDEVICE static inline void *PD_Malloc(size_t size) { return malloc(size); }
 HOSTDEVICE static inline void *PD_Realloc(void *ptr,
                                           size_t old_size UNUSED,
                                           size_t new_size) {
-#if (defined(__NVCC__) || defined(__HIPCC__))
+#if (defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__))
   if (old_size >= new_size) {
     return ptr;
   }

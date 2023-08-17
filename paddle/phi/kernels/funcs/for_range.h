@@ -42,7 +42,7 @@ struct ForRange<phi::CPUContext> {
   size_t limit_;
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 
 template <typename Function>
 __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {

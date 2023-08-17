@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
+#if !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
+// HIP and MUSA not support cusolver
 
 #include "paddle/phi/kernels/svd_kernel.h"
 
@@ -265,4 +265,4 @@ PD_REGISTER_KERNEL(svd,  // cuda_only
                    float,
                    double) {}
 
-#endif  // not PADDLE_WITH_HIP
+#endif  // not PADDLE_WITH_HIP && not PADDLE_WITH_MUSA

@@ -1452,7 +1452,8 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 }
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)  // @{ Group Blas MKLML: BatchedGEMMWithHead
+    !defined(PADDLE_WITH_HIP) &&                                \
+    !defined(PADDLE_WITH_MUSA)  // @{ Group Blas MKLML: BatchedGEMMWithHead
 template <>
 template <typename T>
 void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
@@ -1698,7 +1699,7 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
 }
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
 // @{ Group Blas MKLML: MatMulWithHead
 /*
  * Multiple two matrixes with multiple heads

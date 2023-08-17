@@ -19,7 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
@@ -84,7 +85,8 @@ int main(int argc, char** argv) {
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (strstr(undefok_str, "enable_gpu_memory_usage_log")) {
     VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
     FLAGS_enable_gpu_memory_usage_log = true;

@@ -161,7 +161,8 @@ class OpHandleBase {
   // See https://github.com/PaddlePaddle/Paddle/pull/32283
   bool is_variant_scope_ = false;
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::unordered_map<int, gpuEvent_t> events_;
 #endif
 

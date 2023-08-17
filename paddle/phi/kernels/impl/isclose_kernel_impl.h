@@ -86,7 +86,7 @@ struct IscloseFunctor<phi::CPUContext, T> {
   }
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 template <typename T>
 __global__ void IscloseCUDAKernel(const T* in_data,
                                   const T* other_data,
@@ -145,6 +145,8 @@ struct IscloseFunctor<phi::GPUContext, T> {
     grid = (grid > block) ? block : grid;
 #ifdef PADDLE_WITH_HIP
     hipMemset(out_data, true, num * sizeof(bool));
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemset(out_data, true, num * sizeof(bool));
 #else
     cudaMemset(out_data, true, num * sizeof(bool));
 #endif

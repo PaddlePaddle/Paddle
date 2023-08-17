@@ -34,7 +34,8 @@ void AMaxKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(
     amax, CPU, ALL_LAYOUT, phi::AMaxKernel, float, double, int, int64_t) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(
     amax, GPU, ALL_LAYOUT, phi::AMaxKernel, float, double, int, int64_t) {}
 #endif

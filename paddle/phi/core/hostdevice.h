@@ -18,6 +18,10 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#ifdef __MUSACC__
+#include <musa_runtime.h>
+#endif
+
 #if defined(__xpu__)
 #include <xpu/runtime.h>
 
@@ -26,7 +30,8 @@
 #include "xpu/kernel/math.h"
 #endif
 
-#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__))
+#if (defined(__CUDACC__) || defined(__HIPCC__) || defined(__MUSACC__) || \
+     defined(__xpu__))
 #define HOSTDEVICE __host__ __device__
 #define DEVICE __device__
 #define HOST __host__

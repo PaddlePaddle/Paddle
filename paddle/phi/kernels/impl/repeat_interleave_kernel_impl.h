@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -29,7 +29,7 @@
 
 namespace phi {
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
 using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input,
@@ -81,7 +81,7 @@ void RepeatInterleaveKernel(const Context& ctx,
     output_dim[dim] = index_size;
     out->Resize(phi::make_ddim(output_dim));
     phi::IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   } else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
@@ -160,7 +160,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
       out->Resize(phi::make_ddim(output_dim));
       IndexSelectInner<Context, T, int64_t>(ctx, &x_copy, index, out, dim);
     }
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__)
   } else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];

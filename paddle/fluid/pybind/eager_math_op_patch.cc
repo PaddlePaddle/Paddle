@@ -138,7 +138,8 @@ std::set<phi::DataType> _complex_dtypes{
 
 void SetDevice(paddle::platform::Place place) {
   if (paddle::platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     phi::backends::gpu::SetDeviceId(place.device);
     VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
             << " from " << static_cast<int>(place.device);

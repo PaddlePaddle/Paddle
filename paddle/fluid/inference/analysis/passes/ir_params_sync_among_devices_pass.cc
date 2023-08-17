@@ -36,7 +36,8 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   // The parameters are on the cpu, therefore, synchronization is not necessary.
   if (!argument->use_gpu()) return;
@@ -209,7 +210,8 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       argument->scope_valid(),
       true,
       platform::errors::PreconditionNotMet("The scope field should be valid"));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (argument->use_gpu_valid()) {
     CopyParamsToGpu(argument);
   }
