@@ -323,7 +323,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         self.dropout = 0.0
         self.causal = False
 
-    def test_dot_scale_product(self):
+    def get_out_data(self):
         # test dynamic
         paddle.disable_static()
 
@@ -363,11 +363,21 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
         out_.backward()
+        return out, out_
+
+    def test_dot_scale_product(self):
+        out, out_ = self.get_out_data()
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
     def test_dot_scale_product_flag(self):
         paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-        self.test_dot_scale_product()
+
+        out1, out1_ = self.get_out_data()
+        np.testing.assert_allclose(out1.numpy(), out1_, rtol=5e-03, atol=1e-03)
+
+        out2, out2_ = self.get_out_data()
+        np.equal(out1.numpy(), out2.numpy())
+
         paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
 
 
