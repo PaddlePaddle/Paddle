@@ -345,8 +345,8 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 }
 
 void NewIRInterpreter::UpdateNcclOpNum() {
-  static std::set<std::string> nccl_op_set = {"pd.sync_batch_norm_",
-                                              "pd.sync_batch_norm"};
+  static std::set<std::string> nccl_op_set = {
+      "pd.sync_batch_norm_", "pd.sync_batch_norm", "pd.sync_batch_norm_grad"};
   int64_t nccl_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
