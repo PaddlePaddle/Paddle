@@ -70,11 +70,11 @@ class XPUTestFlipOp(XPUOpTestWrapper):
             self.in_shape = (4, 5, 6)
             self.axis = [0, 1]
 
-    class  TestFlipOp3(TestFlipOp):
+    class TestFlipOp3(TestFlipOp):
         def init_test_case(self):
             self.in_shape = (3, 2, 3)
             self.axis = [1, 2]
-    
+
     class TestFlipOp4(TestFlipOp):
         def init_test_case(self):
             self.in_shape = (3, 2, 2, 3)
