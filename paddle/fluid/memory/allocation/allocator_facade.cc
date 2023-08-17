@@ -1109,38 +1109,30 @@ class AllocatorFacadePrivate {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 
-  void InitNaiveBestFitCustomDeviceAllocator(platform::CustomPlace p,
-                                             phi::stream::stream_t stream) {
-    custom_device_allocators_[p][stream] =
-        std::make_shared<NaiveBestFitAllocator>(p);
-  }
-
   void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
                                            bool allow_free_idle_chunk) {
-    auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
-    VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
-            << FLAGS_auto_growth_chunk_size_in_mb;
     auto custom_allocator =
         std::make_shared<paddle::memory::allocation::CustomAllocator>(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        custom_allocator,
-        phi::DeviceManager::GetMinChunkSize(p),
-        /*chunk_size=*/chunk_size,
-        allow_free_idle_chunk);
+        custom_allocator, 1, 1, allow_free_idle_chunk);
   }
 
   void WrapStreamSafeCustomDeviceAllocatorForDefault() {
     for (auto& pair : allocators_) {
       auto& place = pair.first;
       if (platform::is_custom_place(place)) {
-        std::shared_ptr<StreamSafeCustomDeviceAllocator>&& allocator =
+        std::shared_ptr<Allocator>& allocator = pair.second;
+        auto alignment = phi::DeviceManager::GetMinChunkSize(place);
+        if (alignment > 1) {
+          allocator = std::make_shared<AlignedAllocator>(allocator, alignment);
+        }
+        default_stream_safe_custom_device_allocators_[place] =
             std::make_shared<StreamSafeCustomDeviceAllocator>(
-                pair.second,
+                allocator,
                 place,
                 /* default_stream = */
                 nullptr);
-        pair.second = allocator;
-        default_stream_safe_custom_device_allocators_[place] = allocator;
+        pair.second = default_stream_safe_custom_device_allocators_[place];
         VLOG(8) << "WrapStreamSafeCustomDeviceAllocatorForDefault for " << place
                 << ", allocator address = " << pair.second.get();
       }
@@ -1149,22 +1141,27 @@ class AllocatorFacadePrivate {
 
   void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
                                            phi::stream::stream_t stream) {
-    auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
-    VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
-            << FLAGS_auto_growth_chunk_size_in_mb;
-
     auto custom_allocator =
         std::make_shared<paddle::memory::allocation::CustomAllocator>(p);
-    auto alignment = phi::DeviceManager::GetMinChunkSize(p);
     custom_device_allocators_[p][stream] =
         std::make_shared<AutoGrowthBestFitAllocator>(
-            custom_allocator, alignment, chunk_size, allow_free_idle_chunk_);
+            custom_allocator, 1, 1, allow_free_idle_chunk_);
+  }
+
+  void InitNaiveBestFitCustomDeviceAllocator(platform::CustomPlace p,
+                                             phi::stream::stream_t stream) {
+    custom_device_allocators_[p][stream] =
+        std::make_shared<NaiveBestFitAllocator>(p);
   }
 
   void WrapStreamSafeCustomDeviceAllocator(platform::CustomPlace p,
                                            phi::stream::stream_t stream) {
     std::shared_ptr<Allocator>& allocator =
         custom_device_allocators_[p][stream];
+    auto alignment = phi::DeviceManager::GetMinChunkSize(p);
+    if (alignment > 1) {
+      allocator = std::make_shared<AlignedAllocator>(allocator, alignment);
+    }
     allocator =
         std::make_shared<StreamSafeCustomDeviceAllocator>(allocator, p, stream);
   }

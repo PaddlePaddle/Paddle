@@ -463,7 +463,7 @@ class BuddyAllocatorList {
       allocators_[dev_id] = std::make_unique<BuddyAllocator>(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::CustomAllocator(device_type_, dev_id)),
-          phi::DeviceManager::GetMinChunkSize(place),
+          1,
           phi::DeviceManager::GetMaxChunkSize(place),
           phi::DeviceManager::GetExtraPaddingSize(place),
           device_type_);
