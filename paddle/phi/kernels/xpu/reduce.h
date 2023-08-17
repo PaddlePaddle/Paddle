@@ -41,14 +41,14 @@ static void GetReduceDims(const DDim& xdims,
 
   if (reduce_all) {
     for (int i = 0; i < input_dim_size; ++i) {
-      reduce_dims.push_back(i);
+      reduce_dims->push_back(i);
     }
   } else {
     std::set<int> dims_set(true_dims.begin(), true_dims.end());
     for (auto i = 0; i < input_dim_size; i++) {
       if (dims_set.find(i) != dims_set.end()) {
         if (xdims[i] != 1) {
-          reduce_dims.push_back(i);
+          reduce_dims->push_back(i);
         }
       }
     }
