@@ -94,6 +94,12 @@ else()
 endif()
 
 cc_test(
-  test_fc_mkldnn_op
-  SRCS test_fc_mkldnn_op.cc
-  DEPS executor op_registry phi scope device_context)
+  test_fc_mkldnn_different_shape
+  SRCS test_fc_mkldnn_different_shape.cc
+  DEPS fleet_executor
+       naive_executor
+       op_registry
+       phi
+       scope
+       device_context
+       enforce)

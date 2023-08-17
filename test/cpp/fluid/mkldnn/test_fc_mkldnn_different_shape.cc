@@ -16,9 +16,10 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <fstream>
 #include <iostream>
-#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/naive_executor.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
 paddle::framework::VarDesc *Data(
@@ -38,7 +39,6 @@ paddle::framework::VarDesc *Data(
 TEST(FCMklDNNOp, ChangeSrcShape) {
   paddle::platform::Place place = paddle::platform::CPUPlace();
   paddle::framework::Scope scope;
-  auto executor = paddle::framework::Executor(place);
   paddle::framework::ProgramDesc program;
 
   auto *block = program.MutableBlock(0);
