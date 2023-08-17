@@ -490,7 +490,9 @@ template <typename T>
 HOSTDEVICE inline complex<T> floor(const complex<T>& a) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return complex<T>({thrust::floor(a.real()), thrust::floor(a.imag())});
+  T real = thrust::modulus<T>(thrust::floor_div<T>(a.real(), 1.0f), 1.0f);
+  T imag = thrust::modulus<T>(thrust::floor_div<T>(a.imag(), 1.0f), 1.0f);
+  return complex<T>({real, imag});
 #else
   return complex<T>({std::floor(a.real()), std::floor(a.imag())});
 #endif
