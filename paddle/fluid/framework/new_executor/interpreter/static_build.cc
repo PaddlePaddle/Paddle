@@ -96,7 +96,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
          << ", is_operator_base = " << (item.second >> 6 & 1)
          << ", is_custom_op = " << (item.second >> 5 & 1)
-         << ", use_mkldnn = " << (item.second >> 4 & 1) "]\n";
+         << ", use_mkldnn = " << (item.second >> 4 & 1) << "]\n";
     }
     VLOG(1) << ss.str();
   }
