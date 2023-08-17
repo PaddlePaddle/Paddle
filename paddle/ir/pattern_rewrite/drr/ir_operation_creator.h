@@ -51,7 +51,7 @@ Operation* CreateOperation(const OpCall& op_call,
     // TODO(zyfncg): support attr in build op.
     Operation* reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
         ir_values[0].dyn_cast<ir::OpResult>(),
-        std::vector<int64_t>{16, 3, 4, 16});
+        ir_values[1].dyn_cast<ir::OpResult>());
     res_match_ctx->BindIrValue(
         op_call.outputs()[0]->name(),
         std::make_shared<IrValue>(reshape_op->result(0)));
