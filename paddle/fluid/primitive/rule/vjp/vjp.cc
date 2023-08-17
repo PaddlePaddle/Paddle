@@ -116,7 +116,7 @@ std::vector<std::vector<paddle::Tensor>> add_vjp(
     const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       2, std::vector<paddle::Tensor>(1));
-  // get mean_grad res.
+  // get add_grad res.
   std::tuple<Tensor, Tensor> op_res =
       backend::add_grad<primitive::DescTensor>(x, y, out_grad, axis);
 
@@ -155,19 +155,21 @@ std::vector<std::vector<paddle::Tensor>> divide_vjp(
     const Tensor& out_grad,
     int axis,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  // TODO(wanghao107): support prim and no prim
-  // mode in this function when pd_api code_gen
-  // is ready;
-  VLOG(3)
-      << std::boolalpha << "IsBwdPrimEnabled: "
-      << paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled();
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       2, std::vector<paddle::Tensor>(1));
-  // get divide_grad  prim mode res.
-  Tensor* dx = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
-  Tensor* dy = !stop_gradients[1][0] ? &vjp_res[0][0] : nullptr;
-  details::divide_grad<DescTensor>(x, y, out, out_grad, axis, dx, dy);
-
+  if (!paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled()) {
+    // get divide_grad res.
+    std::tuple<Tensor, Tensor> op_res =
+        backend::divide_grad<primitive::DescTensor>(x, y, out, out_grad, axis);
+    // construct vjp result by op result and stop_gradients info
+    vjp_res[0][0] = !stop_gradients[0][0] ? std::get<0>(op_res) : vjp_res[0][0];
+    vjp_res[1][0] = !stop_gradients[1][0] ? std::get<1>(op_res) : vjp_res[1][0];
+  } else {
+    // get divide_grad  prim mode res.
+    Tensor* dx = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
+    Tensor* dy = !stop_gradients[1][0] ? &vjp_res[1][0] : nullptr;
+    details::divide_grad<DescTensor>(x, y, out, out_grad, axis, dx, dy);
+  }
   return vjp_res;
 }
 
@@ -178,17 +180,22 @@ std::vector<std::vector<paddle::Tensor>> sum_vjp(
     bool keepdim,
     bool reduce_all,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  // TODO(wanghao107): support prim and no prim
-  // mode in this function when pd_api code_gen
-  // is ready;
-  VLOG(3)
-      << std::boolalpha << "IsBwdPrimEnabled: "
-      << paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled();
   std::vector<std::vector<paddle::Tensor>> vjp_res(
       1, std::vector<paddle::Tensor>(1));
-  // get divide_grad  prim mode res.
-  Tensor* x_grad = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
-  details::sum_grad<DescTensor>(x, out_grad, axis, keepdim, reduce_all, x_grad);
+  if (!paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled()) {
+    // get sum_grad res.
+    Tensor op_res = backend::sum_grad<primitive::DescTensor>(
+        x, out_grad, axis, keepdim, reduce_all);
+    // construct vjp result by op result and stop_gradients info
+    if (!stop_gradients[0][0]) {
+      vjp_res[0][0] = op_res;
+    }
+  } else {
+    // get divide_grad  prim mode res.
+    Tensor* x_grad = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
+    details::sum_grad<DescTensor>(
+        x, out_grad, axis, keepdim, reduce_all, x_grad);
+  }
   return vjp_res;
 }
 

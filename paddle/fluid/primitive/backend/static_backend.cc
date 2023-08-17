@@ -96,7 +96,6 @@ Tensor multiply<DescTensor>(const Tensor& x, const Tensor& y) {
 
 template <>
 Tensor elementwise_pow<DescTensor>(const Tensor& x, const Tensor& y) {
-  VLOG(3) << "elementwise_pow static api";
   ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
                            ->getValue()
                            .dyn_cast<ir::OpResult>();
@@ -138,7 +137,6 @@ Tensor full<DescTensor>(const IntArray& shape,
                         const Scalar& value,
                         phi::DataType dtype,
                         phi::Place place) {
-  VLOG(3) << "full static api";
   ir::OpResult op_res =
       paddle::dialect::full(shape.GetData(), value.to<float>(), dtype, place);
   return Tensor(std::make_shared<primitive::DescTensor>(op_res));
@@ -197,6 +195,52 @@ std::tuple<Tensor, Tensor> add_grad<DescTensor>(const Tensor& x,
   return std::make_tuple(
       Tensor(std::make_shared<primitive::DescTensor>(std::get<0>(op_res))),
       Tensor(std::make_shared<primitive::DescTensor>(std::get<1>(op_res))));
+}
+
+template <>
+std::tuple<Tensor, Tensor> divide_grad<DescTensor>(const Tensor& x,
+                                                   const Tensor& y,
+                                                   const Tensor& out,
+                                                   const Tensor& out_grad,
+                                                   int axis) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult y_res = std::static_pointer_cast<DescTensor>(y.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult out_res = std::static_pointer_cast<DescTensor>(out.impl())
+                             ->getValue()
+                             .dyn_cast<ir::OpResult>();
+  ir::OpResult out_grad_res =
+      std::static_pointer_cast<DescTensor>(out_grad.impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>();
+
+  std::tuple<ir::OpResult, ir::OpResult> op_res =
+      paddle::dialect::divide_grad(x_res, y_res, out_res, out_grad_res, axis);
+
+  return std::make_tuple(
+      Tensor(std::make_shared<DescTensor>(std::get<0>(op_res))),
+      Tensor(std::make_shared<DescTensor>(std::get<1>(op_res))));
+}
+
+template <>
+Tensor sum_grad<DescTensor>(const Tensor& x,
+                            const Tensor& out_grad,
+                            const IntArray& axis,
+                            bool keepdim,
+                            bool reduce_all) {
+  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>();
+  ir::OpResult out_grad_res =
+      std::static_pointer_cast<DescTensor>(out_grad.impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::sum_grad(
+      x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
+  return Tensor(std::make_shared<DescTensor>(op_res));
 }
 }  // namespace backend
 }  // namespace primitive

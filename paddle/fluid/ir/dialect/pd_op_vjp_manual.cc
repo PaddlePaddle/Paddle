@@ -126,7 +126,9 @@ std::vector<std::vector<ir::OpResult>> SumOp::Vjp(
   Tensor x(std::make_shared<primitive::DescTensor>(op_obj.x()));
   Tensor out_grad(std::make_shared<primitive::DescTensor>(out_grads[0][0]));
 
-  IntArray axis = op->attribute("axis")
+  IntArray axis = op_obj.axis()
+                      .GetDefiningOp()
+                      ->attribute("value")
                       .dyn_cast<paddle::dialect::IntArrayAttribute>()
                       .data();
   bool keepdim = op->attribute("keepdim").dyn_cast<ir::BoolAttribute>().data();

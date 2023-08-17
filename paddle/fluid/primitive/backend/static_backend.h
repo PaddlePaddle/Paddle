@@ -82,6 +82,20 @@ Tensor expand(const Tensor& x, const IntArray& shape);
 template <typename T>
 Tensor tile(const Tensor& x, const IntArray& repeat_times = {});
 
+template <typename T>
+std::tuple<Tensor, Tensor> divide_grad(const Tensor& x,
+                                       const Tensor& y,
+                                       const Tensor& out,
+                                       const Tensor& out_grad,
+                                       int axis);
+
+template <typename T>
+Tensor sum_grad(const Tensor& x,
+                const Tensor& out_grad,
+                const IntArray& axis,
+                bool keepdim,
+                bool reduce_all);
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle
