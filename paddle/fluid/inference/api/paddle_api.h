@@ -137,9 +137,9 @@ class PD_INFER_DECL PaddleBuf {
 
   ~PaddleBuf() { Free(); }
   PaddleBuf& operator=(const PaddleBuf&);
-  PaddleBuf& operator=(PaddleBuf&&);
+  PaddleBuf& operator=(PaddleBuf&&) noexcept;
   PaddleBuf() = default;
-  PaddleBuf(PaddleBuf&& other);
+  PaddleBuf(PaddleBuf&& other) noexcept;
 
  private:
   void Free();
