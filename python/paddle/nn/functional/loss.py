@@ -2679,30 +2679,31 @@ def cross_entropy(
 
         .. code-block:: python
 
-            >>> # soft labels with label_smoothing
-            >>> import paddle
-            >>> paddle.seed(99999)
-            >>> axis = -1
-            >>> ignore_index = -100
-            >>> N = 4
-            >>> C = 3
-            >>> shape = [N, C]
-            >>> label_smoothing = 0.4
-            >>> reduction='mean'
-            >>> weight = None
-            >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
-            >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(logits,
-            ...                                                       labels,
-            ...                                                       soft_label=True,
-            ...                                                       axis=axis,
-            ...                                                       weight=weight,
-            ...                                                       label_smoothing=label_smoothing,
-            ...                                                       reduction=reduction)
-            >>> print(paddle_loss_mean)
+            # soft labels with label_smoothing
+            import paddle
+            paddle.seed(99999)
+            axis = -1
+            ignore_index = -100
+            N = 4
+            C = 3
+            shape = [N, C]
+            label_smoothing = 0.4
+            reduction='mean'
+            weight = None
+            logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            labels /= paddle.sum(labels, axis=axis, keepdim=True)
+            paddle_loss_mean = paddle.nn.functional.cross_entropy(
+                                                                    logits,
+                                                                    labels,
+                                                                    soft_label=True,
+                                                                    axis=axis,
+                                                                    weight=weight,
+                                                                    label_smoothing=label_smoothing,
+                                                                    reduction=reduction)
+            print(paddle_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            1.11024986)
+            1.12226281)
 
     """
 
