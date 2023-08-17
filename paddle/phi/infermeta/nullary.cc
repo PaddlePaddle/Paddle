@@ -63,7 +63,11 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
 void DataInferMeta(const std::string& name,
                    const phi::IntArray& shape,
                    phi::DataType data_type,
-                   MetaTensor* out) {}
+                   MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape.GetData());
+  out->set_dims(out_dims);
+  out->set_dtype(data_type);
+}
 
 void EyeInferMeta(const Scalar& num_rows,
                   const Scalar& num_columns,
