@@ -64,7 +64,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
  private:
   bool PatternGraphMatch(
       SourceOp op,
-      std::shared_ptr<MatchContextImpl> source_pattern_match_ctx) const {
+      const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     // Match
     auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
