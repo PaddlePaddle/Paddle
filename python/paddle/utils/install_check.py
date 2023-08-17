@@ -81,7 +81,7 @@ def _is_xpu_available():
         return False
 
 
-def _run_dygraph_single(use_cuda, use_xpu):
+def _run_dygraph_single(use_cuda, use_xpu, use_custom, custom_device_name):
     """
     Testing the simple network in dygraph mode using one CPU/GPU/XPU.
 
@@ -94,6 +94,8 @@ def _run_dygraph_single(use_cuda, use_xpu):
         paddle.set_device('gpu')
     elif use_xpu:
         paddle.set_device('xpu')
+    elif use_custom:
+        paddle.set_device(custom_device_name)
     else:
         paddle.set_device('cpu')
     weight_attr = paddle.ParamAttr(
@@ -116,7 +118,7 @@ def _run_dygraph_single(use_cuda, use_xpu):
     opt.step()
 
 
-def _run_static_single(use_cuda, use_xpu):
+def _run_static_single(use_cuda, use_xpu, use_custom, custom_device_name):
     """
     Testing the simple network with executor running directly, using one CPU/GPU/XPU.
 
@@ -139,6 +141,8 @@ def _run_static_single(use_cuda, use_xpu):
             place = paddle.CUDAPlace(0)
         elif use_xpu:
             place = paddle.XPUPlace(0)
+        elif use_custom:
+            place = paddle.CustomPlace(custom_device_name, 0)
         else:
             place = paddle.CPUPlace()
 
@@ -229,11 +233,21 @@ def run_check():
 
     use_cuda = False
     use_xpu = False
+    use_custom = False
+    custom_device_name = None
 
     if paddle.is_compiled_with_cuda():
         use_cuda = _is_cuda_available()
     elif paddle.is_compiled_with_xpu():
         use_xpu = _is_xpu_available()
+    elif len(paddle.framework.core.get_all_custom_device_type()) > 0:
+        use_custom = True
+        if len(paddle.framework.core.get_all_custom_device_type()) > 1:
+            logging.warning(
+                "More than one kind of custom devices detected, but run check would only be executed on {}.".format(
+                    paddle.framework.core.get_all_custom_device_type()[0]
+                )
+            )
 
     if use_cuda:
         device_str = "GPU"
@@ -241,17 +255,31 @@ def run_check():
     elif use_xpu:
         device_str = "XPU"
         device_list = paddle.static.xpu_places()
+    elif use_custom:
+        device_str = paddle.framework.core.get_all_custom_device_type()[0]
+        custom_device_name = device_str
+        device_list = list(
+            range(
+                paddle.framework.core.get_custom_device_count(
+                    custom_device_name
+                )
+            )
+        )
     else:
         device_str = "CPU"
         device_list = paddle.static.cpu_places(device_count=1)
     device_count = len(device_list)
 
-    _run_static_single(use_cuda, use_xpu)
-    _run_dygraph_single(use_cuda, use_xpu)
+    _run_static_single(use_cuda, use_xpu, use_custom, custom_device_name)
+    _run_dygraph_single(use_cuda, use_xpu, use_custom, custom_device_name)
     print(f"PaddlePaddle works well on 1 {device_str}.")
 
     try:
         if len(device_list) > 1:
+            if use_custom:
+                import os
+
+                os.environ['PADDLE_DISTRI_BACKEND'] = "xccl"
             _run_parallel(device_list)
             print(
                 "PaddlePaddle works well on {} {}s.".format(

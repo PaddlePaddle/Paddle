@@ -437,6 +437,18 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_DISTRI_BACKEND": backend,  # only add here, other will be auto
         }
+    elif backend == 'xccl':
+        from paddle.framework import core
+
+        custom_device_name = core.get_all_custom_device_type()[0]
+        proc_env = {
+            f"FLAGS_selected_{custom_device_name}s": "%s"
+            % ",".join([str(g) for g in trainer.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+        }
     else:
         raise ValueError("backend must be one of 'gloo, nccl, bkcl'")
 
