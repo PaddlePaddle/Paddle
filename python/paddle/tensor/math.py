@@ -5011,19 +5011,36 @@ def atan2(x, y, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            [
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
             'atan2',
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            [
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64' 'complex64',
+                'complex128',
+            ],
             'atan2',
         )
 
         helper = LayerHelper('atan2', **locals())
         inputs = {'X1': x, 'X2': y}
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(
+            dtype=_complex_to_real_dtype(x.dtype)
+        )
         helper.append_op(type='atan2', inputs=inputs, outputs={'Out': out})
         return out
 

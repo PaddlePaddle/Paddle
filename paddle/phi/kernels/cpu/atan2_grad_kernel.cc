@@ -13,7 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/impl/atan2_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(atan2_grad,
@@ -22,4 +27,6 @@ PD_REGISTER_KERNEL(atan2_grad,
                    phi::Atan2GradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

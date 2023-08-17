@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/atan2_kernel_impl.h"
 
 PD_REGISTER_KERNEL(atan2,
@@ -25,6 +28,8 @@ PD_REGISTER_KERNEL(atan2,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
