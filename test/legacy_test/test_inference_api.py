@@ -203,8 +203,10 @@ class TestInferenceBaseAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or paddle.get_cudnn_version() < 8100,
-    "core is not compiled with CUDA and cudnn version need larger than or equal to 8100",
+    not core.is_compiled_with_cuda()
+    or paddle.get_cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "share_external_data_bf16 requires cudnn >= 8.1 and CUDA_ARCH >= 8",
 )
 class TestInferenceShareExternalDataAPI(unittest.TestCase):
     def get_config(self, model, params):
