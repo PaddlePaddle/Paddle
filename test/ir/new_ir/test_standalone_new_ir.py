@@ -344,6 +344,8 @@ class TestNewIrConcatDygraph(unittest.TestCase):
         gold_res = np.ones([4], dtype="float32") * 2
         np.testing.assert_array_equal(z.numpy(), gold_res)
 
+        print("fin")
+
 
 if __name__ == "__main__":
     paddle.enable_static()
