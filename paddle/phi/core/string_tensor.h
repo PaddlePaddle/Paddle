@@ -48,7 +48,7 @@ class StringTensor : public TensorBase,
 
   /// \brief Because string tensor is a resource handle, we provide a default
   /// move constructor to support move semantics.
-  StringTensor(StringTensor&& other) noexcept = default;
+  StringTensor(StringTensor&& other) = default;
 
   StringTensor(const StringTensor& other);
 
