@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.incubate.nn.functional import masked_multihead_attention
 
 
