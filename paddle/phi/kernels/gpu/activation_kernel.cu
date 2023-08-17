@@ -261,7 +261,10 @@ PD_REGISTER_KERNEL(exp,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+		   phi::dtype::complex<float>,
+		   phi::dtype::complex<double>) {}
+
 PD_REGISTER_KERNEL(expm1,
                    GPU,
                    ALL_LAYOUT,
@@ -271,7 +274,10 @@ PD_REGISTER_KERNEL(expm1,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+		   phi::dtype::complex<float>,
+		   phi::dtype::complex<double>) {}
+
 PD_REGISTER_KERNEL(square,
                    GPU,
                    ALL_LAYOUT,

@@ -211,7 +211,9 @@ PD_REGISTER_KERNEL(exp,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+		   phi::dtype::complex<float>,
+		   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(expm1,
                    CPU,
@@ -221,7 +223,9 @@ PD_REGISTER_KERNEL(expm1,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+		   phi::dtype::complex<float>,
+		   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
