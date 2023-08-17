@@ -100,7 +100,7 @@ def _check_op_results(op_name, orig_outs, new_outs, orig_vars, dst_vars):
 
 def decompose(
     program,
-    replaced_var,
+    source_vars,
     blacklist=frozenset(),
     whitelist=frozenset(),
 ):
@@ -113,14 +113,17 @@ def decompose(
     The finally set that will be decomposed is:
         (block.ops & ops have decomposite rule & whitelist) - blacklist
 
+    Note:
+        All variables must be contained inside the given program.
+
     Args:
         program (Program): The program to be processed.
-        replaced_var (list[OpResult]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
+        source_vars (list[OpResult]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
         blacklist (frozenset): The Operators that will be exclude when decomposed into primitives.
         whitelist (frozenset): Only the operators in whitelist will be decomposed into primitives.
 
-    Return:
-        new_var (list): A list contains all vars which replace origin ones in replaced_var.
+    Returns:
+        dst_vars (list): A list contains all vars which replace origin ones in source_vars.
     """
     if not isinstance(program, Program):
         raise TypeError(f"Expect type Program, but got type {type(program)}.")
@@ -149,9 +152,13 @@ def decompose(
         op_filter = lambda x: x.name() in whitelist
     else:
         op_filter = lambda x: True
-    dst_vars = [None] * len(replaced_var)
+    dst_vars = [None] * len(source_vars)
     orig_vars = {}
-    for idx, item in enumerate(replaced_var):
+    for idx, item in enumerate(source_vars):
+        if not isinstance(item, ir.OpResult):
+            raise TypeError(
+                f"Each var in dst_vars should map corresponding var in source_vars, but got type {type(item)} in {source_vars}."
+            )
         orig_vars[item] = idx
     with ir.core.program_guard(program):
         _decompose_subgraph(
@@ -163,7 +170,7 @@ def decompose(
     for item in dst_vars:
         if not isinstance(item, ir.OpResult):
             raise TypeError(
-                f"Each var in dst_vars should map corresponding var in replaced_var, but got type {type(item)} in {dst_vars}."
+                f"Each var in dst_vars should map corresponding var in source_vars, but got type {type(item)} in {dst_vars}."
             )
     logging.debug(
         "Decompose composite forward ops finish: {}".format(
