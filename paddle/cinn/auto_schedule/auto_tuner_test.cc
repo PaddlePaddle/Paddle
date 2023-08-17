@@ -105,7 +105,7 @@ class TestAutoTuner : public ::testing::Test {
   virtual void ApplyTunedAndRun(const TuningResult& result) {
     // build runtime program with tuning result
     context.with_instantiate_variables = true;
-    context.Apply(result);
+    context.ApplyTuningResult(result);
     ASSERT_EQ(1, context.groups.size());
     ASSERT_EQ(1, context.lowered_funcs.size());
     VLOG(6) << "Print lowered_funcs before building";

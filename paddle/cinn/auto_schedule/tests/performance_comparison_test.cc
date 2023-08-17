@@ -195,7 +195,7 @@ class PerformanceTester : public ::testing::Test {
 
     CompilationContext& context = graph_compiler->GetCompilationContext();
     context.with_instantiate_variables = true;
-    context.Apply(tuning_result);
+    context.ApplyTuningResult(tuning_result);
 
     VLOG(3) << "===========================Auto Schedule LoweredFunc "
                "Begin===========================";
