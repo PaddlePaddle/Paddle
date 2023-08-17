@@ -51,25 +51,27 @@ def accuracy(input, label, k=1, correct=None, total=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.static as static
-            import paddle.nn.functional as F
-            paddle.enable_static()
-            data = static.data(name="input", shape=[-1, 32, 32], dtype="float32")
-            label = static.data(name="label", shape=[-1,1], dtype="int")
-            fc_out = static.nn.fc(x=data, size=10)
-            predict = F.softmax(x=fc_out)
-            result = static.accuracy(input=predict, label=label, k=5)
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
-            x = np.random.rand(3, 32, 32).astype("float32")
-            y = np.array([[1],[0],[1]])
-            output = exe.run(feed={"input": x,"label": y},
-                             fetch_list=[result])
-            print(output)
-            # [array(0.33333334, dtype=float32)]
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.static as static
+            >>> import paddle.nn.functional as F
+            >>> np.random.seed(2023)
+            >>> paddle.seed(2023)
+            >>> paddle.enable_static()
+            >>> data = static.data(name="input", shape=[-1, 32, 32], dtype="float32")
+            >>> label = static.data(name="label", shape=[-1,1], dtype="int")
+            >>> fc_out = static.nn.fc(x=data, size=10)
+            >>> predict = F.softmax(x=fc_out)
+            >>> result = static.accuracy(input=predict, label=label, k=5)
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(static.default_startup_program())
+            >>> x = np.random.rand(3, 32, 32).astype("float32")
+            >>> y = np.array([[1],[0],[1]])
+            >>> output = exe.run(feed={"input": x,"label": y},
+            ...                     fetch_list=[result])
+            >>> print(output)
+            [array(0.6666667, dtype=float32)]
 
     """
     if in_dygraph_mode():
@@ -177,51 +179,59 @@ def auc(
 
     Examples:
         .. code-block:: python
+            :name: example-1
 
-            import paddle
-            import numpy as np
-            paddle.enable_static()
+            >>> import paddle
+            >>> import numpy as np
+            >>> np.random.seed(2023)
+            >>> paddle.seed(2023)
+            >>> paddle.enable_static()
 
-            data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
-            label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            fc_out = paddle.static.nn.fc(x=data, size=2)
-            predict = paddle.nn.functional.softmax(x=fc_out)
-            result=paddle.static.auc(input=predict, label=label)
+            >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
+            >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")
+            >>> fc_out = paddle.static.nn.fc(x=data, size=2)
+            >>> predict = paddle.nn.functional.softmax(x=fc_out)
+            >>> result=paddle.static.auc(input=predict, label=label)
 
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
 
-            exe.run(paddle.static.default_startup_program())
-            x = np.random.rand(3,32,32).astype("float32")
-            y = np.array([1,0,1])
-            output= exe.run(feed={"input": x,"label": y},
-                             fetch_list=[result[0]])
-            print(output)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> x = np.random.rand(3,32,32).astype("float32")
+            >>> y = np.array([1,0,1])
+            >>> output= exe.run(feed={"input": x,"label": y},
+            ...                     fetch_list=[result[0]])
+            >>> print(output)
+            [array(0.)]
 
-            #you can learn the usage of ins_tag_weight by the following code.
-            '''
-            import paddle
-            import numpy as np
-            paddle.enable_static()
+        .. code-block:: python
+            :name: example-2
 
-            data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
-            label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='float64')
-            fc_out = paddle.static.nn.fc(x=data, size=2)
-            predict = paddle.nn.functional.softmax(x=fc_out)
-            result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
+            >>> #you can learn the usage of ins_tag_weight by the following code.
+            >>> import paddle
+            >>> import numpy as np
+            >>> np.random.seed(2023)
+            >>> paddle.seed(2023)
+            >>> paddle.enable_static()
 
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
+            >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
+            >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")
+            >>> ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='float64')
+            >>> fc_out = paddle.static.nn.fc(x=data, size=2)
+            >>> predict = paddle.nn.functional.softmax(x=fc_out)
+            >>> result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
 
-            exe.run(paddle.static.default_startup_program())
-            x = np.random.rand(3,32,32).astype("float32")
-            y = np.array([1,0,1])
-            z = np.array([1,0,1])
-            output= exe.run(feed={"input": x,"label": y, "ins_tag_weight":z},
-                             fetch_list=[result[0]])
-            print(output)
-            '''
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> x = np.random.rand(3,32,32).astype("float32")
+            >>> y = np.array([1,0,1])
+            >>> z = np.array([1,0,1])
+            >>> output= exe.run(feed={"input": x,"label": y, "ins_tag_weight":z},
+            ...                     fetch_list=[result[0]])
+            >>> print(output)
+            [array(0.)]
 
     """
     helper = LayerHelper("auc", **locals())
@@ -350,25 +360,46 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         local_prob(Tensor): Local sum of predicted ctr
         local_q(Tensor): Local sum of q value
 
-    Examples 1:
+    Examples:
         .. code-block:: python
+            :name: example-1
 
-            import paddle
-            paddle.enable_static()
-            data = paddle.static.data(name="data", shape=[32, 32], dtype="float32")
-            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int32")
-            predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(input=data, size=1))
-            auc_out = paddle.static.ctr_metric_bundle(input=predict, label=label)
-    Examples 2:
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> data = paddle.static.data(name="data", shape=[-1, 32], dtype="float32")
+            >>> label = paddle.static.data(name="label", shape=[-1, 1], dtype="int32")
+            >>> predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(x=data, size=1))
+            >>> auc_out = paddle.static.ctr_metric_bundle(input=predict, label=label)
+
         .. code-block:: python
+            :name: example-2
 
-            import paddle
-            paddle.enable_static()
-            data = paddle.static.data(name="data", shape=[32, 32], dtype="float32")
-            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int32")
-            predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(input=data, size=1))
-            ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
-            auc_out = paddle.static.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> data = paddle.static.data(name="data", shape=[-1, 32], dtype="float32")
+            >>> label = paddle.static.data(name="label", shape=[-1, 1], dtype="int32")
+            >>> predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(x=data, size=1))
+            >>> ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='int64')
+            >>> auc_out = paddle.static.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
+
+        .. code-block:: python
+            :name: example-pass
+
+            >>> print(1+1)
+            2
+
+        .. code-block:: python
+            :name: example-skip
+
+            >>> # doctest: +SKIP
+            >>> print(1+1)
+            0
+
+        .. code-block:: python
+            :name: example-fail
+
+            >>> print(1+1)
+            0
 
     """
     if ins_tag_weight is None:

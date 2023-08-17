@@ -24,6 +24,7 @@ for example, you can run cpu version testing like this:
 
 import functools
 import logging
+import multiprocessing
 import os
 import platform
 import re
@@ -180,8 +181,8 @@ class Xdoctester(DocTester):
         verbose=2,
         patch_global_state=True,
         patch_tensor_place=True,
-        patch_float_precision=True,
-        patch_float_digits=5,
+        patch_float_precision=5,
+        use_multiprocessing=True,
         **config,
     ):
         self.debug = debug
@@ -192,14 +193,10 @@ class Xdoctester(DocTester):
         self.verbose = verbose
         self.config = {**XDOCTEST_CONFIG, **(config or {})}
 
-        if patch_global_state:
-            _patch_global_state(self.debug, self.verbose)
-
-        if patch_tensor_place:
-            _patch_tensor_place()
-
-        if patch_float_precision:
-            _patch_float_precision(patch_float_digits)
+        self._patch_global_state = patch_global_state
+        self._patch_tensor_place = patch_tensor_place
+        self._patch_float_precision = patch_float_precision
+        self._use_multiprocessing = use_multiprocessing
 
         self.docstring_parser = functools.partial(
             xdoctest.core.parse_docstr_examples, style=self.style
@@ -215,6 +212,16 @@ class Xdoctester(DocTester):
         )
 
         self.directive_prefix = 'xdoctest'
+
+    def _patch_xdoctest(self):
+        if self._patch_global_state:
+            _patch_global_state(self.debug, self.verbose)
+
+        if self._patch_tensor_place:
+            _patch_tensor_place()
+
+        if self._patch_float_precision is not None:
+            _patch_float_precision(self._patch_float_precision)
 
     def convert_directive(self, docstring: str) -> str:
         """Replace directive prefix with xdoctest"""
@@ -282,7 +289,32 @@ class Xdoctester(DocTester):
         return examples_to_test, examples_nocode
 
     def _execute_xdoctest(self, examples_to_test, examples_nocode):
+        if self._use_multiprocessing:
+            # use `spawn` instead of `fork`
+            ctx = multiprocessing.get_context('spawn')
+            queue = ctx.Queue()
+            process = ctx.Process(
+                target=self._execute_with_queue,
+                args=(
+                    queue,
+                    examples_to_test,
+                    examples_nocode,
+                ),
+            )
+            process.start()
+            process.join()
+
+            return queue.get()
+
+        else:
+            return self._execute(examples_to_test, examples_nocode)
+
+    def _execute(self, examples_to_test, examples_nocode):
         """Run xdoctest for each example"""
+        # patch xdoctest first in each process
+        self._patch_xdoctest()
+
+        # run the xdoctest
         test_results = []
         for _, example in examples_to_test.items():
             start_time = time.time()
@@ -295,7 +327,7 @@ class Xdoctester(DocTester):
                     passed=result['passed'],
                     skipped=result['skipped'],
                     failed=result['failed'],
-                    test_msg=result['exc_info'],
+                    test_msg=str(result['exc_info']),
                     time=end_time - start_time,
                 )
             )
@@ -304,6 +336,9 @@ class Xdoctester(DocTester):
             test_results.append(TestResult(name=str(example), nocode=True))
 
         return test_results
+
+    def _execute_with_queue(self, queue, examples_to_test, examples_nocode):
+        queue.put(self._execute(examples_to_test, examples_nocode))
 
     def print_summary(self, test_results, whl_error=None):
         summary_success = []

@@ -225,8 +225,9 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('set_default', tr_1.name)
         self.assertTrue(tr_1.passed)
 
+        # tr_2 is passed, because of multiprocessing
         self.assertIn('after_set_default', tr_2.name)
-        self.assertFalse(tr_2.passed)
+        self.assertTrue(tr_2.passed)
 
         # test new default global_exec
         doctester = Xdoctester(
@@ -321,8 +322,9 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('enable_static', tr_1.name)
         self.assertTrue(tr_1.passed)
 
+        # tr_2 is passed, because of multiprocessing
         self.assertIn('after_enable_static', tr_2.name)
-        self.assertFalse(tr_2.passed)
+        self.assertTrue(tr_2.passed)
 
         # test new default global_exec
         doctester = Xdoctester(
@@ -780,7 +782,7 @@ class TestGetTestResults(unittest.TestCase):
 
         test_capacity = {'cpu'}
         doctester = Xdoctester(
-            style='freeform', target='codeblock', patch_float_precision=False
+            style='freeform', target='codeblock', patch_float_precision=None
         )
         doctester.prepare(test_capacity)
 
@@ -1815,6 +1817,70 @@ class TestGetTestResults(unittest.TestCase):
         self.assertFalse(tr_0.passed)
         self.assertTrue(tr_0.skipped)
         self.assertFalse(tr_0.failed)
+
+    def test_multiprocessing_xdoctester(self):
+        docstrings_to_test = {
+            'static_0': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import numpy as np
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> data = paddle.static.data(name='X', shape=[None, 2, 28, 28], dtype='float32')
+            """,
+            'static_1': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import numpy as np
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        tr_0, tr_1 = test_results
+
+        self.assertIn('static_0', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('static_1', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(use_multiprocessing=False)
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        tr_0, tr_1 = test_results
+
+        self.assertIn('static_0', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('static_1', tr_1.name)
+        self.assertFalse(tr_1.passed)
+        self.assertTrue(tr_1.failed)
 
 
 if __name__ == '__main__':
