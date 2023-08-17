@@ -40,7 +40,7 @@ using cinn::common::float16;
 
 std::unique_ptr<Program> GraphCompiler::Build(const std::string& code) {
   utils::RecordEvent("GraphCompiler::Build", utils::EventType::kGraph);
-  compilation_context_.attached_source_code = code;
+  compilation_context_.SetAttachedSourceCode(code);
   compilation_context_.with_instantiate_variables = true;
 
   auto&& result = Build(&compilation_context_);
@@ -62,10 +62,14 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
                      utils::EventType::kOrdinary);
 
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
-  auto result = (*parallel_compiler_.get())();
+  CompilationResult result = (*parallel_compiler_.get())();
 
   // Dump compilation result
   backends::CompilationInfoDumper dumper(result);
+
+  if (context->stage != CompilationStage::DEFAULT) {
+    return result;
+  }
 
   if (context->remove_unused_variables) {
     RemoveInvalidVariables(context, result.instructions);
@@ -77,15 +81,9 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
   }
   VLOG(2) << "Compile With Parallel Compiler Done!";
 
-  CompilationResult compilation_result;
-  compilation_result.status = result.status;
-  compilation_result.message = result.message;
-  compilation_result.runtime_program =
+  result.runtime_program =
       std::make_unique<Program>(context->scope, std::move(result.instructions));
-  compilation_result.lowered_funcs = std::move(result.lowered_funcs);
-  compilation_result.source_codes = std::move(result.source_codes);
-  compilation_result.source_ptxs = std::move(result.source_ptxs);
-  return compilation_result;
+  return result;
 }
 
 CompilationResult GraphCompiler::Lowering() {
@@ -100,13 +98,8 @@ CompilationResult GraphCompiler::Lowering(CompilationContext* context) {
   context->stage = CompilationStage::LOWERING;
   // Compile with parallel compiler
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
-  auto result = (*parallel_compiler_.get())();
-  // Get compile result
-  CompilationResult compilation_result;
-  compilation_result.status = result.status;
-  compilation_result.message = result.message;
-  compilation_result.lowered_funcs = std::move(result.lowered_funcs);
-  return compilation_result;
+  CompilationResult result = (*parallel_compiler_.get())();
+  return result;
 }
 
 CompilationResult GraphCompiler::CodegenAndJit() {
@@ -121,15 +114,8 @@ CompilationResult GraphCompiler::CodegenAndJit(CompilationContext* context) {
   context->stage = CompilationStage::CODEGEN_AND_JIT;
   // Compile with parallel compiler
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
-  auto result = (*parallel_compiler_.get())();
-  // Get compile result
-  CompilationResult compilation_result;
-  compilation_result.status = result.status;
-  compilation_result.message = result.message;
-  compilation_result.lowered_funcs = std::move(result.lowered_funcs);
-  compilation_result.source_codes = std::move(result.source_codes);
-  compilation_result.source_ptxs = std::move(result.source_ptxs);
-  return compilation_result;
+  CompilationResult result = (*parallel_compiler_.get())();
+  return result;
 }
 
 CompilationResult GraphCompiler::BuildInstruction() {
@@ -144,16 +130,8 @@ CompilationResult GraphCompiler::BuildInstruction(CompilationContext* context) {
   context->stage = CompilationStage::BUILD_INSTRUCTION;
   // Compile with parallel compiler
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
-  auto result = (*parallel_compiler_.get())();
-  // Get compile result
-  CompilationResult compilation_result;
-  compilation_result.status = result.status;
-  compilation_result.message = result.message;
-  compilation_result.lowered_funcs = std::move(result.lowered_funcs);
-  compilation_result.source_codes = std::move(result.source_codes);
-  compilation_result.source_ptxs = std::move(result.source_ptxs);
-  compilation_result.instructions = std::move(result.instructions);
-  return compilation_result;
+  CompilationResult result = (*parallel_compiler_.get())();
+  return result;
 }
 
 void GraphCompiler::InstantiateVariables(CompilationContext* context) {

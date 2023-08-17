@@ -18,12 +18,24 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-void CompilationContext::Apply(
+void CompilationContext::ApplyTuningResult(
     const auto_schedule::TuningResult& tuning_result) {
   // assign options with TuningResult directly
   groups.assign(tuning_result.subgraphs.begin(), tuning_result.subgraphs.end());
   lowered_funcs.assign(tuning_result.function_groups.begin(),
                        tuning_result.function_groups.end());
+}
+
+void CompilationContext::SetAttachedSourceCode(const std::string& code) {
+  attached_source_code = code;
+}
+
+void CompilationResult::InsertErrorMsgTo(std::vector<std::string>* arr,
+                                         const std::string& msg,
+                                         const int times) {
+  for (int i = 0; i < times; ++i) {
+    arr->emplace_back(msg);
+  }
 }
 
 }  // namespace framework

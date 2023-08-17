@@ -19,6 +19,7 @@
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
@@ -253,12 +254,11 @@ TEST(GraphCompilerTest, TestLowering) {
   GraphCompiler gc(context);
   CompilationResult result = gc.Lowering();
 
-  LOG(INFO) << "Runtime program status: "
-            << (result.runtime_program.get() == nullptr);
-  LOG(INFO) << "Lowered function size: " << result.lowered_funcs.size();
-  LOG(INFO) << "Source code size: " << result.source_codes.size();
-  LOG(INFO) << "Source ptx size: " << result.source_ptxs.size();
-  LOG(INFO) << "Instruction size: " << result.instructions.size();
+  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  CHECK_GT(result.lowered_funcs.size(), 0);
+  CHECK_EQ(result.source_codes.size(), 0);
+  CHECK_EQ(result.source_ptxs.size(), 0);
+  CHECK_EQ(result.instructions.size(), 0);
 }
 
 TEST(GraphCompilerTest, TestCodegenAndJit) {
@@ -278,12 +278,11 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   GraphCompiler gc(context);
   CompilationResult result = gc.CodegenAndJit();
 
-  LOG(INFO) << "Runtime program status: "
-            << (result.runtime_program.get() == nullptr);
-  LOG(INFO) << "Lowered function size: " << result.lowered_funcs.size();
-  LOG(INFO) << "Source code size: " << result.source_codes.size();
-  LOG(INFO) << "Source ptx size: " << result.source_ptxs.size();
-  LOG(INFO) << "Instruction size: " << result.instructions.size();
+  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  CHECK_GT(result.lowered_funcs.size(), 0);
+  CHECK_GT(result.source_codes.size(), 0);
+  CHECK_GT(result.source_ptxs.size(), 0);
+  CHECK_EQ(result.instructions.size(), 0);
 }
 
 TEST(GraphCompilerTest, TestBuildInstruction) {
@@ -303,12 +302,11 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   GraphCompiler gc(context);
   CompilationResult result = gc.BuildInstruction();
 
-  LOG(INFO) << "Runtime program status: "
-            << (result.runtime_program.get() == nullptr);
-  LOG(INFO) << "Lowered function size: " << result.lowered_funcs.size();
-  LOG(INFO) << "Source code size: " << result.source_codes.size();
-  LOG(INFO) << "Source ptx size: " << result.source_ptxs.size();
-  LOG(INFO) << "Instruction size: " << result.instructions.size();
+  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  CHECK_GT(result.lowered_funcs.size(), 0);
+  CHECK_GT(result.source_codes.size(), 0);
+  CHECK_GT(result.source_ptxs.size(), 0);
+  CHECK_GT(result.instructions.size(), 0);
 }
 
 #endif

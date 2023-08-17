@@ -26,6 +26,7 @@
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -115,29 +116,54 @@ void ParallelCompiler::LaunchTask() {
 
 CompilationResult ParallelCompiler::MergeResult() {
   CompilationResult res;
+  res.status = CompilationStatus::SUCCESS;
   for (int i = 0; i < tasks_.size(); ++i) {
     auto& task = tasks_[i];
-    if (task.status != CompilationStatus::SUCCESS) {
-      LOG(WARNING) << "Compile fail on task " << i << ", corresponds to group "
-                   << task.start_gidx << " - " << task.stop_gidx;
+    if (task.status == CompilationStatus::LOWERING_FAIL) {
+      LOG(WARNING) << "Lowering fail on task " << i
+                   << ", corresponds to group [" << task.start_gidx << " - "
+                   << task.stop_gidx << ")";
+      LOG(WARNING) << "Error message from task" << i << ": " << task.message;
       res.status = task.status;
       res.message = task.message;
-      return std::move(res);
+    } else {
+      for (auto& lowered_func : task.lowered_funcs) {
+        res.lowered_funcs.emplace_back(lowered_func);
+      }
     }
-    for (auto& lowered_func : task.lowered_funcs) {
-      res.lowered_funcs.emplace_back(lowered_func);
+    if (task.status == CompilationStatus::CODEGEN_JIT_FAIL) {
+      LOG(WARNING) << "Codegen and jit fail on task " << i
+                   << ", corresponds to group [" << task.start_gidx << " - "
+                   << task.stop_gidx << ")";
+      LOG(WARNING) << "Error message from task" << i << ": " << task.message;
+      res.status = task.status;
+      res.message = task.message;
+      res.InsertErrorMsgTo(
+          &res.source_codes, task.message, task.stop_gidx - task.start_gidx);
+      res.InsertErrorMsgTo(
+          &res.source_ptxs, task.message, task.stop_gidx - task.start_gidx);
+    } else {
+      for (auto& source_code : task.source_codes) {
+        res.source_codes.emplace_back(source_code);
+      }
+      for (auto& source_ptx : task.source_ptxs) {
+        res.source_ptxs.emplace_back(source_ptx);
+      }
     }
-    for (auto& source_code : task.source_codes) {
-      res.source_codes.emplace_back(source_code);
-    }
-    for (auto& source_ptx : task.source_ptxs) {
-      res.source_ptxs.emplace_back(source_ptx);
-    }
-    for (auto& instruction : task.instructions) {
-      res.instructions.emplace_back(std::move(instruction));
+    if (task.status == CompilationStatus::INSTUCTION_FAIL) {
+      LOG(WARNING) << "Build instruction fail on task " << i
+                   << ", corresponds to group [" << task.start_gidx << " - "
+                   << task.stop_gidx << ")";
+      LOG(WARNING) << "Error message from task" << i << ": " << task.message;
+      res.status = task.status;
+      res.message = task.message;
+    } else {
+      for (auto& instruction : task.instructions) {
+        res.instructions.emplace_back(std::move(instruction));
+      }
     }
   }
-  return res;
+  return std::move(res);
 }
 
 void ParallelCompiler::Task::Lowering() {
@@ -190,8 +216,14 @@ void ParallelCompiler::Task::CodegenAndJit() {
 
     VLOG(3) << "Host Code:\n" << hmodule;
     VLOG(3) << "Device Code:\n" << dmodule;
-    backends::CodeGenCUDA_Dev codegen(context->target);
-    auto cuda_c = codegen.Compile(dmodule);
+    std::string cuda_c;
+    if (context->attached_source_code.empty()) {
+      backends::CodeGenCUDA_Dev codegen(context->target);
+      cuda_c = codegen.Compile(dmodule);
+    } else {
+      VLOG(4) << "Codegen and jit with attached source code.";
+      cuda_c = context->attached_source_code;
+    }
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
     source_codes.emplace_back(cuda_c);

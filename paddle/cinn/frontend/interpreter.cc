@@ -130,7 +130,7 @@ void Interpreter::Impl::Build(const Target& target,
                           graph_compiler_.get());
     auto_schedule::TuningOptions tuning_options;
     auto_schedule::TuningResult tuning_result = auto_tuner.Tune(tuning_options);
-    context.Apply(tuning_result);
+    context.ApplyTuningResult(tuning_result);
   }
   graph_compiler_ = std::make_unique<hlir::framework::GraphCompiler>(context);
   runtime_program_ = graph_compiler_->Build();

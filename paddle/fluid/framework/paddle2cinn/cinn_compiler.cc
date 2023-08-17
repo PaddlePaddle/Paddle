@@ -335,7 +335,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     ::cinn::auto_schedule::TuningOptions tuning_options;
     tuning_options.num_measure_trials = 0;
     auto tuning_result = auto_tuner->Tune(tuning_options);
-    context.Apply(tuning_result);
+    context.ApplyTuningResult(tuning_result);
   }
   context.fetch_var_ids = std::move(fetch_ids);
   context.stream = stream;

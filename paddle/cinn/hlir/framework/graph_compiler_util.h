@@ -24,19 +24,35 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
+// An enum class used to control the compilation stage.
 enum class CompilationStage {
+  // Fully compiled by default, the following compilation result can be
+  // obtained: lowered_function, source_code, source_ptx, instruction and
+  // runtime_program.
   DEFAULT = 0,
+  // Just do lowering, we can only get lowered_function from compilation result.
   LOWERING = 1,
+  // Stop after codegen and jit, we can get: lowered_function, source_code and
+  // source_ptx from compilation result.
   CODEGEN_AND_JIT = 2,
+  // Stop after build instruction, we can get: lowered_function, source_code,
+  // source_ptx and runtime_program from compilation result.
   BUILD_INSTRUCTION = 3,
 };
 
+// An enum class used to represent the compilation status.
 enum class CompilationStatus {
+  // Compile successfully.
   SUCCESS = 0,
+  // An unknown error occurred during compilation.
   UNKNOWN_FAIL = 1,
+  // An error occurred during lowering.
   LOWERING_FAIL = 2,
+  // An error occurred during codegen and jit.
   CODEGEN_JIT_FAIL = 3,
+  // An error occurred during build instruction.
   INSTUCTION_FAIL = 4,
+  // An error occurred during build runtime program.
   PROGRAM_FAIL = 5,
 };
 
@@ -47,9 +63,6 @@ struct CompilationContext {
                      const Target& target)
       : graph(graph), scope(scope), target(target) {}
 
-  // If attached_source_code is not empty, these code will be compiled directly.
-  // When compiling directly, the corresponding stage is
-  // CompilationStage::CODEGEN_AND_JIT.
   std::string attached_source_code = "";
   // Compile options.
   bool with_instantiate_variables = false;
@@ -77,8 +90,13 @@ struct CompilationContext {
   // CUDA stream.
   void* stream = nullptr;
 
+  // Set attached source code, if code is not empty, these codes will replace
+  // the device_module code after SplitCudaAndHostModule.
+  void SetAttachedSourceCode(const std::string& code);
   // Apply results of auto-tune to compile.
-  void Apply(const auto_schedule::TuningResult& tuning_result);
+  // Compilation will start from CompilationStage::CODEGEN_AND_JIT when tuning
+  // results are applied.
+  void ApplyTuningResult(const auto_schedule::TuningResult& tuning_result);
 };
 
 struct CompilationResult {
@@ -89,6 +107,10 @@ struct CompilationResult {
   std::vector<std::string> source_codes;
   std::vector<std::string> source_ptxs;
   std::vector<std::unique_ptr<Instruction>> instructions;
+
+  void InsertErrorMsgTo(std::vector<std::string>* arr,
+                        const std::string& msg,
+                        const int times = 1);
 };
 
 }  // namespace framework
