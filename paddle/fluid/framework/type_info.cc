@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
-#include "paddle/fluid/primitive/type/desc_tensor.h"
+#include "paddle/fluid/primitive/type/static_tensor.h"
 
 namespace phi {
 
@@ -42,7 +42,7 @@ template class TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>;
 template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
 template class TypeInfoTraits<phi::TensorBase,
-                              paddle::primitive::experimental::DescTensor>;
+                              paddle::primitive::experimental::StaticTensor>;
 template class TypeInfoTraits<phi::TensorBase,
                               paddle::framework::VariableRefArray>;
 
