@@ -648,7 +648,7 @@ def expm1(x, name=None):
                 'int32',
                 'int64',
                 'complex64',
-                'complex128'
+                'complex128',
             ],
             'expm1',
         )

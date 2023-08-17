@@ -1195,7 +1195,8 @@ struct ExpGradFunctor<ComplexType<T>>
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    dx.device(d) = dout * x.unaryExpr(Exp<ComplexType<T>>()).unaryExpr(Conj<T>());
+    dx.device(d) =
+        dout * x.unaryExpr(Exp<ComplexType<T>>()).unaryExpr(Conj<T>());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1243,7 +1244,6 @@ struct Expm1GradFunctor<ComplexType<T>>
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
-
 
 // relu(x) = max(x, 0)
 template <typename T>
@@ -2929,7 +2929,6 @@ struct CudaExpGradFunctor<ComplexType<T>>
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-
 template <typename T>
 struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -2993,7 +2992,6 @@ struct CudaExpm1GradFunctor<ComplexType<T>>
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
-
 
 template <typename T>
 struct CudaSinFunctor : public BaseActivationFunctor<T> {

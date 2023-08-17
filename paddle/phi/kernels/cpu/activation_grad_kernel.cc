@@ -341,8 +341,8 @@ PD_REGISTER_KERNEL(exp_grad,
                    double,
                    int,
                    int64_t,
-		   phi::dtype::complex<float>,
-		   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(expm1_grad,
                    CPU,
@@ -351,8 +351,8 @@ PD_REGISTER_KERNEL(expm1_grad,
                    float,
                    double,
                    phi::dtype::float16,
-		   phi::dtype::complex<float>,
-		   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(
     logit_grad, CPU, ALL_LAYOUT, phi::LogitGradKernel, float, double) {}

@@ -148,6 +148,7 @@ class TestExpFp64_Prim(TestExpFp32_Prim):
     def init_dtype(self):
         self.dtype = np.float64
 
+
 class TestExp_Complex64(OpTest):
     def setUp(self):
         self.op_type = "exp"
@@ -186,6 +187,7 @@ class TestExp_Complex64(OpTest):
 
     def convert_input_output(self):
         pass
+
 
 class TestExp_Complex128(OpTest):
     def setUp(self):
@@ -226,6 +228,7 @@ class TestExp_Complex128(OpTest):
     def convert_input_output(self):
         pass
 
+
 class TestExpPrim_ZeroDim(TestExpFp32_Prim):
     def init_shape(self):
         self.shape = []
@@ -258,8 +261,6 @@ class Test_Exp_Op_Int(unittest.TestCase):
             x_expect = np.exp(np_x)
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
-
-
 
 
 class TestParameter:
@@ -385,6 +386,7 @@ class Test_Expm1_Op_Int(unittest.TestCase):
             x_expect = np.expm1(np_x)
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
+
 
 class TestSigmoid(TestActivation):
     def setUp(self):

@@ -484,8 +484,8 @@ HOSTDEVICE inline complex<T> expm1(const complex<T>& a) {
   return complex<T>(thrust::exp(thrust::complex<T>(a)) - 1);
 #else
   // expm1 in C++ does not support complex types
-  return complex<T>(
-	    std::exp(std::complex<T>(a)) - static_cast<std::complex<T>>(1));
+  return complex<T>(std::exp(std::complex<T>(a)) -
+                    static_cast<std::complex<T>>(1));
 #endif
 }
 
