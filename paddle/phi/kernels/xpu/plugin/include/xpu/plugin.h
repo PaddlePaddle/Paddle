@@ -16,7 +16,6 @@
  */
 
 #pragma once
-#include <functional>
 #include "xpu/xdnn.h"
 
 namespace baidu {
