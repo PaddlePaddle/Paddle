@@ -28,8 +28,8 @@ class PADDLE_API CPUContext : public DeviceContext,
                               public TypeInfoTraits<DeviceContext, CPUContext> {
  public:
   CPUContext();
-  CPUContext(CPUContext&&) noexcept;
-  CPUContext& operator=(CPUContext&&) noexcept;
+  CPUContext(CPUContext&&) noexcept = default;
+  CPUContext& operator=(CPUContext&&) noexcept = default;
   explicit CPUContext(const Place&);
   virtual ~CPUContext();
   Eigen::DefaultDevice* eigen_device() const;
