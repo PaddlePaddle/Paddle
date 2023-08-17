@@ -1385,7 +1385,8 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            int quant_round_type,
                            float quant_max_bound,
                            float quant_min_bound,
-                           MetaTensor* out) {
+                           MetaTensor* out,
+                           MetaConfig config) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
@@ -1394,15 +1395,17 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   auto token_num = x_dims[0];
   auto dim = x_dims[1];
 
-  PADDLE_ENFORCE_GT(
-      x_dims[0],
-      0,
-      phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
+  if (!config.is_runtime) {
+    PADDLE_ENFORCE_GT(
+        x_dims[0],
+        0,
+        phi::errors::InvalidArgument("The size of Attr(rows) must > 0"));
 
-  PADDLE_ENFORCE_GT(
-      x_dims[1],
-      0,
-      phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+    PADDLE_ENFORCE_GT(
+        x_dims[1],
+        0,
+        phi::errors::InvalidArgument("The size of Attr(cols) must > 0"));
+  }
 
   if (act_method == "geglu" || act_method == "swiglu") {
     PADDLE_ENFORCE_EQ(
