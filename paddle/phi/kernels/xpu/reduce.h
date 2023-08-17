@@ -25,6 +25,36 @@
 
 namespace phi {
 
+static void GetReduceDims(const DDim& xdims,
+                          const std::vector<int64_t>& dims,
+                          bool reduce_all,
+                          std::vector<int>* reduce_dims) {
+  const auto& input_dim_size = xdims.size();
+  std::vector<int> true_dims;
+  for (size_t i = 0; i < dims.size(); ++i) {
+    if (dims[i] < 0) {
+      true_dims.push_back(dims[i] + input_dim_size);
+    } else {
+      true_dims.push_back(dims[i]);
+    }
+  }
+
+  if (reduce_all) {
+    for (int i = 0; i < input_dim_size; ++i) {
+      reduce_dims.push_back(i);
+    }
+  } else {
+    std::set<int> dims_set(true_dims.begin(), true_dims.end());
+    for (auto i = 0; i < input_dim_size; i++) {
+      if (dims_set.find(i) != dims_set.end()) {
+        if (xdims[i] != 1) {
+          reduce_dims.push_back(i);
+        }
+      }
+    }
+  }
+}
+
 template <typename Context, typename T>
 int XPUReduce(const Context& dev_ctx,
               const DenseTensor& x,
@@ -43,35 +73,15 @@ int XPUReduce(const Context& dev_ctx,
 
   const auto* x_data = x.data<T>();
   auto* y_data = out->data<T>();
-  const auto& input_dim_size = x.dims().size();
-  std::vector<int> true_dims;
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] < 0) {
-      true_dims.push_back(dims[i] + input_dim_size);
-    } else {
-      true_dims.push_back(dims[i]);
-    }
-  }
 
-  std::vector<int> reduce_dims;
-  std::vector<int> xdims((input_dim_size));
+  const auto& input_dim_size = x.dims().size();
+  std::vector<int> xdims(input_dim_size);
   for (int i = 0; i < input_dim_size; ++i) {
     xdims[i] = x.dims()[i];
   }
-  if (reduce_all) {
-    for (int i = 0; i < input_dim_size; ++i) {
-      reduce_dims.push_back(i);
-    }
-  } else {
-    std::set<int> dims_set(true_dims.begin(), true_dims.end());
-    for (auto i = 0; i < input_dim_size; i++) {
-      if (dims_set.find(i) != dims_set.end()) {
-        if (x.dims()[i] != 1) {
-          reduce_dims.push_back(i);
-        }
-      }
-    }
-  }
+
+  std::vector<int> reduce_dims;
+  GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
 
   int r = xpu::SUCCESS;
   if (reduce_dims.size() == 0) {
@@ -80,6 +90,59 @@ int XPUReduce(const Context& dev_ctx,
                            reinterpret_cast<XPUType*>(y_data),
                            x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+  } else {
+    r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
+  }
+  return r;
+}
+
+template <typename Context, typename T>
+int FastXPUReduce(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DenseTensor* out,
+                  int op_type,
+                  std::function<int(xpu::Context*,
+                                    const T*,
+                                    T*,
+                                    const std::vector<int>&,
+                                    const std::vector<int>&)> func) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  dev_ctx.template Alloc<T>(out);
+
+  const auto* x_data = x.data<T>();
+  auto* y_data = out->data<T>();
+
+  const auto& input_dim_size = x.dims().size();
+  std::vector<int> xdims(input_dim_size);
+  for (int i = 0; i < input_dim_size; ++i) {
+    xdims[i] = x.dims()[i];
+  }
+
+  std::vector<int> reduce_dims;
+  GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
+
+  int r = xpu::SUCCESS;
+  if (reduce_dims.size() == 0) {
+    r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(x_data),
+                           reinterpret_cast<XPUType*>(y_data),
+                           x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+#ifdef PADDLE_WITH_XPU_PLUGIN
+  } else if (reduce_dims.size() == 1 && reduce_dims[0] == xdims.size() - 1 &&
+             xdims[xdims.size() - 1] <= 832) {
+    r = xpu::plugin::fast_reduce_tiny<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x_data),
+        reinterpret_cast<XPUType*>(y_data),
+        xdims,
+        op_type);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_reduce_tiny");
+#endif
   } else {
     r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
   }
@@ -102,6 +165,17 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
                                reinterpret_cast<XPUType*>(y_data),
                                input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+#ifdef PADDLE_WITH_XPU_PLUGIN
+  } else if (reduce_dims.size() == 1 && reduce_dims[0] == xdims.size() - 1 &&
+             xdims[xdims.size() - 1] <= 832) {
+    int r = xpu::plugin::fast_reduce_tiny<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x_data),
+        reinterpret_cast<XPUType*>(y_data),
+        xdims,
+        0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_reduce_tiny");
+#endif
   } else {
     Functor func;
     func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
@@ -119,33 +193,14 @@ void XPUReduce(const DeviceContext& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
 
   const auto& input_dim_size = x.dims().size();
-  std::vector<int> true_dims;
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] < 0) {
-      true_dims.push_back(dims[i] + input_dim_size);
-    } else {
-      true_dims.push_back(dims[i]);
-    }
-  }
-  std::vector<int> reduce_dims;
-  std::vector<int> xdims((input_dim_size));
+  std::vector<int> xdims(input_dim_size);
   for (int i = 0; i < input_dim_size; ++i) {
     xdims[i] = x.dims()[i];
   }
-  if (reduce_all) {
-    for (int i = 0; i < input_dim_size; ++i) {
-      reduce_dims.push_back(i);
-    }
-  } else {
-    std::set<int> dims_set(true_dims.begin(), true_dims.end());
-    for (auto i = 0; i < input_dim_size; i++) {
-      if (dims_set.find(i) != dims_set.end()) {
-        if (x.dims()[i] != 1) {
-          reduce_dims.push_back(i);
-        }
-      }
-    }
-  }
+
+  std::vector<int> reduce_dims;
+  GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
+
   // no need to cast dtype
   if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {
     // do reduce sum

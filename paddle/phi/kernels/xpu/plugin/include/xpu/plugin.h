@@ -16,6 +16,7 @@
  */
 
 #pragma once
+#include <functional>
 #include "xpu/xdnn.h"
 
 namespace baidu {
@@ -75,6 +76,15 @@ DLL_EXPORT int fast_layer_norm(Context* ctx,
                                float eps,
                                const float* scale,
                                const float* bias);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_tiny(Context* ctx,
+                                const T* x,
+                                T* y,
+                                const std::vector<int>& xshape,
+                                int op_type);
+// op_type: 0 sum, 1 mean, 2 max, 3 min
+
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu

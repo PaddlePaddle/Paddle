@@ -41,8 +41,8 @@ void MaxKernel(const Context& dev_ctx,
                                     reduce_dims);
   };
 
-  int r = XPUReduce<Context, T>(
-      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, f);
+  int r = FastXPUReduce<Context, T>(
+      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, 2, f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_max");
 }
 
