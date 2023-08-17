@@ -3584,6 +3584,10 @@ def _stride_in_no_check_dy2st_diff():
 
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
+    if (
+        op_type == "while"
+    ):  # dont' need check while, while is only a wrapper of inner ops, we will stuck in inner op.
+        return
     if outputs is not None:
         for k, v in outputs.items():
             if isinstance(v, Variable):

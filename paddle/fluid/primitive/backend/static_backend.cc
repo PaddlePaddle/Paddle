@@ -15,63 +15,65 @@
 #include "paddle/fluid/primitive/backend/static_backend.h"
 #include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/fluid/primitive/type/desc_tensor.h"
+#include "paddle/fluid/primitive/type/static_tensor.h"
 
 namespace paddle {
 namespace primitive {
 namespace backend {
 namespace experimental {
 
-using DescTensor = paddle::primitive::experimental::DescTensor;
+using StaticTensor = paddle::primitive::experimental::StaticTensor;
 
 template <>
-Tensor tanh_grad<DescTensor>(const Tensor& out, const Tensor& grad_out) {
-  ir::OpResult out_res = std::static_pointer_cast<DescTensor>(out.impl())
+Tensor tanh_grad<StaticTensor>(const Tensor& out, const Tensor& grad_out) {
+  ir::OpResult out_res = std::static_pointer_cast<StaticTensor>(out.impl())
                              ->getValue()
                              .dyn_cast<ir::OpResult>();
   ir::OpResult grad_out_res =
-      std::static_pointer_cast<DescTensor>(grad_out.impl())
+      std::static_pointer_cast<StaticTensor>(grad_out.impl())
           ->getValue()
           .dyn_cast<ir::OpResult>();
 
   ir::OpResult op_res = paddle::dialect::tanh_grad(out_res, grad_out_res);
 
-  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+  return Tensor(
+      std::make_shared<primitive::experimental::StaticTensor>(op_res));
 }
 
 template <>
-Tensor mean_grad<DescTensor>(const Tensor& x,
-                             const Tensor& out_grad,
-                             const IntArray& axis,
-                             bool keepdim,
-                             bool reduce_all) {
-  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+Tensor mean_grad<StaticTensor>(const Tensor& x,
+                               const Tensor& out_grad,
+                               const IntArray& axis,
+                               bool keepdim,
+                               bool reduce_all) {
+  ir::OpResult x_res = std::static_pointer_cast<StaticTensor>(x.impl())
                            ->getValue()
                            .dyn_cast<ir::OpResult>();
   ir::OpResult out_grad_res =
-      std::static_pointer_cast<DescTensor>(out_grad.impl())
+      std::static_pointer_cast<StaticTensor>(out_grad.impl())
           ->getValue()
           .dyn_cast<ir::OpResult>();
 
   ir::OpResult op_res = paddle::dialect::mean_grad(
       x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
 
-  return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
+  return Tensor(
+      std::make_shared<primitive::experimental::StaticTensor>(op_res));
 }
 
 template <>
-std::tuple<Tensor, Tensor> add_grad<DescTensor>(const Tensor& x,
-                                                const Tensor& y,
-                                                const Tensor& out_grad,
-                                                int axis) {
-  ir::OpResult x_res = std::static_pointer_cast<DescTensor>(x.impl())
+std::tuple<Tensor, Tensor> add_grad<StaticTensor>(const Tensor& x,
+                                                  const Tensor& y,
+                                                  const Tensor& out_grad,
+                                                  int axis) {
+  ir::OpResult x_res = std::static_pointer_cast<StaticTensor>(x.impl())
                            ->getValue()
                            .dyn_cast<ir::OpResult>();
-  ir::OpResult y_res = std::static_pointer_cast<DescTensor>(y.impl())
+  ir::OpResult y_res = std::static_pointer_cast<StaticTensor>(y.impl())
                            ->getValue()
                            .dyn_cast<ir::OpResult>();
   ir::OpResult out_grad_res =
-      std::static_pointer_cast<DescTensor>(out_grad.impl())
+      std::static_pointer_cast<StaticTensor>(out_grad.impl())
           ->getValue()
           .dyn_cast<ir::OpResult>();
 
@@ -79,9 +81,9 @@ std::tuple<Tensor, Tensor> add_grad<DescTensor>(const Tensor& x,
       paddle::dialect::add_grad(x_res, y_res, out_grad_res, axis);
 
   return std::make_tuple(
-      Tensor(std::make_shared<primitive::experimental::DescTensor>(
+      Tensor(std::make_shared<primitive::experimental::StaticTensor>(
           std::get<0>(op_res))),
-      Tensor(std::make_shared<primitive::experimental::DescTensor>(
+      Tensor(std::make_shared<primitive::experimental::StaticTensor>(
           std::get<1>(op_res))));
 }
 }  // namespace experimental

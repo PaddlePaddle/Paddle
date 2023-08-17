@@ -1111,10 +1111,18 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
                             TranslationContext* param_map,
                             const OpDesc& op_desc,
                             ir::Program* program) override {
+    auto op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
+
     std::vector<ir::OpResult> op_inputs;
     auto legacy_input_vars = op_desc.Input("x", true);
 
     auto defining_info = (*param_map)[legacy_input_vars[0]];
+    if (defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, program, defining_info, legacy_input_vars[0]);
+      defining_info = param_map->at(legacy_input_vars[0]).value;
+    }
+
     op_inputs.push_back(defining_info.value);
 
     ir::AttributeMap attribute_map = {
@@ -1123,9 +1131,8 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
                                op_desc.GetAttrIfExists<std::string>("name"))},
     };
 
-    auto create_op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
     ir::Operation* operation =
-        ir::Operation::Create(op_inputs, attribute_map, {}, create_op_info);
+        ir::Operation::Create(op_inputs, attribute_map, {}, op_info);
     program->block()->push_back(operation);
 
     return operation;

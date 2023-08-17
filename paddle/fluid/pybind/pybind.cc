@@ -1420,6 +1420,8 @@ All parameter, weight, gradient are variables in Paddle.
             defalut_val.index() - 1);
       });
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_set_bwd_prim_blacklist",
+        &paddle::prim::PrimCommonUtils::SetPrimBackwardBlacklist);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",
