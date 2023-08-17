@@ -99,7 +99,6 @@ if(WITH_MUSA)
        "gpu/top_k_kernel.cu"
        "gpu/truncated_gaussian_random_kernel.cu"
        "gpudnn/softmax_grad_kernel.cu"
-       "gpudnn/conv_transpose_grad_kernel.cu"
        "gpudnn/pool_grad_kernel.cu"
        "sparse/gpu/softmax_grad_kernel.cu"
        "sparse/gpu/softmax_kernel.cu"

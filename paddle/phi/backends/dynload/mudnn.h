@@ -14,13 +14,14 @@ limitations under the License. */
 
 #pragma once
 #ifdef PADDLE_WITH_MUSA
+#include <mudnn.h>
 
 namespace phi {
 namespace dynload {
 
-extern bool HasCUDNN();
-
 using namespace ::musa::dnn;
+
+extern bool HasCUDNN();
 
 }  // namespace dynload
 }  // namespace phi

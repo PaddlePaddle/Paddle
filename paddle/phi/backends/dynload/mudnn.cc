@@ -14,10 +14,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MUSA
 #include "paddle/phi/backends/dynload/mudnn.h"
 
-#include "paddle/phi/core/enforce.h"
-
-#include "paddle/phi/backends/dynload/mudnn.h"
-
 namespace phi {
 namespace dynload {
 
