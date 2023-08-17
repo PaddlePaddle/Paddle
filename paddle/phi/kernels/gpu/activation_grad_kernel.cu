@@ -398,7 +398,9 @@ PD_REGISTER_KERNEL(exp_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+		   phi::dtype::complex<float>,
+		   phi::dtype::complex<double>) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softshrink_grad, SoftShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_shrink_grad, HardShrinkGradKernel)
@@ -415,7 +417,9 @@ PD_REGISTER_KERNEL(expm1_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+		   phi::dtype::complex<float>,
+		   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(square_grad,
                    GPU,
