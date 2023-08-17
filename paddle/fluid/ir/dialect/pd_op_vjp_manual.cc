@@ -15,7 +15,7 @@
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
-#include "paddle/fluid/primitive/type/desc_tensor.h"
+#include "paddle/fluid/primitive/type/static_tensor.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/phi/common/int_array.h"
 
