@@ -92,13 +92,14 @@ struct RemoveRedundentTransposeFunctor{
     const auto &transpose1 = pat.Op("pd.transpose", {{"perm", pat.Attr("perm_1")}});
     const auto &transpose2 = pat.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
     
-    pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg0")));
+    pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
 
     // Result patterns: 要替换的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &tranpose_continuous = res.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}}); // TODO  先简单用perm2替换
+    const auto &tranpose_continuous = res.Op("pd.transpose",
+     {{"perm", pat.Attr("perm_2")}}); // TODO  先简单用perm2替换
 
-    res.Tensor("ret") = tranpose_continuous(pat.Tensor("arg0"));
+    res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
   }
 };
 
@@ -131,10 +132,10 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::ReluOp>(reshape_op_second.out());
 
   paddle::dialect::TransposeOp transpose_op_first = 
-      builder.Build<paddle::dialect::TransposeOp>(relu_op.out(), std::vector<int>{0, 2, 1});
+      builder.Build<paddle::dialect::TransposeOp>(relu_op.out(), std::vector<int>{0, 2, 1, 3});
 
   paddle::dialect::TransposeOp transpose_op_second = 
-      builder.Build<paddle::dialect::TransposeOp>(transpose_op_first.out(), std::vector<int>{0, 1, 2});
+      builder.Build<paddle::dialect::TransposeOp>(transpose_op_first.out(), std::vector<int>{0, 1, 2, 3});
  
   paddle::dialect::ReluOp relu_op_second = 
       builder.Build<paddle::dialect::ReluOp>(transpose_op_second.out());
@@ -181,7 +182,7 @@ TEST(DrrTest, drr) {
   ir::Builder builder = ir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 7u);
+  EXPECT_EQ(program.block()->size(), 10u);
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
