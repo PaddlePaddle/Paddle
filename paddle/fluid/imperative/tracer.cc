@@ -443,7 +443,7 @@ void Tracer::TraceOp(const std::string& type,
 
     auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
     for (auto& iter : need_backup_inputs2outputs) {
-      paddle::experimental::TransStride(dev_ctx, iter.second, iter.first);
+      paddle::experimental::TransStrideLegacy(dev_ctx, iter.second, iter.first);
     }
   } else {
     TraceOpImpl<egr::EagerVariable>(type,
