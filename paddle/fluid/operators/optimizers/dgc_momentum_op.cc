@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/dgc_momentum_op.h"
-
 #include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -203,6 +203,3 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(dgc_momentum,
                              ops::DGCMomentumOp,
                              ops::DGCMomentumOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    dgc_momentum, CPU, ALL_LAYOUT, ops::DGCMomentumKernel, float) {}

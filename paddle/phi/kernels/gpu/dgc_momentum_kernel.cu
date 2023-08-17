@@ -12,19 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/dialect/shape/shape_dialect.h"
-#include "paddle/ir/dialect/shape/shape_op.h"
+#include "paddle/phi/kernels/dgc_momentum_kernel.h"
 
-namespace ir {
-namespace dialect {
-ShapeDialect::ShapeDialect(IrContext *context)
-    : Dialect(name(), context, TypeId::get<ShapeDialect>()) {
-  initialize();
-}
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/dgc_momentum_kernel_impl.h"
 
-void ShapeDialect::initialize() { RegisterOps<SymbolicDim>(); }
-
-}  // namespace dialect
-}  // namespace ir
-
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::ShapeDialect)
+PD_REGISTER_KERNEL(
+    dgc_momentum, GPU, ALL_LAYOUT, phi::DGCMomentumKernel, float) {}

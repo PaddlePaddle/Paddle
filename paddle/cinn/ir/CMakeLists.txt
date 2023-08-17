@@ -14,7 +14,8 @@ gather_srcs(
   module.cc
   lowered_func.cc
   intrinsic_ops.cc
-  layout.cc)
+  layout.cc
+  schedule_block_graph.cc)
 
 add_subdirectory(op)
 add_subdirectory(test)
