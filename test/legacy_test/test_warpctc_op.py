@@ -537,7 +537,9 @@ class TestWarpCTCOpError(unittest.TestCase):
                 name='label', shape=[16, 3], dtype='int32'
             )
             label_length = paddle.static.data(
-                name='labels_length', shape=[None], dtype='int64'
+                name='labels_length',
+                shape=[None],
+                dtype='int64',
             )
 
             def test_logits_Variable():
@@ -596,34 +598,6 @@ class TestWarpCTCOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_label_len_Variable)
 
-            def test_use_log_softmax_Variable():
-                label_length_data = np.array([3] * 16).astype("int64")
-                paddle.nn.functional.ctc_loss(
-                    log_probs=logits,
-                    labels=label,
-                    input_lengths=logits_length,
-                    label_length=label_length_data,
-                    reduction='none',
-                    use_log_softmax=False,
-                    zero_infinity=False,
-                )
-
-            self.assertRaises(TypeError, test_use_log_softmax_Variable)
-
-            def test_zero_infinity_Variable():
-                label_length_data = np.array([3] * 16).astype("int64")
-                paddle.nn.functional.ctc_loss(
-                    log_probs=logits,
-                    labels=label,
-                    input_lengths=logits_length,
-                    label_length=label_length_data,
-                    reduction='none',
-                    use_log_softmax=True,
-                    zero_infinity=True,
-                )
-
-            self.assertRaises(TypeError, test_zero_infinity_Variable)
-
     def test_dygraph_errors(self):
         def test_dygraph_with_lod():
             logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
@@ -642,8 +616,42 @@ class TestWarpCTCOpError(unittest.TestCase):
                 zero_infinity=False,
             )
 
+        def test_zero_infinity_Variable():
+            logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
+            # labels should not be blank
+            labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
+            softmax = paddle.to_tensor(logits)
+            labels = paddle.to_tensor(labels)
+            paddle.nn.functional.ctc_loss(
+                log_probs=softmax,
+                labels=labels,
+                input_lengths=None,
+                label_lengths=None,
+                reduction='none',
+                use_log_softmax=True,
+                zero_infinity=True,
+            )
+
+        def test_use_log_softmax_Variable():
+            logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
+            # labels should not be blank
+            labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
+            softmax = paddle.to_tensor(logits)
+            labels = paddle.to_tensor(labels)
+            paddle.nn.functional.ctc_loss(
+                log_probs=softmax,
+                labels=labels,
+                input_lengths=None,
+                label_lengths=None,
+                reduction='none',
+                use_log_softmax=False,
+                zero_infinity=False,
+            )
+
         paddle.disable_static()
         self.assertRaises(ValueError, test_dygraph_with_lod)
+        self.assertRaises(ValueError, test_zero_infinity_Variable)
+        self.assertRaises(ValueError, test_use_log_softmax_Variable)
         paddle.enable_static()
 
 
@@ -651,7 +659,7 @@ class TestCTCLossAPICase(unittest.TestCase):
     def test_class_api(self):
         self.batch_size = 3
         self.num_classes = 15
-        self.logits_length = np.array([3, 3, 1], dtype=np.int64)
+        self.logits_length = np.array([3, 3, 3], dtype=np.int64)
         self.labels_length = np.array([0, 1, 2], dtype=np.int64)
         self.blank = 0
         self.norm_by_times = False
