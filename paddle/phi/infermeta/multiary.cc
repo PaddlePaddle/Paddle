@@ -4047,5 +4047,115 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
+void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
+                                        const MetaTensor& key,
+                                        const MetaTensor& value,
+                                        const MetaTensor& cache_kv,
+                                        const MetaTensor& src_mask,
+                                        const MetaTensor& cum_offsets,
+                                        const MetaTensor& sequence_lengths,
+                                        const MetaTensor& rotary_tensor,
+                                        const MetaTensor& beam_cache_offset,
+                                        const MetaTensor& qkv_out_scale,
+                                        const MetaTensor& out_shift,
+                                        const MetaTensor& out_smooth,
+                                        int seq_len,
+                                        int rotary_emb_dims,
+                                        const int head_kv,
+                                        const bool use_neox_rotary_style,
+                                        const float out_scale,
+                                        const int quant_round_type,
+                                        const float quant_max_bound,
+                                        const float quant_min_bound,
+                                        MetaTensor* out,
+                                        MetaTensor* cache_kv_out,
+                                        MetaTensor* beam_cache_offset_out) {
+  auto q_dims = query.dims();
+  auto k_dims = key.dims();
+  auto v_dims = value.dims();
+  auto cache_kv_dims = cache_kv.dims();
+  auto q_dtype = query.dtype();
+  int bsz = q_dims[0];
+  int num_head = q_dims[1];
+  int dim_head = q_dims[2];
+
+
+  out->set_dims({bsz, num_head, dim_head});
+
+  if (out_scale > 0) {
+    out->set_dtype(DataType::INT8);
+  } else {
+    out->set_dtype(q_dtype);
+  }
+
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims.size(),
+      5,
+      errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
+                              cache_kv_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      q_dims.size(),
+      3,
+      errors::InvalidArgument("The dimensions of query must be 3"
+                              "(batch_size, num_head_q, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              q_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      k_dims.size(),
+      3,
+      errors::InvalidArgument("The dimensions of key must be 3"
+                              "(batch_size, num_head_q, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              k_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      v_dims.size(),
+      3,
+      errors::InvalidArgument("The dimensions of value must be 3"
+                              "(batch_size, num_head_q, dim_head),"
+                              "but received dimensions of"
+                              "Input is [%d]",
+                              v_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      k_dims[1],
+      v_dims[1],
+      errors::InvalidArgument("The head of key must equall "
+                              "to the head of value"));
+
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims.size(),
+      5,
+      errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
+                              cache_kv_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims[0],
+      2,
+      errors::InvalidArgument("The first dim of cache_kv must be 2, but got %d",
+                              cache_kv_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims[2],
+      head_kv,
+      errors::InvalidArgument(
+          "The third dim of cache_kv must equal to head_kv, but got %d",
+          cache_kv_dims[2]));
+
+  if (rotary_tensor) {
+    PADDLE_ENFORCE_EQ(
+        rotary_tensor.dtype(),
+        DataType::FLOAT32,
+        errors::InvalidArgument(
+            "The dtype of rotary_tensor must be float32, but got %d",
+            rotary_tensor.dtype()));
+  }
+  cache_kv_out->set_dims(cache_kv_dims);
+  cache_kv_out->set_dtype(cache_kv.dtype());
+  if (beam_cache_offset) {
+    beam_cache_offset_out->set_dims(beam_cache_offset.dims());
+    beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
+  }
+ }
+
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);
