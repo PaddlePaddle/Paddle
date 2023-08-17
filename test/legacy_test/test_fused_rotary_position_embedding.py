@@ -92,14 +92,23 @@ def get_sin_cos_tensor(seq_len, head_dim, sign):
     return tensor_sin, tensor_cos
 
 
-def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
+def paddle_fused_rotary_position_embedding(
+    init_q, init_k, init_v, use_neox_rotary_style=True
+):
     q, k, v = deal_qkv(init_q, init_k, init_v)
 
-    sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], -1)
+    if use_neox_rotary_style:
+        sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], -1)
 
-    query = mult_qkv(q, cos_tensor, sin_tensor)
-    value = mult_qkv(v, cos_tensor, sin_tensor)
-    key = mult_qkv(k, cos_tensor, sin_tensor)
+        query = mult_qkv(q, cos_tensor, sin_tensor)
+        value = mult_qkv(v, cos_tensor, sin_tensor)
+        key = mult_qkv(k, cos_tensor, sin_tensor)
+    else:
+        sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], 1)
+
+        query = mult_qkv_rotate_half(q, cos_tensor, sin_tensor)
+        value = mult_qkv_rotate_half(v, cos_tensor, sin_tensor)
+        key = mult_qkv_rotate_half(k, cos_tensor, sin_tensor)
 
     r_query, r_key, r_value = deal_qkv(query, key, value)
 
@@ -224,7 +233,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
     def test_fused_dropout_add_rotate_half(self):
         p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding_rotate_half, seed=self.seed
+            paddle_fused_rotary_position_embedding,
+            seed=self.seed,
+            use_neox_rotary_style=False,
         )
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,
