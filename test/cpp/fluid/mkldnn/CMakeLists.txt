@@ -92,3 +92,8 @@ else()
     device_context
     enforce)
 endif()
+
+cc_test(
+  test_fc_mkldnn_op
+  SRCS test_fc_mkldnn_op.cc
+  DEPS executor op_registry phi scope device_context)
