@@ -34,10 +34,10 @@ __device__ __inline__ T ClipFunc(const T v, const T min, const T max) {
 
 template <typename InType, typename OutType>
 __forceinline__ __device__ OutType QuantHelperFunc(const InType input,
-                                                    const float scale,
-                                                    const int round_type,
-                                                    const float max_bound,
-                                                    const float min_bound) {
+                                                   const float scale,
+                                                   const int round_type,
+                                                   const float max_bound,
+                                                   const float min_bound) {
   float quant_value = max_bound * scale * input;
 
   if (round_type == 0) {
@@ -182,8 +182,8 @@ inline __device__ float4 hmma_fp32_tensorcore(const uint2 &a, uint32_t b) {
 
 template <int N>
 inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N],
-                                      const uint32_t (&k)[N],
-                                      float inv_sqrt_dh) {
+                                     const uint32_t (&k)[N],
+                                     float inv_sqrt_dh) {
 #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
     __CUDA_ARCH__ >= 750
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
@@ -213,8 +213,8 @@ template <typename T, int THREADS_PER_KEY>
 struct Qk_dot {
   template <typename K_vec, int N>
   static inline __device__ float dot(const K_vec (&q)[N],
-                                      const K_vec (&k)[N],
-                                      float inv_sqrt_dh) {
+                                     const K_vec (&k)[N],
+                                     float inv_sqrt_dh) {
     return qk_dot_<THREADS_PER_KEY>(q, k, inv_sqrt_dh);
   }
 };
@@ -223,8 +223,8 @@ template <>
 struct Qk_dot<float16, 4> {
   template <int N>
   static inline __device__ float dot(const uint32_t (&q)[N],
-                                      const uint32_t (&k)[N],
-                                      float inv_sqrt_dh) {
+                                     const uint32_t (&k)[N],
+                                     float inv_sqrt_dh) {
 #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
     __CUDA_ARCH__ >= 750
     return qk_hmma_dot_(q, k, inv_sqrt_dh);
@@ -509,7 +509,7 @@ __global__ void masked_multihead_attention_kernel(
         int stride = half_lastdim / QK_VEC_SIZE;
         int stride_all_lastdim = 2 * stride;
         int right_id = tid / stride_all_lastdim * stride_all_lastdim +
-                        (tid + stride) % (stride_all_lastdim);
+                       (tid + stride) % (stride_all_lastdim);
         int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
         int qk_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
@@ -536,15 +536,15 @@ __global__ void masked_multihead_attention_kernel(
           Qk_vec q_right_bias;
           zero(q_right_bias);
           q_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-                              ? *reinterpret_cast<const Qk_vec *>(
-                                    &q_bias_base[qk_right_bias_offset])
-                              : q_right_bias;
+                             ? *reinterpret_cast<const Qk_vec *>(
+                                   &q_bias_base[qk_right_bias_offset])
+                             : q_right_bias;
           Qk_vec k_right_bias;
           zero(k_right_bias);
           k_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-                              ? *reinterpret_cast<const Qk_vec *>(
-                                    &k_bias_base[qk_right_bias_offset])
-                              : k_right_bias;
+                             ? *reinterpret_cast<const Qk_vec *>(
+                                   &k_bias_base[qk_right_bias_offset])
+                             : k_right_bias;
 
           q_right = add(q_right, q_right_bias);
           k_right = add(k_right, k_right_bias);
@@ -578,8 +578,8 @@ __global__ void masked_multihead_attention_kernel(
     int co = tid / QK_VECS_IN_16B;
     int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
     int offset = bhi * params.max_seq_length * Dh +
-                  co * params.max_seq_length * QK_ELTS_IN_16B +
-                  act_time_step * QK_ELTS_IN_16B + ci;
+                 co * params.max_seq_length * QK_ELTS_IN_16B +
+                 act_time_step * QK_ELTS_IN_16B + ci;
     if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
       *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
     }
@@ -639,8 +639,8 @@ __global__ void masked_multihead_attention_kernel(
                                 : nullptr;
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
     const int beam_offset = beam_offsets ? beam_offsets[ti] * params.num_head *
-                                                params.max_seq_length * Dh
-                                          : 0;
+                                               params.max_seq_length * Dh
+                                         : 0;
     K_vec k[K_VECS_PER_THREAD];
     K_vec k_vec_zero;
     zero(k_vec_zero);
@@ -799,7 +799,7 @@ __global__ void masked_multihead_attention_kernel(
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
     for (int active_groups = V_PER_ITER; active_groups >= 2;
-          active_groups /= 2) {
+         active_groups /= 2) {
       int midpoint = active_groups / 2;
 
       if (vo >= midpoint && vo < active_groups && (Dh == Dh_MAX || vi < Dh)) {
@@ -828,11 +828,11 @@ __global__ void masked_multihead_attention_kernel(
     V_vec tmp_out;
     convert_from_float(tmp_out, out);
     store_func.template store<V_vec>(tmp_out,
-                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #else
     // *reinterpret_cast<V_vec *>(&params.out[bhi * Dh + vi]) = out;
     store_func.template store<V_vec>(out,
-                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
   }
 
@@ -864,14 +864,14 @@ inline size_t smem_size_in_bytes(
 }
 
 #define MMHA_LAUNCH_KERNEL(T,                                             \
-                            Dh,                                            \
-                            Dh_MAX,                                        \
-                            THDS_PER_KEY,                                  \
-                            THDS_PER_VALUE,                                \
-                            THDS_PER_BLOCK,                                \
-                            stream,                                        \
-                            load_func,                                     \
-                            store_func)                                    \
+                           Dh,                                            \
+                           Dh_MAX,                                        \
+                           THDS_PER_KEY,                                  \
+                           THDS_PER_VALUE,                                \
+                           THDS_PER_BLOCK,                                \
+                           stream,                                        \
+                           load_func,                                     \
+                           store_func)                                    \
   size_t smem_sz =                                                        \
       smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);  \
   constexpr auto kernel_fn =                                              \
@@ -904,44 +904,44 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 #if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
     __CUDA_ARCH__ >= 750
     MMHA_LAUNCH_KERNEL(T,
-                        Dh,
-                        Dh_MAX,
-                        4,
-                        THREADS_PER_VALUE,
-                        256,
-                        stream,
-                        load_func,
-                        store_func);
+                       Dh,
+                       Dh_MAX,
+                       4,
+                       THREADS_PER_VALUE,
+                       256,
+                       stream,
+                       load_func,
+                       store_func);
 #else
     MMHA_LAUNCH_KERNEL(T,
-                        Dh,
-                        Dh_MAX,
-                        2,
-                        THREADS_PER_VALUE,
-                        128,
-                        stream,
-                        load_func,
-                        store_func);
+                       Dh,
+                       Dh_MAX,
+                       2,
+                       THREADS_PER_VALUE,
+                       128,
+                       stream,
+                       load_func,
+                       store_func);
 #endif
   } else {
     MMHA_LAUNCH_KERNEL(T,
-                        Dh,
-                        Dh_MAX,
-                        1,
-                        THREADS_PER_VALUE,
-                        256,
-                        stream,
-                        load_func,
-                        store_func);
+                       Dh,
+                       Dh_MAX,
+                       1,
+                       THREADS_PER_VALUE,
+                       256,
+                       stream,
+                       load_func,
+                       store_func);
   }
 }
 
 template <typename T, typename LoadFunc, typename StoreFunc>
 void fmha_impl(const phi::GPUContext &dev_ctx,
-                const Masked_multihead_attention_params<T> &params,
-                int dim_head,
-                LoadFunc load_func,
-                StoreFunc store_func) {
+               const Masked_multihead_attention_params<T> &params,
+               int dim_head,
+               LoadFunc load_func,
+               StoreFunc store_func) {
   switch (dim_head) {
     case 10:
       fmha_launch_kernel<T, 10, 32>(
@@ -1090,10 +1090,10 @@ struct MMHAStore<T, int8_t> {
     for (int i = 0; i < VecSize; i++) {
       dst_vec[i] =
           QuantHelperFunc<float, int8_t>(static_cast<float>(src_vec[i]),
-                                          quant_scale_,
-                                          quant_round_type_,
-                                          quant_max_bound_,
-                                          quant_min_bound_);
+                                         quant_scale_,
+                                         quant_round_type_,
+                                         quant_max_bound_,
+                                         quant_min_bound_);
     }
 
     phi::Store<int8_t, VecSize>(dst_vec, dst_ + idx);
@@ -1145,10 +1145,10 @@ struct MMHAStore<T, int8_t, true> {
       src_vec[i] = (src_vec[i] + shift_vec[i]) * smooth_vec[i];
       dst_vec[i] =
           QuantHelperFunc<float, int8_t>(static_cast<float>(src_vec[i]),
-                                          quant_scale_,
-                                          quant_round_type_,
-                                          quant_max_bound_,
-                                          quant_min_bound_);
+                                         quant_scale_,
+                                         quant_round_type_,
+                                         quant_max_bound_,
+                                         quant_min_bound_);
     }
 
     phi::Store<int8_t, VecSize>(dst_vec, dst_ + idx);
@@ -1178,8 +1178,8 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const float quant_min_bound = -127.0f) {
   if (dequant_qkv_scales != nullptr && quant_fmha_out_scale > 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
-                                    dequant_qkv_scales->data<float>(),
-                                    3 * num_head * dim_head);
+                                   dequant_qkv_scales->data<float>(),
+                                   3 * num_head * dim_head);
     MMHAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
                                     quant_round_type,
                                     quant_fmha_out_scale,
@@ -1196,8 +1196,8 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
     fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
-                                    dequant_qkv_scales->data<float>(),
-                                    3 * num_head * dim_head);
+                                   dequant_qkv_scales->data<float>(),
+                                   3 * num_head * dim_head);
     MMHAStore<T> store_func(out_tensor->data<T>());
     fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else {
@@ -1223,8 +1223,8 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
                   const float quant_min_bound = -127.0f) {
   if (dequant_qkv_scales != nullptr && quant_fmha_out_scale > 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
-                                    dequant_qkv_scales->data<float>(),
-                                    3 * num_head * dim_head);
+                                   dequant_qkv_scales->data<float>(),
+                                   3 * num_head * dim_head);
     MMHAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
                                           shift.data<T>(),
                                           smooth.data<T>(),
@@ -1247,19 +1247,19 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
     fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else if (dequant_qkv_scales != nullptr && quant_fmha_out_scale <= 0) {
     MMHALoad<T, int32_t> load_func(qkv_tensor.data<int32_t>(),
-                                    dequant_qkv_scales->data<float>(),
-                                    3 * num_head * dim_head);
+                                   dequant_qkv_scales->data<float>(),
+                                   3 * num_head * dim_head);
     MMHAStore<T, T, true> store_func(out_tensor->data<T>(),
-                                      shift.data<T>(),
-                                      smooth.data<T>(),
-                                      num_head * dim_head);
+                                     shift.data<T>(),
+                                     smooth.data<T>(),
+                                     num_head * dim_head);
     fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   } else {
     MMHALoad<T> load_func(qkv_tensor.data<T>());
     MMHAStore<T, T, true> store_func(out_tensor->data<T>(),
-                                      shift.data<T>(),
-                                      smooth.data<T>(),
-                                      num_head * dim_head);
+                                     shift.data<T>(),
+                                     smooth.data<T>(),
+                                     num_head * dim_head);
     fmha_impl(dev_ctx, params, dim_head, load_func, store_func);
   }
 }
@@ -1267,18 +1267,18 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
 #endif  // PADDLE_WITH_HIP
 
 template <typename T, typename Context>
-void MMHAKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& cache_kv,
-                const paddle::optional<DenseTensor>& bias,
-                const paddle::optional<DenseTensor>& src_mask,
-                const paddle::optional<DenseTensor>& cum_offsets,
-                const paddle::optional<DenseTensor>& sequence_lengths,
-                const paddle::optional<DenseTensor>& rotary_tensor,
-                const paddle::optional<DenseTensor>& beam_cache_offset,
-                const paddle::optional<DenseTensor>& qkv_out_scale,
-                const paddle::optional<DenseTensor>& out_shift,
-                const paddle::optional<DenseTensor>& out_smooth,
+void MMHAKernel(const Context &dev_ctx,
+                const DenseTensor &x,
+                const DenseTensor &cache_kv,
+                const paddle::optional<DenseTensor> &bias,
+                const paddle::optional<DenseTensor> &src_mask,
+                const paddle::optional<DenseTensor> &cum_offsets,
+                const paddle::optional<DenseTensor> &sequence_lengths,
+                const paddle::optional<DenseTensor> &rotary_tensor,
+                const paddle::optional<DenseTensor> &beam_cache_offset,
+                const paddle::optional<DenseTensor> &qkv_out_scale,
+                const paddle::optional<DenseTensor> &out_shift,
+                const paddle::optional<DenseTensor> &out_smooth,
                 int seq_len,
                 int rotary_emb_dims,
                 const bool use_neox_rotary_style,
@@ -1286,11 +1286,11 @@ void MMHAKernel(const Context& dev_ctx,
                 const int quant_round_type,
                 const float quant_max_bound,
                 const float quant_min_bound,
-                DenseTensor* out,
-                DenseTensor* cache_kv_out,
-                DenseTensor* beam_cache_offset_out) {
+                DenseTensor *out,
+                DenseTensor *cache_kv_out,
+                DenseTensor *beam_cache_offset_out) {
 #ifndef PADDLE_WITH_HIP
-  const auto& x_dims = x.dims();
+  const auto &x_dims = x.dims();
   int bsz = x_dims[0];
   int cache_bsz = cache_kv.dims()[1];
   int num_head = cache_kv.dims()[2];
@@ -1301,11 +1301,11 @@ void MMHAKernel(const Context& dev_ctx,
 
   Masked_multihead_attention_params<T> params;
   bool mask_broadcast_num_heads = true;
-  
+
   params.add_qkv_bias = false;
   if (bias) {
     params.add_qkv_bias = true;
-    params.qkv_bias = const_cast<T*>(bias->data<T>());
+    params.qkv_bias = const_cast<T *>(bias->data<T>());
   }
 
   if (src_mask) {
@@ -1354,7 +1354,7 @@ void MMHAKernel(const Context& dev_ctx,
   }
 
   params.mask_broadcast_num_heads = mask_broadcast_num_heads;
-  params.cache_kv = const_cast<T*>(cache_kv_out->data<T>());
+  params.cache_kv = const_cast<T *>(cache_kv_out->data<T>());
   params.neox_rotary_style = use_neox_rotary_style;
   params.batch_size = bsz;
   params.cache_batch_size = cache_bsz;
