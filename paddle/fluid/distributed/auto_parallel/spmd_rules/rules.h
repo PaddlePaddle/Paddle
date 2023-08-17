@@ -22,6 +22,7 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/reshape_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/softmax_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/split_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/transpose_spmd_rule.h"
@@ -158,6 +159,9 @@ REGISTER_SPMD_RULE(split_with_num, SplitSPMDRule);
 
 // transpose rule
 REGISTER_SPMD_RULE(transpose, TransposeSPMDRule);
+
+// reshape rule
+REGISTER_SPMD_RULE(reshape, ReshapeSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

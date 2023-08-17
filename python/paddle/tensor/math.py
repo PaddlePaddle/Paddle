@@ -1617,7 +1617,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-                        >>> import paddle
+            >>> import paddle
 
             >>> # x is a Tensor with following elements:
             >>> #    [[nan, 0.3, 0.5, 0.9]
@@ -1888,6 +1888,9 @@ def add_n(inputs, name=None):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.add_n(inputs)
+
         helper = LayerHelper('add_n', **locals())
         check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
         if isinstance(inputs, (list, tuple)):

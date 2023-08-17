@@ -513,8 +513,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   EAGER_TRY
   FLAGS_tensor_operants_mode = "phi";
   if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize phi tensor operants successfully";
   }
 
@@ -1273,7 +1273,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef variable_functions[] = {
+PyMethodDef variable_functions[] = {  // NOLINT
     // TODO(jiabin): Remove scale when we have final state tests
     {"scale",
      (PyCFunction)(void (*)())eager_api_scale,

@@ -136,12 +136,12 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto& worker : workers) {
 #ifdef PADDLE_WITH_PSLIB
     if (mode == "mpi") {
-      worker.reset(new AsyncExecutorThreadWorker);
+      worker = std::make_unique<AsyncExecutorThreadWorker>();
     } else {
-      worker.reset(new ExecutorThreadWorker);
+      worker = std::make_unique<ExecutorThreadWorker>();
     }
 #else
-    worker.reset(new ExecutorThreadWorker);
+    worker = std::make_unique<ExecutorThreadWorker>();
 #endif
   }
 
