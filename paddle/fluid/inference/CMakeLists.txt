@@ -103,29 +103,15 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_DUPLICATES fluid_modules)
 # NOTE(Aurelius84): For inference library, some DEPS is usless
-# such as non-infer operator, cinn_xx related targets et.al.
-list(REMOVE_ITEM fluid_modules standalone_executor
-     interpretercore_garbage_collector run_program_op ssa_graph_executor)
-foreach(target ${fluid_modules})
-  list(FIND target "cinn_" is_found)
-  if(is_found GREATER -1)
-    list(REMOVE_ITEM fluid_modules target)
-  endif()
-endforeach()
+# such as non-infer operator related targets et.al.
+list(REMOVE_ITEM fluid_modules run_program_op)
 
 # NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
 # shared library to prune library size.
-if(NOT WITH_IR_DIALECT_ON_INFER)
-  list(REMOVE_ITEM fluid_modules ${not_infer_modules})
-endif()
+list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
-if(WIN32)
-  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
-                            ${utils_modules})
-else()
-  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} ${ir_targets}
-                            analysis_predictor ${utils_modules})
-endif()
+set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
+                          ${utils_modules})
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)

@@ -19,7 +19,7 @@ set(STANDALONE_EXECUTOR_DEPS
     ir)
 
 cc_library(
-  standalone_executor
+  standalone_executor NOT_FOR_INFER
   SRCS ${STANDALONE_EXECUTOR_SRCS}
   DEPS ${STANDALONE_EXECUTOR_DEPS})
 

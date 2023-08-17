@@ -5,6 +5,6 @@ if(WITH_PYTHON OR NOT ON_INFER)
     DEPS final_dygraph_function eager_utils phi)
 endif()
 cc_library(
-  primitive_backend_static_experimental
+  primitive_backend_static_experimental NOT_FOR_INFER
   SRCS static_backend.cc
   DEPS pd_dialect)
