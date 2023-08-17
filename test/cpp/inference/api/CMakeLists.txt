@@ -979,6 +979,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(
+      trt_mark_trt_engine_outputs_test
+      SRCS
+      trt_mark_trt_engine_outputs_test.cc
+      EXTRA_DEPS
+      paddle_inference_shared
+      ARGS
+      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    inference_analysis_test(
       trt_fc_prelu_test
       SRCS
       trt_fc_prelu_test.cc
@@ -1370,6 +1378,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie PROPERTIES TIMEOUT 480)
+    set_tests_properties(trt_mark_trt_engine_outputs_test PROPERTIES TIMEOUT
+                                                                     300)
   endif()
 
   if(WITH_MKLDNN)

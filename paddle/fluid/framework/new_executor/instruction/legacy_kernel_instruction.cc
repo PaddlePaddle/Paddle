@@ -43,7 +43,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name)
     : InstructionBase(id, place) {
-  auto op_attributes = op->attributes();
+  auto& op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
   ir::OpInfo op_info = ir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
@@ -97,18 +97,20 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       yaml_interface->get_op_info_());
   VLOG(6) << "finish process yaml_info_parser";
 
-  ::ir::BuildPhiContext<
-      phi::InferMetaContext,
-      phi::MetaTensor,
-      phi::MetaTensor,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-      false>(op,
-             value_2_var_name,
-             scope,
-             local_scope,
-             yaml_info_parser,
-             &infer_meta_context_);
+  if (infer_meta_interface_) {
+    ::ir::BuildPhiContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>(op,
+               value_2_var_name,
+               scope,
+               local_scope,
+               yaml_info_parser,
+               &infer_meta_context_);
+  }
   VLOG(6) << "finish process infer meta context";
 
   auto kernel_name =
@@ -123,8 +125,10 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel";
 
-  operator_base_ =
-      ir::BuildOperatorBase(op, value_2_var_name, yaml_info_parser);
+  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
+
+  operator_base_ = ir::BuildOperatorBase(
+      op, value_2_var_name, yaml_info_parser, variable_2_var_name, inner_scope);
   paddle::framework::VariableValueMap in_map;
   paddle::framework::VariableValueMap out_map;
   auto dev_ctx = phi::DeviceContextPool::Instance().Get(
@@ -151,7 +155,6 @@ LegacyKernelInstruction::LegacyKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
   InitInputsOutputsIds(
       op, inner_scope, value_2_var_name, var_name_2_id, variable_2_var_name);
   VLOG(6) << "finish process inputs outputs index";
@@ -169,10 +172,16 @@ LegacyKernelInstruction::~LegacyKernelInstruction() {
   if (kernel_context_ != nullptr) {
     delete kernel_context_;
   }
+
+  if (phi_kernel_ != nullptr) {
+    delete phi_kernel_;
+  }
 }
 
 void LegacyKernelInstruction::Run() {
-  infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  if (infer_meta_interface_) {
+    infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+  }
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   (*(phi_kernel_))((kernel_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";

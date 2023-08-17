@@ -40,6 +40,25 @@ namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
 
+PyDoc_STRVAR(tensor_name__doc__,
+             R"DOC(name
+
+Tensor's name.
+
+Returns:
+    str: Tensor's name.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.)
+        print(x.name)  # generated_tensor_0
+        x.name = 'test_tensor_name'
+        print(x.name)  # test_tensor_name
+)DOC");
+
 PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_TRY
   // NOTE(dev): [why not use egr::Controller::Instance::GenerateUniqueName()?]
@@ -53,6 +72,23 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   return ToPyObject(self->tensor.name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_type__doc__,
+             R"DOC(type
+
+Tensor's type.
+
+Returns:
+    VarType: Tensor's type.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.)
+        print(x.type) # VarType.LOD_TENSOR
+)DOC");
 
 PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_TRY
@@ -74,7 +110,7 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_leaf__doc__,
+PyDoc_STRVAR(tensor_is_leaf__doc__,  // NOLINT
              R"DOC(is_leaf
 
 Whether a Tensor is leaf Tensor.
@@ -120,6 +156,25 @@ int tensor_properties_set_name(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
+PyDoc_STRVAR(tensor_stop_gradient__doc__,
+             R"DOC(stop_gradient
+
+Tensor's stop_gradient.
+
+Returns:
+    bool: Tensor's stop_gradient.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.)
+        print(x.stop_gradient) # True
+        x.stop_gradient = False
+        print(x.stop_gradient) # False
+)DOC");
+
 PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
                                               void* closure) {
   EAGER_TRY
@@ -128,8 +183,29 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_data__doc__,
+             R"DOC(data
+
+Tensor's self.
+
+Returns:
+    Tensor: self.
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.to_tensor(1.)
+        print(x)
+        print(x.data)
+        x.data = paddle.to_tensor(2.)
+        print(x)
+        print(x.data)
+)DOC");
 PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
   EAGER_TRY
+  Py_INCREF(self);
   return reinterpret_cast<PyObject*>(self);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -149,6 +225,26 @@ int tensor_properties_set_data(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
+PyDoc_STRVAR(tensor_grad__doc__,
+             R"DOC(grad
+
+Tensor's grad Tensor.
+
+Returns:
+    Tensor: grad Tensor.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor(1.0, stop_gradient=False)
+      y = x**2
+      y.backward()
+      print(x.grad)
+      x.grad = paddle.to_tensor(3.0)
+      print(x.grad)
+)DOC");
 PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
@@ -215,6 +311,25 @@ int tensor_properties_set_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
+PyDoc_STRVAR(tensor_persistable__doc__,
+             R"DOC(persistable
+
+Tensor's persistable.
+
+Returns:
+    bool: persistable.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor(1.0, stop_gradient=False)
+      print(x.persistable) # False
+      x. persistable = True
+      print(x.persistable) # True
+)DOC");
+
 PyObject* tensor_properties_get_persistable(TensorObject* self, void* closure) {
   EAGER_TRY
   auto meta = egr::EagerUtils::autograd_meta(&self->tensor);
@@ -232,6 +347,31 @@ int tensor_properties_set_persistable(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
+PyDoc_STRVAR(tensor_dist_attr__doc__,
+             R"DOC(dist_attr
+
+Get dist_attr property from shard tensor.
+
+Returns:
+    core.TensorDistAttr: the dist attr of shard tensor
+
+Examples:
+    .. code-block:: python
+
+        import paddle
+        import paddle.distributed as dist
+
+        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+        a = paddle.to_tensor([[1,2,3],
+                              [5,6,7]])
+        d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+
+        print(d_tensor.dist_attr)
+
+)DOC");
+
 PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
   EAGER_TRY
   if (self->tensor.is_dist_tensor()) {
@@ -247,6 +387,23 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+PyDoc_STRVAR(tensor_shape__doc__,
+             R"DOC(shape
+
+Tensor's shape.
+
+Returns:
+    List: shape.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor(1.0, stop_gradient=False)
+      print(x.shape)
+)DOC");
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_TRY
@@ -317,6 +474,24 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_strides__doc__,
+             R"DOC(strides
+
+Tensor's strides.
+
+Returns:
+    List: strides.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1, 2, 3])
+      y = x[1]
+      print(y.strides)
+)DOC");
+
 PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_TRY
   std::vector<int64_t> value;
@@ -336,6 +511,23 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_offset__doc__,
+             R"DOC(offset
+
+The address of the first element relative to the offset of the video memory.
+
+Returns:
+    int: offset.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1, 2, 3])
+      y = x[1]
+      print(y.offset)
+)DOC");
 PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   EAGER_TRY
   if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
@@ -354,6 +546,22 @@ PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_layout__doc__,
+             R"DOC(layout
+
+Tensor's memory layout.
+
+Returns:
+    Layout: layout.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1, 2, 3])
+      print(x.layout)
+)DOC");
 PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_TRY
   std::string layout = "";
@@ -372,6 +580,22 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_place__doc__,
+             R"DOC(place
+
+The device Tensor's memory locate.
+
+Returns:
+    Place: place.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1, 2, 3])
+      print(x.place)
+)DOC");
 PyObject* tensor_properties_get_place(TensorObject* self, void* closure) {
   EAGER_TRY
   return ToPyObject(self->tensor.place());
@@ -386,6 +610,22 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyDoc_STRVAR(tensor_dtype__doc__,
+             R"DOC(dtype
+
+Tensor's data type.
+
+Returns:
+    paddle dtype: dtype.
+
+Examples:
+    .. code-block:: python
+
+      import paddle
+
+      x = paddle.to_tensor([1, 2, 3])
+      print(x.dtype)
+)DOC");
 PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
   if (!self->tensor.defined()) {
@@ -449,12 +689,12 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
     {"data",
      (getter)tensor_properties_get_data,
      (setter)tensor_properties_set_data,
-     nullptr,
+     tensor_data__doc__,
      nullptr},
     {"grad",
      (getter)tensor_properties_get_grad,
      (setter)tensor_properties_set_grad,
-     nullptr,
+     tensor_grad__doc__,
      nullptr},
     {"grad_",
      (getter)tensor_properties_get_grad,
@@ -464,39 +704,63 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
     {"name",
      (getter)tensor_properties_get_name,
      (setter)tensor_properties_set_name,
-     nullptr,
+     tensor_name__doc__,
      nullptr},
     {"stop_gradient",
      (getter)tensor_properties_get_stop_gradient,
      (setter)tensor_properties_set_stop_gradient,
-     nullptr,
+     tensor_stop_gradient__doc__,
      nullptr},
     {"persistable",
      (getter)tensor_properties_get_persistable,
      (setter)tensor_properties_set_persistable,
-     nullptr,
+     tensor_persistable__doc__,
      nullptr},
-    {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
-    {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
+    {"shape",
+     (getter)tensor_properties_get_shape,
+     nullptr,
+     tensor_shape__doc__,
+     nullptr},
+    {"layout",
+     (getter)tensor_properties_get_layout,
+     nullptr,
+     tensor_layout__doc__,
+     nullptr},
     {"strides",
      (getter)tensor_properties_get_strides,
      nullptr,
-     nullptr,
+     tensor_strides__doc__,
      nullptr},
-    {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
-    {"offset", (getter)tensor_properties_get_offset, nullptr, nullptr, nullptr},
+    {"place",
+     (getter)tensor_properties_get_place,
+     nullptr,
+     tensor_place__doc__,
+     nullptr},
+    {"offset",
+     (getter)tensor_properties_get_offset,
+     nullptr,
+     tensor_offset__doc__,
+     nullptr},
     {"dist_attr",
      (getter)tensor_properties_get_dist_attr,
      nullptr,
-     nullptr,
+     tensor_dist_attr__doc__,
      nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
      nullptr,
      nullptr,
      nullptr},
-    {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
-    {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
+    {"dtype",
+     (getter)tensor_properties_get_dtype,
+     nullptr,
+     tensor_dtype__doc__,
+     nullptr},
+    {"type",
+     (getter)tensor_properties_get_type,
+     nullptr,
+     tensor_type__doc__,
+     nullptr},
     {"is_leaf",
      (getter)tensor_properties_is_leaf,
      nullptr,

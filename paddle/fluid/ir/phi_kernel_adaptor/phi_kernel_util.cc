@@ -598,17 +598,37 @@ void BuildRuntimeContext(
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
+
     auto var = inner_scope->FindVar(in_var_name);
-    std::vector<paddle::framework::Variable*> vec_tmp = {var};
-    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    runtime_ctx->outputs[legacy_attr_name] = vec_tmp;
+
+    auto type = ptr.type();
+    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
+        type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      runtime_ctx->outputs[legacy_arg_name] = {var};
+    } else if (type.isa<ir::VectorType>()) {
+      auto var_ref = var->Get<paddle::framework::VariableRefArray>();
+      std::vector<paddle::framework::Variable*> vec_tmp;
+      vec_tmp.reserve(var_ref.size());
+      for (size_t k = 0; k < var_ref.size(); ++k) {
+        vec_tmp.push_back(const_cast<paddle::framework::Variable*>(var_ref[k]));
+      }
+      runtime_ctx->outputs[legacy_arg_name] = vec_tmp;
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
+          "ir::vector type"));
+    }
   }
 }
 
 std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name,
+    const paddle::framework::Scope* scope) {
   paddle::framework::VariableNameMap in_name_map;
   paddle::framework::VariableNameMap out_name_map;
   paddle::framework::AttributeMap attr_map;
@@ -637,6 +657,30 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
   }
 
   // build attribute
+  auto& op_attr_map = op->attributes();
+  auto attr_name_list = op_yaml_info.AttrParams(true);
+  for (auto& name : attr_name_list) {
+    auto& val = op_attr_map.at(name);
+
+    if (val.isa<ir::StrAttribute>()) {
+      attr_map[name] = val.dyn_cast<ir::StrAttribute>().AsString();
+    } else if (val.isa<ir::Int32Attribute>()) {
+      attr_map[name] = val.dyn_cast<ir::Int32Attribute>().data();
+    } else if (val.isa<ir::BoolAttribute>()) {
+      attr_map[name] = val.dyn_cast<ir::BoolAttribute>().data();
+    } else if (val.isa<ir::FloatAttribute>()) {
+      attr_map[name] = val.dyn_cast<ir::FloatAttribute>().data();
+    } else if (val.isa<ir::DoubleAttribute>()) {
+      attr_map[name] = val.dyn_cast<ir::DoubleAttribute>().data();
+    } else if (val.isa<ir::Int64Attribute>()) {
+      attr_map[name] = val.dyn_cast<ir::Int64Attribute>().data();
+    } else {
+      std::stringstream ss;
+      val.Print(ss);
+      VLOG(1) << "type not support " << ss.str() << std::endl;
+      PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
+    }
+  }
 
   auto& output_name_list = op_yaml_info.OutputNames();
   for (size_t i = 0; i < output_name_list.size(); ++i) {
@@ -644,8 +688,26 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     ir::Value ptr = op->result(i);
 
     auto out_var_name = name_map.at(ptr);
-    auto legacy_attr_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
-    out_name_map[legacy_attr_name].push_back(out_var_name);
+
+    auto type = ptr.type();
+    auto legacy_arg_name = op_normalizer.GetLegacyArgName(fluid_op_name, name);
+    if (type.isa<paddle::dialect::AllocatedDenseTensorType>() ||
+        type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      out_name_map[legacy_arg_name].push_back(out_var_name);
+    } else if (type.isa<ir::VectorType>()) {
+      auto var = scope->FindVar(out_var_name);
+      auto var_ref = var->Get<paddle::framework::VariableRefArray>();
+      for (size_t k = 0; k < var_ref.size(); ++k) {
+        PADDLE_ENFORCE(variable_2_var_name.count(var_ref[k]),
+                       "Variable MUST in variable_2_var_name map");
+        out_name_map[legacy_arg_name].push_back(
+            variable_2_var_name.at(var_ref[k]));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
+          "ir::vector type"));
+    }
   }
 
   auto& op_info = paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);

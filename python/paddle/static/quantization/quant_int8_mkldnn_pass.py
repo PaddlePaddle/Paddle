@@ -44,18 +44,18 @@ class QuantInt8MkldnnPass:
 
         Examples:
         .. code-block:: python
-            # The original graph will be rewrite.
-            import paddle.static as static
-            from paddle.static.quantization \
-                import QuantInt8MkldnnPass
-            from paddle.fluid.framework import IrGraph
-            from paddle.framework import core
 
-            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
-            place = static.CPUPlace()
-            mkldnn_pass = QuantInt8MkldnnPass(static.global_scope(),
-            place)
-            mkldnn_pass.apply(graph)
+            >>> # The original graph will be rewrite.
+            >>> import paddle
+            >>> from paddle import static
+            >>> from paddle.static.quantization import QuantInt8MkldnnPass
+            >>> from paddle.framework import IrGraph
+            >>> from paddle.framework import core
+
+            >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+            >>> place = paddle.CPUPlace()
+            >>> mkldnn_pass = QuantInt8MkldnnPass(static.global_scope(), place)
+            >>> mkldnn_pass.apply(graph)
         """
 
         self._scope = _scope
