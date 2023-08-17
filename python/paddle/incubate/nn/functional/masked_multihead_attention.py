@@ -19,6 +19,7 @@ from paddle.framework import LayerHelper, in_dynamic_mode
 def masked_multihead_attention(
     x,
     cache_kv=None,
+    bias=None,
     src_mask=None,
     cum_offsets=None,
     sequence_lengths=None,
@@ -43,6 +44,7 @@ def masked_multihead_attention(
     Args:
         x (Tensor): The input tensor could be 2-D tensor. Its shape is [batch_size, 3 * num_head * head_dim].
         cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model. Its shape is [2, batch_size, num_head, max_seq_len, head_dim].
+        bias (Tensor, optional): The bias tensor. Its shape is [3, num_head, head_dim].
         src_mask (Tensor, optional): The src_mask tensor. Its shape is [batch_size, 1, 1, sequence_length].
         sequence_lengths (Tensor, optional): The sequence_lengths tensor, used to index input. Its shape is [batch_size, 1].
         rotary_tensor (Tensor, optional): The rotary_tensor tensor. The dtype must be float. Its shape is [batch_size, 1, 1, sequence_length, head_dim].
@@ -89,6 +91,7 @@ def masked_multihead_attention(
         return _C_ops.masked_multihead_attention_(
             x,
             cache_kv,
+            bias,
             src_mask,
             cum_offsets,
             sequence_lengths,
@@ -112,6 +115,8 @@ def masked_multihead_attention(
     inputs = {}
     inputs['x'] = x
     inputs['cache_kv'] = cache_kv
+    if bias is not None:
+        inputs['bias'] = bias
     if src_mask is not None:
         inputs['src_mask'] = src_mask
     if cum_offsets is not None:

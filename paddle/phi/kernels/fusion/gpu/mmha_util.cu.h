@@ -66,8 +66,6 @@
 namespace phi {
 namespace fusion {
 
-namespace {  // NOLINT
-
 struct Float8_ {
   float2 x;
   float2 y;
@@ -1711,8 +1709,6 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
   k.w = rotary_embedding_transform(k.w, coef3);
 }
 #endif  // ENABLE_BF16
-
-}  // namespace
 
 }  // namespace fusion
 }  // namespace phi
