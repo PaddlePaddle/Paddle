@@ -23,7 +23,6 @@
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
@@ -105,37 +104,6 @@ bool NeedFallBackFromGPUDNN2GPU(ir::Operation* op,
   }
 
   return false;
-}
-
-std::vector<phi::DenseTensor> GetFakeTensorList(ir::Value new_input_tmp) {
-  std::vector<phi::DenseTensor> vec_res;
-  auto input_type = new_input_tmp.type();
-  std::vector<dialect::AllocatedDenseTensorType> types;
-  if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
-    types.push_back(input_type.dyn_cast<dialect::AllocatedDenseTensorType>());
-  } else if (input_type.isa<ir::VectorType>()) {
-    auto vec_inner_types = input_type.dyn_cast<ir::VectorType>().data();
-    for (size_t i = 0; i < vec_inner_types.size(); ++i) {
-      types.push_back(
-          vec_inner_types[0].dyn_cast<dialect::AllocatedDenseTensorType>());
-    }
-  }
-
-  for (auto& type : types) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-
-    std::shared_ptr<phi::Allocation> holder(ptr);
-
-    auto dtype = TransToPhiDataType(type.dtype());
-
-    phi::DenseTensorMeta meta(
-        dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-
-    phi::DenseTensor fake_tensor(holder, meta);
-
-    vec_res.push_back(fake_tensor);
-  }
-  return vec_res;
 }
 
 ir::OpResult AddPlaceTransferOp(ir::OpResult in,
@@ -332,10 +300,32 @@ phi::KernelKey GetKernelKey(
       }
       auto new_input_tmp = map_value_pair.at(input_tmp);
 
-      auto fake_tensors = GetFakeTensorList(new_input_tmp);
-      for (auto& fake_tensor : fake_tensors) {
-        kernel_key_parser.AssignKernelKeySet(fake_tensor);
+      auto input_type = new_input_tmp.type();
+      dialect::AllocatedDenseTensorType type;
+      if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
+        type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
+      } else if (input_type.isa<ir::VectorType>()) {
+        if (!input_type.dyn_cast<ir::VectorType>().empty()) {
+          type = input_type.dyn_cast<ir::VectorType>()[0]
+                     .dyn_cast<dialect::AllocatedDenseTensorType>();
+        } else {
+          continue;
+        }
       }
+
+      // fake tensor here
+      auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+      std::shared_ptr<phi::Allocation> holder(ptr);
+
+      auto dtype = TransToPhiDataType(type.dtype());
+
+      phi::DenseTensorMeta meta(
+          dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+      phi::DenseTensor fake_tensor(holder, meta);
+
+      kernel_key_parser.AssignKernelKeySet(fake_tensor);
     }
 
     auto kernel_key_set = kernel_key_parser.key_set;
@@ -713,70 +703,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
             // [ todo need update here, support combine data transfomer]
-            // deal with pre combine op
-            auto pre_define_op = cur_in.GetDefiningOp();
-
-            if (pre_define_op->name() == "builtin.combine") {
-              std::vector<ir::OpResult> inner_inputs;
-              std::vector<ir::Type> types_in_vec;
-              bool is_trans = false;
-              for (size_t j = 0; j < pre_define_op->num_operands(); ++j) {
-                auto in_i = map_value_pair.at(pre_define_op->operand_source(j));
-                auto in_i_type = in_i.type();
-                auto place =
-                    in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>()
-                        .place();
-
-                // get input args def type
-                auto args_def = kernel.args_def();
-                auto input_defs = args_def.input_defs();
-
-                bool need_trans =
-                    (place.GetType() != phi::AllocationType::UNDEFINED) &&
-                    (op_info_parser != nullptr &&
-                     !op_info_parser->IsTensorAttribute(i)) &&
-                    (paddle::experimental::NeedTransformPlace(
-                        place, kernel.InputAt(i).backend, {}));
-                if (need_trans) {
-                  VLOG(6) << "need trans from " << place << " to "
-                          << kernel_key.backend();
-                  // build memcopy op
-                  auto out_place =
-                      phi::TransToPhiPlace(kernel.InputAt(i).backend);
-                  auto out_type = dialect::AllocatedDenseTensorType::get(
-                      ctx,
-                      out_place,
-                      pre_define_op->operand_source(j)
-                          .type()
-                          .dyn_cast<dialect::DenseTensorType>());
-                  in_i = AddPlaceTransferOp(in_i,
-                                            out_type,
-                                            place,
-                                            out_place,
-                                            kernel_key,
-                                            program.get());
-
-                  is_trans = true;
-                }
-
-                inner_inputs.push_back(in_i);
-                types_in_vec.push_back(in_i.type());
-              }
-              if (is_trans) {
-                // Add combine op
-                std::string combine_op_name(ir::CombineOp::name());
-                ir::OpInfo op_info = ctx->GetRegisteredOpInfo(combine_op_name);
-
-                ir::Type target_vec_type =
-                    ir::VectorType::get(ctx, types_in_vec);
-                ir::Operation* operation = ir::Operation::Create(
-                    inner_inputs, {}, {target_vec_type}, op_info);
-
-                new_in = operation->result(0);
-                program->block()->push_back(operation);
-              }
-            }
-
           } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
             // do nothing here
           } else {
