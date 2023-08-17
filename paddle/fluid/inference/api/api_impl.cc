@@ -373,7 +373,6 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
-      flags.emplace_back("dummpy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          num2str<float>(config.fraction_of_gpu_memory);
       flags.push_back(flag);
