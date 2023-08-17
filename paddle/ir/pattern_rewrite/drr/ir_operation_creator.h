@@ -66,9 +66,9 @@ Operation* CreateOperation(const OpCall& op_call,
       Operation* transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(
           ir_values[0].dyn_cast<ir::OpResult>(),
           std::vector<int>{0, 2, 1, 3});
-      auto out = transpose_op->result(0);
-      res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
-                                  std::make_shared<IrValue>(out));
+      res_match_ctx->BindIrValue(
+        op_call.outputs()[0]->name(),
+        std::make_shared<IrValue>(transpose_op->result(0)));
       return transpose_op;
   }
 

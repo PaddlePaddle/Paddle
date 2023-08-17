@@ -112,8 +112,6 @@ class Op {
  public:
   const std::string& name() const { return op_type_name_; }
 
-  const std::unordered_map<std::string, Attribute>& attribute() const { return attributes_; }
-
   void operator()(const Tensor& arg, const Tensor* out) const;
 
   Tensor& operator()() const;

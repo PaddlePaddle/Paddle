@@ -144,13 +144,6 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }
 
-//
-std::unique_ptr<RemoveRedundentTransposePattern> CreateDrrPatternRewritePass(
-    ir::IrContext *ir_ctx) {
-  return std::make_unique<RemoveRedundentTransposePattern>(ir_ctx, 1);
-}
-
-
 class DrrPatternRewritePass : public ir::Pass {
  public:
   DrrPatternRewritePass() : ir::Pass("DrrPatternRewritePass", 1) {}
@@ -158,7 +151,7 @@ class DrrPatternRewritePass : public ir::Pass {
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
     ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
-    ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
+    ps.Add(std::make_unique<RemoveRedundentTransposePattern>(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;

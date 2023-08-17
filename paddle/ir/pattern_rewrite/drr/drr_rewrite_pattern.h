@@ -83,7 +83,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     while (!drr_q.empty()) {
       if (!Matched) {
         break;
-        };
+        }
       IR_ENFORCE(drr_q.size() == ir_q.size());
       // if (drr_q.size() != ir_q.size()) {
       //   Matched = false;
@@ -181,7 +181,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
       for (size_t i = 0; i < drr_output_tensors.size(); ++i) {
         if (!Matched) break;
 
-        if (drr_output_tensors[i]->consumers().size() == 0){
+        if (drr_output_tensors[i]->consumers().empty()){
           continue;
         }
 
