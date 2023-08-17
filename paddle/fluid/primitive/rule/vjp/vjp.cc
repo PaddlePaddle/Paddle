@@ -116,13 +116,11 @@ std::vector<std::vector<paddle::Tensor>> concat_vjp(
     const Tensor& out_grad,
     const Tensor& axis,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  std::vector<std::vector<paddle::Tensor>> vjp_res(
-      1, std::vector<paddle::Tensor>(1));
+  std::vector<std::vector<paddle::Tensor>> vjp_res(1, std::vector<Tensor>());
   // get concat_grad res.
   std::vector<Tensor> op_res =
       backend::experimental::concat_grad<primitive::experimental::DescTensor>(
           x, out_grad, axis);
-
   // set op stop_gradient info
   // TODO(wanghao107): Replace with more generic code.
   // Support set stop_gradients for all ops.
@@ -146,9 +144,9 @@ std::vector<std::vector<paddle::Tensor>> concat_vjp(
   grad_op->set_attribute(
       "stop_gradient",
       ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
-
   // construct vjp result by op result and stop_gradients info
-  for (auto idx = 0; idx <= op_res[0].size(); idx++) {
+  vjp_res[0] = std::vector<Tensor>(op_res.size());
+  for (uint64_t idx = 0; idx < op_res.size(); idx++) {
     if (!stop_gradients[0][idx]) {
       vjp_res[0][idx] = op_res[idx];
     }

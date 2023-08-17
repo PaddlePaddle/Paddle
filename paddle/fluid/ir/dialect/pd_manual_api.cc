@@ -25,13 +25,12 @@ std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
                                       ir::OpResult axis) {
   auto combine_op =
       APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(x);
-
   paddle::dialect::ConcatGradOp concat_grad_op =
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ConcatGradOp>(
           combine_op.out(), out_grad, axis);
-  auto slice_op = APIBuilder::Instance().GetBuilder()->Build<ir::SliceOp>(
+  auto split_op = APIBuilder::Instance().GetBuilder()->Build<ir::SplitOp>(
       concat_grad_op.result(0));
-  return slice_op.outputs();
+  return split_op.outputs();
 }
 }  // namespace dialect
 }  // namespace paddle

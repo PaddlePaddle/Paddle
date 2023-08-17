@@ -52,10 +52,8 @@ Tensor mean_grad<DescTensor>(const Tensor& x,
       std::static_pointer_cast<DescTensor>(out_grad.impl())
           ->getValue()
           .dyn_cast<ir::OpResult>();
-
   ir::OpResult op_res = paddle::dialect::mean_grad(
       x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
-
   return Tensor(std::make_shared<primitive::experimental::DescTensor>(op_res));
 }
 

@@ -115,18 +115,21 @@ std::vector<std::vector<ir::OpResult>> ConcatOp::Vjp(
 
   Tensor out_grad(
       std::make_shared<primitive::experimental::DescTensor>(out_grads[0][0]));
-
   Tensor axis(
       std::make_shared<primitive::experimental::DescTensor>(op_obj.axis()));
-
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::experimental::concat_vjp(x, out_grad, axis, stop_gradients);
-  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
-  if (tensor_res[0][0].defined()) {
-    res[0][0] = std::static_pointer_cast<primitive::experimental::DescTensor>(
-                    tensor_res[0][0].impl())
-                    ->getValue()
-                    .dyn_cast<ir::OpResult>();
+  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>());
+  std::cout << "ConcatOp::Vjp called 4" << std::endl;
+  res[0] = std::vector<ir::OpResult>(tensor_res[0].size());
+  for (uint64_t idx = 0; idx < tensor_res[0].size(); idx++) {
+    if (tensor_res[0][idx].defined()) {
+      res[0][idx] =
+          std::static_pointer_cast<primitive::experimental::DescTensor>(
+              tensor_res[0][idx].impl())
+              ->getValue()
+              .dyn_cast<ir::OpResult>();
+    }
   }
   return res;
 }
