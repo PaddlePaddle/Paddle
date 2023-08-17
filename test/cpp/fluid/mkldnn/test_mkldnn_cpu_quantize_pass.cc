@@ -39,16 +39,7 @@ using VarQuantScale =
 
 static float const SCALE = 2.f;
 const std::vector<std::string> PreGraphPasses({
-    "simplify_with_basic_ops_pass",
-    "quant_dequant_mkldnn_pass",
-    "conv_bn_fuse_pass",
-    "conv_affine_channel_mkldnn_fuse_pass",
-    "conv_bias_mkldnn_fuse_pass",
-    "conv_elementwise_add_mkldnn_fuse_pass",
     "conv_activation_mkldnn_fuse_pass",
-    "operator_scale_onednn_fuse_pass",
-    "operator_unsqueeze2_onednn_fuse_pass",
-    "operator_reshape2_onednn_fuse_pass",
     "cpu_quantize_placement_pass",
     "cpu_quantize_pass",
 });
