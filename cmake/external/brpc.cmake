@@ -13,29 +13,17 @@
 # limitations under the License.
 
 include(ExternalProject)
+set(OPENSSL_USE_STATIC_LIBS ON)
+find_package(OpenSSL REQUIRED)
 
-set(CMAKE_FIND_LIBRARY_SUFFIXES .a .lib .so)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
-set(REFERENCE_LIBSSL_STATIC_LIBRARY_PATH /usr/lib /usr/local)
-find_library(
-  SSL_LIBRARY
-  NAMES libssl.a
-  PATHS ${REFERENCE_LIBSSL_STATIC_LIBRARY_PATH})
-
-set(REFERENCE_LIBCRYPTO_STATIC_LIBRARY_PATH /usr/lib /usr/local)
-find_library(
-  CRYPTO_LIBRARY
-  NAMES libcrypto.a
-  PATHS ${REFERENCE_LIBCRYPTO_STATIC_LIBRARY_PATH})
-
-message(STATUS "ssl:" ${SSL_LIBRARY})
-message(STATUS "crypto:" ${CRYPTO_LIBRARY})
+message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
+message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
 
 add_library(ssl SHARED IMPORTED GLOBAL)
-set_property(TARGET ssl PROPERTY IMPORTED_LOCATION ${SSL_LIBRARY})
+set_property(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
 
 add_library(crypto SHARED IMPORTED GLOBAL)
-set_property(TARGET crypto PROPERTY IMPORTED_LOCATION ${CRYPTO_LIBRARY})
+set_property(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
 
 set(BRPC_PREFIX_DIR ${THIRD_PARTY_PATH}/brpc)
 set(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
@@ -52,6 +40,7 @@ include_directories(${BRPC_INCLUDE_DIR})
 set(BRPC_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/brpc)
 set(BRPC_URL https://github.com/apache/brpc.git)
 set(BRPC_TAG 1.4.0)
+
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
 set(prefix_path
     "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib|${THIRD_PARTY_PATH}/install/glog"
