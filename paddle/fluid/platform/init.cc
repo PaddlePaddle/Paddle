@@ -453,7 +453,7 @@ void InitMemoryMethod() {
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
     memory_method->get_allocator = [](int device_id,
                                       cudaStream_t stream) -> phi::Allocator * {

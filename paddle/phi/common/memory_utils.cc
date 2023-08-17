@@ -90,7 +90,7 @@ void EmplaceDeviceContexts(
       stream_priority);
 }
 
-#if defined(PADDLE_WITH_CUDA) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
 const phi::Allocator* GetAllocator(int device_id, cudaStream_t stream) {
   return MemoryUtils::Instance().GetAllocator(device_id, stream);

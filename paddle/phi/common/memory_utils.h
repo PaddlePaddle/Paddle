@@ -24,7 +24,7 @@
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
 
-#if defined(PADDLE_WITH_CUDA) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
 #include <cuda_runtime.h>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -341,7 +341,7 @@ class MemoryUtils {
             "Fluid. You can call InitMemoryMethod() for initialization."));
   }
 
-#if defined(PADDLE_WITH_CUDA) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
   const phi::Allocator* GetAllocator(int device_id, phi::gpuStream_t stream) {
     return memory_method_->get_allocator(device_id, stream);
@@ -431,7 +431,7 @@ void EmplaceDeviceContexts(
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
 
-#if defined(PADDLE_WITH_CUDA) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
 const Allocator* GetAllocator(int device_id, phi::gpuStream_t stream);
 
