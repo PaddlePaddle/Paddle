@@ -522,7 +522,7 @@ class PADDLE_API Tensor final {
    * @param x
    * @return Tensor&
    */
-  Tensor& operator=(Tensor&& x) &;
+  Tensor& operator=(Tensor&& x) & noexcept;
 
   /**
    * @brief Tensor operants
