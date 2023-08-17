@@ -24,6 +24,7 @@
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
 
+
 struct RemoveRedundentReshapeFunctor {
   void operator()(ir::drr::DrrPatternContext *ctx) {
     // Source patterns：待匹配的子图
@@ -55,10 +56,10 @@ struct FoldBroadcastToConstantFunctor {
     ir::drr::SourcePattern pat = ctx->SourcePattern();
     // Source Pattern 中可匹配的类型包括 Op 和 Tensor
     const auto &fill_constant = pat.Op(
-        "fill_constant",
+        "pd.fill_constant",
         {{"value", pat.Attr("value_1")}, {"dtype", pat.Attr("dtype_1")}});
     const auto &broadcast_to =
-        pat.Op("expand", {{"shape", pat.Attr("shape_1")}});
+        pat.Op("pd.expand", {{"shape", pat.Attr("shape_1")}});
     // 匹配fill_constant+broadcast_to，同时对输出张量标记为ret，方便后面加约束
     pat.Tensor("ret") = broadcast_to(fill_constant());
     // Constrains：本Pass无额外的约束规则
@@ -68,7 +69,7 @@ struct FoldBroadcastToConstantFunctor {
     // broadcast_to(fill_constant())，注意shape属性已更新 所有 ret
     // 参数均在Source Pattern中使用，对 ret 的赋值等同于对 ret 的 producer
     // op的删除和重连接
-    const auto &folded_fill_constant = res.Op("fill_constant",
+    const auto &folded_fill_constant = res.Op("pd.fill_constant",
                                               {{"shape", res.Attr("shape_1")},
                                                {"value", res.Attr("value_1")},
                                                {"dtype", res.Attr("dtype_1")}});
@@ -84,6 +85,34 @@ class FoldBroadcastToConstantPattern
       paddle::dialect::ExpandOp,
       FoldBroadcastToConstantFunctor>::DrrRewritePattern;
 };
+
+struct RemoveRedundentTransposeFunctor{
+  void operator()(ir::drr::DrrPatternContext *ctx){
+    // Source pattern: 待匹配的子图
+    ir::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &transpose1 = pat.Op("pd.transpose", {{"perm", pat.Attr("perm_1")}});
+    const auto &transpose2 = pat.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
+    
+    pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
+
+    // Result patterns: 要替换的子图
+    ir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &tranpose_continuous = res.Op("pd.transpose",
+     {{"perm", pat.Attr("perm_2")}}); // TODO  先简单用perm2替换
+
+    res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
+  }
+};
+
+class RemoveRedundentTransposePattern
+    : public ir::drr::DrrRewritePattern<paddle::dialect::TransposeOp, 
+                                        RemoveRedundentTransposeFunctor> {
+  public:
+    using ir::drr::DrrRewritePattern<
+        paddle::dialect::TransposeOp,
+        RemoveRedundentTransposeFunctor>::DrrRewritePattern;
+};
+
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
@@ -103,7 +132,16 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::ReluOp relu_op =
       builder.Build<paddle::dialect::ReluOp>(reshape_op_second.out());
 
-  builder.Build<paddle::dialect::FetchOp>(relu_op.out(), "out", 0);
+  paddle::dialect::TransposeOp transpose_op_first = 
+      builder.Build<paddle::dialect::TransposeOp>(relu_op.out(), std::vector<int>{0, 2, 1, 3});
+
+  paddle::dialect::TransposeOp transpose_op_second = 
+      builder.Build<paddle::dialect::TransposeOp>(transpose_op_first.out(), std::vector<int>{0, 1, 2, 3});
+ 
+  paddle::dialect::ReluOp relu_op_second = 
+      builder.Build<paddle::dialect::ReluOp>(transpose_op_second.out());
+
+  builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }
 
 class DrrPatternRewritePass : public ir::Pass {
@@ -113,6 +151,7 @@ class DrrPatternRewritePass : public ir::Pass {
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
     ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
+    ps.Add(std::make_unique<RemoveRedundentTransposePattern>(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -140,7 +179,7 @@ TEST(DrrTest, drr) {
   ir::Builder builder = ir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 7u);
+  EXPECT_EQ(program.block()->size(), 10u);
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());

@@ -66,7 +66,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
       SourceOp op,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     // Match
-    auto* anchor = source_pattern_graph_->AnchorNode();
+    const auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
     std::unordered_set<const OpCall*> drr_visited;
     std::unordered_set<const Operation*> ir_visited;
@@ -81,7 +81,9 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     bool Matched = true;
     size_t step = 0;
     while (!drr_q.empty()) {
-      if (!Matched) break;
+      if (!Matched) {
+        break;
+        }
       IR_ENFORCE(drr_q.size() == ir_q.size());
       // if (drr_q.size() != ir_q.size()) {
       //   Matched = false;
@@ -178,6 +180,11 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
 
       for (size_t i = 0; i < drr_output_tensors.size(); ++i) {
         if (!Matched) break;
+
+        if (drr_output_tensors[i]->consumers().empty()){
+          continue;
+        }
+
         // check child ops
         auto drr_child_ops = drr_output_tensors[i]->consumers();
         auto ir_output_value = ir_node->result(i);
