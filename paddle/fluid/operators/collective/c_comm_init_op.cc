@@ -23,7 +23,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/store.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -105,8 +106,12 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
-      CommContext::Instance().CreateComm(
-          comm_id, nranks, rank_id, device_id, rid);
+      if (false)
+        CommContext::Instance().CreateComm(
+            comm_id, nranks, rank_id, device_id, rid);
+      std::shared_ptr<phi::distributed::Store> store;
+      phi::distributed::CommContextManager::CreateNCCLCommContext(
+          store, std::to_string(device_id), rank_id, nranks);
 #endif
     }
   }

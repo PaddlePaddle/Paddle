@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace paddle {
 namespace operators {
@@ -65,6 +66,17 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
+    // const auto& comm_context_manager =
+    //     phi::distributed::CommContextManager::GetInstance();
+    // if (comm_context_manager.Has(std::to_string(ring_id))) {
+    //   stream = comm_ctx->GetStream();
+    //   VLOG(3) << "new comm_context_manager has rid " << ring_id;
+    // } else {
+    //   comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    //   stream = comm->stream();
+    //   VLOG(3) << "old NCCLCommContext has rid " << rid;
+    // }
+
     std::string endpoint = Attr<std::string>("endpoint");
     int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
 
@@ -76,8 +88,10 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
       platform::SendBroadCastCommID(endpoint_list, &nccl_ids, ring_id);
+      // comm_ctx->Send(*gpu_shape_size_tensor, 1, peer, stream);
     } else {
       platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids, ring_id);
+      // comm_ctx->Recv(&gpu_shape_size_tensor, 1, peer, stream);
     }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);
