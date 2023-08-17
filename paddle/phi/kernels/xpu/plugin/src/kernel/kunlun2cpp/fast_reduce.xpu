@@ -22,21 +22,18 @@
 namespace xpu2 {
 namespace plugin {
 
-__device__ float do_sum_align32(float* lmptr, int size) {
+__device__ float do_sum_align16(float* lmptr, int size) {
   __simd__ float sum_buf[16];
-  float32x16_t al;
-  float32x16_t ah;
   float32x16_t vsum = vset_zero();
-  for (int i = 0; i < size; i += 32) {
-    vload2_lm(lmptr + i, al, ah);
-    vsum = vvadd_float32x16(vsum, al);
-    vsum = vvadd_float32x16(vsum, ah);
+  for (int i = 0; i < size; i += 16) {
+    float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+    vsum = vvadd_float32x16(vsum, v0);
   }
   vstore_lm_float32x16(sum_buf, vsum);
   mfence_lm();
   float sum = 0.0f;
-  for (int i = 1; i < 16; i++) {
-    sum += sum_buf[i];
+  for (int i = 0; i < 16; i++) {
+    sum = sum + sum_buf[i];
   }
   return sum;
 }
@@ -49,16 +46,12 @@ __device__ float do_sum(float* lmptr, int size) {
   return sum;
 }
 
-__device__ float do_max_align32(float* lmptr, int size) {
+__device__ float do_max_align16(float* lmptr, int size) {
   __simd__ float max_buf[16];
-  float32x16_t al;
-  float32x16_t ah;
-  vload2_lm(lmptr, al, ah);
-  float32x16_t vmax = vvmax_float32x16(al, ah);
-  for (int i = 32; i < size; i += 32) {
-    vload2_lm(lmptr + i, al, ah);
-    vmax = vvmax_float32x16(vmax, al);
-    vmax = vvmax_float32x16(vmax, ah);
+  float32x16_t vmax = vload_lm_float32x16(lmptr);
+  for (int i = 16; i < size; i += 16) {
+    float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+    vmax = vvmax_float32x16(vmax, v0);
   }
   vstore_lm_float32x16(max_buf, vmax);
   mfence_lm();
@@ -77,16 +70,12 @@ __device__ float do_max(float* lmptr, int size) {
   return max_val;
 }
 
-__device__ float do_min_align32(float* lmptr, int size) {
+__device__ float do_min_align16(float* lmptr, int size) {
   __simd__ float min_buf[16];
-  float32x16_t al;
-  float32x16_t ah;
-  vload2_lm(lmptr, al, ah);
-  float32x16_t vmin = vvmin_float32x16(al, ah);
-  for (int i = 32; i < size; i += 32) {
-    vload2_lm(lmptr + i, al, ah);
-    vmin = vvmin_float32x16(vmin, al);
-    vmin = vvmin_float32x16(vmin, ah);
+  float32x16_t vmin = vload_lm_float32x16(lmptr);
+  for (int i = 16; i < size; i += 16) {
+    float32x16_t v0 = vload_lm_float32x16(lmptr + i);
+    vmin = vvmin_float32x16(vmin, v0);
   }
   vstore_lm_float32x16(min_buf, vmin);
   mfence_lm();
@@ -123,9 +112,9 @@ __global__ void fast_reduce_sum_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
-    if (t % 32 == 0) {
+    if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
-        ylm[j / t] = do_sum_align32(xlm + j, t);
+        ylm[j / t] = do_sum_align16(xlm + j, t);
       }
       LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
@@ -158,9 +147,9 @@ __global__ void fast_reduce_mean_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
-    if (t % 32 == 0) {
+    if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
-        ylm[j / t] = do_sum_align32(xlm + j, t) / t;
+        ylm[j / t] = do_sum_align16(xlm + j, t) / t;
       }
       LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
@@ -193,9 +182,9 @@ __global__ void fast_reduce_max_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
-    if (t % 32 == 0) {
+    if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
-        ylm[j / t] = do_max_align32(xlm + j, t);
+        ylm[j / t] = do_max_align16(xlm + j, t);
       }
       LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
@@ -228,9 +217,9 @@ __global__ void fast_reduce_min_tiny(const T* x, T* y, int m, int t) {
   for (int i = mstart; i < mend; i += block_cnt) {
     int readlen = min((mend - i) * t, block_cnt * t);
     GM2LM(x + i * t, (T*)xlm, readlen * sizeof(T));
-    if (t % 32 == 0) {
+    if (t % 16 == 0 && t >= 32) {
       for (int j = 0; j < readlen; j += t) {
-        ylm[j / t] = do_min_align32(xlm + j, t);
+        ylm[j / t] = do_min_align16(xlm + j, t);
       }
       LM2GM((T*)ylm, y + i, readlen / t * sizeof(T));
     } else {
