@@ -635,6 +635,7 @@
   output : Tensor(out)
   infer_meta :
     func : DataInferMeta
+    param : [name, shape, dtype]
   kernel:
     func : data
     param : [name, shape, dtype]
