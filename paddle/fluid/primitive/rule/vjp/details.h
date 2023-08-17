@@ -22,8 +22,8 @@
 #include <vector>
 
 #include "paddle/fluid/primitive/primitive/primitive.h"
-#include "paddle/fluid/primitive/rule/vjp/utils.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
+#include "paddle/fluid/primitive/utils/utils.h"
 
 namespace paddle {
 namespace primitive {

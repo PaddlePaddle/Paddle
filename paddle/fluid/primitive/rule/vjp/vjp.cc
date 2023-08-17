@@ -17,8 +17,8 @@
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/static_backend.h"
 #include "paddle/fluid/primitive/rule/vjp/details.h"
-#include "paddle/fluid/primitive/rule/vjp/utils.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
+#include "paddle/fluid/primitive/utils/utils.h"
 #include "paddle/ir/core/operation.h"
 // TODO(wanghao107):
 //  op's vjp will be auto generated.

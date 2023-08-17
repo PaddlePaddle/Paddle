@@ -11,15 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/primitive/rule/vjp/utils.h"
+#include "paddle/fluid/primitive/type/lazy_tensor.h"
+#include "paddle/fluid/primitive/utils/utils.h"
 
 namespace paddle {
 namespace primitive {
 template <>
-void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
+void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
-  x->set_autograd_meta(x_tmp.mutable_autograd_meta());
 }
 
 }  // namespace primitive
