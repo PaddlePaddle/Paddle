@@ -180,10 +180,6 @@ phi::KernelKey GetKernelKey(
 
     auto backend = paddle::experimental::ParseBackend(data_place);
 
-    if (backend == phi::Backend::UNDEFINED) {
-      backend = paddle::experimental::ParseBackend(place);
-    }
-
     return {backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
