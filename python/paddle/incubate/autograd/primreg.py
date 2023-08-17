@@ -82,7 +82,7 @@ def op_position_inputs(op):
             >>> from paddle.fluid.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.primreg import REGISTER_FN
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> @REGISTER_FN('div_p', 'X', 'Y', 'Z')
             >>> def div(x, y, out=None):
             ...     return _simple_binop(LayerHelper('div_p', **locals()))
@@ -124,7 +124,7 @@ def op_position_output(op):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primops import _simple_binop
             >>> from paddle.fluid.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.primreg import REGISTER_FN
@@ -167,7 +167,7 @@ def REGISTER_FN(op_type, *position_argnames):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primops import _simple_binop
             >>> from paddle.fluid.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.primreg import REGISTER_FN
@@ -203,7 +203,7 @@ def REGISTER_ORIG2PRIM(op_type):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.fluid.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.utils import get_input_var_list
             >>> from paddle.incubate.autograd import primops
@@ -243,7 +243,7 @@ def REGISTER_COMPOSITE(op_type):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> import paddle
             >>> from paddle.incubate.autograd.primreg import REGISTER_COMPOSITE
 
@@ -283,7 +283,7 @@ def REGISTER_PRIM2ORIG(op_type):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> import paddle
             >>> from paddle.incubate.autograd.primreg import REGISTER_PRIM2ORIG
             >>> from paddle.incubate.autograd.utils import get_input_var_list
@@ -322,7 +322,7 @@ def REGISTER_JVP(op_type):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd import primops
             >>> from paddle.incubate.autograd.primreg import REGISTER_JVP
 
@@ -361,7 +361,7 @@ def REGISTER_TRANSPOSE(op_type):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('Depends on external files.')
+            >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primreg import REGISTER_TRANSPOSE
 
             >>> @REGISTER_TRANSPOSE('add_p')
