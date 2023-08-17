@@ -77,6 +77,7 @@ def op_position_inputs(op):
 
     Examples:
         .. code-block:: python
+
             >>> from paddle.incubate.autograd.primops import _simple_binop
             >>> from paddle.fluid.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.primreg import REGISTER_FN
@@ -131,7 +132,7 @@ def op_position_output(op):
             >>> @REGISTER_FN('div_p', 'X', 'Y', 'Z')
             >>> def div(x, y, out=None):
             ...     return _simple_binop(LayerHelper('div_p', **locals()))
-            ...
+
     The registered output is ['Z'] for div_p and accordingly this
     function will return output Z.
 
@@ -328,7 +329,7 @@ def REGISTER_JVP(op_type):
             >>> @REGISTER_JVP('add_p')
             >>> def add_jvp(op, x_dot, y_dot):
             ...     return primops.add(x_dot, y_dot)
-            ...
+
     """
     if not isinstance(op_type, str):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
@@ -366,7 +367,7 @@ def REGISTER_TRANSPOSE(op_type):
             >>> @REGISTER_TRANSPOSE('add_p')
             >>> def add_transpose(op, z_bar):
             ...     return z_bar, z_bar
-            ...
+
     """
     if not isinstance(op_type, str):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')

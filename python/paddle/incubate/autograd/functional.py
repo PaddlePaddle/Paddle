@@ -220,7 +220,7 @@ class Jacobian:
 
             >>> def func(x, y):
             ...     return paddle.matmul(x, y)
-            ... 
+            ...
             >>> x = paddle.to_tensor([[1., 2.], [3., 4.]])
             >>> J = paddle.incubate.autograd.Jacobian(func, [x, x])
             >>> print(J[:, :])
@@ -284,21 +284,22 @@ class Hessian:
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        >>> import paddle
+            >>> import paddle
 
-        >>> def reducer(x):
-        ...     return paddle.sum(x * x)
-        ...
-        >>> x = paddle.rand([2, 2])
-        >>> h = paddle.incubate.autograd.Hessian(reducer, x)
-        >>> print(h[:])
-        Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-               [[2., 0., 0., 0.],
-                [0., 2., 0., 0.],
-                [0., 0., 2., 0.],
-                [0., 0., 0., 2.]])
+            >>> def reducer(x):
+            ...     return paddle.sum(x * x)
+            ...
+            >>> x = paddle.rand([2, 2])
+            >>> h = paddle.incubate.autograd.Hessian(reducer, x)
+            >>> print(h[:])
+            Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                [[2., 0., 0., 0.],
+                    [0., 2., 0., 0.],
+                    [0., 0., 2., 0.],
+                    [0., 0., 0., 2.]])
+
     """
 
     def __init__(self, func, xs, is_batched=False):
@@ -615,7 +616,7 @@ def _separate(xs):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.autograd.functional import _separate
+            >>> from paddle.incubate.autograd.functional import _separate
 
             >>> def func(x, y):
             ...     return x * y
