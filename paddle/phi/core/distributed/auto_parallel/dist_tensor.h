@@ -35,10 +35,10 @@ class DistTensor final
              const TensorDistAttr& dist_attr);
 
   /// \brief Construct a dist tensor based dense tensor.
-  /// \param global_value The global dense tensor of the current tensor.
+  /// \param value The global dense tensor of the current tensor.
   /// \param dims The global dimension of the currnet tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
-  DistTensor(const phi::DenseTensor& global_value,
+  DistTensor(const phi::DenseTensor& value,
              const DDim& dims,
              const TensorDistAttr& dist_attr);
 

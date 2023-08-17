@@ -48,9 +48,9 @@ TEST(dist_tensor, constructor) {
   EXPECT_TRUE(dist_x2.initialized());
 
   // empty construct
-  DistTensor dist_x2(dims, dist_attr);
-  EXPECT_TRUE(!dist_x2.defined());
-  EXPECT_TRUE(!dist_x2.initialized());
+  DistTensor dist_x3(dims, dist_attr);
+  EXPECT_TRUE(!dist_x3.defined());
+  EXPECT_TRUE(!dist_x3.initialized());
 }
 
 }  // namespace tests
