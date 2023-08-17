@@ -117,9 +117,7 @@ class SparseFTRLFunctor {
 };
 
 template <typename T, typename Context>
-void FtrlKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                DenseTensor* out) {
+void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   const auto* grad_var = ctx.InputVar("Grad");
 
   auto* lr_in = ctx.Input<phi::DenseTensor>("LearningRate");

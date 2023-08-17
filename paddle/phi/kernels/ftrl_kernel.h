@@ -19,6 +19,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FtrlKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {}
+void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 
 }  // namespace phi
