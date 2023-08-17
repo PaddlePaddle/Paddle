@@ -96,6 +96,8 @@ inline void run_program_ad_func(
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
+  paddle::platform::RecordEvent run_program_ad_func_event(
+      "run_program_ad_func", paddle::platform::TracerEventType::UserDefined, 1);
   // Prepare Autograd Meta
   auto deref_out = details::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =

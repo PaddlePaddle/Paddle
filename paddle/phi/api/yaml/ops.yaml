@@ -2155,6 +2155,7 @@
     func : scale {dense -> dense},
            scale_sr {selected_rows -> selected_rows}
     data_type : x
+    backend : x
   inplace : (x -> out)
   backward : scale_grad
 

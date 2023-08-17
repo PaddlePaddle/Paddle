@@ -96,6 +96,8 @@ ProgramInterpreter::~ProgramInterpreter() {
 
 void ProgramInterpreter::RunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
+  VLOG(1) << "RunImpl start";
+
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
@@ -105,14 +107,22 @@ void ProgramInterpreter::RunImpl() {
   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
       (sync_op_num_ == 0)) {
     VLOG(4) << "Tracing Instruction List";
-    TraceInstructionList(vec_instruction_);
+    {
+      platform::RecordEvent trace_instrs_event(
+          "TraceInstructionList", platform::TracerEventType::UserDefined, 1);
+      TraceInstructionList(vec_instruction_);
+    }
   } else {
     VLOG(4) << "Non-tracing";
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
-    ExecuteInstructionList(vec_instruction_);
+    {
+      platform::RecordEvent exec_instrs_event(
+          "ExecuteInstructionList", platform::TracerEventType::UserDefined, 1);
+      ExecuteInstructionList(vec_instruction_);
+    }
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
@@ -168,7 +178,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
-
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::BuildVariableScope(
@@ -191,34 +200,44 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
+    } else {
+      VLOG(2) << "static_build_: " << static_build_;
     }
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
+    VLOG(4) << "RUN impl zzz";
     RunImpl();
   }
 
-  if (HasLocalScope()) {
-    ClearLoDTensorArrayInLocalScope();
-  }
+  {
+    platform::RecordEvent after_process("ProgramInterpreter Run after process",
+                                        platform::TracerEventType::UserDefined,
+                                        1);
 
-  // return Fetch Tensors
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
-  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var && need_fetch) {
-    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-    if (platform::IsCUDAGraphCapturing()) {
-      PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Cannot fetch data when using CUDA Graph."));
+    if (HasLocalScope()) {
+      ClearLoDTensorArrayInLocalScope();
     }
+
+    // return Fetch Tensors
+    Scope* inner_scope =
+        HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var && need_fetch) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
+#ifdef PADDLE_WITH_CUDA
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
 #endif
-    return fetch_list;
-  } else {
-    return {};
+      return fetch_list;
+    } else {
+      return {};
+    }
   }
 }
 
@@ -1084,10 +1103,14 @@ void ProgramInterpreter::ExecuteInstructionList(
         std::ref(cancel_log));
   }
 
-  auto event_name = main_thread_blocker_.WaitEvent();
-  VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
-          << ") got event_name: " << event_name;
+  {
+    platform::RecordEvent weitevent(
+        "WaitEvent", platform::TracerEventType::UserDefined, 1);
+    auto event_name = main_thread_blocker_.WaitEvent();
 
+    VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
+            << ") got event_name: " << event_name;
+  }
   cancel_log = true;
   if (logged_times.valid()) {
     VLOG(1) << "Logged deps for " << logged_times.get() << " times";

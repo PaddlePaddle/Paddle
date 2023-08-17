@@ -293,6 +293,8 @@ inline void RunProgramAPI(
     std::vector<paddle::Tensor *> &dout,                  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
+  paddle::platform::RecordEvent run_program_api_event(
+      "RunProgramAPI", paddle::platform::TracerEventType::UserDefined, 1);
   VLOG(2) << "RunProgramOpKernel Compute";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
@@ -360,6 +362,9 @@ inline void RunProgramAPI(
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
+
+  VLOG(1) << "[fei] forward check interpretercore cache" << program_id
+          << global_inner_scope;
   if (!interpretercore_info_cache.Has(
           program_id, global_inner_scope, /*is_grad=*/false)) {
     paddle::platform::RecordEvent record_event(
@@ -376,6 +381,7 @@ inline void RunProgramAPI(
 
     if (FLAGS_enable_new_ir_in_executor) {
       // build new ir program
+      VLOG(1) << "ir_program built";
       auto ir_program = paddle::framework::ConstructFowardIrProgram(
           forward_global_block, backward_global_block, output_names, x, params);
       interpreter_core =
@@ -386,41 +392,52 @@ inline void RunProgramAPI(
               program_id,
               global_inner_scope);
     } else {
-      interpreter_core =
-          paddle::framework::CreateProgramInterpreterCoreInfoToCache(
-              *forward_program,
-              place,
-              /*is_grad=*/false,
-              program_id,
-              global_inner_scope);
+      VLOG(1) << "program iterpreter core built";
+      {
+        paddle::platform::RecordEvent get_core(
+            "get_interpreter_core",
+            paddle::platform::TracerEventType::UserDefined,
+            1);
+        interpreter_core =
+            paddle::framework::CreateProgramInterpreterCoreInfoToCache(
+                *forward_program,
+                place,
+                /*is_grad=*/false,
+                program_id,
+                global_inner_scope);
+      }
     }
     // Step 3. get all eager gc vars
-    std::set<std::string> skip_eager_delete_vars =
-        paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
-            *backward_program);
+    {
+      paddle::platform::RecordEvent parse_skip_var_event(
+          "update skip var", paddle::platform::TracerEventType::UserDefined, 1);
 
-    // all out_vars are skip_eager_var
-    skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
-    skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
-    // update interpretercore skip_gc_var
-    interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
+      std::set<std::string> skip_eager_delete_vars =
+          paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
+              *backward_program);
+      // all out_vars are skip_eager_var
+      skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
+      skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
+      // update interpretercore skip_gc_var
+      interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
 
-    std::set<std::string> input_vars;
-    input_vars.insert(input_names.begin(), input_names.end());
-    interpreter_core->SetJitInputVars(input_vars);
+      std::set<std::string> input_vars;
+      input_vars.insert(input_names.begin(), input_names.end());
+      interpreter_core->SetJitInputVars(input_vars);
 
-    if (VLOG_IS_ON(6)) {
-      std::stringstream s;
-      s << "skip_eager_delete_vars: ";
-      for (auto name : skip_eager_delete_vars) {
-        s << name << " ";
+      if (VLOG_IS_ON(6)) {
+        std::stringstream s;
+        s << "skip_eager_delete_vars: ";
+        for (auto name : skip_eager_delete_vars) {
+          s << name << " ";
+        }
+        VLOG(6) << s.str();
       }
-      VLOG(6) << s.str();
-    }
 
-    interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id, global_inner_scope, false, skip_eager_delete_vars);
-    VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
+      interpretercore_info_cache.UpdateSkipEagerDeleteVars(
+          program_id, global_inner_scope, false, skip_eager_delete_vars);
+      VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
+    }
   } else {
     paddle::platform::RecordEvent record_event(
         "get_interpretercore_cahce",
@@ -516,6 +533,8 @@ inline void RunProgramGradAPI(
       paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
+  VLOG(1) << "[fei] backward check interpretercore cache" << program_id
+          << global_inner_scope;
   if (!interpretercore_info_cache.Has(
           program_id, global_inner_scope, /*is_grad=*/true)) {
     paddle::platform::RecordEvent record_event(

@@ -24,6 +24,10 @@ namespace pybind {
 static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *args,
                                        PyObject *kwargs) {
+  paddle::platform::RecordEvent eager_api_run_program_event(
+      "eager_api_run_program",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
   PyThreadState *tstate = nullptr;
   try {
     auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);

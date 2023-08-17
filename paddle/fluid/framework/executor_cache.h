@@ -189,9 +189,14 @@ class InterpreterCoreInfoCache {
 
   bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
     int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
+    VLOG(1) << "[Cache Check]: program_id=" << program_id
+            << "; scope_id=" << scope_i << "; is_grad=" << is_grad;
     program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
-    return info_map_.find(program_id) != info_map_.end() &&
-           info_map_[program_id].IsAvailable(is_grad);
+    VLOG(1) << "[Cache Check]: changed program_id: " << program_id;
+    bool result = info_map_.find(program_id) != info_map_.end() &&
+                  info_map_[program_id].IsAvailable(is_grad);
+    VLOG(1) << "[Cache Check]: result " << result;
+    return result;
   }
 
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
@@ -223,6 +228,7 @@ class InterpreterCoreInfoCache {
     // NOTE(Aurelius84): DO NOT perform finalize in destructor
     // to avoid problems caused by destructor order of static
     // object.
+    VLOG(1) << "[Cache Finalize]: size_=" << info_map_.size();
     info_map_.clear();
   }
 

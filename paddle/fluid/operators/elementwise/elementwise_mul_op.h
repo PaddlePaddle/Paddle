@@ -29,9 +29,13 @@ class ElementwiseMulOp : public ElementwiseOp {
 
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+    phi::KernelKey kt;
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    kt = phi::KernelKey(input_data_type, ctx.GetPlace());
+    kt.set_backend(
+        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+    return kt;
   }
 
   phi::KernelKey GetKernelTypeForVar(

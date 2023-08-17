@@ -192,12 +192,28 @@ class ElementwiseAddCompositeTripleGradOpMaker
   }
 };
 
+class ElementwiseAddOp : public ElementwiseOp {
+ public:
+  using ElementwiseOp::ElementwiseOp;
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+    phi::KernelKey kt;
+    kt = phi::KernelKey(input_data_type, ctx.GetPlace());
+    kt.set_backend(
+        phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+    return kt;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
 REGISTER_OPERATOR(elementwise_add,
-                  ::paddle::operators::ElementwiseOp,
+                  ::paddle::operators::ElementwiseAddOp,
                   ::paddle::operators::ElementwiseAddOpMaker,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_addGradMaker<::paddle::framework::OpDesc>,
