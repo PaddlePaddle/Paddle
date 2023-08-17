@@ -87,6 +87,8 @@ class DygraphShardingOptimizer:
             assert (
                 not pp_overlap
             ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
+        self._broadcast_overlap = False
+        self._forward_pre_hook_remove_helper = []
 
         self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
         self._rank2decay = {}
@@ -139,6 +141,15 @@ class DygraphShardingOptimizer:
             # won't change. To avoid failure on some other applications (such as some nvtx
             # operations), here we manulay let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
+
+    def _set_broadcast_overlap(self, enable, layers=None):
+        assert layers is not None
+        if enable:
+            assert (
+                self.comm_overlap
+            ), "If want to broadcast overlap, should enable sharding comm overlap at first."
+        self._layers = layers
+        self._broadcast_overlap = enable
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -264,6 +275,16 @@ class DygraphShardingOptimizer:
                             sync_op=True,
                         )
 
+    def _forward_pre_hook_function(self, tasks):
+        # Since the layers will call pre hook by `forward_pre_hook(self, inputs)`,
+        # the helper functions needs the x and y to take those params.
+        def __impl__(x, y):
+            for task in tasks:
+                # Wait for broadcast task before using the result of the broadcast.
+                task.wait()
+
+        return __impl__
+
     def _sharding_sync_parameters(self):
         """
         sync parameter across sharding group
@@ -278,16 +299,34 @@ class DygraphShardingOptimizer:
                 if not self.tensor_fusion
                 else self._rank2fused
             )
+            param2task = {}
             for rank, params in valid_rank_to_params.items():
                 for param in params:
-                    paddle.distributed.broadcast(
+                    task = paddle.distributed.broadcast(
                         param,
                         # the collective API need src rank to be the global rank id
                         # instead of the relative logic rank id within group
                         src=self._hcg.get_sharding_parallel_group().ranks[rank],
                         group=self._hcg.get_sharding_parallel_group(),
-                        sync_op=True,
+                        sync_op=not self._broadcast_overlap,
                     )
+                    assert param.name not in param2task
+                    param2task[param.name] = task
+            if self._broadcast_overlap:
+                assert hasattr(self, "_layers")
+                for layer in self._layers.sublayers():
+                    if len(layer.sublayers()) == 0:
+                        # Register forward pre hood for leaf layers. This will get the best performance.
+                        tasks = []
+                        for param in layer.parameters():
+                            if param.trainable:
+                                if param.name in param2task:
+                                    tasks.append(param2task[param.name])
+                        self._forward_pre_hook_remove_helper.append(
+                            layer.register_forward_pre_hook(
+                                self._forward_pre_hook_function(tasks)
+                            )
+                        )
 
     def _update_trainable(self):
         """
@@ -323,6 +362,13 @@ class DygraphShardingOptimizer:
         # hack to grad_clip all parameters,
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
         # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+
+        if self._broadcast_overlap:
+            # Clear the pre forward hook in the optimizer step.
+            for hook_remove in self._forward_pre_hook_remove_helper:
+                hook_remove.remove()
+            self._forward_pre_hook_remove_helper = []
+
         origin_clip = self._inner_opt._grad_clip
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []

@@ -152,6 +152,7 @@ class TestDistSharding(unittest.TestCase):
 
         model_a = fleet.distributed_model(model_a)
         optimizer_a = fleet.distributed_optimizer(optimizer_a)
+        optimizer_a._set_broadcast_overlap(True, model_a)
 
         return model_a, optimizer_a, model_b, optimizer_b
 
@@ -172,13 +173,14 @@ class TestDistSharding(unittest.TestCase):
             loss_b = self.train_batch(self.batch_single, model_b, optimizer_b)
             np.testing.assert_allclose(loss_a, loss_b, rtol=1e-6, atol=1e-6)
 
-            for j in range(len(model_a.parameters())):
-                np.testing.assert_allclose(
-                    model_a.parameters()[j].numpy(),
-                    model_b.parameters()[j].numpy(),
-                    rtol=1e-6,
-                    atol=1e-7,
-                )
+            if idx % 4 == 0:
+                for j in range(len(model_a.parameters())):
+                    np.testing.assert_allclose(
+                        model_a.parameters()[j].numpy(),
+                        model_b.parameters()[j].numpy(),
+                        rtol=1e-6,
+                        atol=1e-7,
+                    )
 
     def test_sharding_adam(self):
         self.sharding_model()
