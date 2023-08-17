@@ -2450,7 +2450,7 @@ def wrap_data_for_completion(
     Examples:
         .. code-block:: python
 
-            >>> from paddle.distributed.auto_parallel.static import dist_op
+            >>> # doctest: +SKIP('Depends on other ops.')
             >>> from paddle.distributed.auto_parallel.static.utils import wrap_data_for_completion
 
             >>> op_desc = dist_op.serial_op.desc
