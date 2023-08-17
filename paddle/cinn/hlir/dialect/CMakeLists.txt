@@ -5,36 +5,38 @@ if(NOT CINN_ONLY)
   set(CINN_DIALECT_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect")
 
   # Generate cinn_dialect files defining op using op_gen_file
-  set(op_gen_file
+  set(cinn_op_gen_file
       ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/op_generator/op_gen.py)
 
-  set(op_compat_yaml_file
+  set(cinn_op_compat_yaml_file
       ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 
-  set(op_forward_yaml_file1
+  set(cinn_op_forward_yaml_file1
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/cinn_ops.parsed.yaml)
 
-  set(op_yaml_files ${op_forward_yaml_file1})
-  set(op_namespace cinn,dialect)
-  set(dialect_name cinn)
-  set(op_header_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.h)
-  set(op_source_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.cc)
-  set(op_header_file_tmp ${op_header_file}.tmp)
-  set(op_source_file_tmp ${op_source_file}.tmp)
+  set(cinn_op_yaml_files ${cinn_op_forward_yaml_file1})
+
+  set(cinn_op_namespace cinn,dialect)
+  set(cinn_dialect_name cinn)
+  set(cinn_op_header_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.h)
+  set(cinn_op_source_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.cc)
+  set(cinn_op_header_file_tmp ${op_header_file}.tmp)
+  set(cinn_op_source_file_tmp ${op_source_file}.tmp)
 
   add_custom_command(
-    OUTPUT ${op_header_file} ${op_source_file}
+    OUTPUT ${cinn_op_header_file} ${cinn_op_source_file}
     COMMAND
-      ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
-      --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
-      --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
-      --op_def_cc_file ${op_source_file_tmp}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_header_file_tmp}
-            ${op_header_file}
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_source_file_tmp}
-            ${op_source_file}
-    COMMENT "copy_if_different ${op_header_file} ${op_source_file}"
-    DEPENDS ${op_gen_file} ${op_forward_yaml_file1} ${op_compat_yaml_file}
+      ${PYTHON_EXECUTABLE} ${cinn_op_gen_file} --op_yaml_files
+      ${cinn_op_yaml_files} --op_compat_yaml_file ${cinn_op_compat_yaml_file}
+      --namespaces ${cinn_op_namespace} --dialect_name ${cinn_dialect_name}
+      --op_def_h_file ${cinn_op_header_file_tmp} --op_def_cc_file
+      ${cinn_op_source_file_tmp}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_header_file_tmp}
+            ${cinn_op_header_file}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_source_file_tmp}
+            ${cinn_op_source_file}
+    DEPENDS ${cinn_op_gen_file} ${cinn_op_forward_yaml_file1}
+            ${cinn_op_compat_yaml_file}
     VERBATIM)
 
   cinn_cc_library(
@@ -43,6 +45,7 @@ if(NOT CINN_ONLY)
     runtime_dialect.cc
     jit_kernel_op.cc
     cinn_dialect.cc
+    cinn_op.cc
     DEPS
     pd_dialect)
 
