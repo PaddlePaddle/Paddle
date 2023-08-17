@@ -729,17 +729,17 @@ def OpGenerator(
         op_kernel_map = op_info.kernel_map
         op_inplace_map = op_info.inplace_map
         op_view_map = op_info.view_map
-        op_interfaces = ["OpYamlInfoInterface"]
+        op_interfaces = ["paddle::dialect::OpYamlInfoInterface"]
         op_traits = []
 
         if op_info.infer_meta_func:
-            op_interfaces += ["InferMetaInterface"]
+            op_interfaces += ["paddle::dialect::InferMetaInterface"]
 
         if (
             op_info.backward_name
             and op_info.op_phi_name[0] in vjp_interface_gen_op_list
         ):
-            op_interfaces += ["VjpInterface"]
+            op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
@@ -757,7 +757,7 @@ def OpGenerator(
                 op_interfaces_str = "," + ",".join(op_interfaces)
 
             if op_name[-1] == "_":
-                op_traits += ["InplaceTrait"]
+                op_traits += ["paddle::dialect::InplaceTrait"]
 
             op_traits_str = ""
             if len(op_traits) > 0:

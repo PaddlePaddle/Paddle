@@ -20,8 +20,8 @@ if(NOT CINN_ONLY)
   set(cinn_dialect_name cinn)
   set(cinn_op_header_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.h)
   set(cinn_op_source_file ${CINN_DIALECT_BINARY_DIR}/cinn_op.cc)
-  set(cinn_op_header_file_tmp ${op_header_file}.tmp)
-  set(cinn_op_source_file_tmp ${op_source_file}.tmp)
+  set(cinn_op_header_file_tmp ${cinn_op_header_file}.tmp)
+  set(cinn_op_source_file_tmp ${cinn_op_source_file}.tmp)
 
   add_custom_command(
     OUTPUT ${cinn_op_header_file} ${cinn_op_source_file}
