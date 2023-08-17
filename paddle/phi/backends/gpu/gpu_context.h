@@ -88,8 +88,8 @@ class PADDLE_API GPUContext : public DeviceContext,
                       bool init = true,
                       int stream_priority = 0);
 
-  GPUContext(GPUContext&&);
-  GPUContext& operator=(GPUContext&&);
+  GPUContext(GPUContext&&) noexcept;
+  GPUContext& operator=(GPUContext&&) noexcept;
 
   virtual ~GPUContext();
 

@@ -405,7 +405,7 @@ void Tensor::reset() {
 
 Tensor &Tensor::operator=(const Tensor &x) & = default;
 
-Tensor &Tensor::operator=(Tensor &&x) & {  // NOLINT
+Tensor &Tensor::operator=(Tensor &&x) &noexcept {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
   name_ = std::move(x.name_);

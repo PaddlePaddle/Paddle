@@ -312,13 +312,12 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
 #endif
 }
 
-DeviceContext::DeviceContext(DeviceContext&& other) {  // NOLINT
+DeviceContext::DeviceContext(DeviceContext&& other) noexcept {
   impl_ = std::move(other.impl_);
 }
 
-DeviceContext& DeviceContext::operator=(DeviceContext&& other) =
-    default;  // NOLINT
-
+DeviceContext& DeviceContext::operator=(DeviceContext&& other) noexcept =
+    default;
 DeviceContext::~DeviceContext() = default;
 
 void DeviceContext::SetAllocator(const Allocator* allocator) {
