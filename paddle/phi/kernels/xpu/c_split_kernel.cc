@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/c_split_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
