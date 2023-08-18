@@ -16,8 +16,8 @@
 
 #include <vector>
 
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
-#include "paddle/ir/pattern_rewrite/drr/match_context_impl.h"
+#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/ir/drr/match_context_impl.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {

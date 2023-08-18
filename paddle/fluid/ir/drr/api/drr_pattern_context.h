@@ -20,7 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "paddle/ir/pattern_rewrite/drr/api/match_context.h"
+#include "paddle/fluid/ir/drr/api/match_context.h"
 
 namespace ir {
 namespace drr {

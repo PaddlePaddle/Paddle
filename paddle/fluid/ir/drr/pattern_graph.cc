@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
+#include "paddle/fluid/ir/drr/pattern_graph.h"
 
 #include <iostream>
 #include <queue>
 
+#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
 #include "paddle/ir/core/enforce.h"
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
 
 namespace ir {
 namespace drr {
