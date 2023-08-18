@@ -145,7 +145,7 @@ class Op {
 
   std::string op_type_name_;
   std::unordered_map<std::string, Attribute> attributes_;
-  PatternGraph* pattern_graph_;
+  PatternGraph* pattern_graph_{nullptr};
 };
 
 class Tensor {
@@ -182,9 +182,9 @@ class Tensor {
       : name_(name), pattern_graph_(pattern_graph) {}
 
   std::string name_;
-  OpCall* producer_;
+  OpCall* producer_{nullptr};
   std::vector<const OpCall*> consumers_;
-  PatternGraph* pattern_graph_;
+  PatternGraph* pattern_graph_{nullptr};
 };
 
 class OpCall {
@@ -233,7 +233,7 @@ class ResultPattern {
 
   explicit ResultPattern(DrrPatternContext* ctx) : ctx_(ctx) {}
 
-  DrrPatternContext* ctx_;
+  DrrPatternContext* ctx_{nullptr};
 };
 
 class SourcePattern {
@@ -255,7 +255,7 @@ class SourcePattern {
  private:
   friend class DrrPatternContext;
   explicit SourcePattern(DrrPatternContext* ctx) : ctx_(ctx) {}
-  DrrPatternContext* ctx_;
+  DrrPatternContext* ctx_{nullptr};
 };
 
 }  // namespace drr

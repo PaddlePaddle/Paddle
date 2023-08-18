@@ -31,22 +31,20 @@ class Tensor;
 
 class PatternGraph {
  public:
-  using id_type = std::string;
-
   const drr::OpCall& AddOpCall(const std::shared_ptr<drr::OpCall>& op_call);
 
   const drr::Tensor& AddTensor(const std::shared_ptr<drr::Tensor>& tensor);
 
   drr::Tensor& AddTmpTensor(const std::shared_ptr<drr::Tensor>& tensor);
 
-  void UpdateTmpTensor(const id_type& tmp_tensor_id,
-                       const id_type& new_tensor_id);
+  void UpdateTmpTensor(const std::string& tmp_tensor_name,
+                       const std::string& new_tensor_name);
 
-  const std::unordered_set<id_type>& input_tensors() const {
+  const std::unordered_set<std::string>& input_tensors() const {
     return input_tensors_;
   }
 
-  const std::unordered_set<id_type>& output_tensors() const {
+  const std::unordered_set<std::string>& output_tensors() const {
     return output_tensors_;
   }
 
@@ -58,16 +56,16 @@ class PatternGraph {
     return owned_op_call_;
   }
 
-  const std::unordered_map<id_type, std::shared_ptr<Tensor>>& id2owend_tensor()
-      const {
+  const std::unordered_map<std::string, std::shared_ptr<Tensor>>&
+  id2owend_tensor() const {
     return id2owned_tensor_;
   }
 
  protected:
-  std::unordered_map<id_type, std::shared_ptr<Tensor>> id2owned_tensor_;
+  std::unordered_map<std::string, std::shared_ptr<Tensor>> id2owned_tensor_;
   std::vector<std::shared_ptr<OpCall>> owned_op_call_;
-  std::unordered_set<id_type> input_tensors_;
-  std::unordered_set<id_type> output_tensors_;
+  std::unordered_set<std::string> input_tensors_;
+  std::unordered_set<std::string> output_tensors_;
 };
 
 class SourcePatternGraph : public PatternGraph {

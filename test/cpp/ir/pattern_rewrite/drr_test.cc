@@ -28,11 +28,13 @@ struct RemoveRedundentReshapeFunctor {
   void operator()(ir::drr::DrrPatternContext *ctx) {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &reshape = pat.Op("pd.reshape");
-    reshape({&pat.Tensor("arg0"), &pat.Tensor("shape0")},
-            {&pat.Tensor("out1"), &pat.Tensor("xshape_0")});
-    reshape({&pat.Tensor("out1"), &pat.Tensor("shape1")},
-            {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
+    const auto &reshape1 = pat.Op("pd.reshape");
+    const auto &reshape2 = pat.Op("pd.reshape");
+
+    reshape1({&pat.Tensor("arg0"), &pat.Tensor("shape0")},
+             {&pat.Tensor("out1"), &pat.Tensor("xshape_0")});
+    reshape2({&pat.Tensor("out1"), &pat.Tensor("shape1")},
+             {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
 
     // Result patterns：要替换为的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
@@ -187,7 +189,7 @@ TEST(DrrTest, drr) {
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
   pm.AddPass(ir::CreateDeadCodeEliminationPass());
-  pm.EnablePassTiming();
+  // pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);

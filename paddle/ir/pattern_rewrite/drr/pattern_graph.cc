@@ -27,20 +27,20 @@ const drr::OpCall &PatternGraph::AddOpCall(
     const std::shared_ptr<drr::OpCall> &op_call) {
   owned_op_call_.push_back(op_call);
   for (const auto *input : op_call->inputs()) {
-    const auto &tensor_id = input->name();
-    IR_ENFORCE(id2owned_tensor_.count(tensor_id));
-    id2owned_tensor_.at(tensor_id)->AddConsumer(op_call.get());
+    const auto &tensor_name = input->name();
+    IR_ENFORCE(id2owned_tensor_.count(tensor_name));
+    id2owned_tensor_.at(tensor_name)->AddConsumer(op_call.get());
 
     if (input->producer() == nullptr) {
-      input_tensors_.insert(tensor_id);
+      input_tensors_.insert(tensor_name);
     }
-    if (output_tensors_.find(tensor_id) != output_tensors_.end()) {
-      output_tensors_.erase(tensor_id);
+    if (output_tensors_.find(tensor_name) != output_tensors_.end()) {
+      output_tensors_.erase(tensor_name);
     }
   }
   for (auto &output : op_call->outputs()) {
-    const auto &out_tensor_id = output->name();
-    IR_ENFORCE(id2owned_tensor_.count(out_tensor_id));
+    const auto &out_tensor_name = output->name();
+    IR_ENFORCE(id2owned_tensor_.count(out_tensor_name));
     id2owned_tensor_[output->name()]->set_producer(op_call.get());
   }
   return *owned_op_call_.back();
@@ -63,23 +63,23 @@ drr::Tensor &PatternGraph::AddTmpTensor(
   return *id2owned_tensor_[tensor->name()];
 }
 
-void PatternGraph::UpdateTmpTensor(const id_type &tmp_tensor_id,
-                                   const id_type &new_tensor_id) {
-  if (input_tensors_.count(tmp_tensor_id)) {
-    input_tensors_.erase(tmp_tensor_id);
-    input_tensors_.insert(new_tensor_id);
+void PatternGraph::UpdateTmpTensor(const std::string &tmp_tensor_name,
+                                   const std::string &new_tensor_name) {
+  if (input_tensors_.count(tmp_tensor_name)) {
+    input_tensors_.erase(tmp_tensor_name);
+    input_tensors_.insert(new_tensor_name);
   }
 
-  output_tensors_.erase(new_tensor_id);
-  if (output_tensors_.count(tmp_tensor_id)) {
-    output_tensors_.erase(tmp_tensor_id);
-    output_tensors_.insert(new_tensor_id);
+  output_tensors_.erase(new_tensor_name);
+  if (output_tensors_.count(tmp_tensor_name)) {
+    output_tensors_.erase(tmp_tensor_name);
+    output_tensors_.insert(new_tensor_name);
   }
 
-  auto tmp_tensor = id2owned_tensor_[tmp_tensor_id];
-  id2owned_tensor_.erase(tmp_tensor_id);
-  tmp_tensor->set_name(new_tensor_id);
-  id2owned_tensor_[new_tensor_id] = tmp_tensor;
+  auto tmp_tensor = id2owned_tensor_[tmp_tensor_name];
+  id2owned_tensor_.erase(tmp_tensor_name);
+  tmp_tensor->set_name(new_tensor_name);
+  id2owned_tensor_[new_tensor_name] = tmp_tensor;
 }
 
 size_t PatternGraph::CountOfOpCalls() const { return owned_op_call_.size(); }
@@ -92,14 +92,14 @@ void PatternGraph::Print() const {
   std::cout << "\n" << std::endl;
 
   std::cout << "Input Tensors:" << std::endl;
-  for (const auto &tensor_id : input_tensors_) {
-    std::cout << "  " << tensor_id;
+  for (const auto &tensor_name : input_tensors_) {
+    std::cout << "  " << tensor_name;
   }
   std::cout << "\n" << std::endl;
 
   std::cout << "Output Tensors:" << std::endl;
-  for (const auto &tensor_id : output_tensors_) {
-    std::cout << "  " << tensor_id;
+  for (const auto &tensor_name : output_tensors_) {
+    std::cout << "  " << tensor_name;
   }
   std::cout << "\n" << std::endl;
 
@@ -127,19 +127,18 @@ const OpCall *SourcePatternGraph::AnchorNode() const {
 void GraphTopo::WalkGraphNodesTopoOrder(
     const std::function<void(const OpCall &)> &VisitNode) const {
   // graph data
-  const std::unordered_set<ir::drr::PatternGraph::id_type> &inputs_tensor =
+  const std::unordered_set<std::string> &inputs_tensor =
       graph_->input_tensors();
-  const std::unordered_map<ir::drr::PatternGraph::id_type,
-                           std::shared_ptr<ir::drr::Tensor>> &id2owned_tensor =
-      graph_->id2owend_tensor();
+  const std::unordered_map<std::string, std::shared_ptr<Tensor>>
+      &id2owned_tensor = graph_->id2owend_tensor();
   const std::vector<std::shared_ptr<OpCall>> &owend_opcall =
       graph_->owned_op_call();
 
-  std::queue<const ir::drr::OpCall *> opcall_queue;
-  std::unordered_map<const ir::drr::OpCall *, std::unordered_set<std::string>>
+  std::queue<const OpCall *> opcall_queue;
+  std::unordered_map<const OpCall *, std::unordered_set<std::string>>
       opcall_dependent;
 
-  // init opcall_dependent;
+  // init opcall_dependent
   for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall) {
     if (opcall_sptr.get()->inputs().empty()) {  // opcall inputs is empty
       opcall_queue.push(opcall_sptr.get());
@@ -151,12 +150,9 @@ void GraphTopo::WalkGraphNodesTopoOrder(
   }
 
   // init queue
-  for (const auto &tensor_id : inputs_tensor) {
-    const std::string &tensor_name =
-        id2owned_tensor.at(tensor_id).get()->name();
-
+  for (const auto &tensor_name : inputs_tensor) {
     for (const auto &tensor_comsumer :
-         id2owned_tensor.at(tensor_id).get()->consumers()) {
+         id2owned_tensor.at(tensor_name).get()->consumers()) {
       opcall_dependent[tensor_comsumer].erase(tensor_name);
       if (opcall_dependent[tensor_comsumer].empty()) {
         opcall_queue.push(tensor_comsumer);
@@ -165,7 +161,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
   }
 
   while (!opcall_queue.empty()) {
-    const ir::drr::OpCall *opcall = opcall_queue.front();
+    const OpCall *opcall = opcall_queue.front();
     opcall_queue.pop();
     VisitNode(*opcall);
 
