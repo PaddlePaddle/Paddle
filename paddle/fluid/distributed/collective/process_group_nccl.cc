@@ -178,7 +178,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                 << NCCLDTypeToString(
                        phi::ToNCCLDataType(in_tensor_maybe_partial.dtype()))
                 << ", ncclcomm: " << comm << ", stream: " << stream
-                << ", rank_in_group: " << rank_ << ", nranks" << size_
+                << ", rank_in_group: " << rank_ << ", nranks: " << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
