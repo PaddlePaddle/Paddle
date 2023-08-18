@@ -52,19 +52,19 @@ class Quantization(metaclass=abc.ABCMeta):
         Examples:
         .. code-block:: python
 
-            >>> import paddle
-            >>> from paddle.quantization import QAT, QuantConfig
-            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            >>> from paddle.vision.models import LeNet
+                >>> import paddle
+                >>> from paddle.quantization import QAT, QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.vision.models import LeNet
 
-            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
-            >>> qat = QAT(q_config)
-            >>> model = LeNet()
-            >>> quantized_model = qat.quantize(model)
-            >>> converted_model = qat.convert(quantized_model)
-            >>> dummy_data = paddle.rand([1, 1, 32, 32], dtype="float32")
-            >>> paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+                >>> qat = QAT(q_config)
+                >>> model = LeNet()
+                >>> quantized_model = qat.quantize(model)
+                >>> converted_model = qat.convert(quantized_model)
+                >>> dummy_data = paddle.rand([1, 1, 32, 32], dtype="float32")
+                >>> paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
         """
         _model = model if inplace else copy.deepcopy(model)
         replaced = {}
