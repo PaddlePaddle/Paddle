@@ -40,7 +40,7 @@ using cinn::common::float16;
 
 std::unique_ptr<Program> GraphCompiler::Build(const std::string& code) {
   utils::RecordEvent("GraphCompiler::Build", utils::EventType::kGraph);
-  compilation_context_.SetAttachedSourceCode(code);
+  compilation_context_.ApplySourceCode(code);
   compilation_context_.with_instantiate_variables = true;
 
   auto&& result = Build(&compilation_context_);

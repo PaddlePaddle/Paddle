@@ -26,7 +26,7 @@ void CompilationContext::ApplyTuningResult(
                        tuning_result.function_groups.end());
 }
 
-void CompilationContext::SetAttachedSourceCode(const std::string& code) {
+void CompilationContext::ApplySourceCode(const std::string& code) {
   attached_source_code = code;
 }
 
