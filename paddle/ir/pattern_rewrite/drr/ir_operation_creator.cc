@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/pattern_rewrite/drr/ir_operation_creator.h"
+
 #include "paddle/fluid/ir/dialect/pd_op.h"
 
 namespace ir {
