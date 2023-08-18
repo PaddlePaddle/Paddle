@@ -76,17 +76,6 @@ DLL_EXPORT int fast_layer_norm(Context* ctx,
                                const float* scale,
                                const float* bias);
 
-template <typename T>
-DLL_EXPORT int fast_add_layer_norm_fusion(Context* ctx,
-                                          const T* x,
-                                          const T* y,
-                                          T* z,
-                                          int64_t m,
-                                          int64_t n,
-                                          float eps,
-                                          const float* scale,
-                                          const float* bias);
-
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu

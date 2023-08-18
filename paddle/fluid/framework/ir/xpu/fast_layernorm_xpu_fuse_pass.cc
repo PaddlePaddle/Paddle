@@ -84,16 +84,14 @@ FastLayernormXPUPattern::FastLayernormXPUPattern(PDPattern* pattern,
                         ->AsInput()
                         ->assert_is_persistable_var()
                         ->assert_is_op_input("layer_norm", "Scale");
-  auto norm_mean =
-      pattern->NewNode(norm_mean_repr())
-          ->AsOutput()
-          ->assert_is_op_output("layer_norm", "Mean")
-          ->assert_more([](Node* node) { return node->outputs.size() == 0; });
-  auto norm_variance =
-      pattern->NewNode(norm_variance_repr())
-          ->AsOutput()
-          ->assert_is_op_output("layer_norm", "Variance")
-          ->assert_more([](Node* node) { return node->outputs.size() == 0; });
+  auto norm_mean = pattern->NewNode(norm_mean_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("layer_norm", "Mean")
+                       ->assert_has_n_outputs(0);
+  auto norm_variance = pattern->NewNode(norm_variance_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("layer_norm", "Variance")
+                           ->assert_has_n_outputs(0);
   auto norm_out = pattern->NewNode(norm_out_repr())
                       ->AsOutput()
                       ->assert_is_op_output("layer_norm", "Y");
