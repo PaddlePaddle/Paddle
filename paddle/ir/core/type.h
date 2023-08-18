@@ -61,6 +61,9 @@ class IR_API Type {
 
   const AbstractType &abstract_type();
 
+  ///
+  /// \brief Return the Type implementation.
+  ///
   const Storage *storage() const { return storage_; }
 
   Dialect &dialect() const;
@@ -95,28 +98,20 @@ class IR_API Type {
 
 IR_API std::ostream &operator<<(std::ostream &os, Type type);
 
-}  // namespace ir
-
 ///
 /// \brief This class represents the base of a type interface.
 ///
 
-// template <typename ConcreteType>
-// class TypeInterface : public ir::DialectInterface<ConcreteType, Type> {
-//  public:
-//   using Base = TypeInterface<ConcreteType>;
-//   using DialectInterfaceBase = ir::DialectInterface<ConcreteType, Type>;
-//   using DialectInterfaceBase::Base;
+using TypeBase = Type;
+template <typename ConcreteType>
+class TypeInterfaceBase : public TypeBase {
+ public:
+  TypeInterfaceBase() : TypeBase() {}
+  explicit TypeInterfaceBase(Type type) : TypeBase() {}
+  static ConcreteType dyn_cast(Type *type);
+};
 
-//  private:
-//   /// Returns the impl interface instance for the given type.
-//   static typename InterfaceBase::Concept *getInterfaceFor(Type type) {
-//     return type.getAbstractType().getInterface<ConcreteType>();
-//   }
-
-//   /// Allow access to 'getInterfaceFor'.
-//   friend InterfaceBase;
-// };
+}  // namespace ir
 
 namespace std {
 ///
