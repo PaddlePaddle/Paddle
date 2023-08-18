@@ -52,9 +52,10 @@ function make_ubuntu_trt7_dockerfile(){
     RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y --allow-unauthenticated libsndfile1 libnccl2=2.8.4-1+cuda10.2 libnccl-dev=2.8.4-1+cuda10.2 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
+# 镜像和make_ubuntu_trt7_dockerfile生成的镜像一致，但重新编译存在问题，所以将其作为base镜像，升级openssl
 function make_ubuntu_trt7_dockerfile_temp_ues(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
-  echo "FROM registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:10cc67113eb31c18cb4a7e0f0d120f7d" >> ${dockerfile_name}
+  echo "FROM registry.baidubce.com/paddlepaddle/paddleqa:coverage-ci-temp-use" >> ${dockerfile_name}
   echo "RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPIC --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && rm -rf openssl-1.1.1v*" >> ${dockerfile_name}
   echo "ENV OPENSSL_ROOT_DIR=/usr/local/ssl" >> ${dockerfile_name}
 }
