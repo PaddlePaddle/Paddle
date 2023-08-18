@@ -17,13 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-// we use tensorrt ScatterElement to generate set value
-// For example, if indices has dimensions [N,C,H,W] and axis is 2, then the
-// updates happen as: for n in [0,n)
-//     for c in [0,n)
-//         for h in [0,n)
-//             for w in [0,n)
-//                 output[n,c,indices[n,c,h,w],w] = updates[n,c,h,w]]
 
 class PutAlongAxisConverter : public OpConverter {
  public:
