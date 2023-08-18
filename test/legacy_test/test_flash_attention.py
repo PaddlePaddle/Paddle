@@ -229,7 +229,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 enable_mem_efficient=self.enable_mem_efficient,
             ):
                 if self.use_sdp_api:
-                    out = scaled_dot_product_attention(
+                    out, _ = scaled_dot_product_attention(
                         q, k, v, None, self.dropout, self.causal
                     )
                 else:
@@ -276,7 +276,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
                     enable_mem_efficient=self.enable_mem_efficient,
                 ):
                     if self.use_sdp_api:
-                        outs = scaled_dot_product_attention(
+                        outs, _ = scaled_dot_product_attention(
                             qs, ks, vs, None, self.dropout, self.causal
                         )
                     else:
@@ -357,7 +357,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
             mask, place=self.place, dtype=self.dtype, stop_gradient=False
         )
 
-        out = scaled_dot_product_attention(
+        out, _ = scaled_dot_product_attention(
             q, k, v, m, self.dropout, self.causal
         )
         out_ = attention_naive_with_mask(q_, k_, v_, m)
