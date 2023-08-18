@@ -410,8 +410,7 @@ template <typename T>
 HOSTDEVICE inline complex<T> atan2(const complex<T>& a, const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return complex<T>(
-      thrust::atan2(thrust::complex<T>(a), thrust::complex<T>(b)));
+  return complex<T>(::atan2(thrust::complex<T>(a), thrust::complex<T>(b)));
 #else
   return complex<T>(std::atan2(std::complex<T>(a), std::complex<T>(b)));
 #endif
