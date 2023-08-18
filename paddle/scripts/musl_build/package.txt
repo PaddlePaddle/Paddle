@@ -1,9 +1,0 @@
-linux-headers
-freetype-dev
-libjpeg-turbo-dev
-zlib-dev
-lapack-dev
-openblas-dev
-openssl-dev
-libuv-dev
-graphviz

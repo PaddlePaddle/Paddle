@@ -1,6 +1,0 @@
-{
-	global:
-        RegisterKernels;
-	local:
-		*;
-};

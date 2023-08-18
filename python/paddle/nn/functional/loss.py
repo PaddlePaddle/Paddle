@@ -1853,6 +1853,7 @@ def ctc_loss(
         norm_by_times=False,
         input_length=None,
         label_length=None,
+        use_log_softmax=True,
     ):
         if in_dynamic_mode():
             if input_length is None or label_length is None:
@@ -1860,7 +1861,13 @@ def ctc_loss(
                     "input_length and label_length must not be None in dygraph mode!"
                 )
             loss_out = _C_ops.warpctc(
-                input, label, input_length, label_length, blank, norm_by_times
+                input,
+                label,
+                input_length,
+                label_length,
+                blank,
+                norm_by_times,
+                use_log_softmax,
             )
             return loss_out
         else:
@@ -1894,16 +1901,19 @@ def ctc_loss(
                 attrs={
                     'blank': blank,
                     'norm_by_times': norm_by_times,
+                    'use_log_softmax': use_log_softmax,
                 },
             )
             return loss_out
 
-    if not use_log_softmax:
-        raise ValueError(
-            'Expected log_probs is an unscaled probability sequence. It not need to go through the log_softmax operation.'
-        )
     loss_out = warpctc(
-        log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
+        log_probs,
+        labels,
+        blank,
+        norm_by_times,
+        input_lengths,
+        label_lengths,
+        use_log_softmax,
     )
 
     loss_out = paddle.squeeze(loss_out, [-1])
@@ -1912,10 +1922,13 @@ def ctc_loss(
         loss_out = paddle.mean(loss_out / label_lengths)
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
+
     if zero_infinity:
         for p in loss_out:
             if paddle.isinf(p):
                 p.stop_gradient = True
+                p = paddle.to_tensor(0.0, dtype=p.dtype)
+
     return loss_out
 
 

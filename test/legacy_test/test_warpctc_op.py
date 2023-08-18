@@ -659,6 +659,118 @@ class TestCTCLossAPICase(unittest.TestCase):
     def test_class_api(self):
         self.batch_size = 3
         self.num_classes = 15
+        self.logits_length = np.array([3, 3, 1], dtype=np.int64)
+        self.labels_length = np.array([0, 1, 2], dtype=np.int64)
+        self.blank = 0
+        self.norm_by_times = False
+
+        logits = np.random.uniform(
+            0.1,
+            1.0,
+            [max(self.logits_length), self.batch_size, self.num_classes],
+        ).astype("float32")
+
+        softmax = np.apply_along_axis(stable_softmax, -1, logits)
+        # labels should not be blank
+        labels = np.random.randint(
+            1,
+            self.num_classes,
+            [self.batch_size, max(self.labels_length)],
+            dtype="int32",
+        )
+
+        ctc = CTCForward(
+            softmax,
+            self.logits_length,
+            labels,
+            self.labels_length,
+            self.num_classes,
+            self.batch_size,
+            self.blank,
+            self.norm_by_times,
+        )
+        loss_np = ctc.forward()
+
+        paddle.disable_static()
+        softmax = paddle.to_tensor(logits)
+        labels = paddle.to_tensor(labels)
+        logits_length = paddle.to_tensor(self.logits_length)
+        labels_length = paddle.to_tensor(self.labels_length)
+
+        loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
+            softmax,
+            labels,
+            logits_length,
+            labels_length,
+            use_log_softmax=True,
+            zero_infinity=False,
+        )
+
+        loss_pd = loss_pd.numpy()
+        paddle.enable_static()
+        loss_np = np.squeeze(loss_np, axis=-1)
+
+        np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
+
+    def test_class_api2(self):
+        self.batch_size = 3
+        self.num_classes = 15
+        self.logits_length = np.array([3, 3, 1], dtype=np.int64)
+        self.labels_length = np.array([0, 1, 2], dtype=np.int64)
+        self.blank = 0
+        self.norm_by_times = False
+
+        logits = np.random.uniform(
+            0.1,
+            1.0,
+            [max(self.logits_length), self.batch_size, self.num_classes],
+        ).astype("float32")
+
+        softmax = np.apply_along_axis(stable_softmax, -1, logits)
+        # labels should not be blank
+        labels = np.random.randint(
+            1,
+            self.num_classes,
+            [self.batch_size, max(self.labels_length)],
+            dtype="int32",
+        )
+
+        ctc = CTCForward(
+            softmax,
+            self.logits_length,
+            labels,
+            self.labels_length,
+            self.num_classes,
+            self.batch_size,
+            self.blank,
+            self.norm_by_times,
+        )
+        loss_np = ctc.forward()
+
+        paddle.disable_static()
+        softmax = paddle.to_tensor(logits)
+        labels = paddle.to_tensor(labels)
+        logits_length = paddle.to_tensor(self.logits_length)
+        labels_length = paddle.to_tensor(self.labels_length)
+
+        loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
+            softmax,
+            labels,
+            logits_length,
+            labels_length,
+            use_log_softmax=False,
+            zero_infinity=False,
+        )
+
+        loss_pd = loss_pd.numpy()
+        paddle.enable_static()
+        loss_np = np.squeeze(loss_np, axis=-1)
+
+        np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
+
+    def test_class_api3(self):
+        self.batch_size = 3
+        self.num_classes = 15
         self.logits_length = np.array([3, 3, 3], dtype=np.int64)
         self.labels_length = np.array([0, 1, 2], dtype=np.int64)
         self.blank = 0
@@ -698,7 +810,12 @@ class TestCTCLossAPICase(unittest.TestCase):
         labels_length = paddle.to_tensor(self.labels_length)
 
         loss_pd = paddle.nn.CTCLoss(self.blank, 'none')(
-            softmax, labels, logits_length, labels_length
+            softmax,
+            labels,
+            logits_length,
+            labels_length,
+            use_log_softmax=True,
+            zero_infinity=True,
         )
 
         loss_pd = loss_pd.numpy()
@@ -754,6 +871,8 @@ class TestCTCLossAPICase(unittest.TestCase):
                 labels_length,
                 blank=self.blank,
                 reduction='mean',
+                use_log_softmax=True,
+                zero_infinity=False,
             )
             loss_pd_mean = loss_pd_mean.numpy()
 
@@ -764,6 +883,8 @@ class TestCTCLossAPICase(unittest.TestCase):
                 labels_length,
                 blank=self.blank,
                 reduction='sum',
+                use_log_softmax=True,
+                zero_infinity=False,
             )
             loss_pd_sum = loss_pd_sum.numpy()
             paddle.enable_static()
