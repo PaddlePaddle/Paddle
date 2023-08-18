@@ -20,6 +20,7 @@ fi
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 API_FILES=("CMakeLists.txt"
+           "third_party"
            "paddle/fluid/framework/operator.h"
            "paddle/fluid/framework/tensor.h"
            "paddle/fluid/framework/details/op_registry.h"
@@ -136,6 +137,9 @@ for API_FILE in ${API_FILES[*]}; do
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (wanghuancoder, luotao1, Aurelius84, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 6836917 46782768 26922892 16605440 9301846
+      elif [ "${API_FILE}" == "third_party" ];then
+          echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}."
+          check_approval 1 risemeup1 tianshuo78520a
       elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
           check_approval 1 6836917 47554610 43953930 16605440 9301846
