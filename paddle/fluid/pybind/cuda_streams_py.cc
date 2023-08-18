@@ -20,6 +20,8 @@
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 
+DECLARE_bool(benchmark);
+
 namespace py = pybind11;
 
 namespace paddle {
@@ -75,6 +77,9 @@ void BindCudaStream(py::module *m_ptr) {
       py::return_value_policy::reference);
 
   m.def("_device_synchronize", [](int device_id) {
+    if (FLAGS_benchmark) {
+      VLOG(6) << "Device synchronize starts";
+    }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (device_id == -1) {
       device_id = paddle::platform::GetCurrentDeviceId();
@@ -92,6 +97,9 @@ void BindCudaStream(py::module *m_ptr) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Paddle is not compiled with CUDA. Cannot visit device synchronize."));
 #endif
+    if (FLAGS_benchmark) {
+      VLOG(6) << "Device synchronize ends";
+    }
   });
 
   py::class_<phi::CUDAStream>(m, "CUDAStream", R"DOC(

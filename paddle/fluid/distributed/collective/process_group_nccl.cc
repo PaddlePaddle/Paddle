@@ -24,6 +24,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+DECLARE_bool(benchmark);
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
@@ -34,7 +35,14 @@ constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
 
+constexpr int kBeforeCommLogLevel = 5;
+constexpr int kAfterCommLogLevel = 6;
+
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
+
+static void DeviceSync() {
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+}
 
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      int rank,
@@ -163,6 +171,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                                                          rank_,
                                                          comm);
         }
+        VLOG(kBeforeCommLogLevel)
+            << "ncclAllGather sendbuff: " << in_tensor_maybe_partial.data()
+            << ", recvbuff: " << out_tensor->data()
+            << ", count: " << in_tensor_maybe_partial.numel() << ", dtype: "
+            << NCCLDTypeToString(
+                   phi::ToNCCLDataType(in_tensor_maybe_partial.dtype()))
+            << ", comm: " << GetCommDebugString(comm) << ", stream: " << stream;
         NCCL_CHECK(phi::dynload::ncclAllGather(
             in_tensor_maybe_partial.data(),
             out_tensor->data(),
@@ -170,6 +185,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
             phi::ToNCCLDataType(in_tensor_maybe_partial.dtype()),
             comm,
             stream));
+        if (FLAGS_benchmark) {
+          DeviceSync();
+          VLOG(kAfterCommLogLevel)
+              << "ncclAllGather after sync sendbuff: "
+              << in_tensor_maybe_partial.data()
+              << ", recvbuff: " << out_tensor->data()
+              << ", count: " << in_tensor_maybe_partial.numel() << ", dtype: "
+              << NCCLDTypeToString(
+                     phi::ToNCCLDataType(in_tensor_maybe_partial.dtype()))
+              << ", comm: " << GetCommDebugString(comm)
+              << ", stream: " << stream;
+        }
       },
       in_tensor_maybe_partial,
       CommType::ALLGATHER,
@@ -196,6 +223,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                                                          rank_,
                                                          comm);
         }
+        VLOG(kBeforeCommLogLevel)
+            << "ncclAllReduce sendbuff: " << in_tensor.data()
+            << ", recvbuff: " << out_tensor->data()
+            << ", count: " << in_tensor.numel() << ", dtype: "
+            << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+            << ", op: " << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
+            << ", comm: " << GetCommDebugString(comm) << ", stream: " << stream;
         NCCL_CHECK(
             phi::dynload::ncclAllReduce(in_tensor.data(),
                                         out_tensor->data(),
@@ -204,6 +238,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                                         ToNCCLRedType(opts.reduce_op),
                                         comm,
                                         stream));
+        if (FLAGS_benchmark) {
+          DeviceSync();
+          VLOG(kAfterCommLogLevel)
+              << "ncclAllReduce after sync sendbuff: " << in_tensor.data()
+              << ", recvbuff: " << out_tensor->data()
+              << ", count: " << in_tensor.numel() << ", dtype: "
+              << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+              << ", op: " << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
+              << ", comm: " << GetCommDebugString(comm)
+              << ", stream: " << stream;
+        }
       },
       in_tensor,
       CommType::ALLREDUCE,
@@ -336,6 +381,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
           phi::distributed::NCCLDynamicCheck::CheckShape(
               *out_tensor, root, rank_, comm);
         }
+        VLOG(kBeforeCommLogLevel)
+            << "ncclBroadcast sendbuff: " << in_tensor.data()
+            << ", recvbuff: " << out_tensor->data()
+            << ", count: " << in_tensor.numel() << ", dtype: "
+            << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+            << ", root: " << root << ", comm: " << GetCommDebugString(comm)
+            << ", stream: " << stream;
+
         NCCL_CHECK(
             phi::dynload::ncclBroadcast(in_tensor.data(),
                                         out_tensor->data(),
@@ -344,6 +397,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                                         root,
                                         comm,
                                         stream));
+        if (FLAGS_benchmark) {
+          DeviceSync();
+          VLOG(kAfterCommLogLevel)
+              << "ncclBroadcast after sync sendbuff: " << in_tensor.data()
+              << ", recvbuff: " << out_tensor->data()
+              << ", count: " << in_tensor.numel() << ", dtype: "
+              << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+              << ", root: " << root << ", comm: " << GetCommDebugString(comm)
+              << ", stream: " << stream;
+        }
       },
       in_tensor,
       CommType::BROADCAST,
@@ -371,6 +434,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
               rank_,
               comm);
         }
+        VLOG(kBeforeCommLogLevel)
+            << "ncclReduce sendbuff: " << in_tensor.data()
+            << ", recvbuff: " << out_tensor->data()
+            << ", count: " << in_tensor.numel() << ", dtype: "
+            << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+            << ", op: " << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
+            << ", root: " << opts.root_rank
+            << ", comm: " << GetCommDebugString(comm) << ", stream: " << stream;
         NCCL_CHECK(
             phi::dynload::ncclReduce(in_tensor.data(),
                                      out_tensor->data(),
@@ -380,6 +451,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                                      opts.root_rank,
                                      comm,
                                      stream));
+        if (FLAGS_benchmark) {
+          DeviceSync();
+          VLOG(kAfterCommLogLevel)
+              << "ncclReduce after sync sendbuff: " << in_tensor.data()
+              << ", recvbuff: " << out_tensor->data()
+              << ", count: " << in_tensor.numel() << ", dtype: "
+              << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+              << ", op: " << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
+              << ", root: " << opts.root_rank
+              << ", comm: " << GetCommDebugString(comm)
+              << ", stream: " << stream;
+        }
       },
       in_tensor,
       CommType::REDUCE,
@@ -406,6 +489,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
                                                          rank_,
                                                          comm);
         }
+        VLOG(kBeforeCommLogLevel)
+            << "ncclReduceScatter sendbuff: " << in_tensor.data()
+            << ", recvbuff: " << out_tensor->data()
+            << ", count: " << in_tensor.numel() << ", dtype: "
+            << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+            << ", op: " << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
+            << ", comm: " << GetCommDebugString(comm) << ", stream: " << stream;
         NCCL_CHECK(phi::dynload::ncclReduceScatter(
             in_tensor.data(),
             out_tensor->data(),
@@ -414,6 +504,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
             ToNCCLRedType(opts.reduce_op),
             comm,
             stream));
+        if (FLAGS_benchmark) {
+          DeviceSync();
+          VLOG(kAfterCommLogLevel)
+              << "ncclReduceScatter after sync sendbuff: " << in_tensor.data()
+              << ", recvbuff: " << out_tensor->data()
+              << ", count: " << in_tensor.numel() << ", dtype: "
+              << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
+              << ", op: " << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
+              << ", comm: " << GetCommDebugString(comm)
+              << ", stream: " << stream;
+        }
       },
       in_tensor,
       CommType::REDUCE_SCATTER,
@@ -570,6 +671,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                                                          rank_,
                                                          comm);
         }
+        VLOG(kBeforeCommLogLevel)
+            << "ncclRecv sendbuff: " << tensor->data()
+            << ", count: " << tensor->numel() << ", dtype: "
+            << NCCLDTypeToString(phi::ToNCCLDataType(tensor->dtype()))
+            << ", peer: " << rank_in_group
+            << ", comm: " << GetCommDebugString(comm) << ", stream: " << stream;
         NCCL_CHECK(phi::dynload::ncclRecv(tensor->data(),
                                           tensor->numel(),
                                           phi::ToNCCLDataType(tensor->dtype()),
@@ -605,6 +712,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                                                          rank_,
                                                          comm);
         }
+        VLOG(kBeforeCommLogLevel)
+            << "ncclSend sendbuff: " << tensor_maybe_partial.data()
+            << ", count: " << tensor_maybe_partial.numel() << ", dtype: "
+            << NCCLDTypeToString(
+                   phi::ToNCCLDataType(tensor_maybe_partial.dtype()))
+            << ", peer: " << rank_in_group
+            << ", comm: " << GetCommDebugString(comm) << ", stream: " << stream;
+
         NCCL_CHECK(phi::dynload::ncclSend(
             tensor_maybe_partial.data(),
             tensor_maybe_partial.numel(),
