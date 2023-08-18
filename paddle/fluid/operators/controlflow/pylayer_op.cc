@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/controlflow/static_pylayer_op.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op.h"
 
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
@@ -26,14 +26,13 @@ namespace {  // NOLINT
 enum class PyLayerBlockIndex { kFORWARD = 0, kBACKWARD = 1, kNONE = 2 };
 }  // namespace
 
-const char StaticPyLayerOp::kInputs[] = "Input";
-const char StaticPyLayerOp::kOutputs[] = "Out";
-const char StaticPyLayerOp::kScope[] = "Scope";
-const char StaticPyLayerOp::kSkipEagerDeletionVars[] =
-    "skip_eager_deletion_vars";
-const char StaticPyLayerOp::kBlocks[] = "blocks";
+const char PyLayerOp::kInputs[] = "Input";
+const char PyLayerOp::kOutputs[] = "Out";
+const char PyLayerOp::kScope[] = "Scope";
+const char PyLayerOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+const char PyLayerOp::kBlocks[] = "blocks";
 
-void StaticPyLayerOp::CreateInterpreter(
+void PyLayerOp::CreateInterpreter(
     const platform::Place &dev_place,
     const framework::BlockDesc &block,
     framework::Scope *cur_scope,
@@ -54,19 +53,19 @@ void StaticPyLayerOp::CreateInterpreter(
   } else {
     // NOTE: Borrowed from
     // `paddle/fluid/operators/controlflow/control_flow_op_helper.h`
-    // TODO(MarioLulab): Add StaticPyLayer Helper ?
+    // TODO(MarioLulab): Add PyLayer Helper ?
     BuildScopeForControlFlowOp(*core_, block, cur_scope);
     core_->reset_scope(cur_scope);
   }
 }
 
-class StaticPyLayerForwardOp : public StaticPyLayerOp {
+class PyLayerForwardOp : public PyLayerOp {
  public:
-  StaticPyLayerForwardOp(const std::string &type,
-                         const framework::VariableNameMap &inputs,
-                         const framework::VariableNameMap &outputs,
-                         const framework::AttributeMap &attrs)
-      : StaticPyLayerOp(type, inputs, outputs, attrs) {}
+  PyLayerForwardOp(const std::string &type,
+                   const framework::VariableNameMap &inputs,
+                   const framework::VariableNameMap &outputs,
+                   const framework::AttributeMap &attrs)
+      : PyLayerOp(type, inputs, outputs, attrs) {}
 
  private:
   void RunImpl(const framework::Scope &scope,
@@ -75,7 +74,7 @@ class StaticPyLayerForwardOp : public StaticPyLayerOp {
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
         platform::errors::PreconditionNotMet(
-            "Expect Scope variable to be set in static_pylayer_op, but "
+            "Expect Scope variable to be set in pylayer_op, but "
             "got a null Scope variable. Please set the Scope variable."));
 
     auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
@@ -84,7 +83,7 @@ class StaticPyLayerForwardOp : public StaticPyLayerOp {
 
     auto &cur_scope = *scopes->front();
     auto &blocks =
-        Attr<std::vector<framework::BlockDesc *>>(StaticPyLayerOp::kBlocks);
+        Attr<std::vector<framework::BlockDesc *>>(PyLayerOp::kBlocks);
     PADDLE_ENFORCE_GT(
         blocks.size(),
         0,
@@ -94,13 +93,12 @@ class StaticPyLayerForwardOp : public StaticPyLayerOp {
 
     framework::BlockDesc *forward_block =
         blocks[static_cast<size_t>(PyLayerBlockIndex::kFORWARD)];
-    VLOG(3) << "StaticPyLayer forward_block block.idx = " << forward_block->ID()
+    VLOG(3) << "PyLayer forward_block block.idx = " << forward_block->ID()
             << ", scope = " << &cur_scope;
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
 
-    LOG_FIRST_N(INFO, 1)
-        << "[ControlFlow][StaticPyLayer] New Executor is Running.";
+    LOG_FIRST_N(INFO, 1) << "[ControlFlow][PyLayer] New Executor is Running.";
 
     CreateInterpreter(dev_place, *forward_block, &cur_scope, skip_vars);
     PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
@@ -108,7 +106,7 @@ class StaticPyLayerForwardOp : public StaticPyLayerOp {
   }
 };
 
-class StaticPyLayerForwardInferShape : public framework::InferShapeBase {
+class PyLayerForwardInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     // TODO(MarioLulab): do nothing.
@@ -116,27 +114,23 @@ class StaticPyLayerForwardInferShape : public framework::InferShapeBase {
 };
 
 template <typename T>
-class StaticPyLayerBackwardMaker : public framework::SingleGradOpMaker<T> {
+class PyLayerBackwardMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("static_pylayer_grad");
-    grad_op->SetInput(StaticPyLayerOp::kInputs,
-                      this->Input(StaticPyLayerOp::kInputs));
-    grad_op->SetInput(framework::GradVarName(StaticPyLayerOp::kOutputs),
-                      this->OutputGrad(StaticPyLayerOp::kOutputs));
-    grad_op->SetInput(StaticPyLayerOp::kScope,
-                      this->Output(StaticPyLayerOp::kScope));
+    grad_op->SetType("pylayer_grad");
+    grad_op->SetInput(PyLayerOp::kInputs, this->Input(PyLayerOp::kInputs));
+    grad_op->SetInput(framework::GradVarName(PyLayerOp::kOutputs),
+                      this->OutputGrad(PyLayerOp::kOutputs));
+    grad_op->SetInput(PyLayerOp::kScope, this->Output(PyLayerOp::kScope));
 
-    auto fwd_inputs = this->InputGrad(StaticPyLayerOp::kInputs, false);
-    grad_op->SetOutput(framework::GradVarName(StaticPyLayerOp::kInputs),
-                       fwd_inputs);
+    auto fwd_inputs = this->InputGrad(PyLayerOp::kInputs, false);
+    grad_op->SetOutput(framework::GradVarName(PyLayerOp::kInputs), fwd_inputs);
 
-    const std::vector<framework::BlockDesc *> &blocks =
-        PADDLE_GET_CONST(std::vector<framework::BlockDesc *>,
-                         this->GetAttr(StaticPyLayerOp::kBlocks));
+    const std::vector<framework::BlockDesc *> &blocks = PADDLE_GET_CONST(
+        std::vector<framework::BlockDesc *>, this->GetAttr(PyLayerOp::kBlocks));
     PADDLE_ENFORCE_GT(
         blocks.size(),
         static_cast<size_t>(PyLayerBlockIndex::kBACKWARD),
@@ -149,20 +143,20 @@ class StaticPyLayerBackwardMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class StaticPyLayerBackwardOp : public StaticPyLayerOp {
+class PyLayerBackwardOp : public PyLayerOp {
  public:
-  StaticPyLayerBackwardOp(const std::string &type,
-                          const framework::VariableNameMap &inputs,
-                          const framework::VariableNameMap &outputs,
-                          const framework::AttributeMap &attrs)
-      : StaticPyLayerOp(type, inputs, outputs, attrs) {}
+  PyLayerBackwardOp(const std::string &type,
+                    const framework::VariableNameMap &inputs,
+                    const framework::VariableNameMap &outputs,
+                    const framework::AttributeMap &attrs)
+      : PyLayerOp(type, inputs, outputs, attrs) {}
 
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    const auto &inputs = Inputs(StaticPyLayerOp::kInputs);
+    const auto &inputs = Inputs(PyLayerOp::kInputs);
     const auto &outside_grads =
-        Outputs(framework::GradVarName(StaticPyLayerOp::kInputs));
+        Outputs(framework::GradVarName(PyLayerOp::kInputs));
     std::vector<std::string> inside_grads;
     inside_grads.reserve(inputs.size());
     for (auto &in : inputs) {
@@ -177,11 +171,11 @@ class StaticPyLayerBackwardOp : public StaticPyLayerOp {
             inside_grads.size(),
             outside_grads.size()));
 
-    auto *scope_var = scope.FindVar(Input(StaticPyLayerOp::kScope));
+    auto *scope_var = scope.FindVar(Input(PyLayerOp::kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
         platform::errors::PreconditionNotMet(
-            "Expect Scope variable to be set in static_pylayer_op, but "
+            "Expect Scope variable to be set in pylayer_op, but "
             "got a null Scope variable. Please set the Scope variable."));
     auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
     PADDLE_ENFORCE_GT(
@@ -197,7 +191,7 @@ class StaticPyLayerBackwardOp : public StaticPyLayerOp {
             << ", scope = " << &cur_scope;
 
     LOG_FIRST_N(INFO, 1)
-        << "[ControlFlow][StaticPyLayerBackwardOp] New Executor is Running.";
+        << "[ControlFlow][PyLayerBackwardOp] New Executor is Running.";
 
     CreateInterpreter(dev_place, *backward_block, &cur_scope, inside_grads);
     PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
@@ -252,32 +246,31 @@ class StaticPyLayerBackwardOp : public StaticPyLayerOp {
   }
 };
 
-class StaticPyLayerBackwardInferShape : public framework::InferShapeBase {
+class PyLayerBackwardInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    if (context->HasInputs(StaticPyLayerOp::kInputs) &&
-        context->HasOutputs(framework::GradVarName(StaticPyLayerOp::kInputs))) {
-      context->SetOutputsDim(framework::GradVarName(StaticPyLayerOp::kInputs),
-                             context->GetInputsDim(StaticPyLayerOp::kInputs));
+    if (context->HasInputs(PyLayerOp::kInputs) &&
+        context->HasOutputs(framework::GradVarName(PyLayerOp::kInputs))) {
+      context->SetOutputsDim(framework::GradVarName(PyLayerOp::kInputs),
+                             context->GetInputsDim(PyLayerOp::kInputs));
     }
   }
 };
 
-class StaticPyLayerBackwardInferVarType : public framework::VarTypeInference {
+class PyLayerBackwardInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto forward_input_size = ctx->InputSize(StaticPyLayerOp::kInputs);
+    auto forward_input_size = ctx->InputSize(PyLayerOp::kInputs);
     auto backward_output_size =
-        ctx->OutputSize(framework::GradVarName(StaticPyLayerOp::kInputs));
+        ctx->OutputSize(framework::GradVarName(PyLayerOp::kInputs));
     PADDLE_ENFORCE_EQ(forward_input_size,
                       backward_output_size,
                       platform::errors::InvalidArgument(
                           "input_size and output_size should be equal for "
-                          "static_pylayer_grad_op."));
+                          "pylayer_grad op."));
     for (size_t i = 0; i < backward_output_size; ++i) {
-      ctx->SyncTypeAndDataType(StaticPyLayerOp::kInputs,
-                               framework::GradVarName(StaticPyLayerOp::kInputs),
-                               i);
+      ctx->SyncTypeAndDataType(
+          PyLayerOp::kInputs, framework::GradVarName(PyLayerOp::kInputs), i);
     }
   }
 };
@@ -286,12 +279,12 @@ class StaticPyLayerBackwardInferVarType : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(static_pylayer,
-                  ops::StaticPyLayerForwardOp,
-                  ops::StaticPyLayerForwardInferShape,
-                  ops::StaticPyLayerForwardOpProtoMaker,
-                  ops::StaticPyLayerBackwardMaker<paddle::framework::OpDesc>);
-REGISTER_OPERATOR(static_pylayer_grad,
-                  ops::StaticPyLayerBackwardOp,
-                  ops::StaticPyLayerBackwardInferShape,
-                  ops::StaticPyLayerBackwardInferVarType);
+REGISTER_OPERATOR(pylayer,
+                  ops::PyLayerForwardOp,
+                  ops::PyLayerForwardInferShape,
+                  ops::PyLayerForwardOpProtoMaker,
+                  ops::PyLayerBackwardMaker<paddle::framework::OpDesc>);
+REGISTER_OPERATOR(pylayer_grad,
+                  ops::PyLayerBackwardOp,
+                  ops::PyLayerBackwardInferShape,
+                  ops::PyLayerBackwardInferVarType);

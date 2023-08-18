@@ -26,12 +26,12 @@
 namespace paddle {
 namespace operators {
 
-class StaticPyLayerOp : public framework::OperatorBase {
+class PyLayerOp : public framework::OperatorBase {
  public:
-  StaticPyLayerOp(const std::string &type,
-                  const framework::VariableNameMap &inputs,
-                  const framework::VariableNameMap &outputs,
-                  const framework::AttributeMap &attrs)
+  PyLayerOp(const std::string &type,
+            const framework::VariableNameMap &inputs,
+            const framework::VariableNameMap &outputs,
+            const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
   static const char kInputs[];
@@ -50,21 +50,19 @@ class StaticPyLayerOp : public framework::OperatorBase {
   mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
 };
 
-class StaticPyLayerForwardOpProtoMaker
-    : public framework::OpProtoAndCheckerMaker {
+class PyLayerForwardOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(StaticPyLayerOp::kInputs, "The input variables of the sub-block.")
+    AddInput(PyLayerOp::kInputs, "The input variables of the sub-block.")
         .AsDuplicable();
-    AddOutput(StaticPyLayerOp::kOutputs,
-              "The output variables of the sub-block.")
+    AddOutput(PyLayerOp::kOutputs, "The output variables of the sub-block.")
         .AsDuplicable();
     // TODO(MarioLulab): Must Use std::vector here ?
-    AddOutput(StaticPyLayerOp::kScope,
+    AddOutput(PyLayerOp::kScope,
               "(std::vector<Scope*>) The scope of static pylayer block.");
     AddAttr<std::vector<framework::BlockDesc *>>(
         "blocks", "The blocks of PyLayer operator");
-    AddComment(R"DOC(StaticPyLayer operator
+    AddComment(R"DOC(PyLayer operator
 
 TO-DO: added by luqi
 

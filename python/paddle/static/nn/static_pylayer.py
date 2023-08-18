@@ -21,10 +21,7 @@ from paddle.fluid.framework import Variable
 from paddle.utils import flatten, map_structure
 
 # NOTE: Borrowed from `python/paddle/static/nn/control_flow.py`
-from .control_flow import (
-    BlockGuard,
-    copy_var_to_parent_block,
-)
+from .control_flow import BlockGuard, copy_var_to_parent_block
 
 
 class StaticPyLayerBlockGuard(BlockGuard):
@@ -52,9 +49,9 @@ class StaticPyLayerBlock:
         for each_input in inputs:
             check_type(each_input, "input", Variable, "StaticPyLayerBlock")
 
-        # used to specify the `Input` to `static_pylayer` op
+        # used to specify the `Input` to `pylayer` op
         self.fwd_inputs = inputs
-        # used to specify the `Out` to `static_pylayer` op
+        # used to specify the `Out` to `pylayer` op
         self.fwd_outputs = []
 
         self.helper = LayerHelper("static_pylayer_block", name=name)
@@ -88,8 +85,8 @@ class StaticPyLayerBlock:
             type=core.VarDesc.VarType.STEP_SCOPES
         )
 
-        static_pylayer_op = parent_block.append_op(
-            type='static_pylayer',
+        pylayer_op = parent_block.append_op(
+            type='pylayer',
             inputs={
                 'Input': self.fwd_inputs,
             },
@@ -99,7 +96,7 @@ class StaticPyLayerBlock:
             },
         )
 
-        self.fwd_op_id = static_pylayer_op.idx
+        self.fwd_op_id = pylayer_op.idx
 
     def complete_backward_block(self):
         inside_block = self.helper.main_program.current_block()
@@ -117,7 +114,7 @@ class StaticPyLayerBlock:
 
         # NOTE: The reason of renaming the var name in the inside block is that
         # we need to associating `inside_grads` and `outside_grads` at
-        # runtime `RunImpl` in static_pylayer op
+        # runtime `RunImpl` in pylayer op
         print(f"inside_block.id = {inside_block.idx}")
         print("self.var_old_to_new =")
         print(self.var_old_to_new)
@@ -222,7 +219,7 @@ def _append_grad_suffix_(name):
 def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     """
     This API returns ``forward_fn(inputs)``, and two sub-block are created based on
-    the logic of ``forward_fn`` and ``backward_fn``, with the operator ``static_pylayer``
+    the logic of ``forward_fn`` and ``backward_fn``, with the operator ``pylayer``
     holding information about the two blocks.
 
     ``forward_fn`` and ``backward_fn`` should return a nest structure of tensors.
