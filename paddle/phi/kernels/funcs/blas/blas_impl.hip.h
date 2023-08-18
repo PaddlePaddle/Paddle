@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(enable_cublas_tensor_op_math);
+DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace phi {
 namespace funcs {
@@ -703,6 +704,13 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
 
+  rocblas_datatype compute_type = rocblas_datatype_f32_r;
+  if (FLAGS_gemm_use_half_precision_compute_type == true) {
+    compute_type = rocblas_datatype_f16_r;
+  }
+  VLOG(4) << "use_half_precision_compute_type: "
+          << FLAGS_gemm_use_half_precision_compute_type;
+
   auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
   CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
                                        cuTransB,
@@ -721,7 +729,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                        C,
                                        rocblas_datatype_f16_r,
                                        N,
-                                       rocblas_datatype_f32_r);
+                                       compute_type);
 }
 
 template <>
@@ -1151,6 +1159,18 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
   const int64_t strideC = M * N;
+
+  VLOG(1) << "GEMM_STRIDED_BATCH out of lambda M: " << M 
+          << " N: " << N 
+          << " K: " << K 
+          << " lda: " << lda 
+          << " ldb: " << ldb 
+          << " ldc: " << ldc 
+          << " strideA: " << strideA 
+          << " strideB: " << strideB 
+          << " strideC: " << strideC 
+          << " batchCount: " << batchCount;
+
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GEMM_STRIDED_BATCH(handle,
                                   cuTransB,
