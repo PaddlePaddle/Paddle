@@ -554,6 +554,7 @@ void GradNodeBase::HandleComplexGradToRealGrad(
   for (size_t slot_id = 0; slot_id < out_grads->size(); slot_id++) {
     const std::vector<paddle::Tensor>& slot_out_grads = (*out_grads)[slot_id];
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
+      if (bwd_out_meta_[slot_id].size() == 0) continue;
       const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
 
       PADDLE_ENFORCE(

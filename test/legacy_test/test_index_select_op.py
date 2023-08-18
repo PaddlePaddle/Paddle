@@ -36,6 +36,11 @@ class TestIndexSelectOp(OpTest):
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x_np = (
+                np.random.random(self.x_shape)
+                + 1j * np.random.random(self.x_shape)
+            ).astype(self.x_type)
         self.inputs = {'X': x_np, 'Index': index_np}
         self.attrs = {'dim': self.dim}
         outer_loop = np.prod(self.x_shape[: self.dim])
@@ -60,10 +65,16 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            self.check_output(check_prim=False)
+        else:
+            self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
@@ -144,6 +155,24 @@ class TestIndexSelectBF16Op(OpTest):
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+
+
+class TestIndexSelectComplex64(TestIndexSelectOp):
+    def init_dtype_type(self):
+        self.x_type = np.complex64
+        self.index_type = np.int32
+        self.dim = -2
+        self.x_shape = (10, 10, 4, 10)
+        self.index_size = 10
+
+
+class TestIndexSelectComplex128(TestIndexSelectOp):
+    def init_dtype_type(self):
+        self.x_type = np.complex128
+        self.index_type = np.int32
+        self.dim = -2
+        self.x_shape = (10, 10, 4, 10)
+        self.index_size = 10
 
 
 class TestIndexSelectAPI(unittest.TestCase):

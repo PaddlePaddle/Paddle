@@ -59,5 +59,9 @@ PD_REGISTER_KERNEL(index_select,
                    float,
                    double,
                    phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+}
