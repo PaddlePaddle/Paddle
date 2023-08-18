@@ -210,10 +210,11 @@
   backward : depthwise_conv2d_transpose_grad
 
 - op : disable_check_model_nan_inf
-  args: (Tensor x)
+  args: (Tensor x, int flag = 0)
   output: Tensor(out)
   infer_meta:
     func: UnchangedInferMeta
+    param : [x]
   kernel:
     func: check_model_nan_inf
     data_type: x
@@ -316,10 +317,11 @@
     backend : place > x
 
 - op : enable_check_model_nan_inf
-  args: (Tensor x)
+  args: (Tensor x, int flag = 1)
   output: Tensor(out)
   infer_meta:
     func: UnchangedInferMeta
+    param : [x]
   kernel:
     func: check_model_nan_inf
     data_type: x

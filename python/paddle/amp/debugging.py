@@ -118,11 +118,11 @@ def check_layer_numerics(func):
             start_data.stop_gradient = False
             modified_args = list(args)  # Convert args to a mutable list
             # Set FLAGS_check_nan_inf = 1
-            modified_args[0] = _C_ops.enable_check_model_nan_inf(start_data)
+            modified_args[0] = _C_ops.enable_check_model_nan_inf(start_data, 1)
             # Call the forward function
             out_data = func(self, *modified_args, **kwargs)
             # Set FLAGS_check_nan_inf = 0
-            out = _C_ops.disable_check_model_nan_inf(out_data)
+            out = _C_ops.disable_check_model_nan_inf(out_data, 0)
             return out
         else:
             print("No elements found in args")
