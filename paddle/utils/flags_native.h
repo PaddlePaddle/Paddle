@@ -17,14 +17,6 @@
 #include <string>
 #include <vector>
 
-#if defined(_WIN32)
-#define PD_EXPORT_FLAG __declspec(dllexport)
-#define PD_IMPORT_FLAG __declspec(dllimport)
-#else
-#define PD_EXPORT_FLAG
-#define PD_IMPORT_FLAG
-#endif  // _WIN32
-
 // This is a simple commandline flags tool for paddle, which is inspired by
 // gflags but only implements the following necessary features:
 // 1. Define or declare a flag.
@@ -86,12 +78,12 @@ void PrintAllFlagValue();
 }  // namespace paddle
 
 // ----------------------------DECLARE FLAGS----------------------------
-#define PD_DECLARE_VARIABLE(type, name)    \
-  namespace paddle {                       \
-  namespace flags {                        \
-  extern PD_IMPORT_FLAG type FLAGS_##name; \
-  }                                        \
-  }                                        \
+#define PD_DECLARE_VARIABLE(type, name) \
+  namespace paddle {                    \
+  namespace flags {                     \
+  extern type FLAGS_##name;             \
+  }                                     \
+  }                                     \
   using paddle::flags::FLAGS_##name
 
 #define PD_DECLARE_bool(name) PD_DECLARE_VARIABLE(bool, name)
@@ -121,7 +113,7 @@ class FlagRegisterer {
   namespace paddle {                                                         \
   namespace flags {                                                          \
   static const type FLAGS_##name##_default = default_value;                  \
-  PD_EXPORT_FLAG type FLAGS_##name = default_value;                          \
+  type FLAGS_##name = default_value;                                         \
   /* Register FLAG */                                                        \
   static ::paddle::flags::FlagRegisterer flag_##name##_registerer(           \
       #name, description, __FILE__, &FLAGS_##name##_default, &FLAGS_##name); \
