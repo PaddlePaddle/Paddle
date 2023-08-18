@@ -70,7 +70,7 @@ static void AssignZeroToOutsideTensor(const platform::Place &place,
       platform::DeviceContextPool::Instance().Get(place);
   phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
   outside_tensor->set_lod(input_tensor.lod());
-};
+}
 
 static void AssignZeroToParentScope(
     const platform::Place &place,
