@@ -136,12 +136,10 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906)
-# list(APPEND HIP_HCC_FLAGS --offload-arch=gfx908) # gfx908 for AMD 
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx926) # or gfx926 for DCU
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx926) # gfx926 for DCU
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
 list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906)
-# list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx908) # gfx908 for AMD 
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx926) # or gfx926 for DCU
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx926) # gfx926 for DCU
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)
