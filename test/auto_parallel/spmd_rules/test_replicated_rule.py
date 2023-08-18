@@ -40,6 +40,11 @@ class TestMatmulSPMDRule(unittest.TestCase):
         y_tensor_dist_attr.process_mesh = process_mesh
         self.y_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
 
+        self.out_spec1 = DistTensorSpec(self.x_dist_tensor_spec)
+        self.out_spec1.shape = [32, 10, 10]
+        self.out_spec1.set_dims_mapping([-1, 0, 1])
+        self.out_spec2 = DistTensorSpec(self.y_dist_tensor_spec)
+
     def test_replicated_infer_forward(self):
         # return all -1
         result_tensor_specs = self.rule.infer_forward(
@@ -55,6 +60,23 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(
             result_tensor_specs[1][0].dims_mapping, [-1, -1, -1, -1]
         )
+
+    def test_replicated_infer_backward(self):
+        # return all -1
+        result_tensor_specs = self.rule.infer_backward(
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            [self.out_spec1, self.out_spec2],
+            {},
+        )
+        self.assertEqual(len(result_tensor_specs), 2)
+        self.assertEqual(len(result_tensor_specs[0]), 2)
+        self.assertEqual(len(result_tensor_specs[1]), 2)
+        self.assertEqual(
+            result_tensor_specs[0][0].dims_mapping, [-1, -1, -1, -1]
+        )
+        self.assertEqual(result_tensor_specs[0][1].dims_mapping, [-1, -1])
+        self.assertEqual(result_tensor_specs[1][0].dims_mapping, [-1, -1, -1])
+        self.assertEqual(result_tensor_specs[1][1].dims_mapping, [-1, -1])
 
 
 if __name__ == "__main__":

@@ -23,19 +23,19 @@ using phi::distributed::auto_parallel::str_join;
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 ReplicatedSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                                  const paddle::framework::AttributeMap& attrs) {
-  std::vector<TensorDistAttr> intput_dist_attrs;
+  std::vector<TensorDistAttr> input_dist_attrs;
   std::vector<TensorDistAttr> output_dist_attrs;
-  intput_dist_attrs.reserve(input_specs.size());
+  input_dist_attrs.reserve(input_specs.size());
 
   for (auto& input_spec : input_specs) {
-    intput_dist_attrs.push_back(ReplicatedOnMesh(input_spec.dist_attr()));
+    input_dist_attrs.push_back(ReplicatedOnMesh(input_spec.dist_attr()));
   }
 
   // TODO(ljz): we need to know num of output and size of each output before
   // generate the excat replicasted dist tensor attr for the current op.
   // here we just assume that only one output tensor and has the same size as
   // the first input tensor.
-  return {intput_dist_attrs, {ReplicatedOnMesh(input_specs[0].dist_attr())}};
+  return {input_dist_attrs, {ReplicatedOnMesh(input_specs[0].dist_attr())}};
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
@@ -43,8 +43,19 @@ ReplicatedSPMDRule::InferBackward(
     const std::vector<DistTensorSpec>& input_specs,
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of ReplicatedSPMDRule is NOT implemented yet."));
+  std::vector<TensorDistAttr> input_dist_attrs;
+  std::vector<TensorDistAttr> output_dist_attrs;
+  input_dist_attrs.reserve(input_specs.size());
+  output_dist_attrs.reserve(output_specs.size());
+
+  for (const DistTensorSpec& input_spec : input_specs) {
+    input_dist_attrs.emplace_back(ReplicatedOnMesh(input_spec.dist_attr()));
+  }
+  for (const DistTensorSpec& output_spec : output_specs) {
+    output_dist_attrs.emplace_back(ReplicatedOnMesh(output_spec.dist_attr()));
+  }
+
+  return {input_dist_attrs, output_dist_attrs};
 }
 
 }  // namespace auto_parallel
