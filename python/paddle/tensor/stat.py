@@ -305,11 +305,11 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
 
             >>> y2 = x.nanmedian(0)
             >>> print(y2.numpy())
-            [0., 1.5, 2.5]
+            [0.  1.5 2.5]
 
             >>> y3 = x.nanmedian(0, keepdim=True)
             >>> print(y3.numpy())
-            [[0.,  1.5, 2.5]]
+            [[0.  1.5 2.5]]
 
             >>> y4 = x.nanmedian((0, 1))
             >>> print(y4.numpy())
