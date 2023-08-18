@@ -81,7 +81,7 @@ class MobileNetV2(nn.Layer):
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
-                            will not be defined. Default: 1000.
+            will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
@@ -90,16 +90,16 @@ class MobileNetV2(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import MobileNetV2
+            >>> import paddle
+            >>> from paddle.vision.models import MobileNetV2
 
-            model = MobileNetV2()
+            >>> model = MobileNetV2()
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -206,8 +206,7 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
 
     Args:
-        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
-                            on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV2 <api_paddle_vision_MobileNetV2>`.
 
@@ -217,23 +216,23 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import mobilenet_v2
+            >>> import paddle
+            >>> from paddle.vision.models import mobilenet_v2
 
-            # build model
-            model = mobilenet_v2()
+            >>> # Build model
+            >>> model = mobilenet_v2()
 
-            # build model and load imagenet pretrained weight
-            # model = mobilenet_v2(pretrained=True)
+            >>> # Build model and load imagenet pretrained weight
+            >>> # model = mobilenet_v2(pretrained=True)
 
-            # build mobilenet v2 with scale=0.5
-            model = mobilenet_v2(scale=0.5)
+            >>> # Build mobilenet v2 with scale=0.5
+            >>> model = mobilenet_v2(scale=0.5)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model = _mobilenet(
         'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs
