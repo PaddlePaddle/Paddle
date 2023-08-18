@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(fc)
+USE_OP_ITSELF(fc);
 PD_DECLARE_KERNEL(fc, OneDNN, ONEDNN);
 
 paddle::framework::VarDesc *Data(
