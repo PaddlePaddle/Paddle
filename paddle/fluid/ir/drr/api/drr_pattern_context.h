@@ -128,6 +128,8 @@ class Op {
   // operator()(const Tensor& arg0, const Tensor& arg1, const Tensor& arg2,
   // const Tensor& arg3, const Tensor& arg4) const;
 
+  static const char* prefix;
+
  private:
   friend class DrrPatternContext;
   friend class OpCall;
@@ -158,7 +160,7 @@ class Tensor {
 
   Tensor& operator=(const Tensor& other) = delete;
 
-  void operator=(Tensor& other) const;  // NOLINT
+  void operator=(const Tensor& other) const;  // NOLINT
 
   const std::string& name() const { return name_; }
 
