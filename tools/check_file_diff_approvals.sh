@@ -138,7 +138,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (wanghuancoder, luotao1, Aurelius84, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 6836917 46782768 26922892 16605440 9301846
       elif [ "${API_FILE}" == "third_party" ];then
-          echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}."
+          echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}.\n"
           check_approval 1 risemeup1 tianshuo78520a
       elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
