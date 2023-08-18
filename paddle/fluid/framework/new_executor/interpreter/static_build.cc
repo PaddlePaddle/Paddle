@@ -45,7 +45,9 @@ std::set<std::string> StaticBuildBlackList = {
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
-    "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
+    "sparse_sparse_coo_tensor" /*: to handle sparse output*/
+    "shuffle_batch",
+    "shuffle_batch_grad"};
 
 namespace paddle {
 namespace framework {
@@ -356,6 +358,15 @@ phi::DataType GetInputDType(const RuntimeContext& runtime_ctx,
   return in_tensor->dtype();
 }
 
+bool InputExisted(const RuntimeContext& runtime_ctx,
+                  const std::string& parameter_name) {
+  auto it = runtime_ctx.inputs.find(parameter_name);
+  if (it == runtime_ctx.inputs.end() || it->second.empty()) {
+    return false;
+  }
+  return true;
+}
+
 phi::DataType InferDTypeFromAttr(const framework::OperatorBase& op,
                                  const RuntimeContext& runtime_ctx,
                                  const std::string& attr_name) {
@@ -477,6 +488,16 @@ void FakeInitializeOutputsForFunctionKernel(
               dtype = DataType::INT32;
             } else {
               dtype = DataType::INT64;
+            }
+          } else if (op_type == "fused_bias_residual_layernorm") {
+            float quant_scale = op.Attr<float>("quant_scale");
+            dtype = GetInputDType(runtime_ctx, "x");
+            if (InputExisted(runtime_ctx, "residual") &&
+                !InputExisted(runtime_ctx, "norm_weight") &&
+                !InputExisted(runtime_ctx, "norm_bias")) {
+              continue;
+            } else if (quant_scale > 0.0f) {
+              dtype = DataType::INT8;
             }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
