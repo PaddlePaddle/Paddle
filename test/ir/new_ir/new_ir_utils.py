@@ -25,7 +25,7 @@ def new_ir_data(
     out = helper.create_global_variable(
         name=name,
         shape=shape,
-        dtype=paddle.get_default_dtype(),
+        dtype=dtype if dtype is not None else paddle.get_default_dtype(),
         type=core.VarDesc.VarType.LOD_TENSOR,
         stop_gradient=True,
         is_data=True,

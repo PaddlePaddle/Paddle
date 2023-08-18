@@ -139,7 +139,7 @@ class TestPybind(unittest.TestCase):
         )
         with paddle.static.program_guard(main_program, start_program):
             conv_data = new_ir_data(
-                'conv_data', [None, 3, 32, 32], dtype='float32'
+                'conv_data', [-1, 3, 32, 32], dtype='float32'
             )
             conv2d_out = paddle.static.nn.conv2d(
                 input=conv_data,
