@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
-#include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/static_backend.h"
 #include "paddle/fluid/primitive/rule/vjp/details.h"

@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
-#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
@@ -33,10 +33,10 @@
 
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
-#include "paddle/fluid/ir/dialect/kernel_attribute.h"
-#include "paddle/fluid/ir/dialect/kernel_type.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
 #include "paddle/phi/core/enforce.h"
 

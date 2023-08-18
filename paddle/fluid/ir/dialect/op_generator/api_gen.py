@@ -36,9 +36,9 @@ H_FILE_TEMPLATE = """
 
 CPP_FILE_TEMPLATE = """
 
-#include "paddle/fluid/ir/dialect/pd_api.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/builtin_op.h"
 

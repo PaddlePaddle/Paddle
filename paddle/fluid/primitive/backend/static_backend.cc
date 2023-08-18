@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/primitive/backend/static_backend.h"
-#include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 
