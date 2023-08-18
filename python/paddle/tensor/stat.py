@@ -301,7 +301,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
 
             >>> y1 = x.nanmedian()
             >>> print(y1.numpy())
-            2.
+            2.0
 
             >>> y2 = x.nanmedian(0)
             >>> print(y2.numpy())
@@ -313,7 +313,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
 
             >>> y4 = x.nanmedian((0, 1))
             >>> print(y4.numpy())
-            2.
+            2.0
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
