@@ -57,10 +57,6 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
         }
       }
     }
-    if (strides[i] < 0) {
-      starts[i] = starts[i] + 1;
-      ends[i] = ends[i] + 1;
-    }
 
     int64_t left =
         std::max(static_cast<int64_t>(0), std::min(starts[i], ends[i]));
