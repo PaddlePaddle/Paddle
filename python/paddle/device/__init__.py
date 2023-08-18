@@ -875,7 +875,7 @@ class stream_guard:
 
 
 def synchronize(device=None):
-    '''
+    """
     Wait for the compute on the given device to finish.
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
@@ -892,7 +892,7 @@ def synchronize(device=None):
             >>> paddle.device.synchronize("custom_cpu:0")
             >>> place = paddle.CustomPlace('custom_cpu', 0)
             >>> paddle.device.synchronize(place)
-    '''
+    """
 
     if device is None:
         place = paddle.framework._current_expected_place()

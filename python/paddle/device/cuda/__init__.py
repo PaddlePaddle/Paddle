@@ -509,7 +509,7 @@ def get_device_name(device=None):
 
 
 def get_device_capability(device=None):
-    '''
+    """
     Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
 
     Parameters:
@@ -532,6 +532,6 @@ def get_device_capability(device=None):
 
             >>> paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
 
-    '''
+    """
     prop = get_device_properties(device)
     return prop.major, prop.minor

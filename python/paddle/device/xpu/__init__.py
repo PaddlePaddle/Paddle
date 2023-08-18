@@ -28,7 +28,7 @@ __all__ = [
     reason="synchronize in paddle.device.xpu will be removed in future",
 )
 def synchronize(device=None):
-    '''
+    """
     Wait for the compute on the given XPU device to finish.
 
     Parameters:
@@ -45,7 +45,7 @@ def synchronize(device=None):
             >>> paddle.device.xpu.synchronize(0)
             >>> paddle.device.xpu.synchronize(paddle.XPUPlace(0))
 
-    '''
+    """
 
     device_id = -1
 
