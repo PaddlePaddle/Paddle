@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/pattern_rewrite/drr/api/match_context.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
-#include "paddle/ir/pattern_rewrite/drr/match_context_impl.h"
+#include "paddle/fluid/ir/drr/api/match_context.h"
+
+#include <cstdint>
+
+#include "paddle/fluid/ir/drr/ir_operation.h"
+#include "paddle/fluid/ir/drr/match_context_impl.h"
 
 namespace ir {
 namespace drr {
@@ -36,6 +39,8 @@ template bool MatchContext::Attr<bool>(const std::string&) const;
 template int32_t MatchContext::Attr<int32_t>(const std::string&) const;
 template int64_t MatchContext::Attr<int64_t>(const std::string&) const;
 template float MatchContext::Attr<float>(const std::string&) const;
+template std::vector<int32_t> MatchContext::Attr<std::vector<int32_t>>(
+    const std::string&) const;
 
 }  // namespace drr
 }  // namespace ir

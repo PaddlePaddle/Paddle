@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/ir/core/value.h"
+
 #include <cstddef>
+
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/value_impl.h"
 

@@ -17,11 +17,11 @@
 #include <memory>
 #include <unordered_map>
 
+#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/ir/drr/api/tensor_interface.h"
+#include "paddle/fluid/ir/drr/ir_operation.h"
+#include "paddle/fluid/ir/drr/ir_value.h"
 #include "paddle/ir/core/builtin_attribute.h"
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
-#include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_value.h"
 
 namespace ir {
 namespace drr {
@@ -48,14 +48,12 @@ struct IrAttrTypeCast {
 };
 
 template <>
-struct IrAttrTypeCast<std::vector<int>> {
-  static std::vector<int> To(const ir::Attribute& attr) {
-    std::vector<int> result;
-    for (size_t i = 0; i < attr.dyn_cast<ir::ArrayAttribute>().size(); i++) {
-      result.push_back(attr.dyn_cast<ir::ArrayAttribute>()
-                           .at(i)
-                           .dyn_cast<ir::Int32Attribute>()
-                           .data());
+struct IrAttrTypeCast<std::vector<int32_t>> {
+  static std::vector<int32_t> To(const ir::Attribute& attr) {
+    std::vector<int32_t> result;
+    auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();
+    for (size_t i = 0; i < array_attr.size(); i++) {
+      result.push_back(array_attr.at(i).dyn_cast<ir::Int32Attribute>().data());
     }
     return result;
   }
@@ -75,16 +73,16 @@ class MatchContextImpl final {
   }
 
   template <typename T>
-  T Attr(const std::string& attr_id) const {
-    return IrAttrTypeCast<T>::To(attr_map_.at(attr_id));
+  T Attr(const std::string& attr_name) const {
+    return IrAttrTypeCast<T>::To(GetIrAttr(attr_name));
   }
 
   const IrValue& GetIrValue(const std::string& tensor_name) const {
     return *tensor_map_.at(tensor_name);
   }
 
-  ir::Attribute GetIrAttr(const std::string& attr_id) const {
-    return attr_map_.at(attr_id);
+  ir::Attribute GetIrAttr(const std::string& attr_name) const {
+    return attr_map_.at(attr_name);
   }
 
   const std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>&

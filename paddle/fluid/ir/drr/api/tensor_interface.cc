@@ -12,45 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
+#include "paddle/fluid/ir/drr/api/tensor_interface.h"
+#include "paddle/fluid/ir/drr/ir_value.h"
 
 namespace ir {
 namespace drr {
 
-class IrValue;
-class IrShape;
-class IrDtype;
+bool ShapeInterface::operator==(const ShapeInterface& other) const {
+  return *shape_ == *other.shape_;
+}
 
-class ShapeInterface final {
- public:
-  bool operator==(const ShapeInterface& other) const;
-
- private:
-  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
-
-  friend class IrValue;
-
-  const IrShape* shape_;
-};
-
-class DtypeInterface final {
- public:
-  bool operator==(const DtypeInterface& other) const;
-
- private:
-  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
-
-  friend class IrValue;
-
-  const IrDtype* dtype_;
-};
-
-class TensorInterface {
- public:
-  virtual ShapeInterface Shape() const = 0;
-  virtual DtypeInterface Dtype() const = 0;
-};
+bool DtypeInterface::operator==(const DtypeInterface& other) const {
+  return *dtype_ == *other.dtype_;
+}
 
 }  // namespace drr
 }  // namespace ir

@@ -17,8 +17,8 @@
 #include <string>
 
 #include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/drr/api/tensor_interface.h"
 #include "paddle/ir/core/value.h"
-#include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
 
 namespace ir {
 namespace drr {

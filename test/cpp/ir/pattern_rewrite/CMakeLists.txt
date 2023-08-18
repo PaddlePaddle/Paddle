@@ -8,7 +8,7 @@ endif()
 cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
             ${PATTERN_REWRITE_TEST_DEPS})
 
-cc_test_old(drr_test SRCS drr_test.cc DEPS ${PATTERN_REWRITE_TEST_DEPS})
+cc_test_old(drr_test SRCS drr_test.cc DEPS gtest drr)
 
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT

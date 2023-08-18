@@ -12,19 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/pattern_rewrite/drr/api/tensor_interface.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_value.h"
+#pragma once
 
 namespace ir {
 namespace drr {
 
-bool ShapeInterface::operator==(const ShapeInterface& other) const {
-  return *shape_ == *other.shape_;
-}
+class IrValue;
+class IrShape;
+class IrDtype;
 
-bool DtypeInterface::operator==(const DtypeInterface& other) const {
-  return *dtype_ == *other.dtype_;
-}
+class ShapeInterface final {
+ public:
+  bool operator==(const ShapeInterface& other) const;
+
+ private:
+  explicit ShapeInterface(const IrShape* shape) : shape_(shape) {}
+
+  friend class IrValue;
+
+  const IrShape* shape_;
+};
+
+class DtypeInterface final {
+ public:
+  bool operator==(const DtypeInterface& other) const;
+
+ private:
+  explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}
+
+  friend class IrValue;
+
+  const IrDtype* dtype_;
+};
+
+class TensorInterface {
+ public:
+  virtual ShapeInterface Shape() const = 0;
+  virtual DtypeInterface Dtype() const = 0;
+};
 
 }  // namespace drr
 }  // namespace ir

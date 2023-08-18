@@ -18,10 +18,10 @@
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/ir/drr/drr_rewrite_pattern.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
-#include "paddle/ir/pattern_rewrite/drr/drr_rewrite_pattern.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
 

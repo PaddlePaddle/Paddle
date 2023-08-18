@@ -19,14 +19,14 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
+#include "paddle/fluid/ir/drr/api/match_context.h"
+#include "paddle/fluid/ir/drr/ir_operation.h"
+#include "paddle/fluid/ir/drr/ir_operation_creator.h"
+#include "paddle/fluid/ir/drr/match_context_impl.h"
+#include "paddle/fluid/ir/drr/pattern_graph.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
-#include "paddle/ir/pattern_rewrite/drr/api/match_context.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_operation.h"
-#include "paddle/ir/pattern_rewrite/drr/ir_operation_creator.h"
-#include "paddle/ir/pattern_rewrite/drr/match_context_impl.h"
-#include "paddle/ir/pattern_rewrite/drr/pattern_graph.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
