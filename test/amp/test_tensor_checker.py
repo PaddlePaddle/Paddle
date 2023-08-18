@@ -130,14 +130,13 @@ class TestCheckLayerNumerics(unittest.TestCase):
             def forward(self, x):
                 return x * self._w + self._b
 
-        with paddle.fluid.dygraph.guard():
-            dtype = 'float32'
-            x = paddle.rand([10, 2, 3], dtype=dtype)
-            model = MyLayer(dtype)
-            loss = model(x)
-            adam = paddle.optimizer.Adam(parameters=model.parameters())
-            loss.backward()
-            adam.step()
+        dtype = 'float32'
+        x = paddle.rand([10, 2, 3], dtype=dtype)
+        model = MyLayer(dtype)
+        loss = model(x)
+        adam = paddle.optimizer.Adam(parameters=model.parameters())
+        loss.backward()
+        adam.step()
 
 
 if __name__ == '__main__':

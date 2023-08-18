@@ -75,9 +75,40 @@ def check_layer_numerics(func):
         None.
 
     Example:
-        @check_layer_numerics
-        def forward(self, x):
-            return x * 2
+
+        import paddle
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super().__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+                self._b = self.create_parameter([2, 3], dtype=dtype)
+
+            @paddle.amp.debugging.check_layer_numerics
+            def forward(self, x):
+                # return 1/x * self._w + self._b   open it you will see the error log
+                return x * self._w + self._b
+
+            dtype = 'float32'
+            x = paddle.rand([10, 2, 2], dtype=dtype)
+            model = MyLayer(dtype)
+            x[0] = float(0)
+            loss = model(x)
+            adam = paddle.optimizer.Adam(parameters=model.parameters())
+            loss.backward()
+            adam.step()
+
+        #error log
+        #[PRECISION] [ERROR] in [device=gpu:0, op=divide, tensor=, dtype=fp32], numel=40, num_nan=0, num_inf=4, num_zero=0, max=inf, min=1.048930e+00, mean=inf
+        #Traceback (most recent call last):
+        #  File "tmp.py", line 16, in <module>
+        #    loss = model(x)
+        #  File "/paddle/nn/layer/layers.py", line 1254, in __call__
+        #    return self.forward(*inputs, **kwargs)
+        #  File "/paddle/amp/debugging.py", line 116, in wrapper
+        #    out_data = func(self, *modified_args, **kwargs)
+        #  File "test.py", line 10, in forward
+        #    return 1/x *  self._w+ self._b
+        #RuntimeError: (PreconditionNotMet) There are NAN or INF (num_nan=0, num_inf=4, num_zero=0) in [device=gpu:0, op=divide, tensor=, dtype=fp32].
     """
 
     def wrapper(self, *args, **kwargs):
@@ -87,7 +118,7 @@ def check_layer_numerics(func):
             start_data.stop_gradient = False
             modified_args = list(args)  # Convert args to a mutable list
             # Set FLAGS_check_nan_inf = 1
-            modified_args[0] = _C_ops.disable_check_model_nan_inf(start_data)
+            modified_args[0] = _C_ops.enable_check_model_nan_inf(start_data)
             # Call the forward function
             out_data = func(self, *modified_args, **kwargs)
             # Set FLAGS_check_nan_inf = 0
