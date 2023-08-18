@@ -145,7 +145,11 @@ def build_groups(vars, group_size):
 @imperative_base.no_grad
 @framework.dygraph_only
 def sync_params_buffers(
-    model, comm_group=None, src_rank=0, is_model_parallel=False, fused_sync=True
+    model,
+    comm_group=None,
+    src_rank=0,
+    is_model_parallel=False,
+    fuse_params=True,
 ):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
@@ -170,7 +174,7 @@ def sync_params_buffers(
     if len(model_vars) == 0:
         return
 
-    if fused_sync:
+    if fuse_params:
         # group size is 128M
         coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
 
@@ -404,7 +408,7 @@ class DataParallel(layers.Layer):
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
-            sync_params_buffers(self._layers, False)
+            sync_params_buffers(self._layers, fuse_params=False)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control
