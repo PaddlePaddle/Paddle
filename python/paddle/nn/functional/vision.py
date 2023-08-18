@@ -413,7 +413,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
             >>> x = paddle.randn([2, 1, 12, 12])
             >>> out = F.pixel_unshuffle(x, 3)
             >>> print(out.shape)
-            >>> # [2, 9, 4, 4]
+            [2, 9, 4, 4]
     """
     if len(x.shape) != 4:
         raise ValueError(
