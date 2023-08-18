@@ -140,17 +140,17 @@ if(nvtx)
     op->Run(*scope_, place_);
 
 
+    // std::cout << op->OutputVars(true).front() << std::endl;
+    // success = cudaStreamSynchronize(dev_ctx->stream());
+    // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
+    // PADDLE_ENFORCE_GPU_SUCCESS(success);
+
 #ifdef PADDLE_WITH_NVTX
 if(nvtx)
     platform::CudaNvtxRangePop();
 #endif
 
-    // std::cout << op->OutputVars(true).front() << std::endl;
-    // auto success = cudaStreamSynchronize(dev_ctx->stream());
-    // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
-    // PADDLE_ENFORCE_GPU_SUCCESS(success);
-
-    if (0 && "conv2d" == op->Type() && "conv2d_fusion" == op->Type()) {
+    if ("tensorrt_engine" == op->Type() && 0) {
       for (auto name : op->OutputVars(true)) {
         std::cout << name << ": " << std::endl;
         auto var = scope_->FindVar(name);
@@ -159,7 +159,7 @@ if(nvtx)
         if (tensor->numel() <= 0) continue;
         auto dims = tensor->dims();
         
-        int want_num = std::min(10, (int)(tensor->numel()));
+        int want_num = std::min(1000000000, (int)(tensor->numel()));
 
         for (int64_t i = 0; i < dims.size(); i++) {
           std::cout << dims[i] << " ";
@@ -167,7 +167,7 @@ if(nvtx)
 
         std::cout << std::endl;
 
-        if (tensor->dtype() == paddle::DataType::FLOAT32 && 0) {
+        if (tensor->dtype() == paddle::DataType::FLOAT32) {
           float *cpu_data = new float[tensor->numel()];
           float *tensor_data = tensor->data<float>();
           if (tensor->place() == platform::CPUPlace()) {
@@ -178,7 +178,7 @@ if(nvtx)
           }
           
           for(int i = 0; i < want_num; i++) {
-            if(cpu_data[i] > 50000 || cpu_data[i] < -50000)
+            if(cpu_data[i] > 10000 || cpu_data[i] < -10000)
             std::cout << "异常数字" << cpu_data[i] << std::endl;
           }
           delete[] cpu_data;
