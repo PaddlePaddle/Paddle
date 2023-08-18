@@ -59,7 +59,7 @@ void ProcessGroupNCCL::NCCLTask::UpdateWaitChain(
 bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
   // Warning here when use calc stream but also invoke waiting explicitly.
   if (UseCalcStream()) {
-    VLOG(3) << "Warning: The communication is on calc stream, wait here is "
+    VLOG(5) << "Warning: The communication is on calc stream, wait here is "
                "useless.";
     return true;
   }
@@ -178,7 +178,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                 << NCCLDTypeToString(
                        phi::ToNCCLDataType(in_tensor_maybe_partial.dtype()))
                 << ", ncclcomm: " << comm << ", stream: " << stream
-                << ", rank: " << rank_ << ", size: " << size_
+                << ", rank_in_group: " << rank_ << ", nranks" << size_
                 << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
@@ -224,7 +224,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                 << ", redop: "
                 << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
                 << ", ncclcomm: " << comm << ", stream: " << stream
-                << ", rank: " << rank_ << ", size: " << size_
+                << ", rank_in_group: " << rank_ << ", nranks: " << size_
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
@@ -296,13 +296,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
-        VLOG(3) << "[ncclAllToAll] "
+        VLOG(3) << "[AllToAll] "
                 << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << in_tensor.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", ncclcomm: " << comm << ", stream: " << stream
-                << ", rank: " << rank_ << ", size: " << size_
+                << ", rank_in_group: " << rank_ << ", nranks: " << size_
                 << ", out_size_each_rank: "
                 << string::join_strings(out_size_each_rank, ',')
                 << ", in_size_each_rank: "
@@ -392,8 +392,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                 << ", count: " << in_tensor.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", root: " << root << ", ncclcomm: " << comm
-                << ", stream: " << stream << ", rank: " << rank_
-                << ", size: " << size_ << ", sync_op: " << sync_op
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
         NCCL_CHECK(
@@ -440,8 +440,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                 << ", redop: "
                 << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
                 << ", root: " << opts.root_rank << ", ncclcomm: " << comm
-                << ", stream: " << stream << ", rank: " << rank_
-                << ", size: " << size_ << ", sync_op: " << sync_op
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
         NCCL_CHECK(
@@ -488,7 +488,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
                 << ", redop: "
                 << NCCLRedTypeToString(ToNCCLRedType(opts.reduce_op))
                 << ", ncclcomm: " << comm << ", stream: " << stream
-                << ", rank: " << rank_ << ", size: " << size_
+                << ", rank_in_group: " << rank_ << ", nranks: " << size_
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
@@ -535,8 +535,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
                 << ", count: " << in_tensor.numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
                 << ", root: " << opts.root_rank << ", ncclcomm: " << comm
-                << ", stream: " << stream << ", rank: " << rank_
-                << ", size: " << size_ << ", sync_op: " << sync_op
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
         int64_t numel = in_tensor.numel() / size_;
@@ -623,8 +623,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
             << ", count: " << in_tensor.numel() << ", datatype: "
             << NCCLDTypeToString(phi::ToNCCLDataType(in_tensor.dtype()))
             << ", root: " << opts.root_rank << ", ncclcomm: " << comm
-            << ", stream: " << stream << ", rank: " << rank_
-            << ", size: " << size_ << ", sync_op: " << sync_op
+            << ", stream: " << stream << ", rank_in_group: " << rank_
+            << ", nranks: " << size_ << ", sync_op: " << sync_op
             << ", use_calc_stream: " << use_calc_stream;
 
     GroupStart();
@@ -682,9 +682,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << "recvbuff: " << tensor->data()
                 << ", count: " << tensor->numel() << ", datatype: "
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor->dtype()))
-                << ", src: " << src_rank << ", ncclcomm: " << comm
-                << ", stream: " << stream << ", rank: " << rank_
-                << ", size: " << size_ << ", offset: " << offset
+                << ", src_in_group: " << src_rank << ", ncclcomm: " << comm
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
@@ -729,9 +729,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                 << ", count: " << tensor_maybe_partial.numel() << ", datatype: "
                 << NCCLDTypeToString(
                        phi::ToNCCLDataType(tensor_maybe_partial.dtype()))
-                << ", dst: " << dst_rank << ", ncclcomm: " << comm
-                << ", stream: " << stream << ", rank: " << rank_
-                << ", size: " << size_ << ", offset: " << offset
+                << ", dst_in_group: " << dst_rank << ", ncclcomm: " << comm
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", offset: " << offset
                 << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
@@ -799,7 +799,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   BroadcastUniqueNCCLID(&nccl_id, is_p2p_op, place_key, p2p_rank);
 
-  VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
+  VLOG(3) << "init nccl rank_in_group: " << rank_ << ", nranks: " << size_
           << ", place key: " << place_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
@@ -817,7 +817,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
   VLOG(3) << "Get nccl comm: " << nccl_comm << " for place_key: " << place_key
-          << " on rank: " << rank << " nranks: " << num_ranks;
+          << " on rank_in_group: " << rank << " nranks: " << num_ranks;
 
   auto comm_ctx = std::make_unique<phi::GPUContext>(place);
   comm_ctx->set_nccl_comm(nccl_comm);
