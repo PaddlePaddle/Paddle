@@ -81,6 +81,16 @@ Operation* CreateOperation(const OpCall& op_call,
         op_call.outputs()[0]->name(),
         std::make_shared<IrValue>(transpose_op->result(0)));
     return transpose_op;
+  } else if (op_call.name() == "pd.cast") {
+    const auto& inputs = op_call.inputs();
+    std::vector<Value> ir_values =
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+    Operation* cast_op = rewriter.Build<paddle::dialect::CastOp>(
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        GetAttr<phi::DataType>("dtype", op_call, src_match_ctx));
+    res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
+                               std::make_shared<IrValue>(cast_op->result(0)));
+    return cast_op;
   }
 
   LOG(ERROR) << "Unknown op " << op_call.name();

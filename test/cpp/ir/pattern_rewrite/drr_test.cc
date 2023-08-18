@@ -118,6 +118,32 @@ class RemoveRedundentTransposePattern
       RemoveRedundentTransposeFunctor>::DrrRewritePattern;
 };
 
+struct RemoveRedundentCastFunctor {
+  void operator()(ir::drr::DrrPatternContext *ctx) {
+    auto pat = ctx->SourcePattern();
+    pat.Tensor("tmp") =
+        pat.Op("pd.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
+    pat.Tensor("ret") =
+        pat.Op("pd.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
+    pat.RequireNativeCall([](const ir::drr::MatchContext &match_ctx) -> bool {
+      return match_ctx.Tensor("ret").Dtype() ==
+             match_ctx.Tensor("arg0").Dtype();
+    });
+    auto res = pat.ResultPattern();
+    res.Tensor("ret") =
+        res.Op("pd.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
+  }
+};
+
+class RemoveRedundentCastPattern
+    : public ir::drr::DrrRewritePattern<paddle::dialect::CastOp,
+                                        RemoveRedundentCastFunctor> {
+ public:
+  using ir::drr::DrrRewritePattern<
+      paddle::dialect::CastOp,
+      RemoveRedundentCastFunctor>::DrrRewritePattern;
+};
+
 void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16, 16},
@@ -136,8 +162,14 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::ReluOp relu_op =
       builder.Build<paddle::dialect::ReluOp>(reshape_op2.out());
 
+  paddle::dialect::CastOp cast_op1 = builder.Build<paddle::dialect::CastOp>(
+      relu_op.out(), phi::DataType::FLOAT64);
+
+  paddle::dialect::CastOp cast_op2 = builder.Build<paddle::dialect::CastOp>(
+      cast_op1.out(), phi::DataType::FLOAT32);
+
   paddle::dialect::TransposeOp transpose_op1 =
-      builder.Build<paddle::dialect::TransposeOp>(relu_op.out(),
+      builder.Build<paddle::dialect::TransposeOp>(cast_op2.out(),
                                                   std::vector<int>{0, 2, 1, 3});
 
   paddle::dialect::TransposeOp transpose_op2 =
@@ -158,6 +190,7 @@ class DrrPatternRewritePass : public ir::Pass {
     ir::RewritePatternSet ps(context);
     ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
     ps.Add(std::make_unique<RemoveRedundentTransposePattern>(context));
+    ps.Add(std::make_unique<RemoveRedundentCastPattern>(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -185,7 +218,7 @@ TEST(DrrTest, drr) {
   ir::Builder builder = ir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 10u);
+  EXPECT_EQ(program.block()->size(), 12u);
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
@@ -194,4 +227,5 @@ TEST(DrrTest, drr) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 8u);
 }

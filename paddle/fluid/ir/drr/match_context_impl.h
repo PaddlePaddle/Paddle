@@ -17,6 +17,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
 #include "paddle/fluid/ir/drr/api/tensor_interface.h"
 #include "paddle/fluid/ir/drr/ir_operation.h"
@@ -39,6 +40,8 @@ PD_SPECIALIZE_CppTypeToIrAttribute(bool, BoolAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, Int32Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
+                                   paddle::dialect::DataTypeAttribute);
 
 template <typename T>
 struct IrAttrTypeCast {
