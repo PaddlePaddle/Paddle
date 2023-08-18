@@ -99,7 +99,7 @@ def shape(input):
 
             >>> img = np.ones((3, 100, 100)).astype(np.float32)
 
-            >>> res = exe.run(paddle.static.default_startup_program(), feed={'x':img}, fetch_list=[output])
+            >>> res = exe.run(paddle.static.default_main_program(), feed={'x':img}, fetch_list=[output])
             >>> print(res)
             [array([  3, 100, 100], dtype=int32)]
     """
