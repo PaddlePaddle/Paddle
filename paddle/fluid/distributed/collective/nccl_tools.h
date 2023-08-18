@@ -29,21 +29,25 @@
 namespace paddle {
 namespace distributed {
 
-#define NCCL_CHECK(cmd)                            \
-  do {                                             \
-    ncclResult_t r = cmd;                          \
-    if (r != ncclSuccess) {                        \
-      printf("Failed, NCCL error %s:%d '%s'\n",    \
-             __FILE__,                             \
-             __LINE__,                             \
-             phi::dynload::ncclGetErrorString(r)); \
-      exit(EXIT_FAILURE);                          \
-    }                                              \
+#define NCCL_CHECK(cmd)                                                \
+  do {                                                                 \
+    ncclResult_t r = cmd;                                              \
+    if (r != ncclSuccess) {                                            \
+      PADDLE_THROW(                                                    \
+          phi::errors::External("Failed, NCCL error %s:%d '%s'\n",     \
+                                __FILE__,                              \
+                                __LINE__,                              \
+                                phi::dynload::ncclGetErrorString(r))); \
+    }                                                                  \
   } while (0)
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
 
 std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
+
+std::string NCCLDTypeToString(ncclDataType_t dtype);
+
+std::string NCCLRedTypeToString(ncclRedOp_t op);
 
 }  // namespace distributed
 }  // namespace paddle

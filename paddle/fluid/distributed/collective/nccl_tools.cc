@@ -47,5 +47,43 @@ std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID) {
   return oss.str();
 }
 
+std::string NCCLDTypeToString(ncclDataType_t dtype) {
+#define PD_NCCL_DTYPE_TO_STR(__nccl_dtype, __str_dtype) \
+  if (dtype == __nccl_dtype) return __str_dtype;
+  PD_NCCL_DTYPE_TO_STR(ncclFloat, "float32");
+  PD_NCCL_DTYPE_TO_STR(ncclFloat32, "float32");
+  PD_NCCL_DTYPE_TO_STR(ncclHalf, "float16");
+  PD_NCCL_DTYPE_TO_STR(ncclFloat16, "float16");
+#if NCCL_VERSION_CODE >= 21000
+  PD_NCCL_DTYPE_TO_STR(ncclBfloat16, "bfloat16");
+#endif
+  PD_NCCL_DTYPE_TO_STR(ncclDouble, "float64");
+  PD_NCCL_DTYPE_TO_STR(ncclFloat64, "float64");
+
+  PD_NCCL_DTYPE_TO_STR(ncclInt8, "int8");
+  PD_NCCL_DTYPE_TO_STR(ncclChar, "int8");
+  PD_NCCL_DTYPE_TO_STR(ncclUint8, "uint8");
+  PD_NCCL_DTYPE_TO_STR(ncclInt32, "int32");
+  PD_NCCL_DTYPE_TO_STR(ncclInt, "int32");
+  PD_NCCL_DTYPE_TO_STR(ncclUint32, "uint32");
+  PD_NCCL_DTYPE_TO_STR(ncclInt64, "int64");
+  PD_NCCL_DTYPE_TO_STR(ncclUint64, "uint64");
+
+#undef PD_NCCL_DTYPE_TO_STR
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "This datatype %d in nccl is not supported.", static_cast<int>(dtype)));
+}
+
+std::string NCCLRedTypeToString(ncclRedOp_t op) {
+  if (op == ncclSum) return "SUM";
+  if (op == ncclProd) return "PROD";
+  if (op == ncclMin) return "MIN";
+  if (op == ncclMax) return "MAX";
+#if NCCL_VERSION_CODE >= 21000
+  if (op == ncclAvg) return "AVG";
+#endif
+  return "UDF_" + std::to_string(op);
+}
+
 }  //  namespace distributed
 }  //  namespace paddle
