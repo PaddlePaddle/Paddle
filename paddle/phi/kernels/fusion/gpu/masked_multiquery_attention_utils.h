@@ -449,13 +449,6 @@ __global__ void masked_multiquery_attention_kernel(
   int act_time_step = params.sequence_lengths == nullptr
                           ? params.timestep
                           : params.sequence_lengths[bi];
-
-  // qkv [B, S=1, 3, num_head, head_dim]
-  // int q_base_offset = bi * 3 * params.num_head * Dh + hi * Dh;
-  int q_base_offset =
-      bi * (params.num_head + params.head_kv * 2) * Dh + hi * Dh;
-  int kv_base_offset =
-      bi * (params.num_head + params.head_kv * 2) * Dh + hid * Dh;
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
   // Use block reduction if needed
@@ -480,26 +473,18 @@ __global__ void masked_multiquery_attention_kernel(
   if (tid < QK_VECS_PER_WARP) {
     Qk_vec q;
     zero(q);
-    // q = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-    //         ? *reinterpret_cast<const Qk_vec *>(&q_base[qk_offset])
-    //         : q;
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
         load_func.template load<Qk_vec>(
-            q, bi * params.num_head * Dh + hi * Dh + tid * QK_VEC_SIZE, "query");
+            q, bi * params.num_head * Dh + hi * Dh + tid * QK_VEC_SIZE, 'q');
     }
 
     Qk_vec k;
     zero(k);
-    // k = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-    //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
-    //         : k;
-
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-      if (params.split_kv) {
         load_func.template load<Qk_vec>(
             k,
             bi * params.head_kv * Dh + hid * Dh + tid * QK_VEC_SIZE,
-            "key");
+            'k');
     }
 
     if (!params.neox_rotary_style) {
@@ -532,46 +517,23 @@ __global__ void masked_multiquery_attention_kernel(
         int stride_all_lastdim = 2 * stride;
         int right_id = tid / stride_all_lastdim * stride_all_lastdim +
                        (tid + stride) % (stride_all_lastdim);
-        int q_right_offset = q_base_offset + right_id * QK_VEC_SIZE;
-        int k_rignt_offset = kv_base_offset + right_id * QK_VEC_SIZE;
-        int q_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
-        int k_right_bias_offset = hid * Dh + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
         zero(q_right);
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
             load_func.template load<Qk_vec>(
                 q,
                 bi * params.num_head * Dh + hi * Dh + right_id * QK_VEC_SIZE,
-                "query");
+                'q');
         }
         Qk_vec k_right;
         zero(k_right);
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
             load_func.template load<Qk_vec>(k_right,
-                                            bi * params.head_kv  * Dh +
+                                            bi * params.head_kv * Dh +
                                                 hid * Dh +
                                                 right_id * QK_VEC_SIZE,
-                                            "key");
+                                            'k');
         }
-
-        if (params.add_qkv_bias) {
-          Qk_vec q_right_bias;
-          zero(q_right_bias);
-          q_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-                             ? *reinterpret_cast<const Qk_vec *>(
-                                   &q_bias_base[q_right_bias_offset])
-                             : q_right_bias;
-          Qk_vec k_right_bias;
-          zero(k_right_bias);
-          k_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
-                             ? *reinterpret_cast<const Qk_vec *>(
-                                   &k_bias_base[k_right_bias_offset])
-                             : k_right_bias;
-
-          q_right = add(q_right, q_right_bias);
-          k_right = add(k_right, k_right_bias);
-        }
-
         Qk_vec_RoPE cos_emb;
         zero(cos_emb);
         cos_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
@@ -793,13 +755,11 @@ __global__ void masked_multiquery_attention_kernel(
   V_vec v_bias;
   zero(v_bias);
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
-    // V_vec v = *reinterpret_cast<const V_vec *>(
-    //     &params.qkv[2 * params.num_head * Dh + q_base_offset + vi]);
     V_vec v;
     load_func.template load<V_vec>(
         v,
          bi * params.head_kv * Dh + hid * Dh + vi,
-        true);
+        'v');
     if (blockIdx.x % (params.num_head / params.head_kv) == 0) 
       *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
@@ -838,17 +798,11 @@ __global__ void masked_multiquery_attention_kernel(
 
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-    // convert_from_float(*reinterpret_cast<V_vec *>(&params.out[bhi * Dh +
-    // vi]),
-    //                    out);
     V_vec tmp_out;
     convert_from_float(tmp_out, out);
-    // store_func.template store<V_vec>(tmp_out, bhi * Dh + vi);
     store_func.template store<V_vec>(tmp_out,
                                       thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #else
-    // *reinterpret_cast<V_vec *>(&params.out[bhi * Dh + vi]) = out;
-    // store_func.template store<V_vec>(out, bhi * Dh + vi);
     store_func.template store<V_vec>(out,
                                       thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
@@ -1039,20 +993,17 @@ struct MMQAStore<T, T, true> {
 };
 
 template <typename T>
-struct MMQALoad<T, true> {
-  MMQALoad(const T *q, const T *k,const T *v) : src_(src), src_kv_(src_kv) {}
+struct MMQALoad {
+  MMQALoad(const T *q, const T *k,const T *v) : q_(q), k_(k), v_(v) {}
 
   template <typename Vec>
-  __device__ void load(Vec &dst, int idx, string load = false) {
-    if (load == "query")
+  __device__ void load(Vec &dst, int idx, char load = false) {
+    if (load == 'q')
       dst = *reinterpret_cast<const Vec *>(q_ + idx);
-    else if((load == "key"))
+    else if((load == 'k'))
       dst = *reinterpret_cast<const Vec *>(k_ + idx);
-    else if((load == "value"))
+    else if((load == 'v'))
       dst = *reinterpret_cast<const Vec *>(v_ + idx);
-    else
-      PADDLE_THROW(
-           phi::errors::Unimplemented("load type error"));
   }
 
   const T *q_;
@@ -1170,13 +1121,12 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                   int num_head,
                   int dim_head,
                   phi::DenseTensor *out_tensor,
-                  const phi::DenseTensor *dequant_qkv_scales = nullptr,
                   const float quant_fmha_out_scale = -1,
                   const int quant_round_type = 1,
                   const float quant_max_bound = 127.0f,
                   const float quant_min_bound = -127.0f) {
   if (quant_fmha_out_scale > 0) {
-    MMQALoad<T, true> load_func(query.data<T>(), key.data<T>(),value.data<T>());
+    MMQALoad<T>load_func(query.data<T>(), key.data<T>(),value.data<T>());
     MMQAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
                                     quant_round_type,
                                     quant_fmha_out_scale,
@@ -1185,11 +1135,11 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
   } 
   else{
-    MMQALoad<T, true> load_func(query.data<T>(), key.data<T>(),value.data<T>());
+    MMQALoad<T>load_func(query.data<T>(), key.data<T>(),value.data<T>());
     MMQAStore<T> store_func(out_tensor->data<T>());
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
+  }
 }
-
 template <typename T>
 void DispatchFMQA(const phi::GPUContext &dev_ctx,
                   const phi::DenseTensor &query,
@@ -1201,13 +1151,12 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                   int num_head,
                   int dim_head,
                   phi::DenseTensor *out_tensor,
-                  const phi::DenseTensor *dequant_qkv_scales = nullptr,
                   const float quant_fmha_out_scale = -1,
                   const int quant_round_type = 1,
                   const float quant_max_bound = 127.0f,
                   const float quant_min_bound = -127.0f) {
   if (quant_fmha_out_scale > 0) {
-    MMQALoad<T, true> load_func(query.data<T>(), key.data<T>(),value.data<T>());
+    MMQALoad<T> load_func(query.data<T>(), key.data<T>(),value.data<T>());
     MMQAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
                                           shift.data<T>(),
                                           smooth.data<T>(),
@@ -1219,7 +1168,7 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
   } 
   else{
-    MMQALoad<T, true> load_func(query.data<T>(), key.data<T>(),value.data<T>());
+    MMQALoad<T> load_func(query.data<T>(), key.data<T>(),value.data<T>());
     MMQAStore<T, T, true> store_func(out_tensor->data<T>(),
                                      shift.data<T>(),
                                      smooth.data<T>(),
