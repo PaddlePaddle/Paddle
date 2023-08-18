@@ -255,10 +255,10 @@ def grid_sample(
             ...     padding_mode='border',
             ...     align_corners=True)
             >>> print(y_t)
-                Tensor(shape=[1, 1, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
-                [[[[ 0.34000000,  0.01600000,  0.08600000, -0.44800000],
-                        [ 0.55000000, -0.07600000,  0.35000000,  0.59000000],
-                        [ 0.59600000,  0.38000000,  0.52000000,  0.24000000]]]])
+            Tensor(shape=[1, 1, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[[[ 0.34000000,  0.01600000,  0.08600000, -0.44800000],
+                    [ 0.55000000, -0.07600000,  0.35000000,  0.59000000],
+                    [ 0.59600000,  0.38000000,  0.52000000,  0.24000000]]]])
     """
 
     _modes = ['bilinear', 'nearest']
@@ -487,13 +487,13 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
                           [[0.50000000]]]])
             >>> y = F.channel_shuffle(x, 3)
             >>> print(y)
-                Tensor(shape=[1, 6, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                        [[[[0.        ]],
-                          [[0.20000000]],
-                          [[0.40000001]],
-                          [[0.10000000]],
-                          [[0.30000001]],
-                          [[0.50000000]]]])
+            Tensor(shape=[1, 6, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[[[0.        ]],
+                        [[0.20000000]],
+                        [[0.40000001]],
+                        [[0.10000000]],
+                        [[0.30000001]],
+                        [[0.50000000]]]])
     """
     if len(x.shape) != 4:
         raise ValueError(
