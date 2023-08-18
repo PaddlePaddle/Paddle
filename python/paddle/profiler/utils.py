@@ -116,7 +116,7 @@ class RecordEvent(ContextDecorator):
             self.event = _RecordEvent(self.name, self.event_type)
 
     def end(self):
-        r'''
+        r"""
         Record the time of ending.
 
         Examples:
@@ -132,7 +132,7 @@ class RecordEvent(ContextDecorator):
                 data2 = paddle.randn(shape=[3])
                 result = data1 * data2
                 record_event.end()
-        '''
+        """
         if self.event:
             self.event.end()
 
@@ -197,7 +197,7 @@ def wrap_optimizers():
 
 @contextmanager
 def _nvprof_range(iter_id, start, end, exit_after_prof=True):
-    '''
+    """
     A range profiler interface (not public yet).
     Examples:
         .. code-block:: python
@@ -207,7 +207,7 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
             >>> for i in range(max_iter):
             ...     with paddle.profiler.utils._nvprof_range(i, 10, 20):
             ...         out = model(in)
-    '''
+    """
     if start >= end:
         yield
         return
