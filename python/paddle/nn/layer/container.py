@@ -202,7 +202,7 @@ class LayerDict(Layer):
 
                 >>> layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 >>> for k, v in layer_dict.items():
-                ...     print(k, ":", v)
+                ...     print(f"{k}:", v)
                 conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
                 conv2d : Conv2D(3, 2, kernel_size=[3, 3], data_format=NCHW)
                 conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
@@ -267,7 +267,7 @@ class LayerDict(Layer):
                 >>> layer_dict.update(new_sublayers)
 
                 >>> for k, v in layer_dict.items():
-                ...     print(k, ":", v)
+                ...     print(f"{k}:", v)
                 conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
                 conv2d : Conv2D(4, 2, kernel_size=[4, 4], data_format=NCHW)
                 conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
@@ -474,7 +474,8 @@ class LayerList(Layer):
                 >>> linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)])
                 >>> another = paddle.nn.Linear(10, 10)
                 >>> linears.append(another)
-                >>> print(len(linears))  # 11
+                >>> print(len(linears))
+                11
         """
         self.add_sublayer(str(len(self)), sublayer)
         return self
@@ -495,10 +496,12 @@ class LayerList(Layer):
                 >>> linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)])
                 >>> another = paddle.nn.Linear(10, 10)
                 >>> linears.insert(3, another)
-                >>> print(linears[3] is another)  # True
+                >>> print(linears[3] is another)
+                True
                 >>> another = paddle.nn.Linear(10, 10)
                 >>> linears.insert(-1, another)
-                >>> print(linears[-2] is another) # True
+                >>> print(linears[-2] is another)
+                True
         """
         assert isinstance(index, int) and -len(self._sub_layers) <= index < len(
             self._sub_layers
@@ -526,8 +529,10 @@ class LayerList(Layer):
                 >>> linears = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(10)])
                 >>> another_list = paddle.nn.LayerList([paddle.nn.Linear(10, 10) for i in range(5)])
                 >>> linears.extend(another_list)
-                >>> print(len(linears))  # 15
-                >>> print(another_list[0] is linears[10])  # True
+                >>> print(len(linears))
+                15
+                >>> print(another_list[0] is linears[10])
+                True
         """
         offset = len(self)
         for i, sublayer in enumerate(sublayers):
