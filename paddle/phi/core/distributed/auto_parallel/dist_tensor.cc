@@ -40,7 +40,27 @@ DistTensor::DistTensor(const phi::DenseTensor& value,
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
     : dims_(dims), dist_attr_(dist_attr) {}
 
-void DistTensor::set_dims(const DDim& dims) { dims_ = dims; }
+void DistTensor::set_dims(const DDim& dims) {
+  PADDLE_ENFORCE_EQ(
+      this->initialized(),
+      false,
+      phi::errors::Unimplemented(
+          "DistTensor's set_dims method can only be used when the `value` "
+          "is not initialized (generally used in the InferMeta and "
+          "InferSPMD stages)."));
+  dims_ = dims;
+}
+
+void DistTensor::set_dist_attr(const TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      this->initialized(),
+      false,
+      phi::errors::Unimplemented(
+          "DistTensor's set_dist_attr method can only be used when the `value` "
+          "is not initialized (generally used in the InferMeta and "
+          "InferSPMD stages)."));
+  dist_attr_ = dist_attr;
+}
 
 int64_t DistTensor::numel() const {
   check_defined(*this, "numel");
@@ -55,6 +75,12 @@ const DDim& DistTensor::local_dims() const {
 bool DistTensor::valid() const {
   check_defined(*this, "valid");
   return value_.valid();
+}
+
+bool DistTensor::defined() const { return value_.holder_ != nullptr; }
+
+bool DistTensor::initialized() const {
+  return value_.holder_ != nullptr && value_.holder_->ptr();
 }
 
 DataType DistTensor::dtype() const {

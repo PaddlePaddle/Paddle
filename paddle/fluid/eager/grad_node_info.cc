@@ -112,7 +112,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     return;
   }
 
-  phi::DenseTensor* dense_tensor = nullptr;
+  const phi::DenseTensor* dense_tensor = nullptr;
   // Record TensorMeta
   if (phi::DenseTensor::classof(fwd_out.impl().get())) {
     // Only Copy Meta
@@ -130,8 +130,8 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     // TODO(chenweihang): DistTensor contains global and local meta, here
     // only set the local meta now, we should set global meta later
     dense_tensor =
-        static_cast<phi::distributed::DistTensor*>(fwd_out.impl().get())
-            ->mutable_value();
+        &(static_cast<phi::distributed::DistTensor*>(fwd_out.impl().get())
+              ->value());
 #endif
   } else {
     VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "

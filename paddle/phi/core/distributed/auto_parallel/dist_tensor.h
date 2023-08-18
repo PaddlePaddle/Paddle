@@ -34,8 +34,9 @@ class DistTensor final
   DistTensor(const phi::DenseTensor& global_value,
              const TensorDistAttr& dist_attr);
 
+  // TODO(chenweihang): Remove this constructor after added reshard impl
   /// \brief Construct a dist tensor based dense tensor.
-  /// \param value The global dense tensor of the current tensor.
+  /// \param value The local dense tensor of the current tensor.
   /// \param dims The global dimension of the currnet tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const phi::DenseTensor& value,
@@ -66,17 +67,13 @@ class DistTensor final
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
-  /// \brief Returns the mutable dist attr of current dist tensor.
-  /// \return The TensorDistAttr's pointer
-  TensorDistAttr* mutable_dist_attr() { return &dist_attr_; }
+  /// \brief Set the dist attr of current dist tensor.
+  /// \return void
+  void set_dist_attr(const TensorDistAttr& dist_attr);
 
   /// \brief Returns the dense tensor value's const reference in dist tensor.
   /// \return The DenseTensor value's const reference
   const DenseTensor& value() const { return value_; }
-
-  /// \brief Returns the dense tensor value's pointer in dist tensor.
-  /// \return The DenseTensor value's pointer
-  DenseTensor* mutable_value() { return &value_; }
 
   /// \brief Returns the global dims of the dist tensor.
   /// \return The global dims of the dist tensor.
@@ -86,24 +83,17 @@ class DistTensor final
   /// \return The number of elements contained in tensor.
   int64_t numel() const override;
 
-  /// \brief Test whether the storage is allocated.
-  /// \return Whether the storage is allocated.
-  bool initialized() const override {
-    return value_.holder_ != nullptr && value_.holder_->ptr();
-  }
+  /// \brief Test whether the dense tensor value's storage is allocated.
+  /// \return Whether the dense tensor value's storage is allocated.
+  bool initialized() const override;
 
-  bool defined() const { return value_.holder_ != nullptr; }
+  /// \brief Test whether the dense tensor value is defined.
+  /// \return Whether the dense tensor value is defined.
+  bool defined() const;
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const override;
-
-  /// \brief Allocate memory with requested size from allocator.
-  /// \return The mutable data pointer value of type T.
-  void* AllocateFrom(Allocator* allocator,
-                     DataType dtype,
-                     size_t requested_size = 0,
-                     bool fake_alloc = false) override;
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
@@ -116,6 +106,13 @@ class DistTensor final
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
   const Place& place() const override;
+
+  /// \brief Allocate memory with requested size from allocator.
+  /// \return The mutable data pointer value of type T.
+  void* AllocateFrom(Allocator* allocator,
+                     DataType dtype,
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override;
 
  private:
   // The global dimensions(shape)
