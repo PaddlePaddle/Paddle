@@ -54,6 +54,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "pd.data",
     "builtin.combine",
     "builtin.slice",
+    "builtin.split",
     "pd.feed",
     "pd.fetch",
     "builtin.set_parameter",
@@ -546,7 +547,76 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             op_output_types.push_back(allocated_dense_tensor_dtype);
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
-                "builtin.combine Result type only support DenseTensorType"));
+                "builtin.slice Result type only support DenseTensorType"));
+          }
+        }
+      }
+      // Get op info
+      ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+      // Generate new op
+      ir::Operation* op = ir::Operation::Create(
+          vec_inputs, op_item->attributes(), op_output_types, op_info);
+      program->block()->push_back(op);
+      map_op_pair[op_item] = op;
+      // only deal with single output
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          map_value_pair[op_item->result(i)] = op->result(i);
+        }
+      }
+      VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+      continue;
+    }
+
+    if (op_item->name() == "builtin.split") {
+      phi::Place out_place = place;
+      // Copy op inputs
+      std::vector<ir::OpResult> vec_inputs;
+      if (op_item->num_operands() > 0) {
+        for (size_t i = 0; i < op_item->num_operands(); ++i) {
+          auto cur_in = op_item->operand_source(i);
+          if (!cur_in) {
+            vec_inputs.emplace_back();
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(map_value_pair.count(cur_in),
+                            true,
+                            phi::errors::PreconditionNotMet(
+                                "[%d]'s input of [%s] op MUST in map pair",
+                                i,
+                                op_item->name()));
+          auto new_in = map_value_pair.at(cur_in);
+          vec_inputs.push_back(new_in);
+
+          if (new_in.type().isa<ir::VectorType>()) {
+            auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
+            out_place =
+                vec_types[0]
+                    .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                    .place();
+          } else {
+            PADDLE_THROW(
+                phi::errors::Unimplemented("only support vector type for now"));
+          }
+        }
+      }
+      // Copy op output type
+      std::vector<ir::Type> op_output_types;
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          auto result_type = op_item->result(i).type();
+          if (!result_type) {
+            op_output_types.push_back(result_type);
+          } else if (result_type.isa<dialect::DenseTensorType>()) {
+            auto allocated_dense_tensor_dtype =
+                paddle::dialect::AllocatedDenseTensorType::get(
+                    ctx,
+                    out_place,
+                    result_type.dyn_cast<dialect::DenseTensorType>());
+            op_output_types.push_back(allocated_dense_tensor_dtype);
+          } else {
+            PADDLE_THROW(phi::errors::Unimplemented(
+                "builtin.split Result type only support DenseTensorType"));
           }
         }
       }
@@ -725,13 +795,23 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
               VLOG(6) << "need trans from " << place << " to "
                       << kernel_key.backend();
               // build memcopy op
-              new_in = AddPlaceTransferOp(
-                  new_in,
-                  new_in_type,
-                  place,
-                  phi::TransToPhiPlace(kernel.InputAt(i).backend),
-                  kernel_key,
-                  program.get());
+              auto out_place = phi::TransToPhiPlace(kernel.InputAt(i).backend);
+              auto new_in_alloc_type =
+                  new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>();
+              auto out_type = dialect::AllocatedDenseTensorType::get(
+                  ctx,
+                  out_place,
+                  new_in_alloc_type.dtype(),
+                  new_in_alloc_type.dims(),
+                  new_in_alloc_type.data_layout(),
+                  new_in_alloc_type.lod(),
+                  new_in_alloc_type.offset());
+              new_in = AddPlaceTransferOp(new_in,
+                                          out_type,
+                                          place,
+                                          out_place,
+                                          kernel_key,
+                                          program.get());
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
             // [ todo need update here, support combine data transfomer]
