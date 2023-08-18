@@ -487,6 +487,11 @@ HOSTDEVICE inline complex<T> log(const complex<T>& a) {
 }
 
 template <typename T>
+HOSTDEVICE inline complex<T> sign(const complex<T>& a) {
+  return complex<T>(conj(a) / abs(a));
+}
+
+template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const complex<T>& a) {
   os << "real:" << a.real << " imag:" << a.imag;
   return os;
