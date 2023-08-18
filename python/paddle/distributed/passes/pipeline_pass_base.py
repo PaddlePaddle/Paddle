@@ -14,10 +14,13 @@
 
 import logging
 
+from paddle.distributed.auto_parallel.static.utils import get_logger
 from paddle.fluid import core
 
 from .pass_base import PassBase
 from .pass_utils import get_skip_gc_vars
+
+_logger = get_logger(logging.INFO)
 
 
 class PipelinePassBase(PassBase):
@@ -62,7 +65,7 @@ class PipelinePassBase(PassBase):
         type_to_gc_vars = {}
         for type, gc_var in zip(type_list, gc_vars_list):
             type_to_gc_vars[type] = gc_var
-        logging.INFO(f"The skip_gc_vars : {gc_vars_list}")
+        _logger.info(f"The skip_gc_vars : {gc_vars_list}")
 
         for job in job_list:
             job.set_skip_gc_vars(type_to_gc_vars[job.type()])
