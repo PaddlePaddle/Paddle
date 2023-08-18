@@ -36,15 +36,24 @@ void MinRawKernel(const Context& dev_ctx,
               T* y,
               const std::vector<int>& xdims,
               const std::vector<int>& reduce_dims) {
+#ifndef PADDLE_WITH_XPU_PLUGIN
     return xpu::reduce_min<XPUType>(ctx,
                                     reinterpret_cast<const XPUType*>(x),
                                     reinterpret_cast<XPUType*>(y),
                                     xdims,
                                     reduce_dims);
+#else
+    return xpu::plugin::fast_reduce_min<XPUType>(
+        ctx,
+        reinterpret_cast<const XPUType*>(x),
+        reinterpret_cast<XPUType*>(y),
+        xdims,
+        reduce_dims);
+#endif
   };
 
-  int r = FastXPUReduce<Context, T>(
-      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, 3, f);
+  int r = XPUReduce<Context, T>(
+      dev_ctx, x, dims.GetData(), keep_dim, reduce_all, out, f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_min");
 }
 

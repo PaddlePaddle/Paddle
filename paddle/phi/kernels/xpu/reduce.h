@@ -96,59 +96,6 @@ int XPUReduce(const Context& dev_ctx,
   return r;
 }
 
-template <typename Context, typename T>
-int FastXPUReduce(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out,
-                  int op_type,
-                  std::function<int(xpu::Context*,
-                                    const T*,
-                                    T*,
-                                    const std::vector<int>&,
-                                    const std::vector<int>&)> func) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  dev_ctx.template Alloc<T>(out);
-
-  const auto* x_data = x.data<T>();
-  auto* y_data = out->data<T>();
-
-  const auto& input_dim_size = x.dims().size();
-  std::vector<int> xdims(input_dim_size);
-  for (int i = 0; i < input_dim_size; ++i) {
-    xdims[i] = x.dims()[i];
-  }
-
-  std::vector<int> reduce_dims;
-  GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
-
-  int r = xpu::SUCCESS;
-  if (reduce_dims.size() == 0) {
-    r = xpu::copy<XPUType>(dev_ctx.x_context(),
-                           reinterpret_cast<const XPUType*>(x_data),
-                           reinterpret_cast<XPUType*>(y_data),
-                           x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-#ifdef PADDLE_WITH_XPU_PLUGIN
-  } else if (reduce_dims.size() == 1 && reduce_dims[0] == xdims.size() - 1 &&
-             xdims[xdims.size() - 1] <= 832) {
-    r = xpu::plugin::fast_reduce_tiny<XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x_data),
-        reinterpret_cast<XPUType*>(y_data),
-        xdims,
-        op_type);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_reduce_tiny");
-#endif
-  } else {
-    r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
-  }
-  return r;
-}
-
 template <typename DeviceContext, typename T, typename OutT, typename Functor>
 void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const phi::DenseTensor& input,
@@ -165,17 +112,6 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
                                reinterpret_cast<XPUType*>(y_data),
                                input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-#ifdef PADDLE_WITH_XPU_PLUGIN
-  } else if (reduce_dims.size() == 1 && reduce_dims[0] == xdims.size() - 1 &&
-             xdims[xdims.size() - 1] <= 832) {
-    int r = xpu::plugin::fast_reduce_tiny<XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x_data),
-        reinterpret_cast<XPUType*>(y_data),
-        xdims,
-        0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_reduce_tiny");
-#endif
   } else {
     Functor func;
     func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);

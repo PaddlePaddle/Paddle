@@ -49,69 +49,6 @@ namespace api {
 namespace plugin {
 
 template <typename T>
-static int cpu_wrapper(Context* ctx,
-                       const T* x,
-                       T* y,
-                       const std::vector<int>& xshape,
-                       int op_type) {
-  std::vector<int> yshape = xshape;
-  yshape[xshape.size() - 1] = 1;
-  int xlen = vector_prod(xshape);
-  int ylen = vector_prod(yshape);
-  int num = xlen / ylen;
-  if (op_type == 0 || op_type == 1) {
-    for (int i = 0; i < ylen; i++) {
-      T sum = 0;
-      for (int j = 0; j < num; j++) {
-        sum += x[i * num + j];
-      }
-      if (op_type == 0) {
-        y[i] = sum;
-      } else {
-        y[i] = sum / num;
-      }
-    }
-  } else if (op_type == 2) {
-    for (int i = 0; i < ylen; i++) {
-      T max_val = x[i * num];
-      for (int j = 1; j < num; j++) {
-        max_val = std::max<T>(max_val, x[i * num + j]);
-      }
-      y[i] = max_val;
-    }
-  } else if (op_type == 3) {
-    for (int i = 0; i < ylen; i++) {
-      T min_val = x[i * num];
-      for (int j = 1; j < num; j++) {
-        min_val = std::min<T>(min_val, x[i * num + j]);
-      }
-      y[i] = min_val;
-    }
-  }
-
-  return SUCCESS;
-}
-
-template <>
-int cpu_wrapper<float16>(Context* ctx,
-                         const float16* x,
-                         float16* y,
-                         const std::vector<int>& xshape,
-                         int op_type) {
-  std::vector<int> yshape = xshape;
-  yshape[xshape.size() - 1] = 1;
-  int xlen = vector_prod(xshape);
-  int ylen = vector_prod(yshape);
-  std::vector<float> x_fp32(xlen);
-  std::vector<float> y_fp32(ylen);
-  int ret = cast<float16, float>(ctx, x, x_fp32.data(), xlen);
-  ret = cpu_wrapper<float>(ctx, x_fp32.data(), y_fp32.data(), xshape, op_type);
-  ret = cast<float, float16>(ctx, y_fp32.data(), y, ylen);
-  WRAPPER_ASSERT_SUCCESS(ctx, ret);
-  return ret;
-}
-
-template <typename T>
 static int xpu2_wrapper(Context* ctx,
                         const T* x,
                         T* y,
@@ -215,10 +152,11 @@ int fast_reduce_tiny(Context* ctx,
                      const T* x,
                      T* y,
                      const std::vector<int>& xshape,
+                     const std::vector<int>& rdims,
                      int op_type) {
   WRAPPER_CHECK_CTX(ctx);
   WRAPPER_DUMP_FUNCTION_T1(ctx, "fast_reduce_tiny", T);
-  WRAPPER_DUMP_PARAM4(ctx, x, y, xshape, op_type);
+  WRAPPER_DUMP_PARAM5(ctx, x, y, xshape, rdims, op_type);
   WRAPPER_DUMP(ctx);
   std::vector<int> yshape = xshape;
   yshape[xshape.size() - 1] = 1;
@@ -228,25 +166,124 @@ int fast_reduce_tiny(Context* ctx,
   WRAPPER_CHECK_SHAPE(ctx, &leny, yshape);
   WRAPPER_CHECK_PTR(ctx, T, lenx, x);
   WRAPPER_CHECK_PTR(ctx, T, leny, y);
-  if (ctx->dev().type() == api::kCPU) {
-    return cpu_wrapper<T>(ctx, x, y, xshape, op_type);
-  }
+
   if (ctx->dev().type() == api::kXPU2) {
     return xpu2_wrapper<T>(ctx, x, y, xshape, op_type);
   }
   WRAPPER_UNIMPLEMENTED(ctx);
 }
 
-template int fast_reduce_tiny(
-    Context*, const float*, float*, const std::vector<int>&, int);
-template int fast_reduce_tiny(
-    Context*, const float16*, float16*, const std::vector<int>&, int);
-template int fast_reduce_tiny(
-    Context*, const int*, int*, const std::vector<int>&, int);
-template int fast_reduce_tiny(
-    Context*, const int64_t*, int64_t*, const std::vector<int>&, int);
-template int fast_reduce_tiny(
-    Context*, const int8_t*, int8_t*, const std::vector<int>&, int);
+template <typename T>
+DLL_EXPORT int fast_reduce_sum(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims) {
+  if (rdims.size() == 1 && rdims[0] == xshape.size() - 1 &&
+      xshape[xshape.size() - 1] <= 832) {
+    return fast_reduce_tiny<T>(ctx, x, y, xshape, rdims, 0);
+  } else {
+    return reduce_sum<T>(ctx, x, y, xshape, rdims);
+  }
+}
+
+template <typename T>
+DLL_EXPORT int fast_reduce_mean(Context* ctx,
+                                const T* x,
+                                T* y,
+                                const std::vector<int>& xshape,
+                                const std::vector<int>& rdims) {
+  if (rdims.size() == 1 && rdims[0] == xshape.size() - 1 &&
+      xshape[xshape.size() - 1] <= 832) {
+    return fast_reduce_tiny<T>(ctx, x, y, xshape, rdims, 1);
+  } else {
+    return reduce_mean<T>(ctx, x, y, xshape, rdims);
+  }
+}
+
+template <typename T>
+DLL_EXPORT int fast_reduce_max(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims) {
+  if (rdims.size() == 1 && rdims[0] == xshape.size() - 1 &&
+      xshape[xshape.size() - 1] <= 832) {
+    return fast_reduce_tiny<T>(ctx, x, y, xshape, rdims, 2);
+  } else {
+    return reduce_max<T>(ctx, x, y, xshape, rdims);
+  }
+}
+
+template <typename T>
+DLL_EXPORT int fast_reduce_min(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims) {
+  if (rdims.size() == 1 && rdims[0] == xshape.size() - 1 &&
+      xshape[xshape.size() - 1] <= 832) {
+    return fast_reduce_tiny<T>(ctx, x, y, xshape, rdims, 3);
+  } else {
+    return reduce_min<T>(ctx, x, y, xshape, rdims);
+  }
+}
+
+template int fast_reduce_sum(Context*,
+                             const float*,
+                             float*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_sum(Context*,
+                             const float16*,
+                             float16*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_sum(Context*,
+                             const int*,
+                             int*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_sum(Context*,
+                             const int64_t*,
+                             int64_t*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_sum(Context*,
+                             const int8_t*,
+                             int8_t*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_mean(Context*,
+                              const float*,
+                              float*,
+                              const std::vector<int>&,
+                              const std::vector<int>&);
+template int fast_reduce_mean(Context*,
+                              const float16*,
+                              float16*,
+                              const std::vector<int>&,
+                              const std::vector<int>&);
+template int fast_reduce_min(Context*,
+                             const float*,
+                             float*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_max(Context*,
+                             const float*,
+                             float*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_max(Context*,
+                             const int*,
+                             int*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_max(Context*,
+                             const int64_t*,
+                             int64_t*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
 
 }  // namespace plugin
 }  // namespace api
