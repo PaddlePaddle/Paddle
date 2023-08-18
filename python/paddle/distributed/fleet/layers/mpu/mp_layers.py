@@ -345,7 +345,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
                 @staticmethod
                 def forward(ctx, x, weight, bias):
                     ctx.save_for_backward(x, weight, bias)
-                    if (mp_async_allreduce and mp_skip_c_identity) is False:
+                    if mp_skip_c_identity is False:
                         x = paddle._legacy_C_ops.c_identity(
                             x,
                             'use_calc_stream',
