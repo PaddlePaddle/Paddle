@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # generator interfaces
-from vjp_interface_gen_op_list import vjp_interface_gen_op_list
+from vjp_interface_gen_op_list import vjp_interface_declare_gen_op_list
 
 OP_INFER_SHAPE_TEMPLATE = """
 void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
@@ -23,13 +23,13 @@ void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
 """
 
 OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
-    {input_type} {input_name}(std::make_shared<primitive::experimental::StaticTensor>(op_obj.{input_name}()));"""
+    {input_type} {input_name}(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}()));"""
 
 OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
-    Tensor {output_grad_name}(std::make_shared<primitive::experimental::StaticTensor>(out_grads[{idx1}][{idx2}]));"""
+    Tensor {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}][{idx2}]));"""
 
 OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
-    std::vector<Tensor> {output_grad_name}(std::make_shared<primitive::experimental::StaticTensor>(out_grads[{idx1}]));"""
+    std::vector<Tensor> {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}]));"""
 
 OP_VJP_ATTRIBUTE_TEMPLATE = """
     {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().data();"""
@@ -39,7 +39,7 @@ OP_VJP_ATTRIBUTE_DEFAULT_TEMPLATE = """
 
 
 OP_VJP_CALL_VJP_TEMPLATE = """  std::vector<std::vector<Tensor>> tensor_res =
-    primitive::experimental::{op_phi_name}_vjp(
+    primitive::{op_phi_name}_vjp(
     {inputs_list}stop_gradients);"""
 
 OP_VJP_STOPGRADIENT_TEMPLATE = """
@@ -48,7 +48,7 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
         res[i].resize(tensor_res[i].size());
         for (size_t j = 0; j < tensor_res[i].size(); ++j) {{
             if(tensor_res[i][j].defined()){{
-                res[i][j] = std::static_pointer_cast<primitive::experimental::StaticTensor>(tensor_res[i][j].impl())->getValue().dyn_cast<ir::OpResult>();
+                res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(tensor_res[i][j].impl())->getValue().dyn_cast<ir::OpResult>();
             }}
         }}
     }}"""
@@ -166,6 +166,6 @@ def gen_exclusive_interface_str(op_info):
         exclusive_interface_str += (
             "  static void InferMeta( phi::InferMetaContext *infer_meta );"
         )
-    if op_info.op_phi_name[0] in vjp_interface_gen_op_list:
+    if op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<ir::OpResult>> Vjp(ir::Operation* op, const std::vector<std::vector<ir::OpResult>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str
