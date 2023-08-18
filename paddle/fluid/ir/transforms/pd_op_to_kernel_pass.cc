@@ -23,6 +23,7 @@
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
@@ -58,10 +59,6 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "builtin.set_parameter",
     "builtin.get_parameter",
     "pd.shadow_output"};
-
-const std::unordered_set<std::string> LegacyOpList = {
-    "pd.fused_softmax_mask_upper_triangle",
-    "pd.fused_softmax_mask_upper_triangle_grad"};
 
 bool NeedFallBackCpu(const ir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -108,6 +105,37 @@ bool NeedFallBackFromGPUDNN2GPU(ir::Operation* op,
   }
 
   return false;
+}
+
+std::vector<phi::DenseTensor> GetFakeTensorList(ir::Value new_input_tmp) {
+  std::vector<phi::DenseTensor> vec_res;
+  auto input_type = new_input_tmp.type();
+  std::vector<dialect::AllocatedDenseTensorType> types;
+  if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
+    types.push_back(input_type.dyn_cast<dialect::AllocatedDenseTensorType>());
+  } else if (input_type.isa<ir::VectorType>()) {
+    auto vec_inner_types = input_type.dyn_cast<ir::VectorType>().data();
+    for (size_t i = 0; i < vec_inner_types.size(); ++i) {
+      types.push_back(
+          vec_inner_types[0].dyn_cast<dialect::AllocatedDenseTensorType>());
+    }
+  }
+
+  for (auto& type : types) {
+    auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+    std::shared_ptr<phi::Allocation> holder(ptr);
+
+    auto dtype = TransToPhiDataType(type.dtype());
+
+    phi::DenseTensorMeta meta(
+        dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+    phi::DenseTensor fake_tensor(holder, meta);
+
+    vec_res.push_back(fake_tensor);
+  }
+  return vec_res;
 }
 
 ir::OpResult AddPlaceTransferOp(ir::OpResult in,
@@ -304,28 +332,10 @@ phi::KernelKey GetKernelKey(
       }
       auto new_input_tmp = map_value_pair.at(input_tmp);
 
-      auto input_type = new_input_tmp.type();
-      dialect::AllocatedDenseTensorType type;
-      if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
-        type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
-      } else if (input_type.isa<ir::VectorType>()) {
-        type = input_type.dyn_cast<ir::VectorType>()[0]
-                   .dyn_cast<dialect::AllocatedDenseTensorType>();
+      auto fake_tensors = GetFakeTensorList(new_input_tmp);
+      for (auto& fake_tensor : fake_tensors) {
+        kernel_key_parser.AssignKernelKeySet(fake_tensor);
       }
-
-      // fake tensor here
-      auto ptr = new phi::Allocation(nullptr, 0, type.place());
-
-      std::shared_ptr<phi::Allocation> holder(ptr);
-
-      auto dtype = TransToPhiDataType(type.dtype());
-
-      phi::DenseTensorMeta meta(
-          dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-
-      phi::DenseTensor fake_tensor(holder, meta);
-
-      kernel_key_parser.AssignKernelKeySet(fake_tensor);
     }
 
     auto kernel_key_set = kernel_key_parser.key_set;
@@ -553,6 +563,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
 
+    if (op_item->name() == "pd.load_combine") {
+      kernel_key.set_dtype(phi::DataType::FLOAT32);
+    }
     if (NeedFallBackCpu((op_item), kernel_fn_str, kernel_key)) {
       kernel_key.set_backend(phi::Backend::CPU);
     }
@@ -571,7 +584,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       auto args_def = phi_kernel.args_def();
       auto output_defs = args_def.output_defs();
       if (!UnchangeOutputOps.count(op_item->name()) &&
-          !LegacyOpList.count(op_item->name())) {
+          !IsLegacyOp(op_item->name())) {
         PADDLE_ENFORCE_EQ(
             op_item->num_results(),
             output_defs.size(),
@@ -583,7 +596,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       for (size_t i = 0; i < op_item->num_results(); ++i) {
         phi::Place out_place;
         if ((!UnchangeOutputOps.count(op_item->name())) &&
-            (!LegacyOpList.count(op_item->name())) && phi_kernel.IsValid()) {
+            (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
           out_place = phi::TransToPhiPlace(output_defs[i].backend);
         } else {
           out_place = phi::TransToPhiPlace(kernel_key.backend());
@@ -690,16 +703,90 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
               VLOG(6) << "need trans from " << place << " to "
                       << kernel_key.backend();
               // build memcopy op
-              new_in = AddPlaceTransferOp(
-                  new_in,
-                  new_in_type,
-                  place,
-                  phi::TransToPhiPlace(kernel.InputAt(i).backend),
-                  kernel_key,
-                  program.get());
+              auto out_place = phi::TransToPhiPlace(kernel.InputAt(i).backend);
+              auto new_in_alloc_type =
+                  new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>();
+              auto out_type = dialect::AllocatedDenseTensorType::get(
+                  ctx,
+                  out_place,
+                  new_in_alloc_type.dtype(),
+                  new_in_alloc_type.dims(),
+                  new_in_alloc_type.data_layout(),
+                  new_in_alloc_type.lod(),
+                  new_in_alloc_type.offset());
+              new_in = AddPlaceTransferOp(new_in,
+                                          out_type,
+                                          place,
+                                          out_place,
+                                          kernel_key,
+                                          program.get());
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
             // [ todo need update here, support combine data transfomer]
+            // deal with pre combine op
+            auto pre_define_op = cur_in.GetDefiningOp();
+
+            if (pre_define_op->name() == "builtin.combine") {
+              std::vector<ir::OpResult> inner_inputs;
+              std::vector<ir::Type> types_in_vec;
+              bool is_trans = false;
+              for (size_t j = 0; j < pre_define_op->num_operands(); ++j) {
+                auto in_i = map_value_pair.at(pre_define_op->operand_source(j));
+                auto in_i_type = in_i.type();
+                auto place =
+                    in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>()
+                        .place();
+
+                // get input args def type
+                auto args_def = kernel.args_def();
+                auto input_defs = args_def.input_defs();
+
+                bool need_trans =
+                    (place.GetType() != phi::AllocationType::UNDEFINED) &&
+                    (op_info_parser != nullptr &&
+                     !op_info_parser->IsTensorAttribute(i)) &&
+                    (paddle::experimental::NeedTransformPlace(
+                        place, kernel.InputAt(i).backend, {}));
+                if (need_trans) {
+                  VLOG(6) << "need trans from " << place << " to "
+                          << kernel_key.backend();
+                  // build memcopy op
+                  auto out_place =
+                      phi::TransToPhiPlace(kernel.InputAt(i).backend);
+                  auto out_type = dialect::AllocatedDenseTensorType::get(
+                      ctx,
+                      out_place,
+                      pre_define_op->operand_source(j)
+                          .type()
+                          .dyn_cast<dialect::DenseTensorType>());
+                  in_i = AddPlaceTransferOp(in_i,
+                                            out_type,
+                                            place,
+                                            out_place,
+                                            kernel_key,
+                                            program.get());
+
+                  is_trans = true;
+                }
+
+                inner_inputs.push_back(in_i);
+                types_in_vec.push_back(in_i.type());
+              }
+              if (is_trans) {
+                // Add combine op
+                std::string combine_op_name(ir::CombineOp::name());
+                ir::OpInfo op_info = ctx->GetRegisteredOpInfo(combine_op_name);
+
+                ir::Type target_vec_type =
+                    ir::VectorType::get(ctx, types_in_vec);
+                ir::Operation* operation = ir::Operation::Create(
+                    inner_inputs, {}, {target_vec_type}, op_info);
+
+                new_in = operation->result(0);
+                program->block()->push_back(operation);
+              }
+            }
+
           } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
             // do nothing here
           } else {
