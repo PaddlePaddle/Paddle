@@ -1273,6 +1273,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_bucketize_api
     test_bincount_op
     test_c_embedding_op
     test_decayed_adagrad_op
@@ -1303,6 +1304,7 @@ set(STATIC_BUILD_TESTS
     test_prune_gate_by_capacity_op
     test_random_routing_op
     test_reduce_op
+    test_searchsorted_op
     test_segment_ops
     test_sparse_momentum_op
     test_sgd_op_bf16
