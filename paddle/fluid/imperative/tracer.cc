@@ -450,6 +450,8 @@ void Tracer::TraceOp(const std::string& type,
       iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
       iter.first->set_strides(need_backup_inputs2strides[iter.first]);
       paddle::experimental::TransStrideLegacy(dev_ctx, iter.second, iter.first);
+      iter.second->ResetHolder(need_backup_inputs2holder[iter.first]);
+      iter.second->set_strides(need_backup_inputs2strides[iter.first]);
     }
   } else {
     TraceOpImpl<egr::EagerVariable>(type,
