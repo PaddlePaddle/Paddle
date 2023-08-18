@@ -65,5 +65,13 @@ class TestBuildOp(unittest.TestCase):
         )
 
 
+class TestErrorCase(unittest.TestCase):
+    def test_input_error_type(self):
+        newir_program = get_ir_program()
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with self.assertRaises(TypeError):
+            _ = decompose(newir_program, ["mean"])
+
+
 if __name__ == "__main__":
     unittest.main()
