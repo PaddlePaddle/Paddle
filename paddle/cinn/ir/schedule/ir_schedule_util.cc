@@ -357,8 +357,16 @@ IterRange GetAccessedRange(const Expr& index,
 
   Expr indice_extent;
   Expr mod_extent(0);
-  if (indice_min.As<Mod>() && indice_min.As<Mod>()->b().is_constant())
+  if (indice_min.As<Mod>() && indice_min.As<Mod>()->b().is_constant()) {
+    Expr mod_right_min = indice_min.As<Mod>()->a();
+    Expr mod_right_max = indice_max.As<Mod>()->a();
+    Expr mod_right_extent =
+        common::AutoSimplify(mod_right_max - mod_right_min + 1);
     mod_extent = indice_min.As<Mod>()->b();
+    if (mod_right_extent.get_constant() < mod_extent.get_constant()) {
+      mod_extent = mod_right_extent;
+    }
+  }
 
   if (indice_min == indice_max) {
     if (common::is_zero(mod_extent)) {

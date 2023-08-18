@@ -19,7 +19,8 @@ gather_srcs(
   op_lowering.cc
   op_lowering_util.cc
   accuracy_checker.cc
-  visualize_helper.cc)
+  visualize_helper.cc
+  group_scheduler.cc)
 
 # TODO(Aurelius84): new_ir_compiler depends on pd_dialect and could
 # not found under CINN_ONLY mode
@@ -43,6 +44,8 @@ endif()
 if(WITH_CUDA)
   cinn_cc_test(test_hlir_framework_op_lowering SRCS op_lowering_test.cc DEPS
                cinncore decomposer_test_helper)
+  cinn_cc_test(test_group_scheduler SRCS group_scheduler_test.cc DEPS cinncore
+               decomposer_test_helper)
 endif()
 cinn_cc_test(test_hlir_framework_tensor SRCS tensor_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_scope SRCS scope_test.cc DEPS cinncore)

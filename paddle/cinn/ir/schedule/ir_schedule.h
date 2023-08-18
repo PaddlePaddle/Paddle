@@ -244,7 +244,7 @@ class IRSchedule {
    */
   void SyncThreads(const Expr& ir_node, bool after_node = true);
 
-  /*!
+  /**
    * \brief Set a tensor's buffer type(memory_type)
    * \param block The ScheduleBlockRealize corresponding to an unique tensor.
    * \param memory_type The memory type we want to set. Should be "local",
@@ -253,6 +253,13 @@ class IRSchedule {
   void SetBuffer(Expr& block,  // NOLINT
                  const std::string& memory_type,
                  bool fixed = false);  // NOLINT
+
+  /**
+   * \brief Create a new unit loop on top of the block.
+   * @param block The block to be added the new loop.
+   * @return The new unit loop.
+   */
+  Expr AddUnitLoop(const Expr& block);
 
   /**
    * \brief Reorder the loops in the order of vector.

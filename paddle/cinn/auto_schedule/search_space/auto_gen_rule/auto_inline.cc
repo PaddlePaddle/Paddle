@@ -49,6 +49,11 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
   ir::Expr root = ir_sch->GetRootBlock(sche_block_realize_expr);
 
   // Check the schedule block to be inlined is not a reduce tensor.
+  for (const ir::Var& iter_var : sche_block->iter_vars) {
+    if (iter_var->is_reduce_axis) {
+      return false;
+    }
+  }
   std::set<ir::Expr> find_store = ir::CollectIRNodesWithoutTensor(
       compute_body, [&](const Expr* x) { return x->As<ir::Store>(); });
   if (find_store.size() != 1UL) {
@@ -66,6 +71,11 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
           no_inline_output_names_.end() ||
       no_inline_output_names_.find(tensor->buffer->name) !=
           no_inline_output_names_.end()) {
+    return false;
+  }
+
+  // the xxx_reduce_init block cannot be inlined.
+  if (ir::IsReduceInitTensorName(tensor->name)) {
     return false;
   }
 

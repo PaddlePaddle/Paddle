@@ -58,6 +58,10 @@ DEFINE_bool(general_fusion_merge_pass,
             BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
             "Whether to use general fusion_merge pass.");
 
+DEFINE_bool(cinn_new_group_scheduler,
+            BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
+            "Whether to use new group scheduler.");
+
 DEFINE_bool(cinn_use_common_subexpression_elimination,
             BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                         false),

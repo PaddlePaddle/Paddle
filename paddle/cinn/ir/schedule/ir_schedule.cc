@@ -2561,6 +2561,13 @@ void IRSchedule::SetBuffer(Expr& block,
                          {}));
 }
 
+Expr IRSchedule::AddUnitLoop(const Expr& block) {
+  Expr ret = impl_->AddUnitLoop(block);
+  trace_.Append(ScheduleDesc::Step(
+      "AddUnitLoop", {{"block", std::vector<Expr>({block})}}, {}, {ret}));
+  return ret;
+}
+
 Expr IRSchedule::Reorder(const std::vector<Expr>& loops) {
   Expr ret = impl_->Reorder(loops);
   trace_.Append(ScheduleDesc::Step("Reorder", {{"loops", loops}}, {}, {ret}));

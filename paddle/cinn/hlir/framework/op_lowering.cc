@@ -14,12 +14,15 @@
 
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 
+#include "paddle/cinn/hlir/framework/group_scheduler.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(cinn_use_cuda_vectorize);
+DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
 namespace hlir {
@@ -402,6 +405,11 @@ ir::Expr OpLowerer::DoGroupSchedule(
     ir::IRSchedule& ir_sch,
     const GroupPtr& group,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
+  if (FLAGS_cinn_new_group_scheduler) {
+    GroupScheduler group_scheduler(&ir_sch, group, target_);
+    group_scheduler();
+    return ir_sch.GetModule().GetExprs().at(0);
+  }
   // topological order.
   auto nodes_set = group->NodeSet();
   auto v_consumers = BuildVirtualConsumer(group, this->shape_dict_);
