@@ -99,6 +99,7 @@ struct RemoveRedundentTransposeFunctor {
 
     // Result patterns: 要替换的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
+    // todo 先简单用perm2替换
     const auto &tranpose_continuous =
         res.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
 
@@ -122,27 +123,27 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
-  paddle::dialect::ReshapeOp reshape_op_first =
+  paddle::dialect::ReshapeOp reshape_op1 =
       builder.Build<paddle::dialect::ReshapeOp>(
           full_input_op.out(), std::vector<int64_t>{16, 3, 4, 16});
 
-  paddle::dialect::ReshapeOp reshape_op_second =
+  paddle::dialect::ReshapeOp reshape_op2 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          reshape_op_first.out(), std::vector<int64_t>{16, 3, 4, 16});
+          reshape_op1.out(), std::vector<int64_t>{16, 3, 4, 16});
 
   paddle::dialect::ReluOp relu_op =
-      builder.Build<paddle::dialect::ReluOp>(reshape_op_second.out());
+      builder.Build<paddle::dialect::ReluOp>(reshape_op2.out());
 
-  paddle::dialect::TransposeOp transpose_op_first =
+  paddle::dialect::TransposeOp transpose_op1 =
       builder.Build<paddle::dialect::TransposeOp>(relu_op.out(),
                                                   std::vector<int>{0, 2, 1, 3});
 
-  paddle::dialect::TransposeOp transpose_op_second =
-      builder.Build<paddle::dialect::TransposeOp>(transpose_op_first.out(),
-                                                  std::vector<int>{0, 1, 2, 3});
+  paddle::dialect::TransposeOp transpose_op2 =
+      builder.Build<paddle::dialect::TransposeOp>(transpose_op1.out(),
+                                                  std::vector<int>{1, 0, 2, 3});
 
   paddle::dialect::ReluOp relu_op_second =
-      builder.Build<paddle::dialect::ReluOp>(transpose_op_second.out());
+      builder.Build<paddle::dialect::ReluOp>(transpose_op2.out());
 
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }

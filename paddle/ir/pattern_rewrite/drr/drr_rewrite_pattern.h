@@ -81,9 +81,8 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     bool Matched = true;
     size_t step = 0;
     while (!drr_q.empty()) {
-      if (!Matched) {
-        break;
-      }
+      if (!Matched) break;
+
       IR_ENFORCE(drr_q.size() == ir_q.size());
       // if (drr_q.size() != ir_q.size()) {
       //   Matched = false;
