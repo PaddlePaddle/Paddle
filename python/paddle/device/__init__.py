@@ -423,6 +423,7 @@ class Event:
         .. code-block:: python
 
             >>> # +REQUIRES(env:CUSTOM_DEVICE)
+
             >>> import paddle
 
             >>> paddle.set_device('custom_cpu')
