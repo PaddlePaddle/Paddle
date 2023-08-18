@@ -108,6 +108,7 @@ list(
   temporal_shift_op.cc
   einsum_op.cc
   unbind_op.cc
+  put_along_axis_op.cc
   assign_op.cc
   flip_op.cc)
 
