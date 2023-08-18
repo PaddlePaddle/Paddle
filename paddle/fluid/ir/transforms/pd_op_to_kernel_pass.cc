@@ -827,7 +827,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     program->block()->push_back(op);
 
-    if (op_item->name() == "pd.feed" && platform::is_gpu_place(place)) {
+    if (op_item->name() == "pd.data" && platform::is_gpu_place(place)) {
       // add shadow feed op
       phi::KernelKey shadow_key{
           phi::Backend::GPU,
