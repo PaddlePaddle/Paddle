@@ -21,10 +21,13 @@ from op_interface_gen import (
     gen_exclusive_interface_str,
     gen_op_infer_meta_str,
     gen_op_vjp_str,
-    vjp_interface_gen_op_list,
 )
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
+from vjp_interface_gen_op_list import (
+    vjp_interface_declare_gen_op_list,
+    vjp_interface_implementation_gen_op_list,
+)
 
 # =====================================
 # String Template for h file code gen
@@ -751,7 +754,7 @@ def OpGenerator(
 
         if (
             op_info.backward_name
-            and op_info.op_phi_name[0] in vjp_interface_gen_op_list
+            and op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(op_info)
@@ -1050,7 +1053,8 @@ def OpGenerator(
             # TODO(chenzhiyang) add vjp gen code
             if (
                 op_info.backward_name
-                and op_info.op_phi_name[0] in vjp_interface_gen_op_list
+                and op_info.op_phi_name[0]
+                in vjp_interface_implementation_gen_op_list
             ):
                 op_vjp_str = gen_op_vjp_str(
                     op_class_name,
@@ -1118,9 +1122,7 @@ def OpGenerator(
 
     # NOTE(chenxi67) Skip include this header file if dialect_name == cinn
     # otherwise we may get compile error when compile with "ncclDataType_t"
-    def_primitive_str = (
-        "#include \"paddle/fluid/primitive/type/static_tensor.h\""
-    )
+    def_primitive_str = "#include \"paddle/fluid/primitive/type/lazy_tensor.h\""
     if dialect_name == "cinn":
         def_primitive_str = ""
 
