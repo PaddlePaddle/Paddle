@@ -63,6 +63,15 @@
     data_type: tables
   optional : mask, seq_lod, max_seq_len
 
+- op : fast_add_layernorm_xpu
+  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon)
+  output : Tensor(out)
+  infer_meta :
+    func : FastAddLayernormXPUInferMeta
+  kernel :
+    func : fast_add_layernorm_xpu
+    data_type : x
+
 - op : fast_layernorm_xpu
   args : (Tensor x, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon)
   output : Tensor(out)

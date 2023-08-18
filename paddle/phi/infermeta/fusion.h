@@ -204,4 +204,12 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
+void FastAddLayernormXPUInferMeta(const MetaTensor& x,
+                                  const MetaTensor& y,
+                                  const MetaTensor& scale,
+                                  const MetaTensor& bias,
+                                  int begin_norm_axis,
+                                  float epsilon,
+                                  MetaTensor* out);
+
 }  // namespace phi

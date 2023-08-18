@@ -198,28 +198,48 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     fused_op_out_name = norm_out->Name();
     // Generate add_layernorm fused op
     framework::OpDesc fused_op_desc(block);
-    fused_op_desc.SetType("add_layernorm_xpu");
-    // set attrs for fused op
-    fused_op_desc.SetInput("x", {add_x->Name()});
-    fused_op_desc.SetInput("y", {add_y->Name()});
-    fused_op_desc.SetInput("scale", {norm_scale->Name()});
-    fused_op_desc.SetInput("bias", {norm_bias->Name()});
-    fused_op_desc.SetAttr("epsilon", eps);
-    fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
-    fused_op_desc.SetOutput("out", {fused_op_out_name});
-    setIntermediateOut(&fused_op_desc, "mean", name_scope_);
-    setIntermediateOut(&fused_op_desc, "variance", name_scope_);
-    setIntermediateOut(&fused_op_desc, "z_add", name_scope_);
-    // relink fused op
-    auto* fused_op = graph->CreateOpNode(&fused_op_desc);
-    IR_NODE_LINK_TO(add_x, fused_op);
-    IR_NODE_LINK_TO(add_y, fused_op);
-    IR_NODE_LINK_TO(norm_scale, fused_op);
-    IR_NODE_LINK_TO(norm_bias, fused_op);
-    IR_NODE_LINK_TO(fused_op, norm_out);
-    addIntermediateOut(fused_op, "mean", name_scope_, graph);
-    addIntermediateOut(fused_op, "variance", name_scope_, graph);
-    addIntermediateOut(fused_op, "z_add", name_scope_, graph);
+
+    if (norm_mean->outputs.size() == 0 && norm_variance->outputs.size() == 0) {
+      fused_op_desc.SetType("fast_add_layernorm_xpu");
+      // set attrs for fused op
+      fused_op_desc.SetInput("x", {add_x->Name()});
+      fused_op_desc.SetInput("y", {add_y->Name()});
+      fused_op_desc.SetInput("scale", {norm_scale->Name()});
+      fused_op_desc.SetInput("bias", {norm_bias->Name()});
+      fused_op_desc.SetAttr("epsilon", eps);
+      fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
+      fused_op_desc.SetOutput("out", {fused_op_out_name});
+      // relink fused op
+      auto* fused_op = graph->CreateOpNode(&fused_op_desc);
+      IR_NODE_LINK_TO(add_x, fused_op);
+      IR_NODE_LINK_TO(add_y, fused_op);
+      IR_NODE_LINK_TO(norm_scale, fused_op);
+      IR_NODE_LINK_TO(norm_bias, fused_op);
+      IR_NODE_LINK_TO(fused_op, norm_out);
+    } else {
+      fused_op_desc.SetType("add_layernorm_xpu");
+      // set attrs for fused op
+      fused_op_desc.SetInput("x", {add_x->Name()});
+      fused_op_desc.SetInput("y", {add_y->Name()});
+      fused_op_desc.SetInput("scale", {norm_scale->Name()});
+      fused_op_desc.SetInput("bias", {norm_bias->Name()});
+      fused_op_desc.SetAttr("epsilon", eps);
+      fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
+      fused_op_desc.SetOutput("out", {fused_op_out_name});
+      setIntermediateOut(&fused_op_desc, "mean", name_scope_);
+      setIntermediateOut(&fused_op_desc, "variance", name_scope_);
+      setIntermediateOut(&fused_op_desc, "z_add", name_scope_);
+      // relink fused op
+      auto* fused_op = graph->CreateOpNode(&fused_op_desc);
+      IR_NODE_LINK_TO(add_x, fused_op);
+      IR_NODE_LINK_TO(add_y, fused_op);
+      IR_NODE_LINK_TO(norm_scale, fused_op);
+      IR_NODE_LINK_TO(norm_bias, fused_op);
+      IR_NODE_LINK_TO(fused_op, norm_out);
+      addIntermediateOut(fused_op, "mean", name_scope_, graph);
+      addIntermediateOut(fused_op, "variance", name_scope_, graph);
+      addIntermediateOut(fused_op, "z_add", name_scope_, graph);
+    }
     delete_nodes.insert({ele_add, l_norm, ele_out, norm_mean, norm_variance});
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;

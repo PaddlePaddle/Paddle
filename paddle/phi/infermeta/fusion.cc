@@ -836,4 +836,26 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void FastAddLayernormXPUInferMeta(const MetaTensor& x,
+                                  const MetaTensor& y,
+                                  const MetaTensor& scale,
+                                  const MetaTensor& bias,
+                                  int begin_norm_axis,
+                                  float epsilon,
+                                  MetaTensor* out) {
+  int axis = -1;
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto out_dims = x_dims;
+  if (x_dims != y_dims) {
+    out_dims = BroadCastInferShape(x_dims, y_dims, axis);
+    out->set_dims(out_dims);
+  } else {
+    out->set_dims(out_dims);
+  }
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 }  // namespace phi
