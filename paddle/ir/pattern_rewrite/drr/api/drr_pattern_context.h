@@ -100,6 +100,8 @@ class DrrPatternContext {
 
   // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
+  void RequireNativeCall(
+      const std::function<bool(const MatchContext&)>& custom_fn);
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   std::vector<Constraint> constraints_;
@@ -251,6 +253,11 @@ class SourcePattern {
   }
 
   Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
+
+  void RequireNativeCall(
+      const std::function<bool(const MatchContext&)>& custom_fn) {
+    ctx_->RequireNativeCall(custom_fn);
+  }
 
  private:
   friend class DrrPatternContext;

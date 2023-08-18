@@ -77,6 +77,11 @@ void DrrPatternContext::RequireEqual(const TensorShape& first,
   constraints_.emplace_back(constrain_fn);
 }
 
+void DrrPatternContext::RequireNativeCall(
+    const std::function<bool(const MatchContext&)>& custom_fn) {
+  constraints_.emplace_back(custom_fn);
+}
+
 void Op::operator()(const Tensor& arg, const Tensor* out) const {
   std::vector<const Tensor*> inputs{&arg};
   std::vector<const Tensor*> outputs{out};
