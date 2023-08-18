@@ -1159,18 +1159,6 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
   const int64_t strideC = M * N;
-
-  VLOG(1) << "GEMM_STRIDED_BATCH out of lambda M: " << M 
-          << " N: " << N 
-          << " K: " << K 
-          << " lda: " << lda 
-          << " ldb: " << ldb 
-          << " ldc: " << ldc 
-          << " strideA: " << strideA 
-          << " strideB: " << strideB 
-          << " strideC: " << strideC 
-          << " batchCount: " << batchCount;
-
   context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GEMM_STRIDED_BATCH(handle,
                                   cuTransB,
