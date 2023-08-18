@@ -50,7 +50,7 @@ void LarsMomentumKernel(
     auto v = phi::EigenVector<T>::Flatten(*(velocity[i]));
     Eigen::TensorMap<Eigen::Tensor<const T, 1, 1>> g =
         phi::EigenVector<T>::Flatten(*(grad[i]));
-    auto rescale_g = rescale_grad * g;
+    auto rescale_g = static_cast<T>(rescale_grad) * g;
 
     phi::DenseTensor p_norm_t, g_norm_t;
     p_norm_t.Resize({1});
