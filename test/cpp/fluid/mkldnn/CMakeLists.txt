@@ -99,6 +99,8 @@ cc_test(
   DEPS fleet_executor
        naive_executor
        op_registry
+       operator
+       fc_op
        phi
        scope
        device_context
