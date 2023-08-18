@@ -40,19 +40,21 @@ def masked_multiquery_attention(
     r"""
     Multi-query attention for text summarization.
     This is a fusion operator to compute masked multiquery attention in transformer model architecture.
-    This operator only supports running on GPU. 
+    This operator only supports running on GPU.
 
     Args:
         query (Tensor): The Query Tensor. Its shape is [batchsize, num_head, head_size].
         key (Tensor): The Key Tensor. Its shape is [batchsize, num_head, head_size].
         value (Tensor): The Value Tensor. Its shape is [batchsize, num_head, head_size].
-        cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`.
+        cache_kv (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`.
         src_mask (Tensor, optional): The src_mask tensor. Its shape is `[batch_size, 1, 1, sequence_length]`.
+        cum_offsets (Tensor, optional): The cum_offset tensor. Its shape is `[batch_size, 1]`.
         sequence_lengths (Tensor, optional): The sequence_lengths tensor. Its shape is `[batch_size, 1]`.
         rotary_tensor (Tensor, optional): The rotary_tensor tensor. Its shape is `[batch_size, 1, 1, sequence_length, dim_head]`.
         beam_cache_offset (Tensor, optaional): The rotary_tensor tensor. Its shape is `[batch_size, beam_size, max_seq_len + max_dec_len]`.
         out_shift (Tensor, optional): The out_linear_shift tensor, used in quant.
         out_smooth (Tensor, optional): The out_linear_smooth tensor, used in quant.
+        seq_len (int, optional): The seq_len, used to get input length. Default 1
         rotary_emb_dims (int, optional): The rotary_emb_dims. Default 0.
         head_kv(int, optional): the kv head number. Default 1.
         use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
@@ -78,7 +80,7 @@ def masked_multiquery_attention(
             q = paddle.rand(shape=(2, 32, 128), dtype="float32")
             k = paddle.rand(shape=(2, 32, 128), dtype="float32")
             v = paddle.rand(shape=(2, 32, 128), dtype="float32")
-            
+
             # src_mask: [batch_size, 1, 1, sequence_length]
             src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
 
@@ -99,7 +101,7 @@ def masked_multiquery_attention(
             cum_offsets,
             sequence_lengths,
             rotary_tensor,
-            beam_cache_offset,        
+            beam_cache_offset,
             out_shift,
             out_smooth,
             seq_len,

@@ -793,7 +793,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* out,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
-                                       
+
 void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
                                         const MetaTensor& key,
                                         const MetaTensor& value,

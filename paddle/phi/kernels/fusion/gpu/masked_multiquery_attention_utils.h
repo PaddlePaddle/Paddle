@@ -13,39 +13,39 @@
 // limitations under the License.
 
 /***************************************************************************************************
-  * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights
-  *reserved. SPDX-License-Identifier: BSD-3-Clause
-  *
-  * Redistribution and use in source and binary forms, with or without
-  * modification, are permitted provided that the following conditions are met:
-  *
-  * 1. Redistributions of source code must retain the above copyright notice,
-  *this list of conditions and the following disclaimer.
-  *
-  * 2. Redistributions in binary form must reproduce the above copyright notice,
-  * this list of conditions and the following disclaimer in the documentation
-  * and/or other materials provided with the distribution.
-  *
-  * 3. Neither the name of the copyright holder nor the names of its
-  * contributors may be used to endorse or promote products derived from
-  * this software without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  *ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-  *LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-  *CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-  *SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-  *INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-  *CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-  *ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-  *POSSIBILITY OF SUCH DAMAGE.
-  *
-  **************************************************************************************************/
- /*! \file
-     \brief Template for mmha kernel.
- */
+ * Copyright (c) 2017 - 2023 NVIDIA CORPORATION & AFFILIATES. All rights
+ *reserved. SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived from
+ * this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ *ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ *LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ *CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *POSSIBILITY OF SUCH DAMAGE.
+ *
+ **************************************************************************************************/
+/*! \file
+    \brief Template for mmha kernel.
+*/
 #ifndef PADDLE_WITH_HIP
 #pragma once
 
@@ -158,7 +158,6 @@ template <>
 struct V_vec_acum_fp32_<uint4> {
   using Type = Float8_;
 };
-
 
 #ifdef ENABLE_BF16
 template <>
@@ -433,7 +432,7 @@ __global__ void masked_multiquery_attention_kernel(
   // real batch id
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
-  
+
   const int hid = hi / (params.num_head / params.head_kv);
   const int bhi = bi * params.num_head + hi;
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
@@ -441,8 +440,8 @@ __global__ void masked_multiquery_attention_kernel(
   const int bhi_kv = bi * params.head_kv + hid;
   const int bi_seq_len_offset = bi * params.max_seq_length;
   const int ti =
-       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
-   const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
+      params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
+  const int thi = params.cum_offsets ? ti * params.num_head + hi : -1;
   float qk_max = -FLT_MAX;
   float qk = 0;
 
@@ -474,17 +473,15 @@ __global__ void masked_multiquery_attention_kernel(
     Qk_vec q;
     zero(q);
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-        load_func.template load<Qk_vec>(
-            q, bi * params.num_head * Dh + hi * Dh + tid * QK_VEC_SIZE, 'q');
+      load_func.template load<Qk_vec>(
+          q, bi * params.num_head * Dh + hi * Dh + tid * QK_VEC_SIZE, 'q');
     }
 
     Qk_vec k;
     zero(k);
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-        load_func.template load<Qk_vec>(
-            k,
-            bi * params.head_kv * Dh + hid * Dh + tid * QK_VEC_SIZE,
-            'k');
+      load_func.template load<Qk_vec>(
+          k, bi * params.head_kv * Dh + hid * Dh + tid * QK_VEC_SIZE, 'k');
     }
 
     if (!params.neox_rotary_style) {
@@ -520,19 +517,18 @@ __global__ void masked_multiquery_attention_kernel(
         Qk_vec q_right;
         zero(q_right);
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-            load_func.template load<Qk_vec>(
-                q,
-                bi * params.num_head * Dh + hi * Dh + right_id * QK_VEC_SIZE,
-                'q');
+          load_func.template load<Qk_vec>(
+              q,
+              bi * params.num_head * Dh + hi * Dh + right_id * QK_VEC_SIZE,
+              'q');
         }
         Qk_vec k_right;
         zero(k_right);
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-            load_func.template load<Qk_vec>(k_right,
-                                            bi * params.head_kv * Dh +
-                                                hid * Dh +
-                                                right_id * QK_VEC_SIZE,
-                                            'k');
+          load_func.template load<Qk_vec>(
+              k_right,
+              bi * params.head_kv * Dh + hid * Dh + right_id * QK_VEC_SIZE,
+              'k');
         }
         Qk_vec_RoPE cos_emb;
         zero(cos_emb);
@@ -564,7 +560,8 @@ __global__ void masked_multiquery_attention_kernel(
     int offset = bhi_kv * params.max_seq_length * Dh +
                  co * params.max_seq_length * QK_ELTS_IN_16B +
                  act_time_step * QK_ELTS_IN_16B + ci;
-    if (blockIdx.x % (params.num_head / params.head_kv) == 0 && (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
+    if (blockIdx.x % (params.num_head / params.head_kv) == 0 &&
+        (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B)) {
       *reinterpret_cast<Qk_vec *>(&params.cache_kv[offset]) = k;
     }
 
@@ -757,10 +754,8 @@ __global__ void masked_multiquery_attention_kernel(
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     V_vec v;
     load_func.template load<V_vec>(
-        v,
-         bi * params.head_kv * Dh + hid * Dh + vi,
-        'v');
-    if (blockIdx.x % (params.num_head / params.head_kv) == 0) 
+        v, bi * params.head_kv * Dh + hid * Dh + vi, 'v');
+    if (blockIdx.x % (params.num_head / params.head_kv) == 0)
       *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
@@ -801,10 +796,10 @@ __global__ void masked_multiquery_attention_kernel(
     V_vec tmp_out;
     convert_from_float(tmp_out, out);
     store_func.template store<V_vec>(tmp_out,
-                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #else
     store_func.template store<V_vec>(out,
-                                      thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
+                                     thi != -1 ? thi * Dh + vi : bhi * Dh + vi);
 #endif
   }
 
@@ -945,7 +940,7 @@ void fmqa_impl(const phi::GPUContext &dev_ctx,
       break;
     default:
       PADDLE_THROW(
-           phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
 }
 
@@ -994,15 +989,15 @@ struct MMQAStore<T, T, true> {
 
 template <typename T>
 struct MMQALoad {
-  MMQALoad(const T *q, const T *k,const T *v) : q_(q), k_(k), v_(v) {}
+  MMQALoad(const T *q, const T *k, const T *v) : q_(q), k_(k), v_(v) {}
 
   template <typename Vec>
   __device__ void load(Vec &dst, int idx, char load = false) {
     if (load == 'q')
       dst = *reinterpret_cast<const Vec *>(q_ + idx);
-    else if((load == 'k'))
+    else if ((load == 'k'))
       dst = *reinterpret_cast<const Vec *>(k_ + idx);
-    else if((load == 'v'))
+    else if ((load == 'v'))
       dst = *reinterpret_cast<const Vec *>(v_ + idx);
   }
 
@@ -1126,16 +1121,15 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                   const float quant_max_bound = 127.0f,
                   const float quant_min_bound = -127.0f) {
   if (quant_fmha_out_scale > 0) {
-    MMQALoad<T>load_func(query.data<T>(), key.data<T>(),value.data<T>());
+    MMQALoad<T> load_func(query.data<T>(), key.data<T>(), value.data<T>());
     MMQAStore<T, int8_t> store_func(out_tensor->data<int8_t>(),
                                     quant_round_type,
                                     quant_fmha_out_scale,
                                     quant_max_bound,
                                     quant_min_bound);
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-  } 
-  else{
-    MMQALoad<T>load_func(query.data<T>(), key.data<T>(),value.data<T>());
+  } else {
+    MMQALoad<T> load_func(query.data<T>(), key.data<T>(), value.data<T>());
     MMQAStore<T> store_func(out_tensor->data<T>());
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
   }
@@ -1156,7 +1150,7 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                   const float quant_max_bound = 127.0f,
                   const float quant_min_bound = -127.0f) {
   if (quant_fmha_out_scale > 0) {
-    MMQALoad<T> load_func(query.data<T>(), key.data<T>(),value.data<T>());
+    MMQALoad<T> load_func(query.data<T>(), key.data<T>(), value.data<T>());
     MMQAStore<T, int8_t, true> store_func(out_tensor->data<int8_t>(),
                                           shift.data<T>(),
                                           smooth.data<T>(),
@@ -1166,16 +1160,14 @@ void DispatchFMQA(const phi::GPUContext &dev_ctx,
                                           quant_max_bound,
                                           quant_min_bound);
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-  } 
-  else{
-    MMQALoad<T> load_func(query.data<T>(), key.data<T>(),value.data<T>());
+  } else {
+    MMQALoad<T> load_func(query.data<T>(), key.data<T>(), value.data<T>());
     MMQAStore<T, T, true> store_func(out_tensor->data<T>(),
                                      shift.data<T>(),
                                      smooth.data<T>(),
                                      num_head * dim_head);
     fmqa_impl(dev_ctx, params, dim_head, load_func, store_func);
-
-  } 
+  }
 }
 
 }  // namespace fusion

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "paddle/phi/kernels/fusion/gpu/masked_multiquery_attention.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -51,7 +50,7 @@ void MMQAKernel(const Context& dev_ctx,
   int dim_head = q_dims[2];
   int cache_bsz = cache_kv.dims()[1];
   int max_seq_len = cache_kv.dims()[3];
-  
+
   int timestep = max_seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
   bool mask_broadcast_num_heads = true;
@@ -61,7 +60,7 @@ void MMQAKernel(const Context& dev_ctx,
   } else {
     params.cum_offsets = nullptr;
   }
-  
+
   if (src_mask) {
     if (src_mask->dims()[1] == 1) {
       mask_broadcast_num_heads = true;
@@ -78,19 +77,17 @@ void MMQAKernel(const Context& dev_ctx,
     params.attn_mask = src_mask->data<T>();
     params.mask_length = src_mask->dims()[3];
     timestep = src_mask->dims()[3] - 1;
-   }
-
+  }
 
   if (out_scale > 0) {
     dev_ctx.template Alloc<int8_t>(out);
   } else {
     dev_ctx.template Alloc<T>(out);
   }
-  
+
   params.mask_broadcast_num_heads = mask_broadcast_num_heads;
   params.cache_kv = const_cast<T*>(cache_kv_out->data<T>());
   params.neox_rotary_style = use_neox_rotary_style;
-  
 
   // params.mqa = mqa;
   if (sequence_lengths) {
@@ -105,7 +102,6 @@ void MMQAKernel(const Context& dev_ctx,
   if (beam_cache_offset) {
     params.beam_cache_offset = beam_cache_offset->data<int>();
     params.beam_width = beam_cache_offset->dims()[1];
-    
   }
 
   params.add_qkv_bias = false;
@@ -153,20 +149,19 @@ void MMQAKernel(const Context& dev_ctx,
 }  // namespace fusion
 }  // namespace phi
 
-
 #if CUDA_VERSION >= 11000
- PD_REGISTER_KERNEL(masked_multiquery_attention,
-                    GPU,
-                    ALL_LAYOUT,
-                    phi::fusion::MMQAKernel,
-                    float,
-                    phi::dtype::float16,
-                    phi::dtype::bfloat16) {}
- #else
- PD_REGISTER_KERNEL(masked_multiquery_attention,
-                    GPU,
-                    ALL_LAYOUT,
-                    phi::fusion::MMQAKernel,
-                    float,
-                    phi::dtype::float16) {}
- #endif
+PD_REGISTER_KERNEL(masked_multiquery_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::MMQAKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#else
+PD_REGISTER_KERNEL(masked_multiquery_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::MMQAKernel,
+                   float,
+                   phi::dtype::float16) {}
+#endif

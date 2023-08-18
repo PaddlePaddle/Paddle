@@ -4080,7 +4080,6 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
   int num_head = q_dims[1];
   int dim_head = q_dims[2];
 
-
   out->set_dims({bsz, num_head, dim_head});
 
   if (out_scale > 0) {
@@ -4118,11 +4117,10 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
                               "but received dimensions of"
                               "Input is [%d]",
                               v_dims.size()));
-  PADDLE_ENFORCE_EQ(
-      k_dims[1],
-      v_dims[1],
-      errors::InvalidArgument("The head of key must equall "
-                              "to the head of value"));
+  PADDLE_ENFORCE_EQ(k_dims[1],
+                    v_dims[1],
+                    errors::InvalidArgument("The head of key must equall "
+                                            "to the head of value"));
 
   PADDLE_ENFORCE_EQ(
       cache_kv_dims.size(),
@@ -4155,8 +4153,7 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
     beam_cache_offset_out->set_dims(beam_cache_offset.dims());
     beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
   }
- }
-
+}
 
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

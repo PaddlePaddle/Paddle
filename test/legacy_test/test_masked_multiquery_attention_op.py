@@ -79,7 +79,7 @@ class TestMMHAOp(unittest.TestCase):
         self.quant_max_bound = 126
         self.quant_min_bound = -126
         self.place = paddle.CUDAPlace(0)
-        
+
     def quant_helper(
         self, x, quant_scale, quant_round_type, quant_max_bound, quant_min_bound
     ):
@@ -105,32 +105,35 @@ class TestMMHAOp(unittest.TestCase):
         quant_max_bound,
         quant_min_bound,
     ):
-        k_=paddle.to_tensor(np.expand_dims(k, axis=2))
-        v_=paddle.to_tensor(np.expand_dims(v, axis=2))
-        q_=paddle.to_tensor(np.expand_dims(q, axis=2))
+        k_ = paddle.to_tensor(np.expand_dims(k, axis=2))
+        v_ = paddle.to_tensor(np.expand_dims(v, axis=2))
+        q_ = paddle.to_tensor(np.expand_dims(q, axis=2))
         cache_k, cache_v = paddle.split(cache_kv_out, 2, axis=0)
         k_ = paddle.concat([cache_k.squeeze(0), k_], axis=2)
         v_ = paddle.concat([cache_v.squeeze(0), v_], axis=2)
-        
+
         for i in range(self.num_head):
             tmp = paddle.matmul(
-            x=q_[:,i,:,:] * (self.dim_head ** -0.5), y=k_[:,i//(self.num_head//self.num_head_kv),:,:], transpose_y=True
+                x=q_[:, i, :, :] * (self.dim_head**-0.5),
+                y=k_[:, i // (self.num_head // self.num_head_kv), :, :],
+                transpose_y=True,
             )
-            if(i == 0):
+            if i == 0:
                 product = tmp
             else:
-                product = paddle.concat([product, tmp],axis=1)
+                product = paddle.concat([product, tmp], axis=1)
         product = paddle.to_tensor(np.expand_dims(product, axis=2))
         product = product + src_mask
         product = paddle.nn.functional.softmax(product)
         for i in range(self.num_head):
             tmp = paddle.matmul(
-            product[:,i,:,:],v_[:,i//(self.num_head//self.num_head_kv),:,:] 
-            )   
-            if(i == 0):
+                product[:, i, :, :],
+                v_[:, i // (self.num_head // self.num_head_kv), :, :],
+            )
+            if i == 0:
                 out = tmp
             else:
-                out = paddle.concat([out, tmp],axis=1)
+                out = paddle.concat([out, tmp], axis=1)
         normalized_out = self.quant_helper(
             out,
             out_scale,
@@ -158,7 +161,9 @@ class TestMMHAOp(unittest.TestCase):
         v_tensor = paddle.to_tensor(v).cast(dtype)
         src_mask_tensor = paddle.to_tensor(src_mask).cast(dtype)
         cache_kv_out_tensor = paddle.to_tensor(cache_kv_out).cast(dtype)
-        cache_kv_mmha_out_tensor = paddle.to_tensor(cache_kv_mmha_out).cast(dtype)
+        cache_kv_mmha_out_tensor = paddle.to_tensor(cache_kv_mmha_out).cast(
+            dtype
+        )
         paddle_naive_mmha_out = 0
         paddle_naive_mmha_out = self.mmha_naive(
             q_tensor,
@@ -171,7 +176,7 @@ class TestMMHAOp(unittest.TestCase):
             self.quant_max_bound,
             self.quant_min_bound,
         )
-        if(dynamic_graph):
+        if dynamic_graph:
             paddle_mmha_out = masked_multiquery_attention(
                 q_tensor,
                 k_tensor,
@@ -255,7 +260,9 @@ class TestMMHAOp(unittest.TestCase):
                         "q_static": q.astype(dtype),
                         "k_static": k.astype(dtype),
                         "v_static": v.astype(dtype),
-                        "cache_kv_mmha_out_static": cache_kv_mmha_out.astype(dtype),
+                        "cache_kv_mmha_out_static": cache_kv_mmha_out.astype(
+                            dtype
+                        ),
                         "src_mask_static": src_mask.astype(dtype),
                     },
                     fetch_list=[outs],
@@ -305,6 +312,7 @@ class TestMMHAOp(unittest.TestCase):
             rtol=1,
             atol=1,
         )
+
     def test_static_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -327,6 +335,7 @@ class TestMMHAOp(unittest.TestCase):
             rtol=1e-3,
             atol=1e-3,
         )
+
 
 if __name__ == '__main__':
     unittest.main()
