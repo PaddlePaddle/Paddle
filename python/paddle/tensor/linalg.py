@@ -1080,8 +1080,8 @@ def dot(x, y, name=None):
        is the batch dimension, which means that the vectors of multiple batches are dotted.
 
     Parameters:
-        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
+        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -1117,13 +1117,31 @@ def dot(x, y, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             op_type,
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             op_type,
         )
 
@@ -2433,7 +2451,14 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
             # one can verify : X = P @ L @ U ;
     """
-
+    if x.ndim < 2:
+        raise ValueError(
+            f"The shape of x should be (*, M, N), but received ndim is [{x.ndim} < 2]"
+        )
+    if y.ndim < 1:
+        raise ValueError(
+            f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
+        )
     if in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
