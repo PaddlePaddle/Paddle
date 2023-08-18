@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static constexpr double kMB = 1 / (1024 * 1024);
+static constexpr double kMB = 1.0 / (1024.0 * 1024.0);
 
 static void GetTensors(Variable *var,
                        std::unordered_set<phi::DenseTensor *> *tensor_set) {

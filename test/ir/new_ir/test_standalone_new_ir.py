@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -287,17 +288,61 @@ class TestNewIrPrint(unittest.TestCase):
 
 
 class TestJitSaveOp(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.model_path = os.path.join(self.temp_dir.name, "new_ir_save_load")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_with_new_ir(self):
         paddle.disable_static()
 
         linear = paddle.nn.Linear(10, 10)
-        path = "example_model/linear"
+        path = os.path.join(self.model_path, "linear")
 
         paddle.jit.save(
             linear,
             path,
             input_spec=[paddle.static.InputSpec([10, 10], 'float32', 'x')],
         )
+
+        paddle.enable_static()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+        exe = paddle.static.Executor(place)
+
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.static.io.load_inference_model(
+            self.model_path,
+            executor=exe,
+            model_filename="linear.pdmodel",
+            params_filename="linear.pdiparams",
+        )
+
+
+class TestNewIrConcatDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
+
+        @paddle.jit.to_static
+        def func(x, y):
+            return paddle.concat([paddle.shape(x), y], -1)
+
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2], dtype='int32') * 2
+
+        z = func(x, y)
+
+        gold_res = np.ones([4], dtype="float32") * 2
+        np.testing.assert_array_equal(z.numpy(), gold_res)
 
 
 if __name__ == "__main__":

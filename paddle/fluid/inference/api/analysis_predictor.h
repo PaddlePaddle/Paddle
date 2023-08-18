@@ -571,10 +571,12 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  std::once_flag register_input_hook_flag_;
+  std::once_flag register_output_hook_flag_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   // Helper class to perform quantization
   class MkldnnQuantizer;
   MkldnnQuantizer *mkldnn_quantizer_{nullptr};

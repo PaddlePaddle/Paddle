@@ -67,7 +67,7 @@ class TensorConfig:
     def __repr__(self):
         return str({'shape': self.shape, 'lod': self.lod, 'dtype': self.dtype})
 
-    def astype(self, type: np.dtype):
+    def convert_type_inplace(self, type: np.dtype):
         self.data = self.data.astype(type)
         self.dtype = self.data.dtype
         return self
@@ -278,9 +278,9 @@ class ProgramConfig:
 
     def set_input_type(self, type: np.dtype):
         for inp in self.inputs.values():
-            inp.astype(type)
+            inp.convert_type_inplace(type)
         for weight in self.weights.values():
-            weight.astype(type)
+            weight.convert_type_inplace(type)
         return self
 
     def get_input_type(self) -> np.dtype:
@@ -433,7 +433,7 @@ def create_quant_model(
         inference_program,
         feed_target_names,
         fetch_targets,
-    ] = paddle.static.load_inference_model(
+    ] = paddle.static.io.load_inference_model(
         path_prefix=None,
         executor=exe,
         model_filename=model,
@@ -597,18 +597,19 @@ def create_quant_model(
             tensor = scope.var(var_name).get_tensor()
             tensor.set(np.ones(tensor.shape(), dtype=np.float32), place)
 
-    if save:
-        fluid.io.save_inference_model(
-            'test_inference_model',
-            feed_target_names,
-            fetch_targets,
-            exe,
-            main_program=main_program,
-        )
-
     feed_vars = [
         main_program.global_block().var(name) for name in feed_target_names
     ]
+
+    if save:
+        paddle.static.io.save_inference_model(
+            'test_inference_model',
+            feed_vars,
+            fetch_targets,
+            exe,
+            program=main_program,
+        )
+
     serialized_program = paddle.static.serialize_program(
         feed_vars, fetch_targets, program=main_program
     )

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/phi/core/flags.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -28,12 +28,12 @@ PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
-const char ConditionalOp::kInputs[] = "Input";    // NOLINT
-const char ConditionalOp::kOutputs[] = "Out";     // NOLINT
-const char ConditionalOp::kCondition[] = "Cond";  // NOLINT
-const char ConditionalOp::kScope[] = "Scope";     // NOLINT
-const char ConditionalOp::kSkipEagerDeletionVars[] =
-    "skip_eager_deletion_vars";  // NOLINT
+const char ConditionalOp::kInputs[] = "Input";        // NOLINT
+const char ConditionalOp::kOutputs[] = "Out";         // NOLINT
+const char ConditionalOp::kCondition[] = "Cond";      // NOLINT
+const char ConditionalOp::kScope[] = "Scope";         // NOLINT
+const char ConditionalOp::kSkipEagerDeletionVars[] =  // NOLINT
+    "skip_eager_deletion_vars";
 
 using Executor = framework::Executor;
 using ExecutorPrepareContext = framework::ExecutorPrepareContext;
@@ -82,7 +82,7 @@ class ConditionalBlockOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
 
       auto &cur_scope = *scopes->front();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       // Executor on being destroyed clears oneDNN cache and resets
       // registered model data layout. This is unwanted for nested
       // Executors (executors declared inside control ops)

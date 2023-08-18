@@ -162,7 +162,7 @@ def _decompose_subgraph(block, op_filter):
     """
 
     if isinstance(block, Block):
-        ops_list = block.get_ops()
+        ops_list = block.ops
         for op in ops_list:
             op_name = op.name()
             decom_rule = register.get_decomp_rule(op_name)
