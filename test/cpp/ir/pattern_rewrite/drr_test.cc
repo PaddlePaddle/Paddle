@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pattern_rewrite/drr/api/drr_pattern_context.h"
@@ -141,7 +142,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 
   paddle::dialect::TransposeOp transpose_op2 =
       builder.Build<paddle::dialect::TransposeOp>(transpose_op1.out(),
-                                                  std::vector<int>{0, 1, 2, 3});
+                                                  std::vector<int>{1, 0, 2, 3});
 
   paddle::dialect::ReluOp relu_op_second =
       builder.Build<paddle::dialect::ReluOp>(transpose_op2.out());

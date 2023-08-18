@@ -40,6 +40,27 @@ PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, Int32Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
 
+template <typename T>
+struct IrAttrTypeCast {
+  static T To(const ir::Attribute& attr) {
+    return attr.dyn_cast<typename CppTypeToIrAttribute<T>::type>().data();
+  }
+};
+
+template <>
+struct IrAttrTypeCast<std::vector<int>> {
+  static std::vector<int> To(const ir::Attribute& attr) {
+    std::vector<int> result;
+    for (size_t i = 0; i < attr.dyn_cast<ir::ArrayAttribute>().size(); i++) {
+      result.push_back(attr.dyn_cast<ir::ArrayAttribute>()
+                           .at(i)
+                           .dyn_cast<ir::Int32Attribute>()
+                           .data());
+    }
+    return result;
+  }
+};
+
 class MatchContextImpl final {
  public:
   MatchContextImpl() = default;
@@ -54,18 +75,16 @@ class MatchContextImpl final {
   }
 
   template <typename T>
-  T Attr(const std::string& attr_name) const {
-    return attr_map_.at(attr_name)
-        .dyn_cast<typename CppTypeToIrAttribute<T>::type>()
-        .data();
+  T Attr(const std::string& attr_id) const {
+    return IrAttrTypeCast<T>::To(attr_map_.at(attr_id));
   }
 
   const IrValue& GetIrValue(const std::string& tensor_name) const {
     return *tensor_map_.at(tensor_name);
   }
 
-  ir::Attribute GetIrAttr(const std::string& tensor_name) const {
-    return attr_map_.at(tensor_name);
+  ir::Attribute GetIrAttr(const std::string& attr_id) const {
+    return attr_map_.at(attr_id);
   }
 
   const std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>&
