@@ -25,5 +25,5 @@ PD_REGISTER_KERNEL(atan2_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   complex<float>,
-                   complex<double>) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
