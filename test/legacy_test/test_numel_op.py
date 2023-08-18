@@ -71,37 +71,49 @@ class TestNumelOp2FP16(TestNumelOp):
         self.shape = (0,)
 
 
-class Test0NumelOpComplex64(TestNumelOp):
+class TestNumelOpComplex(TestNumelOp):
+    def setUp(self):
+        self.op_type = "size"
+        self.python_api = paddle.numel
+        self.init()
+        x = np.random.random(self.shape).astype(
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
+        self.inputs = {
+            'Input': x,
+        }
+        self.outputs = {'Out': np.array(np.size(x))}
+
     def init(self):
         self.dtype = np.complex64
         self.shape = (6, 56, 8, 55)
 
 
-class Test1NumelOpComplex64(TestNumelOp):
+class Test1NumelOpComplex64(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex64
         self.shape = (11, 66)
 
 
-class Test2NumelOpComplex64(TestNumelOp):
+class Test2NumelOpComplex64(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex64
         self.shape = (0,)
 
 
-class Test0NumelOpComplex128(TestNumelOp):
+class Test0NumelOpComplex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (6, 56, 8, 55)
 
 
-class Test1NumelOpComplex128(TestNumelOp):
+class Test1NumelOpComplex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (11, 66)
 
 
-class Test2NumelOpComple128(TestNumelOp):
+class Test2NumelOpComple128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (0,)
