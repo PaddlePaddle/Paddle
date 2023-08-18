@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/dialect/pd_op.h"
-#include "paddle/fluid/primitive/rule/vjp/vjp.h"
-#include "paddle/fluid/primitive/type/static_tensor.h"
-#include "paddle/ir/core/op_base.h"
-#include "paddle/phi/common/int_array.h"
+#pragma once
 
-// TODO(wanghao107)
-// this file will be generated in pd_op.cc
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace dialect {}  // namespace dialect
-}  // namespace paddle
+namespace phi {
+
+template <typename T, typename Context>
+void AssertKernel(const Context& ctx,
+                  const DenseTensor& cond,
+                  const std::vector<const DenseTensor*>& data,
+                  int64_t summarize);
+
+}  // namespace phi
