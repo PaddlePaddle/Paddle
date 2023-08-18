@@ -2155,6 +2155,11 @@
   attrs :
     {axis : Axis, reduce : Reduce}
 
+- op : pylayer
+  backward : pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : qr
   backward : qr_grad
   inputs :
@@ -2640,11 +2645,6 @@
     x : X
   outputs :
     out : Out
-
-- op : static_pylayer
-  backward : static_pylayer_grad
-  extra :
-    attrs : ['str[] skip_eager_deletion_vars = {}']
 
 - op : strided_slice
   backward : strided_slice_grad

@@ -25,6 +25,7 @@ from paddle.static.nn.static_pylayer import StaticPyLayerBlock
 
 class StaticPyLayerBlockTest(unittest.TestCase):
     def test_forward_and_backward(self):
+        paddle.enable_static()
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
@@ -35,6 +36,7 @@ class StaticPyLayerBlockTest(unittest.TestCase):
             with static_pylayer_manager.block(is_backward_block=False) as mgr:
                 hidden_fwd = paddle.static.nn.fc(x=data, size=10)
                 paddle.assign(hidden_fwd, fwd_out)
+                mgr.fwd_outputs = [fwd_out]
 
             grad_name = data.name + core.grad_var_suffix()
             with static_pylayer_manager.block(is_backward_block=True) as mgr:
@@ -55,11 +57,10 @@ class StaticPyLayerBlockTest(unittest.TestCase):
             outs = exe.run(
                 main_program,
                 feed={'X': x},
-                fetch_list=[main_program.block(0).var(grad_name)],
+                fetch_list=[data.grad_name],
             )[0]
             print(outs)
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

@@ -209,41 +209,6 @@ class PyLayerBackwardOp : public PyLayerOp {
     scope.DeleteScope(&cur_scope);
     return;
   }
-
- private:
-  void AssignLocalGradientToParentScope(
-      const platform::Place &place,
-      const framework::Scope &cur_scope,
-      const framework::Scope &parent_scope,
-      const std::vector<std::string> &inside_grads,
-      const std::vector<std::string> &outside_grads,
-      const std::vector<std::string> &inputs) const {
-    std::vector<std::string> assign_zero_outside_grads;
-    std::vector<std::string> assign_zero_inputs;
-    for (size_t i = 0; i < outside_grads.size(); ++i) {
-      const std::string &outside_grad_name = outside_grads[i];
-      const std::string &inside_grad_name = inside_grads[i];
-      VLOG(4) << "[assign local]"
-              << "inside_grad_name = " << inside_grad_name
-              << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *outside_var =
-          parent_scope.FindVar(outside_grad_name);
-      if (outside_var == nullptr) {
-        continue;
-      }
-      framework::Variable *inside_var =
-          cur_scope.FindLocalVar(inside_grad_name);
-      if (inside_var == nullptr) {
-        assign_zero_outside_grads.emplace_back(outside_grad_name);
-        assign_zero_inputs.emplace_back(inputs[i]);
-        continue;
-      }
-      platform::DeviceContext *dev_ctx =
-          platform::DeviceContextPool::Instance().Get(place);
-      framework::VisitVarType(*inside_var,
-                              AssignFunctor(outside_var, *dev_ctx));
-    }
-  }
 };
 
 class PyLayerBackwardInferShape : public framework::InferShapeBase {
