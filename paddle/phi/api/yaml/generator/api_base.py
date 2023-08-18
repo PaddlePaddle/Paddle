@@ -1225,7 +1225,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
+{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  if (FLAGS_low_precision_op_list) {{
 {code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);

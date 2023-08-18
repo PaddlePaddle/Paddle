@@ -410,9 +410,6 @@ void Tracer::TraceOp(const std::string& type,
   VLOG(6) << "Running On Eager TraceOp with use_default_attr_map: "
           << use_default_attr_map;
   std::map<phi::DenseTensor*, phi::DenseTensor*> need_backup_inputs2outputs;
-  std::map<phi::DenseTensor*, std::shared_ptr<phi::Allocation>>
-      need_backup_inputs2holder;
-  std::map<phi::DenseTensor*, phi::DDim> need_backup_inputs2strides;
   if (FLAGS_use_stride_kernel) {
     for (auto& iter : inplace_map) {
       auto inputs_iter = ins.find(iter.first);
@@ -429,12 +426,11 @@ void Tracer::TraceOp(const std::string& type,
                 outputs_iter->second[i]
                     ->MutableVar()
                     ->GetMutable<phi::DenseTensor>();
-            need_backup_inputs2holder[dense_tensor] = dense_tensor->Holder();
-            need_backup_inputs2strides[dense_tensor] = dense_tensor->strides();
           }
         }
       }
     }
+
     TraceOpImpl<egr::EagerVariable>(type,
                                     ins,
                                     outs,
@@ -447,11 +443,7 @@ void Tracer::TraceOp(const std::string& type,
 
     auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
     for (auto& iter : need_backup_inputs2outputs) {
-      iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
-      iter.first->set_strides(need_backup_inputs2strides[iter.first]);
-      paddle::experimental::TransStrideLegacy(dev_ctx, iter.second, iter.first);
-      iter.second->ResetHolder(need_backup_inputs2holder[iter.first]);
-      iter.second->set_strides(need_backup_inputs2strides[iter.first]);
+      paddle::experimental::TransStride(dev_ctx, iter.second, iter.first);
     }
   } else {
     TraceOpImpl<egr::EagerVariable>(type,
