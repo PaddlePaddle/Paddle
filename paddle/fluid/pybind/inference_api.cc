@@ -117,7 +117,7 @@ void BindPaddleInferPredictor(py::module *m);
 void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
@@ -271,6 +271,16 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<phi::dtype::float16 *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::BFLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<bfloat16 *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::BOOL) {
+    tensor.ShareExternalData(
+        static_cast<bool *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
   } else if (input_tensor.dtype() == phi::DataType::INT32) {
     tensor.ShareExternalData(
         static_cast<int32_t *>(input_tensor.data()),
@@ -284,7 +294,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT64, FLOAT32 and FLOAT16."));
+        "INT64, FLOAT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -311,6 +321,16 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
             paddle_tensor.data<paddle::platform::float16>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::BFLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<bfloat16 *>(paddle_tensor.data<bfloat16>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::BOOL) {
+    tensor.ShareExternalData(
+        static_cast<bool *>(paddle_tensor.data<bool>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else if (paddle_tensor.dtype() == phi::DataType::INT32) {
     tensor.ShareExternalData(
         static_cast<int32_t *>(paddle_tensor.data<int32_t>()),
@@ -324,7 +344,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT32 and FLOAT16."));
+        "INT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -487,7 +507,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddleInferTensor(m);
   BindPaddlePassBuilder(m);
   BindPredictorPool(m);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   BindMkldnnQuantizerConfig(m);
 #endif
   m->def("create_paddle_predictor",
@@ -499,8 +519,7 @@ void BindInferenceApi(py::module *m) {
   m->def("create_predictor",
          [](const paddle_infer::Config &config)
              -> std::unique_ptr<paddle_infer::Predictor> {
-           auto pred = std::unique_ptr<paddle_infer::Predictor>(
-               new paddle_infer::Predictor(config));
+           auto pred = std::make_unique<paddle_infer::Predictor>(config);
            return pred;
          });
   m->def(
@@ -872,6 +891,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_dynamic_shape_enabled",
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
+      .def("mark_trt_engine_outputs",
+           &AnalysisConfig::MarkTrtEngineOutputs,
+           py::arg("output_tensor_names") = std::vector<std::string>({}))
       .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableVarseqlen)
       .def("tensorrt_varseqlen_enabled",
            &AnalysisConfig::tensorrt_varseqlen_enabled)
@@ -929,7 +951,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       .def("quantizer_config",
            &AnalysisConfig::mkldnn_quantizer_config,
            py::return_value_policy::reference)
@@ -1044,7 +1066,7 @@ void BindXpuConfig(py::module *m) {
                      &XpuConfig::quant_post_dynamic_op_types);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m) {
   py::class_<MkldnnQuantizerConfig> quantizer_config(*m,
                                                      "MkldnnQuantizerConfig");

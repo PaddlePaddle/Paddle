@@ -421,6 +421,14 @@ class StaticFunction:
             # Note(Aurelius84): To construct new instance of StaticFunction when we
             # first encouter the bound function of layer and cache it.
             new_static_layer = self._clone()
+            if (
+                isinstance(instance, layers.Layer)
+                and self._dygraph_function.__name__
+                not in instance._original_funcs.keys()
+            ):
+                instance._original_funcs[
+                    self._dygraph_function.__name__
+                ] = self._dygraph_function
             new_static_layer._class_instance = instance
             self._descriptor_cache[instance] = new_static_layer
 
@@ -581,7 +589,7 @@ class StaticFunction:
         assert (
             func_name in self._class_instance._original_funcs
         ), "Not Found function '{}' in class '{}'.".format(
-            func_name, self._class_instance.__name__
+            func_name, self._class_instance.__class__
         )
         func = self._class_instance._original_funcs[func_name]
         setattr(
@@ -702,8 +710,11 @@ class SymbolicStaticFunction(StaticFunction):
             from sot import symbolic_translate
 
         build_strategy = self._kwargs.get("build_strategy", None)
+        backend = self._kwargs.get("backend", None)
         traced_fun = symbolic_translate(
-            self._dygraph_function, build_strategy=build_strategy
+            self._dygraph_function,
+            build_strategy=build_strategy,
+            backend=backend,
         )
         if self._class_instance is not None:
             args = (self._class_instance,) + args
@@ -1285,9 +1296,16 @@ class ParametersMap:
         params = self.params_dict.get(self._program_hash(program))
         if params is None:
             return None
-        if id in params.keys():
-            return params[id]
-        return None
+        if id not in params:
+            return None
+        root_var = params[id]
+        saved = []
+        while root_var.desc.id() in params.keys():
+            saved.append(root_var)
+            root_var = params[root_var.desc.id()]
+        for var in saved:
+            params[var.desc.id()] = root_var
+        return root_var
 
     def _program_hash(self, program):
         """

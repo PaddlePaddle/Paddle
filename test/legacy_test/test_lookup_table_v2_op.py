@@ -223,7 +223,7 @@ class TestLookupTableIsSparse(unittest.TestCase):
             loss = paddle.nn.functional.square_error_cost(input=y, label=y_)
             loss = paddle.mean(loss)
 
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=1e-4)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=1e-4)
             sgd_optimizer.minimize(loss)
 
             place = fluid.CPUPlace()

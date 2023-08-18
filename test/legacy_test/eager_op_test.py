@@ -47,6 +47,7 @@ from paddle.fluid.framework import (
     Program,
     _current_expected_place,
     canonicalize_attrs,
+    get_flags,
     set_flags,
 )
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
@@ -1209,45 +1210,53 @@ class OpTest(unittest.TestCase):
             return
         if self._check_cinn:
             return
-
-        set_flags({"FLAGS_enable_new_ir_in_executor": True})
-        new_scope = paddle.static.Scope()
-        executor = Executor(place)
-        new_program = None
-        if isinstance(program, paddle.static.CompiledProgram):
-            new_program = fluid.CompiledProgram(
-                program._program, build_strategy=program._build_strategy
+        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        try:
+            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            new_scope = paddle.static.Scope()
+            executor = Executor(place)
+            new_program = None
+            if isinstance(program, paddle.static.CompiledProgram):
+                new_program = fluid.CompiledProgram(
+                    program._program, build_strategy=program._build_strategy
+                )
+            else:
+                new_program = program.clone()
+            ir_outs = executor.run(
+                new_program,
+                feed=feed_map,
+                fetch_list=fetch_list,
+                return_numpy=False,
+                scope=new_scope,
             )
-        else:
-            new_program = program.clone()
-        ir_outs = executor.run(
-            new_program,
-            feed=feed_map,
-            fetch_list=fetch_list,
-            return_numpy=False,
-            scope=new_scope,
-        )
-        assert len(outs) == len(
-            ir_outs
-        ), "Fetch result should have same length when executed in new ir"
-        for i in range(len(outs)):
-            np.testing.assert_array_equal(
-                outs[i],
-                ir_outs[i],
-                err_msg='Operator Check ('
-                + self.op_type
-                + ') has diff at '
-                + str(place)
-                + '\nExpect '
-                + str(outs[i])
-                + '\n'
-                + 'But Got'
-                + str(ir_outs[i])
-                + ' in class '
-                + self.__class__.__name__,
-            )
+            assert len(outs) == len(
+                ir_outs
+            ), "Fetch result should have same length when executed in new ir"
 
-        set_flags({"FLAGS_enable_new_ir_in_executor": False})
+            check_method = np.testing.assert_array_equal
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+                check_method = lambda x, y, z: np.testing.assert_allclose(
+                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
+                )
+
+            for i in range(len(outs)):
+                check_method(
+                    outs[i],
+                    ir_outs[i],
+                    err_msg='Operator Check ('
+                    + self.op_type
+                    + ') has diff at '
+                    + str(place)
+                    + '\nExpect '
+                    + str(outs[i])
+                    + '\n'
+                    + 'But Got'
+                    + str(ir_outs[i])
+                    + ' in class '
+                    + self.__class__.__name__,
+                )
+        finally:
+            set_flags(stored_flag)
 
     def _calc_output(
         self,
@@ -2896,40 +2905,47 @@ class OpTest(unittest.TestCase):
         if self._check_cinn:
             return
 
-        set_flags({"FLAGS_enable_new_ir_in_executor": True})
-
-        executor = Executor(place)
-        new_gradients = list(
-            map(
-                np.array,
-                executor.run(
-                    program,
-                    feed_dict,
-                    fetch_list,
-                    scope=scope,
-                    return_numpy=False,
-                ),
-            )
-        )
-
-        for i in range(len(new_gradients)):
-            np.testing.assert_array_equal(
-                gradients[i],
-                new_gradients[i],
-                err_msg='Operator GradCheck ('
-                + self.op_type
-                + ') has diff at '
-                + str(place)
-                + '\nExpect '
-                + str(gradients[i])
-                + '\n'
-                + 'But Got'
-                + str(new_gradients[i])
-                + ' in class '
-                + self.__class__.__name__,
+        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        try:
+            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            executor = Executor(place)
+            new_gradients = list(
+                map(
+                    np.array,
+                    executor.run(
+                        program,
+                        feed_dict,
+                        fetch_list,
+                        scope=scope,
+                        return_numpy=False,
+                    ),
+                )
             )
 
-        set_flags({"FLAGS_enable_new_ir_in_executor": False})
+            check_method = np.testing.assert_array_equal
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+                check_method = lambda x, y, z: np.testing.assert_allclose(
+                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
+                )
+
+            for i in range(len(new_gradients)):
+                check_method(
+                    gradients[i],
+                    new_gradients[i],
+                    err_msg='Operator GradCheck ('
+                    + self.op_type
+                    + ') has diff at '
+                    + str(place)
+                    + '\nExpect '
+                    + str(gradients[i])
+                    + '\n'
+                    + 'But Got'
+                    + str(new_gradients[i])
+                    + ' in class '
+                    + self.__class__.__name__,
+                )
+        finally:
+            set_flags(stored_flag)
 
     def _get_gradient(
         self,

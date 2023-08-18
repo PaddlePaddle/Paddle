@@ -30,6 +30,10 @@ def count(x, upper_num):
     return res
 
 
+def number_count_wrapper(numbers, upper_num):
+    return paddle._legacy_C_ops.number_count(numbers, 'upper_range', upper_num)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -37,6 +41,7 @@ class TestNumberCountOpInt64(eager_op_test.OpTest):
     def setUp(self):
         upper_num = 16
         self.op_type = "number_count"
+        self.python_api = number_count_wrapper
         x = np.random.randint(-1, upper_num, size=(1000, 2)).astype('int64')
         self.inputs = {'numbers': x}
         self.outputs = {'Out': count(x, upper_num)}

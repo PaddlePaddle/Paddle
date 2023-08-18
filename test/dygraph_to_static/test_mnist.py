@@ -25,9 +25,9 @@ import paddle
 from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.optimizer import AdamOptimizer
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
+from paddle.optimizer import Adam
 
 SEED = 2020
 
@@ -196,9 +196,7 @@ class TestMNISTWithToStatic(TestMNIST):
             mnist = MNIST()
             if to_static:
                 mnist = paddle.jit.to_static(mnist)
-            adam = AdamOptimizer(
-                learning_rate=0.001, parameter_list=mnist.parameters()
-            )
+            adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
             for epoch in range(self.epoch_num):
                 start = time()
@@ -294,8 +292,8 @@ class TestMNISTWithToStatic(TestMNIST):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            dirname=model_path,
+        ] = paddle.static.io.load_inference_model(
+            path_prefix=model_path,
             executor=exe,
             model_filename=model_filename,
             params_filename=params_filename,
