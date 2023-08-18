@@ -14,13 +14,13 @@
 
 import paddle
 from paddle.autograd import PyLayer
+from paddle.distributed import fleet
 from paddle.fluid import core
 from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 from ...base import topology as tp
 from . import mp_ops
-from .mp_ops import _get_mp_env_flag
 from .random import get_rng_state_tracker
 
 __all__ = []
@@ -305,6 +305,21 @@ class ColumnParallelLinear(paddle.nn.Layer):
         self.linear = F.linear
 
         self.fuse_matmul_bias = fuse_matmul_bias
+
+        mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+            "mp_configs"
+        ]
+        self.mp_async_allreduce = self.is_mp and mp_configs.mp_async_allreduce
+        self.mp_skip_c_identity = (
+            self.is_mp
+            and mp_configs.mp_async_allreduce
+            and mp_configs.mp_skip_c_identity
+        )
+        self.mp_fused_linear_param_grad_add = (
+            self.is_mp
+            and mp_configs.mp_async_allreduce
+            and mp_configs.mp_fused_linear_param_grad_add
+        )
         if self.fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
                 raise NotImplementedError(
@@ -322,15 +337,15 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
         def _overlap_linear():
             fuse_matmul_bias = self.fuse_matmul_bias
+            mp_async_allreduce = self.mp_async_allreduce
+            mp_skip_c_identity = self.mp_skip_c_identity
+            mp_fused_linear_param_grad_add = self.mp_fused_linear_param_grad_add
 
             class InnerOverlapLinear(paddle.autograd.PyLayer):
                 @staticmethod
                 def forward(ctx, x, weight, bias):
                     ctx.save_for_backward(x, weight, bias)
-                    if (
-                        _get_mp_env_flag("Flags_mp_aysnc_allreduce")
-                        and _get_mp_env_flag("Flags_skip_mp_c_identity")
-                    ) is False:
+                    if (mp_async_allreduce and mp_skip_c_identity) is False:
                         x = paddle._legacy_C_ops.c_identity(
                             x,
                             'use_calc_stream',
@@ -358,12 +373,12 @@ class ColumnParallelLinear(paddle.nn.Layer):
                     # TODO(GhostScreaming): remove it in future.
                     tmp = paddle.ones([512])
 
-                    if _get_mp_env_flag("Flags_fused_linear_param_grad_add"):
+                    if mp_fused_linear_param_grad_add:
                         if not is_fused_linear_param_grad_add_supported():
                             raise NotImplementedError(
-                                "You set environment variable Flags_fused_linear_param_grad_add=True, "
+                                "You set mp_fused_linear_param_grad_add=True, "
                                 "however, the paddle you are using not support this operation. "
-                                "Please unset Flags_fused_linear_param_grad_add or use paddle compiled "
+                                "Please unset fused_linear_param_grad_add or use paddle compiled "
                                 "with cuda 11.6 or higher."
                             )
 
@@ -449,12 +464,14 @@ class ColumnParallelLinear(paddle.nn.Layer):
 
             return InnerOverlapLinear.apply(x, self.weight, self.bias)
 
-        if _get_mp_env_flag("Flags_mp_aysnc_allreduce"):
+        if self.mp_async_allreduce:
             output_parallel = _overlap_linear()
         else:
             if self.is_mp:
                 input_parallel = mp_ops._c_identity(
-                    x, group=self.model_parallel_group
+                    x,
+                    group=self.model_parallel_group,
+                    skip_c_identity_dynamic=self.mp_skip_c_identity,
                 )
             else:
                 input_parallel = x
@@ -570,6 +587,20 @@ class RowParallelLinear(paddle.nn.Layer):
         )
 
         self.is_mp = self.world_size > 1
+        mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+            "mp_configs"
+        ]
+        self.mp_async_allreduce = self.is_mp and mp_configs.mp_async_allreduce
+        self.mp_skip_c_identity = (
+            self.is_mp
+            and mp_configs.mp_async_allreduce
+            and mp_configs.mp_skip_c_identity
+        )
+        self.mp_fused_linear_param_grad_add = (
+            self.is_mp
+            and mp_configs.mp_async_allreduce
+            and mp_configs.mp_fused_linear_param_grad_add
+        )
         assert in_features % self.world_size == 0, (
             "Number of row of the weight for linear ({}) must be"
             " divisible by model parallel size ({})".format(
@@ -642,6 +673,7 @@ class RowParallelLinear(paddle.nn.Layer):
                     group=self.model_parallel_group,
                     use_calc_stream=True,
                     use_model_parallel=True,
+                    skip_c_identity_dynamic=self.mp_skip_c_identity,
                 )
             else:
                 output_parallel = self.linear(
@@ -652,6 +684,7 @@ class RowParallelLinear(paddle.nn.Layer):
                     group=self.model_parallel_group,
                     use_calc_stream=True,
                     use_model_parallel=True,
+                    skip_c_identity_dynamic=self.mp_skip_c_identity,
                 )
                 output = (
                     output_ + self.bias if self.bias is not None else output_
