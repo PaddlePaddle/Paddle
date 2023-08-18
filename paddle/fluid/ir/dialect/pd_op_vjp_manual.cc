@@ -45,15 +45,17 @@ std::vector<std::vector<ir::OpResult>> ConcatOp::Vjp(
 
   std::vector<std::vector<Tensor>> tensor_res =
       primitive::concat_vjp(x, out_grad, axis, stop_gradients);
-
-  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>());
-  res[0].resize(tensor_res[0].size());
-  for (uint64_t idx = 0; idx < tensor_res[0].size(); idx++) {
-    if (tensor_res[0][idx].defined()) {
-      res[0][idx] = std::static_pointer_cast<primitive::LazyTensor>(
-                        tensor_res[0][idx].impl())
+  std::vector<std::vector<ir::OpResult>> res(tensor_res.size(),
+                                             std::vector<ir::OpResult>());
+  for (uint64_t i = 0; i < tensor_res.size(); i++) {
+    res[i].resize(tensor_res[i].size());
+    for (uint64_t j = 0; j < tensor_res[i].size(); j++) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
                         ->getValue()
                         .dyn_cast<ir::OpResult>();
+      }
     }
   }
   return res;

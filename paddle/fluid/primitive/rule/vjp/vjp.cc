@@ -153,37 +153,20 @@ std::vector<std::vector<paddle::Tensor>> concat_vjp(
     const Tensor& out_grad,
     const Tensor& axis,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  std::vector<std::vector<paddle::Tensor>> vjp_res(1, std::vector<Tensor>());
+  std::vector<std::vector<paddle::Tensor>> vjp_res(2, std::vector<Tensor>());
   // get concat_grad res.
   std::vector<Tensor> op_res =
       backend::concat_grad<primitive::LazyTensor>(x, out_grad, axis);
 
-  ir::Operation* grad_op =
-      std::static_pointer_cast<primitive::LazyTensor>(op_res[0].impl())
-          ->getValue()
-          .dyn_cast<ir::OpResult>()
-          .owner();
-  uint32_t num_res = grad_op->num_results();
-  std::vector<ir::Attribute> ir_stop_gradients(num_res);
-  for (size_t i = 0; i < num_res; i++) {
-    if (stop_gradients[0][i]) {
-      ir_stop_gradients[i] =
-          ir::BoolAttribute::get(ir::IrContext::Instance(), true);
-    } else {
-      ir_stop_gradients[i] =
-          ir::BoolAttribute::get(ir::IrContext::Instance(), false);
-    }
-  }
-  grad_op->set_attribute(
-      "stop_gradient",
-      ir::ArrayAttribute::get(ir::IrContext::Instance(), ir_stop_gradients));
   // construct vjp result by op result and stop_gradients info
-  vjp_res[0] = std::vector<Tensor>(op_res.size());
+  vjp_res[0].resize(op_res.size());
   for (uint64_t idx = 0; idx < op_res.size(); idx++) {
     if (!stop_gradients[0][idx]) {
       vjp_res[0][idx] = op_res[idx];
     }
   }
+  // vjp_res[1] is axis's grad which is attribute (no grad).
+  vjp_res[1].resize(1);
   return vjp_res;
 }
 
