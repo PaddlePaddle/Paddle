@@ -14,6 +14,8 @@
 
 import unittest
 
+from new_ir_utils import new_ir_data
+
 import paddle
 from paddle import ir
 from paddle.autograd.backward import grad
@@ -28,7 +30,7 @@ def get_ir_program_0():
         paddle.static.Program(),
     )
     with paddle.static.program_guard(main_program, start_program):
-        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s = new_ir_data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         k_s = paddle.tanh(x_s)
     newir_program = ir.translate_to_new_ir(main_program.desc)
@@ -102,8 +104,8 @@ def get_ir_program_1():
         paddle.static.Program(),
     )
     with paddle.static.program_guard(main_program, start_program):
-        x_s = paddle.static.data('x', [4, 4], x.dtype)
-        y_s = paddle.static.data('y', [4, 4], x.dtype)
+        x_s = new_ir_data('x', [4, 4], x.dtype)
+        y_s = new_ir_data('y', [4, 4], x.dtype)
         x_s.stop_gradient = False
         y_s.stop_gradient = False
 

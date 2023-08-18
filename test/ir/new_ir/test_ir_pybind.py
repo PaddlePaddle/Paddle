@@ -14,6 +14,8 @@
 
 import unittest
 
+from new_ir_utils import new_ir_data
+
 import paddle
 from paddle import ir
 
@@ -27,7 +29,7 @@ def get_ir_program():
         paddle.static.Program(),
     )
     with paddle.static.program_guard(main_program, start_program):
-        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s = new_ir_data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         y_s = paddle.matmul(x_s, x_s)
         z_s = paddle.add(y_s, y_s)
@@ -136,7 +138,7 @@ class TestPybind(unittest.TestCase):
             paddle.static.Program(),
         )
         with paddle.static.program_guard(main_program, start_program):
-            conv_data = paddle.static.data(
+            conv_data = new_ir_data(
                 'conv_data', [None, 3, 32, 32], dtype='float32'
             )
             conv2d_out = paddle.static.nn.conv2d(

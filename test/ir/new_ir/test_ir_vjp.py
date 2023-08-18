@@ -14,6 +14,8 @@
 
 import unittest
 
+from new_ir_utils import new_ir_data
+
 import paddle
 from paddle import ir
 from paddle.fluid.core import call_vjp, has_vjp
@@ -27,7 +29,7 @@ def get_ir_program():
         paddle.static.Program(),
     )
     with paddle.static.program_guard(main_program, start_program):
-        x = paddle.static.data('x', [4, 4], 'float32')
+        x = new_ir_data('x', [4, 4], 'float32')
         x.stop_gradient = False
         paddle.tanh(x)
         paddle.tensor.fill_constant(shape=[4, 4], dtype='float32', value=2.0)
@@ -85,7 +87,7 @@ class TestMeanVjp(unittest.TestCase):
             paddle.static.Program(),
         )
         with paddle.static.program_guard(main_program, start_program):
-            x = paddle.static.data('x', [4, 4], 'float32')
+            x = new_ir_data('x', [4, 4], 'float32')
             x.stop_gradient = False
             paddle.mean(x, axis=[0, 1])
             paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
@@ -125,7 +127,7 @@ class TestMeanVjp(unittest.TestCase):
             paddle.static.Program(),
         )
         with paddle.static.program_guard(main_program, start_program):
-            x = paddle.static.data('x', [4, 4], 'float32')
+            x = new_ir_data('x', [4, 4], 'float32')
             x.stop_gradient = False
             paddle.mean(x, axis=[0, 1])
             paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
@@ -146,7 +148,7 @@ class TesthasVjp(unittest.TestCase):
             paddle.static.Program(),
         )
         with paddle.static.program_guard(main_program, start_program):
-            x = paddle.static.data('x', [4, 4], 'float32')
+            x = new_ir_data('x', [4, 4], 'float32')
             x.stop_gradient = False
             paddle.mean(x, axis=[0, 1])
             paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)

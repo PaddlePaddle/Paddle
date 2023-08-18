@@ -17,8 +17,38 @@ import unittest
 import paddle
 from paddle import ir
 from paddle.decomposition import decompose
+from paddle.framework import LayerHelper, core
 
 paddle.enable_static()
+
+
+def new_ir_data(
+    name,
+    shape,
+    dtype=None,
+):
+    helper = LayerHelper('data', **locals())
+    out = helper.create_global_variable(
+        name=name,
+        shape=shape,
+        dtype=paddle.get_default_dtype(),
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        stop_gradient=True,
+        is_data=True,
+        need_check_feed=True,
+    )
+    helper.append_op(
+        type='data',
+        inputs={},
+        outputs={'out': out},
+        attrs={
+            'index': 0,
+            'dtype': 0,
+            'place': 0,
+            'name': name,
+        },
+    )
+    return out
 
 
 def get_ir_program():
@@ -28,7 +58,7 @@ def get_ir_program():
         paddle.static.Program(),
     )
     with paddle.static.program_guard(main_program, start_program):
-        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s = new_ir_data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         y_s = paddle.matmul(x_s, x_s)
         y_s = paddle.add(x_s, y_s)
