@@ -49,14 +49,16 @@ std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID) {
 
 std::string GetCommDebugString(ncclComm_t comm) {
   int dev_id;
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclCommCount(comm, &dev_id));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclCommCuDevice(comm, &dev_id));
   int rank;
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclCommUserRank(comm, &rank));
   int nranks;
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclCommCount(comm, &nranks));
-  return std::to_string(reinterpret_cast<uintptr_t>(comm)) +
-         " dev_id=" + std::to_string(dev_id) + " rank=" + std::to_string(rank) +
-         " nranks=" + std::to_string(nranks) + "]";
+  std::stringstream ss;
+  ss << std::hex << comm;
+  return "[" + ss.str() + " dev_id=" + std::to_string(dev_id) +
+         " rank=" + std::to_string(rank) + " nranks=" + std::to_string(nranks) +
+         "]";
 }
 
 std::string NCCLDTypeToString(ncclDataType_t dtype) {
