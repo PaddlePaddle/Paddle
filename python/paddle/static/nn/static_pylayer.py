@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
-import re
 
 from paddle.common_ops_import import LayerHelper, check_type, in_dygraph_mode
 from paddle.fluid import core
+from paddle.fluid.backward import _append_grad_suffix_
 from paddle.fluid.framework import Variable
 from paddle.utils import flatten, map_structure
 
-# NOTE: Borrowed from `python/paddle/static/nn/control_flow.py`
+# NOTE(MarioLulab): Borrowed from `python/paddle/static/nn/control_flow.py`
 from .control_flow import BlockGuard, copy_var_to_parent_block
 
 
@@ -112,39 +111,17 @@ class StaticPyLayerBlock:
             op.desc._set_attr(op_role_attr_name, backward)
         inside_block._set_forward_block_idx(self.forward_block_index)
 
-        # NOTE: The reason of renaming the var name in the inside block is that
+        # NOTE(MarioLulab): The reason of renaming the var name in the inside block is that
         # we need to associating `inside_grads` and `outside_grads` at
         # runtime `RunImpl` in pylayer op
-        print(f"inside_block.id = {inside_block.idx}")
-        print("self.var_old_to_new =")
-        print(self.var_old_to_new)
         for old_var_name, new_var_name in self.var_old_to_new.items():
             # TODO(MarioLulab): need to remove recursively in ``sub_block``
 
-            # TODO(MarioLulab): to validate:
-            # choice 1 : using `Block._rename_var` api, dose it can
-            # rename variable in vars and ops' inputs and outputs
-            # inside_block._rename_var(
-            #     old_var_name.encode(), new_var_name.encode()
-            # )
-
-            # choice 2: using `Block.desc._rename_var` api, and this api will call `BlockDesc::RenameVar`
-            # in cpp, and rename the var name op by op
-            # NOTE: The reason why not using Block._rename_var is that `old_var_name` does not correspond to a Variable instance in Block
+            # NOTE(MarioLulab): The reason why not using Block._rename_var is that `old_var_name` does not correspond to a Variable instance in Block
             # and Block._rename_var will raise ValueError.
             inside_block.desc._rename_var(
                 old_var_name.encode(), new_var_name.encode()
             )
-            '''
-            inside_block._rename_var(
-                old_var_name.encode(), new_var_name.encode()
-            )
-            # for op_idx in range(backward_block_desc.op_size()):
-            #     op = backward_block_desc.op(op_idx)
-            #     op._rename_input(old_var_name, new_var_name)
-            #     op._rename_output(old_var_name, new_var_name)
-            _rename_arg_(inside_block.desc.ops, old_var_name, new_var_name)
-            '''
 
         # update `blocks` attr by appending backward_block
         forward_block_desc = parent_block.program.block(
@@ -160,58 +137,6 @@ class StaticPyLayerBlock:
             return self.complete_forward_block()
         else:
             return self.complete_backward_block()
-
-
-# NOTE: Borrowed from `backward.py`
-def _strip_grad_suffix_(name):
-    """
-    Strip the grad suffix from the given variable name
-    e.g. x@GRAD ==> x
-         x@GRAD@GRAD ==> x
-         y@GRAD@RENAME@1 ==> y
-         z@GRAD_slice_0@GRAD ==> z@GRAD_slice_0
-         grad/grad/z@GRAD@RENAME@block0@1@GRAD ==> z
-    """
-    pos = re.search(f'{core.grad_var_suffix()}+@', name) or re.search(
-        f'{core.grad_var_suffix()}$', name
-    )
-    new_name = name[: pos.start()] if pos is not None else name
-    new_pos = name.rfind('grad/')
-    return new_name[new_pos + 5 :] if new_pos != -1 else new_name
-
-
-# NOTE: Borrowed from `backward.py`
-def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
-    """
-    Traverse all ops in op_descs[begin_idx : end_idx],
-    if any op has inputs/outputs named "old_name", rename it as 'new_name'
-    """
-    if begin_idx is None:
-        begin_idx = 0
-    if end_idx is None:
-        end_idx = len(op_descs)
-    if isinstance(op_descs, (list, tuple)):
-        for i in range(begin_idx, end_idx):
-            op_desc = op_descs[i]
-            if isinstance(op_desc, tuple):
-                op_desc = op_desc[0]
-            op_desc._rename_input(old_name, new_name)
-            op_desc._rename_output(old_name, new_name)
-    if isinstance(op_descs, collections.OrderedDict):
-        for key, value in op_descs.items():
-            if isinstance(value, (list, tuple)):
-                for op_desc in value:
-                    op_desc._rename_input(old_name, new_name)
-                    op_desc._rename_output(old_name, new_name)
-
-
-# NOTE: Borrowed from `backward.py`
-def _append_grad_suffix_(name):
-    """
-    Append grad suffix to the given variable name
-    e.g. x ==> x@GRAD
-    """
-    return name + core.grad_var_suffix()
 
 
 # TODO(MarioLulab):
@@ -358,7 +283,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
             grad_origin_output = backward_fn(*grad_var_ins)
             if grad_origin_output is not None:
                 flat_grad_origin = flatten(grad_origin_output)
-                # NOTE: ``current_block`` was defined outside
+                # NOTE(MarioLulab): ``current_block`` was defined outside
                 forward_input_names = current_block.ops[
                     pylayer_block_manager.fwd_op_index
                 ].desc.input_arg_names()
@@ -370,6 +295,25 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                 for bwd_output_name, fwd_input_name in zip(
                     flat_grad_origin, forward_input_names
                 ):
+                    # NOTE(MarioLulab): Because `flat_grad_origin` are the Variables inside the backward block, which one by one corresponds
+                    # to the gradients of the inputs to the forward function, we need to establish a link between `flat_grad_origin`,
+                    # and the Variable outside the backward block which represent the gradient of the input ot the forward function.
+                    # The approach we have taken is renaming `flat_grad_origin` by forward input name with suffix of "@GRAD", and aligning
+                    # the order of `Out@GRAD` in `pylayer_grad` op with `flat_grad_origin`. And in the runtime `RunImpl` in `pylayer_grad` op,
+                    # we will find inside_grad with the name of forward input name with suffix of "@GRAD" in the scope, and assign `inside_grads`
+                    # to `outside_grads`.
+                    #
+                    # Example:
+                    # after run the code below to create forward and backward block:
+                    #
+                    #    out = forward_fn(x, y)                 # create forward block
+                    #    x_grad, y_grad = backward_fn(out_grad) # create backward block
+                    #
+                    # x.name is "X", y.name is "Y", and out.name is "tmp_0", but x_grad.name is "_generate_0", y_grad.name is "_generate_1".
+                    # we rename x_grad by "X@GRAD", and y_grad by "Y@GRAD" inside backward block.
+                    # One thing to keep in mind is that we assume there were no Variable naming "X@GRAD" inside backward block before performing rename operation.
+                    # TODO(MarioLulab): We will validate the assumption above is whether a strong hypothesis or not.
+
                     # attach old var name into new
                     bwd_out_new = _append_grad_suffix_(
                         fwd_input_name
