@@ -3505,6 +3505,8 @@ void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
       phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.",
           in_dims.size()));
+  VLOG(0) << "[debug][set_value] input dims:" << in_dims;
+  VLOG(0) << "[debug][set_value] out:" << out;
   out->set_dims(in_dims);
 }
 

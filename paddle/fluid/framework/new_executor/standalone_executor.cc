@@ -21,6 +21,8 @@
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 
+#include <iostream>  // NOLINT
+
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 
 namespace paddle {
@@ -65,6 +67,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
+      base_program->Print(std::cout);
+      std::cout << std::endl;
 
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
@@ -90,6 +94,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      kernel_program->Print(std::cout);
+      std::cout << std::endl;
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,

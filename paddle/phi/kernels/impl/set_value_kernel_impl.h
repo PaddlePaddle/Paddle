@@ -25,6 +25,8 @@
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 // check whether the tensor with dimension of second can assign to the
@@ -80,9 +82,11 @@ void SetValueImpl(const Context& dev_ctx,
                   const std::vector<int64_t>& none_axes,
                   DenseTensor* out) {
   auto in_dims = in.dims();
+  LOG(INFO) << "in: " << in_dims;
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
+  LOG(INFO) << "starts: " << starts_local.size();
   phi::funcs::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
   auto slice_dims = phi::funcs::GetSliceDims(
@@ -115,6 +119,8 @@ void SetValueImpl(const Context& dev_ctx,
 
     slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
   }
+
+  LOG(INFO) << "slice_dims_for_assign: " << slice_dims_for_assign;
 
   auto place = dev_ctx.GetPlace();
   auto& eigen_place = *dev_ctx.eigen_device();
@@ -165,6 +171,7 @@ void SetValueImpl(const Context& dev_ctx,
 
   out_e.stridedSlice(starts_indices, ends_indices, strides_indices)
       .device(eigen_place) = slice_e;
+  LOG(INFO) << "out e stridedSlicew";
 
   // Step 2: Set a tensor with the same shape as out tensor. And its data at
   // '_index' is the same as value, and data out of '_index' to zero
@@ -200,6 +207,7 @@ void SetValueImpl(const Context& dev_ctx,
     //
     // TODO(zoooo0820): Reimplement logic of set_value to avoid using
     // elementwise-sub.
+    LOG(INFO) << "Set value on GPU: ";
     funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
         dev_ctx,
         slice_tensor,
@@ -207,6 +215,7 @@ void SetValueImpl(const Context& dev_ctx,
         funcs::SubtractFunctor<T>(),
         &slice_tensor);
   } else {
+    LOG(INFO) << "Set value not gpu: ";
     funcs::ElementwiseCompute<funcs::InverseSubtractFunctor<T>, T>(
         dev_ctx,
         slice_tensor,
@@ -220,6 +229,7 @@ void SetValueImpl(const Context& dev_ctx,
   pad_e.device(eigen_place) = pad_e.constant(T(0));
   pad_e.stridedSlice(starts_indices, ends_indices, strides_indices)
       .device(eigen_place) = slice_e;
+  LOG(INFO) << "slice_tensor";
 
   // Step 3: Set out tensor with value
   out_e.device(eigen_place) = out_e - pad_e;
@@ -236,7 +246,10 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
+  LOG(INFO) << x.dims();
+
   const int rank = x.dims().size();
+  LOG(INFO) << "rank " << rank;
 
   switch (rank) {
     case 1:

@@ -874,6 +874,9 @@ class _ExecutorCache:
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
+        print('-------------[debug][program start]------------------')
+        print(program)
+        print('-------------[debug][program end]------------------', flush=True)
 
         new_program = program.clone()
         if (
