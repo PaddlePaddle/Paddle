@@ -101,6 +101,7 @@ cc_test(
        op_registry
        operator
        fc_op
+       fc_mkldnn_op
        phi
        scope
        device_context
