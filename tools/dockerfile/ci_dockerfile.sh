@@ -37,6 +37,9 @@ function make_ubuntu_trt7_dockerfile(){
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub distro \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPI
+C --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && rm -rf openssl-1.1.1v*" ${dockerfile_name}
+  sed -i "${dockerfile_line}i ENV OPENSSL_ROOT_DIR=/usr/local/ssl" ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
