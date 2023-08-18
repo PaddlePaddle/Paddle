@@ -230,11 +230,8 @@ def get_skip_gc_vars(program_list: List[Program]):
                 # NOTE(Ruibiao): Some vars maybe be the arguements of conditional_block op but no-need-buffer in the actual subblock, should not add them to the required_vars.
                 if op.type == "conditional_block":
                     continue
-                if (
-                    op.type == "nop" and idx == 3
-                ):  # "idx==3" means the subprogram is opt_program
-                    continue
-                if op.type == "c_sync_comm_stream" and idx == 3:
+                # NOTE(lizhiyu): In the PP, 'nop','c_sync_comm_stream' don't need to hold memory, because we have add special code for 'send_v2' when recording stream for gc.
+                if op.type == "nop" or op.type == "c_sync_comm_stream":
                     continue
                 op_info = OpInOutInfo()
                 op_info.build_info(op)

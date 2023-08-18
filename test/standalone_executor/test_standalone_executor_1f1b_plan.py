@@ -74,7 +74,7 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             5,
             6,
             7,
-            7,
+            0,
         ]
         self.assertEqual(job_type_list, expect_job_type_list)
         self.assertEqual(micro_batch_id_list, expect_micro_batch_id_list)
@@ -134,7 +134,7 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             5,
             6,
             7,
-            7,
+            0,
         ]
         self.assertEqual(job_type_list, expect_job_type_list)
         self.assertEqual(micro_batch_id_list, expect_micro_batch_id_list)
@@ -194,7 +194,7 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             7,
             6,
             7,
-            7,
+            0,
         ]
         self.assertEqual(job_type_list, expect_job_type_list)
         self.assertEqual(micro_batch_id_list, expect_micro_batch_id_list)
@@ -254,7 +254,7 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             6,
             7,
             7,
-            7,
+            0,
         ]
         self.assertEqual(job_type_list, expect_job_type_list)
         self.assertEqual(micro_batch_id_list, expect_micro_batch_id_list)
