@@ -26,11 +26,9 @@ KernelSignature CEmbeddingGradOpArgumentMapping(
                          {"start_index"},
                          {"W@GRAD"});
 }
-
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(c_embedding,
-                           phi::CEmbeddingOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(c_embedding, phi::CEmbeddingOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(c_embedding_grad,
                            phi::CEmbeddingGradOpArgumentMapping);
