@@ -826,13 +826,16 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     program->block()->push_back(op);
-    bool add_shadow_feed = (op_item->name() == "pd.data") &&
-                           platform::is_gpu_place(place) &&
-                           (op->attributes()
-                                .at("place")
-                                .dyn_cast<dialect::PlaceAttribute>()
-                                .data()
-                                .GetType() != phi::AllocationType::GPU);
+    bool feed_op_add_shadow_feed =
+        (op_item->name() == "pd.feed") && platform::is_gpu_place(place);
+    bool data_op_add_shadow_feed = (op_item->name() == "pd.data") &&
+                                   platform::is_gpu_place(place) &&
+                                   (op->attributes()
+                                        .at("place")
+                                        .dyn_cast<dialect::PlaceAttribute>()
+                                        .data()
+                                        .GetType() != phi::AllocationType::GPU);
+    bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
     if (add_shadow_feed) {
       // if shadow data op place not gpu,add shadow feed op
       phi::KernelKey shadow_key{

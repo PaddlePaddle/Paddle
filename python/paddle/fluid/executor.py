@@ -283,7 +283,7 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
 
     feed_count = 0
     for op in block.ops:
-        if op.desc.type() == 'feed':
+        if op.desc.type() == 'feed' or op.desc.type() == 'data':
             feed_count += 1
             assert op.desc.input('X')[0] == feed_holder_name
             feed_target_name = op.desc.output('Out')[0]
@@ -1060,7 +1060,7 @@ class Executor:
         # feed var to framework
         global_block = program.global_block()
         for op in global_block.ops:
-            if op.desc.type() == 'feed':
+            if op.desc.type() == 'feed' or op.desc.type() == 'data':
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 var = global_block.var(feed_target_name)
