@@ -433,6 +433,21 @@ def _set_micro_batch_fetch(plan):
             )
 
 
+def _set_micro_batch_feed(plan):
+    if plan.micro_batch_num() <= 1:
+        return
+
+    for job in plan.job_list():
+        prog = plan.program(job.type())
+        for i in range(prog.block(0).op_size()):
+            op = prog.block(0).op(i)
+            if op.type() == 'feed':
+                col = op.attr('col')
+                op.desc._set_attr(
+                    'col', col * plan.micro_batch_num() + job.micro_batch_id()
+                )
+
+
 def _merge_tensors(tensor, micro_batch_num):
     if micro_batch_num <= 1:
         return tensor
@@ -895,6 +910,7 @@ class _ExecutorCache:
             plan = core.Plan([default_job], type_to_program)
 
         _set_micro_batch_fetch(plan)
+        _set_micro_batch_feed(plan)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
@@ -1077,7 +1093,16 @@ class Executor:
                         scope, cur_feed, feed_target_name, idx
                     )
                 else:
-                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+                    micro_cur_feed = [cur_feed]
+                    num_micro_batch = 1
+                    if program._pipeline_opt and "standalone_opt" in program._pipeline_opt:
+                        num_micro_batch = program._pipeline_opt["standalone_opt"]["num_micro_batches"]
+                        batch_size = cur_feed.shape()[0] if callable(cur_feed.shape) else cur_feed.shape[0]
+                        assert batch_size % num_micro_batch == 0
+                        micro_cur_feed = np.split(np.array(cur_feed), num_micro_batch, 0)
+                    for i in range(num_micro_batch):
+                        micro_feed = _as_lodtensor(micro_cur_feed[i], self.place, var.dtype) if num_micro_batch > 1 else micro_cur_feed[i]
+                        core.set_feed_variable(scope, micro_feed, feed_var_name, idx * num_micro_batch + i)
             else:
                 break
 
