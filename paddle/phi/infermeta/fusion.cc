@@ -825,4 +825,15 @@ void FastWhereXPUInferMeta(const MetaTensor& condition,
   out->set_dtype(x.dtype());
 }
 
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 }  // namespace phi
