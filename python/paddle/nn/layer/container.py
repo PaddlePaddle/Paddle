@@ -111,11 +111,11 @@ class LayerDict(Layer):
 
                 >>> layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 >>> len(layer_dict)
-                >>> #3
+                3
 
                 >>> layer_dict.clear()
                 >>> len(layer_dict)
-                >>> #0
+                0
 
         """
         self._sub_layers.clear()
@@ -141,11 +141,11 @@ class LayerDict(Layer):
 
                 >>> layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 >>> len(layer_dict)
-                >>> #3
+                3
 
                 >>> layer_dict.pop('conv2d')
                 >>> len(layer_dict)
-                >>> #2
+                2
 
         """
         v = self[key]
@@ -174,10 +174,9 @@ class LayerDict(Layer):
                 >>> layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 >>> for k in layer_dict.keys():
                 ...     print(k)
-                ...
-                >>> #conv1d
-                >>> #conv2d
-                >>> #conv3d
+                conv1d
+                conv2d
+                conv3d
 
         """
         return self._sub_layers.keys()
@@ -204,10 +203,9 @@ class LayerDict(Layer):
                 >>> layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 >>> for k, v in layer_dict.items():
                 ...     print(k, ":", v)
-                ...
-                >>> #conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
-                >>> #conv2d : Conv2D(3, 2, kernel_size=[3, 3], data_format=NCHW)
-                >>> #conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
+                conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
+                conv2d : Conv2D(3, 2, kernel_size=[3, 3], data_format=NCHW)
+                conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
 
         """
         return self._sub_layers.items()
@@ -234,10 +232,9 @@ class LayerDict(Layer):
                 >>> layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 >>> for v in layer_dict.values():
                 ...     print(v)
-                ...
-                >>> #Conv1D(3, 2, kernel_size=[3], data_format=NCL)
-                >>> #Conv2D(3, 2, kernel_size=[3, 3], data_format=NCHW)
-                >>> #Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
+                Conv1D(3, 2, kernel_size=[3], data_format=NCL)
+                Conv2D(3, 2, kernel_size=[3, 3], data_format=NCHW)
+                Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
 
         """
         return self._sub_layers.values()
@@ -271,10 +268,10 @@ class LayerDict(Layer):
 
                 >>> for k, v in layer_dict.items():
                 ...     print(k, ":", v)
-                >>> #conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
-                >>> #conv2d : Conv2D(4, 2, kernel_size=[4, 4], data_format=NCHW)
-                >>> #conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
-                >>> #relu : ReLU()
+                conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
+                conv2d : Conv2D(4, 2, kernel_size=[4, 4], data_format=NCHW)
+                conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
+                relu : ReLU()
 
         """
 
@@ -337,18 +334,23 @@ class ParameterList(Layer):
             >>> x = paddle.uniform(shape=[5, 2], dtype='float32')
             >>> num_stacked_param = 4
             >>> model = MyLayer(num_stacked_param)
-            >>> print(len(model.params))  # 4
+            >>> print(len(model.params))
+            4
             >>> res = model(x)
-            >>> print(res.shape)  # [5, 2]
+            >>> print(res.shape)
+            [5, 2]
 
             >>> replaced_param = paddle.create_parameter(shape=[2, 3], dtype='float32')
             >>> model.params[num_stacked_param - 1] = replaced_param  # replace last param
             >>> res = model(x)
-            >>> print(res.shape)  # [5, 3]
+            >>> print(res.shape)
+            [5, 3]
             >>> model.params.append(paddle.create_parameter(shape=[3, 4], dtype='float32'))  # append param
-            >>> print(len(model.params))  # 5
+            >>> print(len(model.params))
+            5
             >>> res = model(x)
-            >>> print(res.shape)  # [5, 4]
+            >>> print(res.shape)
+            [5, 4]
     """
 
     def __init__(self, parameters=None):
