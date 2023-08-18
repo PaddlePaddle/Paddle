@@ -24,9 +24,9 @@ gather_srcs(
 # TODO(Aurelius84): new_ir_compiler depends on pd_dialect and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
-  cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinncore
+  cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinnapi
                   pd_dialect)
-  cinn_cc_library(convert_to_dialect SRCS convert_to_dialect.cc DEPS cinncore
+  cinn_cc_library(convert_to_dialect SRCS convert_to_dialect.cc DEPS cinnapi
                   cinn_dialect)
 endif()
 

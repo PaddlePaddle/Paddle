@@ -417,6 +417,7 @@ def scaled_dot_product_attention(
     dropout_p=0.0,
     is_causal=False,
     training=True,
+    name=None,
 ):
     r"""
     The equation is:
@@ -447,10 +448,12 @@ def scaled_dot_product_attention(
                         The dtype can be float61 or bfloat16.
         attn_mask(Tensor,optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
-                        not supported yet.
         dropout_p(float): The dropout ratio.
         is_causal(bool): Whether enable causal mode.
-        training(bool): Whether it is in the training phase
+        training(bool): Whether it is in the training phase.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
 
     Returns:
         out(Tensor): The attention tensor.
@@ -459,13 +462,13 @@ def scaled_dot_product_attention(
 
     Examples:
         .. code-block:: python
-            # required: skiptest
-            >>> # xdoctest: +SKIP()
+
+            >>> # doctest: +SKIP()
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
-            >>> # xdoctest: -SKIP
+            >>> # doctest: -SKIP
     """
     if attn_mask is None:
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
