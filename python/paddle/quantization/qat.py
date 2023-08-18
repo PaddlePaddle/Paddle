@@ -65,48 +65,48 @@ class QAT(Quantization):
             >>> model = LeNet()
             >>> quant_model = qat.quantize(model)
             >>> print(quant_model)
-            LeNet(
-              (features): Sequential(
-                (0): QuantedConv2D(
-                  (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                  (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                LeNet(
+                  (features): Sequential(
+                    (0): QuantedConv2D(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (1): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): ReLU()
+                    )
+                    (2): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                    )
+                    (3): QuantedConv2D(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (4): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): ReLU()
+                    )
+                    (5): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                    )
+                  )
+                  (fc): Sequential(
+                    (0): QuantedLinear(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (1): QuantedLinear(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (2): QuantedLinear(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                  )
                 )
-                (1): ObserveWrapper(
-                  (_observer): FakeQuanterWithAbsMaxObserverLayer()
-                  (_observed): ReLU()
-                )
-                (2): ObserveWrapper(
-                  (_observer): FakeQuanterWithAbsMaxObserverLayer()
-                  (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
-                )
-                (3): QuantedConv2D(
-                  (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                  (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                )
-                (4): ObserveWrapper(
-                  (_observer): FakeQuanterWithAbsMaxObserverLayer()
-                  (_observed): ReLU()
-                )
-                (5): ObserveWrapper(
-                  (_observer): FakeQuanterWithAbsMaxObserverLayer()
-                  (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
-                )
-              )
-              (fc): Sequential(
-                (0): QuantedLinear(
-                  (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                  (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                )
-                (1): QuantedLinear(
-                  (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                  (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                )
-                (2): QuantedLinear(
-                  (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                  (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
-                )
-              )
-            )
         """
         assert (
             model.training
