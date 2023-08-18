@@ -186,6 +186,7 @@ class QuantizationTransformPass:
             >>> place = paddle.CPUPlace()
             >>> transform_pass = QuantizationTransformPass(static.global_scope(), place)
             >>> transform_pass.apply(graph)
+
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -2457,6 +2458,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             >>> scope = paddle.static.global_scope()
             >>> transform_pass = QuantizationTransformPassV2(scope, place)
             >>> transform_pass.apply(graph)
+
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -2850,6 +2852,7 @@ class AddQuantDequantPassV2:
             >>> scope = paddle.static.global_scope()
             >>> add_quant_dequant_pass = AddQuantDequantPassV2(scope, place)
             >>> add_quant_dequant_pass.apply(graph)
+
         """
         self._scope = scope
         self._place = _get_paddle_place(place)
@@ -3033,6 +3036,7 @@ class ReplaceFakeQuantDequantPass:
             >>> scope = paddle.static.global_scope()
             >>> replace_pass = ReplaceFakeQuantDequantPass(scope, place)
             >>> replace_pass.apply(graph)
+
         """
         self._place = _get_paddle_place(place)
         self._scope = scope
@@ -3190,6 +3194,7 @@ class QuantWeightPass:
             >>> scope = paddle.static.global_scope()
             >>> quant_weight_pass = QuantWeightPass(scope, place)
             >>> quant_weight_pass.apply(graph)
+
     """
 
     def __init__(
