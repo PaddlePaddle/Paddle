@@ -1305,6 +1305,67 @@ void DeformableConvInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void DGCMomentumInferMeta(const MetaTensor& param,
+                          const MetaTensor& grad,
+                          const MetaTensor& velocity,
+                          const MetaTensor& learning_rate,
+                          const MetaTensor& master_param,
+                          const MetaTensor& current_step_tensor,
+                          const MetaTensor& nranks_tensor,
+                          float mu,
+                          bool use_nesterov,
+                          const std::string& regularization_method,
+                          float regularization_coeff,
+                          bool multi_precision,
+                          float rescale_grad,
+                          float rampup_begin_step,
+                          MetaTensor* param_out,
+                          MetaTensor* velocity_out,
+                          MetaTensor* master_param_out,
+                          MetaTensor* grad_out) {
+  auto lr_dims = learning_rate.dims();
+
+  PADDLE_ENFORCE_NE(phi::product(lr_dims),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Maybe the Input variable LearningRate has not "
+                        "been initialized. You may need to confirm "
+                        "if you put exe.run(startup_program) "
+                        "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        phi::product(lr_dims)));
+
+  auto param_dims = param.dims();
+  auto grad_dims = grad.dims();
+  auto velocity_dims = velocity.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad_dims,
+      phi::errors::InvalidArgument(
+          "Param and Grad input of MomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Grad's dim [%s].",
+          param_dims,
+          grad_dims));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      velocity_dims,
+      phi::errors::InvalidArgument(
+          "Param and Velocity of MomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Velocity [%s].",
+          param_dims,
+          velocity_dims));
+
+  param_out->set_dims(param_dims);
+  velocity_out->set_dims(param_dims);
+  if (master_param != nullptr) {
+    master_param_out->set_dims(param_dims);
+  }
+}
+
 void EditDistanceInferMeta(const MetaTensor& hyps,
                            const MetaTensor& refs,
                            const MetaTensor& hypslength,
