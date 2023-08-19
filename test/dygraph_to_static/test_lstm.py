@@ -24,7 +24,7 @@ from paddle import nn
 
 
 class LSTMLayer(nn.Layer):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels, hidden_size, proj_size=None):
         super().__init__()
         self.cell = nn.LSTM(
             in_channels, hidden_size, direction='bidirectional', num_layers=2
@@ -36,9 +36,9 @@ class LSTMLayer(nn.Layer):
 
 
 class Net(nn.Layer):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels, hidden_size, proj_size=None):
         super().__init__()
-        self.lstm = LSTMLayer(in_channels, hidden_size)
+        self.lstm = LSTMLayer(in_channels, hidden_size, proj_size=proj_size)
 
     def forward(self, x):
         x = self.lstm(x)
@@ -49,6 +49,8 @@ class Net(nn.Layer):
 class TestLstm(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.net = Net(12, 2)
+        self.inputs = paddle.zeros((2, 10, 12))
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -60,10 +62,8 @@ class TestLstm(unittest.TestCase):
         paddle.static.default_main_program().random_seed = 1001
         paddle.static.default_startup_program().random_seed = 1001
 
-        net = Net(12, 2)
-        net = paddle.jit.to_static(net)
-        x = paddle.zeros((2, 10, 12))
-        y = net(paddle.to_tensor(x))
+        net = paddle.jit.to_static(self.net)
+        y = net(paddle.to_tensor(self.inputs))
         return y.numpy()
 
     def test_lstm_to_static(self):
@@ -74,8 +74,8 @@ class TestLstm(unittest.TestCase):
     @ast_only_test
     def test_save_in_eval(self, with_training=True):
         paddle.jit.enable_to_static(True)
-        net = Net(12, 2)
-        x = paddle.randn((2, 10, 12))
+        net = self.net
+        x = self.inputs
         if with_training:
             x.stop_gradient = False
             dygraph_out = net(x)
@@ -121,6 +121,13 @@ class TestLstm(unittest.TestCase):
 
     def test_save_without_training(self):
         self.test_save_in_eval(with_training=False)
+
+
+class TestLstmWithProjsize(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.net = Net(12, 2, 4)
+        self.inputs = paddle.zeros((2, 10, 12))
 
 
 class LinearNet(nn.Layer):

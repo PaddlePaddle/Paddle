@@ -401,18 +401,17 @@ class RNNMixin(LayerListMixin):
         batch_size = inputs.shape[batch_index]
         dtype = inputs.dtype
         if initial_states is None:
-            state_shape = (
-                self.num_layers * self.num_directions,
-                batch_size,
-                self.hidden_size,
-            )
+            state_shape = (self.num_layers * self.num_directions, batch_size)
+            proj_size = self.proj_size if hasattr(self, 'proj_size') else None
+
+            dims = ([proj_size or self.hidden_size], [self.hidden_size])
             if self.state_components == 1:
                 initial_states = np.zeros(state_shape, dtype)
             else:
                 initial_states = tuple(
                     [
-                        np.zeros(state_shape, dtype)
-                        for _ in range(self.state_components)
+                        np.zeros(state_shape + dims[i], dtype)
+                        for i in range(self.state_components)
                     ]
                 )
 
@@ -502,6 +501,7 @@ class LSTM(RNNMixin):
         hidden_size,
         num_layers=1,
         direction="forward",
+        proj_size=None,
         dropout=0.0,
         time_major=False,
         dtype="float64",
@@ -509,20 +509,21 @@ class LSTM(RNNMixin):
         super().__init__()
 
         bidirectional_list = ["bidirectional", "bidirect"]
+        in_size = proj_size or hidden_size
         if direction in ["forward"]:
             is_reverse = False
             cell = LSTMCell(input_size, hidden_size, dtype=dtype)
             self.append(RNN(cell, is_reverse, time_major))
             for i in range(1, num_layers):
-                cell = LSTMCell(hidden_size, hidden_size, dtype=dtype)
+                cell = LSTMCell(in_size, hidden_size, dtype=dtype)
                 self.append(RNN(cell, is_reverse, time_major))
         elif direction in bidirectional_list:
             cell_fw = LSTMCell(input_size, hidden_size, dtype=dtype)
             cell_bw = LSTMCell(input_size, hidden_size, dtype=dtype)
             self.append(BiRNN(cell_fw, cell_bw, time_major))
             for i in range(1, num_layers):
-                cell_fw = LSTMCell(2 * hidden_size, hidden_size, dtype=dtype)
-                cell_bw = LSTMCell(2 * hidden_size, hidden_size, dtype=dtype)
+                cell_fw = LSTMCell(2 * in_size, hidden_size, dtype=dtype)
+                cell_bw = LSTMCell(2 * in_size, hidden_size, dtype=dtype)
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:
             raise ValueError(
@@ -537,6 +538,7 @@ class LSTM(RNNMixin):
         self.time_major = time_major
         self.num_layers = num_layers
         self.state_components = 2
+        self.proj_size = proj_size
 
 
 class GRU(RNNMixin):

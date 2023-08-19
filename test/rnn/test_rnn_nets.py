@@ -289,6 +289,53 @@ class TestLSTM(unittest.TestCase):
         self.test_predict()
 
 
+class TestLSTMWithProjSize(unittest.TestCase):
+    def setUp(self):
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
+        paddle.disable_static(place)
+        rnn1 = LSTM(
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            proj_size=8,
+        )
+        rnn2 = paddle.nn.LSTM(
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            proj_size=8,
+        )
+        convert_params_for_net(rnn1, rnn2)
+
+        self.rnn1 = rnn1
+        self.rnn2 = rnn2
+
+    def test_with_initial_state(self):
+        rnn1 = self.rnn1
+        rnn2 = self.rnn2
+
+        x = np.random.randn(12, 4, 16)
+        if not self.time_major:
+            x = np.transpose(x, [1, 0, 2])
+        prev_h = np.random.randn(2 * self.num_directions, 4, 8)
+        prev_c = np.random.randn(2 * self.num_directions, 4, 32)
+
+        y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
+        y2, (h2, c2) = rnn2(
+            paddle.to_tensor(x),
+            (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)),
+        )
+        np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
+        np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
+        np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
+
+
 def predict_test_util(place, mode, stop_gradient=True):
     place = paddle.set_device(place)
     paddle.seed(123)
