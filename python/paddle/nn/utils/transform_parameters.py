@@ -147,7 +147,7 @@ def vector_to_parameters(vec, parameters, name=None):
             >>> # copy weight of linear1 to linear2
             >>> paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
             >>> print((linear1.weight == linear2.weight).all())
-            Tensor(shape=[1], dtype=bool, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True])
     """
     origin_shapes = []
