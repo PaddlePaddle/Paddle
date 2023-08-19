@@ -47,7 +47,7 @@ TEST(dist_tensor, constructor) {
   EXPECT_TRUE(x3.initialized());
 
   auto a = std::make_shared<DenseTensor>(alloc, DenseTensorMeta(dtype, dims));
-  DistTensor x4(a, dist_attr);
+  DistTensor x4(a, a->meta(), dist_attr);
   EXPECT_TRUE(x4.defined());
   EXPECT_TRUE(x4.initialized());
 }

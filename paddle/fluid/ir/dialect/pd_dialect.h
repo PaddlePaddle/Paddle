@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/macros.h"
 #include "paddle/ir/core/parameter.h"
 #include "paddle/ir/core/program.h"
 
@@ -92,7 +93,7 @@ class APIBuilder {
     ctx_->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   }
 
-  APIBuilder(const APIBuilder&) = delete;
+  DISABLE_COPY_AND_ASSIGN(APIBuilder);
 
   ir::IrContext* ctx_;
   std::shared_ptr<ir::Builder> builder_;

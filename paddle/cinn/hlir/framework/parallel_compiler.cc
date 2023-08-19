@@ -92,9 +92,7 @@ void ParallelCompiler::LaunchTask() {
 
   RunTask(&tasks_[0]);
   // syncthreads.
-  for (auto& worker : threads) {
-    worker.join();
-  }
+  for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
 }
 
 ParallelCompiler::CompilationResult ParallelCompiler::MergeResult() {
@@ -113,7 +111,7 @@ ParallelCompiler::CompilationResult ParallelCompiler::MergeResult() {
       res.instructions.emplace_back(std::move(instruction));
     }
   }
-  return std::move(res);
+  return res;
 }
 
 void ParallelCompiler::Task::Lowering() {
@@ -167,7 +165,6 @@ void ParallelCompiler::Task::CodegenAndJit() {
     auto cuda_c = codegen.Compile(dmodule);
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
-    source_codes.emplace_back(cuda_c);
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
 
@@ -175,12 +172,15 @@ void ParallelCompiler::Task::CodegenAndJit() {
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    source_ptxs.emplace_back(ptx);
+
     // load cumodule
     cumodule.reset(new CUDAModule(ptx,
                                   compiler.compile_to_cubin()
                                       ? CUDAModule::Kind::CUBIN
                                       : CUDAModule::Kind::PTX));
+
+    source_codes.emplace_back(std::move(cuda_c));
+    source_ptxs.emplace_back(std::move(ptx));
 
     // register kernel
     backends::RuntimeSymbols symbols;

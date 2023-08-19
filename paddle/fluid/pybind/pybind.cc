@@ -693,7 +693,7 @@ void BindVjp(pybind11::module *m) {
       "call_vjp",
       [](ir::Operation &fwd_op,
          const std::vector<std::vector<ir::OpResult>> &out_grads,
-         const std::vector<std::vector<int>> &stop_gradients) {
+         const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
         ir::IrContext *ctx = ir::IrContext::Instance();
         ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
@@ -731,7 +731,7 @@ void BindVjp(pybind11::module *m) {
                                 vjp_res[i].size()));
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
-            if (stop_gradients[i][j]) {
+            if (!vjp_res[i][j]) {
               sub_res.append(nullptr);
             } else {
               sub_res.append(vjp_res[i][j]);
@@ -1419,6 +1419,8 @@ All parameter, weight, gradient are variables in Paddle.
             defalut_val.index() - 1);
       });
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_set_bwd_prim_blacklist",
+        &paddle::prim::PrimCommonUtils::SetPrimBackwardBlacklist);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",

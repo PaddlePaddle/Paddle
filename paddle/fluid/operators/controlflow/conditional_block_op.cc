@@ -30,12 +30,12 @@ PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
-const char ConditionalOp::kInputs[] = "Input";    // NOLINT
-const char ConditionalOp::kOutputs[] = "Out";     // NOLINT
-const char ConditionalOp::kCondition[] = "Cond";  // NOLINT
-const char ConditionalOp::kScope[] = "Scope";     // NOLINT
-const char ConditionalOp::kSkipEagerDeletionVars[] =
-    "skip_eager_deletion_vars";  // NOLINT
+const char ConditionalOp::kInputs[] = "Input";        // NOLINT
+const char ConditionalOp::kOutputs[] = "Out";         // NOLINT
+const char ConditionalOp::kCondition[] = "Cond";      // NOLINT
+const char ConditionalOp::kScope[] = "Scope";         // NOLINT
+const char ConditionalOp::kSkipEagerDeletionVars[] =  // NOLINT
+    "skip_eager_deletion_vars";
 
 using Executor = framework::Executor;
 using ExecutorPrepareContext = framework::ExecutorPrepareContext;
