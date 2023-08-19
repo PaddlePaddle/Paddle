@@ -570,7 +570,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     if (op_item->name() == "builtin.split") {
-      phi::Place out_place = place;
+      std::vector<phi::Place> out_places;
       // Copy op inputs
       std::vector<ir::OpResult> vec_inputs;
       if (op_item->num_operands() > 0) {
@@ -591,10 +591,12 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
           if (new_in.type().isa<ir::VectorType>()) {
             auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
-            out_place =
-                vec_types[0]
-                    .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                    .place();
+            for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
+              out_places[idx] =
+                  vec_types[idx]
+                      .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                      .place();
+            }
           } else {
             PADDLE_THROW(
                 phi::errors::Unimplemented("only support vector type for now"));
@@ -612,7 +614,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             auto allocated_dense_tensor_dtype =
                 paddle::dialect::AllocatedDenseTensorType::get(
                     ctx,
-                    out_place,
+                    out_places[i],
                     result_type.dyn_cast<dialect::DenseTensorType>());
             op_output_types.push_back(allocated_dense_tensor_dtype);
           } else {
