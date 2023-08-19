@@ -2057,7 +2057,16 @@ def mm(input, mat2, name=None):
             var_names = {'x': x, 'y': y}
             for name, val in var_names.items():
                 check_variable_and_dtype(
-                    val, name, ['float16', 'float32', 'float64'], 'mm'
+                    val,
+                    name,
+                    [
+                        'float16',
+                        'float32',
+                        'float64',
+                        'complex64',
+                        'complex128',
+                    ],
+                    'mm',
                 )
             x_shape = list(x.shape)
             y_shape = list(y.shape)
