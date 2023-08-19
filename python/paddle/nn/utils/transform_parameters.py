@@ -51,6 +51,7 @@ def _stride_column(param):
 
     Examples:
        .. code-block:: python
+
             >>> import paddle
             >>> paddle.seed(100)
 
