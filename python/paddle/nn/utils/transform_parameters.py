@@ -149,7 +149,7 @@ def vector_to_parameters(vec, parameters, name=None):
             >>> paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
             >>> print((linear1.weight == linear2.weight).all())
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [True])
+            True)
     """
     origin_shapes = []
     sections = []
