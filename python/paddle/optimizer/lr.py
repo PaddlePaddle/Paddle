@@ -147,7 +147,6 @@ class LRScheduler:
                 >>> adadelta.step()
                 >>> adadelta.clear_grad()
 
-        Examples:
             .. code-block:: python
 
                 >>> import paddle
@@ -294,6 +293,7 @@ class NoamDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -403,6 +403,7 @@ class PiecewiseDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -497,6 +498,7 @@ class NaturalExpDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -585,7 +587,7 @@ class InverseTimeDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
+
         .. code-block:: python
             :name: code-example2
 
@@ -688,6 +690,7 @@ class PolynomialDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -819,6 +822,7 @@ class LinearWarmup(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -957,6 +961,7 @@ class ExponentialDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -1054,6 +1059,7 @@ class MultiStepDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -1167,7 +1173,7 @@ class StepDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
-            ...
+
         .. code-block:: python
             :name: code-example2
 
@@ -1271,6 +1277,7 @@ class LambdaDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -1378,6 +1385,7 @@ class ReduceOnPlateau(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step(loss)    # If you update learning rate each step
             ...     # scheduler.step(loss)        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -1608,6 +1616,7 @@ class CosineAnnealingDecay(LRScheduler):
             ...         sgd.clear_gradients()
             ...         scheduler.step()    # If you update learning rate each step
             ...     # scheduler.step()        # If you update learning rate each epoch
+
         .. code-block:: python
             :name: code-example2
 
@@ -1811,6 +1820,7 @@ class OneCycleLR(LRScheduler):
             ...         sgd.step()
             ...         sgd.clear_gradients()
             ...         scheduler.step()        # You should update learning rate each step
+
         .. code-block:: python
             :name: code-example2
 
@@ -2060,6 +2070,7 @@ class CyclicLR(LRScheduler):
             ...         sgd.step()
             ...         sgd.clear_gradients()
             ...         scheduler.step()        # You should update learning rate each step
+
         .. code-block:: python
             :name: code-example2
 
@@ -2304,20 +2315,19 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         >>> lr_value = base_lr * np.power(d_model, -0.5) * np.min([
         ...                         np.power(current_steps, -0.5),
         ...                         np.power(warmup_steps, -1.5) * current_steps])
-    Please reference `attention is all you need
-    <https://arxiv.org/pdf/1706.03762.pdf>`_.
+
+    Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_.
 
     Args:
         d_model(Variable): The dimensionality of input and output of model.
-
         warmup_steps(Variable): A super parameter.
-
         learning_rate(Variable|float|int): The initial learning rate. If the type
             is Variable, it's a tensor with shape [1], the data type can be
             float32 or float64. It also can be set to python int number. Default 1.0
 
     Returns:
         The decayed learning rate.
+
     Examples:
         .. code-block:: python
 
@@ -2356,20 +2366,22 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     Decayed learning rate calculates as follows:
 
-    >>> if staircase == True:
-    >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
-    >>> else:
-    >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
+    .. code-block:: text
+
+        >>> if staircase == True:
+        >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
+        >>> else:
+        >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
 
     Args:
         learning_rate(Variable|float): The initial learning rate. It should be a Variable
-                                       or a float
+            or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
         staircase(bool): If True, decay the learning rate at discrete intervals, which
-                         means the learning rate will be decayed by `decay_rate` every
-                         `decay_steps`. If False, learning rate will be decayed continuously
-                         and following the formula above. Default: False
+            means the learning rate will be decayed by `decay_rate` every
+            `decay_steps`. If False, learning rate will be decayed continuously
+            and following the formula above. Default: False
 
     Returns:
         Variable: The decayed learning rate. The data type is float32.
@@ -2381,13 +2393,12 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
             >>> paddle.enable_static()
             >>> base_lr = 0.1
-            >>> sgd_optimizer = fluid.optimizer.SGD(
-            ...     learning_rate=paddle.optimizer.lr.exponential_decay(
-            ...         learning_rate=base_lr,
-            ...         decay_steps=10000,
-            ...         decay_rate=0.5,
-            ...         staircase=True))
-            ...
+            >>> lr = paddle.optimizer.lr.exponential_decay(
+            ...     learning_rate=base_lr,
+            ...     decay_steps=10000,
+            ...     decay_rate=0.5,
+            ...     staircase=True
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2409,45 +2420,45 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     Applies natural exponential decay to the initial learning rate.
 
-        When training a model, it is often recommended to lower the learning rate as the
-        training progresses. By using this function, the learning rate will be decayed by
-        natural exponential power 'decay_rate' every 'decay_steps' steps.
+    When training a model, it is often recommended to lower the learning rate as the
+    training progresses. By using this function, the learning rate will be decayed by
+    natural exponential power 'decay_rate' every 'decay_steps' steps.
 
-        Decayed learning rate calculates as follows:
+    Decayed learning rate calculates as follows:
+
+    .. code-block:: text
 
         >>> if not staircase:
         >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
         >>> else:
         >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * floor(global_step / decay_steps))
 
-        Args:
-            learning_rate(Variable|float): The initial learning rate. It should be a Variable
-                                           or a float
-            decay_steps(int): The learning rate decay steps. See the decay computation above.
-            decay_rate(float): The learning rate decay rate. See the decay computation above.
-            staircase(bool): If True, decay the learning rate at discrete intervals, which
-                             means the learning rate will be decayed by natural exponential power
-                             `decay_rate` every `decay_steps`. If False, learning rate will be
-                             decayed continuously and following the formula above. Default: False
+    Args:
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable
+            or a float
+        decay_steps(int): The learning rate decay steps. See the decay computation above.
+        decay_rate(float): The learning rate decay rate. See the decay computation above.
+        staircase(bool): If True, decay the learning rate at discrete intervals, which
+            means the learning rate will be decayed by natural exponential power
+            `decay_rate` every `decay_steps`. If False, learning rate will be
+            decayed continuously and following the formula above. Default: False
 
-        Returns:
-            The decayed learning rate. The data type is float32.
+    Returns:
+        The decayed learning rate. The data type is float32.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                >>> import paddle.fluid as fluid
-                >>> import paddle
+            >>> import paddle
 
-                >>> paddle.enable_static()
-                >>> base_lr = 0.1
-                >>> sgd_optimizer = fluid.optimizer.SGD(
-                ...     learning_rate=paddle.optimizer.lr.natural_exp_decay(
-                ...         learning_rate=base_lr,
-                ...         decay_steps=10000,
-                ...         decay_rate=0.5,
-                ...         staircase=True))
-                ...
+            >>> paddle.enable_static()
+            >>> base_lr = 0.1
+            >>> lr = paddle.optimizer.lr.natural_exp_decay(
+            ...     learning_rate=base_lr,
+            ...     decay_steps=10000,
+            ...     decay_rate=0.5,
+            ...     staircase=True
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2466,7 +2477,6 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
 def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
-
     Applies inverse time decay to the initial learning rate.
 
     When training a model, it is often recommended to lower the learning rate as the
@@ -2475,20 +2485,22 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     Decayed learning rate calculates as follows:
 
-    >>> if staircase == True:
-    >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
-    >>> else:
-    >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
+    .. code-block:: text
+
+        >>> if staircase == True:
+        >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
+        >>> else:
+        >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
 
     Args:
         learning_rate(Variable|float): The initial learning rate. It should be a Variable
-                                       or a float
+            or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
         staircase(bool): If True, decay the learning rate at discrete intervals, which
-                         means the learning rate will be decayed by `decay_rate` times
-                         every `decay_steps`. If False, learning rate will be decayed
-                         continuously and following the formula above. Default: False
+            means the learning rate will be decayed by `decay_rate` times
+            every `decay_steps`. If False, learning rate will be decayed
+            continuously and following the formula above. Default: False
 
     Returns:
         Variable: The decayed learning rate. The data type is float32.
@@ -2496,16 +2508,15 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
             >>> base_lr = 0.1
-            >>> sgd_optimizer = fluid.optimizer.SGD(
-            ...     learning_rate=paddle.optimizer.lr.inverse_time_decay(
-            ...         learning_rate=base_lr,
-            ...         decay_steps=10000,
-            ...         decay_rate=0.5,
-            ...         staircase=True))
+            >>> lr = paddle.optimizer.lr.inverse_time_decay(
+            ...     learning_rate=base_lr,
+            ...     decay_steps=10000,
+            ...     decay_rate=0.5,
+            ...     staircase=True
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2531,16 +2542,16 @@ def polynomial_decay(
 
     .. code-block:: text
 
-     if cycle:
-       decay_steps = decay_steps * ceil(global_step / decay_steps)
-     else:
-       global_step = min(global_step, decay_steps)
-       decayed_learning_rate = (learning_rate - end_learning_rate) *
-            (1 - global_step / decay_steps) ^ power + end_learning_rate
+        if cycle:
+            decay_steps = decay_steps * ceil(global_step / decay_steps)
+        else:
+            global_step = min(global_step, decay_steps)
+            decayed_learning_rate = (learning_rate - end_learning_rate) *
+                    (1 - global_step / decay_steps) ^ power + end_learning_rate
 
     Args:
         learning_rate(Variable|float32): A scalar float32 value or a Variable. This
-          will be the initial learning rate during training.
+            will be the initial learning rate during training.
         decay_steps(int32): A Python `int32` number.
         end_learning_rate(float): A Python `float` number.
         power(float): A Python `float` number.
@@ -2557,8 +2568,11 @@ def polynomial_decay(
             >>> total_step = 5000
             >>> end_lr = 0
             >>> lr = paddle.optimizer.lr.polynomial_decay(
-            ...     start_lr, total_step, end_lr, power=1)
-            ...
+            ...     start_lr,
+            ...     total_step,
+            ...     end_lr,
+            ...     power=1
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
@@ -2598,40 +2612,41 @@ def polynomial_decay(
 
 def piecewise_decay(boundaries, values):
     """
-
     Applies piecewise decay to the initial learning rate.
 
-        The algorithm can be described as the code below.
+    The algorithm can be described as the code below.
 
-        .. code-block:: text
+    .. code-block:: text
 
-          boundaries = [10000, 20000]
-          values = [1.0, 0.5, 0.1]
-          if step < 10000:
-              learning_rate = 1.0
-          elif 10000 <= step < 20000:
-              learning_rate = 0.5
-          else:
-              learning_rate = 0.1
-        Args:
-            boundaries: A list of steps numbers.
-            values: A list of learning rate values that will be picked during
-                different step boundaries.
+        boundaries = [10000, 20000]
+        values = [1.0, 0.5, 0.1]
+        if step < 10000:
+            learning_rate = 1.0
+        elif 10000 <= step < 20000:
+            learning_rate = 0.5
+        else:
+            learning_rate = 0.1
 
-        Returns:
-            The decayed learning rate.
+    Args:
+        boundaries: A list of steps numbers.
+        values: A list of learning rate values that will be picked during
+            different step boundaries.
 
-        Examples:
-            .. code-block:: python
+    Returns:
+        The decayed learning rate.
 
-                >>> import paddle
-                >>> paddle.enable_static()
-                >>> boundaries = [10000, 20000]
-                >>> values = [1.0, 0.5, 0.1]
-                >>> optimizer = paddle.optimizer.Momentum(
-                ...     momentum=0.9,
-                ...     learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
-                ...     weight_decay=paddle.regularizer.L2Decay(1e-4))
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> boundaries = [10000, 20000]
+            >>> values = [1.0, 0.5, 0.1]
+            >>> optimizer = paddle.optimizer.Momentum(
+            ...     momentum=0.9,
+            ...     learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
+            ...     weight_decay=paddle.regularizer.L2Decay(1e-4)
+            ... )
     """
     with default_main_program()._lr_schedule_guard():
         if len(values) - len(boundaries) != 1:
@@ -2743,7 +2758,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     .. code-block:: text
 
-            lr = learning_rate
+        lr = learning_rate
 
     where lr is the learning_rate after warm-up.
 
@@ -2756,31 +2771,31 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     Returns:
         Variable: Warm-up learning rate with the same data type as learning_rate.
 
-
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> paddle.enable_static()
-        >>> boundaries = [100, 200]
-        >>> lr_steps = [0.1, 0.01, 0.001]
-        >>> learning_rate = fluid.layers.piecewise_decay(boundaries, lr_steps) #case1, 1D-Tensor
-        >>> # learning_rate = 0.1  # case2, single-value
-        >>> warmup_steps = 50
-        >>> start_lr = 0.1
-        >>> end_lr = 1. / 3.
-        >>> decayed_lr = fluid.layers.linear_lr_warmup(
-        ...     learning_rate,
-        ...     warmup_steps,
-        ...     start_lr,
-        ...     end_lr)
-        >>> place = fluid.CPUPlace()
-        >>> exe = fluid.Executor(place)
-        >>> exe.run(fluid.default_startup_program())
-        >>> out, = exe.run(fetch_list=[decayed_lr.name])
-        >>> print(out)
-        [0.1]
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> boundaries = [100, 200]
+            >>> lr_steps = [0.1, 0.01, 0.001]
+            >>> learning_rate = paddle.optimizer.lr.piecewise_decay(boundaries, lr_steps) # case1, 1D-Tensor
+            >>> # learning_rate = 0.1  # case2, single-value
+            >>> warmup_steps = 50
+            >>> start_lr = 0.1
+            >>> end_lr = 1. / 3.
+            >>> decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
+            ...     learning_rate,
+            ...     warmup_steps,
+            ...     start_lr,
+            ...     end_lr
+            ... )
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> out, = exe.run(fetch_list=[decayed_lr.name])
+            >>> print(out)
+            [0.1]
     """
     dtype = 'float32'
     if isinstance(learning_rate, Variable):
