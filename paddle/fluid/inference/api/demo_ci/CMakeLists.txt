@@ -202,7 +202,7 @@ if(NOT WIN32)
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      ${flags_dep}
+      gflags
       protobuf
       xxhash
       cryptopp
@@ -214,7 +214,7 @@ else()
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      ${flags_dep}
+      gflags_static
       libprotobuf
       xxhash
       cryptopp-static

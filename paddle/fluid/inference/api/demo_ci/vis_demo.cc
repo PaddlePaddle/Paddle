@@ -18,19 +18,16 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
-#include "paddle/utils/flags.h"
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
-PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
-PD_DEFINE_string(refer, "", "path to reference result for comparison.");
-PD_DEFINE_string(data,
-                 "",
-                 "path of data; each line is a record, format is "
-                 "'<space split floats as data>\t<space split ints as shape'");
-PD_DEFINE_bool(use_gpu, false, "Whether use gpu.");
-#ifdef PADDLE_WITH_SHARED_LIB
-PD_DECLARE_bool(profile);
-#endif
+DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_string(refer, "", "path to reference result for comparison.");
+DEFINE_string(data,
+              "",
+              "path of data; each line is a record, format is "
+              "'<space split floats as data>\t<space split ints as shape'");
+DEFINE_bool(use_gpu, false, "Whether use gpu.");
 
 namespace paddle {
 namespace demo {
@@ -81,7 +78,7 @@ void Main(bool use_gpu) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  paddle::flags::ParseCommandLineFlags(&argc, &argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_use_gpu) {
     paddle::demo::Main(true /*use_gpu*/);
   } else {

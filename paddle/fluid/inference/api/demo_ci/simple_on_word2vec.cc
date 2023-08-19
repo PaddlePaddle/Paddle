@@ -22,11 +22,11 @@ limitations under the License. */
 #include <memory>
 #include <thread>  //NOLINT
 
-#include "paddle/utils/flags.h"
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
-PD_DEFINE_string(dirname, "", "Directory of the inference model.");
-PD_DEFINE_bool(use_gpu, false, "Whether use gpu.");
+DEFINE_string(dirname, "", "Directory of the inference model.");
+DEFINE_bool(use_gpu, false, "Whether use gpu.");
 
 namespace paddle {
 namespace demo {
@@ -133,7 +133,7 @@ void MainThreads(int num_threads, bool use_gpu) {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  paddle::flags::ParseCommandLineFlags(&argc, &argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::Main(false /* use_gpu*/);
   paddle::demo::MainThreads(1, false /* use_gpu*/);
   paddle::demo::MainThreads(4, false /* use_gpu*/);

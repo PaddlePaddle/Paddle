@@ -21,11 +21,11 @@
 #include <string>
 #include <vector>
 
-#include "paddle/utils/flags.h"
+#include "gflags/gflags.h"
 #include "paddle_inference_api.h"  // NOLINT
 
-PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
-PD_DEFINE_bool(use_gpu, false, "Whether use gpu.");
+DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_bool(use_gpu, false, "Whether use gpu.");
 
 namespace paddle {
 namespace demo {
@@ -85,7 +85,7 @@ void RunAnalysis() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  paddle::flags::ParseCommandLineFlags(&argc, &argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::RunAnalysis();
   std::cout << "=========================Runs successfully===================="
             << std::endl;

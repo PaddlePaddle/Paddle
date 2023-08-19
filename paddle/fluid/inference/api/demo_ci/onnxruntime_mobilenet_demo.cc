@@ -21,11 +21,11 @@ limitations under the License. */
 #include <numeric>
 #include <vector>
 
-#include "paddle/utils/flags.h"
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
-PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
-PD_DEFINE_string(data, "", "path of data");
+DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_string(data, "", "path of data");
 
 namespace paddle {
 namespace demo {
@@ -87,7 +87,7 @@ void Main() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  paddle::flags::ParseCommandLineFlags(&argc, &argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::Main();
   return 0;
 }

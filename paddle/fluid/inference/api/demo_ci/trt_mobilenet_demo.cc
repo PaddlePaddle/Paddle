@@ -17,15 +17,15 @@ limitations under the License. */
  */
 
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
-#include "paddle/utils/flags.h"
+#include "gflags/gflags.h"
 #include "utils.h"  // NOLINT
 
-PD_DEFINE_string(modeldir, "", "Directory of the inference model.");
-PD_DEFINE_string(refer, "", "path to reference result for comparison.");
-PD_DEFINE_string(data,
-                 "",
-                 "path of data; each line is a record, format is "
-                 "'<space split floats as data>\t<space split ints as shape'");
+DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_string(refer, "", "path to reference result for comparison.");
+DEFINE_string(data,
+              "",
+              "path of data; each line is a record, format is "
+              "'<space split floats as data>\t<space split ints as shape'");
 
 namespace paddle {
 namespace demo {
@@ -73,7 +73,7 @@ void Main() {
 }  // namespace paddle
 
 int main(int argc, char** argv) {
-  paddle::flags::ParseCommandLineFlags(&argc, &argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   paddle::demo::Main();
   return 0;
 }
