@@ -251,7 +251,7 @@ def fluid_softmax_with_cross_entropy(
 
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [1.35328650])
     """
     input_dims = len(list(logits.shape))
@@ -506,7 +506,7 @@ def edit_distance(
 
             >>> distance, sequence_num = F.loss.edit_distance(input=input, label=label, input_length=input_len, label_length=label_len, normalized=False)
             >>> print(distance)
-            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
                    [4])
             >>> print(sequence_num)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -517,7 +517,7 @@ def edit_distance(
 
             >>> distance, sequence_num = F.loss.edit_distance(input=input, label=label, input_length=input_len, label_length=label_len, normalized=True)
             >>> print(distance)
-            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
                    [4])
 
     """
@@ -635,7 +635,7 @@ def binary_cross_entropy(
             >>> label = paddle.to_tensor([1.0, 0.0, 1.0], 'float32')
             >>> output = paddle.nn.functional.binary_cross_entropy(input, label)
             >>> print(output)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [0.65537095])
 
     """
@@ -777,7 +777,7 @@ def binary_cross_entropy_with_logits(
             >>> label = paddle.to_tensor([1.0, 0.0, 1.0])
             >>> output = paddle.nn.functional.binary_cross_entropy_with_logits(logit, label)
             >>> print(output)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [0.45618808])
 
     """
@@ -1157,7 +1157,7 @@ def margin_ranking_loss(
             >>> label = paddle.to_tensor([[1, -1], [-1, -1]], dtype='float32')
             >>> loss = paddle.nn.functional.margin_ranking_loss(input, other, label)
             >>> print(loss)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [0.75000000])
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1275,7 +1275,7 @@ def l1_loss(input, label, reduction='mean', name=None):
 
             >>> l1_loss = paddle.nn.functional.l1_loss(input, label)
             >>> print(l1_loss)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [0.34999999])
 
             >>> l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
@@ -1286,7 +1286,7 @@ def l1_loss(input, label, reduction='mean', name=None):
 
             >>> l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             >>> print(l1_loss)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [1.39999998])
 
     """
@@ -1377,7 +1377,7 @@ def nll_loss(
                 >>> label = paddle.to_tensor([0, 2, 1, 1, 0], "int64")
                 >>> result = nll_loss(log_out, label)
                 >>> print(result)
-                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                        [1.07202101])
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1732,7 +1732,7 @@ def mse_loss(input, label, reduction='mean', name=None):
             >>> label = paddle.to_tensor(1.7)
             >>> output = mse_loss(input, label)
             >>> print(output)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [0.04000002])
 
     """
