@@ -24,8 +24,6 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
-#include "paddle/cinn/frontend/net_builder.h"
-#include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/utils/data_util.h"
 
 #include "paddle/cinn/hlir/dialect/jit_kernel_op.h"

@@ -47,7 +47,7 @@ class TestBuildOp(unittest.TestCase):
         self.assertEqual(
             op_name_list,
             [
-                'builtin.get_parameter',
+                'pd.data',
                 'pd.matmul',
                 'pd.add',
                 'pd.full_int_array',
