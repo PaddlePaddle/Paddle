@@ -416,7 +416,14 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             check_variable_and_dtype(
                 input,
                 'input',
-                ['float16', 'uint16', 'float32', 'float64'],
+                [
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                    'complex64',
+                    'complex128',
+                ],
                 'p_norm',
             )
 

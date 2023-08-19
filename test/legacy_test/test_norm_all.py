@@ -135,9 +135,8 @@ class TestPnormOp(OpTest):
         self.python_api = p_norm_python_api
         self.init_test_case()
         self.init_dtype()
-        x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
-        norm = p_norm(x, self.axis, self.porder, self.keepdim, self.asvector)
-        self.inputs = {'X': x}
+        self.init_input_output()
+        self.inputs = {'X': self.x}
         self.attrs = {
             'epsilon': self.epsilon,
             'axis': self.axis,
@@ -145,7 +144,7 @@ class TestPnormOp(OpTest):
             'porder': float(self.porder),
             'asvector': self.asvector,
         }
-        self.outputs = {'Out': norm}
+        self.outputs = {'Out': self.norm}
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
@@ -164,6 +163,12 @@ class TestPnormOp(OpTest):
 
     def init_dtype(self):
         self.dtype = "float64"
+
+    def init_input_output(self):
+        self.x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
+        self.norm = p_norm(
+            self.x, self.axis, self.porder, self.keepdim, self.asvector
+        )
 
     def calc_gradient(self):
         self.attrs = {
@@ -192,11 +197,19 @@ class TestPnormOp(OpTest):
             norm = p_norm(
                 x, axis=axis, porder=porder, keepdims=True, reduce_all=asvector
             )
-            grad = (
-                np.power(norm, 1 - porder)
-                * np.power(np.abs(x), porder - 1)
-                * np.sign(x)
-            )
+            if self.dtype not in ["complex64", "complex128"]:
+                grad = (
+                    np.power(norm, 1 - porder)
+                    * np.power(np.abs(x), porder - 1)
+                    * np.sign(x)
+                )
+            else:
+                grad = (
+                    np.power(norm, 1 - porder)
+                    * np.power(np.abs(x), porder - 1)
+                    * np.conj(x)
+                    / np.abs(x)
+                )
 
         numel = 1
         for s in x.shape:
@@ -409,6 +422,26 @@ class TestPnormBF16Op(OpTest):
         divisor = numel if asvector else x.shape[axis]
         numel /= divisor
         return [grad.astype(x_dtype) * 1 / numel]
+
+
+class TestPnormComplex64Op(TestPnormOp):
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+    def init_input_output(self):
+        self.x = (
+            np.random.random(self.shape)
+            + 0.5
+            + 1j * (np.random.random(self.shape) + 0.5)
+        ).astype(self.dtype)
+        self.norm = p_norm(
+            self.x, self.axis, self.porder, self.keepdim, self.asvector
+        )
+
+
+class TestPnormComplex128Op(TestPnormComplex64Op):
+    def init_dtype(self):
+        self.dtype = "complex128"
 
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):

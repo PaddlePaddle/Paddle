@@ -40,7 +40,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
 
     Parameters:
-        x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32, float64, complex64 or complex128.
+        x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
         p (float|int, optional): The exponent value in the norm formulation. Default: 2.
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
@@ -86,7 +86,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         check_type(p, 'p', (float, int), 'normalize')
         check_type(axis, 'axis', (int), 'normalize')
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'complex64', 'complex128'], 'normalize'
+            x, 'x', ['float16', 'float32', 'float64'], 'normalize'
         )
         if len(x.shape) == 1 and axis != 0 and axis != -1:
             raise ValueError(
