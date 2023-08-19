@@ -149,6 +149,16 @@ class TestMuitlpleQ(unittest.TestCase):
         )
         np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
 
+    def test_quantile_with_tensor_input(self):
+        x = paddle.to_tensor(self.input_data)
+        paddle_res = paddle.quantile(
+            x, q=paddle.to_tensor([0.1, 0.2]), axis=[1, 2], keepdim=True
+        )
+        np_res = np.quantile(
+            self.input_data, q=[0.1, 0.2], axis=[1, 2], keepdims=True
+        )
+        np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
+
 
 class TestError(unittest.TestCase):
     """
