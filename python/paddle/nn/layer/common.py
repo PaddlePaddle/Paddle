@@ -656,6 +656,8 @@ class UpsamplingNearest2D(Layer):
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
         super().__init__()
+        if isinstance(size, int):
+            size = [size, size]
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -742,6 +744,8 @@ class UpsamplingBilinear2D(Layer):
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
         super().__init__()
+        if isinstance(size, int):
+            size = [size, size]
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
