@@ -283,7 +283,7 @@ class CrossEntropyLoss(Layer):
 
         - **label** (Tensor)
 
-            1. If soft_label=False, the shape is
+            1. If soft_label=False, the Shape is
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
@@ -302,6 +302,7 @@ class CrossEntropyLoss(Layer):
     Examples:
 
         .. code-block:: python
+          :name: code-example1
 
             >>> # hard labels
             >>> import paddle
@@ -321,6 +322,7 @@ class CrossEntropyLoss(Layer):
             5.33697682)
 
         .. code-block:: python
+          :name: code-example2
 
             >>> # soft labels
             >>> import paddle
