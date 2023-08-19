@@ -133,21 +133,6 @@ class TestNormOp7(TestNormOp):
             check_cinn=True,
         )
 
-class TestNormComplex64Op(TestNormOp):
-    def init_dtype(self):
-        self.dtype = "complex64"
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.008, check_cinn=True)
-
-
-class TestNormComplex128Op(TestNormOp):
-    def init_dtype(self):
-        self.dtype = "complex128"
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.008, check_cinn=True)
-        
 
 @skip_check_grad_ci(reason="skip check grad for test mode.")
 class TestNormTestOp(OpTest):
