@@ -4260,7 +4260,7 @@ bool FillInferBuf(
     cudaStream_t stream) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   auto &global_infer_node_type_start =
-      gpu_graph_ptr->global_infer_node_type_start_[conf.gpuid];
+      gpu_graph_ptr->global_infer_node_type_start_[tensor_pair_idx][conf.gpuid];
   auto &infer_cursor =
       gpu_graph_ptr->infer_cursor_[tensor_pair_idx][conf.thread_id];
   *total_row_ptr = 0;
@@ -4269,6 +4269,8 @@ bool FillInferBuf(
   std::set<int> all_node_type_index_set;
   for (auto &node_type : all_node_type) {
     all_node_type_index_set.insert(type_to_index[node_type]);
+    VLOG(1) << "add all_node_type_index_set: "
+        << gpu_graph_ptr->node_types_idx_to_node_type_str(node_type);
   }
 
   if (infer_cursor < h_device_keys_len.size()) {
@@ -4371,7 +4373,7 @@ bool GraphDataGenerator::DoWalkForInfer() {
     infer_flag &= FillInferBuf(h_device_keys_len_[tensor_pair_idx],
                                d_device_keys_[tensor_pair_idx],
                                conf_,
-                               gpu_graph_ptr->all_node_type_[tensor_pair_idx],
+                               gpu_graph_ptr->all_node_type_,
                                tensor_pair_idx,
                                &total_row_[tensor_pair_idx],
                                &infer_node_start_[tensor_pair_idx],
@@ -4383,6 +4385,8 @@ bool GraphDataGenerator::DoWalkForInfer() {
                                d_uniq_node_num_,
                                place_,
                                sample_stream_);
+    VLOG(1) << "aft FillInferBuf, total_row[" << tensor_pair_idx << "] = "
+        << total_row_[tensor_pair_idx];
     cudaStreamSynchronize(sample_stream_);
   }
 

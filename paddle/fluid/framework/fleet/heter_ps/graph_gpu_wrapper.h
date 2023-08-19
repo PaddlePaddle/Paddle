@@ -125,6 +125,8 @@ class GraphGpuWrapper {
   void make_complementary_graph(int idx, int64_t byte_size);
   void set_search_level(int level);
   void init_search_level(int level);
+  std::string node_types_idx_to_node_type_str(int node_types_idx);
+  std::string index_to_node_type_str(int index);
   int get_all_id(int table_type,
                  int slice_num,
                  std::vector<std::vector<uint64_t>>* output);
@@ -252,7 +254,7 @@ class GraphGpuWrapper {
   bool conf_initialized_ = false;
   bool type_keys_initialized_ = false;
   std::vector<std::vector<int>> first_node_type_;
-  std::vector<std::vector<int>> all_node_type_;
+  std::vector<int> all_node_type_;
   std::vector<uint8_t> excluded_train_pair_;
   std::vector<int32_t> pair_label_conf_;
   std::vector<std::vector<std::vector<int>>> meta_path_;
@@ -260,7 +262,7 @@ class GraphGpuWrapper {
   std::vector<std::vector<std::set<int>>> finish_node_type_;
   std::vector<std::vector<std::unordered_map<int, size_t>>> node_type_start_;
   std::vector<size_t> cur_metapath_start_;
-  std::vector<std::unordered_map<int, size_t>> global_infer_node_type_start_;
+  std::vector<std::vector<std::unordered_map<int, size_t>>> global_infer_node_type_start_;
   std::vector<std::vector<size_t>> infer_cursor_;
   std::vector<size_t> cursor_;
   int tensor_pair_num_;

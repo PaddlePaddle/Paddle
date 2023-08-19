@@ -778,10 +778,14 @@ class GraphTable : public Table {
   void fennel_graph_feature_partition();
   void fix_feature_node_shards(bool load_slot);
   void stat_graph_edge_info(int type);
+  std::string node_types_idx_to_node_type_str(int node_types_idx);
+  std::string index_to_node_type_str(int index);
 
   std::vector<uint64_t> graph_total_keys_;
   std::vector<std::vector<uint64_t>> graph_type_keys_;
   std::unordered_map<int, int> type_to_index_;
+  std::unordered_map<int, int> index_to_type_;
+  std::vector<std::string> node_types_;
   robin_hood::unordered_set<uint64_t> unique_all_edge_keys_;
   // node 2 rank
   GraphNodeRank egde_node_rank_;
@@ -807,7 +811,7 @@ class GraphTable : public Table {
   // int float_fea_num_{-1};
   std::vector<std::unordered_map<std::string, int32_t>> feat_id_map;
   std::vector<std::unordered_map<std::string, int32_t>> float_feat_id_map;
-  std::unordered_map<std::string, int> feature_to_id, edge_to_id;
+  std::unordered_map<std::string, int> node_type_str_to_node_types_idx, edge_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::string table_name;
   std::string table_type;
