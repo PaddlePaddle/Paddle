@@ -47,7 +47,7 @@ def set_image_backend(backend):
 
             >>> def make_fake_dir():
             ...     data_dir = tempfile.mkdtemp()
-            ... 
+            ...
             ...     for i in range(2):
             ...         sub_dir = os.path.join(data_dir, 'class_' + str(i))
             ...         if not os.path.exists(sub_dir):
