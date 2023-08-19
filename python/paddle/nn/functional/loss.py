@@ -1839,7 +1839,7 @@ def ctc_loss(
             ...     blank=0,
             ...     reduction='mean')
             >>> print(loss)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [1.13760614])
 
     """
@@ -1966,7 +1966,7 @@ def rnnt_loss(
 
             >>> costs = fn(acts, labels, lengths, label_lengths)
             >>> print(costs)
-            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=False,
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=False,
                    [-2.85042444])
     """
 
@@ -2386,7 +2386,7 @@ def softmax_with_cross_entropy(
 
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
-            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [1.15328646])
     """
     return fluid_softmax_with_cross_entropy(
@@ -2621,7 +2621,7 @@ def cross_entropy(
             ...                                                         weight=weight,
             ...                                                         reduction=reduction)
             >>> print(paddle_loss_mean)
-            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.12801195])
 
     """
@@ -2989,7 +2989,7 @@ def sigmoid_focal_loss(
             >>> fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
             >>> output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
             >>> print(output)
-            Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
                    [0.65782464])
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -3147,7 +3147,7 @@ def multi_label_soft_margin_loss(
                    [3.49625897, 0.71111226, 0.43989015])
             >>> loss = F.multi_label_soft_margin_loss(input, label, reduction='mean')
             >>> print(loss)
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [1.54908717])
     """
     if reduction not in ['sum', 'mean', 'none']:
