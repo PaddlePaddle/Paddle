@@ -1190,8 +1190,9 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
-  // TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
-  // To support all the operators for communicating in the future.
+// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
+// To support all the operators for communicating in the future.
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto operator_base_ptr = instr.OpBase();
   if ((operator_base_ptr->Type() == "send_v2") &&
       (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
@@ -1200,6 +1201,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
                       instr.DeviceContext().GetPlace())
                  ->stream();
   }
+#endif
   auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
