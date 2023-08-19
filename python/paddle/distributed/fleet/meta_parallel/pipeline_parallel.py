@@ -88,7 +88,11 @@ class FakeMicroDataset:
                         self._acc_steps,
                         len(data),
                     )
-                    output.append(data[micro_step].detach())
+                    output.append(
+                        data[micro_step].detach()
+                        if data[micro_step] is not None
+                        else None
+                    )
                 elif data is not None:
                     self._check_data_vaild(data)
                     output.append(data[begin:end, :].detach())
