@@ -1095,14 +1095,37 @@ class Executor:
                 else:
                     micro_cur_feed = [cur_feed]
                     num_micro_batch = 1
-                    if program._pipeline_opt and "standalone_opt" in program._pipeline_opt:
-                        num_micro_batch = program._pipeline_opt["standalone_opt"]["num_micro_batches"]
-                        batch_size = cur_feed.shape()[0] if callable(cur_feed.shape) else cur_feed.shape[0]
+                    if (
+                        program._pipeline_opt
+                        and "standalone_opt" in program._pipeline_opt
+                    ):
+                        num_micro_batch = program._pipeline_opt[
+                            "standalone_opt"
+                        ]["num_micro_batches"]
+                        batch_size = (
+                            cur_feed.shape()[0]
+                            if callable(cur_feed.shape)
+                            else cur_feed.shape[0]
+                        )
                         assert batch_size % num_micro_batch == 0
-                        micro_cur_feed = np.split(np.array(cur_feed), num_micro_batch, 0)
+                        micro_cur_feed = np.split(
+                            np.array(cur_feed), num_micro_batch, 0
+                        )
                     for i in range(num_micro_batch):
-                        micro_feed = _as_lodtensor(micro_cur_feed[i], self.place, var.dtype) if num_micro_batch > 1 else micro_cur_feed[i]
-                        core.set_feed_variable(scope, micro_feed, feed_var_name, idx * num_micro_batch + i)
+                        micro_feed = (
+                            _as_lodtensor(
+                                micro_cur_feed[i], self.place, var.dtype
+                            )
+                            if num_micro_batch > 1
+                            else micro_cur_feed[i]
+                        )
+                        core.set_feed_variable(
+                            scope,
+                            micro_feed,
+                            feed_var_name,
+                            idx * num_micro_batch + i,
+                        )
+
             else:
                 break
 
