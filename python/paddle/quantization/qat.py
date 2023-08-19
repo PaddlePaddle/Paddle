@@ -53,18 +53,18 @@ class QAT(Quantization):
         Return: The prepared model for quantization-aware training.
 
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-            >>> from paddle.quantization import QAT, QuantConfig
-            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            >>> from paddle.vision.models import LeNet
+                >>> from paddle.quantization import QAT, QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.vision.models import LeNet
 
-            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
-            >>> qat = QAT(q_config)
-            >>> model = LeNet()
-            >>> quant_model = qat.quantize(model)
-            >>> print(quant_model)
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+                >>> qat = QAT(q_config)
+                >>> model = LeNet()
+                >>> quant_model = qat.quantize(model)
+                >>> print(quant_model)
                 LeNet(
                   (features): Sequential(
                     (0): QuantedConv2D(
