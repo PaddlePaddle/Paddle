@@ -474,6 +474,13 @@ void FakeInitializeOutputsForFunctionKernel(
                       ? DataType::INT64
                       : in_dtype;
             }
+          } else if (op_type == "searchsorted") {
+            bool out_int32 = op.Attr<bool>("out_int32");
+            if (out_int32) {
+              dtype = DataType::INT32;
+            } else {
+              dtype = DataType::INT64;
+            }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
             RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
