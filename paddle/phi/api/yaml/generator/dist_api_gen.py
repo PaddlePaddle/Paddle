@@ -69,11 +69,11 @@ INPLACE_API_OUT_CREATION_TEMPLATE = """
 """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output);
-    auto dense_out = const_cast<phi::distributed::DistTensor*>(&dist_out.value());
+    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = const_cast<phi::distributed::DistTensor*>(&dist_out_{}.mutable_value());
+    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
 """
 
 # TODO(chenweihang): support vector and tuple output later
@@ -81,7 +81,7 @@ VECTOR_OUT_CREATION_TEMPLATE = """
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = {}({}, {});
-    auto dense_out_{} = const_cast<phi::distributed::DistTensor*>(&dist_out_{}.value());
+    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
 """
 TUPLE_OUT_CREATION_TEMPLATE = """
 """
@@ -118,7 +118,7 @@ INPUT_RESHARD_TEMPLATE = """
 # 5. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{} = PrepareDataForDistTensor({}, GetKernelInputArgDef(kernel.InputAt({}), kernel_backend), {}, kernel_result.is_stride_kernel);
-    auto input_{} = &dist_input_{}.value();
+    auto input_{} = &dist_input_{}->value();
 """
 INFER_META_SINGLE_INPUT_TEMPLATE = """
     auto dist_input_{} = {}.impl();
