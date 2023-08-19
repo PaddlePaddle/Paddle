@@ -284,9 +284,8 @@ PD_REGISTER_KERNEL(square,
                    phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
-PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
-PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
