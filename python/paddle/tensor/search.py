@@ -733,7 +733,7 @@ def index_sample(x, index):
 
     Args:
         x (Tensor): The source input tensor with 2-D shape. Supported data type is
-            int32, int64, bfloat16, float16, float32, float64.
+            int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
         index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X.
             Data type is int32 or int64.
 
@@ -788,7 +788,16 @@ def index_sample(x, index):
         check_variable_and_dtype(
             x,
             'x',
-            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'paddle.tensor.search.index_sample',
         )
         check_variable_and_dtype(

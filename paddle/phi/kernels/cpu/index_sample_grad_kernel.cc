@@ -100,4 +100,8 @@ PD_REGISTER_KERNEL(index_sample_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+}
