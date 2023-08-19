@@ -1743,6 +1743,7 @@ def get_program_persistable_vars(program):
         list: The list contains all persistable vars in the program
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.static.io as io
             >>> import paddle.fluid as fluid

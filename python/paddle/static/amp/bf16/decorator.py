@@ -264,7 +264,7 @@ def decorate_bf16(
         enabled.
 
     Examples 1:
-            .. code-block:: python
+        .. code-block:: python
 
             # fp32&bf16 list based strategy example
             >>> import paddle

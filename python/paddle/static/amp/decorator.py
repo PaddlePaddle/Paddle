@@ -714,7 +714,7 @@ def decorate(
         enabled.
 
     Examples 1:
-            .. code-block:: python
+        .. code-block:: python
 
             # black&white list based strategy example
             >>> import paddle
@@ -861,47 +861,47 @@ def decorate(  # noqa: F811
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        >>> import paddle
-        >>> paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-        >>> # doctest: +REQUIRES(env:GPU)
-        >>> class SimpleConvNet(paddle.nn.Layer):
-        ...     def __init__(self):
-        ...         super().__init__()
-        ...         self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-        ...         self.linear = paddle.nn.Linear(in_features=26, out_features=10)
-        ...
-        ...     def forward(self, x):
-        ...         out = self.conv(x)
-        ...         out = paddle.nn.functional.relu(out)
-        ...         out = self.linear(out)
-        ...         out = paddle.nn.functional.softmax(out)
-        ...         return out
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> class SimpleConvNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+            ...         self.linear = paddle.nn.Linear(in_features=26, out_features=10)
+            ...
+            ...     def forward(self, x):
+            ...         out = self.conv(x)
+            ...         out = paddle.nn.functional.relu(out)
+            ...         out = self.linear(out)
+            ...         out = paddle.nn.functional.softmax(out)
+            ...         return out
 
-        >>> main_program = paddle.static.Program()
-        >>> startup_program = paddle.static.Program()
-        >>> with paddle.utils.unique_name.guard():
-        ...     with paddle.static.program_guard(main_program, startup_program):
-        ...         model = SimpleConvNet()
-        ...         x = paddle.static.data(
-        ...             name='input', shape=[None, 1, 28, 28], dtype='float32'
-        ...         )
-        ...         out = model(x)
-        ...         loss = paddle.mean(out)
-        ...         optimizer = paddle.optimizer.AdamW()
-        ...         optimizer = paddle.static.amp.decorate(optimizer, level="O2", dtype="float16")
-        ...         optimizer.minimize(loss)
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.utils.unique_name.guard():
+            ...     with paddle.static.program_guard(main_program, startup_program):
+            ...         model = SimpleConvNet()
+            ...         x = paddle.static.data(
+            ...             name='input', shape=[None, 1, 28, 28], dtype='float32'
+            ...         )
+            ...         out = model(x)
+            ...         loss = paddle.mean(out)
+            ...         optimizer = paddle.optimizer.AdamW()
+            ...         optimizer = paddle.static.amp.decorate(optimizer, level="O2", dtype="float16")
+            ...         optimizer.minimize(loss)
 
-        >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-        ...     place = paddle.CUDAPlace(0)
-        ...     exe = paddle.static.Executor(place)
-        ...     exe.run(startup_program)
-        ...
-        ...     # Call `amp_init` after FP32 parameters initialization, such as `exe.run(startup_program)`,
-        ...     # to convert FP32 parameters to low precision FP16 / BF16.
-        ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
+            >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+            ...     place = paddle.CUDAPlace(0)
+            ...     exe = paddle.static.Executor(place)
+            ...     exe.run(startup_program)
+            ...
+            ...     # Call `amp_init` after FP32 parameters initialization, such as `exe.run(startup_program)`,
+            ...     # to convert FP32 parameters to low precision FP16 / BF16.
+            ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
 
     """
     # check amp_level: O0-O2

@@ -86,10 +86,8 @@ def data(name, shape, dtype=None, lod_level=0):
             >>> print(out)
             [array([[[2.],
                     [2.]],
-
                 [[2.],
                     [2.]],
-
                 [[2.],
                     [2.]]], dtype=float32)]
 

@@ -177,8 +177,9 @@ def auc(
             stat_neg: the statistic for label=0 at the time of calculation
 
 
-    Examples 1:
+    Examples:
         .. code-block:: python
+            :name: example-1
 
             >>> import paddle
             >>> import numpy as np
@@ -203,8 +204,9 @@ def auc(
             >>> print(output)
             [array(1.)]
 
-    Examples 2:
+
         .. code-block:: python
+            :name: example-2
 
             # you can learn the usage of ins_tag_weight by the following code.
 
