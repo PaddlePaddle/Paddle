@@ -66,7 +66,9 @@ std::shared_ptr<DistTensor> SToRReshardFunction::Eval(
       dev_ctx, in_physical_tensor_cur_rank, in_process_ids);
 
   return std::make_shared<DistTensor>(
-      std::make_shared<DenseTensor>(out_all_gather), out_dist_attr);
+      std::make_shared<DenseTensor>(out_all_gather),
+      out_all_gather.meta(),
+      out_dist_attr);
 }
 
 }  // namespace distributed

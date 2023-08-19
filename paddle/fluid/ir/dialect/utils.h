@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/convert_utils.h"
+// #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
@@ -146,6 +146,8 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
 }
 
 VariantType GetAttributeData(const ir::Attribute& attr);
+
+bool IsLegacyOp(const std::string& name);
 
 }  // namespace dialect
 }  // namespace paddle

@@ -189,5 +189,14 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   return comm_context;
 }
 
+std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces) {
+  std::vector<int64_t> result(num_of_pieces, total_nums / num_of_pieces);
+  int64_t remain_nums = total_nums % num_of_pieces;
+  for (int64_t i = 0; i < remain_nums; ++i) {
+    result[i] += 1;
+  }
+  return result;
+}
+
 }  // namespace distributed
 }  // namespace phi

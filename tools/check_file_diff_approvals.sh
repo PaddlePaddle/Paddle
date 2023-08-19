@@ -20,6 +20,7 @@ fi
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 API_FILES=("CMakeLists.txt"
+           "third_party"
            "paddle/fluid/framework/operator.h"
            "paddle/fluid/framework/tensor.h"
            "paddle/fluid/framework/details/op_registry.h"
@@ -136,6 +137,9 @@ for API_FILE in ${API_FILES[*]}; do
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (wanghuancoder, luotao1, Aurelius84, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 6836917 46782768 26922892 16605440 9301846
+      elif [ "${API_FILE}" == "third_party" ];then
+          echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}.\n"
+          check_approval 1 risemeup1 tianshuo78520a
       elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
           check_approval 1 6836917 47554610 43953930 16605440 9301846
@@ -318,6 +322,12 @@ HAS_MODIFIED_STATIC_BUILD=`git diff --name-only upstream/$BRANCH | grep "new_exe
 if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     echo_line="You must have one RD (From00 or zhiqiu) approval for file changes in new_executor/interpreter/static_build.cc.\n"
     check_approval 1 From00 zhiqiu
+fi
+
+HAS_MODIFIED_PY_FLUID=`git diff --name-only upstream/$BRANCH | grep "python/paddle/fluid" || true`
+if [ "${HAS_MODIFIED_PY_FLUID}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zoooo0820(Recommend), or jeff41404) approval for file changes in python/paddle/fluid, because fluid API is going to be removed.\n"
+    check_approval 1 zoooo0820 jeff41404
 fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
