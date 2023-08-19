@@ -480,7 +480,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     elif isinstance(q, (list, tuple)):
         if len(q) <= 0:
             raise ValueError("q should not be empty")
-    elif isinstance(q, Variable):
+    elif isinstance(q, paddle.Tensor):
         if len(q.shape) > 1:
             raise ValueError("q should be a 1-D tensor")
         if q.shape[0] == 0:
