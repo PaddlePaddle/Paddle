@@ -40,7 +40,7 @@ Operation *Operation::Create(OperationArgument &&argument) {
 
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
-// OpInlineResult, Operation, Operand.
+// OpInlineResult, Operation, operand.
 Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                              const AttributeMap &attributes,
                              const std::vector<ir::Type> &output_types,
@@ -132,7 +132,7 @@ void Operation::Destroy() {
 
   // 4. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
-    op_operand(idx).impl()->~OpOperandImpl();
+    operand(idx).impl()->~OpOperandImpl();
   }
   // 5. Free memory.
   uint32_t max_inline_result_num =
@@ -186,7 +186,7 @@ ir::OpResult Operation::result(uint32_t index) const {
   }
 }
 
-OpOperand Operation::op_operand(uint32_t index) const {
+OpOperand Operation::operand(uint32_t index) const {
   if (index >= num_operands_) {
     IR_THROW("index exceeds OP input range.");
   }
@@ -195,8 +195,8 @@ OpOperand Operation::op_operand(uint32_t index) const {
   return OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
 }
 
-Value Operation::operand(uint32_t index) const {
-  OpOperand val = op_operand(index);
+Value Operation::operand_source(uint32_t index) const {
+  OpOperand val = operand(index);
   return val ? val.source() : Value();
 }
 
@@ -262,6 +262,22 @@ void Operation::Verify() {
   if (info_) {
     info_.Verify(this);
   }
+}
+
+std::vector<OpOperand> Operation::operands() const {
+  std::vector<OpOperand> res;
+  for (uint32_t i = 0; i < num_operands(); ++i) {
+    res.push_back(operand(i));
+  }
+  return res;
+}
+
+std::vector<OpResult> Operation::results() const {
+  std::vector<OpResult> res;
+  for (uint32_t i = 0; i < num_results(); ++i) {
+    res.push_back(result(i));
+  }
+  return res;
 }
 
 }  // namespace ir

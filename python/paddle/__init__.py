@@ -42,7 +42,6 @@ from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401, F403
-from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import finfo  # noqa: F401
@@ -73,6 +72,7 @@ import paddle.regularizer  # noqa: F401
 import paddle.incubate  # noqa: F401
 import paddle.autograd  # noqa: F401
 import paddle.device  # noqa: F401
+import paddle.decomposition  # noqa: F401
 
 import paddle.jit  # noqa: F401
 import paddle.amp  # noqa: F401
@@ -436,6 +436,7 @@ import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
 
 from .tensor.random import check_shape  # noqa: F401
+from .nn.initializer.lazy_init import LazyGuard  # noqa: F401
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():

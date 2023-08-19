@@ -34,10 +34,11 @@ from .proto import framework_pb2, data_feed_pb2
 
 from . import core
 from . import unique_name
+from .. import ir
 import paddle.version as fluid_version
 import warnings
 import functools
-from .variable_index import _getitem_impl_, _setitem_impl_
+from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
 import threading
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
+    '_stride_in_no_check_dy2st_diff',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -1004,7 +1006,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
             string.
 
     Returns:
-        core.VarDesc.VarType: The data type in Paddle.
+        core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
     # Convert the data type string to numpy data type.
@@ -1013,34 +1015,40 @@ def convert_np_dtype_to_dtype_(np_dtype):
     else:
         dtype = np.dtype(np_dtype)
 
-    if dtype == np.float32:
-        return core.VarDesc.VarType.FP32
-    elif dtype == np.float64:
-        return core.VarDesc.VarType.FP64
-    elif dtype == np.float16:
-        return core.VarDesc.VarType.FP16
-    elif dtype == np.int32:
-        return core.VarDesc.VarType.INT32
-    elif dtype == np.int16:
-        return core.VarDesc.VarType.INT16
-    elif dtype == np.int64:
-        return core.VarDesc.VarType.INT64
-    elif dtype == np.bool_:
-        return core.VarDesc.VarType.BOOL
-    elif dtype == np.uint16:
-        # since there is still no support for bfloat16 in NumPy,
-        # uint16 is used for casting bfloat16
-        return core.VarDesc.VarType.BF16
-    elif dtype == np.uint8:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == np.int8:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.complex64:
-        return core.VarDesc.VarType.COMPLEX64
-    elif dtype == np.complex128:
-        return core.VarDesc.VarType.COMPLEX128
+    if ir.core._use_new_ir_api():
+        if dtype in ir.core.np_type_to_paddle_type.keys():
+            return ir.core.np_type_to_paddle_type[dtype]
+        else:
+            raise ValueError("Not supported numpy dtype %s" % dtype)
     else:
-        raise ValueError("Not supported numpy dtype %s" % dtype)
+        if dtype == np.float32:
+            return core.VarDesc.VarType.FP32
+        elif dtype == np.float64:
+            return core.VarDesc.VarType.FP64
+        elif dtype == np.float16:
+            return core.VarDesc.VarType.FP16
+        elif dtype == np.int32:
+            return core.VarDesc.VarType.INT32
+        elif dtype == np.int16:
+            return core.VarDesc.VarType.INT16
+        elif dtype == np.int64:
+            return core.VarDesc.VarType.INT64
+        elif dtype == np.bool_:
+            return core.VarDesc.VarType.BOOL
+        elif dtype == np.uint16:
+            # since there is still no support for bfloat16 in NumPy,
+            # uint16 is used for casting bfloat16
+            return core.VarDesc.VarType.BF16
+        elif dtype == np.uint8:
+            return core.VarDesc.VarType.UINT8
+        elif dtype == np.int8:
+            return core.VarDesc.VarType.INT8
+        elif dtype == np.complex64:
+            return core.VarDesc.VarType.COMPLEX64
+        elif dtype == np.complex128:
+            return core.VarDesc.VarType.COMPLEX128
+        else:
+            raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
@@ -2293,13 +2301,16 @@ class Variable(metaclass=VariableMetaClass):
             raise IndexError("Valid index accept int or slice or tuple")
 
     def __getitem__(self, item):
-        return _getitem_impl_(self, item)
+        return _getitem_static(self, item)
 
     def __setitem__(self, item, value):
         from .dygraph.base import in_declarative_mode
 
         if in_declarative_mode():
-            return _setitem_impl_(self, item, value)
+            if is_compiled_with_xpu():
+                # (NOTE): Currently, there is no index_put_xpu kernel.
+                return _setitem_impl_(self, item, value)
+            return _setitem_static(self, item, value)
         else:
             raise RuntimeError(
                 "In static mode, the __setitem__ (looks like: x[indices] = values) should not be used. Please use x = paddle.static.setitem(x, indices, values)"
@@ -3562,6 +3573,10 @@ def _stride_in_no_check_dy2st_diff():
 
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
+    if (
+        op_type == "while"
+    ):  # dont' need check while, while is only a wrapper of inner ops, we will stuck in inner op.
+        return
     if outputs is not None:
         for k, v in outputs.items():
             if isinstance(v, Variable):
@@ -7134,6 +7149,8 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             **kwargs,
         )
         self.trainable = kwargs.get('trainable', True)
+
+        self.stop_gradient = not self.trainable
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
