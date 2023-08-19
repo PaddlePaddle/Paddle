@@ -108,6 +108,24 @@ bool NeedFallBackFromGPUDNN2GPU(ir::Operation* op,
   return false;
 }
 
+std::set<std::string> GetSkipFeedNames(ir::Block* block) {
+  std::set<std::string> data_op_names;
+  for (auto op_item : *block) {
+    if (op_item->name() == "pd.data") {
+      data_op_names.insert(op_item->attributes()
+                               .at("name")
+                               .dyn_cast<ir::StrAttribute>()
+                               .AsString());
+    }
+  }
+  return data_op_names;
+}
+
+bool SkipFeedOp(ir::Operation* op, const std::set<std::string>& feed_names) {
+  return feed_names.count(
+      op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString());
+}
+
 std::vector<phi::DenseTensor> GetFakeTensorList(ir::Value new_input_tmp) {
   std::vector<phi::DenseTensor> vec_res;
   auto input_type = new_input_tmp.type();
@@ -378,8 +396,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
   std::string phi_kernel_op_name = paddle::dialect::PhiKernelOp::name();
   ir::OpInfo phi_kernel_op_info = ctx->GetRegisteredOpInfo(phi_kernel_op_name);
 
+  auto skip_feed_names = GetSkipFeedNames(block);
+
   for (auto op_item : *block) {
     VLOG(6) << "op name " << op_item->name();
+    if ((op_item->name() == "pd.feed") &&
+        SkipFeedOp(op_item, skip_feed_names)) {
+      continue;
+    }
 
     if (op_item->name() == "builtin.combine") {
       std::vector<phi::Place> out_places;
@@ -896,9 +920,18 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     program->block()->push_back(op);
-
-    if (op_item->name() == "pd.feed" && platform::is_gpu_place(place)) {
-      // add shadow feed op
+    bool feed_op_add_shadow_feed =
+        (op_item->name() == "pd.feed") && platform::is_gpu_place(place);
+    bool data_op_add_shadow_feed = (op_item->name() == "pd.data") &&
+                                   platform::is_gpu_place(place) &&
+                                   (op->attributes()
+                                        .at("place")
+                                        .dyn_cast<dialect::PlaceAttribute>()
+                                        .data()
+                                        .GetType() != phi::AllocationType::GPU);
+    bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
+    if (add_shadow_feed) {
+      // if shadow data op place not gpu,add shadow feed op
       phi::KernelKey shadow_key{
           phi::Backend::GPU,
           phi::DataLayout::ANY,
