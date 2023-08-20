@@ -1264,33 +1264,43 @@ void DispatchFMHA(const phi::GPUContext &dev_ctx,
   }
 }
 
-#endif  // PADDLE_WITH_HIP
+struct NormalVersion {};
+struct UnusedVersion {};
+
+template <typename T>
+struct DispatchDtypeTrait {
+  using FuncVersion = NormalVersion;
+};
+
+template <>
+struct DispatchDtypeTrait<int32_t> {
+  using FuncVersion = UnusedVersion;
+};
 
 template <typename T, typename Context>
-void MMHAKernel(const Context &dev_ctx,
-                const DenseTensor &x,
-                const DenseTensor &cache_kv,
-                const paddle::optional<DenseTensor> &bias,
-                const paddle::optional<DenseTensor> &src_mask,
-                const paddle::optional<DenseTensor> &cum_offsets,
-                const paddle::optional<DenseTensor> &sequence_lengths,
-                const paddle::optional<DenseTensor> &rotary_tensor,
-                const paddle::optional<DenseTensor> &beam_cache_offset,
-                const paddle::optional<DenseTensor> &qkv_out_scale,
-                const paddle::optional<DenseTensor> &out_shift,
-                const paddle::optional<DenseTensor> &out_smooth,
-                int seq_len,
-                int rotary_emb_dims,
-                const bool use_neox_rotary_style,
-                const std::string &compute_dtype,
-                const float out_scale,
-                const int quant_round_type,
-                const float quant_max_bound,
-                const float quant_min_bound,
-                DenseTensor *out,
-                DenseTensor *cache_kv_out,
-                DenseTensor *beam_cache_offset_out) {
-#ifndef PADDLE_WITH_HIP
+void DispatchWithDtype(const Context &dev_ctx,
+                       const DenseTensor &x,
+                       const DenseTensor &cache_kv,
+                       const paddle::optional<DenseTensor> &bias,
+                       const paddle::optional<DenseTensor> &src_mask,
+                       const paddle::optional<DenseTensor> &cum_offsets,
+                       const paddle::optional<DenseTensor> &sequence_lengths,
+                       const paddle::optional<DenseTensor> &rotary_tensor,
+                       const paddle::optional<DenseTensor> &beam_cache_offset,
+                       const paddle::optional<DenseTensor> &qkv_out_scale,
+                       const paddle::optional<DenseTensor> &out_shift,
+                       const paddle::optional<DenseTensor> &out_smooth,
+                       int seq_len,
+                       int rotary_emb_dims,
+                       const bool use_neox_rotary_style,
+                       const float out_scale,
+                       const int quant_round_type,
+                       const float quant_max_bound,
+                       const float quant_min_bound,
+                       DenseTensor *out,
+                       DenseTensor *cache_kv_out,
+                       DenseTensor *beam_cache_offset_out,
+                       NormalVersion) {
   const auto &x_dims = x.dims();
   int bsz = x_dims[0];
   int cache_bsz = cache_kv.dims()[1];
@@ -1393,6 +1403,170 @@ void MMHAKernel(const Context &dev_ctx,
                     quant_max_bound,
                     quant_min_bound);
   }
+}
+
+template <typename T, typename Context>
+void DispatchWithDtype(const Context &dev_ctx,
+                       const DenseTensor &x,
+                       const DenseTensor &cache_kv,
+                       const paddle::optional<DenseTensor> &bias,
+                       const paddle::optional<DenseTensor> &src_mask,
+                       const paddle::optional<DenseTensor> &cum_offsets,
+                       const paddle::optional<DenseTensor> &sequence_lengths,
+                       const paddle::optional<DenseTensor> &rotary_tensor,
+                       const paddle::optional<DenseTensor> &beam_cache_offset,
+                       const paddle::optional<DenseTensor> &qkv_out_scale,
+                       const paddle::optional<DenseTensor> &out_shift,
+                       const paddle::optional<DenseTensor> &out_smooth,
+                       int seq_len,
+                       int rotary_emb_dims,
+                       const bool use_neox_rotary_style,
+                       const float out_scale,
+                       const int quant_round_type,
+                       const float quant_max_bound,
+                       const float quant_min_bound,
+                       DenseTensor *out,
+                       DenseTensor *cache_kv_out,
+                       DenseTensor *beam_cache_offset_out,
+                       UnusedVersion) {}
+
+#endif  // PADDLE_WITH_HIP
+
+template <typename T, typename Context>
+void MMHAKernel(const Context &dev_ctx,
+                const DenseTensor &x,
+                const DenseTensor &cache_kv,
+                const paddle::optional<DenseTensor> &bias,
+                const paddle::optional<DenseTensor> &src_mask,
+                const paddle::optional<DenseTensor> &cum_offsets,
+                const paddle::optional<DenseTensor> &sequence_lengths,
+                const paddle::optional<DenseTensor> &rotary_tensor,
+                const paddle::optional<DenseTensor> &beam_cache_offset,
+                const paddle::optional<DenseTensor> &qkv_out_scale,
+                const paddle::optional<DenseTensor> &out_shift,
+                const paddle::optional<DenseTensor> &out_smooth,
+                int seq_len,
+                int rotary_emb_dims,
+                const bool use_neox_rotary_style,
+                const std::string &compute_dtype,
+                const float out_scale,
+                const int quant_round_type,
+                const float quant_max_bound,
+                const float quant_min_bound,
+                DenseTensor *out,
+                DenseTensor *cache_kv_out,
+                DenseTensor *beam_cache_offset_out) {
+#ifndef PADDLE_WITH_HIP
+  if (x.dtype() == phi::DataType::INT32) {
+    if (compute_dtype == "bf16") {
+      DispatchWithDtype<phi::dtype::bfloat16, Context>(
+          dev_ctx,
+          x,
+          cache_kv,
+          bias,
+          src_mask,
+          cum_offsets,
+          sequence_lengths,
+          rotary_tensor,
+          beam_cache_offset,
+          qkv_out_scale,
+          out_shift,
+          out_smooth,
+          seq_len,
+          rotary_emb_dims,
+          use_neox_rotary_style,
+          out_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound,
+          out,
+          cache_kv_out,
+          beam_cache_offset_out,
+          typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
+
+    } else if (compute_dtype == "fp16") {
+      DispatchWithDtype<phi::dtype::float16, Context>(
+          dev_ctx,
+          x,
+          cache_kv,
+          bias,
+          src_mask,
+          cum_offsets,
+          sequence_lengths,
+          rotary_tensor,
+          beam_cache_offset,
+          qkv_out_scale,
+          out_shift,
+          out_smooth,
+          seq_len,
+          rotary_emb_dims,
+          use_neox_rotary_style,
+          out_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound,
+          out,
+          cache_kv_out,
+          beam_cache_offset_out,
+          typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
+    } else if (compute_dtype == "fp32") {
+      DispatchWithDtype<float, Context>(
+          dev_ctx,
+          x,
+          cache_kv,
+          bias,
+          src_mask,
+          cum_offsets,
+          sequence_lengths,
+          rotary_tensor,
+          beam_cache_offset,
+          qkv_out_scale,
+          out_shift,
+          out_smooth,
+          seq_len,
+          rotary_emb_dims,
+          use_neox_rotary_style,
+          out_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound,
+          out,
+          cache_kv_out,
+          beam_cache_offset_out,
+          typename DispatchDtypeTrait<float>::FuncVersion{});
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "In the case of quantization enabled with Input(x) INT32, "
+          "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+          "but get compute_dtype (%s)",
+          compute_dtype));
+    }
+  } else {
+    DispatchWithDtype<T, Context>(
+        dev_ctx,
+        x,
+        cache_kv,
+        bias,
+        src_mask,
+        cum_offsets,
+        sequence_lengths,
+        rotary_tensor,
+        beam_cache_offset,
+        qkv_out_scale,
+        out_shift,
+        out_smooth,
+        seq_len,
+        rotary_emb_dims,
+        use_neox_rotary_style,
+        out_scale,
+        quant_round_type,
+        quant_max_bound,
+        quant_min_bound,
+        out,
+        cache_kv_out,
+        beam_cache_offset_out,
+        typename DispatchDtypeTrait<T>::FuncVersion{});
+  }
 #endif  // PADDLE_WITH_HIP
 }
 
@@ -1406,12 +1580,14 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    phi::fusion::MMHAKernel,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   int32_t) {}
 #else
 PD_REGISTER_KERNEL(masked_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int32_t) {}
 #endif
