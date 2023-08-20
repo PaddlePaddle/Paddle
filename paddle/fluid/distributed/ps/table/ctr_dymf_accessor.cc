@@ -332,7 +332,7 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
 }
 
 int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
-  auto ret = ::paddle::string::str_to_float(str.data(), value);
+  auto ret = paddle::string::str_to_float(str.data(), value);
   float unseen_day = value[common_feature_value.UnseenDaysIndex()];
   common_feature_value.UnseenDays(value) = (uint16_t)(unseen_day);
   common_feature_value.PassId(value) = 0;

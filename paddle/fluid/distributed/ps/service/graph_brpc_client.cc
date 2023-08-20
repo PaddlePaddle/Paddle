@@ -137,7 +137,7 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
             reinterpret_cast<char *>(node_id_buckets[request_idx].data()),
             sizeof(int64_t) * node_num);
     std::string joint_feature_name =
-        ::paddle::string::join_strings(feature_names, '\t');
+        paddle::string::join_strings(feature_names, '\t');
     closure->request(request_idx)
         ->add_params(joint_feature_name.c_str(), joint_feature_name.size());
 

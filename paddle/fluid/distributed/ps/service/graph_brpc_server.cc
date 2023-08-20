@@ -299,7 +299,7 @@ int32_t GraphBrpcService::PrintTableStat(Table *table,
                                          brpc::Controller *cntl) {
   CHECK_TABLE_EXIST(table, request, response)
   std::pair<int64_t, int64_t> ret = table->PrintTableStat();
-  ::paddle::framework::BinaryArchive ar;
+  paddle::framework::BinaryArchive ar;
   ar << ret.first << ret.second;
   std::string table_info(ar.Buffer(), ar.Length());
   response.set_data(table_info);
@@ -471,7 +471,7 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
   std::vector<uint64_t> node_ids(node_data, node_data + node_num);
 
   std::vector<std::string> feature_names =
-      ::paddle::string::split_string<std::string>(request.params(2), "\t");
+      paddle::string::split_string<std::string>(request.params(2), "\t");
 
   std::vector<std::vector<std::string>> feature(
       feature_names.size(), std::vector<std::string>(node_num));
@@ -679,10 +679,10 @@ int32_t GraphBrpcService::graph_set_node_feat(Table *table,
   std::vector<uint64_t> node_ids(node_data, node_data + node_num);
 
   // std::vector<std::string> feature_names =
-  //     ::paddle::string::split_string<std::string>(request.params(1), "\t");
+  //     paddle::string::split_string<std::string>(request.params(1), "\t");
 
   std::vector<std::string> feature_names =
-      ::paddle::string::split_string<std::string>(request.params(2), "\t");
+      paddle::string::split_string<std::string>(request.params(2), "\t");
 
   std::vector<std::vector<std::string>> features(
       feature_names.size(), std::vector<std::string>(node_num));

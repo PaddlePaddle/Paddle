@@ -42,7 +42,7 @@ Communicator::Communicator() = default;
 
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
-  std::vector<std::string> flags = ::paddle::string::split_string(gflags);
+  std::vector<std::string> flags = paddle::string::split_string(gflags);
   if (flags.empty()) {
     flags.push_back("-max_body_size=314217728");
     flags.push_back("-bthread_concurrency=40");
@@ -57,7 +57,7 @@ void Communicator::InitGFlag(const std::string &gflags) {
   }
   int params_cnt = flags.size();
   char **params_ptr = &(flags_ptr[0]);
-  ::paddle::flags::ParseCommandLineFlags(&params_cnt, &params_ptr);
+  paddle::flags::ParseCommandLineFlags(&params_cnt, &params_ptr);
 }
 
 std::once_flag Communicator::init_flag_;
@@ -66,7 +66,7 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void Communicator::InitBrpcClient(
     const std::string &dist_desc,
     const std::vector<std::string> &host_sign_list) {
-  auto fleet = ::paddle::distributed::FleetWrapper::GetInstance();
+  auto fleet = paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
     _worker_ptr = fleet->worker_ptr_;
   }
@@ -92,7 +92,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
   platform::RecordEvent record_event("Communicator->RpcRecvDense",
                                      platform::TracerEventType::Communication,
                                      1);
-  std::vector<::paddle::distributed::Region> regions;
+  std::vector<paddle::distributed::Region> regions;
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
     Variable *var = scope->Var(t);
@@ -103,7 +103,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
-      ::paddle::distributed::Region reg(temp_data, tensor->numel());
+      paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "Communicator::RpcRecvDense Var " << t << " table_id "
               << table_id << " Temp_data[0] " << temp_data[0]
@@ -111,7 +111,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 #endif
     } else {
       float *w = tensor->mutable_data<float>(tensor->place());
-      ::paddle::distributed::Region reg(w, tensor->numel());
+      paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(std::move(reg));
     }
   }
@@ -152,7 +152,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
                                      platform::TracerEventType::Communication,
                                      1);
   auto place = platform::CPUPlace();
-  std::vector<::paddle::distributed::Region> regions;
+  std::vector<paddle::distributed::Region> regions;
   for (auto &t : varnames) {
     Variable *var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
@@ -164,7 +164,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
-      ::paddle::distributed::Region reg(temp_data, tensor->numel());
+      paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
               << " Temp_data[0] " << temp_data[0] << " Temp_data[-1] "
@@ -172,7 +172,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
 #endif
     } else {
       float *w = tensor->mutable_data<float>(place);
-      ::paddle::distributed::Region reg(w, tensor->numel());
+      paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(reg);
       VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
               << " Temp_data[0] " << w[0] << " Temp_data[-1] "
@@ -1096,10 +1096,10 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       parallel_task_nums_ += 1;
       sparse_id_queues_.insert(
           std::pair<std::string,
-                    ::paddle::framework::Channel<
+                    paddle::framework::Channel<
                         std::shared_ptr<std::vector<int64_t>>>>(
               splited_var,
-              ::paddle::framework::MakeChannel<
+              paddle::framework::MakeChannel<
                   std::shared_ptr<std::vector<int64_t>>>(send_queue_size_)));
     }
   }
@@ -1509,7 +1509,7 @@ void GeoCommunicator::MainThread() {
 void FLCommunicator::InitBrpcClient(
     const std::string &dist_desc,
     const std::vector<std::string> &host_sign_list) {
-  auto fleet = ::paddle::distributed::FleetWrapper::GetInstance();
+  auto fleet = paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
     VLOG(0) << "fl-ps > FLCommunicator::InitBrpcClient get _worker_ptr";
     _worker_ptr =

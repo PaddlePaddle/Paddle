@@ -352,12 +352,12 @@ class BrpcPsClient : public PSClient {
   // 异步push dense task
   std::thread _async_push_dense_thread;
   typedef AsyncRequestTask<std::shared_ptr<std::vector<float>>> DenseAsyncTask;
-  std::unordered_map<uint32_t, ::paddle::framework::Channel<DenseAsyncTask *>>
+  std::unordered_map<uint32_t, paddle::framework::Channel<DenseAsyncTask *>>
       _push_dense_task_queue_map;
   // 异步push sparse task
   std::thread _async_push_sparse_thread;
   typedef AsyncRequestTask<std::shared_ptr<SparsePushTaskData>> SparseAsyncTask;
-  std::unordered_map<uint32_t, ::paddle::framework::Channel<SparseAsyncTask *>>
+  std::unordered_map<uint32_t, paddle::framework::Channel<SparseAsyncTask *>>
       _push_sparse_task_queue_map;
   std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
 

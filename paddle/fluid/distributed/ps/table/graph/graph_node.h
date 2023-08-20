@@ -118,7 +118,7 @@ class FeatureNode : public Node {
 
   virtual int get_feature_ids(std::vector<uint64_t> *res) const {
     PADDLE_ENFORCE_NOT_NULL(res,
-                            ::paddle::platform::errors::InvalidArgument(
+                            paddle::platform::errors::InvalidArgument(
                                 "get_feature_ids res should not be null"));
     errno = 0;
     for (auto &feature_item : feature) {
@@ -135,14 +135,14 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        ::paddle::platform::errors::InvalidArgument(
+        paddle::platform::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
 
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     PADDLE_ENFORCE_NOT_NULL(res,
-                            ::paddle::platform::errors::InvalidArgument(
+                            paddle::platform::errors::InvalidArgument(
                                 "get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
@@ -161,7 +161,7 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        ::paddle::platform::errors::InvalidArgument(
+        paddle::platform::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
@@ -185,7 +185,7 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        ::paddle::platform::errors::InvalidArgument(
+        paddle::platform::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }
@@ -261,8 +261,8 @@ class FeatureNode : public Node {
 
   template <typename T>
   static int parse_value_to_bytes(
-      std::vector<::paddle::string::str_ptr>::iterator feat_str_begin,
-      std::vector<::paddle::string::str_ptr>::iterator feat_str_end,
+      std::vector<paddle::string::str_ptr>::iterator feat_str_begin,
+      std::vector<paddle::string::str_ptr>::iterator feat_str_end,
       std::string *output) {
     size_t feat_str_size = feat_str_end - feat_str_begin;
     size_t Tsize = sizeof(T) * feat_str_size;
@@ -271,7 +271,7 @@ class FeatureNode : public Node {
 
     T *fea_ptrs = reinterpret_cast<T *>(&(*output)[num]);
 
-    thread_local ::paddle::string::str_ptr_stream ss;
+    thread_local paddle::string::str_ptr_stream ss;
     for (size_t i = 0; i < feat_str_size; i++) {
       ss.reset(*(feat_str_begin + i));
       int len = ss.end - ss.ptr;

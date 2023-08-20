@@ -336,7 +336,7 @@ std::string CtrCommonAccessor::ParseToString(const float* v, int param) {
 int CtrCommonAccessor::ParseFromString(const std::string& str, float* value) {
   _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                               value + common_feature_value.EmbedxG2SumIndex());
-  auto ret = ::paddle::string::str_to_float(str.data(), value);
+  auto ret = paddle::string::str_to_float(str.data(), value);
   CHECK(ret >= 6) << "expect more than 6 real:" << ret;
   return ret;
 }

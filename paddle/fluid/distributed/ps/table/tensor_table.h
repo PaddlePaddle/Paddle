@@ -89,7 +89,7 @@ class TensorTable : public Table {
   framework::Scope *scope_;
   platform::Place place_ = platform::CPUPlace();
   const std::vector<framework::ProgramDesc> *sub_program_;
-  ::paddle::distributed::TensorAccessorParameter program_config_;
+  paddle::distributed::TensorAccessorParameter program_config_;
   std::shared_ptr<framework::ExecutorPrepareContext> exec_context_ = nullptr;
 };
 

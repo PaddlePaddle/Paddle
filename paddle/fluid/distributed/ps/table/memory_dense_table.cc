@@ -158,7 +158,7 @@ int32_t MemoryDenseTable::PushDenseParam(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
-      ::paddle::platform::errors::InvalidArgument(
+      paddle::platform::errors::InvalidArgument(
           "update desne param numel expected %d, but got %d", param_dim_, num));
   std::copy_n(values, param_dim_, values_[param_idx_].begin());
   return 0;
@@ -189,7 +189,7 @@ int32_t MemoryDenseTable::_PushDense(const float *values, size_t num) {
   PADDLE_ENFORCE_GE(
       num,
       param_dim_,
-      ::paddle::platform::errors::InvalidArgument(
+      paddle::platform::errors::InvalidArgument(
           "update desne numel expected %d, but got %d", param_dim_, num));
 
   std::vector<int> buckets = bucket(param_dim_, task_pool_size_);
@@ -273,7 +273,7 @@ int32_t MemoryDenseTable::Load(const std::string &path,
             continue;
           }
           size_t str_len =
-              ::paddle::string::str_to_float(line_data.data(), data_buff_ptr);
+              paddle::string::str_to_float(line_data.data(), data_buff_ptr);
           CHECK(str_len == param_col_ids_.size())
               << "expect " << param_col_ids_.size() << " float, but got "
               << str_len;
@@ -327,10 +327,10 @@ int32_t MemoryDenseTable::Save(const std::string &path,
 
   FsChannelConfig channel_config;
   if (_config.compress_in_save()) {
-    channel_config.path = ::paddle::string::format_string(
+    channel_config.path = paddle::string::format_string(
         "%s/part-%03d.gz", TableDir(path).c_str(), _shard_idx);
   } else {
-    channel_config.path = ::paddle::string::format_string(
+    channel_config.path = paddle::string::format_string(
         "%s/part-%03d", TableDir(path).c_str(), _shard_idx);
   }
   _afs_client.remove(channel_config.path);
@@ -407,7 +407,7 @@ int32_t MemoryDenseTable::Save(const std::string &path,
       _afs_client.remove(channel_config.path);
     }
     if (retry_num >
-        ::paddle::distributed::FLAGS_pslib_table_save_max_retry_dense) {
+        paddle::distributed::FLAGS_pslib_table_save_max_retry_dense) {
       LOG(ERROR) << "DownpourDenseTable save failed reach max limit!";
       exit(-1);
     }

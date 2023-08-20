@@ -27,7 +27,7 @@ class GlooWrapper;
 }
 namespace distributed {
 namespace simple {
-using BinaryArchive = ::paddle::framework::BinaryArchive;
+using BinaryArchive = paddle::framework::BinaryArchive;
 
 class RpcService;
 class RpcRequest;
@@ -136,7 +136,7 @@ class RpcServer {
   int _conn_num = 1;
   int _thread_num = 10;
   std::vector<uint32_t> _ips;
-  ::paddle::framework::GlooWrapper *_gloo = NULL;
+  paddle::framework::GlooWrapper *_gloo = NULL;
   // configure for rpc
   int _connection_idle_timeout_sec = 3600;
   int _max_retry = 1000;

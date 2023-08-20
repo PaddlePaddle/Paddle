@@ -26,7 +26,7 @@ namespace paddle {
 namespace distributed {
 namespace simple {
 RpcService::RpcService(RpcCallback callback) : _callback(std::move(callback)) {
-  auto gloo = ::paddle::framework::GlooWrapper::GetInstance();
+  auto gloo = paddle::framework::GlooWrapper::GetInstance();
   void* my_ptr = reinterpret_cast<void*>(this);
   std::vector<void*> ids = gloo->AllGather(my_ptr);
   _remote_ptrs.assign(gloo->Size(), NULL);
@@ -36,7 +36,7 @@ RpcService::RpcService(RpcCallback callback) : _callback(std::move(callback)) {
   gloo->Barrier();
 }
 RpcService::~RpcService() {
-  ::paddle::framework::GlooWrapper::GetInstance()->Barrier();
+  paddle::framework::GlooWrapper::GetInstance()->Barrier();
   if (_request_counter != 0) {
     fprintf(stderr, "check request counter is not zero");
   }
@@ -110,7 +110,7 @@ inline std::string get_local_ip_internal() {
   return "127.0.0.1";
 }
 RpcServer::RpcServer() {
-  _gloo = ::paddle::framework::GlooWrapper::GetInstance().get();
+  _gloo = paddle::framework::GlooWrapper::GetInstance().get();
   std::string ip = get_local_ip_internal();
   uint32_t int_ip = inet_addr(ip.c_str());
   _ips = _gloo->AllGather(int_ip);
