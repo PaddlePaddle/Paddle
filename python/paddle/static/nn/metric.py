@@ -60,7 +60,11 @@ def accuracy(input, label, k=1, correct=None, total=None):
             >>> paddle.enable_static()
             >>> data = static.data(name="input", shape=[-1, 32, 32], dtype="float32")
             >>> label = static.data(name="label", shape=[-1,1], dtype="int")
-            >>> fc_out = static.nn.fc(x=data, size=10)
+            >>> fc_out = static.nn.fc(
+            ...     x=data,
+            ...     size=10,
+            ...     weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
+            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
             >>> predict = F.softmax(x=fc_out)
             >>> result = static.accuracy(input=predict, label=label, k=5)
             >>> place = paddle.CPUPlace()
@@ -71,7 +75,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
             >>> output = exe.run(feed={"input": x,"label": y},
             ...                     fetch_list=[result])
             >>> print(output)
-            [array(0.6666667, dtype=float32)]
+            [array(0., dtype=float32)]
 
     """
     if in_dygraph_mode():
@@ -189,7 +193,11 @@ def auc(
 
             >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            >>> fc_out = paddle.static.nn.fc(x=data, size=2)
+            >>> fc_out = paddle.static.nn.fc(
+            ...     x=data,
+            ...     size=2,
+            ...     weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
+            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
             >>> predict = paddle.nn.functional.softmax(x=fc_out)
             >>> result=paddle.static.auc(input=predict, label=label)
 
@@ -202,7 +210,7 @@ def auc(
             >>> output= exe.run(feed={"input": x,"label": y},
             ...                     fetch_list=[result[0]])
             >>> print(output)
-            [array(0.)]
+            [array(0.5)]
 
         .. code-block:: python
             :name: example-2
@@ -217,7 +225,11 @@ def auc(
             >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")
             >>> ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='float64')
-            >>> fc_out = paddle.static.nn.fc(x=data, size=2)
+            >>> fc_out = paddle.static.nn.fc(
+            ...     x=data,
+            ...     size=2,
+            ...     weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
+            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
             >>> predict = paddle.nn.functional.softmax(x=fc_out)
             >>> result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
 
@@ -231,7 +243,14 @@ def auc(
             >>> output= exe.run(feed={"input": x,"label": y, "ins_tag_weight":z},
             ...                     fetch_list=[result[0]])
             >>> print(output)
-            [array(0.)]
+            [array(0.5)]
+
+        .. code-block:: python
+            :name: example-3
+
+            >>> # doctest: +TIMEOUT(1)
+            >>> import time
+            >>> time.sleep(3)
 
     """
     helper = LayerHelper("auc", **locals())
@@ -399,6 +418,12 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
             :name: example-fail
 
             >>> print(1+1)
+            0
+
+        .. code-block:: python
+            :name: example-syntax-error
+
+            >>> print(1+1) some syntax error
             0
 
     """
