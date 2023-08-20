@@ -429,7 +429,6 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                 ],
                 dtype=dtype,
             )
-            print("x_static  ", x_static.dtype)
 
             outs = masked_multihead_attention(
                 x_static,
