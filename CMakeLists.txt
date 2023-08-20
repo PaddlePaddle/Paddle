@@ -254,7 +254,7 @@ option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
 option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
-option(WITH_GFLAGS "Compile PaddlePaddle with gflags support" OFF)
+option(WITH_GFLAGS "Compile PaddlePaddle with gflags support" ON)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
