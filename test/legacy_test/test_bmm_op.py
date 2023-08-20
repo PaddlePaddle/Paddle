@@ -26,8 +26,9 @@ class TestBmmOp(OpTest):
     def setUp(self):
         self.op_type = "bmm"
         self.python_api = paddle.tensor.bmm
-        X = np.random.random((10, 3, 4)).astype("float64")
-        Y = np.random.random((10, 4, 5)).astype("float64")
+        self.init()
+        X = np.random.random(self.shape1).astype(self.dtype)
+        Y = np.random.random(self.shape2).astype(self.dtype)
         self.inputs = {'X': X, 'Y': Y}
         Out = np.matmul(X, Y)
         self.outputs = {'Out': Out}
@@ -38,23 +39,46 @@ class TestBmmOp(OpTest):
     def test_checkout_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
 
+    def init(self):
+        self.dtype = np.float64
+        self.shape1 = (10, 3, 4)
+        self.shape2 = (10, 4, 5)
 
-class TestBmmFP16Op(OpTest):
+
+class TestBmmFP16Op(TestBmmOp):
+    def init(self):
+        self.dtype = np.float16
+        self.shape1 = (10, 3, 4)
+        self.shape2 = (10, 4, 5)
+
+
+class TestComplex64BmmOp(OpTest):
     def setUp(self):
         self.op_type = "bmm"
-        self.dtype = np.float16
         self.python_api = paddle.tensor.bmm
-        X = np.random.random((10, 3, 4)).astype("float16")
-        Y = np.random.random((10, 4, 5)).astype("float16")
+        X = np.random.random((10, 3, 4)).astype(
+            self.dtype
+        ) + 1j * np.random.random((10, 3, 4)).astype(self.dtype)
+        Y = np.random.random((10, 4, 5)).astype(
+            self.dtype
+        ) + 1j * np.random.random((10, 4, 5)).astype(self.dtype)
         self.inputs = {'X': X, 'Y': Y}
         Out = np.matmul(X, Y)
         self.outputs = {'Out': Out}
+
+    def init_dtype(self):
+        self.dtype = np.complex64
 
     def test_check_output(self):
         self.check_output()
 
     def test_checkout_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
+
+
+class TestComplex128BmmOp(TestComplex64BmmOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 @unittest.skipIf(
