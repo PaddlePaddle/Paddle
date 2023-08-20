@@ -69,11 +69,6 @@ bool FindFlag(const std::string& name);
  */
 void PrintAllFlagHelp(bool to_file = false,
                       const std::string& file_name = "all_flags.txt");
-
-/**
- * @brief Print all registered flags' current and default value.
- */
-void PrintAllFlagValue();
 }  // namespace flags
 }  // namespace paddle
 

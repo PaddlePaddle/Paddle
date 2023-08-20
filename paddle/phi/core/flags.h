@@ -20,9 +20,8 @@
 #include <string>
 #include <type_traits>
 
-#include "paddle/utils/flags.h"
-
 #include "paddle/phi/core/macros.h"
+#include "paddle/utils/flags.h"
 #include "paddle/utils/variant.h"
 
 #if defined(_WIN32)

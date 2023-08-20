@@ -329,8 +329,8 @@ def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
 
-#include "paddle/utils/flags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/kernel_context.h"

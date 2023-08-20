@@ -102,8 +102,6 @@ class FlagRegistry {
 
   void PrintAllFlagHelp(std::ostream& os) const;
 
-  void PrintAllFlagValues(std::ostream& os) const;
-
  private:
   FlagRegistry() = default;
 
@@ -335,17 +333,6 @@ void FlagRegistry::PrintAllFlagHelp(std::ostream& os) const {
   os << std::endl;
 }
 
-void FlagRegistry::PrintAllFlagValues(std::ostream& os) const {
-  os << std::endl;
-  for (const auto& iter : flags_) {
-    const auto* flag = iter.second;
-    os << flag->name_ << ": " << Value2String(flag->value_, flag->type_)
-       << ", default: " << Value2String(flag->default_value_, flag->type_)
-       << std::endl;
-  }
-  os << std::endl;
-}
-
 void PrintAllFlagHelp(bool to_file, const std::string& file_path) {
   if (to_file) {
     std::ofstream fout(file_path);
@@ -353,10 +340,6 @@ void PrintAllFlagHelp(bool to_file, const std::string& file_path) {
   } else {
     FlagRegistry::Instance()->PrintAllFlagHelp(std::cout);
   }
-}
-
-void PrintAllFlagValue() {
-  FlagRegistry::Instance()->PrintAllFlagValues(std::cout);
 }
 
 bool GetValueFromEnv(const std::string& name, std::string* value) {
@@ -405,8 +388,8 @@ void ParseCommandLineFlags(int* pargc, char*** pargv) {
   std::vector<std::string> argvs(*pargv + 1, *pargv + *pargc);
 
   std::string arg_format_help =
-      "please follow the formats: \"--help\", \"--name=value\" or \"--name "
-      "value\".";
+      "please follow the formats: \"--help(h)\", \"--name=value\""
+      " or \"--name value\".";
   for (size_t i = 0; i < argv_num; i++) {
     const std::string& argv = argvs[i];
 
@@ -476,7 +459,8 @@ void ParseCommandLineFlags(int* pargc, char*** pargv) {
       // Value of --fromenv or --tryfromenv should be
       // a comma separated list of env var names.
       std::vector<std::string> env_flag_names;
-      for (size_t start_pos = 0, end_pos = 0; end_pos != std::string::npos;
+      for (size_t start_pos = 0, end_pos = 0;
+           start_pos < value.size() && end_pos != std::string::npos;
            start_pos = end_pos + 1) {
         end_pos = value.find(',', start_pos);
         env_flag_names.push_back(value.substr(start_pos, end_pos - start_pos));

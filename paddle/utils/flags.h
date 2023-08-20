@@ -21,7 +21,6 @@
 #endif
 
 #ifdef PADDLE_WITH_GFLAGS
-
 #define PD_DEFINE_bool(name, val, txt) DEFINE_bool(name, val, txt)
 #define PD_DEFINE_int32(name, val, txt) DEFINE_int32(name, val, txt)
 #define PD_DEFINE_uint32(name, val, txt) DEFINE_uint32(name, val, txt)
@@ -37,7 +36,6 @@
 #define PD_DECLARE_uint64(name) DECLARE_uint64(name)
 #define PD_DECLARE_double(name) DECLARE_double(name)
 #define PD_DECLARE_string(name) DECLARE_string(name)
-
 #endif
 
 namespace paddle {

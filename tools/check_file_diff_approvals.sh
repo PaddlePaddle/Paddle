@@ -241,9 +241,9 @@ if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg YuanRisheng phlrain
 fi
 
-HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "PD_DEFINE_int32" |grep -o -m 1 "PD_DEFINE_bool" | grep -o -m 1 "PD_DEFINE_string" || true`
+HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of PD_DEFINE_int32/PD_DEFINE_bool/PD_DEFINE_string flag.\n"
+    echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
     check_approval 1 47554610
 fi
 
