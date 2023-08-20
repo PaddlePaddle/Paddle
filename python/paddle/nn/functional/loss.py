@@ -1378,7 +1378,7 @@ def nll_loss(
                 >>> result = nll_loss(log_out, label)
                 >>> print(result)
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                       [1.07202101])
+                       1.07202101)
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -1967,7 +1967,7 @@ def rnnt_loss(
             >>> costs = fn(acts, labels, lengths, label_lengths)
             >>> print(costs)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=False,
-                   [-2.85042444])
+                   -2.85042444)
     """
 
     def warprnnt(
@@ -2990,7 +2990,7 @@ def sigmoid_focal_loss(
             >>> output = paddle.nn.functional.sigmoid_focal_loss(logit, label, normalizer=fg_num)
             >>> print(output)
             Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
-                   [0.65782464])
+                   0.65782464)
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
