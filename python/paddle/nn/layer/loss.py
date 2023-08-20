@@ -302,6 +302,7 @@ class CrossEntropyLoss(Layer):
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
             >>> # hard labels
             >>> import paddle
@@ -321,6 +322,7 @@ class CrossEntropyLoss(Layer):
             5.33697682)
 
         .. code-block:: python
+            :name: code-example2
 
             >>> # soft labels
             >>> import paddle
