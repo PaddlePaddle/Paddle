@@ -106,7 +106,7 @@ class TestBert(unittest.TestCase):
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
 
-            optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
+            optimizer = paddle.optimizer.Adam(parameters=bert.parameters())
             step_idx = 0
             speed_list = []
             for input_data in data_loader():
@@ -181,7 +181,7 @@ class TestBert(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,

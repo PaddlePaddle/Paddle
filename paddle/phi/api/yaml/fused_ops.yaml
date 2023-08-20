@@ -63,6 +63,15 @@
     data_type: tables
   optional : mask, seq_lod, max_seq_len
 
+- op : fast_layernorm_xpu
+  args : (Tensor x, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon)
+  output : Tensor(out)
+  infer_meta :
+    func : FastLayernormXPUInferMeta
+  kernel :
+    func : fast_layernorm_xpu
+    data_type : x
+
 - op : fast_where_xpu
   args : (Tensor condition, Tensor x, Tensor y)
   output : Tensor(out)
@@ -83,7 +92,7 @@
   optional : bias, x_max
 
 - op : fused_bias_act
-  args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", int rows = -1, int cols = -1, float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
+  args : (Tensor x, Tensor bias, Tensor dequant_scales, Tensor shift, Tensor smooth, str act_method = "gelu", str compute_dtype = "default", float quant_scale = -1, int quant_round_type = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
   output : Tensor(out)
   infer_meta :
     func: FusedBiasActInferMeta
@@ -91,6 +100,17 @@
     func : fused_bias_act
     data_type : x
   optional : bias, dequant_scales, shift, smooth
+  support_dygraph_mode : true
+
+- op : fused_bias_residual_layernorm
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
+  output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : FusedLayerNormInferMeta
+  kernel :
+    func : fused_bias_residual_layernorm
+    data_type : x
+  optional : bias, residual, norm_weight, norm_bias, residual_out
   support_dygraph_mode : true
 
 - op : fused_dropout_add

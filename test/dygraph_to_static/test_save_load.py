@@ -24,8 +24,8 @@ import paddle
 import paddle.nn.functional as F
 from paddle import fluid, nn
 from paddle.fluid import core
-from paddle.fluid.optimizer import AdamOptimizer
 from paddle.nn import BatchNorm
+from paddle.optimizer import Adam
 
 np.random.seed(2020)
 
@@ -75,9 +75,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             paddle.jit.enable_to_static(True)
             x = fluid.dygraph.to_variable(x_data)
             net = Linear(32, 64)
-            adam = AdamOptimizer(
-                learning_rate=0.1, parameter_list=net.parameters()
-            )
+            adam = Adam(learning_rate=0.1, parameters=net.parameters())
 
             for i in range(batch_num):
                 static_out, static_loss = net(x)

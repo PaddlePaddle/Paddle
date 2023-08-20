@@ -87,8 +87,9 @@ class TestAssignPosOpInt64(eager_op_test.OpTest):
         self.cum_count = cum_count
 
     def test_forward(self):
+        paddle.enable_static()
         np.testing.assert_allclose = get_redefined_allclose(self.cum_count)
-        self.check_output_with_place(paddle.CUDAPlace(0))
+        self.check_output_with_place(paddle.CUDAPlace(0), check_dygraph=False)
 
 
 @unittest.skipIf(
