@@ -34,7 +34,11 @@ endif()
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
-set(utils_modules pretty_log string_helper benchmark utf8proc ${flags_dep})
+set(utils_modules pretty_log string_helper benchmark utf8proc)
+
+if(NOT WITH_GFLAGS)
+  set(utils_modules ${utils_modules} paddle_flags)
+endif()
 
 add_subdirectory(api)
 
