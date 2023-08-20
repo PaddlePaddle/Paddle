@@ -80,7 +80,7 @@ class TestMMHAOp(unittest.TestCase):
         self.seq_len = 1
         self.rotary_emb_dims = 0
         self.use_neox_rotary_style = False
-
+        self.compute_dtype = "default"
         self.out_scale = 10
         self.quant_round_type = 1
         self.quant_max_bound = 126
@@ -181,6 +181,10 @@ class TestMMHAOp(unittest.TestCase):
         )
 
         x = x.reshape([self.bsz, -1])
+        if x.dtype == paddle.float16:
+            dtype = self.compute_dtype
+        else:
+            dtype = "fp16"
         paddle_mmha_out = masked_multihead_attention(
             x,
             cache_kv_mmha_out,
@@ -196,6 +200,7 @@ class TestMMHAOp(unittest.TestCase):
             self.seq_len,
             self.rotary_emb_dims,
             self.use_neox_rotary_style,
+            dtype,
             out_scale,
             self.quant_round_type,
             self.quant_max_bound,
@@ -424,6 +429,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                 ],
                 dtype=dtype,
             )
+            print("x_static  ", x_static.dtype)
 
             outs = masked_multihead_attention(
                 x_static,
@@ -440,6 +446,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
                 32,
                 0,
                 False,
+                "fp16",
                 -1,
                 1,
                 127.0,

@@ -31,6 +31,7 @@ def masked_multihead_attention(
     seq_len=1,
     rotary_emb_dims=0,
     use_neox_rotary_style=False,
+    compute_dtype='default',
     out_scale=-1,
     quant_round_type=1,
     quant_max_bound=127.0,
@@ -103,6 +104,7 @@ def masked_multihead_attention(
             seq_len,
             rotary_emb_dims,
             use_neox_rotary_style,
+            compute_dtype,
             out_scale,
             quant_round_type,
             quant_max_bound,
@@ -110,7 +112,16 @@ def masked_multihead_attention(
         )
 
     helper = LayerHelper('masked_multihead_attention', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if x.dtype == "int32":
+        if compute_dtype == "bf16":
+            dtype = "uint16"
+        elif compute_dtype == "fp16":
+            dtype = "float16"
+        elif compute_dtype == "fp32":
+            dtype = "float32"
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     inputs = {}
     inputs['x'] = x
@@ -153,6 +164,7 @@ def masked_multihead_attention(
             'seq_len': seq_len,
             'rotary_emb_dims': rotary_emb_dims,
             'use_neox_rotary_style': use_neox_rotary_style,
+            'compute_dtype': compute_dtype,
             'out_scale': out_scale,
             'quant_round_type': quant_round_type,
             'quant_max_bound': quant_max_bound,
