@@ -1215,6 +1215,8 @@ class CTCLoss(Layer):
         input_lengths,
         label_lengths,
         norm_by_times=False,
+        use_log_softmax=True,
+        zero_infinity=False,
     ):
         return paddle.nn.functional.ctc_loss(
             log_probs,
@@ -1224,6 +1226,8 @@ class CTCLoss(Layer):
             self.blank,
             self.reduction,
             norm_by_times=norm_by_times,
+            use_log_softmax=use_log_softmax,
+            zero_infinity=zero_infinity,
         )
 
 
