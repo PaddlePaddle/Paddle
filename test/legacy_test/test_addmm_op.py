@@ -38,6 +38,20 @@ class TestAddMMOp(OpTest):
             + np.dot(self.inputs['X'], self.inputs['Y'])
         }
 
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.inputs['Input'] += 1j * np.random.random((100, 1)).astype(
+                self.dtype
+            )
+            self.inputs['X'] += 1j * np.random.random((100, 10)).astype(
+                self.dtype
+            )
+            self.inputs['Y'] += 1j * np.random.random((10, 20)).astype(
+                self.dtype
+            )
+            self.outputs['Out'] = self.inputs['Input'] + np.dot(
+                self.inputs['X'], self.inputs['Y']
+            )
+
     def init_dtype_type(self):
         self.dtype = np.float64
 
@@ -331,6 +345,16 @@ class TestAddMMOp5(unittest.TestCase):
             np.testing.assert_allclose(
                 np_input + np.dot(np_x, np_y), out.numpy(), rtol=1e-5, atol=1e-8
             )
+
+
+class TestAddMMOp6(TestAddMMOp):
+    def init_dtype_type(self):
+        return np.complex64
+
+
+class TestAddMMOp7(TestAddMMOp):
+    def init_dtype_type(self):
+        return np.complex128
 
 
 class TestAddMMAPI(unittest.TestCase):

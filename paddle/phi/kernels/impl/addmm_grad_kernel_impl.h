@@ -55,17 +55,144 @@ using PhiEigenTensor = EigenTensor<T, D, MajorType, IndexType>;
 using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
 using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
 
-template <typename T, typename Context>
-void AddmmGradKernel(const Context& dev_ctx,
-                     const DenseTensor& input,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     const DenseTensor& out_grad,
-                     float alpha,
-                     float beta,
-                     DenseTensor* input_grad,
-                     DenseTensor* x_grad,
-                     DenseTensor* y_grad) {
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
+                         std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void AddmmGradExtKernel(const Context& dev_ctx,
+                        const DenseTensor& input,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out_grad,
+                        float alpha,
+                        float beta,
+                        DenseTensor* input_grad,
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  auto in_dims = input.dims();
+  if (input.dims().size() == 1) {
+    in_dims = {1, input.dims()[0]};
+    input_grad->Resize(in_dims);
+  }
+  int total_elems = 0;
+
+  VLOG(3) << "alpha: " << alpha << " beta: " << beta;
+
+  if (input_grad != nullptr) {
+    input_grad->set_lod(out_grad.lod());
+  }
+  if (x_grad != nullptr) {
+    x_grad->set_lod(x.lod());
+  }
+  if (y_grad != nullptr) {
+    y_grad->set_lod(y.lod());
+  }
+
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
+  // auto mt_blas = funcs::GetBlas<Context, MPType>(dev_ctx);
+  if (input_grad) {
+    dev_ctx.template Alloc<T>(input_grad);
+    total_elems = in_dims[0] * in_dims[1];
+    auto& place = *dev_ctx.eigen_device();
+    auto eigen_dout = PhiEigenTensor<T, 2>::From(out_grad);
+    auto eigen_dinput = PhiEigenTensor<T, 2>::From(*input_grad);
+
+    bool row_compress = in_dims[0] != out_grad.dims()[0];
+    bool col_compress = in_dims[1] != out_grad.dims()[1];
+    auto eigen_dinput_shape =
+        Array2(input_grad->dims()[0], input_grad->dims()[1]);
+
+    if (row_compress && col_compress) {
+      {
+        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
+                                         .sum()
+                                         .eval()
+                                         .reshape(eigen_dinput_shape)
+                                         .template cast<T>();
+      }
+    } else if (row_compress) {
+      {
+        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
+                                         .sum(Array1(0))
+                                         .eval()
+                                         .reshape(eigen_dinput_shape)
+                                         .template cast<T>();
+      }
+    } else if (col_compress) {
+      {
+        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
+                                         .sum(Array1(1))
+                                         .eval()
+                                         .reshape(eigen_dinput_shape)
+                                         .template cast<T>();
+      }
+    } else {
+      {
+        phi::funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+        CopyOrScaleFunctor<T> functor(
+            1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
+        for_range(functor);
+      }
+    }
+
+    // The SCAL does not support the float16, bfloat16
+    {
+      phi::funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      CopyOrScaleFunctor<T> functor(
+          beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+      for_range(functor);
+    }
+
+    if (input.dims().size() == 1) {
+      input_grad->Resize(input.dims());
+    }
+  }
+  if (x_grad) {
+    dev_ctx.template Alloc<T>(x_grad);
+    total_elems = x.dims()[0] * x.dims()[1];
+    // x_grad = out_grad * y'. x_grad: M x K, out_grad : M x N, y : K x N
+    blas.MatMul(out_grad, false, y, true, x_grad);
+    {
+      phi::funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      CopyOrScaleFunctor<T> functor(
+          alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
+      for_range(functor);
+    }
+  }
+  if (y_grad) {
+    dev_ctx.template Alloc<T>(y_grad);
+    total_elems = x.dims()[1] * y.dims()[1];
+    // y_grad = x' * out_grad. y_grad K x N, out_grad : M x N, x : M x K
+    blas.MatMul(x, true, out_grad, false, y_grad);
+    {
+      phi::funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      CopyOrScaleFunctor<T> functor(
+          alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
+      for_range(functor);
+    }
+  }
+}
+
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void AddmmGradExtKernel(const Context& dev_ctx,
+                        const DenseTensor& input,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out_grad,
+                        float alpha,
+                        float beta,
+                        DenseTensor* input_grad,
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
   if (std::is_same<T, phi::dtype::float16>::value ||
@@ -196,4 +323,18 @@ void AddmmGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void AddmmGradKernel(const Context& dev_ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const DenseTensor& out_grad,
+                     float alpha,
+                     float beta,
+                     DenseTensor* input_grad,
+                     DenseTensor* x_grad,
+                     DenseTensor* y_grad) {
+  AddmmGradExtKernel<T, Context>(
+      dev_ctx, input, x, y, out_grad, alpha, beta, input_grad, x_grad, y_grad);
+}
 }  // namespace phi
