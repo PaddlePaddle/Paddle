@@ -953,6 +953,7 @@ def einsum(equation, *operands):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('The paddle.seed cannot provide fixed results.')
             >>> import paddle
             >>> paddle.seed(102)
             >>> x = paddle.rand([4])
