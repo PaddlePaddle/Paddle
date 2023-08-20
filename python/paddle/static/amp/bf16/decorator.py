@@ -263,8 +263,9 @@ def decorate_bf16(
         An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
-    Examples 1:
+    Examples:
         .. code-block:: python
+            :name: example-1
 
             # fp32&bf16 list based strategy example
             >>> import paddle
@@ -281,8 +282,11 @@ def decorate_bf16(
 
             >>> ops, param_grads = mp_optimizer.minimize(loss)
 
-    Examples 2:
+
+
+
         .. code-block:: python
+            :name: example-2
 
             # pure bf16 training example
             >>> import numpy as np
