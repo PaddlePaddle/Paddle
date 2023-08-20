@@ -252,7 +252,7 @@ def fluid_softmax_with_cross_entropy(
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [1.35328650])
+                   1.35328650)
     """
     input_dims = len(list(logits.shape))
     if input_dims == 0:
@@ -636,7 +636,7 @@ def binary_cross_entropy(
             >>> output = paddle.nn.functional.binary_cross_entropy(input, label)
             >>> print(output)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [0.65537095])
+                   0.65537095)
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -778,7 +778,7 @@ def binary_cross_entropy_with_logits(
             >>> output = paddle.nn.functional.binary_cross_entropy_with_logits(logit, label)
             >>> print(output)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [0.45618808])
+                   0.45618808)
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1158,7 +1158,7 @@ def margin_ranking_loss(
             >>> loss = paddle.nn.functional.margin_ranking_loss(input, other, label)
             >>> print(loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [0.75000000])
+                   0.75000000)
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -1276,7 +1276,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             >>> l1_loss = paddle.nn.functional.l1_loss(input, label)
             >>> print(l1_loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [0.34999999])
+                   0.34999999)
 
             >>> l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
             >>> print(l1_loss)
@@ -1287,7 +1287,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             >>> l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             >>> print(l1_loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [1.39999998])
+                   1.39999998)
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1618,17 +1618,17 @@ def kl_div(input, label, reduction='mean', name=None):
             # 'batchmean' reduction, loss shape will be [1]
             >>> pred_loss = F.kl_div(x, target, reduction='batchmean')
             >>> print(pred_loss.shape)
-            [1]
+            []
 
             # 'mean' reduction, loss shape will be [1]
             >>> pred_loss = F.kl_div(x, target, reduction='mean')
             >>> print(pred_loss.shape)
-            [1]
+            []
 
             # 'sum' reduction, loss shape will be [1]
             >>> pred_loss = F.kl_div(x, target, reduction='sum')
             >>> print(pred_loss.shape)
-            [1]
+            []
 
             # 'none' reduction, loss shape is same with input shape
             >>> pred_loss = F.kl_div(x, target, reduction='none')
@@ -1733,7 +1733,7 @@ def mse_loss(input, label, reduction='mean', name=None):
             >>> output = mse_loss(input, label)
             >>> print(output)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [0.04000002])
+                   0.04000002)
 
     """
 
@@ -1840,7 +1840,7 @@ def ctc_loss(
             ...     reduction='mean')
             >>> print(loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [1.13760614])
+                   1.13760614)
 
     """
 
@@ -2387,7 +2387,7 @@ def softmax_with_cross_entropy(
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
             Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [1.15328646])
+                   1.15328646)
     """
     return fluid_softmax_with_cross_entropy(
         logits,
@@ -2596,7 +2596,7 @@ def cross_entropy(
                                         label)
             >>> print(dy_ret)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-                   5.34043430)
+                   5.35419278)
 
         .. code-block:: python
 
@@ -2622,7 +2622,7 @@ def cross_entropy(
             ...                                                         reduction=reduction)
             >>> print(paddle_loss_mean)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [1.12801195])
+            1.12801195)
 
     """
 
@@ -3148,7 +3148,7 @@ def multi_label_soft_margin_loss(
             >>> loss = F.multi_label_soft_margin_loss(input, label, reduction='mean')
             >>> print(loss)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [1.54908717])
+                   1.54908717)
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
