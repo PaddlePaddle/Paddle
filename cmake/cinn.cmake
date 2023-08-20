@@ -164,7 +164,6 @@ cinn_cc_library(
   isl
   ginac
   pybind
-  gflags
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
@@ -182,6 +181,11 @@ if(WITH_MKL)
     target_link_libraries(cinnapi ${MKLDNN_LIB})
     add_dependencies(cinnapi ${MKLDNN_PROJECT})
   endif()
+endif()
+
+if(NOT WITH_GFLAGS)
+  target_link_libraries(cinnapi gflags)
+  add_dependencies(cinnapi gflags)
 endif()
 
 if(WITH_GPU)
@@ -218,8 +222,7 @@ function(gen_cinncore LINKTYPE)
     schedule_desc_proto
     absl
     isl
-    ginac
-    gflags)
+    ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(NOT CINN_ONLY)
@@ -237,6 +240,11 @@ function(gen_cinncore LINKTYPE)
       target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
       add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
     endif()
+  endif()
+
+  if(NOT WITH_GFLAGS)
+    target_link_libraries(${CINNCORE_TARGET} gflags)
+    add_dependencies(${CINNCORE_TARGET} gflags)
   endif()
 
   if(WITH_GPU)
