@@ -372,7 +372,7 @@ class TestMatrixNMSError(unittest.TestCase):
                     self.fail(e)
 
             def test_coverage():
-                # cover correct workflow
+                # cover correct work flow
                 try:
                     paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,
