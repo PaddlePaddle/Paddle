@@ -23,20 +23,20 @@ class cus_pylayer(PyLayer):
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super(SimpleNet, self).__init__()
-        self.linear = paddle.nn.Linear(4, 8)
 
     @to_static
     def forward(self, x):
-        y = self.linear(x)
+        y = paddle.exp(x)
         # cus_tanh_apply = cus_pylayer.apply
         # out = cus_tanh_apply(y)
-        # out = cus_pylayer.apply(y)
-        
+        out = cus_pylayer.apply(y)
+
         return out
     
 if __name__ == "__main__":
     net = SimpleNet()
     paddle.jit.set_code_level(100)
     x = paddle.ones([2,4], "float32")
+    x.stop_gradient = True
     out = net(x)
     print("=== end ===")
