@@ -14,13 +14,22 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include "paddle/ir/core/dialect.h"
 
-#include "paddle/phi/api/include/tensor.h"
+namespace cinn {
+namespace dialect {
 
-namespace paddle {
-namespace primitive {
-namespace backend {}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+class CinnDialect : public ::ir::Dialect {
+ public:
+  explicit CinnDialect(::ir::IrContext* context);
+
+  static const char* name() { return "cinn"; }
+
+ private:
+  void initialize();
+};
+
+}  // namespace dialect
+}  // namespace cinn
+
+IR_DECLARE_EXPLICIT_TYPE_ID(cinn::dialect::CinnDialect)
