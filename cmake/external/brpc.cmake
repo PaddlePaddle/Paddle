@@ -99,5 +99,8 @@ set(BRPC_DEPS
     crypto
     leveldb
     glog
-    snappy
-    gflags)
+    snappy)
+
+if(NOT WITH_GFLAGS)
+  set(BRPC_DEPS ${BRPC_DEPS} gflags)
+endif()
