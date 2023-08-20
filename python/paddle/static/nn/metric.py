@@ -224,7 +224,7 @@ def auc(
 
             >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             >>> label = paddle.static.data(name="label", shape=[-1], dtype="int")
-            >>> ins_tag_weight = paddle.static.data(name='ins_tag', shape=[-1,16], lod_level=0, dtype='float64')
+            >>> ins_tag_weight = paddle.static.data(name='ins_tag_weight', shape=[-1,16], lod_level=0, dtype='float64')
             >>> fc_out = paddle.static.nn.fc(
             ...     x=data,
             ...     size=2,
@@ -239,7 +239,7 @@ def auc(
             >>> exe.run(paddle.static.default_startup_program())
             >>> x = np.random.rand(3,32,32).astype("float32")
             >>> y = np.array([1,0,1])
-            >>> z = np.array([1,0,1])
+            >>> z = np.array([1.,0.,1.])
             >>> output= exe.run(feed={"input": x,"label": y, "ins_tag_weight":z},
             ...                     fetch_list=[result[0]])
             >>> print(output)
