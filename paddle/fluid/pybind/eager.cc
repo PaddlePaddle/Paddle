@@ -68,42 +68,6 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   return obj;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-void EmptyDistTensorInitializer(TensorObject* self,
-                                const std::string& name,
-                                const paddle::platform::Place& place,
-                                const TensorDistAttr& dist_attr,
-                                bool persistable = false,
-                                int stop_gradient = -1,
-                                framework::proto::VarType::Type dtype =
-                                    paddle::framework::proto::VarType::FP32,
-                                const std::vector<int>& dims = {0}) {
-  auto ddims = phi::make_ddim(dims);
-  self->tensor.set_name(name);
-  auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
-  autograd_meta->SetPersistable(persistable);
-  if (stop_gradient != -1) {
-    autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
-  }
-
-  std::shared_ptr<DistTensor> dist_tensor = nullptr;
-  if (dims.size() == 1 && dims[0] == 0) {
-    dist_tensor = std::make_shared<DistTensor>(ddims, dist_attr);
-  } else {
-    dist_tensor = std::make_shared<DistTensor>(ddims, dist_attr);
-  }
-  self->tensor.set_impl(dist_tensor);
-
-  if (!autograd_meta->GetMutableGradNode()) {
-    autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
-    VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation"
-            << autograd_meta->GradNode() << " for it.";
-  }
-}
-#endif
-
 // TODO(jiabin): Overload this once we need more constructor in Python
 void EmptyTensorInitializer(TensorObject* self,
                             const std::string& name,
@@ -174,40 +138,70 @@ void EmptyStringTensorInitializer(TensorObject* self,
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-void InitDistTensorWithNumpyValue(TensorObject* self,
-                                  const py::object& array,
-                                  const paddle::platform::Place& place,
-                                  bool zero_copy = false) {
-  PADDLE_ENFORCE_EQ(
-      self->tensor.defined(),
-      true,
-      paddle::platform::errors::Unavailable(
-          "Calling InitDistTensorWithNumpyValue of Eager Tensor without "
-          "EmptyDistTensorInitializer is "
-          "forbidden. Please check your code and make sure you new a "
-          "eager tensor before init it with NumPy."));
-  DistTensor* dist_tensor_ptr =
-      static_cast<DistTensor*>(self->tensor.impl().get());
-  phi::DenseTensor* impl_ptr =
-      static_cast<phi::DenseTensor*>(dist_tensor_ptr->mutable_value());
+void CreateDistTensorWithNumpyValue(TensorObject* self,
+                                    const std::string& name,
+                                    const paddle::platform::Place& place,
+                                    const TensorDistAttr& dist_attr,
+                                    const py::object& array,
+                                    bool persistable = false,
+                                    int stop_gradient = -1,
+                                    bool zero_copy = false,
+                                    framework::proto::VarType::Type dtype =
+                                        paddle::framework::proto::VarType::FP32,
+                                    const std::vector<int>& dims = {0}) {
+  auto ddims = phi::make_ddim(dims);
+  self->tensor.set_name(name);
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
+  autograd_meta->SetPersistable(persistable);
+  if (stop_gradient != -1) {
+    autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+  }
+
+  phi::DenseTensor dense_tensor;
+  if (dims.size() == 1 && dims[0] == 0) {
+    std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
+    dense_tensor = phi::DenseTensor(
+        nullptr,
+        phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                             ddims));
+  } else {
+    dense_tensor = phi::DenseTensor(
+        std::make_shared<phi::Allocation>(),
+        phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
+                             ddims));
+  }
 
   if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<platform::CPUPlace>(
+        &dense_tensor, array, place, zero_copy);
   } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
+    SetTensorFromPyArray<platform::XPUPlace>(
+        &dense_tensor, array, place, zero_copy);
   } else if (platform::is_gpu_place(place)) {
     SetTensorFromPyArray<platform::CUDAPlace>(
-        impl_ptr, array, place, zero_copy);
+        &dense_tensor, array, place, zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        impl_ptr, array, place, zero_copy);
+        &dense_tensor, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
     SetTensorFromPyArray<platform::CustomPlace>(
-        impl_ptr, array, place, zero_copy);
+        &dense_tensor, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
+  }
+
+  auto dist_tensor =
+      std::make_shared<phi::distributed::DistTensor>(dense_tensor, dist_attr);
+  self->tensor.set_impl(dist_tensor);
+
+  if (!autograd_meta->GetMutableGradNode()) {
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+    VLOG(3) << "Tensor(" << name
+            << ") have not GradNode, add GradNodeAccumulation"
+            << autograd_meta->GradNode() << " for it.";
   }
 }
 #endif
@@ -518,9 +512,14 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
       ParseDistAttrArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
   if (!dist_attr.empty()) {
-    EmptyDistTensorInitializer(
-        py_tensor_ptr, act_name, place, dist_attr, persistable, stop_gradient);
-    InitDistTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
+    CreateDistTensorWithNumpyValue(py_tensor_ptr,
+                                   act_name,
+                                   place,
+                                   dist_attr,
+                                   numpy_value,
+                                   persistable,
+                                   stop_gradient,
+                                   zero_copy);
     return;
   }
 #endif

@@ -270,16 +270,16 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetPlace(fwd_in.place());
 #ifdef PADDLE_WITH_DISTRIBUTE
     } else if (phi::distributed::DistTensor::classof(fwd_in.impl().get())) {
-      phi::DenseTensor* dense_tensor =
+      const phi::DenseTensor& dense_tensor =
           static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get())
-              ->mutable_value();
+              ->value();
       PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
+          dense_tensor.meta().dtype,
           phi::DataType::UNDEFINED,
           paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
-      meta.SetTensorMeta(dense_tensor->meta());
+      meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
 #endif
     } else {
