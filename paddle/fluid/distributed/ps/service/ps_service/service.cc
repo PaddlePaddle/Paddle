@@ -64,7 +64,7 @@ void PSCore::InitGFlag(const std::string& gflags) {
   }
   int params_cnt = flags.size();
   char** params_ptr = &(flags_ptr[0]);
-  paddle::flags::ParseCommandLineFlags(&params_cnt, &params_ptr);
+  ::paddle::flags::ParseCommandLineFlags(&params_cnt, &params_ptr);
 }
 
 int PSCore::InitServer(

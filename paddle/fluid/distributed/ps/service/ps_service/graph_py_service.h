@@ -60,21 +60,21 @@ class GraphPyService {
   int get_shard_num() { return shard_num; }
   void set_shard_num(int shard_num) { this->shard_num = shard_num; }
   void GetDownpourSparseTableProto(
-      paddle::distributed::TableParameter* sparse_table_proto) {
+      ::paddle::distributed::TableParameter* sparse_table_proto) {
     sparse_table_proto->set_table_id(0);
     sparse_table_proto->set_table_class("GraphTable");
     sparse_table_proto->set_shard_num(shard_num);
-    sparse_table_proto->set_type(paddle::distributed::PS_SPARSE_TABLE);
-    paddle::distributed::TableAccessorParameter* accessor_proto =
+    sparse_table_proto->set_type(::paddle::distributed::PS_SPARSE_TABLE);
+    ::paddle::distributed::TableAccessorParameter* accessor_proto =
         sparse_table_proto->mutable_accessor();
 
-    // paddle::distributed::CommonAccessorParameter* common_proto =
+    // ::paddle::distributed::CommonAccessorParameter* common_proto =
     //     sparse_table_proto->mutable_common();
 
-    paddle::distributed::GraphParameter* graph_proto =
+    ::paddle::distributed::GraphParameter* graph_proto =
         sparse_table_proto->mutable_graph_parameter();
 
-    // paddle::distributed::GraphFeature* graph_feature =
+    // ::paddle::distributed::GraphFeature* graph_feature =
     //     graph_proto->mutable_graph_feature();
 
     graph_proto->set_task_pool_size(24);
@@ -86,7 +86,8 @@ class GraphPyService {
     for (size_t i = 0; i < id_to_feature.size(); i++) {
       graph_proto->add_node_types(id_to_feature[i]);
       auto feat_node = id_to_feature[i];
-      paddle::distributed::GraphFeature* g_f = graph_proto->add_graph_feature();
+      ::paddle::distributed::GraphFeature* g_f =
+          graph_proto->add_graph_feature();
       for (size_t x = 0; x < table_feat_conf_feat_name[i].size(); x++) {
         g_f->add_name(table_feat_conf_feat_name[i][x]);
         g_f->add_dtype(table_feat_conf_feat_dtype[i][x]);
@@ -141,7 +142,7 @@ class GraphPyServer : public GraphPyService {
   void set_rank(int rank) { this->rank = rank; }
 
   void start_server(bool block = true);
-  paddle::distributed::PSParameter GetServerProto();
+  ::paddle::distributed::PSParameter GetServerProto();
   std::shared_ptr<paddle::distributed::GraphBrpcServer> get_ps_server() {
     return pserver_ptr;
   }
@@ -203,7 +204,7 @@ class GraphPyClient : public GraphPyService {
                      const std::vector<std::vector<std::string>> features);
   std::vector<FeatureNode> pull_graph_list(
       std::string name, int server_index, int start, int size, int step = 1);
-  paddle::distributed::PSParameter GetWorkerProto();
+  ::paddle::distributed::PSParameter GetWorkerProto();
 
  protected:
   mutable std::mutex mutex_;

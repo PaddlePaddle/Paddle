@@ -120,7 +120,7 @@ void GraphPyClient::start_client() {
   dense_regions.insert(
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
-  paddle::distributed::PSParameter worker_proto = GetWorkerProto();
+  ::paddle::distributed::PSParameter worker_proto = GetWorkerProto();
   paddle::distributed::PaddlePSEnvironment _ps_env;
   auto servers_ = host_sign_list.size();
   _ps_env = paddle::distributed::PaddlePSEnvironment();
@@ -134,7 +134,7 @@ void GraphPyClient::start_client() {
 void GraphPyServer::start_server(bool block) {
   std::string ip = server_list[rank];
   uint32_t port = std::stoul(port_list[rank]);
-  paddle::distributed::PSParameter server_proto = this->GetServerProto();
+  ::paddle::distributed::PSParameter server_proto = this->GetServerProto();
 
   auto _ps_env = paddle::distributed::PaddlePSEnvironment();
   _ps_env.SetPsServers(&this->host_sign_list,
@@ -156,14 +156,14 @@ void GraphPyServer::start_server(bool block) {
     cv_->wait(lock);
   }
 }
-paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
+::paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
   // Generate server proto desc
-  paddle::distributed::PSParameter server_fleet_desc;
-  paddle::distributed::ServerParameter* server_proto =
+  ::paddle::distributed::PSParameter server_fleet_desc;
+  ::paddle::distributed::ServerParameter* server_proto =
       server_fleet_desc.mutable_server_param();
-  paddle::distributed::DownpourServerParameter* downpour_server_proto =
+  ::paddle::distributed::DownpourServerParameter* downpour_server_proto =
       server_proto->mutable_downpour_server_param();
-  paddle::distributed::ServerServiceParameter* server_service_proto =
+  ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
   server_service_proto->set_service_class("GraphBrpcService");
   server_service_proto->set_server_class("GraphBrpcServer");
@@ -173,7 +173,7 @@ paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
 
   // for (auto& tuple : this->table_id_map) {
   //   VLOG(0) << " make a new table " << tuple.second;
-  paddle::distributed::TableParameter* sparse_table_proto =
+  ::paddle::distributed::TableParameter* sparse_table_proto =
       downpour_server_proto->add_downpour_table_param();
   // std::vector<std::string> feat_name;
   // std::vector<std::string> feat_dtype;
@@ -198,17 +198,17 @@ paddle::distributed::PSParameter GraphPyServer::GetServerProto() {
   return server_fleet_desc;
 }
 
-paddle::distributed::PSParameter GraphPyClient::GetWorkerProto() {
-  paddle::distributed::PSParameter worker_fleet_desc;
-  paddle::distributed::WorkerParameter* worker_proto =
+::paddle::distributed::PSParameter GraphPyClient::GetWorkerProto() {
+  ::paddle::distributed::PSParameter worker_fleet_desc;
+  ::paddle::distributed::WorkerParameter* worker_proto =
       worker_fleet_desc.mutable_worker_param();
 
-  paddle::distributed::DownpourWorkerParameter* downpour_worker_proto =
+  ::paddle::distributed::DownpourWorkerParameter* downpour_worker_proto =
       worker_proto->mutable_downpour_worker_param();
 
   // for (auto& tuple : this->table_id_map) {
   //   VLOG(0) << " make a new table " << tuple.second;
-  paddle::distributed::TableParameter* worker_sparse_table_proto =
+  ::paddle::distributed::TableParameter* worker_sparse_table_proto =
       downpour_worker_proto->add_downpour_table_param();
   // std::vector<std::string> feat_name;
   // std::vector<std::string> feat_dtype;
@@ -230,11 +230,11 @@ paddle::distributed::PSParameter GraphPyClient::GetWorkerProto() {
   GetDownpourSparseTableProto(worker_sparse_table_proto);
   //}
 
-  paddle::distributed::ServerParameter* server_proto =
+  ::paddle::distributed::ServerParameter* server_proto =
       worker_fleet_desc.mutable_server_param();
-  paddle::distributed::DownpourServerParameter* downpour_server_proto =
+  ::paddle::distributed::DownpourServerParameter* downpour_server_proto =
       server_proto->mutable_downpour_server_param();
-  paddle::distributed::ServerServiceParameter* server_service_proto =
+  ::paddle::distributed::ServerServiceParameter* server_service_proto =
       downpour_server_proto->mutable_service_param();
   server_service_proto->set_service_class("GraphBrpcService");
   server_service_proto->set_server_class("GraphBrpcServer");
@@ -244,7 +244,7 @@ paddle::distributed::PSParameter GraphPyClient::GetWorkerProto() {
 
   // for (auto& tuple : this->table_id_map) {
   //   VLOG(0) << " make a new table " << tuple.second;
-  paddle::distributed::TableParameter* sparse_table_proto =
+  ::paddle::distributed::TableParameter* sparse_table_proto =
       downpour_server_proto->add_downpour_table_param();
   // std::vector<std::string> feat_name;
   // std::vector<std::string> feat_dtype;
