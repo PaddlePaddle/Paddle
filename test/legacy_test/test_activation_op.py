@@ -967,6 +967,40 @@ class TestTanhshrinkAPI(unittest.TestCase):
                 F.tanhshrink(x_fp16)
 
 
+class TestTanhshrinkComplex(unittest.TestCase):
+    # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink with complex
+    def setUp(self):
+        np.random.seed(1024)
+        self.x_np = np.random.uniform(10, 20, [10, 17]).astype(
+            np.float64
+        ) + 1j * np.random.uniform(10, 20, [10, 17]).astype(np.float64)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def test_complex64(self):
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np, dtype='complex64')
+            out1 = F.tanhshrink(x)
+            tanhshrink = paddle.nn.Tanhshrink()
+            out2 = tanhshrink(x)
+            out_ref = ref_tanhshrink(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
+    def test_complex128(self):
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np, dtype='complex128')
+            out1 = F.tanhshrink(x)
+            tanhshrink = paddle.nn.Tanhshrink()
+            out2 = tanhshrink(x)
+            out_ref = ref_tanhshrink(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
+
 def ref_hardshrink(x, threshold):
     out = np.copy(x)
     out[(out >= -threshold) & (out <= threshold)] = 0
