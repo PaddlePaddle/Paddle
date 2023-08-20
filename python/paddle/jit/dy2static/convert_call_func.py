@@ -41,7 +41,6 @@ from .program_translator import (
     unwrap_decorators,
 )
 from .utils import is_builtin, is_paddle_func, unwrap
-from .py_layer import is_pylayer_func, StaticPyLayer
 
 __all__ = []
 
@@ -220,7 +219,7 @@ def convert_call(func):
     if is_builtin(func, "print"):
         return convert_print
 
-    if not is_pylayer_func(func) and (is_builtin(func) or is_unsupported(func)):
+    if is_builtin(func) or is_unsupported(func):
         return func
 
     if inspect.isgeneratorfunction(func):
@@ -318,16 +317,6 @@ def convert_call(func):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
             converted_call = func
-        elif is_pylayer_func(func):
-            try:
-                func_self = getattr(func, "__self__", None)
-                assert func_self is not None
-                converted_pylayer = StaticPyLayer(func_self)
-            except (OSError, TypeError):
-                # NOTE: PyLayer.apply may have benn decorated
-                func_self = None if func_self else func_self
-            converted_call = converted_pylayer
-            func_self = None    # avoid `functools.partial`           
         else:
             try:
                 call_func = func.__class__.__call__

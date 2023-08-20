@@ -15,6 +15,7 @@
 import re
 
 import paddle
+from paddle.autograd.py_layer import PyLayerMeta
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import (
     _convert_into_variable,
@@ -22,6 +23,7 @@ from paddle.fluid.dygraph.base import (
 )
 from paddle.fluid.framework import Variable, core, default_main_program
 
+from .py_layer import StaticPyLayer
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
@@ -46,6 +48,9 @@ def convert_load(x):
         TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
         """
         return _convert_into_variable(x)
+
+    if isinstance(x, PyLayerMeta):
+        return StaticPyLayer(x)
 
     # get the new output of the var
     if in_declarative_mode() and isinstance(x, Variable):
