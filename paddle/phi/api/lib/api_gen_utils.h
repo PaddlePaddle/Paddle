@@ -133,6 +133,10 @@ void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to);
 
+void TransStrideLegacy(phi::DeviceContext* dev_ctx,
+                       phi::DenseTensor* from,
+                       phi::DenseTensor* to);
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 

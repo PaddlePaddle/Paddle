@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,20 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/primitive/type/lazy_tensor.h"
+#include "paddle/fluid/primitive/utils/utils.h"
 
-#include "paddle/ir/dialect/shape/shape_dialect.h"
-#include "paddle/ir/dialect/shape/shape_op.h"
-
-namespace ir {
-namespace dialect {
-ShapeDialect::ShapeDialect(IrContext *context)
-    : Dialect(name(), context, TypeId::get<ShapeDialect>()) {
-  initialize();
+namespace paddle {
+namespace primitive {
+template <>
+void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
+  x->set_impl(x_tmp.impl());
 }
 
-void ShapeDialect::initialize() { RegisterOps<SymbolicDim>(); }
-
-}  // namespace dialect
-}  // namespace ir
-
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::dialect::ShapeDialect)
+}  // namespace primitive
+}  // namespace paddle

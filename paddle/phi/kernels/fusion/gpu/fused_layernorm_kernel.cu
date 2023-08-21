@@ -34,7 +34,6 @@ limitations under the License.
 // The following code modified from OneFlow's implementation, and change to use
 // single Pass algorithm. Support Int8 quant, dequant Load/Store implementation.
 
-#include "paddle/phi/kernels/fusion/gpu/fused_layernorm_kernel.h"
 #include <assert.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
