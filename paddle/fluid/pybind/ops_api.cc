@@ -48,7 +48,7 @@ static PyObject *split(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_split(self, args, kwargs);
 }
 
-static PyMethodDef OpsAPI[] = {{"add_n",  // NOLINT
+static PyMethodDef OpsAPI[] = {{"add_n",
                                 (PyCFunction)(void (*)(void))add_n,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for add_n."},
