@@ -546,7 +546,7 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-using phi::distributed::auto_parallel::TensorDistAttr;
+using phi::distributed::TensorDistAttr;
 std::shared_ptr<TensorDistAttr> CastPyArg2DistAttr(PyObject* obj,
                                                    ssize_t arg_pos) {
   if (PyObject_IsInstance(
@@ -891,8 +891,7 @@ PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(
-    const phi::distributed::auto_parallel::TensorDistAttr* value) {
+PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
