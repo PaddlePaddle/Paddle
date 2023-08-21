@@ -170,8 +170,7 @@ PyObject *static_api_split(PyObject *self, PyObject *args, PyObject *kwargs) {
     paddle::experimental::Scalar axis = CastPyArg2Scalar(axis_obj, "split", 2);
 
     // Call ir static api
-    auto out = paddle::dialect::split(
-        x, sections.to < std::vector<int64_t>(), axis.to<int>());
+    auto out = paddle::dialect::split(x, sections.GetData(), axis.to<int>());
     return ToPyObject(out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());

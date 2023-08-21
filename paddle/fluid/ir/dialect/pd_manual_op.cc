@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/ir/dialect/pd_manual_op.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -220,9 +221,9 @@ void SplitGradOp::Build(ir::Builder &builder,
     meta_out_grad.push_back(&vec_meta_out_grad[i]);
   }
   phi::DenseTensor dense_x_grad;
-  phi::MetaTensor meta_out(&dense_x_grad);
+  phi::MetaTensor meta_x_grad(&dense_x_grad);
 
-  phi::ConcatInferMeta(meta_out_grad, axis, &meta_x_gard);
+  phi::ConcatInferMeta(meta_out_grad, axis, &meta_x_grad);
 
   std::vector<ir::Type> argument_outputs;
   ir::Type x_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -242,3 +243,4 @@ void SplitGradOp::Verify() {}
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)

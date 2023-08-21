@@ -96,7 +96,7 @@ std::vector<std::vector<ir::OpResult>> SplitOp::Vjp(
 
   Tensor axis(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
   std::vector<Tensor> out_grads_;
-  for (size_t idx = 0; idx < out_grads().size(); idx++) {
+  for (size_t idx = 0; idx < out_grads.size(); idx++) {
     out_grads_.emplace_back(
         std::make_shared<primitive::LazyTensor>(out_grads[0][idx]));
   }

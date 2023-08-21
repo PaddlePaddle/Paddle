@@ -108,7 +108,10 @@ void PaddleDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/fluid/ir/dialect/pd_op.h"  // NOLINT
       >();
-  RegisterOp<paddle::dialect::AddNOp>();
+  RegisterOps<
+#define GET_MANUAL_OP_LIST
+#include "paddle/fluid/ir/dialect/pd_manual_op.h"  // NOLINT
+      >();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }

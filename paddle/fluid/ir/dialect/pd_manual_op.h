@@ -14,7 +14,7 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
 
 #else
 
@@ -73,5 +73,6 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 
 #endif

@@ -20,6 +20,17 @@
 
 namespace paddle {
 namespace dialect {
+std::vector<ir::OpResult> split(ir::OpResult x,
+                                const std::vector<int64_t>& sections,
+                                int axis) {
+  paddle::dialect::SplitOp pd_split_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitOp>(
+          x, sections, axis);
+  auto builtin_split_op =
+      APIBuilder::Instance().GetBuilder()->Build<ir::SplitOp>(
+          pd_split_op.result(0));
+  return builtin_split_op.outputs();
+}
 std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
                                       ir::OpResult out_grad,
                                       ir::OpResult axis) {
@@ -41,7 +52,7 @@ ir::OpResult split_grad(std::vector<ir::OpResult> out_grads,
       APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
           combine_op.out(), axis);
 
-  return split_grad_op.out();
+  return split_grad_op.x_grad();
 }
 
 }  // namespace dialect

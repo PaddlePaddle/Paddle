@@ -227,20 +227,17 @@ std::vector<std::vector<paddle::Tensor>> split_vjp(
     const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res(3, std::vector<Tensor>());
   // get concat_grad res.
-  std::vector<Tensor> op_res =
-      backend::split_grad<primitive::LazyTensor>(out_grads, axis);
+  Tensor op_res = backend::split_grad<primitive::LazyTensor>(out_grads, axis);
 
   // construct vjp result by op result and stop_gradients info
-  vjp_res[0].resize(op_res.size());
-  for (uint64_t idx = 0; idx < op_res.size(); idx++) {
-    if (!stop_gradients[0][idx]) {
-      vjp_res[0][idx] = op_res[idx];
-    }
+  if (!stop_gradients[0][0]) {
+    vjp_res[0][0] = op_res;
   }
+
   // vjp_res[1] is sections's grad which is attribute (no grad).
   // vjp_res[2] is axis's grad which is attribute (no grad).
-  vjp_res[1].resize(stop_gradients[1].size()) vjp_res[2].resize(
-      stop_gradients[2].szie());
+  vjp_res[1].resize(stop_gradients[1].size());
+  vjp_res[2].resize(stop_gradients[2].size());
   return vjp_res;
 }
 }  // namespace primitive

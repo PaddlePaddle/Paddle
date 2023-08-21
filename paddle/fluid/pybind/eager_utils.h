@@ -136,7 +136,7 @@ PyObject* ToPyObject(const paddle::framework::Vocab& value);
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 
 PyObject* ToPyObject(const ir::OpResult& value);
-
+PyObject* ToPyObject(const std::vector<ir::OpResult>& value);
 class PyTensorHook : public egr::TensorHook {
  public:
   explicit PyTensorHook(PyObject* func) : py_func_(func) {
