@@ -243,11 +243,14 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     MatchContextImpl res_match_ctx = CreateOperations(
         *result_pattern_graph_, source_pattern_match_ctx, rewriter);
 
-    // 2. Replace Output Values in source_pattern_graph by Output Values in
+    // 2. Process Assign Tensor
+    RebindIrTensorForAssignTensor(*result_pattern_graph_, &res_match_ctx);
+
+    // 3. Replace Output Values in source_pattern_graph by Output Values in
     // result_pattern_graph
     ReplaceOutputTensor(source_pattern_match_ctx, res_match_ctx, rewriter);
 
-    // 3. Delete Operations in source_pattern_graph
+    // 4. Delete Operations in source_pattern_graph
     DeleteSourcePatternOp(
         *source_pattern_graph_, source_pattern_match_ctx, rewriter);
   }
@@ -273,6 +276,20 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
         });
 
     return res_match_ctx;
+  }
+
+  void RebindIrTensorForAssignTensor(
+      const ResultPatternGraph& result_pattern_graph,
+      MatchContextImpl* res_match_ctx) const {
+    const auto& tensor_assign_map = result_pattern_graph.tensor_assign_map();
+    for (const auto& kv : tensor_assign_map) {
+      const auto& src_tensor_name = kv.first;
+      const auto& dst_tensor_name = kv.second;
+      res_match_ctx->BindIrValue(
+          src_tensor_name,
+          std::make_shared<IrValue>(
+              res_match_ctx->GetIrValue(dst_tensor_name)));
+    }
   }
 
   void ReplaceOutputTensor(const MatchContextImpl& src_match_ctx,

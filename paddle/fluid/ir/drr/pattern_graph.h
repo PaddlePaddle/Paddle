@@ -31,9 +31,11 @@ class Tensor;
 
 class PatternGraph {
  public:
+  virtual ~PatternGraph() {}
+
   const drr::OpCall& AddOpCall(const std::shared_ptr<drr::OpCall>& op_call);
 
-  const drr::Tensor& AddTensor(const std::shared_ptr<drr::Tensor>& tensor);
+  drr::Tensor& AddTensor(const std::shared_ptr<drr::Tensor>& tensor);
 
   drr::Tensor& AddTmpTensor(const std::shared_ptr<drr::Tensor>& tensor);
 
@@ -76,7 +78,18 @@ class SourcePatternGraph : public PatternGraph {
   friend class DrrPatternContext;
 };
 
-class ResultPatternGraph : public PatternGraph {};
+class ResultPatternGraph : public PatternGraph {
+ public:
+  void AssignTensor(const Tensor& from, const Tensor& to);
+
+  const std::unordered_map<std::string, std::string>& tensor_assign_map()
+      const {
+    return tensor_assign_map_;
+  }
+
+ private:
+  std::unordered_map<std::string, std::string> tensor_assign_map_;
+};
 
 class GraphTopo {
  public:

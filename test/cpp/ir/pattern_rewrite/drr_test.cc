@@ -125,10 +125,6 @@ struct RemoveRedundentCastFunctor {
         pat.Op("pd.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
     pat.Tensor("ret") =
         pat.Op("pd.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
-    pat.RequireNativeCall([](const ir::drr::MatchContext &match_ctx) -> bool {
-      return match_ctx.Tensor("ret").Dtype() ==
-             match_ctx.Tensor("arg0").Dtype();
-    });
     auto res = pat.ResultPattern();
     res.Tensor("ret") =
         res.Op("pd.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
@@ -142,6 +138,24 @@ class RemoveRedundentCastPattern
   using ir::drr::DrrRewritePattern<
       paddle::dialect::CastOp,
       RemoveRedundentCastFunctor>::DrrRewritePattern;
+};
+
+struct RemoveUselessCastFunctor {
+  void operator()(ir::drr::DrrPatternContext *ctx) {
+    auto pat = ctx->SourcePattern();
+    pat.Tensor("ret") = pat.Op("pd.cast")(pat.Tensor("arg0"));
+    pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
+    auto res = pat.ResultPattern();
+    res.Tensor("ret").Assign(res.Tensor("arg0"));
+  }
+};
+
+class RemoveUselessCastPattern
+    : public ir::drr::DrrRewritePattern<paddle::dialect::CastOp,
+                                        RemoveUselessCastFunctor> {
+ public:
+  using ir::drr::DrrRewritePattern<paddle::dialect::CastOp,
+                                   RemoveUselessCastFunctor>::DrrRewritePattern;
 };
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT
@@ -191,6 +205,7 @@ class DrrPatternRewritePass : public ir::Pass {
     ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
     ps.Add(std::make_unique<RemoveRedundentTransposePattern>(context));
     ps.Add(std::make_unique<RemoveRedundentCastPattern>(context));
+    ps.Add(std::make_unique<RemoveUselessCastPattern>(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -227,5 +242,5 @@ TEST(DrrTest, drr) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 8u);
+  EXPECT_EQ(program.block()->size(), 7u);
 }

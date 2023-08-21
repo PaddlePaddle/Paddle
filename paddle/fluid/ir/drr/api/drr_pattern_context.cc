@@ -50,8 +50,7 @@ const Op& DrrPatternContext::ResultOpPattern(
   return *owned_ops_.back();
 }
 
-const drr::Tensor& DrrPatternContext::ResultTensorPattern(
-    const std::string& name) {
+drr::Tensor& DrrPatternContext::ResultTensorPattern(const std::string& name) {
   return result_pattern_graph_->AddTensor(std::shared_ptr<drr::Tensor>(
       new drr::Tensor(name, result_pattern_graph_.get())));
 }
@@ -70,9 +69,22 @@ std::vector<Constraint> DrrPatternContext::constraints() const {
 
 void DrrPatternContext::RequireEqual(const TensorShape& first,
                                      const TensorShape& second) {
-  auto constrain_fn = [&](const MatchContext& match_context) {
-    return match_context.Tensor(first.name()).Shape() ==
-           match_context.Tensor(second.name()).Shape();
+  // Note: we capture the datas by value for constrain_fn
+  // because the datas are destructed before running constrain_fn.
+  auto constrain_fn = [=](const MatchContext& match_context) {
+    return match_context.Tensor(first.tensor_name()).Shape() ==
+           match_context.Tensor(second.tensor_name()).Shape();
+  };
+  constraints_.emplace_back(constrain_fn);
+}
+
+void DrrPatternContext::RequireEqual(const TensorDataType& first,
+                                     const TensorDataType& second) {
+  // Note: we capture the datas by value for constrain_fn
+  // because the datas are destructed before running constrain_fn.
+  auto constrain_fn = [=](const MatchContext& match_context) {
+    return match_context.Tensor(first.tensor_name()).Dtype() ==
+           match_context.Tensor(second.tensor_name()).Dtype();
   };
   constraints_.emplace_back(constrain_fn);
 }
@@ -121,7 +133,11 @@ Tensor& Op::operator()() const {
 }
 
 int64_t Op::count = 0;
-const char* Op::prefix = "@#_#@_";
+const char* Op::prefix = "@drr_temp@_";
+
+void Tensor::Assign(const Tensor& other) {
+  dynamic_cast<ResultPatternGraph*>(pattern_graph_)->AssignTensor(*this, other);
+}
 
 void Tensor::operator=(const Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
