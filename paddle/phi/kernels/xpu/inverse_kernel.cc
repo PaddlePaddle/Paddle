@@ -27,13 +27,6 @@ void InverseKernel(const Context& dev_ctx,
   using XPUT = typename XPUTypeTrait<T>::Type;
   auto out_data = dev_ctx.template Alloc<T>(out);
 
-  PADDLE_ENFORCE_LE(
-      x.numel() * sizeof(T),
-      8192,
-      phi::errors::InvalidArgument("Number of elements (%d) exceeds the "
-                                   "maximum supported by xpu currently (8192).",
-                                   x.numel()));
-
   int64_t x_dims_len = x.dims().size();
   PADDLE_ENFORCE_EQ(
       x_dims_len == 2 || x_dims_len == 3,
@@ -49,7 +42,12 @@ void InverseKernel(const Context& dev_ctx,
     batch = x.dims()[0];
     n = x.dims()[1];
   }
-
+  PADDLE_ENFORCE_LE(n * n * sizeof(T),
+                    8192,
+                    phi::errors::InvalidArgument(
+                        "The size of a single matrix (%d bytes) exceeds the "
+                        "maxinum numbers of bytes xpu supports (8192).",
+                        n * n * sizeof(T)));
   auto RAII_GUARD = xpu::ctx_guard(dev_ctx.x_context());
   auto* info_xpu = RAII_GUARD.alloc_l3_or_gm<int>(batch);
   // Xpu inverse api has check for singularity itself.
