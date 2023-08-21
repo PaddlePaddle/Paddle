@@ -74,7 +74,7 @@ add_custom_command(
 cc_library(
   pd_dialect_core
   SRCS pd_attribute.cc pd_type.cc
-  DEPS ir_core phi pd_interface pd_trait type_info)
+  DEPS phi pd_interface pd_trait type_info)
 cc_library(
   pd_dialect_op
   SRCS ${op_source_file} pd_manual_op.cc
