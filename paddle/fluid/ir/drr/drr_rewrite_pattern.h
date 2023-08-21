@@ -69,81 +69,77 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     const auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
     std::unordered_set<const OpCall*> drr_visited;
-    std::unordered_set<const Operation*> ir_visited;
+    std::unordered_set<Operation*> ir_visited;
     std::queue<const OpCall*> drr_q;
-    std::queue<const ir::Operation*> ir_q;
+    std::queue<ir::Operation*> ir_q;
     drr_q.push(anchor);
     ir_q.push(op);
     drr_visited.insert(anchor);
     ir_visited.insert(op);
-    source_pattern_match_ctx->BindIrOperation(
-        anchor, std::make_shared<IrOperation>(op));
-    bool Matched = true;
+    bool matched = true;
     size_t step = 0;
     while (!drr_q.empty()) {
-      if (!Matched) break;
+      if (!matched) break;
 
       IR_ENFORCE(drr_q.size() == ir_q.size());
-      // if (drr_q.size() != ir_q.size()) {
-      //   Matched = false;
-      //   break;
-      // }
+
       auto* drr_node = drr_q.front();
       auto* ir_node = ir_q.front();
       drr_q.pop();
       ir_q.pop();
       if (drr_node->name() != ir_node->name()) {
-        Matched = false;
+        matched = false;
         break;
       }
+      source_pattern_match_ctx->BindIrOperation(
+          drr_node, std::make_shared<IrOperation>(ir_node));
 
       // op's inputs
       const auto& drr_input_tensors = drr_node->inputs();
       auto ir_input_value_size = ir_node->num_operands();
       // check input's size
       if (drr_input_tensors.size() != ir_input_value_size) {
-        Matched = false;
+        matched = false;
         break;
       }
       for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-        if (!Matched) break;
+        if (!matched) break;
         // check brother ops
-        auto drr_brother_ops = drr_input_tensors[i]->consumers();
+        const auto& drr_brother_ops = drr_input_tensors[i]->consumers();
         auto ir_input_value = ir_node->operand(i).source();
 
         source_pattern_match_ctx->BindIrValue(
             drr_input_tensors[i]->name(),
             std::make_shared<IrValue>(ir_input_value));
         if (drr_brother_ops.size() != ir_input_value.use_count()) {
-          Matched = false;
+          matched = false;
           break;
         }
 
         for (auto* drr_brother_op : drr_brother_ops) {
-          if (drr_visited.count(drr_brother_op) == 0) {
-            std::pair<bool, ir::Operation*> found{false, nullptr};
-            for (auto& it : ir_input_value) {
-              auto* ir_op = it.owner();
-              if (ir_visited.count(ir_op)) {
-                continue;
-              }
-              // todo()
-              if (drr_brother_op->name() == ir_op->name()) {
-                found = std::make_pair(true, ir_op);
-                break;
-              }
+          if (drr_visited.count(drr_brother_op)) {
+            continue;
+          }
+          std::pair<bool, ir::Operation*> found{false, nullptr};
+          for (auto& it : ir_input_value) {
+            auto* ir_op = it.owner();
+            if (ir_visited.count(ir_op)) {
+              continue;
             }
-            if (found.first) {
-              drr_q.push(drr_brother_op);
-              ir_q.push(found.second);
-              drr_visited.insert(drr_brother_op);
-              ir_visited.insert(found.second);
-              source_pattern_match_ctx->BindIrOperation(
-                  drr_brother_op, std::make_shared<IrOperation>(found.second));
-            } else {
-              Matched = false;
+            // todo()
+            if (drr_brother_op->name() == ir_op->name()) {
+              found = std::make_pair(true, ir_op);
               break;
             }
+          }
+          if (found.first) {
+            drr_q.push(drr_brother_op);
+            ir_q.push(found.second);
+            drr_visited.insert(drr_brother_op);
+            ir_visited.insert(found.second);
+          } else {
+            matched = false;
+            break;
           }
         }
 
@@ -153,18 +149,16 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
         }
 
         // check ancestor op
-        auto drr_ancestor_op = drr_input_tensors[i]->producer();
-        auto ir_ancestor_op = ir_input_value.GetDefiningOp();
+        auto* drr_ancestor_op = drr_input_tensors[i]->producer();
+        auto* ir_ancestor_op = ir_input_value.GetDefiningOp();
         if (drr_ancestor_op->name() != ir_ancestor_op->name()) {
-          Matched = false;
+          matched = false;
           break;
         } else {
           drr_q.push(drr_ancestor_op);
           ir_q.push(ir_ancestor_op);
           drr_visited.insert(drr_ancestor_op);
           ir_visited.insert(ir_ancestor_op);
-          source_pattern_match_ctx->BindIrOperation(
-              drr_ancestor_op, std::make_shared<IrOperation>(ir_ancestor_op));
         }
       }
 
@@ -173,14 +167,14 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
       auto ir_output_value_size = ir_node->num_results();
       // check output's size
       if (drr_output_tensors.size() != ir_output_value_size) {
-        Matched = false;
+        matched = false;
         break;
       }
 
       for (size_t i = 0; i < drr_output_tensors.size(); ++i) {
-        if (!Matched) break;
+        if (!matched) break;
         // check child ops
-        auto drr_child_ops = drr_output_tensors[i]->consumers();
+        const auto& drr_child_ops = drr_output_tensors[i]->consumers();
         auto ir_output_value = ir_node->result(i);
         source_pattern_match_ctx->BindIrValue(
             drr_output_tensors[i]->name(),
@@ -190,35 +184,34 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
           continue;
         }
         if (drr_child_ops.size() != ir_output_value.use_count()) {
-          Matched = false;
+          matched = false;
           break;
         }
 
         for (auto* drr_child_op : drr_child_ops) {
-          if (drr_visited.count(drr_child_op) == 0) {
-            std::pair<bool, ir::Operation*> found{false, nullptr};
-            for (auto& it : ir_output_value) {
-              auto* ir_op = it.owner();
-              if (ir_visited.count(ir_op)) {
-                continue;
-              }
-              // todo()
-              if (drr_child_op->name() == ir_op->name()) {
-                found = {true, ir_op};
-                break;
-              }
+          if (drr_visited.count(drr_child_op)) {
+            continue;
+          }
+          std::pair<bool, ir::Operation*> found{false, nullptr};
+          for (auto& it : ir_output_value) {
+            auto* ir_op = it.owner();
+            if (ir_visited.count(ir_op)) {
+              continue;
             }
-            if (found.first) {
-              drr_q.push(drr_child_op);
-              ir_q.push(found.second);
-              drr_visited.insert(drr_child_op);
-              ir_visited.insert(found.second);
-              source_pattern_match_ctx->BindIrOperation(
-                  drr_child_op, std::make_shared<IrOperation>(found.second));
-            } else {
-              Matched = false;
+            // todo()
+            if (drr_child_op->name() == ir_op->name()) {
+              found = {true, ir_op};
               break;
             }
+          }
+          if (found.first) {
+            drr_q.push(drr_child_op);
+            ir_q.push(found.second);
+            drr_visited.insert(drr_child_op);
+            ir_visited.insert(found.second);
+          } else {
+            matched = false;
+            break;
           }
         }
       }
@@ -226,21 +219,21 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
       step++;
     }
 
-    if (Matched) {
+    if (matched) {
       IR_ENFORCE(step == source_pattern_graph_->CountOfOpCalls());
     } else {
-      return Matched;
+      return matched;
     }
-    // Matched = Matched && step == source_pattern_graph_->CountOfOpCalls();
+    // matched = matched && step == source_pattern_graph_->CountOfOpCalls();
 
     // Constraints
     MatchContext match_context{source_pattern_match_ctx};
     for (const auto& constraint : constraints_) {
-      Matched = constraint(match_context);
-      if (!Matched) break;
+      matched = constraint(match_context);
+      if (!matched) break;
     }
 
-    return Matched;
+    return matched;
   }
 
   void PatternGraphRewrite(SourceOp op,
