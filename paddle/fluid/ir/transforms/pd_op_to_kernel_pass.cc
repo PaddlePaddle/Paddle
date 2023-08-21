@@ -241,28 +241,6 @@ phi::KernelKey GetKernelKey(
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
 
-  if (op->num_operands() > 0) {
-    // Because we can't make sure the place when build data op
-    // and the output place of data op is undefined. It means we
-    // don't know how to select the kernel in the next of op that
-    // uses data op outout as inputs. So, we need set kernel backend
-    // manually.
-    if (op->operand_source(0).GetDefiningOp()->name() == "pd.data") {
-      auto data_op = op->operand_source(0).GetDefiningOp();
-      auto data_place = data_op->attributes()
-                            .at("place")
-                            .dyn_cast<dialect::PlaceAttribute>()
-                            .data();
-
-      auto data_op_backend = paddle::experimental::ParseBackend(data_place);
-      if (data_op_backend == phi::Backend::UNDEFINED) {
-        kernel_backend = paddle::experimental::ParseBackend(place);
-      } else {
-        kernel_backend = data_op_backend;
-      }
-    }
-  }
-
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
@@ -377,6 +355,27 @@ phi::KernelKey GetKernelKey(
       auto fake_tensors = GetFakeTensorList(new_input_tmp);
       for (auto& fake_tensor : fake_tensors) {
         kernel_key_parser.AssignKernelKeySet(fake_tensor);
+      }
+
+      // Because we can't make sure the place when build data op
+      // and the output place of data op is undefined. It means we
+      // don't know how to select the kernel in the next of op that
+      // uses data op outout as inputs. So, we need set kernel backend
+      // manually.
+      if (op->operand_source(i).GetDefiningOp()->name() == "pd.data") {
+        auto data_op = op->operand_source(0).GetDefiningOp();
+        auto data_place = data_op->attributes()
+                              .at("place")
+                              .dyn_cast<dialect::PlaceAttribute>()
+                              .data();
+
+        auto data_op_backend = paddle::experimental::ParseBackend(data_place);
+        if (data_op_backend == phi::Backend::UNDEFINED) {
+          data_op_backend = paddle::experimental::ParseBackend(place);
+        }
+        kernel_key_parser.key_set.backend_set =
+            kernel_key_parser.key_set.backend_set |
+            paddle::experimental::BackendSet(data_op_backend);
       }
     }
 
