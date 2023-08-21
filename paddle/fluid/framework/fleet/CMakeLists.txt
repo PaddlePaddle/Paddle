@@ -1,9 +1,9 @@
 if(WITH_PSLIB)
   if(WITH_PSLIB_BRPC)
-    set(FLUID_BRPC_DEPS pslib_brpc)
+    set(BRPC_DEPS pslib_brpc)
   else()
     if(NOT WITH_HETERPS)
-      set(FLUID_BRPC_DEPS ${BRPC_DEPS})
+      set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
     endif()
   endif()
   cc_library(
@@ -14,7 +14,7 @@ if(WITH_PSLIB)
          op_registry
          variable_helper
          scope
-         ${FLUID_BRPC_DEPS}
+         ${BRPC_DEPS}
          pslib)
 else()
   cc_library(
@@ -30,25 +30,25 @@ if(WITH_HETERPS)
         ps_gpu_wrapper
         SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
         DEPS heter_ps gloo_wrapper ps_framework_proto graph_gpu_wrapper fleet
-             ${FLUID_BRPC_DEPS})
+             ${BRPC_DEPS})
     else()
       nv_library(
         ps_gpu_wrapper
         SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-        DEPS heter_ps gloo_wrapper ${FLUID_BRPC_DEPS})
+        DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
     endif()
     add_subdirectory(heter_ps)
   elseif(WITH_XPU_KP)
     xpu_library(
       ps_gpu_wrapper
       SRCS ps_gpu_wrapper.kps ps_gpu_wrapper.cc
-      DEPS heter_ps gloo_wrapper ${FLUID_BRPC_DEPS})
+      DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
     add_subdirectory(heter_ps)
   elseif(WITH_RCCL)
     hip_library(
       ps_gpu_wrapper
       SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-      DEPS heter_ps gloo_wrapper ${FLUID_BRPC_DEPS})
+      DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
     add_subdirectory(heter_ps)
   endif()
 else()
@@ -118,7 +118,7 @@ endif()
 cc_library(
   heter_wrapper
   SRCS heter_wrapper.cc
-  DEPS framework_proto device_context heter_service_proto ${FLUID_BRPC_DEPS})
+  DEPS framework_proto device_context heter_service_proto ${BRPC_DEPS})
 
 cc_test(
   test_fleet_cc

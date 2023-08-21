@@ -37,7 +37,7 @@ else()
     ps_framework_proto
     framework_proto
     sendrecv_rpc
-    ${BRPC_DEPS}
+    ${EXTERNAL_BRPC_DEPS}
     phi
     zlib
     device_context)
