@@ -23,7 +23,6 @@
 namespace paddle {
 namespace primitive {
 namespace backend {
-namespace experimental {
 
 using Tensor = paddle::Tensor;
 using IntArray = paddle::experimental::IntArray;
@@ -37,7 +36,71 @@ Tensor mean_grad(const Tensor& x,
                  const IntArray& axis = {},
                  bool keepdim = false,
                  bool reduce_all = false);
-}  // namespace experimental
+
+template <typename T>
+std::vector<Tensor> concat_grad(const std::vector<Tensor>& x,
+                                const Tensor& out_grad,
+                                const Tensor& axis);
+
+template <typename T>
+std::tuple<Tensor, Tensor> add_grad(const Tensor& x,
+                                    const Tensor& y,
+                                    const Tensor& out_grad,
+                                    int axis);
+
+template <typename T>
+Tensor divide(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor add(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor multiply(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor elementwise_pow(const Tensor& x, const Tensor& y);
+
+template <typename T>
+Tensor scale(const Tensor& x,
+             const Scalar& scale = 1.0,
+             float bias = 0.0,
+             bool bias_after_scale = true);
+
+template <typename T>
+Tensor sum(const Tensor& x,
+           const IntArray& axis = {},
+           phi::DataType dtype = phi::DataType::UNDEFINED,
+           bool keepdim = false);
+
+template <typename T>
+Tensor full(const IntArray& shape,
+            const Scalar& value,
+            phi::DataType dtype = phi::DataType::FLOAT32,
+            phi::Place place = phi::CPUPlace());
+
+template <typename T>
+std::tuple<Tensor, Tensor> reshape(const Tensor& x, const IntArray& shape);
+
+template <typename T>
+Tensor expand(const Tensor& x, const IntArray& shape);
+
+template <typename T>
+Tensor tile(const Tensor& x, const IntArray& repeat_times = {});
+
+template <typename T>
+std::tuple<Tensor, Tensor> divide_grad(const Tensor& x,
+                                       const Tensor& y,
+                                       const Tensor& out,
+                                       const Tensor& out_grad,
+                                       int axis);
+
+template <typename T>
+Tensor sum_grad(const Tensor& x,
+                const Tensor& out_grad,
+                const IntArray& axis,
+                bool keepdim,
+                bool reduce_all);
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

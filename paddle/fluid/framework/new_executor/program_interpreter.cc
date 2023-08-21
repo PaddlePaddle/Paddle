@@ -47,7 +47,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -287,16 +286,17 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+  const ProgramInterpreter& impl = dynamic_cast<const ProgramInterpreter&>(src);
+  if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
     return;
   }
   // share op dependency
-  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
-  dependecy_count_ = src.GetDependencyCount();
+  dependency_builder_.ShareDependencyFrom(impl.GetDependencyBuilder());
+  dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  stream_analyzer_.ShareEventInfoFrom(src.GetStreamAnalyzer());
+  stream_analyzer_.ShareEventInfoFrom(impl.GetStreamAnalyzer());
   is_shared_results_build_ = true;
-  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
@@ -341,18 +341,6 @@ std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
 const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
     const {
   return stream_analyzer_;
-}
-
-const interpreter::NewIrDependencyBuilder&
-ProgramInterpreter::GetNewIrDependencyBuilder() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
-}
-
-const interpreter::NewIrStreamAnalyzer&
-ProgramInterpreter::GetNewIrStreamAnalyzer() const {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "GetDependencyBuilder is not implemented in ProgramInterpreter."));
 }
 
 bool ProgramInterpreter::IsSharedResultsBuild() const {
