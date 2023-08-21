@@ -7,7 +7,6 @@
 register_unity_group(
   cc
   ftrl_op.cc
-  lars_momentum_op.cu
   lars_momentum_op.cc
   proximal_adagrad_op.cc
   proximal_gd_op.cc
@@ -17,6 +16,7 @@ register_unity_group(
 register_unity_group(
   cu
   ftrl_op.cu
+  lars_momentum_op.cu
   momentum_op.cu
   sgd_op.cu
   proximal_adagrad_op.cu
