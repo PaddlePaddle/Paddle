@@ -804,5 +804,5 @@ void FillWithTensorInferMeta(
     int dtype,
     const std::string& str_value,
     MetaTensor* out);
-)
+
 }  // namespace phi
