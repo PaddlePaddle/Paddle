@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace dtype {
@@ -286,8 +285,8 @@ inline DataType VarTypeToDataType(
     case paddle::framework::proto::VarType_Type::VarType_Type_PSTRING:
       return DataType::PSTRING;
     default:
-      PD_THROW(phi::errors::InvalidArgument("Invalid proto::VarType_Type %d.",
-                                            static_cast<int>(var_type)));
+      PD_THROW(
+          "Invalid proto::VarType_Type `", static_cast<int>(var_type), "`.");
   }
 }
 
