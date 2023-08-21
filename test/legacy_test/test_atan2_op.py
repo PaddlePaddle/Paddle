@@ -25,9 +25,17 @@ np.random.seed(0)
 
 
 def atan2_grad(x1, x2, dout):
-    dx1 = dout * x2 / (x1 * x1 + x2 * x2)
-    dx2 = -dout * x1 / (x1 * x1 + x2 * x2)
-    return dx1, dx2
+    if np.iscomplexobj(x1) and np.iscomplex(x2):
+
+        def angle_grad_element(x1i, x2i, douti):
+            dx1i = douti * x2i / (x1i * x1i + x2i * x2i)
+            dx2i = -douti * x1i / (x1i * x1i + x2i * x2i)
+            return dx1i, dx2i
+
+    else:
+        dx1 = dout * x2 / (x1 * x1 + x2 * x2)
+        dx2 = -dout * x1 / (x1 * x1 + x2 * x2)
+        return dx1, dx2
 
 
 class TestAtan2(OpTest):
@@ -173,6 +181,33 @@ class TestAtan2Error(unittest.TestCase):
             out = paddle.atan2(X, Y)
 
         self.assertRaises(ValueError, test_mismatch_numel)
+
+
+class TestAtan2OpComplex(TestAtan2_float):
+    def init_dtype(self):
+        self.dtype = "complex128"
+        self.shape = [11, 17]
+
+    def setUp(self):
+        self.op_type = "atan2"
+        self.python_api = paddle.atan2
+        self.init_dtype()
+        x1real = np.expand_dims(
+            np.random.uniform(-1, -0.1, [15, 17]), -1
+        ).astype("float64")
+        x1image = np.random.uniform(-1, -0.1, [15, 17]).astype("float64")
+        x2real = np.expand_dims(np.random.uniform(0.1, 1, [15, 17]), -1).astype(
+            "float64"
+        )
+        x2image = np.random.uniform(0.1, 1, [15, 17]).astype("float64")
+        x1 = x1real + 1j * x1image
+        x2 = x2real + 1j * x2image
+        out = np.arctan2(x1, x2)
+        self.inputs = {
+            'X1': x1,
+            'X2': x2,
+        }
+        self.outputs = {'Out': out}
 
 
 if __name__ == '__main__':
