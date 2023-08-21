@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/atan2_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -56,6 +57,37 @@ struct Atan2GradFunctor<double> {
                    const double* dout,
                    double* dx1,
                    double* dx2,
+                   int64_t numel)
+      : x1_(x1), x2_(x2), dout_(dout), dx1_(dx1), dx2_(dx2), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    auto x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
+    if (dx1_) {
+      dx1_[idx] = dout_[idx] * x2_[idx] / x;
+    }
+    if (dx2_) {
+      dx2_[idx] = -dout_[idx] * x1_[idx] / x;
+    }
+  }
+
+  const double* x1_;
+  const double* x2_;
+  const double* dout_;
+  double* dx1_;
+  double* dx2_;
+  int64_t numel_;
+};
+
+template <typename T>
+using ComplexType = phi::dtype::complex<T>;
+
+template <typename T, typename Context>
+struct Atan2GradFunctor<ComplexType<T>> {
+  Atan2GradFunctor(const typename* x1,
+                   const typename* x2,
+                   const typename* dout,
+                   typename* dx1,
+                   typename* dx2,
                    int64_t numel)
       : x1_(x1), x2_(x2), dout_(dout), dx1_(dx1), dx2_(dx2), numel_(numel) {}
 
