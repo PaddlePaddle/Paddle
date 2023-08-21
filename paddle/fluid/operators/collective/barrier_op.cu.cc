@@ -42,27 +42,18 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    VLOG(0) << "new comm_context_manager has rid " << rid;
     if (comm_context_manager.Has(std::to_string(rid))) {
-      VLOG(0) << "new comm_context_manager has rid " << rid;
       auto comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
           comm_context_manager.Get(std::to_string(rid)));
-      VLOG(0) << "new comm_context_manager has comm_ctx " << comm_ctx;
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
                         platform::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
-      VLOG(0) << "new comm_context_manager has rid " << rid;
       auto stream = comm_ctx->GetStream();
-      VLOG(0) << "new comm_context_manager has stream " << stream;
       ncclRedOp_t nccl_red_type = ncclSum;
-      VLOG(0) << "new comm_context_manager has  nccl_red_type "
-              << nccl_red_type;
       comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
-      VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {
-      VLOG(0) << "old comm_context_manager has rid " << rid;
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       // should ExecutionContext for calc stream.
       auto stream = ctx.cuda_device_context().stream();
@@ -76,9 +67,7 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
                                                                   stream));
       platform::GpuStreamSync(stream);
       VLOG(3) << "old NCCLCommContext has rid " << rid;
-      VLOG(0) << "old comm_context_manager has rid " << rid;
     }
-    VLOG(0) << "old comm_context_manager has rid " << rid;
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "PaddlePaddle should compile with NCCL."));

@@ -158,7 +158,7 @@ struct MemoryInterface {
       bool disable_setting_default_stream_for_allocator,
       int stream_priority);
 
-#if defined(PADDLE_WITH_CUDA) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
   phi::Allocator* (*get_allocator)(int device_id, phi::gpuStream_t stream);
   phi::Allocator* (*get_host_allocator)();

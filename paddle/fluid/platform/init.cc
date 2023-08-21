@@ -61,7 +61,7 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
-#if defined(PADDLE_WITH_CUDA) && \
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif

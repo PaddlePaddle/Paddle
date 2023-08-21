@@ -59,7 +59,6 @@ def remove_process_group(ring_id):
 def new_process_group(
     ranks, group_id=None, force_new_group=False, group_type=None
 ):
-    logger.info(f"debug new_process_group group_id: {group_id}")
     global _g_process_group_map
     if not force_new_group:
         # A key constructed from ranks is used for avoiding duplication
@@ -74,9 +73,6 @@ def new_process_group(
     # so the created group id should start from the original _new_ring_id()
     if group_id is None:
         group_id = _new_ring_id() + num_groups + 1
-        logger.info(
-            f"debug new_process_group group_id: {group_id}, num_groups: {num_groups}"
-        )
 
     new_pg = ProcessGroup(group_id, ranks, group_type)
     _g_process_group_map[group_id] = new_pg
@@ -92,7 +88,6 @@ def new_process_group(
 # handle the communication implementation choice.
 class ProcessGroup:
     def __init__(self, group_id, ranks, group_type=None):
-        logger.info(f"debug ProcessGroup group_id: {group_id}")
         if group_id == 0 and get_process_group(0) is not None:
             assert (
                 group_id != 0
@@ -152,9 +147,6 @@ class ProcessGroup:
         global_rank = genv.rank
 
         if self.nranks >= 2 and global_rank in self.ranks:
-            logger.info(
-                f"group_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {genv.current_endpoint}"
-            )
             strategy = core.ParallelStrategy()
             strategy.nranks = self.nranks
             strategy.local_rank = self.local_rank(global_rank)
@@ -168,11 +160,7 @@ class ProcessGroup:
                 use_new_comm = os.getenv(
                     "FLAGS_dynamic_static_unified_comm", "0"
                 )
-                logger.info(
-                    f"debug use_new_comm is {use_new_comm}, {type(use_new_comm)}"
-                )
                 if use_new_comm in ["1", "True", "true"]:
-                    logger.info("use new comm library")
                     store = paddle.distributed.collective.StaticTCPStore()
                     core.CommContextManager.set_cuda_device_id(genv.device_id)
                     core.CommContextManager.create_nccl_comm_context(
@@ -182,7 +170,6 @@ class ProcessGroup:
                         strategy.nranks,
                     )
                 else:
-                    logger.info("use old comm library")
                     core.NCCLParallelContext(strategy, place).init_with_ring_id(
                         ring_id
                     )
@@ -240,7 +227,6 @@ class ProcessGroup:
             )
 
         self._is_instantiate = True
-        logger.info(f"debug process_group {ring_id} is instantiate true")
 
     def is_member(self):
         return True

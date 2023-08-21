@@ -351,20 +351,12 @@ TCPStore::TCPStore(std::string host,
       timeout, 0, phi::errors::InvalidArgument("timeout must >= %d", timeout));
 
   VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
-  VLOG(0) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-    VLOG(0) << "before master port " << port << ", num_workers:" << num_workers
-            << ", timeout: " << timeout;
     _server = detail::TCPServer::create(port, num_workers, timeout);
-    VLOG(0) << "after master port " << port << ", num_workers:" << num_workers
-            << ", timeout: " << timeout;
   }
 
-  VLOG(0) << "bfore connect host " << host << ", port:" << port;
   _client = detail::TCPClient::connect(host, port);
-  VLOG(0) << "afte connect host " << host << ", port:" << port;
   waitWorkers();
-  VLOG(0) << "afte waitWorkes ";
 }
 
 void TCPStore::waitWorkers() {

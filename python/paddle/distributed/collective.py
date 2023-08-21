@@ -16,7 +16,6 @@ import datetime
 import os
 
 import paddle
-from paddle.distributed.fleet.utils.log_util import logger
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
@@ -88,11 +87,6 @@ def _get_group_map():
         _group_map[_global_env_gid] = Group(
             genv.rank, 0, list(range(genv.world_size))
         )
-        logger.info(
-            f"debug set group_map k: {_global_env_gid} v: {_group_map[_global_env_gid]}"
-        )
-    for k, v in _group_map.items():
-        logger.info(f"debug get_group_map k: {k}, v: {v}")
     return _group_map
 
 
@@ -118,7 +112,6 @@ def _set_group_map(gid, group):
     global _group_map
     assert gid not in _group_map
     _group_map[gid] = group
-    logger.info(f"debug set group_map k: {gid} v: {group}")
 
 
 def _set_group_map_by_name(name, group):
@@ -138,14 +131,8 @@ def _new_ring_id():
     if in_dynamic_mode():
         global _start_ring_id
         _start_ring_id += 1
-        logger.info(
-            f"debug _new_ring_id dynamic start_ring_id: {_start_ring_id}, nrings: {_get_global_env().nrings}"
-        )
         return _start_ring_id + max(_get_global_env().nrings, 9)
     else:
-        logger.info(
-            f"debug _new_ring_id static group: {len(_get_group_map())}, nrings: {_get_global_env().nrings}"
-        )
         return len(_get_group_map()) + max(_get_global_env().nrings, 9)
 
 
@@ -246,7 +233,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         group = Group(rank, gid, ranks, pg=pg, name=group_name)
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
-        logger.info(f"debug set group_map k: {gid} v: {group}")
         _group_map_backend[group] = backend
         # TODO: The method below is a new method for group management, will replace the previous
         # three in the future.
@@ -271,14 +257,12 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     if global_rank not in ranks:
         gp = Group(-1, ring_id, ranks)
         _group_map[ring_id] = gp
-        logger.info(f"debug set group_map k: {ring_id} v: {gp}")
     else:
         ranks = sorted(ranks)
         group_rank = ranks.index(global_rank)
         group_size = len(ranks)
         gp = Group(group_rank, ring_id, ranks)
         _group_map[ring_id] = gp
-        logger.info(f"debug set group_map k: {ring_id} v: {gp}")
 
         if group_size >= 2:
             strategy = core.ParallelStrategy()

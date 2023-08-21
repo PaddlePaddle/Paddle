@@ -37,14 +37,7 @@ NCCLCommContext::NCCLCommContext(int rank, int size, ncclUniqueId nccl_id)
 
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
 
-gpuStream_t NCCLCommContext::GetStream() {
-  if (!dev_ctx_) {
-    VLOG(0) << "NCCLCommContext::GetStream dev_ctx nullptr";
-  } else {
-    VLOG(0) << "NCCLCommContext::GetStream dev_ctx not nullptr";
-  }
-  return dev_ctx_->stream();
-}
+gpuStream_t NCCLCommContext::GetStream() { return dev_ctx_->stream(); }
 
 phi::GPUContext* NCCLCommContext::GetDevContext() { return dev_ctx_.get(); }
 

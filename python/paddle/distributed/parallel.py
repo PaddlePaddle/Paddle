@@ -1092,6 +1092,9 @@ def init_parallel_env():
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
+        # barrier will call CreateNCCLEnvCache which will call CreateNCCLCommContext.
+        # Set device_id to prevent creating null dev_ctx.
+        core.CommContextManager.set_cuda_device_id(parallel_env.device_id)
         paddle.distributed.barrier(group=group)
         return group
 
