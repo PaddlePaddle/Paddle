@@ -63,7 +63,7 @@ API_IMPL_TEMPLATE = """
 {ret_type} {api_name}({args}){{
     {in_combine}
     {compute_op}
-    {out_slice}
+    {out_split}
     {return_result}
 }}
 
@@ -72,8 +72,8 @@ API_IMPL_TEMPLATE = """
 COMBINE_OP_TEMPLATE = """
     auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>({in_name});"""
 
-SLICE_OP_TEMPLATE = """
-    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<ir::SliceOp>({in_name});"""
+SPLIT_OP_TEMPLATE = """
+    auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<ir::SplitOp>({in_name});"""
 
 COMPUTE_OP_TEMPLATE = """
     paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
@@ -248,22 +248,22 @@ class CodeGen:
             op_inst_name,
         )
 
-    def _gen_out_slice_and_ret_list(self, op_info, op_inst_name):
+    def _gen_out_split_and_ret_list(self, op_info, op_inst_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
 
-        slice_op_str = ''
+        split_op_str = ''
         ret_list = []
         for i, (name, type) in enumerate(zip(name_list, type_list)):
             if VECTOR_TYPE in type:
-                slice_op_name = f'{name}_slice_op'
-                slice_op_str += SLICE_OP_TEMPLATE.format(
-                    op_name=slice_op_name, in_name=f'{op_inst_name}.result({i})'
+                split_op_name = f'{name}_split_op'
+                split_op_str += SPLIT_OP_TEMPLATE.format(
+                    op_name=split_op_name, in_name=f'{op_inst_name}.result({i})'
                 )
-                ret_list.append(f'{slice_op_name}.outputs()')
+                ret_list.append(f'{split_op_name}.outputs()')
             else:
                 ret_list.append(f'{op_inst_name}.result({i})')
-        return slice_op_str, ret_list
+        return split_op_str, ret_list
 
     def _gen_return_result(self, ret_list):
         if len(ret_list) > 1:
@@ -278,7 +278,7 @@ class CodeGen:
         compute_op, op_inst_name = self._gen_compute_op(
             op_info, op_name, in_combine_op_list, is_mutable_attr
         )
-        out_slice, ret_list = self._gen_out_slice_and_ret_list(
+        out_split, ret_list = self._gen_out_split_and_ret_list(
             op_info, op_inst_name
         )
 
@@ -288,7 +288,7 @@ class CodeGen:
             args=self._gen_api_args(op_info, False, is_mutable_attr),
             in_combine=in_combine,
             compute_op=compute_op,
-            out_slice=out_slice,
+            out_split=out_split,
             return_result=self._gen_return_result(ret_list),
         )
 
