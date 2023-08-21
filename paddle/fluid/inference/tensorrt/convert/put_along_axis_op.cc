@@ -23,6 +23,7 @@ class PutAlongAxisConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(8200)
     VLOG(3) << "convert a put_along_axis op to tensorrt";
     framework::OpDesc op_desc(op, nullptr);
 
@@ -43,6 +44,7 @@ class PutAlongAxisConverter : public OpConverter {
     layer->setAxis(axis);
 
     RreplenishLayerAndOutput(layer, "put_along_axis", {output_name}, test_mode);
+#endif
   }
 };
 
