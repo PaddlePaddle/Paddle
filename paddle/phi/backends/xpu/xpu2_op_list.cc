@@ -465,6 +465,8 @@ XPUOpMap& get_kl2_ops() {
       {"instance_norm",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"instance_norm_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"inverse",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT64})},
       {"iou_similarity", XPUKernelSet({phi::DataType::FLOAT32})},
       {"label_smooth", XPUKernelSet({phi::DataType::FLOAT32})},
       {"lamb", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
