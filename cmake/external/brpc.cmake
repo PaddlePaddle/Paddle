@@ -92,7 +92,7 @@ add_definitions(-DBRPC_WITH_GLOG)
 
 list(APPEND external_project_dependencies brpc)
 
-set(BRPC_DEPS
+set(EXTERNAL_BRPC_DEPS
     brpc
     protobuf
     ssl
@@ -102,5 +102,5 @@ set(BRPC_DEPS
     snappy)
 
 if(NOT WITH_GFLAGS)
-  set(BRPC_DEPS ${BRPC_DEPS} gflags)
+  set(EXTERNAL_BRPC_DEPS ${EXTERNAL_BRPC_DEPS} gflags)
 endif()

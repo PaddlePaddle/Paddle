@@ -3,11 +3,11 @@ set_source_files_properties(${BRPC_SRCS})
 
 if(WITH_HETERPS)
 
-  set(FLUID_BRPC_DEPS ${BRPC_DEPS} phi zlib device_context rocksdb)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi zlib device_context rocksdb)
 
 else()
 
-  set(FLUID_BRPC_DEPS ${BRPC_DEPS} phi zlib device_context)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi zlib device_context)
 
 endif()
 
@@ -19,9 +19,9 @@ brpc_library(
   sendrecv.proto
   DEPS
   ps_framework_proto
-  ${FLUID_BRPC_DEPS})
+  ${BRPC_DEPS})
 
-#set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${FLUID_BRPC_DEPS} string_helper)
+#set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 
