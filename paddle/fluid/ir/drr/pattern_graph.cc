@@ -46,7 +46,7 @@ const drr::OpCall &PatternGraph::AddOpCall(
   return *owned_op_call_.back();
 }
 
-const drr::Tensor &PatternGraph::AddTensor(
+drr::Tensor &PatternGraph::AddTensor(
     const std::shared_ptr<drr::Tensor> &tensor) {
   if (id2owned_tensor_.find(tensor->name()) == id2owned_tensor_.end()) {
     id2owned_tensor_[tensor->name()] = tensor;
@@ -122,6 +122,18 @@ void PatternGraph::Print() const {
 
 const OpCall *SourcePatternGraph::AnchorNode() const {
   return id2owned_tensor_.at(*output_tensors_.begin())->producer();
+}
+
+void ResultPatternGraph::AssignTensor(const Tensor &from, const Tensor &to) {
+  if (to.producer() == nullptr) {
+    input_tensors_.insert(to.name());
+  }
+  output_tensors_.erase(to.name());
+  IR_ENFORCE(output_tensors_.count(from.name()) == 1,
+             "The Tensor (%s) which be assigned must be the output of result "
+             "pattern graph.",
+             from.name());
+  tensor_assign_map_[from.name()] = to.name();
 }
 
 void GraphTopo::WalkGraphNodesTopoOrder(

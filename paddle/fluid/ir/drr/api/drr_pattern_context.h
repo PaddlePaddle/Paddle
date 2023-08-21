@@ -46,12 +46,24 @@ class Attribute {
 
 class TensorShape {
  public:
-  explicit TensorShape(const std::string& name) : name_(name) {}
+  explicit TensorShape(const std::string& tensor_name)
+      : tensor_name_(tensor_name) {}
 
-  const std::string& name() const { return name_; }
+  const std::string& tensor_name() const { return tensor_name_; }
 
  private:
-  std::string name_;
+  std::string tensor_name_;
+};
+
+class TensorDataType {
+ public:
+  explicit TensorDataType(const std::string& tensor_name)
+      : tensor_name_(tensor_name) {}
+
+  const std::string& tensor_name() const { return tensor_name_; }
+
+ private:
+  std::string tensor_name_;
 };
 
 class Constraint {
@@ -96,10 +108,11 @@ class DrrPatternContext {
   const Op& ResultOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
-  const drr::Tensor& ResultTensorPattern(const std::string& name);
+  drr::Tensor& ResultTensorPattern(const std::string& name);
 
   // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
+  void RequireEqual(const TensorDataType& first, const TensorDataType& second);
   void RequireNativeCall(
       const std::function<bool(const MatchContext&)>& custom_fn);
 
@@ -156,9 +169,14 @@ class Tensor {
 
   TensorShape shape() const { return TensorShape(name()); }
 
+  TensorDataType dtype() const { return TensorDataType(name()); }
+
+  void Assign(const Tensor& other);
+
   Tensor& operator=(const Tensor& other) = delete;
 
   void operator=(Tensor& other) const;  // NOLINT
+  void operator=(Tensor& other);        // NOLINT
 
   const std::string& name() const { return name_; }
 
@@ -224,7 +242,7 @@ class ResultPattern {
     return ctx_->ResultOpPattern(op_type, attributes);
   }
 
-  const drr::Tensor& Tensor(const std::string& name) {
+  drr::Tensor& Tensor(const std::string& name) {
     return ctx_->ResultTensorPattern(name);
   }
 
@@ -253,6 +271,13 @@ class SourcePattern {
   }
 
   Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
+
+  void RequireEqual(const TensorShape& first, const TensorShape& second) {
+    ctx_->RequireEqual(first, second);
+  }
+  void RequireEqual(const TensorDataType& first, const TensorDataType& second) {
+    ctx_->RequireEqual(first, second);
+  }
 
   void RequireNativeCall(
       const std::function<bool(const MatchContext&)>& custom_fn) {
