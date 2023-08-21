@@ -252,6 +252,42 @@ inline std::string DataTypeToString(const DataType& dtype) {
   }
 }
 
+inline VarTypeToDataType(framework::proto::VarType_Type var_type) {
+  swtich(var_type) {
+    case VarType_Type_BOOL:
+      return DataType::BOOL;
+    case VarType_Type_INT16:
+      return DataType::INT16;
+    case VarType_Type_INT32:
+      return DataType::INT32;
+    case VarType_Type_INT64:
+      return DataType::INT64;
+    case VarType_Type_FP16:
+      return DataType::FLOAT16;
+    case VarType_Type_FP32:
+      return DataType::FLOAT32;
+    case VarType_Type_FP64:
+      return DataType::FLOAT64;
+    case VarType_Type_SIZE_T:
+      return DataType::UINT64;
+    case VarType_Type_UINT8:
+      return DataType::UINT8;
+    case VarType_Type_INT8:
+      return DataType::INT8;
+    case VarType_Type_BF16:
+      return DataType::BFLOAT16;
+    case VarType_Type_COMPLEX64:
+      return DataType::COMPLEX64;
+    case VarType_Type_COMPLEX128:
+      return DataType::COMPLEX128;
+    case VarType_Type_PSTRING:
+      return DataType::PSTRING;
+    default:
+      PD_THROW(phi::errors::InvalidArgument("Invalid proto::VarType_Type %d.",
+                                            static_cast<int>(var_type)));
+  }
+}
+
 }  // namespace phi
 
 namespace paddle {
