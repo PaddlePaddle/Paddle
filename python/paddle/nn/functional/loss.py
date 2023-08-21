@@ -2452,8 +2452,8 @@ def cross_entropy(
     soft_label=False,
     axis=-1,
     use_softmax=True,
-    name=None,
     label_smoothing=0.0,
+    name=None,
 ):
     r"""
 
@@ -2651,13 +2651,13 @@ def cross_entropy(
             # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        5.34043430)
 
-        .. code-block:: python without label_smoothing
+        .. code-block:: python
 
             # soft labels
+            # case1: soft labels without label_smoothing
             import paddle
             paddle.seed(99999)
             axis = -1
-            ignore_index = -100
             N = 4
             C = 3
             shape = [N, C]
@@ -2674,16 +2674,16 @@ def cross_entropy(
                                                                     weight=weight,
                                                                     reduction=reduction)
             print(paddle_loss_mean)
-            # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        1.12226281)
+            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        1.12801195)
 
         .. code-block:: python
 
-            # soft labels with label_smoothing
+            # soft labels
+            # case2: soft labels with label_smoothing
             import paddle
             paddle.seed(99999)
             axis = -1
-            ignore_index = -100
             N = 4
             C = 3
             shape = [N, C]
