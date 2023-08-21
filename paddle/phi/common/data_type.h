@@ -253,7 +253,7 @@ inline std::string DataTypeToString(const DataType& dtype) {
   }
 }
 
-inline VarTypeToDataType(paddle::framework::proto::VarType_Type var_type) {
+inline VarTypeToDataType(::paddle::framework::proto::VarType_Type var_type) {
   swtich(var_type) {
     case paddle::framework::proto::VarType_Type::VarType_Type_BOOL:
       return DataType::BOOL;
