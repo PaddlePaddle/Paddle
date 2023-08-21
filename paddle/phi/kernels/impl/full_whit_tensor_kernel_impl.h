@@ -23,7 +23,6 @@ void FullWithTensorKernel(
     const Context& dev_ctx,
     const paddle::optional<DenseTensor>& ValueTensor,
     const paddle::optional<DenseTensor>& ShapeTensor,
-    // const paddle::optional<std::vector<DenseTensor>>& ShapeTensorList,
     const paddle::optional<std::vector<const DenseTensor*>>& ShapeTensorList,
     const std::vector<int64_t>& shape,
     float value,
@@ -47,7 +46,11 @@ void FullWithTensorKernel(
   if (ShapeTensor) {
     full_shape = IntArray(*ShapeTensor.get_ptr());
   } else if (ShapeTensorList) {
-    // full_shape = IntArray(*ShapeTensorList.get_ptr());
+    std::vector<DenseTensor> tmp;
+    for (const auto& s : ShapeTensorList.get()) {
+      tmp.push_back(*s);
+    }
+    full_shape = IntArray(tmp);
   } else {
     full_shape = IntArray(shape);
   }

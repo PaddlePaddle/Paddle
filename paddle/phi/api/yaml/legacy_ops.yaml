@@ -1,15 +1,6 @@
 # The apis in this file are unstandardized that may caused by a variety of reasons,
 # we are trying to fix these apis and will move standardized apis into ops.yaml.
 
-# - op : fill_with_tensor
-#   args : (int64_t[] shape={}, float value=0.0, int dtype=5, Tensor ValueTensor, Tensor ShapeTensor, Tensor ShapeTensorList, str str_value)
-#   output: Tensor(Out)
-#   infer_meta :
-#     func : FillWithTensorInferMeta
-#   kernel :
-#     func : fill_with_tensor
-#   optional : ValueTensor, ShapeTensor, ShapeTensorList, str_value
-
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
@@ -344,6 +335,15 @@
     param : [num_rows, num_columns, dtype]
     data_type : dtype
     backend : place
+
+- op : fill_with_tensor
+  args : (Tensor ValueTensor, Tensor ShapeTensor, Tensor[] ShapeTensorList, int64_t[] shape={}, float value=0.0, int dtype=5, str str_value="")
+  output: Tensor(Out)
+  infer_meta :
+    func : FillWithTensorInferMeta
+  kernel :
+    func : fill_with_tensor
+  optional : ValueTensor, ShapeTensor, ShapeTensorList
 
 - op : floor_divide
   args : (Tensor x, Tensor y)

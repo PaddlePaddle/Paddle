@@ -33,7 +33,6 @@ void FullWithTensorKernel(
     const Context& dev_ctx,
     const paddle::optional<DenseTensor>& ValueTensor,
     const paddle::optional<DenseTensor>& ShapeTensor,
-    // const paddle::optional<std::vector<DenseTensor>>& ShapeTensorList,
     const paddle::optional<std::vector<const DenseTensor*>>& ShapeTensorList,
     const std::vector<int64_t>& shape,
     float value,
