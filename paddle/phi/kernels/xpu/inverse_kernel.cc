@@ -28,20 +28,15 @@ void InverseKernel(const Context& dev_ctx,
   auto out_data = dev_ctx.template Alloc<T>(out);
 
   int64_t x_dims_len = x.dims().size();
-  PADDLE_ENFORCE_EQ(
-      x_dims_len == 2 || x_dims_len == 3,
-      true,
+  PADDLE_ENFORCE_GT(
+      x_dims_len,
+      1,
       phi::errors::InvalidArgument(
-          "Dimensions of input must be 2 or 3, but got %d.", x_dims_len));
+          "Dimensions of input should be greater than 1, but got %d.",
+          x_dims_len));
 
-  int64_t batch, n;
-  if (x_dims_len == 2) {
-    batch = 1;
-    n = x.dims()[0];
-  } else {
-    batch = x.dims()[0];
-    n = x.dims()[1];
-  }
+  int64_t n = x.dims()[x_dims_len - 1];
+  int64_t batch = x_dims_len > 2 ? x.numel() / (n * n) : 1;
   PADDLE_ENFORCE_LE(n * n * sizeof(T),
                     8192,
                     phi::errors::InvalidArgument(
