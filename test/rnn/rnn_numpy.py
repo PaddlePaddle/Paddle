@@ -144,7 +144,14 @@ class GRUCell(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
-    def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        bias=True,
+        dtype="float64",
+        proj_size=None,
+    ):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -154,10 +161,16 @@ class LSTMCell(LayerMixin):
             -std, std, (4 * hidden_size, input_size)
         ).astype(dtype)
         self.weight_hh = np.random.uniform(
-            -std, std, (4 * hidden_size, hidden_size)
+            -std, std, (4 * hidden_size, proj_size or hidden_size)
         ).astype(dtype)
         self.parameters['weight_ih'] = self.weight_ih
         self.parameters['weight_hh'] = self.weight_hh
+        self.proj_size = proj_size
+        if proj_size:
+            self.weight_ho = np.random.uniform(
+                -std, std, (proj_size, hidden_size)
+            ).astype(dtype)
+            self.parameters['weight_hh'] = self.weight_ho
         if bias:
             self.bias_ih = np.random.uniform(
                 -std, std, (4 * hidden_size)
@@ -195,6 +208,8 @@ class LSTMCell(LayerMixin):
         o = 1.0 / (1.0 + np.exp(-chunked_gates[3]))
         c = f * pre_cell + i * np.tanh(chunked_gates[2])
         h = o * np.tanh(c)
+        if self.proj_size:
+            h = np.matmul(h, self.weight_ho.T)
 
         return h, (h, c)
 
@@ -401,10 +416,10 @@ class RNNMixin(LayerListMixin):
         batch_size = inputs.shape[batch_index]
         dtype = inputs.dtype
         if initial_states is None:
-            state_shape = (self.num_layers * self.num_directions, batch_size)
+            state_shape = (self.wum_layers * self.num_directions, batch_size)
             proj_size = self.proj_size if hasattr(self, 'proj_size') else None
 
-            dims = ([proj_size or self.hidden_size], [self.hidden_size])
+            dims = ((proj_size or self.hidden_size), (self.hidden_size))
             if self.state_components == 1:
                 initial_states = np.zeros(state_shape, dtype)
             else:
