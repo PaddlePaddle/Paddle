@@ -306,8 +306,8 @@ def alltoall_single(
             >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)
-            [0, 2] (2 GPUs, out for rank 0)
-            [1, 3] (2 GPUs, out for rank 1)
+            >>> # [0, 2] (2 GPUs, out for rank 0)
+            >>> # [1, 3] (2 GPUs, out for rank 1)
 
             >>> # case 2
             >>> size = dist.get_world_size()
@@ -326,8 +326,8 @@ def alltoall_single(
             >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)
-            [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
-            [[0., 0.], [0., 0.], [1., 1.], [1., 1.]] (2 GPUs, out for rank 1)
+            >>> # [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
+            >>> # [[0., 0.], [0., 0.], [1., 1.], [1., 1.]] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return

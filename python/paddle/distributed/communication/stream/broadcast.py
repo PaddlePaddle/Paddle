@@ -108,7 +108,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
             >>> task.wait()
             >>> out = data.numpy()
             >>> print(out)
-            [[1, 2, 3], [1, 2, 3]] (2 GPUs)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
     if _warn_cur_rank_not_in_group(group):
         return

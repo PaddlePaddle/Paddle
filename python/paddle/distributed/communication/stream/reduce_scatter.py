@@ -148,8 +148,8 @@ def reduce_scatter(
             >>> dist.stream.reduce_scatter(data1, [data1, data2])
             >>> out = data1.numpy()
             >>> print(out)
-            [4, 6]  (2 GPUs, out for rank 0)
-            [8, 10] (2 GPUs, out for rank 1)
+            >>> # [4, 6]  (2 GPUs, out for rank 0)
+            >>> # [8, 10] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return
@@ -234,8 +234,8 @@ def _reduce_scatter_base(
             ...     dist.stream.scatter(data1, [data1, data2], src=1)
             >>> out = data1.numpy()
             >>> print(out)
-            [1, 2, 3] (2 GPUs, out for rank 0)
-            [4, 5, 6] (2 GPUs, out for rank 1)
+            >>> # [1, 2, 3] (2 GPUs, out for rank 0)
+            >>> # [4, 5, 6] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return

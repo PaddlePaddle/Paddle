@@ -121,8 +121,8 @@ def reduce(
             >>> task.wait()
             >>> out = data.numpy()
             >>> print(out)
-            [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
-            [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
+            >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return
