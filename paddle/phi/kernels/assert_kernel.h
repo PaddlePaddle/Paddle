@@ -14,13 +14,14 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include "paddle/phi/core/dense_tensor.h"
 
-#include "paddle/phi/api/include/tensor.h"
+namespace phi {
 
-namespace paddle {
-namespace primitive {
-namespace backend {}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+template <typename T, typename Context>
+void AssertKernel(const Context& ctx,
+                  const DenseTensor& cond,
+                  const std::vector<const DenseTensor*>& data,
+                  int64_t summarize);
+
+}  // namespace phi
