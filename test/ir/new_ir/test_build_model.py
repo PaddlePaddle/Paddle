@@ -17,26 +17,49 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.autograd.backward import grad
+from paddle.decomposition import decompose
+
+# paddle.device.set_device("cpu")
+
 
 paddle.enable_static()
 
 
 class TestBuildModule(unittest.TestCase):
     def test_basic_network(self):
+        # paddle.fluid.core._set_prim_backward_enabled(True)
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', [4, 4], dtype='float32')
-            y = paddle.static.data('y', [4, 4], dtype='float32')
-            divide_out = paddle.divide(x, y)
-            sum_out = paddle.sum(divide_out)
+            x.stop_gradient = False
+            # y = paddle.static.data('y', [4, 4], dtype='float32')
+            # y.stop_gradient = False
+            # dy = paddle.static.data('dy', [4], dtype='float32')
+            # dout = paddle.static.data('y', [4, 4], dtype='float32')
+            # res = paddle.divide(x, y)
+            # res = mean(x)
+            res = paddle.mean(x, axis=-1)
+            [res2] = decompose(main_program, [res])
+            # breakpoint()
+
+            gradients = grad(res2, x)
+            print("gradients----------", gradients)
+            print(main_program)
 
             exe = paddle.static.Executor()
             x_feed = np.ones([4, 4], dtype=np.float32) * 10
             y_feed = np.ones([4, 4], dtype=np.float32) * 2
-            (sum_value,) = exe.run(
-                feed={'x': x_feed, 'y': y_feed}, fetch_list=[sum_out]
+            dy_feed = np.ones([4], dtype=np.float32)
+            # breakpoint()
+            (fwd, bwd) = exe.run(
+                feed={'x': x_feed, 'y': y_feed, 'dy': dy_feed},
+                fetch_list=[res2, gradients],
             )
-            self.assertEqual(sum_value, 5 * 4 * 4)
+            # breakpoint()
+            print(fwd, bwd)
+            # print(gradients)
+            # self.assertEqual(sum_value, 5 * 4 * 4)
 
 
 if __name__ == "__main__":
