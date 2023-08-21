@@ -1550,10 +1550,14 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   auto out_dims = phi::make_ddim(x_dims_vec);
 
   out->set_dims(out_dims);
-  if (quant_scale <= 0.0f) {
+  if (residual_out && !norm_weight && !norm_bias) {
     out->set_dtype(x.dtype());
   } else {
-    out->set_dtype(phi::DataType::INT8);
+    if (quant_scale <= 0.0f) {
+      out->set_dtype(x.dtype());
+    } else {
+      out->set_dtype(phi::DataType::INT8);
+    }
   }
   out->set_layout(x.layout());
 

@@ -151,6 +151,27 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return false;
   }
 
+  if (op_type == "fused_bias_residual_layernorm" &&
+      parameter_name == "residual_out") {
+    if (op.HasInputs("residual")) {
+      bool is_residual_empty = op.Input("residual") == kEmptyVarName;
+      bool is_norm_weight_empty = op.Input("norm_weight") == kEmptyVarName;
+      bool is_norm_bias_empty = op.Input("norm_bias") == kEmptyVarName;
+      if (!is_residual_empty) {
+        if (is_norm_weight_empty && is_norm_bias_empty) {
+          VLOG(2) << "Skip fake initialization for: " << parameter_name;
+          return false;
+        }
+      } else {
+        VLOG(2) << "Skip fake initialization for: " << parameter_name;
+        return false;
+      }
+    } else {
+      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      return false;
+    }
+  }
+
   if (op_type == "fake_quantize_range_abs_max") {
     if (op.Attr<bool>("is_test") &&
         (parameter_name == "OutScale" || parameter_name == "OutScales")) {
@@ -490,14 +511,18 @@ void FakeInitializeOutputsForFunctionKernel(
               dtype = DataType::INT64;
             }
           } else if (op_type == "fused_bias_residual_layernorm") {
+            auto in_dtype = GetInputDType(runtime_ctx, "x");
             float quant_scale = op.Attr<float>("quant_scale");
-            dtype = GetInputDType(runtime_ctx, "x");
             if (InputExisted(runtime_ctx, "residual") &&
                 !InputExisted(runtime_ctx, "norm_weight") &&
                 !InputExisted(runtime_ctx, "norm_bias")) {
-              continue;
-            } else if (quant_scale > 0.0f) {
-              dtype = DataType::INT8;
+              dtype = in_dtype;
+            } else {
+              if (quant_scale > 0.0f) {
+                dtype = DataType::INT8;
+              } else {
+                dtype = in_dtype;
+              }
             }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
