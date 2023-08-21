@@ -311,7 +311,7 @@ void BuildPhiContext(ir::Operation* op,
                 ->Get<phi::SelectedRows>()))));
     } else if (out_type.isa<ir::VectorType>()) {
       OutListType outputs;
-      auto& variable_array = scope->FindVar(name_map.at(out_ptr))
+      auto& variable_array = inner_scope->FindVar(name_map.at(out_ptr))
                                  ->Get<paddle::framework::VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
