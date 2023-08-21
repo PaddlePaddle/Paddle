@@ -1,7 +1,6 @@
-file(GLOB VJP_SRCS "*.cc")
-
+file(GLOB VJP_SRCS "vjp.cc")
 cc_library(
   primitive_vjp_experimental
   SRCS ${VJP_SRCS}
-  DEPS primitive_backend_static_experimental)
-add_dependencies(primitive_vjp_experimental pd_dialect)
+  DEPS primitive_backend_static_experimental static_global_utils
+       primitive_static_utils_experimental)
