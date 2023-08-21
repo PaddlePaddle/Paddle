@@ -81,7 +81,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
-  bool IsRealStaticBuild() const { return static_build_; }
+  bool IsStaticBuild() const { return static_build_; }
 
  private:
   // build graph

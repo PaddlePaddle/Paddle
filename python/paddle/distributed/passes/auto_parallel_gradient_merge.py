@@ -33,19 +33,18 @@ from .pass_base import PassBase, PassType, register_pass
 world_process_group = get_world_process_group()
 
 
-def _remove_and_get_optimizer_op(main_program, temp_block, dist_context):
+def _remove_and_get_optimizer_op(main_program, dist_context):
     # 1 create tmp block
     # 2 mv optimizer op from global program to tmp block
     # 3 del the op from dist_context
     main_block = main_program.global_block()
+    optimize_ops_block = paddle.static.Program().global_block()
     removed_op_idx = []
-    optimize_ops_desc = []
     for idx, op in enumerate(main_block.ops):
         if is_optimize_op(op):
             # append optimizer op to tmp block
-            new_op_desc = temp_block.desc.append_op()
+            new_op_desc = optimize_ops_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            optimize_ops_desc.append(new_op_desc)
             removed_op_idx.append(idx)
 
             # del op from dist_context
@@ -56,7 +55,7 @@ def _remove_and_get_optimizer_op(main_program, temp_block, dist_context):
         main_block._remove_op(idx, sync=False)
     main_block._sync_with_cpp()
 
-    return optimize_ops_desc
+    return optimize_ops_block
 
 
 def _get_gm_cond_var(main_program, k_steps, dist_context):
@@ -227,7 +226,7 @@ def _create_cond_block_and_update_optimizer(
     cond_var,
     new_params_to_grads: List[Tuple[Any, Any]],
     grad_to_gradient_merge: Dict[str, str],
-    optimize_ops_desc: List[Any],
+    optimize_ops_block,
     k_steps,
     avg,
 ):
@@ -254,7 +253,8 @@ def _create_cond_block_and_update_optimizer(
                 new_grad.op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
         # append optimizer ops
-        for op_desc in optimize_ops_desc:
+        for opt_op_idx in range(optimize_ops_block.desc.op_size()):
+            op_desc = optimize_ops_block.desc.op(opt_op_idx)
             new_op_desc = cur_block.desc.append_op()
             new_op_desc.copy_from(op_desc)
 
@@ -304,11 +304,8 @@ def parse_program(
     main_program, startup_program, params_grads, k_steps, avg, dist_context
 ):
     # 1 remove optimizer_op from main_program
-    # It is wrong to use 'paddle.static.Program().global_block()' in the function '_remove_and_get_optimizer_op',
-    # because in this case, the temp_block will be deleted after the function finishes.
-    temp_block = paddle.static.Program().global_block()
-    optimize_ops_desc = _remove_and_get_optimizer_op(
-        main_program, temp_block, dist_context
+    optimize_ops_block = _remove_and_get_optimizer_op(
+        main_program, dist_context
     )
 
     # back to block 0
@@ -331,7 +328,7 @@ def parse_program(
         cond_var,
         new_params_to_grads,
         grad_to_gradient_merge,
-        optimize_ops_desc,
+        optimize_ops_block,
         k_steps,
         avg,
     )

@@ -66,6 +66,10 @@ class PipelinePassBase(PassBase):
         for type, gc_var in zip(type_list, gc_vars_list):
             type_to_gc_vars[type] = gc_var
         _logger.info(f"The skip_gc_vars : {gc_vars_list}")
+        if "backward" in type_to_gc_vars:
+            assert (
+                len(type_to_gc_vars["backward"]) == 0
+            ), f"When enabling pipeline parallelism stategy, the skip_gc_vars_set for backward subprogram must be empty, but it is {type_to_gc_vars['backward']}."
 
         for job in job_list:
             job.set_skip_gc_vars(type_to_gc_vars[job.type()])

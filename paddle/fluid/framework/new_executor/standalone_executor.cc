@@ -110,7 +110,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       if (job_type == "backward" && jobs.size() > 1) {
         PADDLE_ENFORCE_EQ(static_cast<const ProgramInterpreter*>(
                               interpretercores_.back()->Impl())
-                              ->IsRealStaticBuild(),
+                              ->IsStaticBuild(),
                           true,
                           phi::errors::InvalidArgument(
                               "When using pipeline strategy in auto "
