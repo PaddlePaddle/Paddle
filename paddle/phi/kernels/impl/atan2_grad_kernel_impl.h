@@ -81,18 +81,18 @@ struct Atan2GradFunctor<double> {
 template <typename T>
 using ComplexType = phi::dtype::complex<T>;
 
-template <typename T, typename Context>
+template <typename T>
 struct Atan2GradFunctor<ComplexType<T>> {
-  Atan2GradFunctor(const typename* x1,
-                   const typename* x2,
-                   const typename* dout,
-                   typename* dx1,
-                   typename* dx2,
+  Atan2GradFunctor(const ComplexType<T>* x1,
+                   const ComplexType<T>* x2,
+                   const ComplexType<T>* dout,
+                   ComplexType<T>* dx1,
+                   ComplexType<T>* dx2,
                    int64_t numel)
       : x1_(x1), x2_(x2), dout_(dout), dx1_(dx1), dx2_(dx2), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    auto x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
+    ComplexType<T> x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
     if (dx1_) {
       dx1_[idx] = dout_[idx] * x2_[idx] / x;
     }
