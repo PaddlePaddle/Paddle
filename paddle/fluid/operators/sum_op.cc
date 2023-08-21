@@ -244,8 +244,6 @@ DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(sum,
                             AddNInferShapeFunctor,
                             PD_INFER_META(phi::AddNTensorArrayInferMeta));

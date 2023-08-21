@@ -54,8 +54,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
-namespace py = pybind11;
-
 namespace paddle {
 namespace pybind {
 

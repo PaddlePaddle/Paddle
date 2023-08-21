@@ -24,9 +24,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using string::PrettyLog;
-using string::Style;
-
 size_t PDPattern::id_ = 0UL;
 
 #ifdef PADDLE_WITH_TENSORRT

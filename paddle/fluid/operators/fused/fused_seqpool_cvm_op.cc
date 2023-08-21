@@ -281,7 +281,6 @@ class FusedSeqpoolCVMGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(fused_seqpool_cvm,
                   ops::FusedSeqpoolCVMOp,

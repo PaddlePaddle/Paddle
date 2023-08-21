@@ -29,15 +29,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using std::bad_cast;
-using std::codecvt_utf8;
-using std::endl;
-using std::exception;
 using std::ifstream;
 using std::int64_t;
-using std::min;
-using std::runtime_error;
-using std::shared_ptr;
 using std::size_t;
 using std::string;
 using std::unordered_map;
