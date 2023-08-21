@@ -78,7 +78,7 @@ std::vector<std::vector<ir::OpResult>> SumOp::Vjp(
   bool reduce_all = false;
   std::vector<std::vector<Tensor>> tensor_res = primitive::sum_vjp(
       x, out_grad, axis, keepdim, reduce_all, stop_gradients);
-  std::vector<std::vector<ir::OpResult>> res(1, std::vector<ir::OpResult>(1));
+  std::vector<std::vector<ir::OpResult>> res(2, std::vector<ir::OpResult>(1));
   if (tensor_res[0][0].defined()) {
     res[0][0] =
         std::static_pointer_cast<primitive::LazyTensor>(tensor_res[0][0].impl())
