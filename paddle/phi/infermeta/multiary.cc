@@ -19,12 +19,14 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -4046,6 +4048,28 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   if (beam_cache_offset) {
     beam_cache_offset_out->set_dims(beam_cache_offset.dims());
     beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
+  }
+}
+
+void FillWithTensorInferMeta(
+    const paddle::optional<MetaTensor>& ValueTensor,
+    const paddle::optional<MetaTensor>& ShapeTensor,
+    const paddle::optional<std::vector<const MetaTensor*>>& ShapeTensorList,
+    const std::vector<int64_t>& shape,
+    float value,
+    int dtype,
+    const std::string& str_value,
+    MetaTensor* out) {
+  if (ShapeTensor || ShapeTensorList) {
+    out->set_dims(make_ddim({-1}));
+    out->set_dtype(phi::VarTypeToDataType(
+        static_cast<paddle::framework::proto::VarType_Type>(dtype)));
+  } else {
+    CreateInferMeta(
+        shape,
+        phi::VarTypeToDataType(
+            static_cast<paddle::framework::proto::VarType_Type>(dtype)),
+        out);
   }
 }
 
