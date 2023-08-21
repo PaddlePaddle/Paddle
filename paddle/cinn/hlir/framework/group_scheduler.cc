@@ -65,8 +65,15 @@ void GroupScheduler::operator()() {
 }
 
 int64_t GroupScheduler::NodePriority(const ir::ScheduleBlockNode* node) const {
-  if (!node->ControlStmts()[0].As<ir::For>()->is_binded()) {
-    return -1;
+  bool has_loop_binded = false;
+  for (ir::Expr stmt : node->ControlStmts()) {
+    if (stmt.As<ir::For>() && stmt.As<ir::For>()->is_binded()) {
+      has_loop_binded = true;
+      break;
+    }
+  }
+  if (!has_loop_binded) {
+    return 0;
   }
 
   int64_t score = 1;
@@ -86,7 +93,8 @@ ir::ScheduleBlockNode* GroupScheduler::FindGlobalMasterNode() const {
   ir::ScheduleBlockNode* master = nullptr;
   auto FindMaster = [&](ir::ScheduleBlockNode* node) {
     int64_t score = NodePriority(node);
-    if (score > max) {
+    VLOG(6) << "The priority score of node " << node->id() << " is " << score;
+    if (score >= max) {
       max = score;
       master = node;
     }
@@ -110,6 +118,10 @@ std::unordered_set<std::string> GroupScheduler::OutputTensorNames() const {
         CHECK(node_data);
         return node_data->id();
       });
+
+  for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
+    output_tensor_names.insert(node->id());
+  }
   return output_tensor_names;
 }
 
@@ -700,16 +712,16 @@ void GroupScheduler::AllocateStorage() {
         memory_type = ir::MemoryType::GPUShared;
       }
     }
+    // Set output node to global
+    std::unordered_set<std::string> output_names = OutputTensorNames();
+    if (output_names.count(node->id()) > 0) {
+      memory_type = ir::MemoryType::Auto;
+    }
     // Set the reduce_init tensor and the real tensor to the same memory
     if (ir::IsReduceInitTensorName(node->id())) {
       ir::Expr block =
           ir_sch_->GetBlock(ir::GetOriginalReduceTensorName(node->id()));
       memory_type = ir::GetTensor(block)->buffer->memory_type;
-    }
-    // Set output node to global
-    std::unordered_set<std::string> output_names = OutputTensorNames();
-    if (output_names.count(node->id()) > 0) {
-      memory_type = ir::MemoryType::Auto;
     }
     // Do schedule
     if (memory_type == ir::MemoryType::Auto) {
