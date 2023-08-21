@@ -23,7 +23,7 @@ namespace phi {
 namespace distributed {
 
 // SPMD info is the special meta info of DIstTensor
-SpmdInfo MatmulInferMeta(const MetaTensor& x,
+SpmdInfo MatmulInferSpmd(const MetaTensor& x,
                          const MetaTensor& y,
                          bool trans_x,
                          bool trans_y);

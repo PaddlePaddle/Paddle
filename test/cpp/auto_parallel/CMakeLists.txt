@@ -16,6 +16,11 @@ if(WITH_DISTRIBUTE)
     DEPS phi)
 endif()
 
+cc_test(
+  infer_spmd_test
+  SRCS infer_spmd_test
+  DEPS phi)
+
 cc_test_old(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)
 
 cc_test_old(spmd_rule_test SRCS spmd_rule_test.cc DEPS spmd_rules)

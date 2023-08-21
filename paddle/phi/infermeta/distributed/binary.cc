@@ -64,7 +64,7 @@ auto_parallel::TensorDistAttr GetMatmulInferedDistAttr(
 
 ////////////////// InferMeta(Contains SPMD) Functions //////////////////
 
-SpmdInfo MatmulInferMeta(const MetaTensor& x,
+SpmdInfo MatmulInferSpmd(const MetaTensor& x,
                          const MetaTensor& y,
                          bool trans_x,
                          bool trans_y,
@@ -218,3 +218,5 @@ SpmdInfo MatmulInferMeta(const MetaTensor& x,
 
 }  // namespace distributed
 }  // namespace phi
+
+PD_REGISTER_INFER_SPMD_FN(matmul, PD_INFER_SPMD(MatmulInferSpmd));

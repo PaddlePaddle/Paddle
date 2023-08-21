@@ -38,6 +38,9 @@ class InferSpmdContext {
  public:
   InferSpmdContext() = default;
 
+  void EmplaceBackInput(MetaTensor input);
+  void EmplaceBackAttr(Attribute attr);
+
   const MetaTensor& InputAt(size_t idx) const;
 
   template <typename AttrType>
@@ -64,9 +67,9 @@ struct InferSpmdFnImpl;
 
 template <typename Return, typename... Args, Return (*infer_spmd_fn)(Args...)>
 struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
-  static void Call(const InferSpmdContext& ctx) {
-    InferSpmdFnCallHelper<Args..., InferSpmdTypeTag<int>>::template Call<0, 0>(
-        ctx);
+  static SpmdInfo Call(const InferSpmdContext& ctx) {
+    return InferSpmdFnCallHelper<Args..., InferSpmdTypeTag<int>>::
+        template Call<0, 0>(ctx);
   }
 
  private:
@@ -77,24 +80,27 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   template <typename... Tail>
   struct InferSpmdFnCallHelper<const MetaTensor&, Tail...> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
-    static void Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) {
+    static SpmdInfo Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
                     "InferSpmd's Input should appear before Attributes.");
       const MetaTensor& arg = ctx.InputAt(in_idx);
-      InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1, attr_idx>(
+      return InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1,
+                                                           attr_idx>(
           ctx, pargs..., arg);
     }
   };
 
-#define PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(attr_type)        \
-  template <typename... Tail>                                               \
-  struct InferSpmdFnCallHelper<attr_type, Tail...> {                        \
-    template <int in_idx, int attr_idx, typename... PreviousArgs>           \
-    static void Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) { \
-      attr_type arg = ctx.AttrAt<attr_type>(attr_idx);                      \
-      InferSpmdFnCallHelper<Tail...>::template Call<in_idx, attr_idx + 1>(  \
-          ctx, pargs..., arg);                                              \
-    }                                                                       \
+#define PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(attr_type)      \
+  template <typename... Tail>                                             \
+  struct InferSpmdFnCallHelper<attr_type, Tail...> {                      \
+    template <int in_idx, int attr_idx, typename... PreviousArgs>         \
+    static SpmdInfo Call(const InferSpmdContext& ctx,                     \
+                         PreviousArgs&... pargs) {                        \
+      attr_type arg = ctx.AttrAt<attr_type>(attr_idx);                    \
+      return InferSpmdFnCallHelper<Tail...>::template Call<in_idx,        \
+                                                           attr_idx + 1>( \
+          ctx, pargs..., arg);                                            \
+    }                                                                     \
   }
 
   // TODO(chenweihang): support other attr type later
@@ -104,7 +110,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   template <typename T>
   struct InferSpmdFnCallHelper<InferSpmdTypeTag<T>> {
     template <int in_idx, int attr_idx, int out_idx>
-    static void Call(const InferSpmdContext& ctx UNUSED, Args&... args) {
+    static SpmdInfo Call(const InferSpmdContext& ctx UNUSED, Args&... args) {
       return infer_spmd_fn(args...);
     }
   };
@@ -129,6 +135,20 @@ class SpmdRuleFactory {
 
   DISABLE_COPY_AND_ASSIGN(SpmdRuleFactory);
 };
+
+struct InferSpmdFnRegistrar {
+  InferSpmdFnRegistrar(const char* kernel_name, InferSpmdFn fn) {
+    SpmdRuleFactory::Instance().InsertInferSpmdFn(kernel_name, fn);
+  }
+};
+
+#define PD_REGISTER_INFER_SPMD_FN(kernel_name, variadic_infer_spmd_fn)  \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
+      PD_REGISTER_infer_spmd_fn_ns_check_##kernel_name,                 \
+      "PD_REGISTER_INFER_SPMD_FN must be called in global namespace."); \
+  static const ::phi::InferSpmdFnRegistrar                              \
+      __registrar_infer_spmd_fn_for_##kernel_name(                      \
+          #kernel_name, PD_INFER_SPMD(variadic_infer_meta_fn))
 
 }  // namespace distributed
 }  // namespace phi
