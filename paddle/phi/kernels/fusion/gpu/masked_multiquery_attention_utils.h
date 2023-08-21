@@ -49,7 +49,6 @@
 #ifndef PADDLE_WITH_HIP
 #pragma once
 
-// #include "glog/logging.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/mmha_util.cu.h"
 
