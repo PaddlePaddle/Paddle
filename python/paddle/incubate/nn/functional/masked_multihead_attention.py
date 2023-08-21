@@ -56,6 +56,7 @@ def masked_multihead_attention(
         seq_len (int, optional): The seq_len, used to get input length. Default 1.
         rotary_emb_dims (int, optional): The rotary_emb_dims. Default 1.
         use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
+        compute_dtype (string): A compute dtype, used to represent the input data type.
         out_scale (float, optional): The out_scale, used in quant.
         quant_round_type (int, optional): The quant_round_type, used in quant. Default 1.
         quant_max_bound (float, optional): The quant_max_bound, used in quant. Default 127.0.
