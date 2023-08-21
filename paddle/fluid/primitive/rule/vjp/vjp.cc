@@ -203,7 +203,7 @@ std::vector<std::vector<paddle::Tensor>> sum_vjp(
     bool reduce_all,
     const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<paddle::Tensor>> vjp_res(
-      1, std::vector<paddle::Tensor>(1));
+      2, std::vector<paddle::Tensor>(1));
   if (!paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled()) {
     // get sum_grad res.
     Tensor op_res = backend::sum_grad<primitive::LazyTensor>(
