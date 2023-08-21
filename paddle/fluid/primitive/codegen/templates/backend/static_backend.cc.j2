@@ -1,0 +1,63 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#include "paddle/fluid/primitive/backend/backend.h"
+#include "paddle/fluid/ir/dialect/pd_api.h"
+#include "paddle/fluid/primitive/primitive/primitive.h"
+#include "paddle/fluid/primitive/type/lazy_tensor.h"
+
+namespace paddle {
+namespace primitive {
+namespace backend {
+
+using LazyTensor = paddle::primitive::LazyTensor;
+
+{%- macro sig(name, inputs, outputs, attrs) -%}
+template <>
+{{common.ret(outputs)}} {{name}}<LazyTensor>({{common.params(inputs, attrs)}})
+{%- endmacro -%}
+
+{% macro body(name, inputs, outputs, attrs) %}
+  {%- set output_names = [] -%}
+  {%- for o in outputs -%} {%- do output_names.append(o.name) -%} {%-endfor-%}
+    {%- for input in inputs -%}
+      {% if input.typename=='Tensor[]' %}
+  std::vector<ir::OpResult> {{input.name}}_res({{input.name}}.size());
+  std::transform({{input.name}}.begin(), {{input.name}}.end(), {{input.name}}_res.begin(), [](const Tensor& t) {
+    return std::static_pointer_cast<LazyTensor>(t.impl())->getValue().dyn_cast<ir::OpResult>();
+  });
+      {% else %}
+  ir::OpResult {{input.name}}_res = std::static_pointer_cast<LazyTensor>({{input.name}}.impl())->getValue().dyn_cast<ir::OpResult>();
+      {% endif %}
+    {% endfor %}
+  {%- set input_names = [] -%}
+  {%- for i in inputs -%} {%- do input_names.append(i.name~'_res') -%} {%- endfor -%}
+  {%- set attr_names = [] -%}
+  {%- for i in attrs -%} {%- do attr_names.append(common.phi2ir_attr(i)) -%} {% endfor %}
+  auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}});
+  {% if outputs|length > 1 %}
+  return std::make_tuple(
+    {% for i in range(outputs|length) %}
+    Tensor(std::make_shared<LazyTensor>(std::get<{{i}}>(op_res))){%- if i!=outputs|length - 1 -%}, {% endif %}
+
+    {% endfor %}
+  );
+  {% elif outputs|length == 1 %}
+  return Tensor(std::make_shared<LazyTensor>(op_res));
+  {% else %} {#- render nothing -#}
+  {% endif %}
+{% endmacro %}
+
+
+{% for api in apis %}
+{% if api.name in backend_white_list %}
+{{sig(api.name, api.inputs, api.outputs, api.attrs)}} {
+{{body(api.name, api.inputs, api.outputs, api.attrs)}} 
+}
+
+{% endif %}
+{% endfor %}
+
+}  // namespace backend
+}  // namespace primitive
+}  // namespace paddle
