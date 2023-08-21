@@ -951,7 +951,7 @@ class Engine:
             self._switch_mode(self._mode)
 
         if auto_utils.use_new_executor():
-            local_batch_size = batch_size
+            local_batch_size = self._validate_batch_size(batch_size)
             train_dataloader = self._prepare_dataloader(
                 train_data,
                 return_list=False,
@@ -1568,6 +1568,8 @@ class Engine:
     def _validate_batch_size(self, batch_size):
         if batch_size is None:
             return None
+        if self._strategy.pipeline.enable and auto_utils.use_new_executor():
+            return batch_size
         assert (
             batch_size % self._acc_steps == 0
         ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
