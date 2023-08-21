@@ -143,8 +143,7 @@ class RemoveRedundentCastPattern
 struct RemoveUselessCastFunctor {
   void operator()(ir::drr::DrrPatternContext *ctx) {
     auto pat = ctx->SourcePattern();
-    pat.Tensor("ret") =
-        pat.Op("pd.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("arg0"));
+    pat.Tensor("ret") = pat.Op("pd.cast")(pat.Tensor("arg0"));
     pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
     auto res = pat.ResultPattern();
     res.Tensor("ret").Assign(res.Tensor("arg0"));
