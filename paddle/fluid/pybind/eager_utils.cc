@@ -543,7 +543,7 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
-using phi::distributed:: : TensorDistAttr;
+using phi::distributed::TensorDistAttr;
 std::shared_ptr<TensorDistAttr> CastPyArg2DistAttr(PyObject* obj,
                                                    ssize_t arg_pos) {
 #ifdef PADDLE_WITH_DISTRIBUTE
