@@ -31,12 +31,14 @@ void FullKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void FullWithTensorKernel(
     const Context& dev_ctx,
+    const paddle::optional<DenseTensor>& ValueTensor,
+    const paddle::optional<DenseTensor>& ShapeTensor,
+    // const paddle::optional<std::vector<DenseTensor>>& ShapeTensorList,
+    const paddle::optional<std::vector<const DenseTensor*>>& ShapeTensorList,
     const std::vector<int64_t>& shape,
     float value,
     int dtype,
-    const paddle::optional<DenseTensor>& ValueTensor,
-    const paddle::optional<DenseTensor>& ShapeTensor,
-    const paddle::optional<std::vector<DenseTensor>>& ShapeTensorList,
+    const std::string& str_value,
     SelectedRows* out);
 }  // namespace sr
 }  // namespace phi
