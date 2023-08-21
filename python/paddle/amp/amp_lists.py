@@ -91,7 +91,7 @@ EXTRA_BLACK_LIST = {
 }
 
 BF16_WHITE_LIST = {'conv2d', 'matmul', 'matmul_v2', 'mul'}
-BF16_BLACK_LIST = set()
+BF16_BLACK_LIST = FP16_BLACK_LIST
 
 
 # At OD level, ops in WHITE_LIST will use FP16/BF16 and the others will use FP32.
