@@ -641,16 +641,13 @@ class TestLayerNormOp(unittest.TestCase):
                 exe = base.Executor(place)
                 name_list = ['x', 'y@GRAD']
                 if has_scale:
-                    name_list +=  ['scale']
+                    name_list += ['scale']
                 if has_bias:
                     name_list += ['bias']
 
                 out = exe.run(
                     program,
-                    feed={
-                        name: var_dict[name]
-                        for name in name_list
-                    },
+                    feed={name: var_dict[name] for name in name_list},
                     fetch_list=fetch_list,
                 )
                 # print(y)
