@@ -93,7 +93,7 @@ def masked_multiquery_attention(
 
             output1 = F.masked_multiquery_attention(
                 q, k1, v1, src_mask=src_mask, cache_kv=cache_kv)
-                
+
             output2 = F.masked_multiquery_attention(
                 q, k2, v2, src_mask=src_mask, cache_kv=cache_kv)
 
