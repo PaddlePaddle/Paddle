@@ -65,6 +65,7 @@ AMP = "amp"
 set_field_default_config(AMP, "enable", False)
 set_field_default_config(AMP, "dtype", "float16")
 set_field_default_config(AMP, "level", "o1")
+set_field_default_config(AMP, "master_grad", "False")
 set_field_default_config(AMP, "init_loss_scaling", 32768.0)
 set_field_default_config(AMP, "incr_every_n_steps", 1000)
 set_field_default_config(AMP, "decr_every_n_nan_or_inf", 2)
