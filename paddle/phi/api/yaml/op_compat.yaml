@@ -2165,6 +2165,11 @@
   attrs :
     {axis : Axis, reduce : Reduce}
 
+- op : pylayer
+  backward : pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : qr
   backward : qr_grad
   inputs :
