@@ -177,24 +177,22 @@ GetInplaceVars(const BlockDesc &block,
   const auto op_gc_vars = GetEagerDeletionCleanVarsForPartial(
       *block.Program(), skip_vars, for_partial_block)[0];
 
-  std::stringstream op_gc_vars_os;
-  for (size_t i = 0; i < op_gc_vars.size(); i++) {
-    for (size_t j = 0; j < op_gc_vars[i].size(); j++) {
-      op_gc_vars_os << "[";
-      for (size_t k = 0; k < op_gc_vars[k].size(); k++) {
-        op_gc_vars_os << op_gc_vars[i][j][k] << ", ";
-      }
-      op_gc_vars_os << "], ";
-    }
-    op_gc_vars_os << "\n";
-  }
-  VLOG(0) << "====op_gc_vars: " << op_gc_vars_os.str();
-
   const auto all_ops = block.AllOps();
   PADDLE_ENFORCE_EQ(op_gc_vars.size(),
                     all_ops.size(),
                     platform::errors::PermissionDenied(
                         "GC analysis error: op number not match."));
+
+  std::stringstream op_gc_vars_os;
+  for (size_t i = 0; i < op_gc_vars.size(); i++) {
+    op_gc_vars_os << all_ops[i]->Type() << " : ";
+    for (size_t j = 0; j < op_gc_vars[i].size(); j++) {
+      op_gc_vars_os << op_gc_vars[i][j] << ", ";
+    }
+    op_gc_vars_os << "\n";
+  }
+  VLOG(0) << "====op_gc_vars: \n" << op_gc_vars_os.str();
+
   size_t n = all_ops.size();
   std::unordered_set<std::string> visited_vars;
   std::unordered_set<std::string> reused_in_vars(skip_vars.begin(),
@@ -308,7 +306,7 @@ void BufferSharedInplaceOpPass::ApplyImpl(ProgramDesc *main_program,
     }
     inplace_vars_os << "\n";
   }
-  VLOG(0) << "===inplace_vars include: " << inplace_vars_os.str();
+  VLOG(0) << "===inplace_vars include: \n" << inplace_vars_os.str();
   PADDLE_ENFORCE_EQ(inplace_vars.size(),
                     block->OpSize(),
                     platform::errors::PermissionDenied(

@@ -54,7 +54,9 @@ void AddNewData(ir::Value value,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list) {
-  value_2_var_name->emplace(value, name);
+  if (value_2_var_name->count(value) == 0) {
+    value_2_var_name->emplace(value, name);
+  }
   variable_2_var_name->emplace(var, name);
   if (var_name_2_id->count(name) == 0) {
     auto id = var_name_2_id->size();

@@ -828,23 +828,28 @@ class PartialProgramLayer:
                 forward_program,
                 flush=True,
             )
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
-                print(
-                    "apply buffer_shared_inplace_pass for forward program\n",
-                    flush=True,
-                )
-                _apply_pass(
-                    forward_program,
-                    empty_startup_program,
-                    "buffer_shared_inplace_pass",
-                    attrs,
-                    attr_types,
-                )
-                print(
-                    "after apply pass forward_program is: \n",
-                    forward_program,
-                    flush=True,
-                )
+            print(
+                "FLAGS_enable_new_ir_in_executor: ",
+                os.getenv("FLAGS_enable_new_ir_in_executor"),
+                flush=True,
+            )
+            # if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            print(
+                "apply buffer_shared_inplace_pass for forward program\n",
+                flush=True,
+            )
+            _apply_pass(
+                forward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
+            print(
+                "after apply pass forward_program is: \n",
+                forward_program,
+                flush=True,
+            )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
@@ -856,23 +861,23 @@ class PartialProgramLayer:
                 backward_program,
                 flush=True,
             )
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
-                print(
-                    "apply buffer_shared_inplace_pass for backward program\n",
-                    flush=True,
-                )
-                _apply_pass(
-                    backward_program,
-                    empty_startup_program,
-                    "buffer_shared_inplace_pass",
-                    attrs,
-                    attr_types,
-                )
-                print(
-                    "after apply pass backward_program is: \n",
-                    backward_program,
-                    flush=True,
-                )
+            # if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            print(
+                "apply buffer_shared_inplace_pass for backward program\n",
+                flush=True,
+            )
+            _apply_pass(
+                backward_program,
+                empty_startup_program,
+                "buffer_shared_inplace_pass",
+                attrs,
+                attr_types,
+            )
+            print(
+                "after apply pass backward_program is: \n",
+                backward_program,
+                flush=True,
+            )
 
     @LazyInitialized
     def _inout_var_names(self):

@@ -80,6 +80,7 @@ static bool VarCanBeDeleted(const std::string &name,
          type == proto::VarType::LOD_TENSOR_ARRAY;
 }
 
+// 获取block中每个算子的 unused vars
 std::unordered_map<const OperatorBase *, std::vector<std::string>>
 GetUnusedVars(const BlockDesc &block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,
@@ -88,13 +89,15 @@ GetUnusedVars(const BlockDesc &block,
                                             skip_var_list.end());
 
   std::unordered_map<std::string, size_t> var_op_idx_map;
-
+  // 遍历所有算子
   for (size_t i = 0; i < ops.size(); ++i) {
     auto *op = ops[i].get();
-
+    // 遍历算子的输入
     OpInOutInfo info;
     for (auto &name_pair : op->Inputs()) {
       for (auto &name : name_pair.second) {
+        // 筛掉：在skip_vars名单的、var_desc 是 nullptr 的、有 is_persisable
+        // 属性的（这些都不可以 gc）
         if (!VarCanBeDeleted(name, block, skip_vars)) {
           continue;
         }
@@ -103,9 +106,11 @@ GetUnusedVars(const BlockDesc &block,
         if (!info.IsBuilt()) {
           info.Build(op);
         }
-
+        // 筛掉：在 no_need_buffer 名单中的
         if (info.IsInArgBufferNeeded(name)) {
           // Update the last living op of variable to current op
+          // ***很重要：如果这个 var 在后续的 op 中被用到了，那就 value
+          // 就是最后用到的这个 op
           var_op_idx_map[name] = i;
         } else {
           VLOG(10) << "Skip reference count computing of variable "
@@ -117,6 +122,8 @@ GetUnusedVars(const BlockDesc &block,
 
     for (auto &name_pair : op->Outputs()) {
       for (auto &name : name_pair.second) {
+        // 筛掉：在skip_vars名单的、var_desc 是 nullptr 的、有 is_persisable
+        // 属性的（这些都不可以 gc）
         if (VarCanBeDeleted(name, block, skip_vars)) {
           // Update the last living op of variable to current op
           var_op_idx_map[name] = i;
@@ -211,6 +218,7 @@ std::vector<std::vector<std::vector<std::string>>>
 GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
                                     const std::vector<std::string> &skip_vars,
                                     const bool &for_partial_block) {
+  VLOG(0) << "======GetEagerDeletionCleanVarsForPartial======";
   ProgramDesc program{origin_program};
   size_t block_num = program.Size();
   PADDLE_ENFORCE_GE(block_num,
@@ -241,12 +249,19 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
   const char *kSubBlock = "sub_block";
   const char *kSkipEagerDeletionVars = "skip_eager_deletion_vars";
 
+  VLOG(0) << "update skip eager deleteion vars for each block";
   for (size_t i = 0; i < block_num; ++i) {
+    VLOG(0) << "check for block[" << i << "]";
     const auto &block = program.Block(i);
     size_t op_num = block.OpSize();
     for (size_t j = 0; j < op_num; ++j) {
+      VLOG(0) << "check for block[" << i << "]op[" << j << "]";
       auto *op = block.Op(j);
       if (!op->HasAttr(kSubBlock) || !op->HasAttr(kSkipEagerDeletionVars)) {
+        VLOG(0) << "op->HasAttr(kSubBlock): " << op->HasAttr(kSubBlock)
+                << ", op->HasAttr(kSkipEagerDeletionVars): "
+                << op->HasAttr(kSkipEagerDeletionVars);
+        VLOG(0) << "done check";
         continue;
       }
       auto sub_block_id = op->GetAttrIfExists<BlockDesc *>(kSubBlock)->ID();
@@ -264,20 +279,37 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
           platform::errors::PermissionDenied(
               "there are 2 ops which refer to the same sub_block %d",
               sub_block_id));
-
+      VLOG(0) << "update skip eager deletion vars for block: " << sub_block_id;
       found_skip_vars[sub_block_id] = true;
       auto sub_block_skip_vars =
           op->GetAttrIfExists<std::vector<std::string>>(kSkipEagerDeletionVars);
       skip_vars_on_each_block[sub_block_id] = std::move(sub_block_skip_vars);
     }
   }
+  VLOG(0) << "~~~~~~~~~~~~~~~~~~";
+  std::stringstream skip_vars_on_each_block_os;
+  for (size_t i = 0; i < skip_vars_on_each_block.size(); i++) {
+    skip_vars_on_each_block_os << "block " << i << " : ";
+    for (size_t j = 0; j < skip_vars_on_each_block[i].size(); j++) {
+      skip_vars_on_each_block_os << skip_vars_on_each_block[i][j] << ", ";
+    }
+    skip_vars_on_each_block_os << "\n";
+  }
+  VLOG(0) << skip_vars_on_each_block_os.str();
+  VLOG(0) << "~~~~~~~~~~~~~~~~~~";
 
+  VLOG(0) << "get eager deletion vars for each block's each op";
   std::vector<std::vector<std::vector<std::string>>> result;
   result.reserve(block_num);
   for (size_t i = 0; i < block_num; ++i) {
+    VLOG(0) << "check for block[" << i << "]";
     const auto &block = program.Block(i);
     const auto block_ops = CreateOpsFromBlock(block);
     const auto &block_skip_vars = skip_vars_on_each_block[i];
+    // unused vars就是可以考虑后面做 inplace 的 var，主要特征包括：
+    // (1)不在skip_vars名单的；(2)
+    // var_desc不是nullptr的；（3）没有is_persisable属性的；（4）不在no_need_buffer名单中的；（5）没有后续算子使用
+    VLOG(0) << "get unused vars for block";
     auto delete_var_map = GetUnusedVars(block, block_ops, block_skip_vars);
     std::vector<std::vector<std::string>> block_result;
     block_result.reserve(block_ops.size());
