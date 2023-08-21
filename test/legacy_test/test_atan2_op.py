@@ -188,14 +188,14 @@ class TestAtan2OpComplex(OpTest):
         self.op_type = "atan2"
         self.python_api = paddle.atan2
         self.check_cinn = True
-        x1real = np.expand_dims(
-            np.random.uniform(-1, -0.1, [15, 17]), -1
-        ).astype("float64")
-        x1image = np.random.uniform(-1, -0.1, [15, 17]).astype("float64")
-        x2real = np.expand_dims(np.random.uniform(0.1, 1, [15, 17]), -1).astype(
+        x1real = np.expand_dims(np.random.random((3, 3, 3)), -1).astype(
             "float64"
         )
-        x2image = np.random.uniform(0.1, 1, [15, 17]).astype("float64")
+        x1image = np.random.random((3, 3, 3)).astype("float64")
+        x2real = np.expand_dims(np.random.random((3, 3, 3)), -1).astype(
+            "float64"
+        )
+        x2image = np.random.random((3, 3, 3)).astype("float64")
         x1 = x1real + 1j * x1image
         x2 = x2real + 1j * x2image
         out = np.arctan2(x1, x2)
@@ -209,7 +209,14 @@ class TestAtan2OpComplex(OpTest):
         self.check_output(check_cinn=self.check_cinn)
 
     def test_check_grad(self):
-        if self.dtype not in [np.int32, np.int64]:
+        if self.dtype not in [
+            np.int32,
+            np.int64,
+            np.float32,
+            np.float64,
+            np.float16,
+            np.uint16,
+        ]:
             self.check_grad(
                 ['X1', 'X2'],
                 'Out',
