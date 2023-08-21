@@ -20,13 +20,12 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/distributed/store/tcp_store.h"
-
 namespace phi {
 class DeviceContext;
 
 namespace distributed {
 class CommContext;
+class TCPStore;
 
 namespace auto_parallel {
 
