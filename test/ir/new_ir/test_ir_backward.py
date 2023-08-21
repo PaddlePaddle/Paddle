@@ -116,7 +116,6 @@ def get_ir_program_1():
 
 class TesBackward_2(unittest.TestCase):
     def test_add_n(self):
-        # test add_n op
         newir_program = get_ir_program_1()
         input_x = newir_program.block().ops[-3].operand(0).source()
 
@@ -130,6 +129,43 @@ class TesBackward_2(unittest.TestCase):
         self.assertEqual(
             newir_program.block().ops[-2].name(), "builtin.combine"
         )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
+    def test_concat(self):
+        newir_program = get_ir_program_1()
+        input_x = newir_program.block().ops[-3].operand(0).source()
+
+        add_out = newir_program.block().ops[-1].result(0)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            out = paddle.concat([add_out, add_out])
+            input_grad = grad(out, input_x)
+
+        ops_name = [
+            "pd.data",
+            "pd.data",
+            "pd.tanh",
+            "pd.tanh",
+            "pd.add",
+            "builtin.combine",
+            "pd.full",
+            "pd.concat",
+            "pd.full",
+            "builtin.combine",
+            "pd.concat_grad",
+            "builtin.split",
+            "builtin.combine",
+            "pd.add_n",
+            "pd.add_grad",
+            "pd.tanh_grad",
+            "pd.tanh_grad",
+            "builtin.combine",
+            "pd.add_n",
+        ]
+        for i, op in enumerate(newir_program.block().ops):
+            self.assertEqual(op.name(), ops_name[i])
+
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
 if __name__ == "__main__":
