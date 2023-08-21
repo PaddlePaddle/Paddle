@@ -91,7 +91,7 @@ std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
           << out_physical_tensor_cur_rank.dims();
 
   return std::make_shared<DistTensor>(
-      std::move(out_physical_tensor_cur_rank), in.dims(), out_dist_attr);
+      out_physical_tensor_cur_rank, in.dims(), out_dist_attr);
 }
 
 }  // namespace distributed

@@ -102,7 +102,10 @@ void* DistTensor::AllocateFrom(Allocator* allocator,
                                DataType dtype,
                                size_t requested_size,
                                bool fake_alloc) {
-  return value_.AllocateFrom(allocator, dtype, requested_size, fake_alloc);
+  PADDLE_THROW(phi::errors::Unavailable(
+      "The DistTensor Cannot allocate memory directly and needs to perform "
+      "memory operations through its DenseTensor value."));
+  return nullptr;
 }
 
 }  // namespace distributed
