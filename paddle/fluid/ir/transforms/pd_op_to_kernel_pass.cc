@@ -363,7 +363,7 @@ phi::KernelKey GetKernelKey(
       // uses data op outout as inputs. So, we need set kernel backend
       // manually.
       if (op->operand_source(i).GetDefiningOp()->name() == "pd.data") {
-        auto data_op = op->operand_source(0).GetDefiningOp();
+        auto data_op = op->operand_source(i).GetDefiningOp();
         auto data_place = data_op->attributes()
                               .at("place")
                               .dyn_cast<dialect::PlaceAttribute>()
