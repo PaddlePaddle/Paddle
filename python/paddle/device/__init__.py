@@ -422,6 +422,7 @@ class Event:
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('raise OSError')
             >>> # +REQUIRES(env:CUSTOM_DEVICE)
 
             >>> import paddle
@@ -469,7 +470,7 @@ class Event:
             )
 
     def record(self, stream=None):
-        """
+        '''
         Records the event in a given stream.
         Parameters:
             stream(Stream, optional): The given stream. By default, stream is None,
@@ -478,60 +479,57 @@ class Event:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
+                paddle.set_device('custom_cpu')
+                e = paddle.device.Event()
+                e.record()
 
-                >>> paddle.set_device('custom_cpu')
-                >>> e = paddle.device.Event()
-                >>> e.record()
-
-                >>> s = paddle.device.Stream()
-                >>> e.record(s)
-        """
+                s = paddle.device.Stream()
+                e.record(s)
+        '''
         if stream is None:
             stream = current_stream(self.device)
 
         self.event_base.record(stream.stream_base)
 
     def query(self):
-        """
+        '''
         Checks if all work currently captured by event has completed.
         Returns:
             bool: Whether all work currently captured by event has completed.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> e = paddle.device.Event()
-                >>> e.record()
-                >>> e.query()
-        """
+                paddle.set_device('custom_cpu')
+                e = paddle.device.Event()
+                e.record()
+                e.query()
+        '''
         return self.event_base.query()
 
     def elapsed_time(self, end_event):
-        """
+        '''
         Returns the time elapsed in milliseconds after the event was
         recorded and before the end_event was recorded.
         Returns:
             int: The time.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
+                paddle.set_device('custom_cpu')
+                e1 = paddle.device.Event()
+                e1.record()
 
-                >>> paddle.set_device('custom_cpu')
-                >>> e1 = paddle.device.Event()
-                >>> e1.record()
-
-                >>> e2 = paddle.device.Event()
-                >>> e2.record()
-                >>> e1.elapsed_time(e2)
-        """
+                e2 = paddle.device.Event()
+                e2.record()
+                e1.elapsed_time(e2)
+        '''
         return 0
 
     def synchronize(self):
@@ -544,6 +542,7 @@ class Event:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP('raise OSError')
                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                 >>> import paddle
 
@@ -573,6 +572,7 @@ class Stream:
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('raise OSError')
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
 
@@ -624,7 +624,7 @@ class Stream:
             )
 
     def wait_event(self, event):
-        """
+        '''
         Makes all future work submitted to the stream wait for an event.
         Parameters:
             event (Event): an event to wait for.
@@ -632,21 +632,20 @@ class Stream:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> s1 = paddle.device.Stream()
-                >>> s2 = paddle.device.Stream()
-                >>> e = paddle.device.Event()
-                >>> e.record(s1)
-                >>> s2.wait_event(e)
-        """
+                paddle.set_device('custom_cpu')
+                s1 = paddle.device.Stream()
+                s2 = paddle.device.Stream()
+                e = paddle.device.Event()
+                e.record(s1)
+                s2.wait_event(e)
+        '''
         self.stream_base.wait_event(event.event_base)
 
     def wait_stream(self, stream):
-        """
+        '''
         Synchronizes with another stream.
         All future work submitted to this stream will wait until all kernels
         submitted to a given stream at the time of call complete.
@@ -656,19 +655,18 @@ class Stream:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> s1 = paddle.device.Stream()
-                >>> s2 = paddle.device.Stream()
-                >>> s1.wait_stream(s2)
-        """
+                paddle.set_device('custom_cpu')
+                s1 = paddle.device.Stream()
+                s2 = paddle.device.Stream()
+                s1.wait_stream(s2)
+        '''
         self.stream_base.wait_stream(stream.stream_base)
 
     def record_event(self, event=None):
-        """
+        '''
         Records an event.
         Parameters:
             event (Event, optional): event to record. If not given, a new one
@@ -677,37 +675,35 @@ class Stream:
             Event: Recorded event.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
+                paddle.set_device('custom_cpu')
+                s = paddle.device.Stream()
+                e1 = s.record_event()
 
-                >>> paddle.set_device('custom_cpu')
-                >>> s = paddle.device.Stream()
-                >>> e1 = s.record_event()
-
-                >>> e2 = paddle.device.Event()
-                >>> s.record_event(e2)
-        """
+                e2 = paddle.device.Event()
+                s.record_event(e2)
+        '''
         if event is None:
             event = Event(self.device)
         event.record(self)
         return event
 
     def query(self):
-        """
+        '''
         Checks if all the work submitted has been completed.
         Returns:
             bool: Whether all kernels in this stream are completed.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> s = paddle.device.Stream()
-                >>> s.query()
-        """
+                paddle.set_device('custom_cpu')
+                s = paddle.device.Stream()
+                s.query()
+        '''
         return self.stream_base.query()
 
     def synchronize(self):
@@ -718,6 +714,7 @@ class Stream:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP('raise OSError')
                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
                 >>> import paddle
 
@@ -760,6 +757,7 @@ def current_stream(device=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('raise OSError')
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
 
@@ -899,6 +897,7 @@ def synchronize(device=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('raise OSError')
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
 
