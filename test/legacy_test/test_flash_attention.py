@@ -191,16 +191,12 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
 
-    def test_all(self):
+    def flash_attn_compute(self, query, key, value):
         print(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
         # test dynamic
         paddle.disable_static()
-
-        query = np.random.random(self.shape)
-        key = np.random.random(self.shape)
-        value = np.random.random(self.shape)
 
         q = paddle.to_tensor(
             query, place=self.place, dtype=self.dtype, stop_gradient=False
@@ -306,6 +302,29 @@ class TestFlashAttentionAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
+            return out, out_, fetches_result[0]
+
+    def test_all(self):
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+        out, out_, _ = self.flash_attn_compute(query, key, value)
+
+    def test_all_flag(self):
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
+        query = np.random.random(self.shape)
+        key = np.random.random(self.shape)
+        value = np.random.random(self.shape)
+
+        out1, out1_, fetches_result1 = self.flash_attn_compute(
+            query, key, value
+        )
+        out2, out2_, fetches_result2 = self.flash_attn_compute(
+            query, key, value
+        )
+        self.assertTrue(np.equal(out1.numpy(), out2.numpy()).all())
+        self.assertTrue(np.equal(fetches_result1, fetches_result2).all())
+        paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
 
 
 @unittest.skipIf(
@@ -323,7 +342,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         self.dropout = 0.0
         self.causal = False
 
-    def get_out_data(self):
+    def test_dot_scale_product(self):
         # test dynamic
         paddle.disable_static()
 
@@ -363,22 +382,7 @@ class TestFlashAttentionWithMaskAPI(unittest.TestCase):
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
         out_.backward()
-        return out, out_
-
-    def test_dot_scale_product(self):
-        out, out_ = self.get_out_data()
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
-
-    def test_dot_scale_product_flag(self):
-        paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-
-        out1, out1_ = self.get_out_data()
-        np.testing.assert_allclose(out1.numpy(), out1_, rtol=5e-03, atol=1e-03)
-
-        out2, out2_ = self.get_out_data()
-        np.equal(out1.numpy(), out2.numpy())
-
-        paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
 
 
 class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
