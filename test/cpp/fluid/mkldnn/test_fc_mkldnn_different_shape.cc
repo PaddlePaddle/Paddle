@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(fc);
-USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, FP32);
+PD_DECLARE_KERNEL(fc, MKLDNN, FP32);
 
 paddle::framework::VarDesc *Data(
     paddle::framework::BlockDesc *block,
