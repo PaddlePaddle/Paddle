@@ -35,6 +35,26 @@ void FullKernel(const Context& dev_ctx,
   phi::FullKernel<T>(dev_ctx, shape, val, dtype, out->mutable_value());
 }
 
+template <typename T, typename Context>
+void FullWithTensorKernel(
+    const Context& dev_ctx,
+    const std::vector<int64_t>& shape,
+    float value,
+    int dtype,
+    const paddle::optional<DenseTensor>& ValueTensor,
+    const paddle::optional<DenseTensor>& ShapeTensor,
+    const paddle::optional<std::vector<DenseTensor>>& ShapeTensorList,
+    SelectedRows* out) {
+  phi::FullWithTensorKernel<T>(dev_ctx,
+                               shape,
+                               value,
+                               dtype,
+                               ValueTensor,
+                               ShapeTensor,
+                               ShapeTensorList,
+                               out->mutable_value());
+}
+
 }  // namespace sr
 }  // namespace phi
 
@@ -76,6 +96,53 @@ PD_REGISTER_KERNEL(full_sr,
                    XPU,
                    ALL_LAYOUT,
                    phi::sr::FullKernel,
+                   float,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {}
+#endif
+
+PD_REGISTER_KERNEL(full_with_tensor_sr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sr::FullWithTensorKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(full_with_tensor_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::FullWithTensorKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(full_with_tensor_sr,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::sr::FullWithTensorKernel,
                    float,
                    uint8_t,
                    int16_t,
