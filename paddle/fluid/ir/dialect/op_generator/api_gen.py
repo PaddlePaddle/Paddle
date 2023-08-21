@@ -29,6 +29,7 @@ H_FILE_TEMPLATE = """
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/fluid/ir/dialect/pd_manual_api.h"
 
 {body}
 
@@ -95,6 +96,8 @@ API_LIST = [
     'expand',
     'tile',
     'add_grad',
+    'divide_grad',
+    'sum_grad',
 ]
 OP_RESULT = 'ir::OpResult'
 VECTOR_TYPE = 'ir::VectorType'

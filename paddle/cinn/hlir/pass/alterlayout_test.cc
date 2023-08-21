@@ -76,7 +76,8 @@ TEST(conv, conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -122,7 +123,8 @@ TEST(conv_relu_conv, conv_relu_conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -171,7 +173,8 @@ TEST(conv_add_conv, conv_add_conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -227,7 +230,8 @@ TEST(conv_bn_conv, conv_bn_conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -283,7 +287,8 @@ TEST(conv_pool2d_conv, conv_pool2d_conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -334,7 +339,8 @@ TEST(conv_softmax_conv, conv_softmax_conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -382,7 +388,8 @@ TEST(conv_sigmoid_conv, conv_sigmoid_conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -434,7 +441,8 @@ TEST(conv_mul_conv, conv_mul_conv) {
   auto scope = BuildScope(target, graph);
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");

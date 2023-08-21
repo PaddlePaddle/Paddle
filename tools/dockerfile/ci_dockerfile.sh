@@ -37,8 +37,6 @@ function make_ubuntu_trt7_dockerfile(){
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub distro \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPIC --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && rm -rf openssl-1.1.1v*" ${dockerfile_name}
-  sed -i "${dockerfile_line}i ENV OPENSSL_ROOT_DIR=/usr/local/ssl" ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
@@ -56,11 +54,12 @@ function make_ubuntu_trt7_dockerfile(){
 function make_ubuntu_trt7_dockerfile_temp_ues(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
   echo "FROM registry.baidubce.com/paddlepaddle/paddleqa:coverage-ci-temp-use" >> ${dockerfile_name}
-  echo "RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPIC --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && rm -rf openssl-1.1.1v*" >> ${dockerfile_name}
+  echo "RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPIC --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && cd ../ && rm -rf openssl-1.1.1v*" >> ${dockerfile_name}
   echo "ENV OPENSSL_ROOT_DIR=/usr/local/ssl" >> ${dockerfile_name}
+  echo "ENV LD_LIBRARY_PATH=/usr/local/ssl/lib:\g$LD_LIBRARY_PATH" >> ${dockerfile_name}
 }
 
-function make_centos_dockerfile(){
+function make_cpu_dockerfile(){
   dockerfile_name="Dockerfile.cuda9_cudnn7_gcc48_py35_centos6"
   sed "s#<baseimg>#ubuntu:20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   sed -i "s#<setcuda>##g" ${dockerfile_name}
@@ -83,26 +82,6 @@ function make_centos_dockerfile(){
 }
 
 
-function make_cinn_dockerfile(){
-  dockerfile_name="Dockerfile.cuda11_cudnn8_gcc82_ubuntu18_cinn"
-  sed "s#<baseimg>#nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
-  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
-  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
-  sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
-  sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
-  sed -i "27i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev libsndfile1" ${dockerfile_name}
-  dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
-  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
-     tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd ninja-build \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
-    tar -xvf git-2.17.1.tar.gz \&\& \
-    cd git-2.17.1 \&\& \
-    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
-    make -j8 \&\& make install " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro \&\& pip3.7 install PyGithub \&\& pip3.8 install distro" ${dockerfile_name}
-}
-
-
 function make_ce_framework_dockcerfile(){
   dockerfile_name="Dockerfile.cuda11.2_cudnn8_gcc82_trt8"
   sed "s#<baseimg>#nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
@@ -121,7 +100,8 @@ function make_ce_framework_dockcerfile(){
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
 }
 
-function make_unbuntu18_cu117_dockerfile(){
+
+function make_unbuntu20_cu12_dockerfile(){
   dockerfile_name="Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage"
   sed "s#<baseimg>#nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.0/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
@@ -142,11 +122,11 @@ function make_unbuntu18_cu117_dockerfile(){
   sed -i 's#Run bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn891#g' ${dockerfile_name}
 }
 
-function make_ubuntu18_cu112_dockerfile(){
+
+function make_ubuntu20_cu112_dockerfile(){
   dockerfile_name="Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18"
-  sed "s#<baseimg>#nvidia/cuda:11.2.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
+  sed "s#<baseimg>#nvidia/cuda:11.2.2-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
-  sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8431#g' ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
@@ -159,23 +139,18 @@ function make_ubuntu18_cu112_dockerfile(){
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub distro \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
-    COPY tools/dockerfile/build_scripts /build_scripts \\
-    RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
-    RUN cp gcc  gcc.bak \&\& cp g++  g++.bak \&\& rm gcc \&\& rm g++ \\
-    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc \\
-    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ \\
-    RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc \\
-    RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
+  sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
+  sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
 }
 
 function main() {
   make_ubuntu_trt7_dockerfile_temp_ues
-  make_centos_dockerfile
-  make_cinn_dockerfile
+  make_cpu_dockerfile
   make_ce_framework_dockcerfile
-  make_unbuntu18_cu117_dockerfile
-  make_ubuntu18_cu112_dockerfile
+  make_unbuntu20_cu12_dockerfile
+  make_ubuntu20_cu112_dockerfile
 }
 
 main "$@"

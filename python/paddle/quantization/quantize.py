@@ -41,29 +41,30 @@ class Quantization(metaclass=abc.ABCMeta):
         pass
 
     def convert(self, model: Layer, inplace=False):
-        r"""Convert the quantization model to onnx style. And the converted
+        r"""Convert the quantization model to ONNX style. And the converted
         model can be saved as inference model by calling paddle.jit.save.
         Args:
-            model(Layer) - The quantized model to be covnerted.
+            model(Layer) - The quantized model to be converted.
             inplace(bool) - Whether to modify the model in-place.
 
         Return: The converted model
 
         Examples:
-        .. code-block:: python
-            import paddle
-            from paddle.quantization import QAT, QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            from paddle.vision.models import LeNet
+            .. code-block:: python
 
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
-            qat = QAT(q_config)
-            model = LeNet()
-            quantized_model = qat.quantize(model)
-            converted_model = qat.convert(quantized_model)
-            dummy_data = paddle.rand([1, 1, 32, 32], dtype="float32")
-            paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
+                >>> import paddle
+                >>> from paddle.quantization import QAT, QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.vision.models import LeNet
+
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+                >>> qat = QAT(q_config)
+                >>> model = LeNet()
+                >>> quantized_model = qat.quantize(model)
+                >>> converted_model = qat.convert(quantized_model)
+                >>> dummy_data = paddle.rand([1, 1, 32, 32], dtype="float32")
+                >>> paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
         """
         _model = model if inplace else copy.deepcopy(model)
         replaced = {}
