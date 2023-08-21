@@ -45,7 +45,7 @@ class ReduceOp:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> dist.all_reduce(data, op=dist.ReduceOp.SUM)
             >>> print(data)
-            [[5, 7, 9], [5, 7, 9]] (2 GPUs)
+            >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
 
     SUM = 0
@@ -117,8 +117,8 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> dist.reduce(data, dst=0)
             >>> print(data)
-            [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
-            [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
+            >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
     return stream.reduce(
         tensor,
