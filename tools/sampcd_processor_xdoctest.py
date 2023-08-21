@@ -253,6 +253,9 @@ class Xdoctester(DocTester):
         self._patch_float_precision = patch_float_precision
         self._use_multiprocessing = use_multiprocessing
 
+        # patch xdoctest before `xdoctest.core.parse_docstr_examples`
+        self._patch_xdoctest()
+
         self.docstring_parser = functools.partial(
             xdoctest.core.parse_docstr_examples, style=self.style
         )
