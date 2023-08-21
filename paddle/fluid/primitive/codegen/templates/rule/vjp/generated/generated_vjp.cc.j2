@@ -1,7 +1,7 @@
 {% import "common.j2" as common %}
 // Auto Generated, DO NOT EDIT!
 
-#include "paddle/fluid/primitive/rule/vjp/vjp.h"
+#include "paddle/fluid/primitive/rule/vjp/generated/generated_vjp.h"
 #include "paddle/fluid/ir/dialect/pd_api.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/backend.h"
@@ -18,7 +18,7 @@ std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs
 {%- endmacro -%}
 
 {% macro body(api) %}
-std::vector<std::vector<paddle::Tensor>> vjp_res(stop_gradients.size());
+std::vector<std::vector<paddle::Tensor>> vjp_res;
 for (auto arg: stop_gradients) {
   vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
 }

@@ -70,6 +70,7 @@ add_custom_command(
           ${op_compat_yaml_file}
   VERBATIM)
 
+add_custom_target(pd_api_gen ALL DEPENDS ${api_header_file} ${api_source_file})
 # All source files of pd_dialect, except for the source file of op, which is generated in the compilation directory.
 file(GLOB PD_DIALECT_SRCS "*.cc")
 

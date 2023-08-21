@@ -32,14 +32,32 @@ import tests_utils as op_gen_tests
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[2] / 'ir/dialect/op_generator')
 )
-import api_gen as ir_api_gen
 
 # fmt: on
 
 
 VJPS = ['tanh_grad', 'mean_grad', 'add_grad', 'divide_grad', 'sum_grad']
 VJP_COMPS = ['divide_grad', 'sum_grad']
-BACKENDS = ir_api_gen.API_LIST
+BACKENDS = [
+    'add_n',
+    'mean',
+    'sum',
+    'divide',
+    'full',
+    'tanh_grad',
+    'mean_grad',
+    'concat',
+    'add',
+    'multiply',
+    'elementwise_pow',
+    'scale',
+    'reshape',
+    'expand',
+    'tile',
+    'add_grad',
+    'divide_grad',
+    'sum_grad',
+]
 
 
 def load(path: pathlib.Path):
