@@ -29,7 +29,7 @@ H_FILE_TEMPLATE = """
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/fluid/ir/dialect/pd_manual_api.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_api.h"
 
 {body}
 

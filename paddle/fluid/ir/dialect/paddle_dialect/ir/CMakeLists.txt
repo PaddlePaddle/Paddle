@@ -85,7 +85,7 @@ cc_library(
   DEPS ir_core)
 cc_library(
   pd_dialect_api
-  SRCS ${api_source_file}
+  SRCS ${api_source_file} pd_manual_api.cc
   DEPS api_builder pd_dialect_op)
 
 target_include_directories(pd_dialect_api PRIVATE ${PD_DIALECT_BINARY_DIR})
