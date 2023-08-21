@@ -56,7 +56,7 @@ class TestAssertVariable(unittest.TestCase):
         self._run_dy_static(
             dyfunc_assert_non_variable, x=True, with_exception=False
         )
- 
+
     # FIXME(Aurelius84): @test_and_compare_with_new_ir(False)
     def test_bool_variable(self):
         self._run_dy_static(
