@@ -14,13 +14,16 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
 
+// the <winsock2.h> needs to be included before <winsock.h>, otherwise
+// there will be symbol redefinition error on windows
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_all_gather_functor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace phi {
 namespace distributed {
