@@ -486,7 +486,9 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         if q.shape[0] == 0:
             raise ValueError("q should be not a zero-dim tensor")
     else:
-        raise TypeError("Type of q should be int, float, list or tuple, or 1-D tensor")
+        raise TypeError(
+            "Type of q should be int, float, list or tuple, or 1-D tensor"
+        )
 
     # Validate axis
     dims = len(x.shape)

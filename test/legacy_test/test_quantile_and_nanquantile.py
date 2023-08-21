@@ -219,6 +219,22 @@ class TestError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_axis_value_error_2)
 
+        # Test error when q is not a 1-D tensor
+        def test_tensor_input_1():
+            paddle_res = paddle.quantile(
+                self.x, q=paddle.randn((2, 3)), axis=[1, -10]
+            )
+
+        self.assertRaises(ValueError, test_tensor_input_1)
+
+        # Test error when q is a zero-dim tensor
+        def test_tensor_input_2():
+            paddle_res = paddle.quantile(
+                self.x, q=paddle.to_tensor([]), axis=[1, -10]
+            )
+
+        self.assertRaises(ValueError, test_tensor_input_2)
+
 
 class TestQuantileRuntime(unittest.TestCase):
     """
