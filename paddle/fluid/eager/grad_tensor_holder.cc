@@ -99,8 +99,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
         auto dist_tensor = std::make_shared<phi::distributed::DistTensor>(
             dense_temp,
             dense_temp->meta(),
-            std::make_shared<
-                phi::distributed::auto_parallel::TensorDistAttr>());
+            std::make_shared<phi::distributed::TensorDistAttr>());
         temp.set_impl(dist_tensor);
         buffer_[slot_id][rank] = temp;
 #endif
