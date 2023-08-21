@@ -25,6 +25,9 @@ import paddle.inference as paddle_infer
 
 class TrtConvertPutAlongAxis(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -126,7 +129,8 @@ class TrtConvertPutAlongAxis(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 1, 4
+            if dynamic_shape:
+                return 1, 4
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
