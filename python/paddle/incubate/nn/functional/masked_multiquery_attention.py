@@ -87,7 +87,7 @@ def masked_multiquery_attention(
             # cache_kv: [2, batch_size, num_head, max_seq_len, dim_head]
             cache_kv = paddle.rand(shape=(2, 2, 1, 64, 128), dtype="float32")
 
-            output = F.masked_multihead_attention(
+            output = F.masked_multiquery_attention(
                 q, k, v, src_mask=src_mask, cache_kv=cache_kv)
 
     """

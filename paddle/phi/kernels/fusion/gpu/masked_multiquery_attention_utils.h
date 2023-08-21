@@ -49,7 +49,7 @@
 #ifndef PADDLE_WITH_HIP
 #pragma once
 
-#include "glog/logging.h"
+// #include "glog/logging.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/mmha_util.cu.h"
 
@@ -88,10 +88,6 @@ template <typename T>
 struct Masked_multiquery_attention_params {
   // output buffer, [B, 1(seq_len), num_head * dim_head]
   T *out;
-  // qkv_out, [B, 1(seq_len), 3, num_head * dim_head]
-  const T *qkv;
-  // bias, [3, num_head, dim_head]
-  T *qkv_bias;
   // TODO(wangxi): optimize with input_lengths and max_input_len?
   // [bsz, 1, 1, time_step(cache_seq_length)+1]
   const T *attn_mask;
@@ -128,8 +124,6 @@ struct Masked_multiquery_attention_params {
   int seq_len;
   // 1.f / sqrt(Dh)
   float inv_sqrt_dh;
-
-  bool add_qkv_bias;
   bool neox_rotary_style;
 };
 
@@ -461,13 +455,6 @@ __global__ void masked_multiquery_attention_kernel(
 
   // const T *q_base = params.qkv;
   // const T *k_base = params.qkv + params.num_head * Dh;
-  T *q_bias_base = nullptr;
-  T *k_bias_base = nullptr;
-
-  if (params.add_qkv_bias) {
-    q_bias_base = params.qkv_bias;
-    k_bias_base = params.qkv_bias + params.num_head * Dh;
-  }
 
   if (tid < QK_VECS_PER_WARP) {
     Qk_vec q;
@@ -749,8 +736,6 @@ __global__ void masked_multiquery_attention_kernel(
     }
   }
 
-  V_vec v_bias;
-  zero(v_bias);
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     V_vec v;
     load_func.template load<V_vec>(

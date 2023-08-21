@@ -86,7 +86,7 @@ void MMQAKernel(const Context& dev_ctx,
   }
 
   params.mask_broadcast_num_heads = mask_broadcast_num_heads;
-  params.cache_kv = const_cast<T*>(cache_kv_out->data<T>());
+  params.cache_kv = cache_kv_out->data<T>();
   params.neox_rotary_style = use_neox_rotary_style;
 
   // params.mqa = mqa;
@@ -104,7 +104,6 @@ void MMQAKernel(const Context& dev_ctx,
     params.beam_width = beam_cache_offset->dims()[1];
   }
 
-  params.add_qkv_bias = false;
   params.batch_size = bsz;
   params.cache_batch_size = cache_bsz;
   params.num_head = num_head;
