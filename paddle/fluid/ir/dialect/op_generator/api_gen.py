@@ -96,6 +96,8 @@ API_LIST = [
     'expand',
     'tile',
     'add_grad',
+    'data',
+    'fetch',
     'divide_grad',
     'sum_grad',
 ]

@@ -951,11 +951,14 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::Attribute shape = attribute_translator(
+        "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("shape"));
     ir::AttributeMap attribute_map = {
         {"name",
          ir::StrAttribute::get(ctx,
                                op_desc.GetAttrIfExists<std::string>("name"))},
-        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"shape", shape},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
         {"place",
