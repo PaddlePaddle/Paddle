@@ -429,6 +429,12 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : c_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -451,7 +457,7 @@
   outputs :
     out : Out
 
-- op : check_finite_and_unscale_
+- op : check_finite_and_unscale_(check_finite_and_unscale)
   inputs :
     {x : X, scale: Scale}
   outputs :
@@ -2718,7 +2724,7 @@
   inputs :
     {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
   outputs :
-    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
+    {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
@@ -2895,6 +2901,8 @@
     {x : X, indices: Indices}
   outputs :
     out : Out
+  attrs :
+   padding : paddings
   int_array :
     output_size:
       data_type : int
@@ -2929,7 +2937,7 @@
   outputs :
     out : Y
 
-- op : update_loss_scaling_
+- op : update_loss_scaling_(update_loss_scaling)
   inputs :
     {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
   outputs :
@@ -2982,6 +2990,12 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_broadcast
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: channel_shuffle
   inputs:
     {x: X}
@@ -3012,6 +3026,12 @@
     {out: Out, pivots : Pivots, infos : Infos}
   attrs:
     pivot : pivots
+
+- op: memcpy_d2h
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: reindex_graph (graph_reindex)
   inputs :
