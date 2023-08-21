@@ -57,8 +57,8 @@ def reduce_scatter(
             ...     data2 = paddle.to_tensor([6, 7])
             >>> dist.reduce_scatter(data1, [data1, data2])
             >>> print(data1)
-            [4, 6] (2 GPUs, out for rank 0)
-            [8, 10] (2 GPUs, out for rank 1)
+            >>> # [4, 6] (2 GPUs, out for rank 0)
+            >>> # [8, 10] (2 GPUs, out for rank 1)
 
     """
     return stream.reduce_scatter(
@@ -105,8 +105,8 @@ def _reduce_scatter_base(
             >>> output = paddle.empty(shape=[2], dtype=data.dtype)
             >>> dist.collective._reduce_scatter_base(output, data)
             >>> print(output)
-            [1, 3] (2 GPUs, out for rank 0)
-            [5, 7] (2 GPUs, out for rank 1)
+            >>> # [1, 3] (2 GPUs, out for rank 0)
+            >>> # [5, 7] (2 GPUs, out for rank 1)
 
     """
     return _reduce_scatter_base_stream(
