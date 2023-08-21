@@ -29,15 +29,10 @@ void FullKernel(const Context& dev_ctx,
                 SelectedRows* out);
 
 template <typename T, typename Context>
-void FullWithTensorKernel(
-    const Context& dev_ctx,
-    const paddle::optional<DenseTensor>& ValueTensor,
-    const paddle::optional<DenseTensor>& ShapeTensor,
-    const paddle::optional<std::vector<const DenseTensor*>>& ShapeTensorList,
-    const std::vector<int64_t>& shape,
-    float value,
-    int dtype,
-    const std::string& str_value,
-    SelectedRows* out);
+void FullWithTensorKernel(const Context& dev_ctx,
+                          const DenseTensor& shape,
+                          const DenseTensor& value,
+                          DataType dtype,
+                          SelectedRows* out);
 }  // namespace sr
 }  // namespace phi

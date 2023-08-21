@@ -19,42 +19,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FullWithTensorKernel(
-    const Context& dev_ctx,
-    const paddle::optional<DenseTensor>& ValueTensor,
-    const paddle::optional<DenseTensor>& ShapeTensor,
-    const paddle::optional<std::vector<const DenseTensor*>>& ShapeTensorList,
-    const std::vector<int64_t>& shape,
-    float value,
-    int dtype,
-    const std::string& str_value,
-    DenseTensor* out) {
-  IntArray full_shape;
-  Scalar full_val;
-  DataType full_dtype;
-
-  full_dtype = phi::VarTypeToDataType(
-      static_cast<paddle::framework::proto::VarType_Type>(dtype));
-  if (ValueTensor) {
-    full_val = Scalar(*ValueTensor.get_ptr());
-  } else if (!str_value.empty()) {
-    full_val = Scalar(str_value);
-  } else {
-    full_val = Scalar(value);
-  }
-
-  if (ShapeTensor) {
-    full_shape = IntArray(*ShapeTensor.get_ptr());
-  } else if (ShapeTensorList) {
-    std::vector<DenseTensor> tmp;
-    for (const auto& s : ShapeTensorList.get()) {
-      tmp.push_back(*s);
-    }
-    full_shape = IntArray(tmp);
-  } else {
-    full_shape = IntArray(shape);
-  }
-
-  FullKernel<T, Context>(dev_ctx, full_shape, full_val, full_dtype, out);
+void FullWithTensorKernel(const Context& dev_ctx,
+                          const DenseTensor& shape,
+                          const DenseTensor& value,
+                          DataType dtype,
+                          DenseTensor* out) {
+  FullKernel<T, Context>(
+      dev_ctx,
+      IntArray(shape),
+      Scalar(value),
+      phi::VarTypeToDataType(
+          static_cast<paddle::framework::proto::VarType_Type>(dtype)),
+      out);
 }
 }  // namespace phi

@@ -795,14 +795,8 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
 
-void FillWithTensorInferMeta(
-    const paddle::optional<MetaTensor>& ValueTensor,
-    const paddle::optional<MetaTensor>& ShapeTensor,
-    const paddle::optional<std::vector<const MetaTensor*>>& ShapeTensorList,
-    const std::vector<int64_t>& shape,
-    float value,
-    int dtype,
-    const std::string& str_value,
-    MetaTensor* out);
+void FillWithTensorInferMeta(const MetaTensor& shape,
+                             DataType dtype,
+                             MetaTensor* out);
 
 }  // namespace phi

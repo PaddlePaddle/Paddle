@@ -4051,26 +4051,11 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
-void FillWithTensorInferMeta(
-    const paddle::optional<MetaTensor>& ValueTensor,
-    const paddle::optional<MetaTensor>& ShapeTensor,
-    const paddle::optional<std::vector<const MetaTensor*>>& ShapeTensorList,
-    const std::vector<int64_t>& shape,
-    float value,
-    int dtype,
-    const std::string& str_value,
-    MetaTensor* out) {
-  if (ShapeTensor || ShapeTensorList) {
-    out->set_dims(make_ddim({-1}));
-    out->set_dtype(phi::VarTypeToDataType(
-        static_cast<paddle::framework::proto::VarType_Type>(dtype)));
-  } else {
-    CreateInferMeta(
-        shape,
-        phi::VarTypeToDataType(
-            static_cast<paddle::framework::proto::VarType_Type>(dtype)),
-        out);
-  }
+void FillWithTensorInferMeta(const MetaTensor& shape,
+                             DataType dtype,
+                             MetaTensor* out) {
+  out->set_dims(make_ddim({-1}));
+  out->set_dtype(dtype);
 }
 
 }  // namespace phi
