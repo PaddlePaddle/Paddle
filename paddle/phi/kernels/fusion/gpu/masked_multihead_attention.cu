@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
@@ -30,6 +31,10 @@ __device__ __inline__ T ClipFunc(const T v, const T min, const T max) {
   if (v > max) return max;
   if (v < min) return min;
   return v;
+}
+
+constexpr unsigned int str2int(const char *str, int h = 0) {
+  return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
 }
 
 template <typename InType, typename OutType>
@@ -1458,88 +1463,93 @@ void MMHAKernel(const Context &dev_ctx,
                 DenseTensor *beam_cache_offset_out) {
 #ifndef PADDLE_WITH_HIP
   if (x.dtype() == phi::DataType::INT32) {
-    if (compute_dtype == "bf16") {
-      DispatchWithDtype<phi::dtype::bfloat16, Context>(
-          dev_ctx,
-          x,
-          cache_kv,
-          bias,
-          src_mask,
-          cum_offsets,
-          sequence_lengths,
-          rotary_tensor,
-          beam_cache_offset,
-          qkv_out_scale,
-          out_shift,
-          out_smooth,
-          seq_len,
-          rotary_emb_dims,
-          use_neox_rotary_style,
-          out_scale,
-          quant_round_type,
-          quant_max_bound,
-          quant_min_bound,
-          out,
-          cache_kv_out,
-          beam_cache_offset_out,
-          typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
-
-    } else if (compute_dtype == "fp16") {
-      DispatchWithDtype<phi::dtype::float16, Context>(
-          dev_ctx,
-          x,
-          cache_kv,
-          bias,
-          src_mask,
-          cum_offsets,
-          sequence_lengths,
-          rotary_tensor,
-          beam_cache_offset,
-          qkv_out_scale,
-          out_shift,
-          out_smooth,
-          seq_len,
-          rotary_emb_dims,
-          use_neox_rotary_style,
-          out_scale,
-          quant_round_type,
-          quant_max_bound,
-          quant_min_bound,
-          out,
-          cache_kv_out,
-          beam_cache_offset_out,
-          typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
-    } else if (compute_dtype == "fp32") {
-      DispatchWithDtype<float, Context>(
-          dev_ctx,
-          x,
-          cache_kv,
-          bias,
-          src_mask,
-          cum_offsets,
-          sequence_lengths,
-          rotary_tensor,
-          beam_cache_offset,
-          qkv_out_scale,
-          out_shift,
-          out_smooth,
-          seq_len,
-          rotary_emb_dims,
-          use_neox_rotary_style,
-          out_scale,
-          quant_round_type,
-          quant_max_bound,
-          quant_min_bound,
-          out,
-          cache_kv_out,
-          beam_cache_offset_out,
-          typename DispatchDtypeTrait<float>::FuncVersion{});
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "In the case of quantization enabled with Input(x) INT32, "
-          "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
-          "but get compute_dtype (%s)",
-          compute_dtype));
+    switch (str2int(compute_dtype.c_str())) {
+      case str2int("fp16"):
+        DispatchWithDtype<phi::dtype::float16, Context>(
+            dev_ctx,
+            x,
+            cache_kv,
+            bias,
+            src_mask,
+            cum_offsets,
+            sequence_lengths,
+            rotary_tensor,
+            beam_cache_offset,
+            qkv_out_scale,
+            out_shift,
+            out_smooth,
+            seq_len,
+            rotary_emb_dims,
+            use_neox_rotary_style,
+            out_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+            out,
+            cache_kv_out,
+            beam_cache_offset_out,
+            typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
+        break;
+#if CUDA_VERSION >= 11000
+      case str2int("bf16"):
+        DispatchWithDtype<phi::dtype::bfloat16, Context>(
+            dev_ctx,
+            x,
+            cache_kv,
+            bias,
+            src_mask,
+            cum_offsets,
+            sequence_lengths,
+            rotary_tensor,
+            beam_cache_offset,
+            qkv_out_scale,
+            out_shift,
+            out_smooth,
+            seq_len,
+            rotary_emb_dims,
+            use_neox_rotary_style,
+            out_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+            out,
+            cache_kv_out,
+            beam_cache_offset_out,
+            typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
+        break;
+#endif
+      case str2int("fp32"):
+        DispatchWithDtype<float, Context>(
+            dev_ctx,
+            x,
+            cache_kv,
+            bias,
+            src_mask,
+            cum_offsets,
+            sequence_lengths,
+            rotary_tensor,
+            beam_cache_offset,
+            qkv_out_scale,
+            out_shift,
+            out_smooth,
+            seq_len,
+            rotary_emb_dims,
+            use_neox_rotary_style,
+            out_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+            out,
+            cache_kv_out,
+            beam_cache_offset_out,
+            typename DispatchDtypeTrait<float>::FuncVersion{});
+        break;
+      default:
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "In the case of quantization enabled with Input(x) INT32, "
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+            "but get compute_dtype (%s)",
+            compute_dtype));
     }
   } else {
     DispatchWithDtype<T, Context>(
