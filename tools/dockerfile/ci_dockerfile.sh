@@ -50,7 +50,6 @@ function make_ubuntu_trt7_dockerfile(){
     RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y --allow-unauthenticated libsndfile1 libnccl2=2.8.4-1+cuda10.2 libnccl-dev=2.8.4-1+cuda10.2 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
-# 镜像和make_ubuntu_trt7_dockerfile生成的镜像一致，但重新编译存在问题，所以将其作为base镜像，升级openssl
 function make_ubuntu_trt7_dockerfile_temp_ues(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
   echo "FROM registry.baidubce.com/paddlepaddle/paddleqa:coverage-ci-temp-use" >> ${dockerfile_name}
