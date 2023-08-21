@@ -944,30 +944,50 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             train_data, train_sample_split, batch_size
         )
-        micro_batch_size = self._validate_batch_size(batch_size)
+
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        train_dataloader = self._prepare_dataloader_from_generator(
-            dataset=train_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            epochs=epochs,
-            steps_per_epoch=steps_per_epoch,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = batch_size
+            train_dataloader = self._prepare_dataloader(
+                train_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                epochs=epochs,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = (
+                len(train_dataloader)
+                if steps_per_epoch is None
+                else steps_per_epoch
+            )
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            train_dataloader = self._prepare_dataloader_from_generator(
+                dataset=train_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                epochs=epochs,
+                steps_per_epoch=steps_per_epoch,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = train_dataloader._steps
+            local_batch_size = micro_batch_size
+            if self._strategy.pipeline.enable:
+                local_batch_size = micro_batch_size * self._acc_steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=micro_batch_size,
+            batch_size=local_batch_size,
             epochs=epochs,
-            steps=train_dataloader._steps,
+            steps=steps_per_epoch,
             log_freq=log_freq,
             save_freq=save_freq,
             save_dir=save_dir,
@@ -983,31 +1003,41 @@ class Engine:
             logs = {}
             cbks.on_epoch_begin(epoch)
 
-            for step, _ in enumerate(train_dataloader):
-                with paddle.profiler.utils._nvprof_range(
-                    iter_id=step, start=nvprof_range[0], end=nvprof_range[1]
-                ):
-                    cbks.on_batch_begin('train', step, logs)
-                    try:
+            for step, data in enumerate(train_dataloader):
+                cbks.on_batch_begin('train', step, logs)
+                if auto_utils.use_new_executor():
+                    feeds = self._validate_feed(data)
+                else:
+                    feeds = [{}]
+
+                for micro_feed in feeds:
+                    with paddle.profiler.utils._nvprof_range(
+                        iter_id=step, start=nvprof_range[0], end=nvprof_range[1]
+                    ):
                         outs = self._executor.run(
                             self.main_program,
+                            feed=micro_feed,
                             fetch_list=fetch_names,
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy,
                         )
-                    except core.EOFException:
-                        break
-                    lr = auto_utils.get_lr(self.optimizer)
-                    logs = self._prepare_logger(
-                        outs,
-                        epoch,
-                        step,
-                        lr,
-                        fetch_names,
-                        fetch_indices,
-                        self._mode,
-                    )
-                    cbks.on_batch_end('train', step, logs)
+
+                        lr = auto_utils.get_lr(self.optimizer)
+                        logs = self._prepare_logger(
+                            outs,
+                            epoch,
+                            step,
+                            lr,
+                            fetch_names,
+                            fetch_indices,
+                            self._mode,
+                        )
+                        cbks.on_batch_end('train', step, logs)
+
+                if step >= steps_per_epoch:
+                    if not auto_utils.use_new_executor():
+                        train_dataloader._reset()
+                    break
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(
@@ -1422,7 +1452,6 @@ class Engine:
         timeout=0,
         worker_init_fn=None,
         epochs=1,
-        steps_per_epoch=None,
         places=None,
     ):
         dist_context = self._dist_contexts[self._mode]
@@ -1462,7 +1491,6 @@ class Engine:
                 timeout=timeout,
                 worker_init_fn=worker_init_fn,
                 epochs=epochs,
-                steps_per_epoch=steps_per_epoch,
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
@@ -1546,6 +1574,26 @@ class Engine:
             batch_size, self._acc_steps
         )
         return batch_size // self._acc_steps
+
+    def _validate_feed(self, feed):
+        if feed is None:
+            return [None]
+        if self._strategy.pipeline.enable:
+            return feed
+        if self._acc_steps == 1:
+            return feed
+
+        # split feed data with gradient_merge k_steps
+        feed_names = []
+        split_feeds = []
+        for feed_name, cur_feed in feed[0].items():
+            feed_names.append(feed_name)
+            split_feeds.append(np.split(np.array(cur_feed), self._acc_steps, 0))
+        micro_feeds = []
+        for i in range(self._acc_steps):
+            split_feed = [sf[i] for sf in split_feeds]
+            micro_feeds.append(dict(zip(feed_names, split_feed)))
+        return micro_feeds
 
     def _validate_spec(self, specs):
         specs = auto_utils.to_list(specs)
