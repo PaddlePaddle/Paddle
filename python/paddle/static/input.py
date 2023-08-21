@@ -25,6 +25,16 @@ from ..fluid.variable_index import _setitem_impl_, _setitem_static
 __all__ = []
 
 
+def evaluate_flag(val: str) -> bool:
+    if val is None:
+        return False
+    val = val.lower()
+    if val in ('false', 'off', '0', 'none'):
+        return False
+    else:
+        return True
+
+
 @static_only
 def data(name, shape, dtype=None, lod_level=0):
     """
@@ -120,7 +130,8 @@ def data(name, shape, dtype=None, lod_level=0):
             need_check_feed=True,
         )
 
-    if os.environ.get("FLAGS_enable_new_ir_in_executor", None):
+    is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", "0")
+    if evaluate_flag(is_new_ir_mode):
         helper = LayerHelper('data', **locals())
         helper.append_op(
             type='data',
