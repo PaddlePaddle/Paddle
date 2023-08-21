@@ -118,8 +118,7 @@ PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::distributed::DistTensor* value);
-PyObject* ToPyObject(
-    const phi::distributed::auto_parallel::TensorDistAttr* value);
+PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
@@ -309,8 +308,8 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
                                             const std::string& op_type,
                                             ssize_t arg_pos);
 
-std::shared_ptr<phi::distributed::auto_parallel::TensorDistAttr>
-CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos);
+std::shared_ptr<phi::distributed::TensorDistAttr> CastPyArg2DistAttr(
+    PyObject* obj, ssize_t arg_pos);
 
 paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type,

@@ -27,12 +27,7 @@ namespace distributed {
 class CommContext;
 class TCPStore;
 
-namespace auto_parallel {
-
 class ProcessMesh;
-}  // namespace auto_parallel
-
-using auto_parallel::ProcessMesh;
 
 bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping);
 

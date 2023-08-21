@@ -44,7 +44,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
 using phi::distributed::DistTensor;
-using phi::distributed::auto_parallel::TensorDistAttr;
+using phi::distributed::TensorDistAttr;
 
 namespace paddle {
 namespace pybind {
@@ -739,7 +739,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * ** zero_copy: bool,
  * ** name: std::string,
  * ** stop_gradient: bool,
- * ** dist_attr: phi::distributed::auto_parallel::TensorDistAttr)
+ * ** dist_attr: phi::distributed::TensorDistAttr)
  * 4.
  * def __init__ (
  * ** value: ndarray)
@@ -753,7 +753,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * ** tensor: Tensor,
  * ** place: paddle::platform::Place,
  * ** name: std::string,
- * ** dist_attr: phi::distributed::auto_parallel::TensorDistAttr)
+ * ** dist_attr: phi::distributed::TensorDistAttr)
  * 7. (multi-place) (should have at least one parameter, one parameter similar
  * to case 5, zero parameter equals to case 1.)
  * def __init__ (
