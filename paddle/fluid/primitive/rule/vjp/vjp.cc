@@ -148,6 +148,28 @@ std::vector<std::vector<paddle::Tensor>> add_vjp(
   return vjp_res;
 }
 
+std::vector<std::vector<paddle::Tensor>> concat_vjp(
+    const std::vector<Tensor>& x,
+    const Tensor& out_grad,
+    const Tensor& axis,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res(2, std::vector<Tensor>());
+  // get concat_grad res.
+  std::vector<Tensor> op_res =
+      backend::concat_grad<primitive::LazyTensor>(x, out_grad, axis);
+
+  // construct vjp result by op result and stop_gradients info
+  vjp_res[0].resize(op_res.size());
+  for (uint64_t idx = 0; idx < op_res.size(); idx++) {
+    if (!stop_gradients[0][idx]) {
+      vjp_res[0][idx] = op_res[idx];
+    }
+  }
+  // vjp_res[1] is axis's grad which is attribute (no grad).
+  vjp_res[1].resize(1);
+  return vjp_res;
+}
+
 std::vector<std::vector<paddle::Tensor>> divide_vjp(
     const Tensor& x,
     const Tensor& y,

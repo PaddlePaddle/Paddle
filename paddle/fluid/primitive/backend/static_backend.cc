@@ -242,6 +242,38 @@ Tensor sum_grad<LazyTensor>(const Tensor& x,
       x_res, out_grad_res, axis.GetData(), keepdim, reduce_all);
   return Tensor(std::make_shared<LazyTensor>(op_res));
 }
+
+template <>
+std::vector<Tensor> concat_grad<LazyTensor>(const std::vector<Tensor>& x,
+                                            const Tensor& out_grad,
+                                            const Tensor& axis) {
+  std::vector<ir::OpResult> x_res;
+  for (uint64_t idx = 0; idx < x.size(); idx++) {
+    x_res.emplace_back(std::static_pointer_cast<LazyTensor>(x[idx].impl())
+                           ->getValue()
+                           .dyn_cast<ir::OpResult>());
+  }
+
+  ir::OpResult out_grad_res =
+      std::static_pointer_cast<LazyTensor>(out_grad.impl())
+          ->getValue()
+          .dyn_cast<ir::OpResult>();
+
+  ir::OpResult axis_res = std::static_pointer_cast<LazyTensor>(axis.impl())
+                              ->getValue()
+                              .dyn_cast<ir::OpResult>();
+
+  std::vector<ir::OpResult> op_res =
+      paddle::dialect::concat_grad(x_res, out_grad_res, axis_res);
+
+  std::vector<Tensor> op_result;
+  for (uint64_t idx = 0; idx < op_res.size(); idx++) {
+    op_result.emplace_back(
+        std::make_shared<primitive::LazyTensor>(op_res[idx]));
+  }
+  return op_result;
+}
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

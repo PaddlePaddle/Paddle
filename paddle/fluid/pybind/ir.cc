@@ -250,6 +250,7 @@ void BindValue(py::module *m) {
       .def("get_defining_op",
            &Value::GetDefiningOp,
            return_value_policy::reference)
+      .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -273,9 +274,11 @@ void BindOpOperand(py::module *m) {
   op_operand
       .def("source",
            [](OpOperand &self) { return self.source().dyn_cast<OpResult>(); })
-      .def("set_source", [](OpOperand &self, const OpResult &result) {
-        self.set_source(result);
-      });
+      .def("set_source",
+           [](OpOperand &self, const OpResult &result) {
+             self.set_source(result);
+           })
+      .def("owner", &OpOperand::owner, return_value_policy::reference);
 }
 
 bool GetStopGradient(const OpResult &self) {
@@ -332,6 +335,7 @@ void BindOpResult(py::module *m) {
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
+      .def("first_use", &OpResult::first_use, return_value_policy::reference)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
       .def_property(

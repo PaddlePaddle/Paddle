@@ -14,22 +14,17 @@
 
 #pragma once
 
-#include <Python.h>
+#include <vector>
 
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
+#include "paddle/ir/core/value.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
-namespace pybind {
+namespace dialect {
 
-PyObject *static_api_add_n(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_mean(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_sum(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_divide(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_concat(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs);
-
-}  // namespace pybind
+std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
+                                      ir::OpResult out_grad,
+                                      ir::OpResult axis);
+}  // namespace dialect
 }  // namespace paddle
