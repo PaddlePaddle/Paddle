@@ -155,5 +155,29 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 }
 
+PyObject *static_api_split(PyObject *self, PyObject *args, PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add split op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get OpResult from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2OpResult("split", x_obj, 0);
+
+    PyObject *sections_obj = PyTuple_GET_ITEM(args, 1);
+    auto sections = CastPyArg2IntArray(sections_obj, "split", 1);
+
+    PyObject *axis_obj = PyTuple_GET_ITEM(args, 2);
+    paddle::experimental::Scalar axis = CastPyArg2Scalar(axis_obj, "split", 2);
+
+    // Call ir static api
+    auto out = paddle::dialect::split(
+        x, sections.to < std::vector<int64_t>(), axis.to<int>());
+    return ToPyObject(out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle

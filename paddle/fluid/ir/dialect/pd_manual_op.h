@@ -51,6 +51,24 @@ class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.split_grad"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult out_grad_,
+                    ir::OpResult axis_);
+
+  void Verify();
+  ir::Value out_grad() { return operand_source(0); }
+  ir::Value axis() { return operand_source(1); }
+  ir::OpResult x_grad() { return result(0); }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 

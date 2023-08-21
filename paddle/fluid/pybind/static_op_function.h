@@ -30,6 +30,7 @@ PyObject *static_api_sum(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_divide(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_concat(PyObject *self, PyObject *args, PyObject *kwargs);
 PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs);
+PyObject *static_api_split(PyObject *self, PyObject *args, PyObject *kwargs);
 
 }  // namespace pybind
 }  // namespace paddle

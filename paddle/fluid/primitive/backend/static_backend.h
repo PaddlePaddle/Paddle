@@ -101,6 +101,9 @@ Tensor sum_grad(const Tensor& x,
                 bool keepdim,
                 bool reduce_all);
 
+template <typename T>
+Tensor split_grad(const std::vector<Tensor>& out_grads, const Tensor& axis);
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

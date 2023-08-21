@@ -32,5 +32,17 @@ std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
       concat_grad_op.result(0));
   return split_op.outputs();
 }
+
+ir::OpResult split_grad(std::vector<ir::OpResult> out_grads,
+                        ir::OpResult axis) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(out_grads);
+  paddle::dialect::SplitGradOp split_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+          combine_op.out(), axis);
+
+  return split_grad_op.out();
+}
+
 }  // namespace dialect
 }  // namespace paddle
