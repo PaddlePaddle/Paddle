@@ -327,6 +327,90 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         w_dims_mapping = op_dist_attr.get_input_dims_mapping(w_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
+        import os
+
+        if os.getenv("ENABLE_SPMD_RULE"):
+            print("################ embedding spmd ####################")
+            from paddle.distributed.auto_parallel.static.completion import (
+                get_spmd_rule,
+            )
+            from paddle.distributed.auto_parallel.static.dist_attribute import (
+                DistTensorSpec,
+                TensorDistAttr,
+            )
+
+            from ..utils import compute_compatible_dims_mapping
+
+            # todo utils for easly wrap data class
+            # completion should provide api for easy construct spmd input
+            # to propogate partial: rule --> op --> tensor
+            w_tensor_dist_attr = TensorDistAttr()
+            w_tensor_dist_attr.dims_mapping = w_dims_mapping
+            w_tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+            w_shape = dist_op.serial_op.block._var_recursive(w_name).shape
+            w_dist_tensor_spec = DistTensorSpec(w_shape, w_tensor_dist_attr)
+
+            ids_tensor_dist_attr = TensorDistAttr()
+            ids_tensor_dist_attr.dims_mapping = ids_dims_mapping
+            ids_tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+            ids_shape = dist_op.serial_op.block._var_recursive(ids_name).shape
+            ids_dist_tensor_spec = DistTensorSpec(
+                ids_shape, ids_tensor_dist_attr
+            )
+
+            out_tensor_dist_attr = TensorDistAttr()
+            out_tensor_dist_attr.dims_mapping = out_dims_mapping
+            out_tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+            out_shape = dist_op.serial_op.block._var_recursive(out_name).shape
+            out_dist_tensor_spec = DistTensorSpec(
+                out_shape, out_tensor_dist_attr
+            )
+
+            rule = get_spmd_rule("embedding")
+            attrs = {'padding_idx': -1, 'sparse': False}
+            fw_result = rule.infer_forward(
+                [ids_dist_tensor_spec, w_dist_tensor_spec], attrs
+            )
+            bw_result = rule.infer_backward(
+                [ids_dist_tensor_spec, w_dist_tensor_spec],
+                [out_dist_tensor_spec],
+                attrs,
+            )
+            w_dims_mapping_infered = compute_compatible_dims_mapping(
+                [fw_result[0][1].dims_mapping, bw_result[0][1].dims_mapping]
+            )
+            ids_dims_mapping_infered = compute_compatible_dims_mapping(
+                [fw_result[0][0].dims_mapping, bw_result[0][0].dims_mapping]
+            )
+            out_dims_mapping_infered = compute_compatible_dims_mapping(
+                [fw_result[1][0].dims_mapping, bw_result[1][0].dims_mapping]
+            )
+            if (
+                w_dims_mapping is not None
+                and ids_dims_mapping_infered is not None
+                and out_dims_mapping_infered is not None
+            ):
+                op_dist_attr.set_input_dims_mapping(
+                    ids_name, ids_dims_mapping_infered
+                )
+                op_dist_attr.set_input_dims_mapping(
+                    w_name, w_dims_mapping_infered
+                )
+                op_dist_attr.set_output_dims_mapping(
+                    out_name, out_dims_mapping_infered
+                )
+                if (
+                    w_dims_mapping_infered != w_dims_mapping
+                    or ids_dims_mapping_infered != ids_dims_mapping
+                    or out_dims_mapping_infered != out_dims_mapping
+                ):
+                    return True
+                else:
+                    return False
+
+            else:
+                return False
+
         for i in range(len(ids_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
                 [ids_dims_mapping, out_dims_mapping], [i, i]

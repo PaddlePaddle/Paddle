@@ -123,6 +123,81 @@ def _update_dims_mapping_for_matmul(dist_op):
     y_dims_mapping_len = len(y_dims_mapping)
     out_dims_mapping_len = len(out_dims_mapping)
 
+    import os
+
+    if os.getenv("ENABLE_SPMD_RULE"):
+        print("################ matmul spmd ####################")
+        from paddle.distributed.auto_parallel.static.completion import (
+            get_spmd_rule,
+        )
+        from paddle.distributed.auto_parallel.static.dist_attribute import (
+            DistTensorSpec,
+            TensorDistAttr,
+        )
+
+        # from ..utils import compute_compatible_dims_mapping
+        # todo utils for easly wrap data class
+        # completion should provide api for easy construct spmd input
+        # c++ provide api with shape + dims mapping directly ?
+        x_tensor_dist_attr = TensorDistAttr()
+        x_tensor_dist_attr.dims_mapping = x_dims_mapping
+        x_tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+        x_shape = dist_op.serial_op.block._var_recursive(x_name).shape
+        x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+
+        y_tensor_dist_attr = TensorDistAttr()
+        y_tensor_dist_attr.dims_mapping = y_dims_mapping
+        y_tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+        y_shape = dist_op.serial_op.block._var_recursive(y_name).shape
+        y_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
+
+        out_tensor_dist_attr = TensorDistAttr()
+        out_tensor_dist_attr.dims_mapping = out_dims_mapping
+        out_tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+        out_shape = dist_op.serial_op.block._var_recursive(out_name).shape
+        out_dist_tensor_spec = DistTensorSpec(out_shape, out_tensor_dist_attr)
+
+        rule = get_spmd_rule("matmul")
+        attrs = {'trans_x': trans_x, 'trans_y': trans_y}
+        fw_result = rule.infer_forward(
+            [x_dist_tensor_spec, y_dist_tensor_spec], attrs
+        )
+        bw_result = rule.infer_backward(
+            [x_dist_tensor_spec, y_dist_tensor_spec],
+            [out_dist_tensor_spec],
+            attrs,
+        )
+
+        x_dims_mapping_infered = compute_compatible_dims_mapping(
+            [fw_result[0][0].dims_mapping, bw_result[0][0].dims_mapping]
+        )
+        y_dims_mapping_infered = compute_compatible_dims_mapping(
+            [fw_result[0][1].dims_mapping, bw_result[0][1].dims_mapping]
+        )
+        out_dims_mapping_infered = compute_compatible_dims_mapping(
+            [fw_result[1][0].dims_mapping, bw_result[1][0].dims_mapping]
+        )
+        if (
+            x_dims_mapping_infered is not None
+            and y_dims_mapping_infered is not None
+            and out_dims_mapping_infered is not None
+        ):
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping_infered)
+            op_dist_attr.set_input_dims_mapping(y_name, y_dims_mapping_infered)
+            op_dist_attr.set_output_dims_mapping(
+                out_name, out_dims_mapping_infered
+            )
+            if (
+                x_dims_mapping_infered != x_dims_mapping
+                or y_dims_mapping_infered != y_dims_mapping
+                or out_dims_mapping_infered != out_dims_mapping
+            ):
+                return True
+            else:
+                return False
+        else:
+            return False
+
     # Add dim mapping to Make sure the length dims_mapping be at least 2
     if x_dims_mapping_len == 1:
         assert trans_x is False
