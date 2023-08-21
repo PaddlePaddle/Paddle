@@ -40,21 +40,21 @@ namespace paddle {
 namespace pybind {
 
 using paddle::distributed::auto_parallel::DistTensorSpec;
+using paddle::distributed::auto_parallel::kDefault;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
 using paddle::distributed::auto_parallel::SPMDRuleBase;
 using paddle::distributed::auto_parallel::SPMDRuleMap;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
+using phi::distributed::ProcessMesh;
+using phi::distributed::TensorDistAttr;
 using phi::distributed::auto_parallel::Device;
 using phi::distributed::auto_parallel::DeviceCapability;
 using phi::distributed::auto_parallel::DeviceMesh;
 using phi::distributed::auto_parallel::DistributedMapper;
-using phi::distributed::auto_parallel::kDefault;
 using phi::distributed::auto_parallel::Link;
 using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
-using phi::distributed::auto_parallel::ProcessMesh;
-using phi::distributed::auto_parallel::TensorDistAttr;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 

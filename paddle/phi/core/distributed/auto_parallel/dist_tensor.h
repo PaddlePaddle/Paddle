@@ -22,8 +22,6 @@
 namespace phi {
 namespace distributed {
 
-using auto_parallel::TensorDistAttr;
-
 class DistTensor final
     : public phi::TensorBase,
       public phi::TypeInfoTraits<phi::TensorBase, DistTensor> {

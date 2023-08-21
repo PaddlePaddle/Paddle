@@ -19,12 +19,9 @@ namespace phi {
 class DeviceContext;
 
 namespace distributed {
-namespace auto_parallel {
-class TensorDistAttr;
-}  // namespace auto_parallel
 
 class DistTensor;
-using auto_parallel::TensorDistAttr;
+class TensorDistAttr;
 
 class ReshardFunction {
  public:

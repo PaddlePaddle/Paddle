@@ -22,7 +22,8 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
+using phi::distributed::auto_parallel::str_join;
+using phi::distributed::auto_parallel::TensorDistAttrProto;
 
 // partial is not allow annotated by user by now.
 std::vector<std::string> TensorDistAttr::fields_{
@@ -347,6 +348,5 @@ bool TensorDistAttr::empty() const {
   return process_mesh_.empty() || dims_mapping_.empty();
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi
