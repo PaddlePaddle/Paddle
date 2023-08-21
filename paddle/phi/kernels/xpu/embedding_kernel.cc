@@ -68,16 +68,36 @@ void EmbeddingKernel(const Context &ctx,
   size_t xm = table_t->dims()[0];
   size_t n = table_t->dims()[1];
 
-  int r = xpu::embedding<XPUType>(dev_ctx.x_context(),
-                                  reinterpret_cast<const XPUType *>(table),
-                                  ids,
-                                  reinterpret_cast<XPUType *>(output),
-                                  xm,
-                                  n,
-                                  ym,
-                                  padding_idx);
-
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
+  const int plugin_entry_max_dict_size =
+      3072;  // Max local memory size is 3 KB of embedding dict in plugin
+             // kernel.
+  bool is_plugin = xm * n * sizeof(T) <= plugin_entry_max_dict_size;
+  if (is_plugin) {
+    // This plugin is suitable for scenarios with relatively small dictionary
+    // sizes, requiring a dictionary size of less than 3 KB, in order to load
+    // the dictionary into local memory at once, and to leave enough space for
+    // the local memory to store the results.
+    int r = xpu::plugin::embedding_tiny_dict<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType *>(table),
+        ids,
+        reinterpret_cast<XPUType *>(output),
+        xm,
+        n,
+        ym,
+        padding_idx);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_tiny_dict");
+  } else {
+    int r = xpu::embedding<XPUType>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType *>(table),
+                                    ids,
+                                    reinterpret_cast<XPUType *>(output),
+                                    xm,
+                                    n,
+                                    ym,
+                                    padding_idx);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
+  }
 }
 
 }  // namespace phi
