@@ -101,11 +101,11 @@ struct Atan2GradFunctor<ComplexType<T>> {
     }
   }
 
-  const double* x1_;
-  const double* x2_;
-  const double* dout_;
-  double* dx1_;
-  double* dx2_;
+  const ComplexType<T>* x1_;
+  const ComplexType<T>* x2_;
+  const ComplexType<T>* dout_;
+  ComplexType<T>* dx1_;
+  ComplexType<T>* dx2_;
   int64_t numel_;
 };
 
