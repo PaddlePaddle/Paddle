@@ -25,17 +25,15 @@ np.random.seed(0)
 
 
 def atan2_grad(x1, x2, dout):
-    if np.iscomplexobj(x1) and np.iscomplex(x2):
+    dx1 = dout * x2 / (x1 * x1 + x2 * x2)
+    dx2 = -dout * x1 / (x1 * x1 + x2 * x2)
+    return dx1, dx2
 
-        def angle_grad_element(x1i, x2i, douti):
-            dx1i = douti * x2i / (x1i * x1i + x2i * x2i)
-            dx2i = -douti * x1i / (x1i * x1i + x2i * x2i)
-            return dx1i, dx2i
 
-    else:
-        dx1 = dout * x2 / (x1 * x1 + x2 * x2)
-        dx2 = -dout * x1 / (x1 * x1 + x2 * x2)
-        return dx1, dx2
+def atan2_grad_complex(x1i, x2i, douti):
+    dx1i = douti * x2i / (x1i * x1i + x2i * x2i)
+    dx2i = -douti * x1i / (x1i * x1i + x2i * x2i)
+    return dx1i, dx2i
 
 
 class TestAtan2(OpTest):
@@ -183,15 +181,13 @@ class TestAtan2Error(unittest.TestCase):
         self.assertRaises(ValueError, test_mismatch_numel)
 
 
-class TestAtan2OpComplex(TestAtan2_float):
-    def init_dtype(self):
-        self.dtype = "complex128"
-        self.shape = [11, 17]
-
+class TestAtan2OpComplex(OpTest):
     def setUp(self):
+        self.dtype = "complex64"
+        self.shape = [11, 17]
         self.op_type = "atan2"
         self.python_api = paddle.atan2
-        self.init_dtype()
+        self.check_cinn = True
         x1real = np.expand_dims(
             np.random.uniform(-1, -0.1, [15, 17]), -1
         ).astype("float64")
@@ -208,6 +204,22 @@ class TestAtan2OpComplex(TestAtan2_float):
             'X2': x2,
         }
         self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_cinn=self.check_cinn)
+
+    def test_check_grad(self):
+        if self.dtype not in [np.int32, np.int64]:
+            self.check_grad(
+                ['X1', 'X2'],
+                'Out',
+                user_defined_grads=atan2_grad_complex(
+                    self.inputs['X1'],
+                    self.inputs['X2'],
+                    1 / self.inputs['X1'].size,
+                ),
+                check_cinn=self.check_cinn,
+            )
 
 
 if __name__ == '__main__':
