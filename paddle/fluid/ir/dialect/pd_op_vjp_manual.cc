@@ -16,6 +16,7 @@
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/primitive/rule/vjp/vjp.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
+#include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/phi/common/int_array.h"
 
@@ -24,6 +25,42 @@
 
 namespace paddle {
 namespace dialect {
+using IntArray = paddle::experimental::IntArray;
+
+std::vector<std::vector<ir::OpResult>> ConcatOp::Vjp(
+    ir::Operation* op,
+    const std::vector<std::vector<ir::OpResult>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  ConcatOp op_obj = op->dyn_cast<ConcatOp>();
+  ir::CombineOp combine_op_obj =
+      op_obj.x().GetDefiningOp()->dyn_cast<ir::CombineOp>();
+  std::vector<Tensor> x;
+  for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {
+    x.emplace_back(
+        std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
+  }
+
+  Tensor out_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+  Tensor axis(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::concat_vjp(x, out_grad, axis, stop_gradients);
+  std::vector<std::vector<ir::OpResult>> res(tensor_res.size(),
+                                             std::vector<ir::OpResult>());
+  for (uint64_t i = 0; i < tensor_res.size(); i++) {
+    res[i].resize(tensor_res[i].size());
+    for (uint64_t j = 0; j < tensor_res[i].size(); j++) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
+                        ->getValue()
+                        .dyn_cast<ir::OpResult>();
+      }
+    }
+  }
+  return res;
+}
+
 std::vector<std::vector<ir::OpResult>> SumOp::Vjp(
     ir::Operation* op,
     const std::vector<std::vector<ir::OpResult>>& out_grads,
