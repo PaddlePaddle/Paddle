@@ -44,8 +44,8 @@ PyTypeObject *g_blockdesc_pytype = nullptr;
 namespace pd = paddle::framework;
 namespace jit = paddle::jit;
 
+using paddle::distributed::TensorDistAttr;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
-using paddle::distributed::auto_parallel::TensorDistAttr;
 
 template <typename T>
 static pybind11::bytes SerializeMessage(

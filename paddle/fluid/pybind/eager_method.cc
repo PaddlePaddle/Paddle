@@ -2276,7 +2276,6 @@ Examples:
         # True
 
 )DOC");
-
 static PyObject* tensor_method_is_sparse(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
