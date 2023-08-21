@@ -21,8 +21,6 @@
 
 namespace paddle {
 namespace primitive {
-namespace backend {
-namespace experimental {}  // namespace experimental
-}  // namespace backend
+namespace backend {}  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

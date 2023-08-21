@@ -150,8 +150,17 @@ class FunctionSpec:
             # replace argument with corresponding InputSpec.
             args_with_spec = convert_to_input_spec(args, self._input_spec)
         else:
-            args_with_spec = _replace_value_with_input_spec(args)
-            kwargs_with_spec = _replace_value_with_input_spec(kwargs)
+            args_with_spec = _replace_to_input_spec_with_new_name(
+                args, self._arg_names
+            )
+            kwarg_names = ["kwargs." + key for key in kwargs.keys()]
+            kwargs_list_with_spec = _replace_to_input_spec_with_new_name(
+                list(kwargs.values()), kwarg_names
+            )
+            kwargs_with_spec = {
+                key: kwargs_list_with_spec[idx]
+                for idx, key in enumerate(kwargs)
+            }
 
         # If without specificing name in input_spec, add default name
         # according to argument name from decorated function.
@@ -298,6 +307,44 @@ def _replace_value_with_input_spec(args):
             input_var.stop_gradient = stop_gradient
 
         args_with_spec.append(input_var)
+    args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)
+    return args_with_spec
+
+
+def _replace_to_input_spec_with_new_name(args, arg_names):
+    assert len(args) == len(arg_names)
+    order_digit = len(str(len(arg_names) - 1))
+    args_with_spec = []
+    for order, (arg, name_prefix) in enumerate(zip(args, arg_names)):
+        index = 0
+        for idx, origin_input in enumerate(paddle.utils.flatten(arg)):
+            if isinstance(origin_input, np.ndarray):
+                input_var = paddle.static.InputSpec.from_numpy(origin_input)
+                input_var.stop_gradient = True
+            elif isinstance(origin_input, core.eager.Tensor):
+                stop_gradient = origin_input.stop_gradient
+                input_var = paddle.static.InputSpec.from_tensor(origin_input)
+                input_var.stop_gradient = stop_gradient
+            elif isinstance(origin_input, paddle.fluid.framework.Variable):
+                stop_gradient = origin_input.stop_gradient
+                input_var = paddle.static.InputSpec(
+                    origin_input.shape, origin_input.dtype, origin_input.name
+                )
+                input_var.stop_gradient = stop_gradient
+            else:
+                input_var = origin_input
+
+            if isinstance(
+                origin_input,
+                (
+                    np.ndarray,
+                    core.eager.Tensor,
+                    paddle.fluid.framework.Variable,
+                ),
+            ):
+                input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{str(index)}"
+                index += 1
+            args_with_spec.append(input_var)
     args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)
     return args_with_spec
 

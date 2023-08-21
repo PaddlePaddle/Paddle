@@ -24,11 +24,7 @@
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
-    cache_inference_while_scope,
-    false,
-    "Cache the scope of the while op to avoid repeated creation of the scope "
-    "for each iteration and improve inference performance.");
+PHI_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace framework {
