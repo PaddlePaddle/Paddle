@@ -225,7 +225,7 @@ def acos(x, name=None):
         out = cos^{-1}(x)
 
     Args:
-        x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -246,17 +246,7 @@ def acos(x, name=None):
         return _C_ops.acos(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'acos',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'acos'
         )
         helper = LayerHelper('acos', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -272,7 +262,7 @@ def acosh(x, name=None):
        out = acosh(x)
 
     Args:
-        x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -293,17 +283,7 @@ def acosh(x, name=None):
         return _C_ops.acosh(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'acosh',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'acosh'
         )
         helper = LayerHelper('acosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -319,7 +299,7 @@ def asin(x, name=None):
        out = sin^{-1}(x)
 
     Args:
-        x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -340,17 +320,7 @@ def asin(x, name=None):
         return _C_ops.asin(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'asin',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'asin'
         )
         helper = LayerHelper('asin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -366,7 +336,7 @@ def asinh(x, name=None):
        out = asinh(x)
 
     Args:
-        x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -387,17 +357,7 @@ def asinh(x, name=None):
         return _C_ops.asinh(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'asinh',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'asinh'
         )
         helper = LayerHelper('asinh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -413,7 +373,7 @@ def atan(x, name=None):
        out = tan^{-1}(x)
 
     Args:
-        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -434,17 +394,7 @@ def atan(x, name=None):
         return _C_ops.atan(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'atan',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'atan'
         )
         helper = LayerHelper('atan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -460,7 +410,7 @@ def atanh(x, name=None):
        out = atanh(x)
 
     Args:
-        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -481,17 +431,7 @@ def atanh(x, name=None):
         return _C_ops.atanh(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'atanh',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'atanh'
         )
         helper = LayerHelper('atanh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -589,7 +529,7 @@ def cosh(x, name=None):
        out = \\frac{exp(x)+exp(-x)}{2}
 
     Args:
-        x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -610,17 +550,7 @@ def cosh(x, name=None):
         return _C_ops.cosh(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'cosh',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'cosh'
         )
         helper = LayerHelper('cosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -974,7 +904,7 @@ def sinh(x, name=None):
        out = sinh(x)
 
     Args:
-        x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64 or float16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -995,17 +925,7 @@ def sinh(x, name=None):
         return _C_ops.sinh(x)
     else:
         check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'sinh',
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sinh'
         )
         helper = LayerHelper('sinh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
