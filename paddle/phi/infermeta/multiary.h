@@ -318,7 +318,8 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            int quant_round_type,
                            float quant_max_bound,
                            float quant_min_bound,
-                           MetaTensor* out);
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
 
 void FusedLayerNormInferMeta(const MetaTensor& x,
                              const MetaTensor& bias,
