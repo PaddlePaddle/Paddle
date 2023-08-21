@@ -51,17 +51,6 @@ void DistTensor::set_dims(const DDim& dims) {
   dims_ = dims;
 }
 
-void DistTensor::set_dist_attr(const TensorDistAttr& dist_attr) {
-  PADDLE_ENFORCE_EQ(
-      this->initialized(),
-      false,
-      phi::errors::Unimplemented(
-          "DistTensor's set_dist_attr method can only be used when the `value` "
-          "is not initialized (generally used in the InferMeta and "
-          "InferSPMD stages)."));
-  dist_attr_ = dist_attr;
-}
-
 int64_t DistTensor::numel() const {
   check_defined(*this, "numel");
   return value_.numel();

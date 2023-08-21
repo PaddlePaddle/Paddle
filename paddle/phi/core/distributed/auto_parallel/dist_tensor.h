@@ -65,10 +65,6 @@ class DistTensor final
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
-  /// \brief Set the dist attr of current dist tensor.
-  /// \return void
-  void set_dist_attr(const TensorDistAttr& dist_attr);
-
   /// \brief Returns the dense tensor value's const reference in dist tensor.
   /// \return The DenseTensor value's const reference
   const DenseTensor& value() const { return value_; }
