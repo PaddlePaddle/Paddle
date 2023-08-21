@@ -109,6 +109,26 @@ PyObject *static_api_divide(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 }
 
+PyObject *static_api_concat(PyObject *self, PyObject *args, PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add concat op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get OpResult from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2VectorOfOpResult("concat", x_obj, 0);
+
+    PyObject *axis_obj = PyTuple_GET_ITEM(args, 1);
+    paddle::experimental::Scalar axis = CastPyArg2Scalar(axis_obj, "concat", 1);
+
+    // Call ir static api
+    auto out = paddle::dialect::concat(x, axis.to<float>());
+    return ToPyObject(out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
   try {
     VLOG(6) << "Add full op into program";

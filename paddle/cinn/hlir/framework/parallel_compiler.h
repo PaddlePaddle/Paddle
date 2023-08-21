@@ -19,6 +19,7 @@
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/lowered_func.h"
@@ -31,44 +32,20 @@ namespace framework {
 
 class ParallelCompiler {
  public:
-  struct CompileOptions {
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  };
-
-  struct CompilationResult {
-    // Lower result
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-    // Host/CUDA codegen result
-    std::vector<std::string> source_codes;
-    // CUDA ptx result
-    std::vector<std::string> source_ptxs;
-    // Instruction result
-    std::vector<std::unique_ptr<Instruction>> instructions;
-  };
-
   struct Task {
-    Task(ParallelCompiler* p,
-         std::shared_ptr<Scope>& s,  // NOLINT
-         std::shared_ptr<Graph>& g,  // NOLINT
-         const CompileOptions& cp,
-         const Target& t)
-        : compiler(p), scope(s), graph(g), options(cp), target(t) {}
+    Task(ParallelCompiler* compiler, CompilationContext* context, int group_id)
+        : pcompiler(compiler), context(context), group_id(group_id) {}
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();
 
-    const Target target;
-    ParallelCompiler* compiler;
-    std::shared_ptr<Scope> scope;
-    std::shared_ptr<Graph> graph;
-    const CompileOptions& options;
+    ParallelCompiler* pcompiler;
+    CompilationContext* context;
 
-    int start_gidx;
-    int stop_gidx;
-    std::vector<std::unique_ptr<Instruction>> instructions;
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-    std::vector<std::string> source_codes;
-    std::vector<std::string> source_ptxs;
+    CompilationStatus status = CompilationStatus::SUCCESS;
+    std::string message;
+
+    int group_id;
 
     std::unique_ptr<backends::ExecutionEngine> engine;
 #ifdef CINN_WITH_CUDA
@@ -76,25 +53,22 @@ class ParallelCompiler {
 #endif
   };
 
-  explicit ParallelCompiler(std::shared_ptr<Scope>& scope,  // NOLINT
-                            std::shared_ptr<Graph>& graph,  // NOLINT
-                            const CompileOptions& option,
-                            const common::Target& target)
-      : scope_(scope), graph_(graph), option_(option), target_(target) {}
-  ~ParallelCompiler() {}
+  explicit ParallelCompiler(CompilationContext* context) : context_(context) {}
+  ~ParallelCompiler() = default;
   CompilationResult operator()();
 
  private:
   void SplitTask();
   void LaunchTask();
-  void RunTask(Task* task);
-  CompilationResult MergeResult();
+  void RunTask();
 
+  int GetTaskIdx();
+
+  int task_idx_{0};
+  std::mutex mtx_;
   std::vector<Task> tasks_;
-  const common::Target target_;
-  const CompileOptions& option_;
-  std::shared_ptr<Scope> scope_;
-  std::shared_ptr<Graph> graph_;
+  CompilationContext* context_;
+  CompilationResult result_;
 };
 
 }  // namespace framework

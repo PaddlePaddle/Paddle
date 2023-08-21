@@ -47,6 +47,7 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         'all_reduce',
     )
