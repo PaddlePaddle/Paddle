@@ -445,6 +445,21 @@ void LambInferMeta(const MetaTensor& param,
                    MetaTensor* beta2_pow_out,
                    MetaTensor* master_param_outs);
 
+void LarsMomentumInferMeta(const MetaTensor& param,
+                           const MetaTensor& grad,
+                           const MetaTensor& velocity,
+                           const MetaTensor& learning_rate,
+                           const MetaTensor& master_param,
+                           float mu,
+                           float lars_coeff,
+                           const std::vector<float>& lars_weight_decay,
+                           float epsilon,
+                           bool multi_precision,
+                           float rescale_grad,
+                           MetaTensor* param_out,
+                           MetaTensor* velocity_out,
+                           MetaTensor* master_param_out);
+
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,

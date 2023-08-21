@@ -2531,6 +2531,86 @@ void LambInferMeta(const MetaTensor& param,
   }
 }
 
+void LarsMomentumInferMeta(const MetaTensor& param,
+                           const MetaTensor& grad,
+                           const MetaTensor& velocity,
+                           const MetaTensor& learning_rate,
+                           const MetaTensor& master_param,
+                           float mu,
+                           float lars_coeff,
+                           const std::vector<float>& lars_weight_decay,
+                           float epsilon,
+                           bool multi_precision,
+                           float rescale_grad,
+                           MetaTensor* param_out,
+                           MetaTensor* velocity_out,
+                           MetaTensor* master_param_out) {
+  auto lr_dims = learning_rate.dims();
+  auto grad_dim = grad.dims();
+  auto param_dim = param.dims();
+  auto velocity_dim = velocity.dims();
+
+  PADDLE_ENFORCE_EQ(
+      param_dim.size(),
+      grad_dim.size(),
+      phi::errors::InvalidArgument(
+          "Input(Param) and Input(Grad) of LarsMomentumOp should have "
+          "same quantity. But number of Param is [%d] and Grad is [%d].",
+          param_dim.size(),
+          grad_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      param_dim.size(),
+      velocity_dim.size(),
+      phi::errors::InvalidArgument(
+          "Input(Param) and Input(Velocity) of LarsMomentumOp should "
+          "have same quantity. But number of Param is [%d] and Velocity "
+          "is [%d].",
+          param_dim.size(),
+          velocity_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      lars_weight_decay.size(),
+      grad_dim.size(),
+      phi::errors::InvalidArgument(
+          "Attr(Lars_weight_decay) and "
+          "Input(Grad) of LarsMomentumOp should have same quantity. "
+          "But number of Lars_weight_decay is [%d] and Grad is [%d].",
+          lars_weight_decay.size(),
+          grad_dim.size()));
+
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        phi::product(lr_dims)));
+
+  for (int i = 0; i < param_dim.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        param_dim[i],
+        grad_dim[i],
+        phi::errors::InvalidArgument(
+            "Input(Param) and Input(Grad) input of LarsMomentumOp shall "
+            "have same dimension. But Param`s dim is [%s] and Grad's dim "
+            "is [%s].",
+            param_dim[i],
+            grad_dim[i]));
+    PADDLE_ENFORCE_EQ(
+        param_dim[i],
+        velocity_dim[i],
+        phi::errors::InvalidArgument(
+            "Input(Param) and Input(Velocity) of LarsMomentumOp shall have "
+            "same dimension. But Param dim [%s] differs with Velocity dim "
+            "[%s].",
+            param_dim[i],
+            velocity_dim[i]));
+  }
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+  if (master_param != nullptr) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
