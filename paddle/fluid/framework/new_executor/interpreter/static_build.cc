@@ -48,7 +48,8 @@ std::set<std::string> StaticBuildBlackList = {
     "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
     "shuffle_batch",
-    "shuffle_batch_grad"};
+    "shuffle_batch_grad",
+    "distributed_fused_lamb_init"};
 
 // TODO(lizhiyu): This operator list is only for pipeline strategy temporarily.
 std::set<std::string> SkipCheckForPipelineTempList = {"c_broadcast",
