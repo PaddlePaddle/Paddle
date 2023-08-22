@@ -80,6 +80,12 @@ void RenameData(ir::Value value,
                 std::map<std::string, int>* var_name_2_id) {
   (*value_2_var_name)[value] = new_name;
 
+  for (auto kv : (*value_2_var_name)) {
+    if (kv.second == orig_name) {
+      (*value_2_var_name)[kv.first] = new_name;
+    }
+  }
+
   for (auto kv : (*variable_2_var_name)) {
     if (kv.second == orig_name) {
       (*variable_2_var_name)[kv.first] = new_name;
