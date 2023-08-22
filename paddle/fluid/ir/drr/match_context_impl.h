@@ -17,7 +17,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 #include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
 #include "paddle/fluid/ir/drr/api/tensor_interface.h"
 #include "paddle/fluid/ir/drr/ir_operation.h"

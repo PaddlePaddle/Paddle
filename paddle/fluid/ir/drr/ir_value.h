@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/drr/api/tensor_interface.h"
 #include "paddle/ir/core/value.h"
 
