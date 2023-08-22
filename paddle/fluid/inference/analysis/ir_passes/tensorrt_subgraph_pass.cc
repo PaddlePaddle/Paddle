@@ -418,8 +418,12 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         static_cast<int>(x->Var()->GetDataType());
   }
 
-  OutputProcess(
-      graph, trt_outputs, phi::Backend::GPU, model_precision, mixed_black_list, mixed_white_list);
+  OutputProcess(graph,
+                trt_outputs,
+                phi::Backend::GPU,
+                model_precision,
+                mixed_black_list,
+                mixed_white_list);
 
   std::unordered_map<std::string, std::string> output_name_map;
   std::unordered_map<std::string, framework::ir::Node *> graph_var_map;

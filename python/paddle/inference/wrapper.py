@@ -78,7 +78,7 @@ def convert_to_mixed_precision(
     mixed_precision: PrecisionType,
     backend: PlaceType,
     keep_io_types: bool = True,
-    black_list: Set = set(),
+    black_list: Set[str] = set(),
     **kwargs,
 ):
     '''
@@ -94,7 +94,7 @@ def convert_to_mixed_precision(
         keep_io_types: Whether the model input and output dtype remains unchanged.
         black_list: Operators that do not convert precision.
         kwargs: Supported keys including 'white_list'.
-            - white_list(set): Operators that do convert precision.
+            - white_list: Operators that do convert precision.
     '''
     mixed_model_dirname = os.path.dirname(mixed_model_file)
     # Support mixed_params_file is empty, because some models don't have params, but convert_to_mixed_precision will call
