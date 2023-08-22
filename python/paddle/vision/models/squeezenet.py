@@ -90,19 +90,19 @@ class SqueezeNet(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import SqueezeNet
+            >>> import paddle
+            >>> from paddle.vision.models import SqueezeNet
 
-            # build v1.0 model
-            model = SqueezeNet(version='1.0')
+            >>> # build v1.0 model
+            >>> model = SqueezeNet(version='1.0')
 
-            # build v1.1 model
-            # model = SqueezeNet(version='1.1')
+            >>> # build v1.1 model
+            >>> # model = SqueezeNet(version='1.1')
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
+            >>> print(out.shape)
             # [1, 1000]
     """
 
@@ -233,19 +233,19 @@ def squeezenet1_0(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import squeezenet1_0
+            >>> import paddle
+            >>> from paddle.vision.models import squeezenet1_0
 
-            # build model
-            model = squeezenet1_0()
+            >>> # build model
+            >>> model = squeezenet1_0()
 
-            # build model and load imagenet pretrained weight
-            # model = squeezenet1_0(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = squeezenet1_0(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
+            >>> print(out.shape)
             # [1, 1000]
     """
     return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
@@ -267,19 +267,19 @@ def squeezenet1_1(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import squeezenet1_1
+            >>> import paddle
+            >>> from paddle.vision.models import squeezenet1_1
 
-            # build model
-            model = squeezenet1_1()
+            >>> # build model
+            >>> model = squeezenet1_1()
 
-            # build model and load imagenet pretrained weight
-            # model = squeezenet1_1(pretrained=True)
+            >>> # build model and load imagenet pretrained weight
+            >>> # model = squeezenet1_1(pretrained=True)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
+            >>> print(out.shape)
             # [1, 1000]
     """
     return _squeezenet('squeezenet1_1', '1.1', pretrained, **kwargs)
