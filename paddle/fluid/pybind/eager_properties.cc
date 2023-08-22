@@ -388,6 +388,22 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    return ToPyObject(phi::vectorize<int64_t>(dist_tensor->local_dims()));
+#else
+    RETURN_PY_NONE
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyDoc_STRVAR(tensor_shape__doc__,
              R"DOC(shape
 
@@ -715,6 +731,11 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      (getter)tensor_properties_get_persistable,
      (setter)tensor_properties_set_persistable,
      tensor_persistable__doc__,
+     nullptr},
+    {"_local_shape",
+     (getter)tensor_properties_get_local_shape,
+     nullptr,
+     nullptr,
      nullptr},
     {"shape",
      (getter)tensor_properties_get_shape,

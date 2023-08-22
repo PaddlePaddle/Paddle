@@ -32,26 +32,21 @@ class ReshardFunction {
   virtual bool IsSuitable(const DistTensor& in,
                           const TensorDistAttr& out_dist_attr) = 0;
 
-  virtual DistTensor Eval(DeviceContext* dev_ctx,
-                          const DistTensor& in,
-                          const TensorDistAttr& out_dist_attr) = 0;
+  virtual std::shared_ptr<DistTensor> Eval(
+      DeviceContext* dev_ctx,
+      const DistTensor& in,
+      const TensorDistAttr& out_dist_attr) = 0;
 };
 
 std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList();
 
-template <typename RESHARD_FUNC>
-std::unique_ptr<RESHARD_FUNC> CreateReshardFunction() {
-  return std::make_unique<RESHARD_FUNC>();
-}
-
-#define REGISTER_RESHARD_FUNC(func_type)       \
-  class __RegisterReshard_##func_type {        \
-   public:                                     \
-    __RegisterReshard_##func_type() {          \
-      GetReshardFunctionList().emplace_back(   \
-          CreateReshardFunction<func_type>()); \
-    }                                          \
-  };                                           \
+#define REGISTER_RESHARD_FUNC(func_type)                                    \
+  class __RegisterReshard_##func_type {                                     \
+   public:                                                                  \
+    __RegisterReshard_##func_type() {                                       \
+      GetReshardFunctionList().emplace_back(std::make_unique<func_type>()); \
+    }                                                                       \
+  };                                                                        \
   static __RegisterReshard_##func_type local_reshard_func_##func_type
 
 ReshardFunction* ChooseProperReshardFunction(

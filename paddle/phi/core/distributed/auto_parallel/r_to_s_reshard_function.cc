@@ -46,9 +46,10 @@ bool RToSReshardFunction::IsSuitable(const DistTensor& in,
   return flag;
 }
 
-DistTensor RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
-                                     const DistTensor& in,
-                                     const TensorDistAttr& out_dist_attr) {
+std::shared_ptr<DistTensor> RToSReshardFunction::Eval(
+    phi::DeviceContext* dev_ctx,
+    const DistTensor& in,
+    const TensorDistAttr& out_dist_attr) {
   const auto& out_dims_mapping = out_dist_attr.dims_mapping();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
@@ -61,14 +62,6 @@ DistTensor RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
   int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
   int64_t mesh_axis = split_axis_to_mesh_axis.begin()->second;
-
-  PADDLE_ENFORCE_LT(
-      mesh_axis,
-      out_process_mesh.ndim(),
-      phi::errors::OutOfRange(
-          "The mesh axis %lld exceed the size of process mesh %lld.",
-          mesh_axis,
-          out_process_mesh.ndim()));
 
   int64_t num_of_process = out_process_mesh.shape()[mesh_axis];
   VLOG(3) << "RToSReshard: Tensor will be split on axis " << split_axis
@@ -89,7 +82,8 @@ DistTensor RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   VLOG(3) << "The shape of physical tensor after split is "
           << out_physical_tensor_cur_rank.dims();
 
-  return DistTensor(out_physical_tensor_cur_rank, in.dims(), out_dist_attr);
+  return std::make_shared<DistTensor>(
+      out_physical_tensor_cur_rank, in.dims(), out_dist_attr);
 }
 
 REGISTER_RESHARD_FUNC(RToSReshardFunction);
