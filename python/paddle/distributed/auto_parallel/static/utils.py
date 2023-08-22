@@ -618,7 +618,7 @@ def save_distributed_checkpoint(
             >>> global_batch_size = 32
             >>> path = os.path.join("./output", "step_%d" % step)
             >>> os.makedirs(path, exist_ok=True)
-            >>> program = fluid.Program()
+            >>> program = paddle.static.Program()
 
             >>> add_info = {'batch': step, "batch_size": global_batch_size}
             >>> save_distributed_checkpoint(program, path, path, add_info)
