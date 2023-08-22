@@ -91,24 +91,24 @@ static inline __device__ void embedding_fwd_kl2_tiny_dict_align64(
           *((emb_idx_type*)(lm + index_lm_offset + j * sizeof(emb_idx_type))) -
           start_index;
       if (real_index == padding_idx) {
-        for (int k = 0; k < emb_dim; k += 64) {
+        for (int koffset = 0; koffset < emb_dim; koffset += 64) {
           float32x16_t v_src = vload_lm_float32x16_mz((void*)lm, 0);
           vstore_lm_float32x16(
-              (void*)(lm + result_lm_offset + j * emb_dim + k * 64), v_src);
+              (void*)(lm + result_lm_offset + j * emb_dim + koffset), v_src);
         }
       } else {
         if (real_index >= 0 && real_index < dict_idx_len) {
-          for (int k = 0; k < emb_dim; k += 64) {
+          for (int koffset = 0; koffset < emb_dim; koffset += 64) {
             float32x16_t v_src = vload_lm_float32x16(
-                (void*)(lm + real_index * emb_dim + k * 64));
+                (void*)(lm + real_index * emb_dim + koffset));
             vstore_lm_float32x16(
-                (void*)(lm + result_lm_offset + j * emb_dim + k * 64), v_src);
+                (void*)(lm + result_lm_offset + j * emb_dim + koffset), v_src);
           }
         } else {
-          for (int k = 0; k < emb_dim; k += 64) {
+          for (int koffset = 0; koffset < emb_dim; koffset += 64) {
             float32x16_t v_src = vload_lm_float32x16_mz((void*)lm, 0);
             vstore_lm_float32x16(
-                (void*)(lm + result_lm_offset + j * emb_dim + k * 64), v_src);
+                (void*)(lm + result_lm_offset + j * emb_dim + koffset), v_src);
           }
         }
       }

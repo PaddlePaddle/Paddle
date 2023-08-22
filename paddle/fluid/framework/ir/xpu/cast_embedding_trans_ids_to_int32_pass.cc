@@ -129,6 +129,5 @@ REGISTER_PASS(cast_embedding_trans_ids_to_int32_pass,
 
 REGISTER_PASS_CAPABILITY(cast_embedding_trans_ids_to_int32_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("cast", 0)
-            .EQ("lookup_table_v2", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination().LE(
+            "lookup_table_v2", 1));
