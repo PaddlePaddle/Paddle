@@ -343,12 +343,13 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         Examples:
             .. code-block:: python
 
-                loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                params_grads = optimizer.backward(loss)
-                # you may append operations for params_grads here
-                # ...
-                optimizer.apply_gradients(params_grads)
+                >>> # doctest: +SKIP('The network is not defined.')
+                >>> loss = network()
+                >>> optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                >>> params_grads = optimizer.backward(loss)
+                >>> # you may append operations for params_grads here
+                >>> # ...
+                >>> optimizer.apply_gradients(params_grads)
         """
         pass
 

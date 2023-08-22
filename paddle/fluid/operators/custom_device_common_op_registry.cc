@@ -320,12 +320,6 @@ class CSoftmaxWithCrossEntropyOpCustomDeviceKernel
       auto loss_dims = loss->dims();
 
       const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
-      PADDLE_ENFORCE_LT(ignore_index,
-                        0,
-                        platform::errors::InvalidArgument(
-                            "When SoftmaxWithCrossEntropy run on CustomDevice, "
-                            "ignore_index should be <=0, however it's %ld",
-                            ignore_index));
       const int rid = ctx.Attr<int>("ring_id");
       const int rank = ctx.Attr<int>("rank");
 

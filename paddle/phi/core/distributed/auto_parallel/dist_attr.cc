@@ -344,5 +344,9 @@ std::string TensorDistAttr::partial_status_string() const {
   return partial_status_str;
 }
 
+bool TensorDistAttr::empty() const {
+  return process_mesh_.empty() || dims_mapping_.empty();
+}
+
 }  // namespace distributed
 }  // namespace phi
