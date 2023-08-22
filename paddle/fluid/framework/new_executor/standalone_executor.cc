@@ -50,6 +50,13 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     std::shared_ptr<::ir::Program> ir_program = nullptr;
     if (FLAGS_enable_new_ir_api) {
       ir_program = plan_.IrProgram(job_type);
+      // When run StandaloneExecutor, it will open
+      // FLAGS_enable_new_ir_in_executor by default. and we must close it before
+      // execute the program the next time. Because we are in
+      // FLAGS_enable_new_ir_api mode.
+      if (FLAGS_enable_new_ir_in_executor) {
+        FLAGS_enable_new_ir_in_executor = false;
+      }
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
       SetColAttrForFetchOps(*job, program);
