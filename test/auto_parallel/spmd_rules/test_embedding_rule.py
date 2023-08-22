@@ -115,9 +115,26 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
 
     def test_embedding_infer_backward(self):
         # backward setup
-        out_shape = [4, 1024, 768]  # [B,S, H]
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
+        x_shape = [4, 1024]  # [B,S]
+        table_shape = [512, 768]  # [V,H]
+
+        x_tensor_dist_attr = TensorDistAttr()
+        x_tensor_dist_attr.process_mesh = (
+            process_mesh  # not set the dims mapping is ok.
+        )
+        self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+
+        table_tensor_dist_attr = TensorDistAttr()
+        table_tensor_dist_attr.process_mesh = (
+            process_mesh  # not set the dims mapping is ok.
+        )
+        self.table_dist_tensor_spec = DistTensorSpec(
+            table_shape, table_tensor_dist_attr
+        )
+
+        out_shape = [4, 1024, 768]  # [B,S, H]
         out_tensor_dist_attr = TensorDistAttr()
         out_tensor_dist_attr.process_mesh = process_mesh
         self.out_dist_tensor_spec = DistTensorSpec(
@@ -132,7 +149,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # data parallel
         self.out_dist_tensor_spec.set_dims_mapping([1, -1, -1])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.out_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.table_dist_tensor_spec],
+            [self.out_dist_tensor_spec],
+            self.attrs,
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -148,7 +167,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         # table col-wise parallel & dp
         self.out_dist_tensor_spec.set_dims_mapping([-1, 0, 1])
         result_dist_attrs = self.rule1.infer_backward(
-            [self.out_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.table_dist_tensor_spec],
+            [self.out_dist_tensor_spec],
+            self.attrs,
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -161,7 +182,9 @@ class TestEmbeddingSPMDRule(unittest.TestCase):
         self.out_dist_tensor_spec.set_dims_mapping([1, 0, -1])
 
         result_dist_attrs = self.rule1.infer_backward(
-            [self.out_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.table_dist_tensor_spec],
+            [self.out_dist_tensor_spec],
+            self.attrs,
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
