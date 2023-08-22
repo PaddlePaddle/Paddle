@@ -201,7 +201,7 @@ inline ir::Operation* InsertStackOperationForTarget(
     ir::Program* program,
     const std::vector<std::string>& args,
     int axis = 0) {
-  ir::OpInfo op_info = ctx->GetRegisteredOpInfo("pd.stack");
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(dialect::StackOp::name());
 
   std::vector<ir::OpResult> op_inputs;
   for (const auto& arg_name : args) {
@@ -1198,6 +1198,143 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
   }
 };
 
+struct FillConstant2FullTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    const auto& op_info = ctx->GetRegisteredOpInfo(dialect::FullOp::name());
+    if (!op_info) {
+      IR_THROW("Op fill_constant should have corresponding OpInfo pd.full");
+    }
+
+    return op_info;
+  }
+
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    return {};
+  }
+
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext*,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    std::vector<int64_t> shape =
+        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+    float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+    int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+    auto attr_value = ir::FloatAttribute::get(ctx, value);
+
+    ir::AttributeMap attribute_map = {
+        {"shape",
+         paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape))},
+        {"value", attr_value.dyn_cast<paddle::dialect::ScalarAttribute>()},
+        {"dtype",
+         paddle::dialect::DataTypeAttribute::get(
+             ctx,
+             phi::VarTypeToDataType(
+                 static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
+    int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
+    if (place_type != -1) {
+      switch (place_type) {
+        case 0:
+          attribute_map["place"] =
+              paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+          break;
+        case 1:
+          attribute_map["place"] =
+              paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPlace());
+          break;
+        case 2:
+          attribute_map["place"] =
+              paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPinnedPlace());
+          break;
+        case 3:
+          attribute_map["place"] =
+              paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
+          break;
+      }
+    }
+    return attribute_map;
+  }
+};
+
+struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    const auto& op_info =
+        ctx->GetRegisteredOpInfo(dialect::FullWithTensor::name());
+    if (!op_info) {
+      IR_THROW("Op fill_constant should have corresponding OpInfo pd.full");
+    }
+
+    return op_info;
+  }
+
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+    std::vector<ir::OpResult> op_inputs;
+    if (op_desc.HasInput("ShapeTensor", true) &&
+        op_desc.Input("ShapeTensor", true).size() > 0) {
+      auto shape_tensor_vars = op_desc.Input("ShapeTensor", true);
+      auto defining_info = (*param_map)[shape_tensor_vars[0]];
+      op_inputs.push_back(defining_info.value);
+    } else if (op_desc.HasInput("ShapeTensorList", true) &&
+               op_desc.Input("ShapeTensorList", true).size() > 0) {
+      auto shape_tensor_list_vars = op_desc.Input("ShapeTensorList", true);
+      auto defining_op = InsertStackOperationForTarget(
+          ctx, param_map, program, shape_tensor_list_vars);
+      op_inputs.push_back(defining_op->result(0));
+    } else {
+      std::vector<int64_t> shape =
+          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+      ir::Attribute new_attr =
+          paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape));
+      auto defining_op =
+          InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
+      op_inputs.push_back(defining_op->result(0));
+    }
+
+    if (op_desc.HasInput("ValueTensor", true) &&
+        op_desc.Input("ValueTensor", true).size() > 0) {
+      auto value_tensor_vars = op_desc.Input("ValueTensor", true);
+      auto defining_info = (*param_map)[value_tensor_vars[0]];
+      op_inputs.push_back(defining_info.value);
+    } else {
+      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+      ir::Attribute new_attr = ir::FloatAttribute::get(ctx, value);
+      auto defining_op =
+          InsertFullOperationForAttributeInput(ctx, program, new_attr);
+      op_inputs.push_back(defining_op->result(0));
+    }
+    return op_inputs;
+  }
+
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext*,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+
+    ir::AttributeMap attribute_map = {
+        {"dtype",
+         paddle::dialect::DataTypeAttribute::get(
+             ctx,
+             phi::VarTypeToDataType(
+                 static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
+    return attribute_map;
+  }
+};
+
 struct FillConstantTranscriber : public OpTranscriber {
   ir::Operation* operator()(ir::IrContext* ctx,
                             TranslationContext* param_map,
@@ -1211,122 +1348,10 @@ struct FillConstantTranscriber : public OpTranscriber {
                              op_desc.Input("ValueTensor", true).size() > 0;
 
     if (!has_mutable_attribute) {
-      auto op_info = ctx->GetRegisteredOpInfo("pd.full");
-      std::vector<int64_t> shape =
-          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
-      auto attr_value = ir::FloatAttribute::get(ctx, value);
-
-      ir::AttributeMap attribute_map = {
-          {"shape",
-           paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape))},
-          {"value", attr_value.dyn_cast<paddle::dialect::ScalarAttribute>()},
-          {"dtype",
-           paddle::dialect::DataTypeAttribute::get(
-               ctx,
-               phi::VarTypeToDataType(
-                   static_cast<paddle::framework::proto::VarType_Type>(
-                       dtype)))}};
-      int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
-      if (place_type != -1) {
-        switch (place_type) {
-          case 0:
-            attribute_map["place"] =
-                paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
-            break;
-          case 1:
-            attribute_map["place"] =
-                paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPlace());
-            break;
-          case 2:
-            attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
-                ctx, phi::GPUPinnedPlace());
-            break;
-          case 3:
-            attribute_map["place"] =
-                paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
-            break;
-        }
-      }
-
-      auto vars = op_desc.Output("Out");
-      IR_ENFORCE(vars.size() == 1,
-                 "Expected op[%s]'s output Out has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 vars.size());
-      const auto& var_name = vars[0];
-
-      auto defining_info = (*param_map)[var_name];
-      ir::Operation* operation = ir::Operation::Create(
-          {}, attribute_map, {defining_info.value.type()}, op_info);
-      program->block()->push_back(operation);
-      return operation;
+      return FillConstant2FullTranscriber()(ctx, param_map, op_desc, program);
     } else {
-      auto op_info = ctx->GetRegisteredOpInfo("pd.fill_with_tensor");
-      if (!op_info) {
-        IR_THROW(
-            "Op tril_triu should have corresponding OpInfo "
-            "pd.fill_with_tensor.");
-      }
-
-      std::vector<ir::OpResult> op_inputs;
-      if (op_desc.HasInput("ShapeTensor", true) &&
-          op_desc.Input("ShapeTensor", true).size() > 0) {
-        auto shape_tensor_vars = op_desc.Input("ShapeTensor", true);
-        auto defining_info = (*param_map)[shape_tensor_vars[0]];
-        op_inputs.push_back(defining_info.value);
-      } else if (op_desc.HasInput("ShapeTensorList", true) &&
-                 op_desc.Input("ShapeTensorList", true).size() > 0) {
-        auto shape_tensor_list_vars = op_desc.Input("ShapeTensorList", true);
-        auto defining_op = InsertStackOperationForTarget(
-            ctx, param_map, program, shape_tensor_list_vars);
-        op_inputs.push_back(defining_op->result(0));
-      } else {
-        std::vector<int64_t> shape =
-            PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-        ir::Attribute new_attr =
-            paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape));
-        auto defining_op =
-            InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
-        op_inputs.push_back(defining_op->result(0));
-      }
-
-      if (op_desc.HasInput("ValueTensor", true) &&
-          op_desc.Input("ValueTensor", true).size() > 0) {
-        auto value_tensor_vars = op_desc.Input("ValueTensor", true);
-        auto defining_info = (*param_map)[value_tensor_vars[0]];
-        op_inputs.push_back(defining_info.value);
-      } else {
-        float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-        ir::Attribute new_attr = ir::FloatAttribute::get(ctx, value);
-        auto defining_op =
-            InsertFullOperationForAttributeInput(ctx, program, new_attr);
-        op_inputs.push_back(defining_op->result(0));
-      }
-
-      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
-
-      ir::AttributeMap attribute_map = {
-          {"dtype",
-           paddle::dialect::DataTypeAttribute::get(
-               ctx,
-               phi::VarTypeToDataType(
-                   static_cast<paddle::framework::proto::VarType_Type>(
-                       dtype)))}};
-
-      auto vars = op_desc.Output("Out");
-      IR_ENFORCE(vars.size() == 1,
-                 "Expected op[%s]'s output Out has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 vars.size());
-      const auto& var_name = vars[0];
-
-      auto defining_info = (*param_map)[var_name];
-      ir::Operation* operation = ir::Operation::Create(
-          {}, attribute_map, {defining_info.value.type()}, op_info);
-      program->block()->push_back(operation);
-      return operation;
+      return FillConstant2FullWithTensorTranscriber()(
+          ctx, param_map, op_desc, program);
     }
   }
 };

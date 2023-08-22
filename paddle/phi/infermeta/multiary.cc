@@ -4156,7 +4156,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
-void FillWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out) {
   out->set_dims(make_ddim({-1}));

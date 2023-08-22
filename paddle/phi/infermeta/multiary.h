@@ -820,7 +820,7 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
 
-void FillWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
 
