@@ -33,7 +33,6 @@ void MMQAKernel(const Context& dev_ctx,
                 const paddle::optional<DenseTensor>& out_smooth,
                 int seq_len,
                 int rotary_emb_dims,
-                const int head_kv,
                 const bool use_neox_rotary_style,
                 const float out_scale,
                 const int quant_round_type,
@@ -112,7 +111,7 @@ void MMQAKernel(const Context& dev_ctx,
   params.seq_len = seq_len;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
-  params.head_kv = head_kv;
+  params.head_kv = cache_kv.dims()[2];
   if (out_shift) {
     DispatchFMQA<T>(dev_ctx,
                     query,

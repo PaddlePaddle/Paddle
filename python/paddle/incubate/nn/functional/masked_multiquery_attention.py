@@ -30,7 +30,6 @@ def masked_multiquery_attention(
     out_smooth=None,
     seq_len=1,
     rotary_emb_dims=0,
-    head_kv=1,
     use_neox_rotary_style=False,
     out_scale=-1,
     quant_round_type=1,
@@ -56,7 +55,6 @@ def masked_multiquery_attention(
         out_smooth (Tensor, optional): The out_linear_smooth tensor, used in quant.
         seq_len (int, optional): The seq_len, used to get input length. Default 1
         rotary_emb_dims (int, optional): The rotary_emb_dims. Default 0.
-        head_kv(int, optional): the kv head number. Default 1.
         use_neox_rotary_style (bool, optional): A flag indicating whether neox_rotary_style is needed or not. Default False.
         out_scale (float, optional): The out_scale, used in quant.
         quant_round_type (int, optional): The quant_round_type, used in quant. Default 1.
@@ -113,7 +111,6 @@ def masked_multiquery_attention(
             out_smooth,
             seq_len,
             rotary_emb_dims,
-            head_kv,
             use_neox_rotary_style,
             out_scale,
             quant_round_type,
@@ -159,7 +156,6 @@ def masked_multiquery_attention(
         attrs={
             'seq_len': seq_len,
             'rotary_emb_dims': rotary_emb_dims,
-            'head_kv': head_kv,
             'use_neox_rotary_style': use_neox_rotary_style,
             'out_scale': out_scale,
             'quant_round_type': quant_round_type,

@@ -4062,7 +4062,6 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
                                         const MetaTensor& out_smooth,
                                         int seq_len,
                                         int rotary_emb_dims,
-                                        const int head_kv,
                                         const bool use_neox_rotary_style,
                                         const float out_scale,
                                         const int quant_round_type,
@@ -4134,9 +4133,9 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
                               cache_kv_dims[0]));
   PADDLE_ENFORCE_EQ(
       cache_kv_dims[2],
-      head_kv,
+      k_dims[1],
       errors::InvalidArgument(
-          "The third dim of cache_kv must equal to head_kv, but got %d",
+          "The head of cache_kv must equal to the head of k and v, but got %d",
           cache_kv_dims[2]));
 
   if (rotary_tensor) {
