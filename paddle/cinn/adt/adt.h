@@ -52,10 +52,10 @@ class Union {
 };
 
 template <typename... Ts>
-class Tuple final {
+class Tuple {
  public:
   template <typename... Args>
-  Tuple(Args&&... args)
+  explicit Tuple(Args&&... args)
       : tuple_(
             std::make_shared<std::tuple<Ts...>>(std::forward<Args>(args)...)) {}
 
@@ -89,13 +89,15 @@ class Tagged {
 
 DEFINE_ADT_TAG(In);
 DEFINE_ADT_TAG(Out);
-DEFINE_ADT_TAG(Var);
+DEFINE_ADT_TAG(Optional);
+DEFINE_ADT_TAG(tVar);
+DEFINE_ADT_TAG(tSSAShadow);
+DEFINE_ADT_TAG(tAnchor);
+DEFINE_ADT_TAG(tScheduleIterVar);
+DEFINE_ADT_TAG(tAssertMsg);
+DEFINE_ADT_TAG(tIndexVar);
+DEFINE_ADT_TAG(tTensorSize);
 using Name = std::string;
-
-namespace tag {
-// tag.Broadcasted T = Tagged T
-DEFINE_ADT_TAG(Broadcasted);
-}  // namespace tag
 
 }  // namespace adt
 }  // namespace cinn

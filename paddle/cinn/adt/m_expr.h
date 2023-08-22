@@ -14,7 +14,10 @@
 
 #pragma once
 
+#include <function>
+
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/tensor_flatten_index_lambda.h"
 
 namespace cinn {
 namespace hlir {
@@ -29,8 +32,10 @@ namespace cinn {
 namespace adt {
 namespace m_expr {
 
-// ScheduleSize = Int64
-using ScheduleSize = int64_t;
+class AutoSize final {};
+
+// ScheduleSize = Int64 | AutoSize
+using ScheduleSize = Union<std::int64_t, AutoSize>;
 
 // S(Spatial): S0 = BlockIdx; S1 = ThreadIdx
 // ScheduleType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
@@ -47,40 +52,39 @@ class Unroll final {};
 using ScheduleType =
     Union<S0x, S0y, S0z, S1x, S1y, S1z, Temporal, Vectorize, Unroll>;
 
-// RankedSchedulePolicy = [(ScheduleType, ScheduleSize)]
-using RankedSchedulePolicy = List<Tuple<ScheduleType, ScheduleSize>>;
+// ScheduleDescriptor = [(ScheduleType, ScheduleSize)]
+using ScheduleDescriptor = List<Tuple<ScheduleType, ScheduleSize>>;
 
-// SchedulePolicy = RankedSchedulePolicy | [RankedSchedulePolicy]
-using SchedulePolicy = Union<RankedSchedulePolicy, List<RankedSchedulePolicy>>;
+// Offset = Int64
+using Offset = std::int64_t;
 
-// DimPatternKind = ElementwiseKind | InjectiveKind | BroadcastKind | ReduceKind
-// | OpaqueKind
-class ElementwiseKind final {};
-class InjectiveKind final {};
-class BroadcastKind final {};
-class ReduceKind final {};
-class OpaqueKind final {};
-using DimPatternKind = Union<ElementwiseKind,
-                             InjectiveKind,
-                             BroadcastKind,
-                             ReduceKind,
-                             OpaqueKind>;
+class GlobalMemoryType final {};
+class SharedMemoryType final {};
+// MemoryType = GlobalMemoryType | SharedMemoryType
+using MemoryType = Union<GlobalMemoryType, SharedMemoryType>;
 
-// ScheduleDescriptor = (DimPatternKind, SchedulePolicy)
-using ScheduleDescriptor = Tuple<DimPatternKind, SchedulePolicy>;
+// TempStorage = (tVar Name, Offset, MemoryType)
+using TempStorage = Tuple<tVar<Name>, Offset, MemoryType>;
 
-// DimSize = Int64
-using DimSize = int64_t;
+// Tensor = const Graph::NodeData*
+using Tensor = const hlir::framework::NodeData*;
 
-// Stride = Int64
-using Stride = int64_t;
+// TensorOrBuf = Tensor | TempStorage
+using TensorOrBuf = Union<Tensor, TempStorage>;
 
-// Tensor = (const Graph::NodeData*, [[(DimSize, Stride)]])
-using Tensor =
-    Tuple<const hlir::framework::NodeData*, List<List<Tuple<DimSize, Stride>>>>;
+// TensorArg = (TensorOrBuf, TensorFlattenIndexLambda <- [tScheduleIterVar Name,
+// ScheduleSize])
+using TensorArg =
+    Tuple<TensorOrBuf,
+          std::function<TensorFlattenIndexLambda(
+              List<Tuple<tScheduleIterVar<Name>, ScheduleSize>>)>>;
 
-// Arg = (Tensor, [[tag.Broadcasted DimSize]])
-using Arg = Tuple<Tensor, List<List<tag::Broadcasted<DimSize>>>>;
+class OpExprNode;
+// OpExpr = Box OpExprNode
+using OpExpr = std::shared_ptr<OpExprNode>;
+
+// Arg = TensorArg | OpExpr
+using Arg = Union<TensorArg, OpExpr>;
 
 // MemoryBarrier = {}    // (Sync Thread)
 class MemoryBarrier final {};
@@ -94,26 +98,31 @@ using BuiltinReduceRelatedOp = Union<Zeros, InplaceAdd>;
 using Op =
     Union<const hlir::framework::Node*, BuiltinReduceRelatedOp, MemoryBarrier>;
 
+// OpExprNode = (Op, In [Arg])
+class OpExprNode final : public Tuple<Op, In<Arg>> {
+  using Tuple<Op, In<Arg>>::Tuple;
+};
+
 class StmtNode;
 // Stmt = Box StmtNode
 using Stmt = Box<StmtNode>;
 
-// OpStmtNode = (Op, In [Arg], Out [Arg])
-using OpStmtNode = Tuple<Op, In<List<Arg>>, Out<List<Arg>>>;
+// OpStmtNode = (Op, In [Arg], Out [TensorArg])
+using OpStmtNode = Tuple<Op, In<List<Arg>>, Out<List<TensorArg>>>;
 
-// MapStmtNode = ([ScheduleDescriptor], [Stmt])
-using MapStmtNode = Tuple<List<ScheduleDescriptor>, List<Stmt>>;
+// MapStmtNode = (ScheduleDescriptor, tAnchor Tensor, [Stmt])
+using MapStmtNode = Tuple<ScheduleDescriptor, tAnchor<Tensor>, List<Stmt>>;
 
 // StmtNode = OpStmtNode | MapStmtNode
 class StmtNode final : public Union<OpStmtNode, MapStmtNode> {
   using Union<OpStmtNode, MapStmtNode>::Union;
 };
 
-// Kernel = (MapStmtNode, In [Arg], Out [Arg])
-using Kernel = Tuple<MapStmtNode, In<List<Arg>>, Out<List<Arg>>>;
+// Kernel = (MapStmtNode, In [Tensor], Out [Tensor])
+using Kernel = Tuple<MapStmtNode, In<List<Tensor>>, Out<List<Tensor>>>;
 
-// InterfaceADT = Kernel
-using InterfaceADT = Kernel;
+// MapExpr = Kernel
+using MapExpr = Kernel;
 
 }  // namespace m_expr
 }  // namespace adt

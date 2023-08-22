@@ -23,36 +23,30 @@ namespace cinn {
 namespace adt {
 namespace m_ir {
 
-// SymbolicScheduleType = Var Name
-using SymbolicScheduleType = Var<Name>;
+// AutoSize = {}
+class AutoSize final {};
 
-// SymbolicScheduleSize = Var Name
-using SymbolicScheduleSize = Var<Name>;
+// ScheduleSize = Int64 | AutoSize
+using ScheduleSize = Tuple<std::size_t, AutoSize>;
 
-// SymbolicSchedulePolicy = [(SymbolicScheduleType, SymbolicScheduleSize)]
-using SymbolicSchedulePolicy =
-    List<Tuple<SymbolicScheduleType, SymbolicScheduleSize>>;
+// ScheduleType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
+// Unroll
+using ScheduleType = m_expr::ScheduleType;
 
-// DimPatternKind = ElementwiseKind | InjectiveKind | BroadcastKind | ReduceKind
-// | OpaqueKind
-using DimPatternKind = m_expr::DimPatternKind;
+// ScheduleDescriptor = [(ScheduleType, ScheduleSize)]
+using ScheduleDescriptor = List<Tuple<ScheduleType, ScheduleSize>>;
 
-// SymbolicScheduleDescriptor = (DimPatternKind, SymbolicSchedulePolicy)
-using SymbolicScheduleDescriptor =
-    Tuple<DimPatternKind, SymbolicSchedulePolicy>;
+// SymbolicDim = tVar Name
+using SymbolicDim = tVar<Name>;
 
-// SymbolicDimSize = Var Name
-using SymbolicDimSize = Var<Name>;
+// SSAShadowTensor = (tSSAShadow Name, const Graph::NodeData*)
+using SSAShadowTensor = Tuple<tSSAShadow<Name>, m_expr::Tensor>;
 
-// SymbolicStride = Var Name
-using SymbolicStride = Var<Name>;
+// Tensor = const Graph::NodeData* | SSAShadowTensor
+using Tensor = Union<m_expr::Tensor, SSAShadowTensor>;
 
-// Tensor = (const Graph::NodeData*, [[(SymbolicDimSize, SymbolicStride)]])
-using Tensor =
-    Tuple<m_expr::Tensor, List<List<Tuple<SymbolicDimSize, SymbolicStride>>>>;
-
-// Arg = (Tensor, [[tag.Broadcasted SymbolicDimSize]])
-using Arg = Tuple<Tensor, List<List<tag::Broadcasted<SymbolicDimSize>>>>;
+// Arg = (Tensor, [SymbolicDim])
+using Arg = Tuple<Tensor, List<SymbolicDim>>;
 
 // Op = const Graph::Node* | BuiltinReduceRelatedOp | MemoryBarrier
 // BuiltinReduceRelatedOp = Zeros | InplaceAdd
@@ -62,11 +56,11 @@ using Op = m_expr::Op;
 // OpStmtNode = (Op, In [Arg], Out [Arg])
 using OpStmtNode = Tuple<Op, In<List<Arg>>, Out<List<Arg>>>;
 
-// MapStmtNode = ([SymbolicScheduleDescriptor], OpStmtNode])
-using MapStmtNode = Tuple<List<SymbolicScheduleDescriptor>, OpStmtNode>;
+// MapStmtNode = (ScheduleDescriptor, OpStmtNode)
+using MapStmtNode = Tuple<ScheduleDescriptor, OpStmtNode>;
 
-// InternalADT = [MapStmtNode]
-using InternalADT = List<MapStmtNode>;
+// MapIR = [MapStmtNode]
+using MapIR = List<MapStmtNode>;
 
 }  // namespace m_ir
 }  // namespace adt
