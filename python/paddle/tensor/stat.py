@@ -483,8 +483,8 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     elif isinstance(q, paddle.Tensor):
         if len(q.shape) > 1:
             raise ValueError("q should be a 1-D tensor")
-        if q.shape[0] == 0:
-            raise ValueError("q should be not a zero-dim tensor")
+        elif q.shape[0] == 0:
+            q = [q]
     else:
         raise TypeError(
             "Type of q should be int, float, list or tuple, or 1-D tensor"

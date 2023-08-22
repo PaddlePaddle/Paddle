@@ -44,6 +44,16 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 1, 2] = np.nan
 
+    def test_single_tensor_q(self):
+        inp = self.input_data
+        for func, res_func in API_list:
+            x = paddle.to_tensor(inp)
+            q = paddle.to_tensor(0.5)
+            paddle_res = func(x, q=q, axis=2)
+            np_res = res_func(inp, q=q, axis=2)
+            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
+            inp[0, 1, 2] = np.nan
+
     # Test correctness for default axis.
     def test_with_no_axis(self):
         inp = self.input_data
@@ -117,6 +127,32 @@ class TestQuantileAndNanquantile(unittest.TestCase):
         np.testing.assert_allclose(
             paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
         )
+
+    def test_backward(self):
+        def check_grad(x, q, axis, target_gard, idx=None):
+            for i, (op, _) in enumerate(API_list):
+                if idx and idx != i:
+                    continue
+                x = paddle.to_tensor(x, dtype='float32', stop_gradient=False)
+                op(x, q, axis).sum().backward()
+                np.testing.assert_allclose(
+                    x.grad.numpy(),
+                    np.array(target_gard, dtype='float32'),
+                    rtol=1e-05,
+                    equal_nan=True,
+                )
+
+        check_grad([1, 2, 3], 0.5, 0, [0, 1, 0])
+        check_grad(
+            [1, 2, 3, 4] * 2, [0.55, 0.7], 0, [0, 0, 0.95, 0, 0, 0.15, 0.9, 0]
+        )
+        check_grad(
+            [[1, 2, 3], [4, 5, 6]], [0.3, 0.7], 1, [[1, 1, 1], [1, 1, 1]]
+        )
+        # quantile
+        check_grad([1, float('nan'), 3], 0.5, 0, [1.5, 3, 1.5], 0)
+        # nanquantile
+        check_grad([1, float('nan'), 3], 0.5, 0, [1.5, 2, 1.5], 1)
 
 
 class TestMuitlpleQ(unittest.TestCase):
@@ -226,14 +262,6 @@ class TestError(unittest.TestCase):
             )
 
         self.assertRaises(ValueError, test_tensor_input_1)
-
-        # Test error when q is a zero-dim tensor
-        def test_tensor_input_2():
-            paddle_res = paddle.quantile(
-                self.x, q=paddle.to_tensor([]), axis=[1, -10]
-            )
-
-        self.assertRaises(ValueError, test_tensor_input_2)
 
 
 class TestQuantileRuntime(unittest.TestCase):
