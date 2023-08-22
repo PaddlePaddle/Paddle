@@ -284,13 +284,10 @@ Tensor split_grad<LazyTensor>(const std::vector<Tensor>& out_grads,
             ->getValue()
             .dyn_cast<ir::OpResult>());
   }
-
   ir::OpResult axis_res = std::static_pointer_cast<LazyTensor>(axis.impl())
                               ->getValue()
                               .dyn_cast<ir::OpResult>();
-
   ir::OpResult op_res = paddle::dialect::split_grad(out_grads_res, axis_res);
-
   return Tensor(std::make_shared<primitive::LazyTensor>(op_res));
 }
 

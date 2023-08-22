@@ -146,6 +146,8 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+const char *SplitGradOp::attributes_name[1] = {"axis"};
+
 OpInfoTuple SplitGradOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       OpInputInfo("out_grad",

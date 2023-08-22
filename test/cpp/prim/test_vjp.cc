@@ -407,7 +407,7 @@ TEST(VJP, SplitBackwardTest) {
       std::vector<int64_t>{2, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   paddle::dialect::SplitOp op2 = builder->Build<paddle::dialect::SplitOp>(
-      op1.out(), std::vector<int64_t>{2}, 0);
+      op1.out(), std::vector<int64_t>{1, 1}, 0);
 
   ir::SplitOp op3 = builder->Build<ir::SplitOp>(op2.out());
 
@@ -415,17 +415,17 @@ TEST(VJP, SplitBackwardTest) {
       std::vector<int64_t>{1, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {true}, {true}};
-  std::vector<std::vector<ir::OpResult>> out_grads{{op3.result(0)},
-                                                   {op4.out()}};
+  std::vector<std::vector<ir::OpResult>> out_grads{{op3.result(0), op4.out()}};
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.split");
+
   auto concat_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+
   concat_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = platform::CPUPlace();
   Scope scope;
-
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, std::move(kernel_program), &scope);
   std::stringstream os;
@@ -458,8 +458,8 @@ TEST(VJP, SplitBackwardTest) {
   ASSERT_EQ(out_tensor_0.data<float>()[1], 2.0);
   ASSERT_EQ(out_tensor_1.data<float>()[0], 2.0);
   ASSERT_EQ(out_tensor_1.data<float>()[1], 2.0);
-  ASSERT_EQ(grad_out_tensor_0.data<float>()[0], 1.0);
-  ASSERT_EQ(grad_out_tensor_0.data<float>()[1], 1.0);
+  ASSERT_EQ(grad_out_tensor_0.data<float>()[0], 2.0);
+  ASSERT_EQ(grad_out_tensor_0.data<float>()[1], 2.0);
   ASSERT_EQ(grad_out_tensor_0.data<float>()[2], 1.0);
   ASSERT_EQ(grad_out_tensor_0.data<float>()[3], 1.0);
 }

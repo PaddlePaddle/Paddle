@@ -225,7 +225,7 @@ std::vector<std::vector<paddle::Tensor>> split_vjp(
     const std::vector<Tensor>& out_grads,
     const Tensor& axis,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  std::vector<std::vector<paddle::Tensor>> vjp_res(3, std::vector<Tensor>());
+  std::vector<std::vector<paddle::Tensor>> vjp_res(3, std::vector<Tensor>(1));
   // get concat_grad res.
   Tensor op_res = backend::split_grad<primitive::LazyTensor>(out_grads, axis);
 
