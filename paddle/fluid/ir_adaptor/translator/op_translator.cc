@@ -195,6 +195,29 @@ inline ir::Operation* InsertFullArrayOperationForAttributeInput(
   return full_int_array_op.operation();
 }
 
+inline ir::Operation* InsertStackOperationForTarget(
+    ir::IrContext* ctx,
+    TranslationContext* param_map,
+    ir::Program* program,
+    const std::vector<std::string>& args,
+    int axis = 0) {
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo("pd.stack");
+
+  std::vector<ir::OpResult> op_inputs;
+  for (const auto& arg_name : args) {
+    auto defining_info = param_map->at(arg_name);
+    op_inputs.push_back(defining_info.value);
+  }
+
+  ir::AttributeMap attribute_map = {
+      {"axis", ir::Int32Attribute::get(ctx, axis)}};
+
+  ir::Operation* operation = ir::Operation::Create(
+      op_inputs, attribute_map, {op_inputs[0].value.type()}, op_info);
+  program->block()->push_back(operation);
+  return operation;
+}
+
 inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
                                         ir::Program* program,
                                         const OpDesc& op_desc,
@@ -1248,29 +1271,50 @@ struct FillConstantTranscriber : public OpTranscriber {
             "pd.fill_with_tensor.");
       }
 
+      std::vector<ir::OpResult> op_inputs;
       if (op_desc.HasInput("ShapeTensor", true) &&
           op_desc.Input("ShapeTensor", true).size() > 0) {
+        auto shape_tensor_vars = op_desc.Input("ShapeTensor", true);
+        auto defining_info = (*param_map)[shape_tensor_vars[0]];
+        op_inputs.push_back(defining_info.value);
       } else if (op_desc.HasInput("ShapeTensorList", true) &&
                  op_desc.Input("ShapeTensorList", true).size() > 0) {
+        auto shape_tensor_list_vars = op_desc.Input("ShapeTensorList", true);
+        auto defining_op = InsertStackOperationForTarget(
+            ctx, param_map, program, shape_tensor_list_vars);
+        op_inputs.push_back(defining_op->result(0));
       } else {
+        std::vector<int64_t> shape =
+            PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+        ir::Attribute new_attr =
+            paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape));
+        auto defining_op =
+            InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
+        op_inputs.push_back(defining_op->result(0));
       }
 
       if (op_desc.HasInput("ValueTensor", true) &&
           op_desc.Input("ValueTensor", true).size() > 0) {
+        auto value_tensor_vars = op_desc.Input("ValueTensor", true);
+        auto defining_info = (*param_map)[value_tensor_vars[0]];
+        op_inputs.push_back(defining_info.value);
       } else {
+        float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+        ir::Attribute new_attr = ir::FloatAttribute::get(ctx, value);
+        auto defining_op =
+            InsertFullOperationForAttributeInput(ctx, program, new_attr);
+        op_inputs.push_back(defining_op->result(0));
       }
 
-      std::vector<ir::OpResult> op_inputs;
-      auto legacy_input_vars = op_desc.Input("x", true);
+      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
-      auto defining_info = (*param_map)[legacy_input_vars[0]];
-      if (defining_info.generated_by_vector) {
-        InsertSliceOperationForTarget(
-            ctx, param_map, program, defining_info, legacy_input_vars[0]);
-        defining_info = param_map->at(legacy_input_vars[0]).value;
-      }
-
-      op_inputs.push_back(defining_info.value);
+      ir::AttributeMap attribute_map = {
+          {"dtype",
+           paddle::dialect::DataTypeAttribute::get(
+               ctx,
+               phi::VarTypeToDataType(
+                   static_cast<paddle::framework::proto::VarType_Type>(
+                       dtype)))}};
 
       int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
@@ -1280,10 +1324,18 @@ struct FillConstantTranscriber : public OpTranscriber {
                static_cast<paddle::framework::proto::VarType_Type>(dtype))},
       };
 
-      ir::Operation* operation =
-          ir::Operation::Create(op_inputs, attribute_map, {}, op_info);
-      program->block()->push_back(operation);
+      auto vars = op_desc.Output("Out");
+      IR_ENFORCE(vars.size() == 1,
+                 "Expected op[%s]'s output Out has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 vars.size());
+      const auto& var_name = vars[0];
 
+      auto defining_info = (*param_map)[var_name];
+      auto& type_translator = TypeTranslator::instance();
+      ir::Operation* operation = ir::Operation::Create(
+          {}, attribute_map, {defining_info.value.type()}, op_info);
+      program->block()->push_back(operation);
       return operation;
     }
   }
