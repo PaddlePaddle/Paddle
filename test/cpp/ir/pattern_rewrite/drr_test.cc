@@ -18,15 +18,15 @@
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
-#include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
-#include "paddle/fluid/ir/drr/drr_rewrite_pattern.h"
+#include "paddle/fluid/ir/drr/api/drr_pattern_builder.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
 
-struct RemoveRedundentReshapeFunctor {
-  void operator()(ir::drr::DrrPatternContext *ctx) {
+class RemoveRedundentReshape : public ir::drr::DrrPatternBuilder {
+ public:
+  void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source patterns：待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &reshape1 = pat.Op("pd.reshape");
@@ -44,24 +44,16 @@ struct RemoveRedundentReshapeFunctor {
   }
 };
 
-class RemoveRedundentReshapePattern
-    : public ir::drr::DrrRewritePattern<paddle::dialect::ReshapeOp,
-                                        RemoveRedundentReshapeFunctor> {
+class FoldBroadcastToConstant : public ir::drr::DrrPatternBuilder {
  public:
-  using ir::drr::DrrRewritePattern<
-      paddle::dialect::ReshapeOp,
-      RemoveRedundentReshapeFunctor>::DrrRewritePattern;
-};
-
-struct FoldBroadcastToConstantFunctor {
-  void operator()(ir::drr::DrrPatternContext *ctx) {
+  void operator()(ir::drr::DrrPatternContext *ctx) const override {
     ir::drr::SourcePattern pat = ctx->SourcePattern();
     // Source Pattern 中可匹配的类型包括 Op 和 Tensor
     const auto &fill_constant = pat.Op(
         "pd.fill_constant",
         {{"value", pat.Attr("value_1")}, {"dtype", pat.Attr("dtype_1")}});
     const auto &broadcast_to =
-        pat.Op("pd.expand", {{"shape", pat.Attr("shape_1")}});
+        pat.Op("pd.exkpand", {{"shape", pat.Attr("shape_1")}});
     // 匹配fill_constant+broadcast_to，同时对输出张量标记为ret，方便后面加约束
     pat.Tensor("ret") = broadcast_to(fill_constant());
     // Constrains：本Pass无额外的约束规则
@@ -79,17 +71,9 @@ struct FoldBroadcastToConstantFunctor {
   }
 };
 
-class FoldBroadcastToConstantPattern
-    : public ir::drr::DrrRewritePattern<paddle::dialect::ExpandOp,
-                                        FoldBroadcastToConstantFunctor> {
+class RemoveRedundentTranspose : public ir::drr::DrrPatternBuilder {
  public:
-  using ir::drr::DrrRewritePattern<
-      paddle::dialect::ExpandOp,
-      FoldBroadcastToConstantFunctor>::DrrRewritePattern;
-};
-
-struct RemoveRedundentTransposeFunctor {
-  void operator()(ir::drr::DrrPatternContext *ctx) {
+  void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source pattern: 待匹配的子图
     ir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &transpose1 =
@@ -109,17 +93,8 @@ struct RemoveRedundentTransposeFunctor {
   }
 };
 
-class RemoveRedundentTransposePattern
-    : public ir::drr::DrrRewritePattern<paddle::dialect::TransposeOp,
-                                        RemoveRedundentTransposeFunctor> {
- public:
-  using ir::drr::DrrRewritePattern<
-      paddle::dialect::TransposeOp,
-      RemoveRedundentTransposeFunctor>::DrrRewritePattern;
-};
-
-struct RemoveRedundentCastFunctor {
-  void operator()(ir::drr::DrrPatternContext *ctx) {
+class RemoveRedundentCast : public ir::drr::DrrPatternBuilder {
+  void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") =
         pat.Op("pd.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
@@ -131,31 +106,15 @@ struct RemoveRedundentCastFunctor {
   }
 };
 
-class RemoveRedundentCastPattern
-    : public ir::drr::DrrRewritePattern<paddle::dialect::CastOp,
-                                        RemoveRedundentCastFunctor> {
+class RemoveUselessCast : public ir::drr::DrrPatternBuilder {
  public:
-  using ir::drr::DrrRewritePattern<
-      paddle::dialect::CastOp,
-      RemoveRedundentCastFunctor>::DrrRewritePattern;
-};
-
-struct RemoveUselessCastFunctor {
-  void operator()(ir::drr::DrrPatternContext *ctx) {
+  void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("ret") = pat.Op("pd.cast")(pat.Tensor("arg0"));
     pat.RequireEqual(pat.Tensor("ret").dtype(), pat.Tensor("arg0").dtype());
     auto res = pat.ResultPattern();
     res.Tensor("ret").Assign(res.Tensor("arg0"));
   }
-};
-
-class RemoveUselessCastPattern
-    : public ir::drr::DrrRewritePattern<paddle::dialect::CastOp,
-                                        RemoveUselessCastFunctor> {
- public:
-  using ir::drr::DrrRewritePattern<paddle::dialect::CastOp,
-                                   RemoveUselessCastFunctor>::DrrRewritePattern;
 };
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT
@@ -202,10 +161,10 @@ class DrrPatternRewritePass : public ir::Pass {
 
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
-    ps.Add(std::make_unique<RemoveRedundentReshapePattern>(context));
-    ps.Add(std::make_unique<RemoveRedundentTransposePattern>(context));
-    ps.Add(std::make_unique<RemoveRedundentCastPattern>(context));
-    ps.Add(std::make_unique<RemoveUselessCastPattern>(context));
+    ps.Add(RemoveRedundentReshape().Build(context));
+    ps.Add(RemoveRedundentTranspose().Build(context));
+    ps.Add(RemoveRedundentCast().Build(context));
+    ps.Add(RemoveUselessCast().Build(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
