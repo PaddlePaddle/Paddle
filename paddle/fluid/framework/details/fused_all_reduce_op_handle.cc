@@ -32,7 +32,7 @@ typedef std::vector<
     std::vector<std::pair<std::string, const phi::DenseTensor *>>>
     GradientAndLoDTensor;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
@@ -61,7 +61,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 #endif
 
 FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;
 #ifdef PADDLE_WITH_HIP
