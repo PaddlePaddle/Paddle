@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import paddle
 from paddle.common_ops_import import LayerHelper, check_type, in_dygraph_mode
 from paddle.fluid import core
 from paddle.fluid.backward import _append_grad_suffix_
@@ -44,7 +44,7 @@ class StaticPyLayerBlockGuard(BlockGuard):
 
 
 class StaticPyLayerBlock:
-    def __init__(self, inputs, name=None):
+    def __init__(self, inputs, name=None, pylayer_context=None):
         for each_input in inputs:
             check_type(each_input, "input", Variable, "StaticPyLayerBlock")
 
@@ -52,6 +52,8 @@ class StaticPyLayerBlock:
         self.fwd_inputs = inputs
         # used to specify the `Out` to `pylayer` op
         self.fwd_outputs = []
+        
+        self.context = pylayer_context
 
         self.helper = LayerHelper("static_pylayer_block", name=name)
         self.fwd_op_id = None
@@ -96,7 +98,6 @@ class StaticPyLayerBlock:
         )
 
         self.fwd_op_id = pylayer_op.idx
-
     def complete_backward_block(self):
         inside_block = self.helper.main_program.current_block()
         parent_block = self.helper.main_program.block(inside_block.parent_idx)
@@ -131,12 +132,30 @@ class StaticPyLayerBlock:
         parent_block.ops[self.fwd_op_index].desc.set_blocks_attr(
             "blocks", [forward_block_desc, backward_block_desc]
         )
-
+        
+        # remove temporary vars created by `StaticPyLayerContext.saved_tensor`
+        if self.context:
+            for var in self.context.saved_vars:
+                if not inside_block.has_var(var.name):
+                    raise ValueError(f"{var.name} was saved in forward block but could not be found in backward block. Maybe {var.name} was renamed somewhere.")
+                inside_block._remove_var(var.name)
+                
     def complete(self):
         if not self.is_backward_block:
             return self.complete_forward_block()
         else:
             return self.complete_backward_block()
+
+def _get_ctx_from_func_(func):
+    fn_bind_args = getattr(func, "args", None)
+    fn_ctx = None
+    if fn_bind_args is None:
+        return fn_ctx
+    
+    if len(fn_bind_args) > 0 and isinstance(fn_bind_args[0], paddle.jit.dy2static.py_layer.StaticPyLayerContext):
+        fn_ctx = fn_bind_args[0]
+        
+    return fn_ctx
 
 
 # TODO(MarioLulab):
@@ -238,12 +257,18 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     )
                 )
 
+    # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
+    fwd_fn_ctx = _get_ctx_from_func_(forward_fn)
+    bwd_fn_ctx = _get_ctx_from_func_(backward_fn)
+    static_pylayer_context = fwd_fn_ctx if fwd_fn_ctx and (fwd_fn_ctx == bwd_fn_ctx) else None
+    
+
     check_type(name, "name", (str, type(None)), "fluid.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
 
     assert forward_fn is not None and callable(forward_fn)
-    pylayer_block_manager = StaticPyLayerBlock(inputs)
+    pylayer_block_manager = StaticPyLayerBlock(inputs, pylayer_context=static_pylayer_context)
     with pylayer_block_manager.block(is_backward_block=False) as mgr:
         origin_output = forward_fn(*inputs)
         if origin_output is not None:

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -51,6 +52,8 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+        prog_, block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
         prog_, block_id_, ops_);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         prog_, block_id_, ops_);

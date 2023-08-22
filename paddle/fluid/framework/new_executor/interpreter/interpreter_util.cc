@@ -31,6 +31,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -571,6 +572,8 @@ void BuildOpFuncList(const platform::Place& place,
     const ProgramDesc& main_program = *block.Program();
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         main_program, block.ID(), ops_unique);
+    operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
+        main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
@@ -611,6 +614,8 @@ void BuildOpFuncList(const platform::Place& place,
     const std::set<std::string> ops_with_var_not_in_scope = {
         "conditional_block",
         "conditional_block_grad",
+        "pylayer",
+        "pylayer_grad"
         "recurrent_grad",
         "rnn_memory_helper",
         "rnn_memory_helper_grad",
@@ -621,6 +626,7 @@ void BuildOpFuncList(const platform::Place& place,
 
     // ops in the control flow block may not find its inputs or outputs
     // in VariableScope of the sub-block, so we need search it in parent scope.
+    // Questions(MarioLulab): not append before, but pylayer op run successfully ???
 
     framework::VariableNameMap& input_name_map = op->Inputs();
     VariableValueMap ins_map;

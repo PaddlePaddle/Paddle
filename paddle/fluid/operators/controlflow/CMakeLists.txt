@@ -19,6 +19,10 @@ cc_library(
   SRCS conditional_block_op_helper.cc
   DEPS op_variant operator conditional_block_op)
 cc_library(
+    pylayer_op_helper
+    SRCS pylayer_op_helper.cc
+    DEPS op_variant operator pylayer_op)
+cc_library(
   recurrent_op_helper
   SRCS recurrent_op_helper.cc
   DEPS recurrent_op op_variant operator)

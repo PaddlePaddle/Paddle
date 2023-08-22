@@ -16,7 +16,7 @@ import functools
 
 from paddle.autograd.py_layer import PyLayerMeta
 from paddle.common_ops_import import LayerHelper
-from paddle.static import Variable
+from paddle.fluid.framework import Variable
 from paddle.static.nn import static_pylayer
 
 from .program_translator import convert_to_static, unwrap_decorators

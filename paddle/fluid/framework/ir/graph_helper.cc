@@ -707,7 +707,7 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       if (n->Name() == "while" || n->Name() == "while_grad" ||
           n->Name() == "conditional_block" ||
           n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
-          n->Name() == "recurrent_grad") {
+          n->Name() == "recurrent_grad" || n->Name() == "pylayer" || n->Name() == "pylayer_grad") {
         VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
