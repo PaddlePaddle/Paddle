@@ -48,6 +48,19 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
   return same_loops;
 }
 
+bool IsExternCallBlock(ir::Expr block) {
+  ir::ScheduleBlockRealize* sch_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(sch_block_realize);
+  ir::ScheduleBlock* sch_block =
+      sch_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(sch_block);
+
+  auto find_call = ir::CollectIRNodesWithoutTensor(
+      sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
+  return !find_call.empty();
+}
+
 GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
                                const std::shared_ptr<Graph::Group>& group,
                                const common::Target& target)
@@ -64,38 +77,36 @@ void GroupScheduler::operator()() {
   AllocateStorage();
 }
 
-int64_t GroupScheduler::NodePriority(const ir::ScheduleBlockNode* node) const {
+NodePriority GroupScheduler::CalculateNodePriority(
+    const ir::ScheduleBlockNode* node) const {
   bool has_loop_binded = false;
-  for (ir::Expr stmt : node->ControlStmts()) {
-    if (stmt.As<ir::For>() && stmt.As<ir::For>()->is_binded()) {
-      has_loop_binded = true;
-      break;
-    }
-  }
-  if (!has_loop_binded) {
-    return 0;
-  }
-
   int64_t score = 1;
   for (Expr expr : node->ControlStmts()) {
     ir::For* for_node = expr.As<ir::For>();
     if (for_node != nullptr) {
       score *= ir::GetLoopExtent(expr);
     }
+    if (for_node->is_binded()) {
+      has_loop_binded = true;
+    }
   }
   score += node->ControlStmts().size();
+
   VLOG(6) << "The priority score of node " << node->id() << " is " << score;
-  return score;
+  VLOG(6) << "The node has_loop_binded: " << has_loop_binded;
+  return NodePriority{has_loop_binded, score};
 }
 
 ir::ScheduleBlockNode* GroupScheduler::FindGlobalMasterNode() const {
-  int64_t max = 0;
+  NodePriority max{false, std::numeric_limits<int64_t>::min()};
   ir::ScheduleBlockNode* master = nullptr;
   auto FindMaster = [&](ir::ScheduleBlockNode* node) {
-    int64_t score = NodePriority(node);
-    VLOG(6) << "The priority score of node " << node->id() << " is " << score;
-    if (score >= max) {
-      max = score;
+    NodePriority priority = CalculateNodePriority(node);
+    VLOG(6) << "The priority score of node " << node->id() << " is "
+            << priority.score
+            << ", has_loop_binded: " << priority.has_loop_binded;
+    if (max < priority) {
+      max = priority;
       master = node;
     }
   };
@@ -147,23 +158,34 @@ void GroupScheduler::DoLoopAlignment() {
 
     // 1. Fuse source loops
     ir::Expr source_loop = ir_sch_->Fuse(node->ControlStmts());
+    int total_source_extent = ir::GetLoopExtent(source_loop);
 
     // 2. Split source loop to align with the target loops
     std::vector<int> factors;
-    int total_extent = 1;
+    int cur_extent = 1;
     std::vector<ir::Expr> target_loops = global_master->ControlStmts();
     for (ir::Expr target_loop : target_loops) {
       if (target_loop.As<ir::For>() == nullptr) {
         continue;
       }
-      if (total_extent >= ir::GetLoopExtent(source_loop) && factors.size() &&
-          ir::GetLoopExtent(target_loop) > 1) {
+      if (cur_extent >= total_source_extent && factors.size() &&
+              ir::GetLoopExtent(target_loop) > 1 ||
+          total_source_extent % (cur_extent * ir::GetLoopExtent(target_loop)) !=
+              0) {
         break;
       }
       factors.push_back(ir::GetLoopExtent(target_loop));
-      total_extent *= ir::GetLoopExtent(target_loop);
+      cur_extent *= ir::GetLoopExtent(target_loop);
     }
-    std::vector<ir::Expr> source_loops = ir_sch_->Split(source_loop, factors);
+    if (cur_extent < total_source_extent) {
+      factors.push_back(-1);
+    }
+    std::vector<ir::Expr> source_loops;
+    if (factors.size() > 0 && factors[0] < total_source_extent) {
+      source_loops = ir_sch_->Split(source_loop, factors);
+    } else {
+      source_loops = {source_loop};
+    }
 
     // 3. Copy bind info from target loops
     for (int idx = 0; idx < target_loops.size(); ++idx) {
@@ -201,6 +223,9 @@ void GroupScheduler::DoComputeInline() {
   auto_schedule::AutoInline inliner(target_, no_inline_output_names);
 
   auto InlineFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsExternCallBlock(node->Block())) {
+      return;
+    }
     VLOG(6) << "try ComputeInline on: " << node->id()
             << ", before ComputeInline, func body: "
             << ir_sch_->GetModule().GetExprs().front();
@@ -227,10 +252,17 @@ void GroupScheduler::DoHorizontalLoopFusion() {
   ir::ScheduleBlockNode* master_node = end_nodes.front();
   CHECK_NOTNULL(master_node);
   for (int i = 1; i < end_nodes.size(); ++i) {
+    if (IsExternCallBlock(end_nodes[i]->Block())) {
+      continue;
+    }
     VLOG(6) << "try to fuse loop of " << end_nodes[i]->id() << " to "
             << master_node->id();
-    ir::Expr target_loop =
-        std::get<1>(FindSameOuterLoops(end_nodes[i], master_node).back());
+    std::vector<std::tuple<cinn::ir::Expr, cinn::ir::Expr>>&& same_loops =
+        FindSameOuterLoops(end_nodes[i], master_node);
+    if (same_loops.size() == 0) {
+      continue;
+    }
+    ir::Expr target_loop = std::get<1>(same_loops.back());
     VLOG(6) << "target_loop: " << target_loop;
     ir_sch_->SimpleComputeAt(end_nodes[i]->Block(), target_loop);
     VLOG(6) << "after fuse: " << ir_sch_->GetModule().GetExprs().front();
@@ -252,12 +284,16 @@ void GroupScheduler::DoVerticalLoopFusion() {
         masters.begin(),
         masters.end(),
         [&](const ir::ScheduleBlockNode* a, const ir::ScheduleBlockNode* b) {
-          return this->NodePriority(a) > this->NodePriority(b);
+          return this->CalculateNodePriority(b) <
+                 this->CalculateNodePriority(a);
         });
     return masters;
   };
 
   auto ComputeAtFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsExternCallBlock(node->Block())) {
+      return;
+    }
     std::vector<ir::ScheduleBlockNode*> masters = FindMaster(node);
     if (masters.size() == 0) {
       return;
@@ -665,6 +701,9 @@ void GroupScheduler::AllocateStorage() {
 
   // function to set storage of each tensor
   auto SetStorage = [&](ir::ScheduleBlockNode* node) {
+    if (IsExternCallBlock(node->Block())) {
+      return;
+    }
     ir::MemoryType memory_type = ir::MemoryType::GPULocal;
     ir::Expr cur_block = node->Block();
     ir::Expr root_block = ir_sch_->GetRootBlock(cur_block);
