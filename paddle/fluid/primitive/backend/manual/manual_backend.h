@@ -14,5 +14,25 @@
 
 #pragma once
 
-#include "paddle/fluid/primitive/rule/vjp/generated/generated_vjp.h"
-#include "paddle/fluid/primitive/rule/vjp/manual/manual_vjp.h"
+#include <string>
+#include <vector>
+
+#include "paddle/phi/api/include/tensor.h"
+
+namespace paddle {
+namespace primitive {
+namespace backend {
+
+using Tensor = paddle::Tensor;
+using Scalar = paddle::experimental::Scalar;
+using IntArray = paddle::experimental::IntArray;
+using DataType = phi::DataType;
+
+template <typename T>
+std::vector<Tensor> concat_grad(const std::vector<Tensor>& x,
+                                const Tensor& out_grad,
+                                const Tensor& axis);
+
+}  // namespace backend
+}  // namespace primitive
+}  // namespace paddle
