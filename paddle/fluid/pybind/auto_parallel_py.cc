@@ -118,8 +118,7 @@ void BindAutoParallel(py::module *m) {
               "is_suitable",
               [](phi::distributed::ReshardFunction &self,
                  py::handle py_tensor,
-                 const std::shared_ptr<phi::distributed::TensorDistAttr>
-                     &dist_attr) {
+                 const phi::distributed::TensorDistAttr &dist_attr) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dist =
                     std::dynamic_pointer_cast<phi::distributed::DistTensor>(
@@ -132,8 +131,7 @@ void BindAutoParallel(py::module *m) {
               [](phi::distributed::ReshardFunction &self,
                  phi::DeviceContext *dev_ctx,
                  py::handle py_tensor,
-                 const std::shared_ptr<phi::distributed::TensorDistAttr>
-                     &dist_attr) {
+                 const phi::distributed::TensorDistAttr &dist_attr) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dist =
                     std::dynamic_pointer_cast<phi::distributed::DistTensor>(
@@ -277,8 +275,7 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::class_<TensorDistAttr, std::shared_ptr<TensorDistAttr>> py_dist_attr(
-      *m, "TensorDistAttr");
+  py::class_<TensorDistAttr> py_dist_attr(*m, "TensorDistAttr");
   g_tensor_dist_attr_pytype =
       reinterpret_cast<PyTypeObject *>(py_dist_attr.ptr());
   py_dist_attr.def(py::init<>())

@@ -10,6 +10,18 @@ cc_test(
        device_context
        enforce
        generated_static_op)
+cc_test(
+  test_mkldnn_cpu_quantize_pass
+  SRCS test_mkldnn_cpu_quantize_pass.cc
+  DEPS executor
+       op_registry
+       activation_op
+       conv_activation_mkldnn_fuse_pass
+       cpu_quantize_placement_pass
+       cpu_quantize_pass
+       phi
+       scope
+       device_context)
 
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry

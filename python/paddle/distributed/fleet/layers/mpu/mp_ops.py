@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import paddle
 from paddle import _legacy_C_ops
 from paddle.distributed import collective
@@ -24,40 +22,8 @@ from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
-_first_get_mp_env_flag = True
 
-
-def _get_mp_env_flag(flag):
-    global _first_get_mp_env_flag
-    if _first_get_mp_env_flag:
-        print(
-            "Flags_mp_aysnc_allreduce is {}, which is used to support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear.".format(
-                str(os.getenv("Flags_mp_aysnc_allreduce")).lower()
-            )
-        )
-        print(
-            "Flags_fused_linear_param_grad_add is {}, which is used to support fused_linear_param_grad_add in ColumnParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.".format(
-                str(os.getenv("Flags_fused_linear_param_grad_add")).lower()
-            )
-        )
-        print(
-            "Flags_skip_mp_c_identity is {}, which is used to support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.".format(
-                str(os.getenv("Flags_skip_mp_c_identity")).lower()
-            )
-        )
-    # Model parallel environment flag.
-    # Flags_mp_aysnc_allreduce: support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
-    # Flags_fused_linear_param_grad_add: support fused_linear_param_grad_add in ColumnParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.
-    # Flags_skip_mp_c_identity: support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.
-    assert flag in [
-        "Flags_mp_aysnc_allreduce",
-        "Flags_fused_linear_param_grad_add",
-        "Flags_skip_mp_c_identity",
-    ], "Only support set Flags_mp_aysnc_allreduce (support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear), Flags_fused_linear_param_grad_add (support fused_linear_param_grad_add in ColumnParallelLinear) and Flags_skip_mp_c_identity (support skip c_identity in ColumnParallelLinear with Flags_mp_aysnc_allreduce=True, and skip c_identity in RowParallelLinear)"
-    return str(os.getenv(flag)).lower() in ["true", "1"]
-
-
-def _c_identity(tensor, group=None):
+def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
     """
     Return a copy of the tensor, mainly used with model parallel.
 
@@ -79,9 +45,7 @@ def _c_identity(tensor, group=None):
         class c_identity_eager(PyLayer):
             @staticmethod
             def forward(ctx, tensor):
-                if _get_mp_env_flag(
-                    "Flags_mp_aysnc_allreduce"
-                ) and _get_mp_env_flag("Flags_skip_mp_c_identity"):
+                if skip_c_identity_dynamic:
                     return tensor
                 else:
                     return _legacy_C_ops.c_identity(
@@ -260,6 +224,7 @@ def _mp_allreduce(
     group=None,
     use_calc_stream=True,
     use_model_parallel=True,
+    skip_c_identity_dynamic=False,
 ):
     """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]"""
     if group is not None and not group.is_member():
@@ -295,9 +260,7 @@ def _mp_allreduce(
 
             @staticmethod
             def backward(ctx, dy):
-                if _get_mp_env_flag(
-                    "Flags_mp_aysnc_allreduce"
-                ) and _get_mp_env_flag("Flags_skip_mp_c_identity"):
+                if skip_c_identity_dynamic:
                     return dy
                 else:
                     return _legacy_C_ops.c_identity(

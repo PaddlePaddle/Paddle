@@ -245,11 +245,11 @@ void CheckAndTrans2Contiguous(phi::DenseTensor* tensor) {
   }
 }
 
-phi::DenseTensor TransformData(phi::DenseTensor* tensor,
+phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
                                const phi::TensorArgDef& target_args_def,
                                const TransformFlag& transform_flag,
                                bool is_stride_kernel) {
-  phi::DenseTensor out = *tensor;
+  phi::DenseTensor out = tensor;
   bool trans_layout = false;
   bool trans_dtype = false;
 
@@ -257,11 +257,11 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
     out = Trans2Contiguous(out);
   }
 
-  if (NeedTransformLayout(tensor->layout(),
+  if (NeedTransformLayout(tensor.layout(),
                           target_args_def.layout,
-                          tensor->place(),
+                          tensor.place(),
                           transform_flag) &&
-      tensor->dims().size() != 1) {
+      tensor.dims().size() != 1) {
     if (NeedTransform2Contiguous(false, out.meta().is_contiguous())) {
       out = Trans2Contiguous(out);
     }
@@ -270,7 +270,7 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   }
 
   if (NeedTransformDataType(
-          tensor->dtype(), target_args_def.dtype, transform_flag)) {
+          tensor.dtype(), target_args_def.dtype, transform_flag)) {
     if (NeedTransform2Contiguous(false, out.meta().is_contiguous())) {
       out = Trans2Contiguous(out);
     }
@@ -282,8 +282,14 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
           out.place(), target_args_def.backend, transform_flag)) {
     out = TransDataPlace(out, phi::TransToPhiPlace(target_args_def.backend));
     if (!trans_layout && !trans_dtype &&
-        tensor->place().GetType() == AllocationType::GPUPINNED) {
-      tensor->ShareBufferWith(out);
+        tensor.place().GetType() == AllocationType::GPUPINNED) {
+      // Sharing buffer on GPUPINNED place is a special case due to historical
+      // reasons, and it should not be implemented in this way from a
+      // reasonable point of view, but because the performance of the previous
+      // model depends on the inplace operation here, the model performance
+      // will deteriorate after reverting to non-place impl, so it needs to be
+      // retained here and need to use `const_cast`
+      const_cast<phi::DenseTensor&>(tensor).ShareBufferWith(out);
     }
   }
   return out;
@@ -312,7 +318,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
     phi::DenseTensor out = TransformData(
-        &dense_tensor, target_args_def, transform_flag, is_stride_kernel);
+        dense_tensor, target_args_def, transform_flag, is_stride_kernel);
     return std::make_shared<phi::DenseTensor>(std::move(out));
   }
   return nullptr;
@@ -357,7 +363,7 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
           *std::dynamic_pointer_cast<phi::DenseTensor>(tensor_in));
     } else {
       pt_tensors->emplace_back(
-          TransformData((static_cast<phi::DenseTensor*>(tensor_in.get())),
+          TransformData(*(static_cast<phi::DenseTensor*>(tensor_in.get())),
                         target_args_def,
                         transform_flag,
                         is_stride_kernel));
@@ -580,7 +586,7 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-    phi::DenseTensor& dense_tensor = *(dist_tensor->mutable_value());
+    const phi::DenseTensor& dense_tensor = dist_tensor->value();
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
@@ -595,15 +601,13 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
       return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
     }
     phi::DenseTensor out = TransformData(
-        &dense_tensor, target_args_def, transform_flag, is_stride_kernel);
+        dense_tensor, target_args_def, transform_flag, is_stride_kernel);
     // TODO(chenweihang): The global meta in DistTensor is not changed,
     // but the local meta in DenseTensor maybe changed, such as layout
     // change(NCHW->NHWC), so the new DistTensor's meta maybe not unified.
     VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
     return std::make_shared<phi::distributed::DistTensor>(
-        std::make_shared<phi::DenseTensor>(std::move(out)),
-        dist_tensor->meta(),
-        dist_tensor->dist_attr());
+        out, dist_tensor->dist_attr());
   }
   return nullptr;
 }

@@ -544,12 +544,11 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
 }
 
 using phi::distributed::TensorDistAttr;
-std::shared_ptr<TensorDistAttr> CastPyArg2DistAttr(PyObject* obj,
-                                                   ssize_t arg_pos) {
+TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_tensor_dist_attr_pytype))) {
-    return ::pybind11::handle(obj).cast<std::shared_ptr<TensorDistAttr>>();
+    return ::pybind11::handle(obj).cast<TensorDistAttr>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "

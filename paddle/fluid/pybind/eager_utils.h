@@ -308,8 +308,8 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
                                             const std::string& op_type,
                                             ssize_t arg_pos);
 
-std::shared_ptr<phi::distributed::TensorDistAttr> CastPyArg2DistAttr(
-    PyObject* obj, ssize_t arg_pos);
+phi::distributed::TensorDistAttr CastPyArg2DistAttr(PyObject* obj,
+                                                    ssize_t arg_pos);
 
 paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type,
