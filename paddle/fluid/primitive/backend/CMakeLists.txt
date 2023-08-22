@@ -14,4 +14,4 @@ set(static_backend_files
 cc_library(
   primitive_backend_static_experimental
   SRCS ${static_backend_files}
-  DEPS pd_dialect)
+  DEPS pd_dialect_api)
