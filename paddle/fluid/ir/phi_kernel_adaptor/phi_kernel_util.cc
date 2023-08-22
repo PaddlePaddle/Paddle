@@ -598,6 +598,10 @@ void BuildRuntimeContext(
       op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
   auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
 
+  if (fluid_op_name == "c_broadcast_") {
+    fluid_op_name = fluid_op_name.substr(0, fluid_op_name.length() - 1);
+  }
+
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
   for (auto& name : vec_kernel_fn_tensor_params) {
@@ -627,7 +631,7 @@ void BuildRuntimeContext(
     ir::Value ptr = op->result(i);
 
     auto in_var_name = name_map.at(ptr);
-    VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
+    VLOG(6) << "ctx->EmplaceBackOutput: " << name << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
