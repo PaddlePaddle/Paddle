@@ -1227,6 +1227,7 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
         PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
     float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+
     auto attr_value = ir::FloatAttribute::get(ctx, value);
 
     ir::AttributeMap attribute_map = {
@@ -1239,25 +1240,27 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
              phi::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
     int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
-    if (place_type != -1) {
-      switch (place_type) {
-        case 0:
-          attribute_map["place"] =
-              paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
-          break;
-        case 1:
-          attribute_map["place"] =
-              paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPlace());
-          break;
-        case 2:
-          attribute_map["place"] =
-              paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPinnedPlace());
-          break;
-        case 3:
-          attribute_map["place"] =
-              paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
-          break;
-      }
+    switch (place_type) {
+      case -1:
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+        break;
+      case 0:
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+        break;
+      case 1:
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPlace());
+        break;
+      case 2:
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPinnedPlace());
+        break;
+      case 3:
+        attribute_map["place"] =
+            paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
+        break;
     }
     return attribute_map;
   }
