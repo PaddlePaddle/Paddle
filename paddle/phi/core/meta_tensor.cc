@@ -17,15 +17,13 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace phi {
 
@@ -291,8 +289,6 @@ const LoD& MetaTensor::lod() const {
   }
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-
 /////////////// For Auto Parallel ////////////////
 
 const distributed::TensorDistAttr& MetaTensor::dist_attr() const {
@@ -301,11 +297,7 @@ const distributed::TensorDistAttr& MetaTensor::dist_attr() const {
       true,
       phi::errors::InvalidArgument("The current MetaTensor doesn't contains "
                                    "DistTensor when call `dist_attr` method."));
-  return *(reinterpret_cast<phi::distributed::DistTensor*>(tensor_)
-               ->dist_attr()
-               .get());
+  return static_cast<phi::distributed::DistTensor*>(tensor_)->dist_attr();
 }
-
-#endif
 
 }  // namespace phi

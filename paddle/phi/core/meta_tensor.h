@@ -89,10 +89,8 @@ class MetaTensor {
   //  and it will be deleted in the future.
   virtual bool is_tensor_array() const;
 
-#ifdef PADDLE_WITH_DISTRIBUTE
   // For auto parallel
   const distributed::TensorDistAttr& dist_attr() const;
-#endif
 
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;

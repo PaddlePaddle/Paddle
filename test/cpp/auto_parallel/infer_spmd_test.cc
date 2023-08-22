@@ -48,19 +48,11 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
 
-  // update after dist tensor refactor
-  // phi::MetaTensor x(phi::distributed::DistTensor(x_shape, x_dist_attr));
-  // phi::MetaTensor y(phi::distributed::DistTensor(y_shape, x_dist_attr));
-  VLOG(0) << "meta tensor prepare.";
-  phi::MetaTensor x(phi::distributed::DistTensor(
-      std::make_shared<DenseTensor>(),
-      DenseTensorMeta(DataType::FLOAT32, x_shape),
-      std::make_shared<TensorDistAttr>(x_dist_attr)));
-  phi::MetaTensor y(phi::distributed::DistTensor(
-      std::make_shared<DenseTensor>(),
-      DenseTensorMeta(DataType::FLOAT32, y_shape),
-      std::make_shared<TensorDistAttr>(y_dist_attr)));
-  VLOG(0) << "meta tensor prepare done.";
+  auto dist_x = phi::distributed::DistTensor(x_shape, x_dist_attr);
+  auto dist_y = phi::distributed::DistTensor(y_shape, y_dist_attr);
+
+  phi::MetaTensor x(dist_x);
+  phi::MetaTensor y(dist_y);
 
   size_t input_size = 2;
   size_t output_size = 1;
@@ -81,7 +73,7 @@ TEST(MatmulSPMDRule, Ctor) {
   EXPECT_EQ(infered_dist_attrs_dy.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1}));
   EXPECT_EQ(infered_dist_attrs_dy.second[0].is_partial(), false);
-  VLOG(0) << "test1 dynamic done.";
+  VLOG(4) << "test1 dynamic done.";
 
   // static infer spmd
   phi::distributed::InferSpmdContext ctx;
@@ -103,7 +95,7 @@ TEST(MatmulSPMDRule, Ctor) {
   EXPECT_EQ(infered_dist_attrs_st.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1}));
   EXPECT_EQ(infered_dist_attrs_st.second[0].is_partial(), false);
-  VLOG(0) << "test1 static done.";
+  VLOG(4) << "test1 static done.";
 }
 
 }  // namespace test
