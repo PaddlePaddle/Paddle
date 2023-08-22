@@ -1265,7 +1265,7 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
 
 struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    const auto& op_info = ctx->GetRegisteredOpInfo(pd.full_with_tensor);
+    const auto& op_info = ctx->GetRegisteredOpInfo("pd.full_with_tensor");
     if (!op_info) {
       IR_THROW(
           "Op fill_constant should have corresponding OpInfo "
@@ -1320,7 +1320,7 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
   }
 
   ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext*,
+      ir::IrContext* ctx,
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
