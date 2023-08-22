@@ -595,14 +595,6 @@ void BuildRuntimeContext(
   auto& name2id = op_yaml_info.InputName2Id();
 
   std::string fluid_op_name = op_yaml_info.GetOriginOpName();
-  // auto pd_op_name =
-  //     op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  // auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with
-  // "pd.xxx"
-
-  // if (fluid_op_name == "c_broadcast_") {
-  //   fluid_op_name = fluid_op_name.substr(0, fluid_op_name.length() - 1);
-  // }
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -677,10 +669,6 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
   auto& name2id = op_yaml_info.InputName2Id();
 
   std::string fluid_op_name = op_yaml_info.GetOriginOpName();
-  // auto pd_op_name =
-  //     op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  // auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with
-  // "pd.xxx"
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -752,16 +740,6 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     }
   }
 
-  // auto* op_info =
-  //     paddle::framework::OpInfoMap::Instance().GetNullable(fluid_op_name);
-  // if (op_info == nullptr && (fluid_op_name.back() == '_')) {
-  //   op_info = paddle::framework::OpInfoMap::Instance().GetNullable(
-  //       fluid_op_name.substr(0, fluid_op_name.length() - 1));
-  // }
-  // PADDLE_ENFORCE_NOT_NULL(
-  //     op_info,
-  //     paddle::platform::errors::NotFound("Operator (%s) is not registered.",
-  //                                        fluid_op_name));
   auto& op_info = paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
   auto ptr =
       op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
