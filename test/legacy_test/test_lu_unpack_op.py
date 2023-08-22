@@ -315,6 +315,68 @@ class TestLU_UnpackAPI(unittest.TestCase):
             run_lu_static(tensor_shape, dtype)
 
 
+class TestLU_UnpackAPIError(unittest.TestCase):
+    def test_errors_1(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in lu should not be 0.
+            def test_x_size():
+                x = paddle.to_tensor(
+                    np.random.uniform(-6666666, 100000000, [2]).astype(
+                        np.float32
+                    )
+                )
+                y = paddle.to_tensor(
+                    np.random.uniform(-2147483648, 2147483647, [2]).astype(
+                        np.int32
+                    )
+                )
+                unpack_ludata = True
+                unpack_pivots = True
+                paddle.linalg.lu_unpack(x, y, unpack_ludata, unpack_pivots)
+
+            self.assertRaises(ValueError, test_x_size)
+
+    def test_errors_2(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in lu should not be 0.
+            def test_y_size():
+                x = paddle.to_tensor(
+                    np.random.uniform(-6666666, 100000000, [8, 4, 2]).astype(
+                        np.float32
+                    )
+                )
+                y = paddle.to_tensor(
+                    np.random.uniform(-2147483648, 2147483647, []).astype(
+                        np.int32
+                    )
+                )
+                unpack_ludata = True
+                unpack_pivots = True
+                paddle.linalg.lu_unpack(x, y, unpack_ludata, unpack_pivots)
+
+            self.assertRaises(ValueError, test_y_size)
+
+    def test_errors_3(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in lu should not be 0.
+            def test_y_data():
+                x = paddle.to_tensor(
+                    np.random.uniform(-6666666, 100000000, [8, 4, 2]).astype(
+                        np.float32
+                    )
+                )
+                y = paddle.to_tensor(
+                    np.random.uniform(-2147483648, 2147483647, [8, 2]).astype(
+                        np.int32
+                    )
+                )
+                unpack_ludata = True
+                unpack_pivots = True
+                paddle.linalg.lu_unpack(x, y, unpack_ludata, unpack_pivots)
+
+            self.assertRaises(Exception, test_y_data)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

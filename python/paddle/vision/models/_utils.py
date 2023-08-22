@@ -21,13 +21,13 @@ from paddle import nn
 
 def _make_divisible(v, divisor=8, min_value=None):
     """
-    This function ensures that all layers have a channel number that is divisible by divisor
+    This function ensures that all layers have a channel number that is divisible by divisor.
     You can also see at https://github.com/keras-team/keras/blob/8ecef127f70db723c158dbe9ed3268b3d610ab55/keras/applications/mobilenet_v2.py#L505
 
     Args:
-        divisor (int): The divisor for number of channels. Default: 8.
+        divisor (int, optional): The divisor for number of channels. Default: 8.
         min_value (int, optional): The minimum value of number of channels, if it is None,
-                the default is divisor. Default: None.
+            the default is divisor. Default: None.
     """
     if min_value is None:
         min_value = divisor
@@ -50,22 +50,25 @@ class IntermediateLayerGetter(nn.LayerDict):
     So if `model` is passed, `model.feature1` can be returned, but not `model.feature1.layer2`.
 
     Args:
-        model (nn.Layer): model on which we will extract the features
-        return_layers (Dict[name, new_name]): a dict containing the names of the layers for
+
+        model (nn.Layer): Model on which we will extract the features.
+        return_layers (Dict[name, new_name]): A dict containing the names of the layers for
         which the activations will be returned as the key of the dict, and the value of the
         dict is the name of the returned activation (which the user can specify).
 
     Examples:
+
         .. code-block:: python
 
-        import paddle
-        m = paddle.vision.models.resnet18(pretrained=False)
-        # extract layer1 and layer3, giving as names `feat1` and feat2`
-        new_m = paddle.vision.models._utils.IntermediateLayerGetter(m,
-            {'layer1': 'feat1', 'layer3': 'feat2'})
-        out = new_m(paddle.rand([1, 3, 224, 224]))
-        print([(k, v.shape) for k, v in out.items()])
-        # [('feat1', [1, 64, 56, 56]), ('feat2', [1, 256, 14, 14])]
+            >>> import paddle
+            >>> m = paddle.vision.models.resnet18(pretrained=False)
+
+            >>> # extract layer1 and layer3, giving as names `feat1` and feat2`
+            >>> new_m = paddle.vision.models._utils.IntermediateLayerGetter(m,
+            ...     {'layer1': 'feat1', 'layer3': 'feat2'})
+            >>> out = new_m(paddle.rand([1, 3, 224, 224]))
+            >>> print([(k, v.shape) for k, v in out.items()])
+            [('feat1', [1, 64, 56, 56]), ('feat2', [1, 256, 14, 14])]
     """
 
     __annotations__ = {

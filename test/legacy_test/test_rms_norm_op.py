@@ -487,7 +487,6 @@ class TestRMSNormStaticOp(unittest.TestCase):
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm_int8(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
         )
-        print("1111")
         np.testing.assert_allclose(
             paddle_rmsnorm,
             paddle_naive_rmsnorm.numpy(),

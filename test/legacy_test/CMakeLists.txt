@@ -88,7 +88,6 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
-list(REMOVE_ITEM TEST_OPS test_linear_compress)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -159,7 +158,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
-  list(REMOVE_ITEM TEST_OPS test_linear_compress)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
 endif()
@@ -1273,6 +1271,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_bucketize_api
     test_bincount_op
     test_c_embedding_op
     test_decayed_adagrad_op
@@ -1303,6 +1302,7 @@ set(STATIC_BUILD_TESTS
     test_prune_gate_by_capacity_op
     test_random_routing_op
     test_reduce_op
+    test_searchsorted_op
     test_segment_ops
     test_sparse_momentum_op
     test_sgd_op_bf16
