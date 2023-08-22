@@ -111,6 +111,15 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (p.GetType() == phi::AllocationType::CUSTOM) {
     auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    PADDLE_ENFORCE_NOT_NULL(
+        custom_ctx,
+        phi::errors::InvalidArgument(
+            "Failed to dynamic_cast dev_ctx into phi::CustomContext."));
+
+    if (!disable_setting_default_stream_for_allocator) {
+      instance.SetDefaultStream(CustomPlace(p.GetDeviceType(), p.GetDeviceId()),
+                                custom_ctx->stream());
+    }
     dev_ctx->SetAllocator(instance.GetAllocator(p, custom_ctx->stream()).get());
     dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());
 #endif
@@ -161,7 +170,7 @@ void EmplaceDeviceContexts(
   }
   for (auto& place : set) {
     if (place.GetType() == phi::AllocationType::CPU) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       EmplaceDeviceContext<phi::OneDNNContext>(
           place_to_device_context,
           place,

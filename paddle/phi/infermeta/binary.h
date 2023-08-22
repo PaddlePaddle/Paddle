@@ -287,6 +287,11 @@ void IndexSelectInferMeta(const MetaTensor& x,
                           int dim,
                           MetaTensor* output);
 
+void IndexSelectStridedInferMeta(const MetaTensor& x,
+                                 int64_t index,
+                                 int dim,
+                                 MetaTensor* output);
+
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        const MetaTensor& add_value,
@@ -484,12 +489,5 @@ void Unpool3dInferMeta(const MetaTensor& x,
                        const std::string& data_format,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
-
-void RmsNormInferMeta(const MetaTensor& x,
-                      const MetaTensor& weight,
-                      const MetaTensor& bias,
-                      const float epsilon,
-                      const int begin_norm_axis,
-                      MetaTensor* out);
 
 }  // namespace phi

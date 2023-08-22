@@ -43,6 +43,7 @@ void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
 
   if (!outputs.c_header_name.empty()) {
     auto source = Compile(module, OutputKind::CHeader);
+    str_ = "";
     std::ofstream file(outputs.c_header_name);
     CHECK(file.is_open()) << "failed to open file " << outputs.c_header_name;
     file << source;
@@ -52,6 +53,7 @@ void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
 
   if (!outputs.c_source_name.empty()) {
     auto source = Compile(module, OutputKind::CImpl);
+    str_ = "";
     std::ofstream file(outputs.c_source_name);
     CHECK(file.is_open()) << "failed to open file " << outputs.c_source_name;
     file << source;
@@ -71,24 +73,20 @@ std::string CodeGenC::Compile(const ir::Module &module,
 
     if (inline_builtin_codes_) PrintBuiltinCodes();
 
-    std::vector<ir::Buffer> buffers;
-    for (auto &buffer : module->buffers) {
-      buffers.emplace_back(buffer.as_buffer_ref());
-    }
-
     for (auto &func : module.functions()) {
       Compile(func);
     }
   } else {
     LOG(FATAL) << "Not supported OutputKind";
   }
-  return ss_.str();
+  return str_;
 }
-std::string CodeGenC::Compile(const ir::LoweredFunc &function) {
+
+// TODO(LiuYang): Here the Ret type seems unuseful
+void CodeGenC::Compile(const ir::LoweredFunc &function) {
   CHECK(function.defined());
-  Print(function);
-  os() << "\n\n";
-  return ss_.str();
+  IrPrinter::Visit(function);
+  str_ += "\n\n";
 }
 
 std::string CodeGenC::GetTypeName(Type type) {
@@ -164,11 +162,11 @@ void CodeGenC::Visit(const ir::Mod *op) {
   if (copied.is_constant()) {
     int temp = static_cast<int>(copied.get_constant());
     if ((temp & (temp - 1)) == 0) {
-      os() << "(";
-      Print(op->a());
-      os() << " & ";
-      os() << std::to_string(temp - 1);
-      os() << ")";
+      str_ += "(";
+      IrPrinter::Visit(op->a());
+      str_ += " & ";
+      str_ += std::to_string(temp - 1);
+      str_ += ")";
       return;
     }
   }
@@ -186,9 +184,9 @@ void CodeGenC::Visit(const ir::Min *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Max *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Minus *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Not *op) {
-  os() << "(!";
-  IrPrinter::Print(op->v());
-  os() << ")";
+  str_ += "(!";
+  IrPrinter::Visit(op->v());
+  str_ += ")";
 }
 void CodeGenC::Visit(const ir::Cast *op) { PrintCastExpr(op->type(), op->v()); }
 void CodeGenC::Visit(const ir::For *op) {
@@ -196,17 +194,17 @@ void CodeGenC::Visit(const ir::For *op) {
   Expr min = op->min;
   int num_task = 1;
   if (op->is_parallel()) {
-    os() << "int num_task = max_concurrency();\n";
+    str_ += "int num_task = max_concurrency();\n";
     DoIndent();
-    os() << "omp_set_num_threads(num_task);\n";
+    str_ += "omp_set_num_threads(num_task);\n";
     DoIndent();
-    os() << "auto flambda = [=](int task_id, int num_task) -> int {\n";
+    str_ += "auto flambda = [=](int task_id, int num_task) -> int {\n";
     IncIndent();
     DoIndent();
-    os() << "int n_per_task = ";
+    str_ += "int n_per_task = ";
     Expr num_task_var = Var("num_task");
-    Print((op->extent + num_task_var - 1) / num_task_var);
-    os() << ";\n";
+    IrPrinter::Visit((op->extent + num_task_var - 1) / num_task_var);
+    str_ += ";\n";
     CHECK_EQ(min.as_int32(), 0);
     auto task_id = Var("task_id");
     auto n_per_task = Var("n_per_task");
@@ -214,125 +212,127 @@ void CodeGenC::Visit(const ir::For *op) {
     extent = (task_id + 1) * n_per_task;
     DoIndent();
   }
-  os() << "for (";
-  os() << GetTypeRepr(Int(32));
-  os() << " " << op->loop_var->name;
-  os() << " = ";
-  Print(min);
-  os() << "; ";
-  os() << op->loop_var->name;
-  os() << " < ";
-  Print(op->extent);
+  str_ += "for (";
+  str_ += GetTypeRepr(Int(32));
+  str_ += " ";
+  str_ += op->loop_var->name;
+  str_ += " = ";
+  IrPrinter::Visit(min);
+  str_ += "; ";
+  str_ += op->loop_var->name;
+  str_ += " < ";
+  IrPrinter::Visit(op->extent);
   if (op->is_parallel()) {
-    os() << " && ";
-    os() << op->loop_var->name;
-    os() << " < ";
-    Print(extent);
+    str_ += " && ";
+    str_ += op->loop_var->name;
+    str_ += " < ";
+    IrPrinter::Visit(extent);
   }
-  os() << "; ";
+  str_ += "; ";
 
-  os() << op->loop_var->name;
-  os() << " += 1";
-  os() << ") ";
+  str_ += op->loop_var->name;
+  str_ += " += 1";
+  str_ += ") ";
 
-  Print(op->body);
+  IrPrinter::Visit(op->body);
   if (op->is_parallel()) {
-    os() << "\n";
+    str_ += "\n";
     DoIndent();
-    os() << "return 0;\n";
+    str_ += "return 0;\n";
     DecIndent();
     DoIndent();
-    os() << "};\n";
-    os() << "#pragma omp parallel num_threads(num_task)\n";
+    str_ += "};\n";
+    str_ += "#pragma omp parallel num_threads(num_task)\n";
     DoIndent();
-    os() << "{\n";
+    str_ += "{\n";
     IncIndent();
     DoIndent();
-    os() << "int task_id = omp_get_thread_num();\n";
+    str_ += "int task_id = omp_get_thread_num();\n";
     DoIndent();
-    os() << "flambda(task_id, num_task);\n";
+    str_ += "flambda(task_id, num_task);\n";
     DecIndent();
     DoIndent();
-    os() << "}";
+    str_ += "}";
   }
 }
 void CodeGenC::Visit(const ir::PolyFor *op) {
-  os() << "for (";
-  os() << GetTypeRepr(Int(32));
-  os() << " " << op->iterator->name;
-  os() << " = ";
-  Print(op->init);
-  os() << "; ";
-  Print(op->condition);
-  os() << "; ";
+  str_ += "for (";
+  str_ += GetTypeRepr(Int(32));
+  str_ += " ";
+  str_ += op->iterator->name;
+  str_ += " = ";
+  IrPrinter::Visit(op->init);
+  str_ += "; ";
+  IrPrinter::Visit(op->condition);
+  str_ += "; ";
 
-  os() << op->iterator->name;
-  os() << " += ";
-  Print(op->inc);
-  os() << ") ";
+  str_ += op->iterator->name;
+  str_ += " += ";
+  IrPrinter::Visit(op->inc);
+  str_ += ") ";
 
-  Print(op->body);
+  IrPrinter::Visit(op->body);
 }
 void CodeGenC::Visit(const ir::Select *op) {
-  os() << "(";
-  os() << "(";
-  Print(op->condition);
-  os() << ") ? ";
-  Print(op->true_value);
-  os() << " : ";
-  Print(op->false_value);
-  os() << ")";
+  str_ += "(";
+  str_ += "(";
+  IrPrinter::Visit(op->condition);
+  str_ += ") ? ";
+  IrPrinter::Visit(op->true_value);
+  str_ += " : ";
+  IrPrinter::Visit(op->false_value);
+  str_ += ")";
 }
 void CodeGenC::Visit(const ir::IfThenElse *op) {
-  os() << "if (";
-  Print(op->condition);
-  os() << ") {\n";
+  str_ += "if (";
+  IrPrinter::Visit(op->condition);
+  str_ += ") {\n";
 
   if (!op->true_case.As<ir::Block>()) IncIndent();
   DoIndent();
-  Print(op->true_case);
-  if (!op->true_case.As<ir::Block>()) os() << ";";
-  os() << "\n";
+  IrPrinter::Visit(op->true_case);
+  if (!op->true_case.As<ir::Block>()) str_ += ";";
+  str_ += "\n";
 
   if (!op->true_case.As<ir::Block>()) DecIndent();
 
   DoIndent();
-  os() << "}";
+  str_ += "}";
 
   if (op->false_case.defined()) {
-    os() << " else {\n";
+    str_ += " else {\n";
 
     if (!op->true_case.As<ir::Block>()) IncIndent();
     DoIndent();
-    Print(op->false_case);
-    if (!op->false_case.As<ir::Block>()) os() << ";";
-    os() << "\n";
+    IrPrinter::Visit(op->false_case);
+    if (!op->false_case.As<ir::Block>()) str_ += ";";
+    str_ += "\n";
     if (!op->true_case.As<ir::Block>()) DecIndent();
 
     DoIndent();
-    os() << "}";
+    str_ += "}";
   }
 }
 void CodeGenC::Visit(const ir::Block *op) {
-  os() << "{\n";
+  str_ += "{\n";
 
   IncIndent();
 
   for (int i = 0; i < op->stmts.size() - 1; i++) {
     DoIndent();
-    Print(op->stmts[i]);
-    os() << ";\n";
+    IrPrinter::Visit(op->stmts[i]);
+    str_ += ";\n";
   }
   if (op->stmts.size() >= 1) {
     DoIndent();
-    Print(op->stmts.back());
-    os() << ";";
+    IrPrinter::Visit(op->stmts.back());
+    str_ += ";";
   }
 
   DecIndent();
-  os() << "\n";
+  str_ += "\n";
   DoIndent();
-  os() << "}";
+  str_ += "}";
 }
 void CodeGenC::Visit(const ir::Call *op) {
   if (op->name == runtime::intrinsic::buffer_malloc) {
@@ -340,13 +340,15 @@ void CodeGenC::Visit(const ir::Call *op) {
   } else if (op->name == runtime::intrinsic::pod_values_to_array_repr) {
     PrintCall_pod_values_to_array(op);
   } else if (op->is_intrinsic_call()) {
-    os() << op->name << "(";
+    str_ += op->name;
+    str_ += "(";
     PrintCallArgs(op);
-    os() << ")";
+    str_ += ")";
   } else if (op->is_cinn_call()) {  // call CINN LoweredFunc
-    os() << op->name << "(";
+    str_ += op->name;
+    str_ += "(";
     PrintCallArgs(op);
-    os() << ")";
+    str_ += ")";
   } else if (op->is_extern_call()) {
     const auto &fn_name = ExternFunctionEmitterRegistry::Global().Lookup(
         ExternFuncID{backend_C, op->name.c_str()});
@@ -356,9 +358,10 @@ void CodeGenC::Visit(const ir::Call *op) {
       emitter.Emit(op);
     } else {
       CHECK(!op->read_args.empty() || !op->write_args.empty());
-      os() << op->name << "(";
+      str_ += op->name;
+      str_ += "(";
       PrintCallArgs(op);
-      os() << ")";
+      str_ += ")";
     }
   } else {
     CINN_NOT_IMPLEMENTED
@@ -367,38 +370,40 @@ void CodeGenC::Visit(const ir::Call *op) {
 void CodeGenC::PrintCallArgs(const ir::Call *op) {
   if (!op->read_args.empty()) {
     for (int i = 0; i < op->read_args.size() - 1; i++) {
-      Print(op->read_args[i]);
-      os() << ", ";
+      IrPrinter::Visit(op->read_args[i]);
+      str_ += ", ";
     }
-    Print(op->read_args.back());
+    IrPrinter::Visit(op->read_args.back());
   }
   if (!op->write_args.empty()) {
-    if (!op->read_args.empty()) os() << ", ";
+    if (!op->read_args.empty()) str_ += ", ";
 
     for (int i = 0; i < op->write_args.size() - 1; i++) {
-      Print(op->write_args[i]);
-      os() << ", ";
+      IrPrinter::Visit(op->write_args[i]);
+      str_ += ", ";
     }
-    Print(op->write_args.back());
+    IrPrinter::Visit(op->write_args.back());
   }
 }
 
 void CodeGenC::PrintCall_buffer_malloc(const ir::Call *op) {
   CHECK_EQ(op->read_args.size(), 2UL);
-  os() << op->name << "(";
+  str_ += op->name;
+  str_ += "(";
   PrintCastExpr("void*", op->read_args[0]);
-  os() << ", ";
-  os() << op->read_args[1];
-  os() << ")";
+  str_ += ", ";
+  IrPrinter::Visit(op->read_args[1]);
+  str_ += ")";
 }
 
 void CodeGenC::PrintCall_cinn_pod_value_to_(const ir::Call *op) {
   CHECK_EQ(op->read_args.size(), 1UL);
-  os() << op->name << "(";
-  os() << "&(";
-  Print(op->read_args[0]);
-  os() << ")";
-  os() << ")";
+  str_ += op->name;
+  str_ += "(";
+  str_ += "&(";
+  IrPrinter::Visit(op->read_args[0]);
+  str_ += ")";
+  str_ += ")";
 }
 
 void CodeGenC::PrintCall_get_address(const ir::Call *op) {
@@ -409,11 +414,11 @@ void CodeGenC::PrintCall_get_address(const ir::Call *op) {
   CHECK(read_var || read_buf) << "Only Var or Buffer can get address";
 
   if (read_var) {
-    if (read_var->type().lanes() <= 1) os() << "&";
-    os() << read_var->name;
+    if (read_var->type().lanes() <= 1) str_ += "&";
+    str_ += read_var->name;
   } else if (read_buf) {
-    if (read_buf->type().lanes() <= 1) os() << "&";
-    os() << read_buf->name;
+    if (read_buf->type().lanes() <= 1) str_ += "&";
+    str_ += read_buf->name;
   } else {
     CINN_NOT_IMPLEMENTED
   }
@@ -432,42 +437,45 @@ void CodeGenC::PrintCall_pod_values_to_array(const ir::Call *op) {
     arg_names.push_back(arg_var->name);
   }
 
-  os() << "cinn_pod_value_t " << output_var->name << "[] = ";
-  os() << "{ ";
+  str_ += "cinn_pod_value_t ";
+  str_ += output_var->name;
+  str_ += "[] = ";
+  str_ += "{ ";
 
-  os() << utils::Join(arg_names, ", ");
+  str_ += utils::Join(arg_names, ", ");
 
-  os() << " }";
+  str_ += " }";
 }
 
 void CodeGenC::Visit(const ir::_Module_ *op) { CINN_NOT_IMPLEMENTED }
-void CodeGenC::Visit(const ir::_Var_ *op) { os() << op->name; }
+void CodeGenC::Visit(const ir::_Var_ *op) { str_ += op->name; }
 
 void CodeGenC::Visit(const ir::Load *op) {
   Expr dense_strided_ramp = detail::StridedRampBase(op->index(), 1);
   if (dense_strided_ramp.defined()) {  // Loading a continuous Ramp address.
     CHECK(op->type().is_vector());
     PrintStackVecType(op->type().ElementOf(), op->index().type().lanes());
-    os() << "::"
-         << "Load(";
-    os() << op->tensor.As<ir::_Tensor_>()->name;
-    os() << ",";
-    Print(dense_strided_ramp);
-    os() << ")";
+    str_ += "::";
+    str_ += "Load(";
+    str_ += op->tensor.As<ir::_Tensor_>()->name;
+    str_ += ",";
+    IrPrinter::Visit(dense_strided_ramp);
+    str_ += ")";
   } else if (op->index().type().is_vector()) {
     // gather
     CHECK(op->type().is_vector());
     PrintStackVecType(op->type().ElementOf(), op->index().type().lanes());
-    os() << "::Load(";
-    os() << op->tensor.As<ir::_Tensor_>()->name;
-    os() << ",";
-    Print(op->index());
-    os() << ")";
+    str_ += "::Load(";
+    str_ += op->tensor.As<ir::_Tensor_>()->name;
+    str_ += ",";
+    IrPrinter::Visit(op->index());
+    str_ += ")";
   } else if (op->is_addr_tensor()) {
     auto *tensor = op->tensor.As<ir::_Tensor_>();
-    os() << tensor->name << "[";
-    Print(op->index());
-    os() << "]";
+    str_ += tensor->name;
+    str_ += "[";
+    IrPrinter::Visit(op->index());
+    str_ += "]";
   } else {
     IrPrinter::Visit(op);
   }
@@ -478,56 +486,59 @@ void CodeGenC::Visit(const ir::Store *op) {
 
   auto *tensor = op->tensor.As<ir::_Tensor_>();
   CHECK(tensor);
-  os() << tensor->name << "[";
-  Print(op->index());
-  os() << "]";
-  os() << " = ";
-  Print(op->value);
+  str_ += tensor->name;
+  str_ += "[";
+  IrPrinter::Visit(op->index());
+  str_ += "]";
+  str_ += " = ";
+  IrPrinter::Visit(op->value);
 }
 void CodeGenC::Visit(const ir::Alloc *op) {
-  os() << runtime::intrinsic::buffer_malloc;
-  os() << "(";
-  os() << "(void*)(0), ";
+  str_ += runtime::intrinsic::buffer_malloc;
+  str_ += "(";
+  str_ += "(void*)(0), ";
 
   auto *buffer = op->destination.As<ir::_Buffer_>();
-  os() << buffer->name;
-  os() << ")";
+  str_ += buffer->name;
+  str_ += ")";
 }
 
 void CodeGenC::Visit(const ir::Free *op) {
-  os() << runtime::intrinsic::buffer_free;
-  os() << "(";
-  os() << "(void*)(0), ";
+  str_ += runtime::intrinsic::buffer_free;
+  str_ += "(";
+  str_ += "(void*)(0), ";
 
   auto *buffer = op->destination.As<ir::_Buffer_>();
-  os() << buffer->name;
-  os() << ")";
+  str_ += buffer->name;
+  str_ += ")";
 }
 
-void CodeGenC::Visit(const ir::_Buffer_ *op) { os() << op->name; }
-void CodeGenC::Visit(const ir::_Tensor_ *op) { os() << op->buffer->name; }
+void CodeGenC::Visit(const ir::_Buffer_ *op) { str_ += op->name; }
+void CodeGenC::Visit(const ir::_Tensor_ *op) { str_ += op->buffer->name; }
 void CodeGenC::Visit(const ir::Let *op) {
   bool is_vec = false;
   CHECK(op->type().valid());
   if (op->body.defined() && op->body.As<ir::Broadcast>()) {
     // broadcast's type is hard to print, so use c++11 auto instead.
-    os() << "auto";
+    str_ += "auto";
     is_vec = true;
   } else {
-    os() << GetTypeRepr(op->type());
+    str_ += GetTypeRepr(op->type());
   }
 
-  os() << " ";
-  Print(op->symbol);
+  str_ += " ";
+  IrPrinter::Visit(op->symbol);
 
   // native C array.
   if (op->type().lanes() > 1 && !is_vec) {
-    os() << "[" << op->type().lanes() << "]";
+    str_ += "[";
+    str_ += std::to_string(op->type().lanes());
+    str_ += "]";
   }
 
   if (op->body.defined()) {
-    os() << " = ";
-    Print(op->body);
+    str_ += " = ";
+    IrPrinter::Visit(op->body);
   }
 }
 
@@ -537,22 +548,29 @@ void CodeGenC::Visit(const ir::Reduce *op) {
 }
 
 void CodeGenC::Visit(const ir::Ramp *op) {
-  os() << "StackVec<" << op->lanes << "," << GetTypeRepr(op->type().ElementOf())
-       << ">::Ramp(";
-  Print(op->base);
-  os() << ", ";
-  Print(op->stride);
-  os() << ", ";
-  os() << op->lanes;
-  os() << ")";
+  str_ += "StackVec<";
+  str_ += std::to_string(op->lanes);
+  str_ += ",";
+  str_ += GetTypeRepr(op->type().ElementOf());
+  str_ += ">::Ramp(";
+  IrPrinter::Visit(op->base);
+  str_ += ", ";
+  IrPrinter::Visit(op->stride);
+  str_ += ", ";
+  str_ += std::to_string(op->lanes);
+  str_ += ")";
 }
 
 void CodeGenC::Visit(const ir::Broadcast *op) {
-  os() << "StackVec<" << op->lanes << "," << GetTypeRepr(op->type().ElementOf())
-       << ">::Broadcast(";
-  Print(op->value);
-  os() << ", ";
-  os() << op->lanes << ")";
+  str_ += "StackVec<";
+  str_ += std::to_string(op->lanes);
+  str_ += ",";
+  str_ += GetTypeRepr(op->type().ElementOf());
+  str_ += ">::Broadcast(";
+  IrPrinter::Visit(op->value);
+  str_ += ", ";
+  str_ += std::to_string(op->lanes);
+  str_ += ")";
 }
 
 void CodeGenC::Visit(const ir::FracOp *op) { ir::IrPrinter::Visit(op); }
@@ -560,35 +578,41 @@ void CodeGenC::Visit(const ir::Sum *op) { ir::IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Product *op) { ir::IrPrinter::Visit(op); }
 
 void CodeGenC::PrintCastExpr(const Type &type, Expr e) {
-  os() << "((" << GetTypeRepr(type) << ")";
-  os() << "(";
-  Print(e);
-  os() << "))";
+  str_ += "((";
+  str_ += GetTypeRepr(type);
+  str_ += ")";
+  str_ += "(";
+  IrPrinter::Visit(e);
+  str_ += "))";
 }
 void CodeGenC::PrintCastExpr(const std::string &type, Expr e) {
-  os() << "(" << type << ")";
-  os() << "(";
-  Print(e);
-  os() << ")";
+  str_ += "(";
+  str_ += type;
+  str_ += ")";
+  str_ += "(";
+  IrPrinter::Visit(e);
+  str_ += ")";
 }
 
 void CodeGenC::PrintShape(const std::vector<Expr> &shape,
                           char leftb,
                           char rightb) {
-  os() << leftb << " ";
+  str_ += leftb;
+  str_ += " ";
 
   for (int i = 0; i < shape.size() - 1; i++) {
-    Print(shape[i]);
-    os() << ", ";
+    IrPrinter::Visit(shape[i]);
+    str_ += ", ";
   }
-  if (shape.size() > 1) Print(shape.back());
+  if (shape.size() > 1) IrPrinter::Visit(shape.back());
 
-  os() << " " << rightb;
+  str_ += " ";
+  str_ += rightb;
 }
 
 void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
   PrintFunctionDeclaration(op);
-  os() << "\n";
+  str_ += "\n";
 
   DoIndent();
 
@@ -623,21 +647,21 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   optim::RemoveNestedBlock(&func_body);
 
-  Print(func_body);
+  IrPrinter::Visit(func_body);
 }
 void CodeGenC::PrintIncludes() {
-  os() << "#include <cinn_runtime.h>\n";
-  os() << "#include <stdio.h>\n";
-  os() << "\n";
+  str_ += "#include <cinn_runtime.h>\n";
+  str_ += "#include <stdio.h>\n";
+  str_ += "\n";
 }
 
 void CodeGenC::PrintFileGuardOpen(const std::string &name) {
-  os() << utils::StringFormat("#ifndef _%s_CINN_H_\n", Uppercase(name).c_str());
-  os() << utils::StringFormat("#define _%s_CINN_H_\n", Uppercase(name).c_str());
-  os() << "\n";
+  str_ += utils::StringFormat("#ifndef _%s_CINN_H_\n", Uppercase(name).c_str());
+  str_ += utils::StringFormat("#define _%s_CINN_H_\n", Uppercase(name).c_str());
+  str_ += "\n";
 }
 void CodeGenC::PrintFileGuardClose(const std::string &module_name) {
-  os() << utils::StringFormat("#endif  // _%s_CINN_H_\n",
+  str_ += utils::StringFormat("#endif  // _%s_CINN_H_\n",
                               Uppercase(module_name).c_str());
 }
 
@@ -653,16 +677,16 @@ void CodeGenC::PrintBufferCreation(const std::vector<ir::Buffer> &buffers) {
     Var variable = ir::_Var_::Make(buffer->name, buffer_ptr_type);
     auto expr = ir::intrinsics::BufferCreate::Make(buffer);
     expr = ir::Let::Make(variable, expr);
-    Print(expr);
-    os() << ";\n";
+    IrPrinter::Visit(expr);
+    str_ += ";\n";
   }
 }
 
 void CodeGenC::PrintBufferDestroy(const std::vector<ir::Buffer> &buffers) {
   for (auto &buffer : buffers) {
     DoIndent();
-    Print(buffer.DestroyExpr());
-    os() << ";\n";
+    IrPrinter::Visit(buffer.DestroyExpr());
+    str_ += ";\n";
   }
 }
 
@@ -672,8 +696,8 @@ void CodeGenC::GenerateHeaderFile(const ir::Module &module) {
 
   for (auto &func : module.functions()) {
     PrintFunctionDeclaration(func.As<ir::_LoweredFunc_>());
-    os() << ";\n";
-    os() << "\n\n";
+    str_ += ";\n";
+    str_ += "\n\n";
   }
 
   PrintFileGuardClose(module.name());
@@ -682,53 +706,58 @@ void CodeGenC::GenerateHeaderFile(const ir::Module &module) {
 void CodeGenC::PrintFuncArg(const ir::Argument &arg) {
   if (arg.is_buffer()) {
     if (arg.is_input()) {
-      os() << "const struct cinn_buffer_t *";
+      str_ += "const struct cinn_buffer_t *";
     } else {
-      os() << "struct cinn_buffer_t *";
+      str_ += "struct cinn_buffer_t *";
     }
   } else if (arg.is_var()) {
-    os() << GetTypeRepr(arg.type()) << " ";
-    os() << arg.name();
+    str_ += GetTypeRepr(arg.type());
+    str_ += " ";
+    str_ += arg.name();
   } else {
     CINN_NOT_IMPLEMENTED
   }
-  os() << arg.name();
+  str_ += arg.name();
 }
 
 void CodeGenC::PrintRuntimeType(const cinn_type_t &type) {
   if (type == cinn_bool_t()) {
-    os() << "cinn_bool_t()";
+    str_ += "cinn_bool_t()";
   } else if (type == cinn_int8_t()) {
-    os() << "cinn_int8_t()";
+    str_ += "cinn_int8_t()";
   } else if (type == cinn_int16_t()) {
-    os() << "cinn_int16_t()";
+    str_ += "cinn_int16_t()";
   } else if (type == cinn_int32_t()) {
-    os() << "cinn_int32_t()";
+    str_ += "cinn_int32_t()";
   } else if (type == cinn_int64_t()) {
-    os() << "cinn_int64_t()";
+    str_ += "cinn_int64_t()";
   } else if (type == cinn_uint8_t()) {
-    os() << "cinn_uint8_t()";
+    str_ += "cinn_uint8_t()";
   } else if (type == cinn_uint16_t()) {
-    os() << "cinn_uint16_t()";
+    str_ += "cinn_uint16_t()";
   } else if (type == cinn_uint32_t()) {
-    os() << "cinn_uint32_t()";
+    str_ += "cinn_uint32_t()";
   } else if (type == cinn_uint64_t()) {
-    os() << "cinn_uint64_t()";
+    str_ += "cinn_uint64_t()";
   } else if (type == cinn_bfloat16_t()) {
-    os() << "cinn_bfloat16_t()";
+    str_ += "cinn_bfloat16_t()";
   } else if (type == cinn_float16_t()) {
-    os() << "cinn_float16_t()";
+    str_ += "cinn_float16_t()";
   } else if (type == cinn_float32_t()) {
-    os() << "cinn_float32_t()";
+    str_ += "cinn_float32_t()";
   } else if (type == cinn_float64_t()) {
-    os() << "cinn_float64_t()";
+    str_ += "cinn_float64_t()";
   } else {
     LOG(FATAL) << "Unknown type is not supported to print";
   }
 }
 
 void CodeGenC::PrintStackVecType(Type type, int lanes) {
-  os() << "StackedVec<" << GetTypeRepr(type) << "," << lanes << ">";
+  str_ += "StackedVec<";
+  str_ += GetTypeRepr(type);
+  str_ += ",";
+  str_ += std::to_string(lanes);
+  str_ += ">";
 }
 
 void CodeGenC::Visit(const ir::PrimitiveNode *op) { CINN_NOT_IMPLEMENTED }
@@ -751,109 +780,117 @@ void CodeGenC::Visit(const ir::IntrinsicOp *op) {
 }
 
 void CodeGenC::Visit(const ir::intrinsics::BufferGetDataHandle *op) {
-  os() << op->buffer.as_buffer()->name;
-  os() << "->";
-  os() << "memory";
+  str_ += op->buffer.as_buffer()->name;
+  str_ += "->";
+  str_ += "memory";
 }
 
 void CodeGenC::Visit(const ir::intrinsics::BufferGetDataConstHandle *op) {
-  os() << op->buffer.as_buffer()->name;
-  os() << "->";
-  os() << "memory";
+  str_ += op->buffer.as_buffer()->name;
+  str_ += "->";
+  str_ += "memory";
 }
 
 void CodeGenC::Visit(const ir::intrinsics::PodValueToX *op) {
   auto to_type = op->GetOutputType(0);
   if (to_type == type_of<float>()) {
-    os() << runtime::intrinsic::pod_value_to_float;
+    str_ += runtime::intrinsic::pod_value_to_float;
   } else if (to_type == type_of<double>()) {
-    os() << runtime::intrinsic::pod_value_to_double;
+    str_ += runtime::intrinsic::pod_value_to_double;
   } else if (to_type == type_of<float16>()) {
-    os() << runtime::intrinsic::pod_value_to_float16;
+    str_ += runtime::intrinsic::pod_value_to_float16;
   } else if (to_type == type_of<bool>()) {
-    os() << runtime::intrinsic::pod_value_to_bool;
+    str_ += runtime::intrinsic::pod_value_to_bool;
   } else if (to_type == type_of<int8_t>()) {
-    os() << runtime::intrinsic::pod_value_to_int8;
+    str_ += runtime::intrinsic::pod_value_to_int8;
   } else if (to_type == type_of<int16_t>()) {
-    os() << runtime::intrinsic::pod_value_to_int16;
+    str_ += runtime::intrinsic::pod_value_to_int16;
   } else if (to_type == type_of<int32_t>()) {
-    os() << runtime::intrinsic::pod_value_to_int32;
+    str_ += runtime::intrinsic::pod_value_to_int32;
   } else if (to_type == type_of<int64_t>()) {
-    os() << runtime::intrinsic::pod_value_to_int64;
+    str_ += runtime::intrinsic::pod_value_to_int64;
   } else if (to_type == type_of<uint8_t>()) {
-    os() << runtime::intrinsic::pod_value_to_uint8;
+    str_ += runtime::intrinsic::pod_value_to_uint8;
   } else if (to_type == type_of<uint16_t>()) {
-    os() << runtime::intrinsic::pod_value_to_uint16;
+    str_ += runtime::intrinsic::pod_value_to_uint16;
   } else if (to_type == type_of<uint32_t>()) {
-    os() << runtime::intrinsic::pod_value_to_uint32;
+    str_ += runtime::intrinsic::pod_value_to_uint32;
   } else if (to_type == type_of<uint64_t>()) {
-    os() << runtime::intrinsic::pod_value_to_uint64;
+    str_ += runtime::intrinsic::pod_value_to_uint64;
   } else if (to_type == type_of<void *>()) {
-    os() << runtime::intrinsic::pod_value_to_void_p;
+    str_ += runtime::intrinsic::pod_value_to_void_p;
   } else if (to_type == type_of<cinn_buffer_t *>()) {
-    os() << runtime::intrinsic::pod_value_to_buffer_p;
+    str_ += runtime::intrinsic::pod_value_to_buffer_p;
   } else {
     LOG(FATAL) << "Not supported type: " << to_type;
   }
 
-  os() << "(";
-  Print(op->pod_value_ptr);
-  os() << ")";
+  str_ += "(";
+  IrPrinter::Visit(op->pod_value_ptr);
+  str_ += ")";
 }
 
 void CodeGenC::Visit(const ir::intrinsics::BufferCreate *op) {
   const ir::_Buffer_ *buffer_arg = op->buffer.as_buffer();
   CHECK(buffer_arg);
 
-  os() << runtime::intrinsic::buffer_create;
-  os() << "(";
+  str_ += runtime::intrinsic::buffer_create;
+  str_ += "(";
   PrintCastExpr("cinn_device_kind_t", Expr(buffer_arg->target.runtime_arch()));
-  os() << "/*target*/, ";
+  str_ += "/*target*/, ";
   PrintRuntimeType(runtime::ToRuntimeType(buffer_arg->dtype.ElementOf()));
-  os() << ", ";
+  str_ += ", ";
   PrintShape(buffer_arg->shape);
   if (buffer_arg->data_alignment > 0) {
-    os() << ", " << buffer_arg->data_alignment << "/*align*/";
+    str_ += ", ";
+    str_ += std::to_string(buffer_arg->data_alignment);
+    str_ += "/*align*/";
   }
-  os() << ")";
+  str_ += ")";
 }
 
 void CodeGenC::Visit(const ir::intrinsics::GetAddr *op) {
   if (op->data.as_buffer()) {
-    os() << "&" << op->data.as_buffer()->name;
+    str_ += "&";
+    str_ += op->data.as_buffer()->name;
   } else if (op->data.as_var()) {
-    os() << "&" << op->data.as_var()->name;
+    str_ += "&";
+    str_ += op->data.as_var()->name;
   } else {
-    os() << "&(";
-    Print(op->data);
-    os() << ")";
+    str_ += "&(";
+    IrPrinter::Visit(op->data);
+    str_ += ")";
   }
 }
 
 void CodeGenC::Visit(const ir::intrinsics::ArgsConstruct *op) {
-  os() << runtime::intrinsic::args_construct_repr << "(";
-  os() << op->var->name << ", ";
-  os() << op->args.size() << ", ";
+  str_ += runtime::intrinsic::args_construct_repr;
+  str_ += "(";
+  str_ += op->var->name;
+  str_ += ", ";
+  str_ += std::to_string(op->args.size());
+  str_ += ", ";
   for (int i = 0; i < op->args.size() - 1; i++) {
-    Print(op->args[i]);
-    os() << ", ";
+    IrPrinter::Visit(op->args[i]);
+    str_ += ", ";
   }
   if (!op->args.empty()) {
-    Print(op->args.back());
+    IrPrinter::Visit(op->args.back());
   }
-  os() << ")";
+  str_ += ")";
 }
 
 void CodeGenC::Visit(const ir::intrinsics::BuiltinIntrin *op) {
-  os() << op->name << "(";
+  str_ += op->name;
+  str_ += "(";
   if (!op->args.empty()) {
     for (int i = 0; i < op->args.size() - 1; i++) {
-      Print(op->args[i]);
-      os() << ", ";
+      IrPrinter::Visit(op->args[i]);
+      str_ += ", ";
     }
-    Print(op->args.back());
+    IrPrinter::Visit(op->args.back());
   }
-  os() << ")";
+  str_ += ")";
 }
 
 std::string ReadWholeFile(const std::string &path) {
@@ -874,7 +911,8 @@ void CodeGenC::PrintBuiltinCodes() {
   auto source =
       ReadWholeFile(FLAGS_cinn_x86_builtin_code_root + "/" + x86_code_file);
 
-  os() << source << "\n";
+  str_ += source;
+  str_ += "\n";
 }
 
 namespace detail {

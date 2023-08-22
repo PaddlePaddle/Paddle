@@ -60,7 +60,7 @@ if(WITH_MKL)
   add_definitions(-DCINN_WITH_MKL_CBLAS)
 endif()
 if(WITH_MKLDNN)
-  add_definitions(-DCINN_WITH_MKLDNN)
+  add_definitions(-DCINN_WITH_DNNL)
 endif()
 
 if(WITH_GPU)
@@ -167,6 +167,10 @@ cinn_cc_library(
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+if(NOT CINN_ONLY)
+  target_link_libraries(cinnapi phi)
+  add_dependencies(cinnapi phi)
+endif()
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 
@@ -216,6 +220,10 @@ function(gen_cinncore LINKTYPE)
     ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+  if(NOT CINN_ONLY)
+    target_link_libraries(${CINNCORE_TARGET} phi)
+    add_dependencies(${CINNCORE_TARGET} phi)
+  endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)
   target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
@@ -318,12 +326,8 @@ set(CINN_LIB "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 # Add CINN's dependencies header files
 ######################################
 
-# Add absl
-set(ABSL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/absl/include")
-include_directories(${ABSL_INCLUDE_DIR})
-
 # Add isl
-set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/isl/include")
+set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/third_party/install/isl/include")
 include_directories(${ISL_INCLUDE_DIR})
 
 # Add LLVM

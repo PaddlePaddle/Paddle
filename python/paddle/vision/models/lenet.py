@@ -24,7 +24,7 @@ class LeNet(nn.Layer):
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
-                            will not be defined. Default: 10.
+            will not be defined. Default: 10.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of LeNet model.
@@ -32,16 +32,16 @@ class LeNet(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import LeNet
+            >>> import paddle
+            >>> from paddle.vision.models import LeNet
 
-            model = LeNet()
+            >>> model = LeNet()
 
-            x = paddle.rand([1, 1, 28, 28])
-            out = model(x)
+            >>> x = paddle.rand([1, 1, 28, 28])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 10]
+            >>> print(out.shape)
+            [1, 10]
     """
 
     def __init__(self, num_classes=10):

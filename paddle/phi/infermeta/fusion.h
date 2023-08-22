@@ -34,13 +34,29 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               const MetaTensor& scale,
                               const MetaTensor& bias,
-                              int64_t m,
-                              int64_t n,
+                              int begin_norm_axis,
                               float epsilon,
                               MetaTensor* out,
                               MetaTensor* mean,
                               MetaTensor* variance,
                               MetaTensor* z_add);
+
+void Conv1dXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const MetaTensor& branch,
+                        const MetaTensor& branch_max,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        int dilations,
+                        int strides,
+                        int groups,
+                        int act_type,
+                        float act_param,
+                        MetaTensor* out,
+                        MetaTensor* out_max);
 
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
@@ -175,4 +191,17 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                                  const std::string& act_type,
                                  MetaTensor* out,
                                  MetaTensor* out_max);
+
+void FastWhereXPUInferMeta(const MetaTensor& condition,
+                           const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out);
+
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out);
+
 }  // namespace phi

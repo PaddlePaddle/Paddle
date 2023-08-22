@@ -79,6 +79,7 @@ class ProgramTranslator {
   void InsertOperationToSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
+  void SetIsPersisableAttributeForAllValue(const BlockDesc& block);
 };
 
 }  // namespace translator

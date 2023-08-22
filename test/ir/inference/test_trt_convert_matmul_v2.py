@@ -96,8 +96,10 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), (tol_fp32, tol_fp32)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), (tol_half, tol_half)
 
     def add_skip_trt_case(self):
@@ -182,8 +184,10 @@ class TrtConvertMatmulTest_dynamic2(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), (tol_fp32, tol_fp32)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), (tol_half, tol_half)
 
     def add_skip_trt_case(self):
@@ -311,8 +315,10 @@ class TrtConvertMatmulTest_dynamic3(TrtLayerAutoScanTest):
 
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), 1e-3
 
     def add_skip_trt_case(self):

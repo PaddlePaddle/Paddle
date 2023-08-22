@@ -14,6 +14,12 @@
 
 import unittest
 
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    sot_only_test,
+)
+
 import paddle
 
 
@@ -93,6 +99,7 @@ def func_ifelse_write_nest_list_dict(x):
     return res
 
 
+@dy2static_unittest
 class TestWriteContainer(unittest.TestCase):
     def setUp(self):
         self.set_func()
@@ -110,6 +117,15 @@ class TestWriteContainer(unittest.TestCase):
             out = out[path]
         return out
 
+    @sot_only_test
+    def test_write_container_sot(self):
+        func_static = paddle.jit.to_static(self.func)
+        input = paddle.to_tensor([1, 2, 3])
+        out_static = self.get_raw_value(func_static(input), self.getitem_path)
+        out_dygraph = self.get_raw_value(self.func(input), self.getitem_path)
+        self.assertEqual(out_static, out_dygraph)
+
+    @ast_only_test
     def test_write_container(self):
         func_static = paddle.jit.to_static(self.func)
         input = paddle.to_tensor([1, 2, 3])

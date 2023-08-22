@@ -20,7 +20,7 @@ CINN_USE_REGISTER(host_intrinsics)
 #ifdef CINN_WITH_MKL_CBLAS
 CINN_USE_REGISTER(mkl_math)
 CINN_USE_REGISTER(cinn_cpu_mkl)
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
 CINN_USE_REGISTER(cinn_cpu_mkldnn)
 #endif
 #endif
