@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <typeinfo>
+
 #include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
 #include "paddle/fluid/ir/drr/drr_rewrite_pattern.h"
 
@@ -22,6 +24,8 @@ namespace drr {
 
 class DrrPatternBase {
  public:
+  virtual ~DrrPatternBase() = default;
+
   // Define the Drr Pattern.
   virtual void operator()(ir::drr::DrrPatternContext* ctx) const = 0;
 
@@ -30,7 +34,7 @@ class DrrPatternBase {
     DrrPatternContext drr_context;
     this->operator()(&drr_context);
     return std::make_unique<DrrRewritePattern>(
-        drr_context, ir_context, benefit);
+        typeid(*this).name(), drr_context, ir_context, benefit);
   }
 };
 
