@@ -14,13 +14,21 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-
+#include "paddle/fluid/primitive/primitive/primitive.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
 
 namespace paddle {
 namespace primitive {
-namespace backend {}  // namespace backend
+
+using IntArray = paddle::experimental::IntArray;
+
+std::vector<std::vector<paddle::Tensor>> concat_vjp(
+    const std::vector<Tensor>& x,
+    const Tensor& out_grad,
+    const Tensor& axis,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 }  // namespace primitive
 }  // namespace paddle

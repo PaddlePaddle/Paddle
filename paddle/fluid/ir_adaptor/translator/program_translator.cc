@@ -145,6 +145,10 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 
         bool need_get_parameter_op = is_parameter && is_unseen_variable;
         if (need_get_parameter_op) {
+          PADDLE_ENFORCE_NOT_NULL(
+              var_desc,
+              phi::errors::PreconditionNotMet(
+                  "VarDesc of [%s] can not be nullptr", var_name));
           ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
           param_map_[var_name] = VariableDefiningInfo(op->result(0));

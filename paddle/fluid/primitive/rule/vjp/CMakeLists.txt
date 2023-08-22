@@ -1,4 +1,6 @@
-file(GLOB VJP_SRCS "vjp.cc")
+set(VJP_SRCS
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/rule/vjp/generated/generated_vjp.cc
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/rule/vjp/manual/manual_vjp.cc)
 cc_library(
   primitive_vjp_experimental NOT_FOR_INFER
   SRCS ${VJP_SRCS}

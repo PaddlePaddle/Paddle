@@ -85,7 +85,7 @@ static int xpu2_wrapper(Context* ctx,
                         const float* scale,
                         const float* bias) {
   if (n <= 832) {
-    if (n % 32 == 0) {
+    if (n % 32 == 0 && n < 128) {
       xpu2::plugin::fast_layer_norm_tiny_align32<T>
           <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
               eps, m, n, x, y, scale, bias);
