@@ -70,8 +70,8 @@ list(REMOVE_ITEM phi_modules ${not_infer_modules})
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules}
-                                   ${STATIC_INFERENCE_API} ${utils_modules})
+  cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
+                                   ${utils_modules})
 else()
   # message("${fluid_modules}")
   # message("${STATIC_INFERENCE_API}")
@@ -93,7 +93,6 @@ if(NOT APPLE)
   )
   set_target_properties(paddle_inference PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
 endif()
-
 # C inference API
 add_subdirectory(capi_exp)
 
@@ -109,7 +108,6 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/paddle_infer_contrib.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
-
 
 set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
                           ${utils_modules})
