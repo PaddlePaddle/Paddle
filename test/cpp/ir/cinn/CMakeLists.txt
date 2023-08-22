@@ -1,17 +1,26 @@
 if(WITH_TESTING AND WITH_CINN)
   cc_test_old(
-    test_graph_compiler_new_ir
+    test_new_ir_compiler
     SRCS
-    graph_compiler_new_ir_test.cc
+    new_ir_compiler_test.cc
     DEPS
-    cinncore
-    pd_dialect
+    new_ir_compiler
+    convert_to_dialect
     ir
     phi
     gtest
     glog)
-  set_tests_properties(test_graph_compiler_new_ir PROPERTIES LABELS
-                                                             "RUN_TYPE=CINN")
+  set_tests_properties(test_new_ir_compiler PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  cc_test_old(
+    test_jit_instruction
+    SRCS
+    jit_instruction_test.cc
+    DEPS
+    interpreter
+    new_ir_compiler
+    convert_to_dialect)
+  set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
 
 cc_test_old(

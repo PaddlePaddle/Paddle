@@ -26,18 +26,19 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(auto_schedule_use_cost_model);
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace auto_schedule {
 
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
 using ::cinn::hlir::framework::Graph;
 using ::cinn::hlir::framework::GraphCompiler;
 using ::cinn::hlir::framework::Instruction;
@@ -54,6 +55,7 @@ class TestAutoTuner : public ::testing::Test {
 
   std::shared_ptr<Graph> graph;
   std::shared_ptr<Scope> compiled_scope;
+  CompilationContext context;
   std::unique_ptr<GraphCompiler> graph_compiler;
   std::unique_ptr<AutoTuner> tuner;
 
@@ -70,14 +72,14 @@ class TestAutoTuner : public ::testing::Test {
 
   void SetUp() override {
     srand(0);
-    // AutoTuner is combined with new IR Schedule
-    FLAGS_cinn_ir_schedule = true;
     std::unordered_set<std::string> fetch_ids;
     auto program = CreateAddReluProgram();
     auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
     compiled_scope = BuildScope(target, graph);
-    graph_compiler =
-        std::make_unique<GraphCompiler>(target, compiled_scope, graph);
+    context.graph = graph;
+    context.scope = compiled_scope;
+    context.target = target;
+    graph_compiler = std::make_unique<GraphCompiler>(context);
     tuner = std::make_unique<AutoTuner>(target, graph.get());
   }
 
@@ -102,16 +104,14 @@ class TestAutoTuner : public ::testing::Test {
 
   virtual void ApplyTunedAndRun(const TuningResult& result) {
     // build runtime program with tuning result
-    GraphCompiler::CompileOptions compile_options;
-    compile_options.with_instantiate_variables = true;
-    compile_options.Apply(result);
-    ASSERT_EQ(1, compile_options.groups.size());
-    ASSERT_EQ(1, compile_options.lowered_funcs.size());
+    context.with_instantiate_variables = true;
+    context.ApplyTuningResult(result);
+    ASSERT_EQ(1, context.groups.size());
+    ASSERT_EQ(1, context.lowered_funcs.size());
     VLOG(6) << "Print lowered_funcs before building";
-    VLOG(6) << compile_options.lowered_funcs[0][0];
-    VLOG(6) << compile_options.lowered_funcs[1][0];
-    auto runtime_program =
-        graph_compiler->Build(compile_options).runtime_program;
+    VLOG(6) << context.lowered_funcs[0][0];
+    VLOG(6) << context.lowered_funcs[1][0];
+    auto runtime_program = graph_compiler->Build(&context).runtime_program;
     ASSERT_EQ(1, runtime_program->size());
     runtime_program->Execute();
   }

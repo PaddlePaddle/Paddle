@@ -9,7 +9,7 @@
   kernel :
     func : adadelta
     data_type : param
-  optional : master_param
+  optional : master_param, master_param_out
   inplace : (param -> param_out), (avg_squared_grad -> moment_out), (avg_squared_update -> inf_norm_out), (master_param -> master_param_out)
 
 - op : add
@@ -122,6 +122,25 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
   optional : reserve_space
+
+- op : c_broadcast
+  args : (Tensor x, int ring_id=0, int root=0, bool use_calc_stream=false)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : c_broadcast
+  inplace : (x -> out)
+
+- op : c_concat
+  args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : CConcatInferMeta
+    param : [x, nranks]
+  kernel :
+    func : c_concat
 
 - op : cast
   args : (Tensor x, DataType dtype)
@@ -405,6 +424,15 @@
     data_type : params
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
+
+- op : fused_softmax_mask_upper_triangle
+  args : (Tensor X)
+  output : Tensor(Out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel:
+    func : fused_softmax_mask_upper_triangle
+  backward: fused_softmax_mask_upper_triangle_grad
 
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
@@ -898,6 +926,7 @@
     data_type : x
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
+  optional : reserve_space
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
@@ -933,6 +962,7 @@
     func : TrilInferMeta
   kernel :
     func : tril
+  inplace: (x -> out)
   backward : tril_grad
 
 - op : tril_indices
@@ -954,6 +984,7 @@
     func : TriuInferMeta
   kernel :
     func : triu
+  inplace: (x -> out)
   backward : triu_grad
 
 - op : triu_indices

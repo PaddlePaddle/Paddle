@@ -5,7 +5,6 @@ gather_srcs(
   SRCS
   remove_nested_block.cc
   replace_call_with_expr.cc
-  ir_copy.cc
   ir_replace.cc
   replace_var_with_expr.cc
   tensor_write_tell.cc
@@ -25,7 +24,6 @@ gather_srcs(
   buffer_assign.cc
   replace_const_param_to_integer.cc
   cast_simplify.cc
-  if_simplify.cc
   lower_intrin.cc
   cast_bool_to_int8.cc
   collect_undefined_vars.cc
@@ -38,7 +36,6 @@ endif()
 
 cinn_cc_test(test_remove_nested_block SRCS remove_nested_block_test.cc DEPS
              cinncore)
-cinn_cc_test(test_ir_copy SRCS ir_copy_test.cc DEPS cinncore)
 cinn_cc_test(test_ir_simplify SRCS ir_simplify_test.cc DEPS cinncore)
 cinn_cc_test(test_replace_call_with_expr SRCS replace_call_with_expr_test.cc
              DEPS cinncore)
@@ -62,7 +59,6 @@ cinn_cc_test(test_optimize SRCS optimize_test.cc DEPS cinncore)
 cinn_cc_test(test_cache_read_write_replace SRCS
              cache_read_write_replace_test.cc DEPS cinncore)
 cinn_cc_test(test_cast_simplify SRCS cast_simplify_test.cc DEPS cinncore)
-cinn_cc_test(test_if_simplify SRCS if_simplify_test.cc DEPS cinncore)
 cinn_cc_test(test_remove_schedule_block SRCS remove_schedule_block_test.cc DEPS
              cinncore)
 cinn_cc_test(test_unroll_loops SRCS unroll_loops_test.cc DEPS cinncore)

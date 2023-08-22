@@ -24,7 +24,7 @@ namespace inference {
 
 using paddle::PaddleTensor;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void SetInt8Config(AnalysisConfig *cfg,
                    std::vector<paddle::PaddleTensor> data) {
   cfg->SetModel(FLAGS_infer_model);
@@ -34,7 +34,7 @@ void SetInt8Config(AnalysisConfig *cfg,
   pass_builder->DeletePass("constant_folding_pass");
   auto warmup_data = std::make_shared<std::vector<PaddleTensor>>(data);
   cfg->mkldnn_quantizer_config()->SetEnabledOpTypes(
-      {"elementwise_add", "matmul", "matmul_v2", "fused_matmul"});
+      {"matmul", "matmul_v2", "fused_matmul"});
   // Exclusion of several matmules that should not be quantized due to the fact
   // that they reduce the accuracy of the model
   cfg->mkldnn_quantizer_config()->SetExcludedOpIds(

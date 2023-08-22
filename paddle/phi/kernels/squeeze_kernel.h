@@ -34,6 +34,19 @@ void SqueezeKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* xshape);
 
+template <typename Context>
+void SqueezeInferStridedKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const IntArray& axes,
+                               DenseTensor* out);
+
+template <typename Context>
+void SqueezeStridedKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const IntArray& axes,
+                          DenseTensor* out,
+                          DenseTensor* xshape);
+
 template <typename T, typename Context>
 void Squeeze(const Context& dev_ctx,
              const DenseTensor& x,

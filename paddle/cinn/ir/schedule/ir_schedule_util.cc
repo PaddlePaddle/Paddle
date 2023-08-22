@@ -27,11 +27,11 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
@@ -222,6 +222,7 @@ void ReplaceExpr(Expr* source,
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
                                  int total_extent,
                                  const ModuleExpr& module_expr) {
+  const std::string primitive = "split";
   CHECK(!factors.empty())
       << "The factors param of Split should not be empty! Please check.";
   bool has_minus_one = false;
@@ -230,11 +231,19 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   for (auto& i : factors) {
     idx++;
     if (i == 0 || i < -1) {
-      throw IRScheduleErrorHandler(NegativeFactorErrorMessage(i, idx),
-                                   module_expr);
+      std::ostringstream os;
+      os << "The params in factors of Split should be positive. However, the "
+            "factor at position "
+         << idx << " is " << i << std::endl;
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     } else if (i == -1) {
       if (has_minus_one) {
-        throw IRScheduleErrorHandler(InferFactorErrorMessage(), module_expr);
+        std::ostringstream os;
+        os << "The params in factors of Split should not be less than -1 or "
+              "have "
+              "more than one -1!"
+           << std::endl;
+        throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
       }
       has_minus_one = true;
     } else {
@@ -244,12 +253,20 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   std::vector<int> validated_factors = factors;
   if (!has_minus_one) {
     if (product < total_extent) {
-      throw IRScheduleErrorHandler(FactorProductErrorMessage(), module_expr);
+      std::ostringstream os;
+      os << "In Split, the factors' product should be not larger than or equal "
+            "to original loop's extent!"
+         << std::endl;
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     }
     return validated_factors;
   } else {
     if (product > total_extent) {
-      throw IRScheduleErrorHandler(FactorProductErrorMessage(), module_expr);
+      std::ostringstream os;
+      os << "In Split, the factors' product should be not larger than or equal "
+            "to original loop's extent!"
+         << std::endl;
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     }
     int minus_one_candidate = static_cast<int>(
         ceil(static_cast<double>(total_extent) / static_cast<double>(product)));
@@ -843,11 +860,18 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
   auto compute_body = block.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
+  std::string block_name = block.As<ir::ScheduleBlockRealize>()
+                               ->schedule_block.As<ir::ScheduleBlock>()
+                               ->name;
   ir::CollectIRNodesWithoutTensor(
-      compute_body, [&producer_tensor_names](const Expr* x) {
+      compute_body, [&producer_tensor_names, &block_name](const Expr* x) {
         auto* load = x->As<ir::Load>();
         if (load) {
           producer_tensor_names.insert(load->tensor.as_tensor()->name);
+          if (load->tensor.as_tensor()->name == block_name) {
+            producer_tensor_names.insert(
+                GenReduceInitTensorNameOf(load->tensor.as_tensor()->name));
+          }
           return true;
         }
         return false;
@@ -879,6 +903,18 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
   CHECK(root.As<ir::ScheduleBlockRealize>());
   std::vector<Expr> consumers;
   std::string block_tensor = GetTensor(block)->name;
+  if (IsReduceInitTensorName(block_tensor)) {
+    std::string consumer_name = GetOriginalReduceTensorName(block_tensor);
+    auto consumer = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+      return x->As<ir::ScheduleBlockRealize>() &&
+             x->As<ir::ScheduleBlockRealize>()
+                     ->schedule_block.As<ir::ScheduleBlock>()
+                     ->name == consumer_name;
+    });
+    CHECK_EQ(consumer.size(), 1);
+    return {*consumer.begin()};
+  }
+
   auto find_block = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
     return x->As<ir::ScheduleBlockRealize>() && *x != block && *x != root;
   });
@@ -980,10 +1016,12 @@ std::vector<IterRange> CalculateRequiredRegions(
   // deduce accessed regions of the provided tensor in block by itering each
   // required block
   for (const Expr& pro_node : provided_nodes) {
-    const std::string& provided_tensor_name =
+    std::string provided_tensor_name =
         is_store_provided ? pro_node.As<ir::Store>()->tensor.as_tensor()->name
                           : pro_node.As<ir::Load>()->tensor.as_tensor()->name;
-
+    if (IsReduceInitTensorName(provided_tensor_name)) {
+      provided_tensor_name = GetOriginalReduceTensorName(provided_tensor_name);
+    }
     for (const Expr& req_block : required_blocks) {
       CHECK(req_block.As<ir::ScheduleBlockRealize>());
       Expr block_body =

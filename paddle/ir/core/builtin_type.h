@@ -73,6 +73,7 @@ class IR_API VectorType : public Type {
   __macro(Int16Type);                 \
   __macro(Int32Type);                 \
   __macro(Int64Type);                 \
+  __macro(IndexType);                 \
   __macro(BoolType);                  \
   __macro(Complex64Type);             \
   __macro(Complex128Type);
@@ -95,5 +96,6 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int16Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BoolType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::IndexType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex64Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex128Type)

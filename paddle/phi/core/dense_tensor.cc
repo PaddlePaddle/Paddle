@@ -52,13 +52,14 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
+DenseTensor::DenseTensor(const DenseTensor& other) {
+  this->meta_ = other.meta();
   holder_ = other.holder_;
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = other.mem_desc_;
 #endif
 }
@@ -69,7 +70,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -80,7 +81,7 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   std::swap(holder_, other.holder_);
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -223,6 +224,11 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
+  if (meta.strides.size() == -1) {
+    meta_.strides = meta_.calc_strides(meta_.dims);
+  } else {
+    meta_.strides = meta.strides;
+  }
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
@@ -236,7 +242,21 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
+  if (meta_.dims.size() != -1 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor stride is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
+  }
   meta_.dims = dims;
+  meta_.strides = meta_.calc_strides(meta_.dims);
+
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
   }
@@ -282,7 +302,7 @@ const DeviceT& DenseTensor::storage_properties() const {
 }
 
 template const NPUStorageProperties& DenseTensor::storage_properties() const;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
 #endif
 

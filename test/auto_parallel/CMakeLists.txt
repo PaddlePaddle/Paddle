@@ -77,6 +77,12 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
   set_tests_properties(test_pass_quantization
                        PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 60)
+  py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
+  set_tests_properties(test_reshard_s_to_r
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_r_to_s MODULES test_reshard_r_to_s)
+  set_tests_properties(test_reshard_r_to_s
+                       PROPERTIES LABELS "RUN_TYPE=EXECLUSIVE" TIMEOUT 100)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -153,6 +159,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_save_load MODULES test_engine_save_load)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
+  py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

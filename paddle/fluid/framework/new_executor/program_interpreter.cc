@@ -25,11 +25,14 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -47,7 +50,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -87,7 +89,7 @@ ProgramInterpreter::~ProgramInterpreter() {
   async_work_queue_.reset();
   VLOG(4) << "~ProgramInterpreter(): " << this << " on " << place_;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
@@ -127,7 +129,7 @@ FetchList ProgramInterpreter::Run(
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -165,7 +167,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
@@ -193,6 +195,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       RunImpl();
     }
     is_build_ = true;
+    is_shared_results_build_ = true;
   } else {
     RunImpl();
   }
@@ -219,11 +222,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   } else {
     return {};
   }
-}
-
-FetchList ProgramInterpreter::BetaRun(
-    const std::vector<std::string>& feed_names, bool need_fetch) {
-  return {};
 }
 
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -277,8 +275,8 @@ void ProgramInterpreter::reset_scope(Scope* new_scope) {
     refs_[i]->ResetVariable(var_list[i]);
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); i++) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 }
 
@@ -291,11 +289,17 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
+  const ProgramInterpreter& impl = dynamic_cast<const ProgramInterpreter&>(src);
+  if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
+    return;
+  }
   // share op dependency
-  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
-  dependecy_count_ = src.GetDependencyCount();
-  is_shared_ = true;
-  VLOG(8) << "Share BuildResults from InterpreterCore(" << &src
+  dependency_builder_.ShareDependencyFrom(impl.GetDependencyBuilder());
+  dependecy_count_ = impl.GetDependencyCount();
+  // share event analysis
+  stream_analyzer_.ShareEventInfoFrom(impl.GetStreamAnalyzer());
+  is_shared_results_build_ = true;
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
@@ -335,6 +339,15 @@ const interpreter::DependencyBuilder& ProgramInterpreter::GetDependencyBuilder()
 std::shared_ptr<std::vector<size_t>> ProgramInterpreter::GetDependencyCount()
     const {
   return dependecy_count_;
+}
+
+const interpreter::StreamAnalyzer& ProgramInterpreter::GetStreamAnalyzer()
+    const {
+  return stream_analyzer_;
+}
+
+bool ProgramInterpreter::IsSharedResultsBuild() const {
+  return is_shared_results_build_;
 }
 
 void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
@@ -410,8 +423,7 @@ void ProgramInterpreter::BuildInplace() {
     }
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    auto& instr = vec_instruction_[i];
+  for (auto& instr : vec_instruction_) {
     auto* op_base = instr.OpBase();
     if (!op_base->Info().infer_inplace_) {
       continue;
@@ -532,7 +544,7 @@ void ProgramInterpreter::BuildOperatorDependences() {
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
   dependecy_count_ = GetDependencyCount();
-  if (!is_shared_) {
+  if (!is_shared_results_build_) {
     dependecy_count_->assign(instr_num, 0);
   }
 
@@ -571,7 +583,7 @@ void ProgramInterpreter::BuildOperatorDependences() {
       }
     }
 
-    if (!is_shared_) {
+    if (!is_shared_results_build_) {
       for (size_t next_instr_id : next_instr_ids) {
         ++(*dependecy_count_)[next_instr_id];
       }
@@ -762,8 +774,8 @@ void ProgramInterpreter::Convert(
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
 
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    BuildAndCacheInstructionCtx(&vec_instruction_[i]);
+  for (auto& ins : vec_instruction_) {
+    BuildAndCacheInstructionCtx(&ins);
   }
 
   bool inplaced = false;
@@ -1178,6 +1190,18 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
+// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
+// To support all the operators for communicating in the future.
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto operator_base_ptr = instr.OpBase();
+  if ((operator_base_ptr->Type() == "send_v2") &&
+      (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
+    stream = platform::NCCLCommContext::Instance()
+                 .Get(operator_base_ptr->Attr<int>("ring_id"),
+                      instr.DeviceContext().GetPlace())
+                 ->stream();
+  }
+#endif
   auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
@@ -1336,6 +1360,7 @@ void ProgramInterpreter::Prepare(
     }
     BuildSkipShareLoDInfo();
     is_build_ = true;
+    is_shared_results_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
@@ -1390,8 +1415,7 @@ void ProgramInterpreter::TraceInstructionList(
     }
   }
 
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    auto instr_id = trace_execute_order_[idx];
+  for (auto instr_id : trace_execute_order_) {
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
@@ -1431,9 +1455,9 @@ void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
 
 void ProgramInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    if (vec_instruction_[i].KernelType() == OpFuncType::kCpuSync ||
-        vec_instruction_[i].KernelType() == OpFuncType::kGpuSync) {
+  for (auto& ins : vec_instruction_) {
+    if (ins.KernelType() == OpFuncType::kCpuSync ||
+        ins.KernelType() == OpFuncType::kGpuSync) {
       sync_op_num = sync_op_num + 1;
     }
   }
@@ -1489,6 +1513,20 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+
+  if (VLOG_IS_ON(6)) {
+    std::stringstream ss;
+    ss << "trace order: ";
+    for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+      ss << vec_instruction_[trace_execute_order_[idx]]
+                .OpFunc()
+                ->operator_base_->Type()
+         << "[" << trace_execute_order_[idx] << "]"
+         << " -> ";
+    }
+    ss << "end\n";
+    VLOG(6) << ss.str();
+  }
 }
 
 }  // namespace framework

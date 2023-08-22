@@ -16,49 +16,86 @@
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
+
+inline void check_defined(const DistTensor& dist_tensor,
+                          std::string method_hint) {
+  PADDLE_ENFORCE_EQ(
+      dist_tensor.defined(),
+      true,
+      phi::errors::Unimplemented(
+          "DistTensor is not defined yet when `%s` method is called.",
+          method_hint));
+}
+
+// TODO(chenweihang): Reshard the input global value into local value
+DistTensor::DistTensor(const phi::DenseTensor& global_value,
+                       const TensorDistAttr& dist_attr)
+    : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {}
+
+DistTensor::DistTensor(const phi::DenseTensor& value,
+                       const DDim& dims,
+                       const TensorDistAttr& dist_attr)
+    : dims_(dims), dist_attr_(dist_attr), value_(value) {}
+
+DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
+    : dims_(dims), dist_attr_(dist_attr) {}
+
+void DistTensor::set_dims(const DDim& dims) {
+  PADDLE_ENFORCE_EQ(
+      this->initialized(),
+      false,
+      phi::errors::Unimplemented(
+          "DistTensor's set_dims method can only be used when the `value` "
+          "is not initialized (generally used in the InferMeta and "
+          "InferSPMD stages)."));
+  dims_ = dims;
+}
+
+int64_t DistTensor::numel() const {
+  check_defined(*this, "numel");
+  return value_.numel();
+}
+
+const DDim& DistTensor::local_dims() const {
+  check_defined(*this, "local_dims");
+  return value_.dims();
+}
+
+bool DistTensor::valid() const {
+  check_defined(*this, "valid");
+  return value_.valid();
+}
+
+bool DistTensor::defined() const { return value_.holder_ != nullptr; }
+
+bool DistTensor::initialized() const {
+  return value_.holder_ != nullptr && value_.holder_->ptr();
+}
+
+DataType DistTensor::dtype() const {
+  check_defined(*this, "dtype");
+  return value_.dtype();
+}
+
+DataLayout DistTensor::layout() const {
+  check_defined(*this, "layout");
+  return value_.layout();
+}
+
+const Place& DistTensor::place() const {
+  check_defined(*this, "place");
+  return value_.holder_->place();
+}
 
 void* DistTensor::AllocateFrom(Allocator* allocator,
                                DataType dtype,
                                size_t requested_size,
                                bool fake_alloc) {
-  return value_->AllocateFrom(allocator, dtype, requested_size, fake_alloc);
+  PADDLE_THROW(phi::errors::Unavailable(
+      "The DistTensor Cannot allocate memory directly and needs to perform "
+      "memory operations through its DenseTensor value."));
+  return nullptr;
 }
 
-const Place& DistTensor::place() const {
-  PADDLE_ENFORCE_EQ(
-      value_ && value_->holder_,
-      true,
-      phi::errors::PreconditionNotMet(
-          "Tensor not initialized yet when DistTensor::place() is called."));
-  return value_->holder_->place();
-}
-
-int64_t DistTensor::numel() const {
-  if (meta_.is_scalar) {
-    return 1;
-  }
-  return product(meta_.dims);
-}
-
-void DistTensor::set_meta(DenseTensorMeta&& meta) {
-  PADDLE_ENFORCE_EQ(meta_.valid(),
-                    false,
-                    phi::errors::InvalidArgument(
-                        "Only when the original attribute of Tensor is "
-                        "incomplete, can it be reset."));
-  meta_ = std::move(meta);
-}
-
-void DistTensor::set_meta(const DenseTensorMeta& meta) {
-  PADDLE_ENFORCE_EQ(
-      meta.valid(),
-      true,
-      phi::errors::InvalidArgument(
-          "Input meta is invalid, please check the meta attribute."));
-  meta_ = meta;
-}
-
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi
