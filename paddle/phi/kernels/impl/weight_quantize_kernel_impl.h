@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2019-2023, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +28,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_COMPRESS_KERNEL_IMPL_H_
-#define PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_COMPRESS_KERNEL_IMPL_H_
-#include <iostream>
+#pragma once
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -29,13 +44,14 @@ inline T xabs(const T x) {
 }
 
 template <typename T>
-void per_channel_scale(float* scale, const T* input, size_t m, size_t n) {
+void per_channel_scale(
+    float* scale, const T* input, size_t m, size_t n, float bound) {
   for (size_t i = 0; i < n; ++i) {
     T max = input[i];
     for (size_t j = 0; j < m; ++j) {
       max = xabs(input[j * n + i]) > max ? xabs(input[j * n + i]) : max;
     }
-    scale[i] = static_cast<float>(max) / 127.0;
+    scale[i] = static_cast<float>(max) / bound;
   }
 }
 
@@ -144,8 +160,7 @@ void add_bias_and_interleave_inplace(int8_t* tensor_ptr, size_t num_elts) {
 template <int quant_bit>
 void permute_B_rows_for_mixed_gemm(int8_t* permuted_quantized_tensor,
                                    const int8_t* quantized_tensor,
-                                   const std::vector<size_t>& shape,
-                                   const int64_t arch_version) {
+                                   const std::vector<size_t>& shape) {
   // We only want to run this step for weight only quant.
   const size_t num_rows = shape.size() == 2 ? shape[0] : shape[1];
   const size_t num_cols = shape.size() == 2 ? shape[1] : shape[2];
@@ -321,7 +336,7 @@ void interleave_column_major_tensor(int8_t* interleaved_quantized_tensor,
 
   const size_t num_vec_rows = num_rows / elts_in_int32;
   const size_t vec_rows_per_tile = rows_per_tile / elts_in_int32;
-  const size_t interleave = 2;
+  const size_t interleave = 128 * 8 / quant_bit / rows_per_tile;
   for (size_t read_col = 0; read_col < num_cols; ++read_col) {
     const size_t write_col = read_col / interleave;
     for (size_t base_vec_row = 0; base_vec_row < num_vec_rows;
@@ -345,4 +360,3 @@ void interleave_column_major_tensor(int8_t* interleaved_quantized_tensor,
   }
 }
 }  // namespace phi
-#endif  // PADDLE_PHI_KERNELS_IMPL_QUANT_FOR_COMPRESS_KERNEL_IMPL_H_

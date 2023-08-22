@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/quant_for_compress_kernel.h"
+#include "paddle/phi/kernels/weight_quantize_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/impl/quant_for_compress_kernel_impl.h"
+#include "paddle/phi/kernels/impl/weight_quantize_kernel_impl.h"
 
 namespace phi {
 
@@ -27,7 +27,7 @@ void quant_compute(const DeviceContext& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out,
                    DenseTensor* scale,
-                   const std::string& layout) {
+                   const std::string& algo) {
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
@@ -56,57 +56,49 @@ void quant_compute(const DeviceContext& dev_ctx,
   int_processed_2.Resize(out->dims());
   dev_ctx.template Alloc<D>(&int_processed_2);
   D* int_processed_2_data = int_processed_2.data<D>();
-
-  per_channel_scale(scale_data, x_data, m, n);
+  per_channel_scale(scale_data, x_data, m, n, bits == 8 ? 127.0f : 7.0f);
 
   per_channel_quant<T, bits>(x_int_data, x_data, scale_data, m, n);
-  if (layout == "weight_only") {
+  if (algo == "llm.int8") {
+    std::vector<int> axis = {1, 0};
+    funcs::Transpose<DeviceContext, int8_t, 2> trans;
+    trans(dev_ctx, x_int, out, axis);
+  } else {
     permute_B_rows_for_mixed_gemm<bits>(
-        int_processed_data, x_int_data, std::vector<size_t>{m, n}, (int64_t)80);
+        int_processed_data, x_int_data, std::vector<size_t>{m, n});
     subbyte_transpose_impl<bits>(
         int_processed_2_data, int_processed_data, std::vector<size_t>{m, n});
     interleave_column_major_tensor<bits>(
         out_data, int_processed_2_data, std::vector<size_t>{m, n});
     add_bias_and_interleave_inplace<bits>(out_data, num);
-  } else if (layout == "llm.int8") {
-    std::vector<int> axis = {1, 0};
-    funcs::Transpose<DeviceContext, int8_t, 2> trans;
-    trans(dev_ctx, x_int, out, axis);
-  } else {
-    phi::errors::InvalidArgument(
-        "The layout must be weight_only or llm.int8, but got %s", layout);
   }
 }
 
 template <typename T, typename Context>
-void QuantForCompressKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            int bits,
-                            const std::string& layout,
-                            DenseTensor* out,
-                            DenseTensor* scale) {
-  if (bits == 8) {
-    dev_ctx.template Alloc<int8_t>(out);
-    dev_ctx.template Alloc<float>(scale);
-    quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, layout);
-  } else if (bits == 4 && layout == "weight_only") {
-    dev_ctx.template Alloc<int8_t>(out);
-    dev_ctx.template Alloc<float>(scale);
-    quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, layout);
+void WeightQuantizeKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const std::string& algo,
+                          DenseTensor* out,
+                          DenseTensor* scale) {
+  dev_ctx.template Alloc<int8_t>(out);
+  dev_ctx.template Alloc<float>(scale);
+  if (algo == "weight_only_int8" || algo == "llm.int8") {
+    quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, algo);
+  } else if (algo == "weight_only_int4") {
+    quant_compute<Context, T, int8_t, 4>(dev_ctx, x, out, scale, algo);
   } else {
     phi::errors::Unimplemented(
-        "The bits only support 8 or weight_only 4, but got[%s] [%d]",
-        layout,
-        bits);
+        "The algo must be in ['weight_only_int8', 'weight_only_int4', "
+        "'llm.int8'], but got[%s]",
+        algo);
   }
-  // VLOG(0) << "x: " << x.dtype() << x;
-  // VLOG(0) << "out: " << out->dtype() << *out;
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(quant_for_compress,
+PD_REGISTER_KERNEL(weight_quantize,
                    CPU,
                    ALL_LAYOUT,
-                   phi::QuantForCompressKernel,
-                   phi::dtype::float16) {}
+                   phi::WeightQuantizeKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
