@@ -744,9 +744,6 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     }
   }
 
-  // auto& op_info =
-  // paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
-
   auto* op_info =
       paddle::framework::OpInfoMap::Instance().GetNullable(fluid_op_name);
   if (op_info == nullptr && (fluid_op_name.back() == '_')) {
