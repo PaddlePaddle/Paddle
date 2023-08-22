@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -16,10 +16,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void QuantForCompressKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            int bits,
-                            const std::string& layout,
-                            DenseTensor* out,
-                            DenseTensor* scale);
+void LLMInt8LinearKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& weight,
+                         const paddle::optional<DenseTensor>& bias,
+                         const DenseTensor& weight_scale,
+                         const float threshold,
+                         DenseTensor* out);
 }  // namespace phi
