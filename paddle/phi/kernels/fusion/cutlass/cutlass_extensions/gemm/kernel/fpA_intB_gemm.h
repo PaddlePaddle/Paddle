@@ -102,8 +102,6 @@ struct GemmFpAIntB {
 
   /// Parameters structure
   struct Arguments : UniversalArgumentsBase {
-    GemmUniversalMode mode = GemmUniversalMode::kGemm;
-
     cutlass::gemm::GemmCoord problem_size;
     typename Mma::IteratorA::TensorRef ref_A;
     typename Mma::IteratorB::TensorRef ref_B;
@@ -111,18 +109,12 @@ struct GemmFpAIntB {
     typename Epilogue::OutputTileIterator::TensorRef ref_C;
     typename Epilogue::OutputTileIterator::TensorRef ref_D;
 
-    // Control serial split-k
-    int batch_count;
-
     typename EpilogueOutputOp::Params output_op;
 
     // For gather+scatter operations
     int const* gather_A_indices;
     int const* gather_B_indices;
     int const* scatter_D_indices;
-
-    // Included so we can use Gemm Universal
-    int batch_stride_D = 0;
 
     //
     // Methods
@@ -144,10 +136,13 @@ struct GemmFpAIntB {
               int const* gather_A_indices = nullptr,
               int const* gather_B_indices = nullptr,
               int const* scatter_D_indices = nullptr)
-        : UniversalArgumentsBase(mode,
-                                 problem_size,
-                                 /*serial_split_k_factor=*/1,
-                                 /*batch_stride_D=*/0),
+        :  // TODO(wangbojun) hard code here for GemmUniversalMode::kGemm and
+           // batch_stride_D
+          UniversalArgumentsBase(
+              GemmUniversalMode::kGemm,
+              problem_size,
+              /*serial_split_k_factor=*/serial_split_k_factor,
+              /*batch_stride_D=*/0),
           ref_A(ref_A),
           ref_B(ref_B),
           ref_scale(ref_scale),
@@ -505,10 +500,9 @@ struct GemmFpAIntB {
   void operator()(Params const& params,
                   SharedStorage& shared_storage) {  // NOLINT
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 700) && (__CUDA_ARCH__ < 750)
-    // static constexpr bool compile_needed = platform::is_same<KernelArch,
-    // arch::Sm70>::value; KernelRunner<compile_needed>::run_kernel(params,
-    // shared_storage);
-    CUTLASS_NOT_IMPLEMENTED();
+    static constexpr bool compile_needed =
+        platform::is_same<KernelArch, arch::Sm70>::value;
+    KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 750) && (__CUDA_ARCH__ < 800)
     // static constexpr bool compile_needed = platform::is_same<KernelArch,

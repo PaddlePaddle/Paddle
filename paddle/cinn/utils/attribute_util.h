@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/utils/type_defs.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/common/data_type.h"
 

@@ -152,11 +152,14 @@ class NameloadJstTransformer(BaseTransformer):
         Can't convert name of function call, bacause this will affect CallTransformer.
         """
         node.args = [self.generic_visit(arg) for arg in node.args]
+        node.func = self.generic_visit(node.func)
         return node
 
     def visit_Attribute(self, node):
         assert isinstance(node, gast.Attribute)
         assert isinstance(node.attr, str)
+        if utils.ast_to_source_code(node).startswith("_jst."):  # skip _jst.xxx
+            return node
         self.generic_visit(node)
         if isinstance(node.ctx, gast.Load):
             node = self._surround_with_ld(node)

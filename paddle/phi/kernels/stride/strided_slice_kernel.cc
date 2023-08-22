@@ -57,14 +57,17 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
         }
       }
     }
-    if (strides[i] < 0) {
-      starts[i] = starts[i] + 1;
-      ends[i] = ends[i] + 1;
-    }
 
-    int64_t left =
-        std::max(static_cast<int64_t>(0), std::min(starts[i], ends[i]));
-    int64_t right = std::min(axis_size, std::max(starts[i], ends[i]));
+    int64_t left = 0;
+    int64_t right = 0;
+
+    if (strides[i] < 0) {
+      left = std::max(static_cast<int64_t>(-1), ends[i]);
+      right = std::min(axis_size - 1, starts[i]);
+    } else {
+      left = std::max(static_cast<int64_t>(0), starts[i]);
+      right = std::min(axis_size, ends[i]);
+    }
     int64_t step = std::abs(strides[i]);
 
     auto dim = (std::abs(right - left) + step - 1) / step;
