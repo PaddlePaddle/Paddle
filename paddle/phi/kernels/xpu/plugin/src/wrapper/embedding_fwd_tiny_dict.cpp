@@ -78,22 +78,39 @@ static int xpu2_wrapper(Context* ctx,
                         int64_t ym,
                         int64_t padding_idx,
                         TID start_index) {
-  using XPU_TID = typename XPUIndexType<TID>::type;
-  const XPU_TID* casted_indices =
-      static_cast<const XPU_TID*>(static_cast<const void*>(indices));
-  XPU_TID casted_start_index = static_cast<XPU_TID>(start_index);
-  if (ctx->dev().type() == api::kXPU2) {
-    xpu2::plugin::embedding_fwd_kl2_tiny_dict<XPU_TID>
-        <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
-            casted_indices,
-            reinterpret_cast<const char*>(x),
-            reinterpret_cast<char*>(y),
-            n * sizeof(T),
-            xm,
-            ym,
-            padding_idx,
-            casted_start_index);
+  const int TOTAL_LM_SIZE = 6144;  // 6 KB
+  int total_emb_dict_size = xm * n * sizeof(T);
+  // residual_lm_space = index + result
+  int residual_lm_space = TOTAL_LM_SIZE - total_emb_dict_size - 64;
+  // The maximum count that can be processed in one iteration.
+  int idx_cnt = residual_lm_space / (sizeof(TID) + n * sizeof(T));
+  bool plugin_entry_condition =
+      idx_cnt >= 128;  // Because the xdnn kernel move is 128, its too slow.
+  // This plugin is suitable for scenarios with relatively small dictionary
+  // sizes, requiring process greater than 128 index count one iter, in order to
+  // load the dictionary into local memory at once, and to leave enough space
+  // for the local memory to store the results.
+  if (plugin_entry_condition) {
+    using XPU_TID = typename XPUIndexType<TID>::type;
+    const XPU_TID* casted_indices =
+        static_cast<const XPU_TID*>(static_cast<const void*>(indices));
+    XPU_TID casted_start_index = static_cast<XPU_TID>(start_index);
+    if (ctx->dev().type() == api::kXPU2) {
+      xpu2::plugin::embedding_fwd_kl2_tiny_dict<XPU_TID>
+          <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(
+              casted_indices,
+              reinterpret_cast<const char*>(x),
+              reinterpret_cast<char*>(y),
+              n * sizeof(T),
+              xm,
+              ym,
+              padding_idx,
+              casted_start_index);
+    }
+  } else {
+    embedding<T, TID>(ctx, x, indices, y, xm, n, ym, padding_idx, start_index);
   }
+
   return api::SUCCESS;
 }
 
