@@ -1260,6 +1260,9 @@ class FusedMultiTransformer(Layer):
                 assert len(attrs) == num_layers
                 return attrs[idx]
             return attrs
+        def _add_parameter(param):
+            assert param.name not in self._parameters
+            self._parameters[param.name] = param
 
         for i in range(num_layers):
             ln_scale_attr = get_attr(ln_scale_attrs, i)
@@ -1280,9 +1283,11 @@ class FusedMultiTransformer(Layer):
                 attr=ln_scale_attr,
                 shape=[embed_dim],
                 default_initializer=Constant(value=1.0),
+                dtype="float32"
             )
             ln_bias = self.create_parameter(
-                attr=ln_bias_attr, shape=[embed_dim], is_bias=True
+                attr=ln_bias_attr, shape=[embed_dim], is_bias=True,
+                dtype="float32",
             )
             qkv_weight = self.create_parameter(
                 shape=[3, num_heads, self.head_dim, embed_dim]
@@ -1316,9 +1321,11 @@ class FusedMultiTransformer(Layer):
                 attr=ffn_ln_scale_attr,
                 is_bias=False,
                 default_initializer=Constant(1.0),
+                dtype="float32"
             )
             ffn_ln_bias = self.create_parameter(
-                shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True
+                shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True,
+                dtype="float32"
             )
             ffn1_weight = self.create_parameter(
                 shape=[embed_dim, dim_feedforward],
@@ -1369,6 +1376,21 @@ class FusedMultiTransformer(Layer):
             self.ffn1_biases.append(ffn1_bias)
             self.ffn2_weights.append(ffn2_weight)
             self.ffn2_biases.append(ffn2_bias)
+
+            _add_parameter(ln_scale)
+            _add_parameter(ln_bias)
+            _add_parameter(qkv_weight)
+            _add_parameter(qkv_bias)
+            _add_parameter(linear_weight)
+            _add_parameter(linear_bias)
+
+            _add_parameter(ffn_ln_scale)
+            _add_parameter(ffn_ln_bias)
+            _add_parameter(ffn1_weight)
+            _add_parameter(ffn1_bias)
+            _add_parameter(ffn2_weight)
+            _add_parameter(ffn2_bias)
+
 
         self.dropout_rate = dropout_rate
         self.activation = activation

@@ -1257,6 +1257,9 @@ void fmha(const phi::GPUContext &dev_ctx,
     case 64:
       fmha_launch_kernel<T, 64, 64>(params, dev_ctx.stream());
       break;
+    case 80:
+      fmha_launch_kernel<T, 80, 128>(params, dev_ctx.stream());
+      break;
     case 96:
       fmha_launch_kernel<T, 96, 128>(params, dev_ctx.stream());
       break;
