@@ -27,6 +27,8 @@ limitations under the License. */
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
 
+#define CUDNN_BN_MIN_EPSILON 1e-05
+
 DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
@@ -332,7 +334,39 @@ class ScopedSoftmaxDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedSoftmaxDescriptor);
 };
 
+static void InternalMemFree(void* ptr) {
+  if (!ptr) {
+    return;
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(musaFree(ptr));
+}
+
+static dynload::MemoryHandler InternalMemAlloc(size_t s) {
+  void* data = nullptr;
+  if (s) {
+    PADDLE_ENFORCE_GPU_SUCCESS(musaMalloc(&data, s));
+  }
+  return dynload::MemoryHandler(data, InternalMemFree);
+}
+
 #if 0
+class ScopedBatchNormDescriptor {
+ public:
+  ScopedBatchNormDescriptor() {}
+  ~ScopedBatchNormDescriptor() PADDLE_MAY_THROW {}
+
+  inline dynload::BatchNorm& descriptor(const double& eps) {
+    desc_.SetEpsilon(eps);
+    return desc_;
+  }
+
+  dynload::BatchNorm& desc() { return desc_; }
+
+ private:
+  dynload::BatchNorm desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedBatchNormDescriptor);
+};
+
 class ScopedActivationDescriptor {
  public:
   ScopedActivationDescriptor() {

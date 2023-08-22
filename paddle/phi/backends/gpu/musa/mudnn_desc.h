@@ -123,12 +123,26 @@ class TensorDescriptor {
     for (int i = dims.size() - 2; i >= 0; i--) {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
-    std::vector<int> dims_with_group(dims.begin(), dims.end());
-    if (groups > 1) {
-      dims_with_group[1] = dims_with_group[1] / groups;
-    }
+    /* std::vector<int> dims_with_group(dims.begin(), dims.end()); */
+    /* if (groups > 1) { */
+    /*   dims_with_group[1] = dims_with_group[1] / groups; */
+    /* } */
+    desc_->SetType(ToCudnnDataType(tensor.dtype()));
     desc_->SetNdInfo(dims.size(), dims.data(), strides.data());
     desc_->SetAddr(tensor.data());
+  }
+
+  template <typename Type>
+  void set(const phi::DenseTensor& tensor, const Type* data) {
+    auto dims = phi::vectorize<int>(tensor.dims());
+    std::vector<int> strides(dims.size());
+    strides[dims.size() - 1] = 1;
+    for (int i = dims.size() - 2; i >= 0; i--) {
+      strides[i] = dims[i + 1] * strides[i + 1];
+    }
+    desc_->SetType(ToCudnnDataType(tensor.dtype()));
+    desc_->SetNdInfo(dims.size(), dims.data(), strides.data());
+    desc_->SetAddr(data);
   }
 
   void set(const std::vector<int>& dims,

@@ -111,19 +111,6 @@ struct SearchAlgorithm<dynload::Convolution::AlgorithmBwdFilter> {
   static size_t GetWorkspaceSize(const ConvArgs& args) { return 0; }
 };
 
-static void InternalMemFree(void* ptr) {
-  if (!ptr) {
-    return;
-  }
-  musaFree(ptr);
-}
-
-static dynload::MemoryHandler InternalMemAlloc(size_t s) {
-  void* data = nullptr;
-  if (s) {
-    musaMalloc(&data, s);
-  }
-  return dynload::MemoryHandler(data, InternalMemFree);
-}
+using backends::gpu::InternalMemAlloc;
 
 }  // namespace phi
