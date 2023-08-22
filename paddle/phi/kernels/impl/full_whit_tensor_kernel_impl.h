@@ -24,9 +24,11 @@ void FullWithTensorKernel(const Context& dev_ctx,
                           const DenseTensor& value,
                           DataType dtype,
                           DenseTensor* out) {
+  auto shape_tmp = IntArray(shape);
+  out->Resize(phi::make_ddim(shape_tmp));
   FullKernel<T, Context>(
       dev_ctx,
-      IntArray(shape),
+      shape_tmp,
       Scalar(value),
       phi::VarTypeToDataType(
           static_cast<paddle::framework::proto::VarType_Type>(dtype)),
