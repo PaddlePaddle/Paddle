@@ -22,8 +22,11 @@ from .functional_layers import transpose  # noqa: F401
 from .functional_layers import concat  # noqa: F401
 from .functional_layers import flatten  # noqa: F401
 from .functional_layers import matmul  # noqa: F401
+from .quantized_linear import weight_only_linear  # noqa: F401
+from .quantized_linear import llm_int8_linear  # noqa: F401
+from .quantized_linear import weight_quantize  # noqa: F401
 from .quant_layers import QuantStub  # noqa: F401
 from . import qat
 from .stub import Stub
 
-__all__ = ["Stub"]
+__all__ = ["Stub", "weight_only_linear", "llm_int8_linear", "weight_quantize"]
