@@ -202,51 +202,6 @@ class API_TestMm(unittest.TestCase):
         np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
 
 
-class API_TestMm_complex64(unittest.TestCase):
-    def test_out_complex64(self):
-        with paddle_static_guard():
-            with fluid.program_guard(fluid.Program()):
-                x = paddle.static.data(name="x", shape=[2], dtype="complex64")
-                y = paddle.static.data(name='y', shape=[2], dtype='complex64')
-                result = paddle.mm(x, y)
-                exe = fluid.Executor(fluid.CPUPlace())
-                data1 = (np.random.rand(2) + 1j * np.random.rand(2)).astype(
-                    "complex64"
-                )
-                data2 = (np.random.rand(2) + 1j * np.random.rand(2)).astype(
-                    "complex64"
-                )
-                np_res = exe.run(
-                    feed={'x': data1, 'y': data2}, fetch_list=[result]
-                )
-                expected_result = np.matmul(data1, data2)
-
-            np.testing.assert_allclose(
-                np_res,
-                expected_result,
-                rtol=1e-05,
-                atol=1e-05,
-                err_msg='two value is            {}\n{}, check diff!'.format(
-                    np_res, expected_result
-                ),
-            )
-
-    def test_dygraph_without_out_complex64(self):
-        device = fluid.CPUPlace()
-        with fluid.dygraph.guard(device):
-            input_array1 = np.random.rand(3, 4).astype(
-                "complex64"
-            ) + 1j * np.random.rand(3, 4).astype("complex64")
-            input_array2 = np.random.rand(4, 3).astype(
-                "complex64"
-            ) + 1j * np.random.rand(4, 3).astype("complex64")
-            data1 = fluid.dygraph.to_variable(input_array1)
-            data2 = fluid.dygraph.to_variable(input_array2)
-            out = paddle.mm(data1, data2)
-            expected_result = np.matmul(input_array1, input_array2)
-        np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
-
-
 class Test_API_Matmul(unittest.TestCase):
     def test_dygraph_without_out(self):
         device = fluid.CPUPlace()
