@@ -1004,37 +1004,41 @@ class Engine:
             cbks.on_epoch_begin(epoch)
 
             for step, data in enumerate(train_dataloader):
-                cbks.on_batch_begin('train', step, logs)
                 if auto_utils.use_new_executor():
                     feeds = self._validate_feed(data)
                 else:
                     feeds = [{}]
 
-                for micro_feed in feeds:
-                    with paddle.profiler.utils._nvprof_range(
-                        iter_id=step, start=nvprof_range[0], end=nvprof_range[1]
-                    ):
-                        outs = self._executor.run(
-                            self.main_program,
-                            feed=micro_feed,
-                            fetch_list=fetch_names,
-                            use_program_cache=self._strategy.use_cache,
-                            return_numpy=self._strategy.return_numpy,
-                        )
+                try:
+                    for micro_feed in feeds:
+                        with paddle.profiler.utils._nvprof_range(
+                            iter_id=step,
+                            start=nvprof_range[0],
+                            end=nvprof_range[1],
+                        ):
+                            cbks.on_batch_begin('train', step, logs)
+                            outs = self._executor.run(
+                                self.main_program,
+                                feed=micro_feed,
+                                fetch_list=fetch_names,
+                                use_program_cache=self._strategy.use_cache,
+                                return_numpy=self._strategy.return_numpy,
+                            )
+                            lr = auto_utils.get_lr(self.optimizer)
+                            logs = self._prepare_logger(
+                                outs,
+                                epoch,
+                                step,
+                                lr,
+                                fetch_names,
+                                fetch_indices,
+                                self._mode,
+                            )
+                            cbks.on_batch_end('train', step, logs)
+                except core.EOFException:
+                    break
 
-                        lr = auto_utils.get_lr(self.optimizer)
-                        logs = self._prepare_logger(
-                            outs,
-                            epoch,
-                            step,
-                            lr,
-                            fetch_names,
-                            fetch_indices,
-                            self._mode,
-                        )
-                        cbks.on_batch_end('train', step, logs)
-
-                if step >= steps_per_epoch:
+                if steps_per_epoch and step >= steps_per_epoch:
                     if not auto_utils.use_new_executor():
                         train_dataloader._reset()
                     break
@@ -1452,6 +1456,7 @@ class Engine:
         timeout=0,
         worker_init_fn=None,
         epochs=1,
+        steps_per_epoch=None,
         places=None,
     ):
         dist_context = self._dist_contexts[self._mode]
@@ -1491,6 +1496,7 @@ class Engine:
                 timeout=timeout,
                 worker_init_fn=worker_init_fn,
                 epochs=epochs,
+                steps_per_epoch=steps_per_epoch,
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,

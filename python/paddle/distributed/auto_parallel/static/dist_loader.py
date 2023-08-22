@@ -231,6 +231,7 @@ class DistributedDataLoader(DistributedDataLoaderBase):
         timeout=0,
         worker_init_fn=None,
         epochs=1,
+        steps_per_epoch=None,
         split_data=True,
         data_parallel_world_size=[],
         data_parallel_rank=[],
@@ -249,6 +250,7 @@ class DistributedDataLoader(DistributedDataLoaderBase):
         self.timeout = timeout
         self.worker_init_fn = worker_init_fn
         self.epochs = epochs
+        self.steps_per_epoch = steps_per_epoch
         self.dp_world_sizes = data_parallel_world_size
         self.dp_ranks = data_parallel_rank
         self.split_data = split_data
