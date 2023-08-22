@@ -1,15 +1,9 @@
-set(fwd_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml"
-)
-set(fwd_legacy_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml"
-)
-set(rev_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml"
-)
-set(rev_legacy_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_backward_ops.parsed.yaml"
-)
+set(parsed_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops")
+set(fwd_path ${parsed_yaml_path}/ops.parsed.yaml)
+set(fwd_legacy_path ${parsed_yaml_path}/legacy_ops.parsed.yaml)
+set(rev_path ${parsed_yaml_path}/backward_ops.parsed.yaml)
+set(rev_legacy_path ${parsed_yaml_path}/legacy_backward_ops.parsed.yaml)
 set(prim_path "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml")
 set(templates_dir
     "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
