@@ -26,13 +26,7 @@ __all__ = []
 
 
 def evaluate_flag(val: str) -> bool:
-    if val is None:
-        return False
-    val = val.lower()
-    if val in ('false', 'off', '0', 'none'):
-        return False
-    else:
-        return True
+    return val.lower() in ('false', 'off', '0', 'none')
 
 
 @static_only
@@ -130,7 +124,7 @@ def data(name, shape, dtype=None, lod_level=0):
             need_check_feed=True,
         )
 
-    is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", "0")
+    is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
     if evaluate_flag(is_new_ir_mode):
         helper = LayerHelper('data', **locals())
         helper.append_op(
