@@ -43,8 +43,7 @@ namespace backends {
  */
 class CompilationInfoDumper {
  public:
-  explicit CompilationInfoDumper(
-      const hlir::framework::ParallelCompiler::CompilationResult& info)
+  explicit CompilationInfoDumper(const hlir::framework::CompilationResult& info)
       : info_(info) {
     DumpLoweredFunc();
     DumpSourceCode();
@@ -62,7 +61,7 @@ class CompilationInfoDumper {
             const std::string& file_name,
             const std::string& content);
 
-  const hlir::framework::ParallelCompiler::CompilationResult& info_;
+  const hlir::framework::CompilationResult& info_;
 };
 
 class SourceCodePrint {

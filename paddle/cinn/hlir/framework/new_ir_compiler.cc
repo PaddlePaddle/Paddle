@@ -19,7 +19,7 @@
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/utils/attribute_util.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/builtin_type.h"
 
 namespace cinn {
