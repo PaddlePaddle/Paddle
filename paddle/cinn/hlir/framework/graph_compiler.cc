@@ -65,7 +65,7 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
   CompilationResult result = (*parallel_compiler_.get())();
 
   // Dump compilation result
-  backends::CompilationInfoDumper dumper(result);
+  // backends::CompilationInfoDumper dumper(result);
 
   if (context->stage != CompilationStage::DEFAULT) {
     return result;
