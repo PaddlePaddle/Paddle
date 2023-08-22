@@ -24,7 +24,8 @@
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
 
-class RemoveRedundentReshapePattern : public ir::drr::DrrPatternBase {
+class RemoveRedundentReshapePattern
+    : public ir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source patterns：待匹配的子图
@@ -44,7 +45,8 @@ class RemoveRedundentReshapePattern : public ir::drr::DrrPatternBase {
   }
 };
 
-class FoldBroadcastToConstantPattern : public ir::drr::DrrPatternBase {
+class FoldBroadcastToConstantPattern
+    : public ir::drr::DrrPatternBase<FoldBroadcastToConstantPattern> {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     ir::drr::SourcePattern pat = ctx->SourcePattern();
@@ -71,7 +73,8 @@ class FoldBroadcastToConstantPattern : public ir::drr::DrrPatternBase {
   }
 };
 
-class RemoveRedundentTransposePattern : public ir::drr::DrrPatternBase {
+class RemoveRedundentTransposePattern
+    : public ir::drr::DrrPatternBase<RemoveRedundentTransposePattern> {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source pattern: 待匹配的子图
@@ -93,7 +96,8 @@ class RemoveRedundentTransposePattern : public ir::drr::DrrPatternBase {
   }
 };
 
-class RemoveRedundentCastPattern : public ir::drr::DrrPatternBase {
+class RemoveRedundentCastPattern
+    : public ir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") =
@@ -106,7 +110,8 @@ class RemoveRedundentCastPattern : public ir::drr::DrrPatternBase {
   }
 };
 
-class RemoveUselessCastPattern : public ir::drr::DrrPatternBase {
+class RemoveUselessCastPattern
+    : public ir::drr::DrrPatternBase<RemoveUselessCastPattern> {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();

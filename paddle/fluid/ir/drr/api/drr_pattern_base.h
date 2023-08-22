@@ -14,14 +14,14 @@
 
 #pragma once
 
-#include <typeinfo>
-
 #include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
 #include "paddle/fluid/ir/drr/drr_rewrite_pattern.h"
+#include "paddle/ir/core/type_name.h"
 
 namespace ir {
 namespace drr {
 
+template <typename DrrPattern>
 class DrrPatternBase {
  public:
   virtual ~DrrPatternBase() = default;
@@ -29,12 +29,12 @@ class DrrPatternBase {
   // Define the Drr Pattern.
   virtual void operator()(ir::drr::DrrPatternContext* ctx) const = 0;
 
-  std::unique_ptr<DrrRewritePattern> Build(
+  std::unique_ptr<DrrRewritePattern<DrrPattern>> Build(
       ir::IrContext* ir_context, ir::PatternBenefit benefit = 1) const {
     DrrPatternContext drr_context;
     this->operator()(&drr_context);
-    return std::make_unique<DrrRewritePattern>(
-        typeid(*this).name(), drr_context, ir_context, benefit);
+    return std::make_unique<DrrRewritePattern<DrrPattern>>(
+        drr_context, ir_context, benefit);
   }
 };
 
