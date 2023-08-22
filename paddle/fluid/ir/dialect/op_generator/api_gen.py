@@ -19,7 +19,6 @@ import re
 import yaml
 from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
 
-
 H_FILE_TEMPLATE = """
 
 #pragma once
