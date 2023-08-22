@@ -72,26 +72,26 @@ add_custom_command(
   VERBATIM)
 
 cc_library(
-  pd_dialect_core
+  pd_dialect_core NOT_FOR_INFER
   SRCS pd_attribute.cc pd_type.cc
   DEPS phi pd_interface pd_trait type_info)
 cc_library(
-  pd_dialect_op
+  pd_dialect_op NOT_FOR_INFER
   SRCS ${op_source_file} pd_manual_op.cc
   DEPS pd_dialect_core)
 cc_library(
-  api_builder
+  api_builder NOT_FOR_INFER
   SRCS api_builder.cc
   DEPS ir_core)
 cc_library(
-  pd_dialect_api
+  pd_dialect_api NOT_FOR_INFER
   SRCS ${api_source_file} pd_manual_api.cc
   DEPS api_builder pd_dialect_op)
 
 target_include_directories(pd_dialect_api PRIVATE ${PD_DIALECT_BINARY_DIR})
 
 cc_library(
-  pd_dialect
+  pd_dialect NOT_FOR_INFER
   SRCS pd_dialect.cc pd_op_vjp_manual.cc
   DEPS pd_dialect_api param_to_variable primitive_vjp_experimental
        pd_dialect_utils op_yaml_info_parser)
