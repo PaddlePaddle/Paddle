@@ -189,9 +189,6 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
 
-  // TODO(dev): dist_tensor meta is not equal to dense tensor meta
-  dist_tensor_ptr->set_meta(impl_ptr->meta());
-
   auto dist_tensor =
       std::make_shared<phi::distributed::DistTensor>(dense_tensor, dist_attr);
   self->tensor.set_impl(dist_tensor);
