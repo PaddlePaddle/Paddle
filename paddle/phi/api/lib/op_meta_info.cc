@@ -39,7 +39,7 @@ std::string trim_spaces(const std::string& str) {
 }
 
 std::vector<std::string> ParseAttrStr(const std::string& attr) {
-  auto split_pos = attr.find_first_of(":");
+  auto split_pos = attr.find_first_of(':');
   PADDLE_ENFORCE_NE(split_pos,
                     std::string::npos,
                     phi::errors::InvalidArgument(
@@ -86,13 +86,13 @@ PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
 void CustomOpKernelContext::EmplaceBackInput(Tensor&& input) {
   size_t index = inputs_.size();
   inputs_.emplace_back(input);
-  input_range_.emplace_back(std::make_pair(index, index + 1));
+  input_range_.emplace_back(index, index + 1);
 }
 
 void CustomOpKernelContext::EmplaceBackInputs(
     const std::vector<Tensor>& inputs) {
   size_t index = inputs_.size();
-  input_range_.emplace_back(std::make_pair(index, index + inputs.size()));
+  input_range_.emplace_back(index, index + inputs.size());
   inputs_.insert(inputs_.end(),
                  std::make_move_iterator(inputs.begin()),
                  std::make_move_iterator(inputs.end()));
@@ -101,13 +101,13 @@ void CustomOpKernelContext::EmplaceBackInputs(
 void CustomOpKernelContext::EmplaceBackOutput(Tensor&& output) {
   size_t index = outputs_.size();
   outputs_.emplace_back(output);
-  output_range_.emplace_back(std::make_pair(index, index + 1));
+  output_range_.emplace_back(index, index + 1);
 }
 
 void CustomOpKernelContext::EmplaceBackOutputs(
     const std::vector<Tensor>& outputs) {
   size_t index = outputs_.size();
-  output_range_.emplace_back(std::make_pair(index, index + outputs.size()));
+  output_range_.emplace_back(index, index + outputs.size());
   outputs_.insert(outputs_.end(),
                   std::make_move_iterator(outputs.begin()),
                   std::make_move_iterator(outputs.end()));
@@ -506,13 +506,6 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
-  PADDLE_ENFORCE_EQ(
-      index_,
-      0UL,
-      phi::errors::Unimplemented(
-          "Currently, the InferDtypeFn setting of Grad Op is not supported, "
-          "And backward Tensor `X@GRAD` will use the dtype of forward Tensor "
-          "`X` by default."));
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
 }

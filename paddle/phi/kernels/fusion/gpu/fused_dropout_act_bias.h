@@ -124,6 +124,7 @@ __global__ void FusedDropoutActBias(
           nullptr,
           nullptr,
           act,
+          1.0, /*Since Dropout Act bias do not use residual alpha, we set 1.0*/
           quant_last_in_scale,
           dequant_out_scale_data,
           quant_next_in_scale,

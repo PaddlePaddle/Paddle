@@ -75,18 +75,19 @@ else:
     import queue
 
 
-def find_compilation_database(path):
+def find_compilation_database(path, result="./"):
     """Adjusts the directory until a compilation database is found."""
     result = './'
     while not os.path.isfile(os.path.join(result, path)):
         if os.path.realpath(result) == '/':
-            print('Error: could not find compilation database.')
-            sys.exit(1)
+            print('Warning: could not find compilation database.')
+            return None
         result += '../'
     return os.path.realpath(result)
 
 
 def make_absolute(f, directory):
+    """Convert a relative file path to an absolute file path."""
     if os.path.isabs(f):
         return f
     return os.path.normpath(os.path.join(directory, f))
@@ -216,6 +217,7 @@ def run_tidy(args, tmpdir, build_path, queue, lock, failed_files):
 
 
 def main():
+    """Runs clang-tidy over all files in a compilation database."""
     parser = argparse.ArgumentParser(
         description='Runs clang-tidy over all files '
         'in a compilation database. Requires '
@@ -225,13 +227,13 @@ def main():
     parser.add_argument(
         '-clang-tidy-binary',
         metavar='PATH',
-        default='clang-tidy-10',
+        default='clang-tidy-15',
         help='path to clang-tidy binary',
     )
     parser.add_argument(
         '-clang-apply-replacements-binary',
         metavar='PATH',
-        default='clang-apply-replacements-10',
+        default='clang-apply-replacements-15',
         help='path to clang-apply-replacements binary',
     )
     parser.add_argument(
@@ -317,9 +319,16 @@ def main():
 
     if args.build_path is not None:
         build_path = args.build_path
+        if not os.path.isfile(os.path.join(build_path, db_path)):
+            print(
+                f'Warning: could not find compilation database in {build_path}, skip clang-tidy check.'
+            )
+            build_path = None
     else:
         # Find our database
         build_path = find_compilation_database(db_path)
+    if build_path is None:
+        sys.exit(0)
 
     try:
         invocation = [args.clang_tidy_binary, '-list-checks']
@@ -412,4 +421,23 @@ def main():
 
 
 if __name__ == '__main__':
+    target_version = "15.0.2"
+    try:
+        out = subprocess.check_output(['clang-tidy --version'], shell=True)
+        version = out.decode('utf-8')
+        if version.find(target_version) == -1:
+            print(
+                f"clang-tidy version == {target_version} not found, attempting auto-install...",
+                file=sys.stderr,
+            )
+            subprocess.check_output(
+                'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
+            )
+    except:
+        print(
+            "clang-tidy not found, attempting auto-install...", file=sys.stderr
+        )
+        subprocess.check_output(
+            'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
+        )
     main()

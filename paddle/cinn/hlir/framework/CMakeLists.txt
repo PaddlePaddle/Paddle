@@ -12,6 +12,7 @@ gather_srcs(
   program.cc
   parallel_compiler.cc
   graph_compiler.cc
+  graph_compiler_util.cc
   graph.cc
   node.cc
   pass.cc
@@ -24,8 +25,10 @@ gather_srcs(
 # TODO(Aurelius84): new_ir_compiler depends on pd_dialect and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
-  cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinncore
+  cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinnapi
                   pd_dialect)
+  cinn_cc_library(convert_to_dialect SRCS convert_to_dialect.cc DEPS cinnapi
+                  cinn_dialect)
 endif()
 
 if(WITH_CUDA)
@@ -50,5 +53,5 @@ cinn_cc_test(test_hlir_framework_op SRCS op_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_print_graph_pass SRCS print_graph_pass_test.cc
              DEPS cinncore)
 cinn_cc_test(test_hlir_framework_graph SRCS graph_test.cc DEPS cinncore)
-
-#cinn_cc_test(test_hlir_framework_graph_compiler SRCS graph_compiler_test.cc DEPS cinncore)
+cinn_cc_test(test_hlir_framework_graph_compiler SRCS graph_compiler_test.cc
+             DEPS cinncore)

@@ -664,6 +664,12 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
   }
 }
 
+void NewIrDependencyBuilder::ShareDependencyFrom(
+    const NewIrDependencyBuilder& src) {
+  std::tie(op_downstream_map_, op_happens_before_) = src.GetDependency();
+  is_build_ = true;
+}
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

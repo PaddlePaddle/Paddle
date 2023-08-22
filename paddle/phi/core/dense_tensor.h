@@ -22,7 +22,7 @@ limitations under the License. */
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
  */
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  // NOLINT
 #endif
 
@@ -190,6 +190,11 @@ class DenseTensor : public TensorBase,
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
 
+  void clear() {
+    holder_.reset();
+    meta_.offset = 0;
+  }
+
  private:
   friend class DenseTensorUtils;
   friend class phi::distributed::DistTensor;
@@ -290,7 +295,7 @@ We temporarily leave them here to unblock Tensor Unification progress.
 In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   /// \brief memory descriptor of tensor which have layout set as kMKLDNN
   dnnl::memory::desc mem_desc_;
 #endif

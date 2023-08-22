@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using phi::distributed::auto_parallel::TensorDistAttr;
+using phi::distributed::TensorDistAttr;
 
 // convert between std::vector and protobuf repeated.
 template <typename T>
