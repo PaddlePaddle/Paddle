@@ -103,12 +103,12 @@ def get_sample_model():
 
 
 def get_sample_model_cuda(data_type):
-    place = fluid.CUDAPlace(0)
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0)
+    exe = base.Executor(place)
 
-    main_program = fluid.Program()
-    startup_program = fluid.Program()
-    with fluid.program_guard(main_program, startup_program):
+    main_program = base.Program()
+    startup_program = base.Program()
+    with base.program_guard(main_program, startup_program):
         data = paddle.static.data(
             name="data", shape=[-1, 6, 64, 64], dtype=data_type
         )

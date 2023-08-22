@@ -532,7 +532,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_min_bound=self.quant_min_bound,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
