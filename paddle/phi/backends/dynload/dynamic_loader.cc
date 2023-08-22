@@ -400,7 +400,7 @@ void* GetROCFFTDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipfft.so");
 #endif
 }
 #endif

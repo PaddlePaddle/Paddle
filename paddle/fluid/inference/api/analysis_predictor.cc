@@ -226,6 +226,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     input_ptr = t->mutable_data<int32_t>(ddim, place);
   } else if (pt.dtype == PaddleDType::FLOAT16) {
     input_ptr = t->mutable_data<float16>(ddim, place);
+  } else if (pt.dtype == PaddleDType::BFLOAT16) {
+    input_ptr = t->mutable_data<bfloat16>(ddim, place);
   } else {
     LOG(ERROR) << "unsupported feed type " << pt.dtype;
     return false;
@@ -1318,9 +1320,13 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     } else if (type == framework::proto::VarType::FP16) {
       GetFetchOne<float16>(fetch, output);
       output->dtype = PaddleDType::FLOAT16;
+    } else if (type == framework::proto::VarType::BF16) {
+      GetFetchOne<bfloat16>(fetch, output);
+      output->dtype = PaddleDType::BFLOAT16;
     } else {
-      LOG(ERROR) << "unknown type, only support float32, float16, int64 and "
-                    "int32 now.";
+      LOG(ERROR)
+          << "unknown type, only support float32, float16, bfloat16, int64 and "
+             "int32 now.";
     }
   }
   return true;
@@ -1386,6 +1392,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
     argument_->SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
     argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+    argument_->SetTRTMarkOutput(config_.trt_mark_output_);
+    argument_->SetTRTOutputTensorNames(config_.trt_output_tensor_names_);
     argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
@@ -1879,6 +1887,8 @@ AnalysisPredictor::GetInputTypes() {
       input_type[name] = paddle_infer::DataType::FLOAT32;
     } else if (dtype == paddle::framework::proto::VarType::FP16) {
       input_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::BF16) {
+      input_type[name] = paddle_infer::DataType::BFLOAT16;
     } else if (dtype == paddle::framework::proto::VarType::INT64) {
       input_type[name] = paddle_infer::DataType::INT64;
     } else if (dtype == paddle::framework::proto::VarType::INT32) {
@@ -1936,6 +1946,8 @@ AnalysisPredictor::GetOutputTypes() {
       output_type[name] = paddle_infer::DataType::FLOAT32;
     } else if (dtype == paddle::framework::proto::VarType::FP16) {
       output_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::BF16) {
+      output_type[name] = paddle_infer::DataType::BFLOAT16;
     } else if (dtype == paddle::framework::proto::VarType::INT64) {
       output_type[name] = paddle_infer::DataType::INT64;
     } else if (dtype == paddle::framework::proto::VarType::INT32) {
@@ -2695,8 +2707,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
-  static std::once_flag register_input_hook_flag;
-  std::call_once(register_input_hook_flag, [this] {
+  std::call_once(register_input_hook_flag_, [this] {
     executor_->RegisterInputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &input : op->Inputs()) {
@@ -2719,8 +2730,7 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
 
 void AnalysisPredictor::RegisterOutputHook(
     const OutputTensorHookFunc &hookfunc) {
-  static std::once_flag register_output_hook_flag;
-  std::call_once(register_output_hook_flag, [this] {
+  std::call_once(register_output_hook_flag_, [this] {
     executor_->RegisterOutputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &output : op->Outputs()) {
