@@ -18,4 +18,4 @@ parameterized
 wandb>=0.13
 xlsxwriter==3.0.9
 xdoctest
-ubelt
+ubelt # just for xdoctest
