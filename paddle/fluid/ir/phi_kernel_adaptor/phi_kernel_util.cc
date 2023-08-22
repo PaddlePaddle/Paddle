@@ -744,9 +744,22 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     }
   }
 
-  auto& op_info = paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
+  // auto& op_info =
+  // paddle::framework::OpInfoMap::Instance().Get(fluid_op_name);
+
+  auto* op_info =
+      paddle::framework::OpInfoMap::Instance().GetNullable(fluid_op_name);
+  if (op_info == nullptr && (fluid_op_name.back() == '_')) {
+    op_info = paddle::framework::OpInfoMap::Instance().GetNullable(
+        fluid_op_name.substr(0, fluid_op_name.length() - 1));
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      op_info,
+      platform::errors::NotFound("Operator (%s) is not registered.",
+                                 fluid_op_name));
+
   auto ptr =
-      op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
+      op_info->Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
 
   std::shared_ptr<paddle::framework::OperatorBase> res(ptr);
   return res;
