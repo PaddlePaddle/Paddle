@@ -32,30 +32,29 @@
 namespace ir {
 namespace drr {
 
-template <typename SourceOp, typename DrrFunctor>
-class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
+class DrrRewritePattern : public ir::RewritePattern {
  public:
-  explicit DrrRewritePattern(ir::IrContext* context,
+  explicit DrrRewritePattern(const DrrPatternContext& drr_context,
+                             ir::IrContext* context,
                              ir::PatternBenefit benefit = 1)
-      : ir::OpRewritePattern<SourceOp>(context, benefit) {
-    DrrPatternContext drr_context;
-    DrrFunctor functor;
-    functor(&drr_context);
-
-    source_pattern_graph_ = drr_context.source_pattern_graph();
-    constraints_ = drr_context.constraints();
-    result_pattern_graph_ = drr_context.result_pattern_graph();
-
+      : ir::RewritePattern(
+            drr_context.source_pattern_graph()->AnchorNode()->name(),
+            benefit,
+            context,
+            {}),
+        source_pattern_graph_(drr_context.source_pattern_graph()),
+        constraints_(drr_context.constraints()),
+        result_pattern_graph_(drr_context.result_pattern_graph()) {
     source_pattern_graph_->Print();
     result_pattern_graph_->Print();
   }
 
-  bool MatchAndRewrite(SourceOp op,
+  bool MatchAndRewrite(ir::Operation* op,
                        PatternRewriter& rewriter) const override {  // NOLINT
     std::shared_ptr<MatchContextImpl> src_match_ctx =
         std::make_shared<MatchContextImpl>();
     if (PatternGraphMatch(op, src_match_ctx)) {
-      PatternGraphRewrite(op, *src_match_ctx, rewriter);
+      PatternGraphRewrite(*src_match_ctx, rewriter);
       return true;
     }
     return false;
@@ -63,7 +62,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
 
  private:
   bool PatternGraphMatch(
-      SourceOp op,
+      ir::Operation* op,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     // Match
     const auto* anchor = source_pattern_graph_->AnchorNode();
@@ -236,8 +235,7 @@ class DrrRewritePattern : public ir::OpRewritePattern<SourceOp> {
     return matched;
   }
 
-  void PatternGraphRewrite(SourceOp op,
-                           const MatchContextImpl& source_pattern_match_ctx,
+  void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,
                            ir::PatternRewriter& rewriter) const {  // NOLINT
     // 1. Create Operations in result_pattern_graph
     MatchContextImpl res_match_ctx = CreateOperations(
