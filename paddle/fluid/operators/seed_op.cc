@@ -53,7 +53,7 @@ REGISTER_OPERATOR(
     ops::SeedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(seed, ops::CPUSeedKernel<phi::CPUContext, int>);
+PD_REGISTER_STRUCT_KERNEL(seed, CPU, ALL_LAYOUT, ops::CPUSeedKernel, int) {}
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(seed).AddCheckpoint(

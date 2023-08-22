@@ -76,10 +76,7 @@ class OneDNNContextThreadLocals {
   static constexpr size_t kMKLDNNSessionID_Default = 0;
   // mkldnn session id for cache clearing mode
   static constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
-  static Body& fetch() {
-    thread_local Body b;
-    return b;
-  }
+  static Body& fetch();
 };
 
 class OneDNNContext : public CPUContext {
@@ -157,7 +154,7 @@ class OneDNNContext : public CPUContext {
   const std::vector<std::string>& GetOutputsName(
       const std::string& output) const;
 
-  static const char* name() { return "OneDNNContext"; }
+  static const char* name();
 
  private:
   struct Impl;

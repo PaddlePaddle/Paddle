@@ -1,0 +1,24 @@
+- name: feed
+  inputs: []
+  attrs:
+  - {typename: str, name: name}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null
+- name: fetch
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: str, name: name}
+  outputs: []
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null

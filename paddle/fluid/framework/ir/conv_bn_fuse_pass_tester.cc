@@ -54,7 +54,7 @@ void TestMain(const std::string& conv_type) {
   // ------------------------------------------------------------------
   // (in, filters, bias_0)            conv           ->   conv_out
   // (conv_out, scale,
-  //  bias_1, mean, varaince)         batch_norm     ->   (...)
+  //  bias_1, mean, variance)         batch_norm     ->   (...)
   Layers layers;
   auto* in = layers.data("in", {1, 3, 20, 20});
   auto* filters = layers.data("filters", {3, 3, 2, 2}, true);

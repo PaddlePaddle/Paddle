@@ -208,7 +208,7 @@ static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SampleLogitsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -304,7 +304,7 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SampleLogitsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

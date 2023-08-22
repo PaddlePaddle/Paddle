@@ -45,7 +45,7 @@ struct SmoothL1LossForward {
   T sigma2;
 };
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class SmoothL1LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -116,7 +116,7 @@ struct SmoothL1LossBackward {
   T sigma2;
 };
 
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class SmoothL1LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

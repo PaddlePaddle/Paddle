@@ -22,9 +22,8 @@ set(ZLIB_ROOT
 set(ZLIB_INCLUDE_DIR
     "${ZLIB_INSTALL_DIR}/include"
     CACHE PATH "zlib include directory." FORCE)
-set(ZLIB_REPOSITORY ${GIT_URL}/madler/zlib.git)
 set(ZLIB_TAG v1.2.8)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/zlib)
 include_directories(${ZLIB_INCLUDE_DIR}
 )# For zlib code to include its own headers.
 include_directories(${THIRD_PARTY_PATH}/install
@@ -42,9 +41,8 @@ endif()
 
 ExternalProject_Add(
   extern_zlib
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${ZLIB_REPOSITORY}
-  GIT_TAG ${ZLIB_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${ZLIB_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}

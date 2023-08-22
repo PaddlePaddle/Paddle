@@ -51,11 +51,11 @@ def to_static_variable(x):
     Translate a Python Tensor to PaddlePaddle static graph Tensor
     '''
     if isinstance(x, bool):
-        return paddle.full(shape=[1], dtype='bool', fill_value=x)
+        return paddle.full(shape=[], dtype='bool', fill_value=x)
     if isinstance(x, float):
-        return paddle.full(shape=[1], dtype='float64', fill_value=x)
+        return paddle.full(shape=[], dtype='float64', fill_value=x)
     if isinstance(x, int):
-        return paddle.full(shape=[1], dtype='int64', fill_value=x)
+        return paddle.full(shape=[], dtype='int64', fill_value=x)
     if isinstance(x, UndefinedVar) or x is None:
         """
         for early return case, we need a variable to represent None, current we use data_layer_not_check.

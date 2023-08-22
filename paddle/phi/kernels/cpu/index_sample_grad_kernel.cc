@@ -69,7 +69,7 @@ void IndexSampleGradInner(const Context& context,
 
 template <typename T, typename Context>
 void IndexSampleGradKernel(const Context& ctx,
-                           const DenseTensor& x,
+                           const DenseTensor& x UNUSED,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
                            DenseTensor* x_grad) {

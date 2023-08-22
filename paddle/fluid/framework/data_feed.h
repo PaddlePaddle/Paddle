@@ -31,7 +31,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
@@ -42,17 +41,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/macros.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/cuda_stream.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_int32(record_pool_max_size);
-DECLARE_int32(slotpool_thread_num);
-DECLARE_bool(enable_slotpool_wait_release);
-DECLARE_bool(enable_slotrecord_reset_shrink);
+PHI_DECLARE_int32(record_pool_max_size);
+PHI_DECLARE_int32(slotpool_thread_num);
+PHI_DECLARE_bool(enable_slotpool_wait_release);
+PHI_DECLARE_bool(enable_slotrecord_reset_shrink);
 
 namespace paddle {
 namespace framework {
@@ -401,22 +402,22 @@ class CustomParser {
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
-  virtual int ParseInstance(int len,
-                            const char* str,
-                            std::vector<Record>* instances) {
+  virtual int ParseInstance(int len UNUSED,
+                            const char* str UNUSED,
+                            std::vector<Record>* instances UNUSED) {
     return 0;
   }
   virtual bool ParseOneInstance(
-      const std::string& line,
-      std::function<void(std::vector<SlotRecord>&, int)>
-          GetInsFunc) {  // NOLINT
+      const std::string& line UNUSED,
+      std::function<void(std::vector<SlotRecord>&, int)> GetInsFunc
+          UNUSED) {  // NOLINT
     return true;
   }
   virtual bool ParseFileInstance(
-      std::function<int(char* buf, int len)> ReadBuffFunc,
-      std::function<void(std::vector<SlotRecord>&, int, int)>
-          PullRecordsFunc,  // NOLINT
-      int& lines) {         // NOLINT
+      std::function<int(char* buf, int len)> ReadBuffFunc UNUSED,
+      std::function<void(std::vector<SlotRecord>&, int, int)> PullRecordsFunc
+          UNUSED,           // NOLINT
+      int& lines UNUSED) {  // NOLINT
     return false;
   }
 };
@@ -976,11 +977,11 @@ class GraphDataGenerator {
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
   void DumpWalkPath(std::string dump_path, size_t dump_rate);
-  void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+  void SetDeviceKeys(std::vector<uint64_t>* device_keys UNUSED,
+                     int type UNUSED) {
     // type_to_index_[type] = h_device_keys_.size();
     // h_device_keys_.push_back(device_keys);
   }
-
   std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
       int64_t* uniq_nodes,
       int len,
@@ -1126,7 +1127,7 @@ class DataFeed {
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
-  virtual bool CheckFile(const char* filename) {
+  virtual bool CheckFile(const char* filename UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(CheckFile) is not implemented."));
   }
@@ -1159,29 +1160,29 @@ class DataFeed {
   }
 
   // This function will do nothing at default
-  virtual void SetInputPvChannel(void* channel) {}
+  virtual void SetInputPvChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetOutputPvChannel(void* channel) {}
+  virtual void SetOutputPvChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetConsumePvChannel(void* channel) {}
+  virtual void SetConsumePvChannel(void* channel UNUSED) {}
 
   // This function will do nothing at default
-  virtual void SetInputChannel(void* channel) {}
+  virtual void SetInputChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetOutputChannel(void* channel) {}
+  virtual void SetOutputChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetConsumeChannel(void* channel) {}
+  virtual void SetConsumeChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetThreadId(int thread_id) {}
+  virtual void SetThreadId(int thread_id UNUSED) {}
   // This function will do nothing at default
-  virtual void SetThreadNum(int thread_num) {}
+  virtual void SetThreadNum(int thread_num UNUSED) {}
   // This function will do nothing at default
-  virtual void SetParseInsId(bool parse_ins_id) {}
-  virtual void SetParseUid(bool parse_uid) {}
-  virtual void SetParseContent(bool parse_content) {}
-  virtual void SetParseLogKey(bool parse_logkey) {}
-  virtual void SetEnablePvMerge(bool enable_pv_merge) {}
-  virtual void SetCurrentPhase(int current_phase) {}
+  virtual void SetParseInsId(bool parse_ins_id UNUSED) {}
+  virtual void SetParseUid(bool parse_uid UNUSED) {}
+  virtual void SetParseContent(bool parse_content UNUSED) {}
+  virtual void SetParseLogKey(bool parse_logkey UNUSED) {}
+  virtual void SetEnablePvMerge(bool enable_pv_merge UNUSED) {}
+  virtual void SetCurrentPhase(int current_phase UNUSED) {}
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
@@ -1266,7 +1267,8 @@ class DataFeed {
   virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
 #endif
 
-  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
+  virtual void DumpWalkPath(std::string dump_path UNUSED,
+                            size_t dump_rate UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(DumpWalkPath) is not implemented."));
   }
@@ -1415,13 +1417,13 @@ class InMemoryDataFeed : public DataFeed {
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
-  virtual void ParseOneInstanceFromSo(const char* str,
-                                      T* instance,
-                                      CustomParser* parser) {}
-  virtual int ParseInstanceFromSo(int len,
-                                  const char* str,
-                                  std::vector<T>* instances,
-                                  CustomParser* parser) {
+  virtual void ParseOneInstanceFromSo(const char* str UNUSED,
+                                      T* instance UNUSED,
+                                      CustomParser* parser UNUSED) {}
+  virtual int ParseInstanceFromSo(int len UNUSED,
+                                  const char* str UNUSED,
+                                  std::vector<T>* instances UNUSED,
+                                  CustomParser* parser UNUSED) {
     return 0;
   }
   virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
@@ -1656,7 +1658,7 @@ struct RecordCandidate {
 class RecordCandidateList {
  public:
   RecordCandidateList() = default;
-  RecordCandidateList(const RecordCandidateList&) {}
+  RecordCandidateList(const RecordCandidateList& UNUSED) {}
 
   size_t Size() { return cur_size_; }
   void ReSize(size_t length);
@@ -1802,9 +1804,9 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
  protected:
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
-  virtual void ParseOneInstanceFromSo(const char* str,
-                                      Record* instance,
-                                      CustomParser* parser) {}
+  virtual void ParseOneInstanceFromSo(const char* str UNUSED,
+                                      Record* instance UNUSED,
+                                      CustomParser* parser UNUSED) {}
   virtual int ParseInstanceFromSo(int len,
                                   const char* str,
                                   std::vector<Record>* instances,
@@ -1828,11 +1830,13 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  protected:
   bool Start() override;
   int Next() override;
-  bool ParseOneInstance(SlotRecord* instance) override { return false; }
-  bool ParseOneInstanceFromPipe(SlotRecord* instance) override { return false; }
+  bool ParseOneInstance(SlotRecord* instance UNUSED) override { return false; }
+  bool ParseOneInstanceFromPipe(SlotRecord* instance UNUSED) override {
+    return false;
+  }
   // virtual void ParseOneInstanceFromSo(const char* str, T* instance,
   //                                    CustomParser* parser) {}
-  void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) override {}
+  void PutToFeedVec(const std::vector<SlotRecord>& ins_vec UNUSED) override {}
 
   virtual void LoadIntoMemoryByCommand(void);
   virtual void LoadIntoMemoryByLib(void);

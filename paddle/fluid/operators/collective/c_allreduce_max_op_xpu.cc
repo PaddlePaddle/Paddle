@@ -14,10 +14,18 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
+namespace paddle {
+namespace operators {
+DEFINE_C_ALLREDUCE_XPU_KERNEL(CAllReduceMax, kRedMax)
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
-REGISTER_OP_XPU_KERNEL(c_allreduce_max,
-                       ops::CAllReduceOpXPUKernel<ops::kRedMax, plat::float16>,
-                       ops::CAllReduceOpXPUKernel<ops::kRedMax, int>,
-                       ops::CAllReduceOpXPUKernel<ops::kRedMax, float>)
+PD_REGISTER_STRUCT_KERNEL(c_allreduce_max,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CAllReduceMaxXPUKernel,
+                          float,
+                          int,
+                          plat::float16) {}

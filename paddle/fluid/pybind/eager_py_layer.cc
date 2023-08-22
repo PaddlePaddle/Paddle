@@ -137,7 +137,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get _backward_function faild."));
+        "Get _backward_function failed."));
   }
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
@@ -255,7 +255,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   auto forward_fn = PyObject_GetAttrString(cls, "forward");
   if (!forward_fn) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get forward function faild."));
+        "Get forward function failed."));
   }
   bool trace_backward = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
@@ -398,7 +398,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       auto inplace_tensor_autograd_meta =
           egr::EagerUtils::autograd_meta(inplace_tensor);
       PADDLE_ENFORCE_EQ(!inplace_tensor_autograd_meta->StopGradient() &&
-                            egr::egr_utils_api::IsLeafTensor(*inplace_tensor),
+                            egr::EagerUtils::IsLeafTensor(*inplace_tensor),
                         false,
                         paddle::platform::errors::InvalidArgument(
                             "Leaf Var (%s) that doesn't stop gradient "

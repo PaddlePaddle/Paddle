@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from .regularizer import WeightDecayRegularizer
+from paddle.regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
 
 __all__ = [

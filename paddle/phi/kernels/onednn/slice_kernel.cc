@@ -25,7 +25,7 @@ void SliceKernel(const Context& dev_ctx,
                  const std::vector<int64_t>& axes,
                  const IntArray& starts,
                  const IntArray& ends,
-                 const std::vector<int64_t>& infer_flags,
+                 const std::vector<int64_t>& infer_flags UNUSED,
                  const std::vector<int64_t>& decrease_axis,
                  DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();

@@ -55,8 +55,9 @@ class TRTInstanceNormTest(InferencePassTest):
         self.fetch_list = [out]
 
     def check_output(self, remove_cache=False):
-        if remove_cache and os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if remove_cache and os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             atol = 1e-5

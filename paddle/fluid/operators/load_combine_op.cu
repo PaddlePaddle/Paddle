@@ -15,10 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/load_combine_op.h"
 
 namespace ops = paddle::operators;
-
-REGISTER_OP_CUDA_KERNEL(load_combine,
-                        ops::LoadCombineOpKernel<phi::GPUContext, float>,
-                        ops::LoadCombineOpKernel<phi::GPUContext, double>,
-                        ops::LoadCombineOpKernel<phi::GPUContext, int>,
-                        ops::LoadCombineOpKernel<phi::GPUContext, int8_t>,
-                        ops::LoadCombineOpKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(load_combine,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::LoadCombineOpKernel,
+                          float,
+                          double,
+                          int,
+                          int8_t,
+                          int64_t) {}

@@ -15,12 +15,41 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/generator/get_expected_kernel_func.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
 
 namespace paddle {
 namespace operators {
+
+inline int ConvOutputSize(int input_size,
+                          int filter_size,
+                          int dilation,
+                          int padding_1,
+                          int padding_2,
+                          int stride) {
+  const int dkernel = dilation * (filter_size - 1) + 1;
+  int output_size = (input_size + padding_1 + padding_2 - dkernel) / stride + 1;
+  PADDLE_ENFORCE_GT(
+      output_size,
+      0,
+      platform::errors::InvalidArgument(
+          "The output's size is expected to be greater than 0. "
+          "But received: output's size is %d. The output's size is computed by "
+          "((input_size + padding_1 + padding_2 - (dilation * (filter_size - "
+          "1) + 1)) / stride + 1), where input_size is %d, padding is "
+          "(%d, %d), filter_size is %d, dilation is %d, stride is %d.",
+          output_size,
+          input_size,
+          padding_1,
+          padding_2,
+          filter_size,
+          dilation,
+          stride));
+
+  return output_size;
+}
 
 // This fused conv follows the equation:
 //   y = act ( alpha1 * conv(x) + alpha2 * z + bias ).
@@ -30,9 +59,36 @@ namespace operators {
 //         bias is Bias
 // When `split_channels` is set, y will be split into multiple outputs,
 // each output has split_channels[i] number of channels.
-class Conv2DFusionOpMaker : public Conv2DOpMaker {
+class Conv2DFusionOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Input", "(Tensor), input 0 of conv2d op.");
+    AddInput("Filter", "(Tensor), input 1 of conv2d op.");
+    AddOutput("Output", "(Tensor), output 0 of conv2d op.");
+    AddAttr<std::vector<int>>("strides",
+                              "(std::vector<int>), attribute 0 for conv2d op.")
+        .SetDefault({1, 1});
+    AddAttr<std::vector<int>>("paddings",
+                              "(std::vector<int>), attribute 1 for conv2d op.")
+        .SetDefault({0, 0});
+    AddAttr<std::string>("padding_algorithm",
+                         "(std::string), attribute 2 for conv2d op.")
+        .SetDefault("EXPLICIT");
+    AddAttr<std::vector<int>>("dilations",
+                              "(std::vector<int>), attribute 3 for conv2d op.")
+        .SetDefault({1, 1});
+    AddAttr<int>("groups", "(int), attribute 4 for conv2d op.").SetDefault(1);
+    AddAttr<std::string>("data_format",
+                         "(std::string), attribute 5 for conv2d op.")
+        .SetDefault("NCHW");
+    AddComment(R"DOC(
+TODO: Documentation of conv2d op.
+)DOC");
+    Apply();
+  }
+
  protected:
-  void Apply() override {
+  void Apply() {
     AddInput("Bias",
              "(Tensor) Bias to be added to each output of filter application."
              "The format of output tensor is X (one-dimensional) of size equal"
@@ -73,9 +129,9 @@ class Conv2DFusionOpMaker : public Conv2DOpMaker {
   }
 };
 
-class Conv2DFusionOp : public operators::ConvOp {
+class Conv2DFusionOp : public framework::OperatorWithKernel {
  public:
-  using operators::ConvOp::ConvOp;
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
@@ -275,7 +331,7 @@ class Conv2DFusionOp : public operators::ConvOp {
     }
 
     std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(
+    phi::UpdatePaddingAndDilation(
         &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
     std::vector<int64_t> output_shape({in_dims[0]});
@@ -301,6 +357,11 @@ class Conv2DFusionOp : public operators::ConvOp {
 
     return output_shape;
   }
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetConvExpectedKernelType(ctx, this);
+  }
 };
 
 // TODO(qingqing): add gradient operator for conv2d_fusion
@@ -313,7 +374,6 @@ REGISTER_OPERATOR(
     conv2d_fusion,
     ops::Conv2DFusionOp,
     ops::Conv2DFusionOpMaker,
-    ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
@@ -323,6 +383,5 @@ REGISTER_OPERATOR(
     conv2d_fusion_cutlass,
     ops::Conv2DFusionOp,
     ops::Conv2DFusionOpMaker,
-    ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

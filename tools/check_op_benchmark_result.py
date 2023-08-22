@@ -74,7 +74,7 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
         gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
         gpu_time_diff_str = "{:.5f}".format(gpu_time_diff * 100)
     else:
-        gpu_time_diff = None
+        gpu_time_diff = 0
         gpu_time_diff_str = ""
 
     pr_total_time = pr_data.get("total")

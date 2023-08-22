@@ -51,9 +51,9 @@ inline static size_t TotalSequenceLength(
 inline static void CheckDims(const phi::DDim& seq_tensor_dims,
                              const phi::DDim& pad_tensor_dims,
                              const phi::Vector<size_t>& seq_offset,
-                             int64_t padded_seq_len,
-                             int64_t step_width,
-                             const PadLayout& layout) {
+                             int64_t padded_seq_len UNUSED,
+                             int64_t step_width UNUSED,
+                             const PadLayout& layout UNUSED) {
   PADDLE_ENFORCE_EQ(
       static_cast<size_t>(seq_tensor_dims[0]),
       seq_offset.back(),

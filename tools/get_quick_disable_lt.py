@@ -15,7 +15,7 @@
 import ssl
 import sys
 
-import requests
+import httpx
 
 import paddle
 
@@ -32,7 +32,7 @@ def download_file():
     if paddle.is_compiled_with_rocm():
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_rocm')
 
-    f = requests.get(url)
+    f = httpx.get(url, timeout=None, follow_redirects=True)
     data = f.text
     status_code = f.status_code
     if len(data.strip()) == 0 or status_code != 200:

@@ -413,15 +413,15 @@ void ConvFusionKernel(const Context& ctx,
       compute_format);
 
   DenseTensor transformed_input;
+  const int input_rank = input.dims().size();
   auto unsys_pad_process = [&](const std::vector<int>& new_input_shape_vec,
                                const std::vector<int>& input_pad) {
     DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     ctx.template Alloc<T>(&transformed_input);
 
-    const int rank = input.dims().size();
     T pad_value(0.0);
-    switch (rank) {
+    switch (input_rank) {
       case 4: {
         funcs::PadFunction<Context, T, 4>(
             ctx, input_pad, input, pad_value, &transformed_input);
@@ -442,11 +442,16 @@ void ConvFusionKernel(const Context& ctx,
                       conv_attr_cache->input_pad);
   }
 
-  std::vector<int> b_dims(input.dims().size(), 1);
+  std::vector<int> b_dims(input_rank, 1);
   if (compute_format == CUDNN_TENSOR_NCHW) {
-    b_dims[1] = static_cast<int>(bias.dims()[0]);
+    auto bias_rank = bias.dims().size();
+    if (input_rank == bias_rank) {
+      b_dims[1] = static_cast<int>(bias.dims()[1]);
+    } else {
+      b_dims[1] = static_cast<int>(bias.dims()[0]);
+    }
   } else {
-    b_dims[input.dims().size() - 1] = static_cast<int>(bias.dims()[0]);
+    b_dims[input_rank - 1] = static_cast<int>(bias.dims()[0]);
   }
 
   auto search_func = [&](cudnnConvolutionFwdAlgo_t* cudnn_algo,

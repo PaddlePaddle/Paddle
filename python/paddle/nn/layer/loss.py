@@ -98,8 +98,8 @@ class BCEWithLogitsLoss(Layer):
             bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
             output = bce_logit_loss(logit, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.45618814])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.45618814)
 
     """
 
@@ -319,8 +319,8 @@ class CrossEntropyLoss(Layer):
                                         input,
                                         label)
             print(dy_ret)
-            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [5.34043430])
+            # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        5.34043430)
 
         .. code-block:: python
 
@@ -345,8 +345,8 @@ class CrossEntropyLoss(Layer):
                                                                     weight=weight,
                                                                     reduction=reduction)
             print(paddle_loss_mean)
-            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [1.11043464])
+            # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        1.11043464)
 
     """
 
@@ -564,7 +564,7 @@ class MSELoss(Layer):
             label = paddle.to_tensor([1.7])
             output = mse_loss(input, label)
             print(output)
-            # [0.04000002]
+            # 0.04000002
 
     """
 
@@ -637,7 +637,7 @@ class L1Loss(Layer):
         - label (Tensor): label. The shapes is ``[N, *]``, same shape as ``input`` . It's data type should be float32, float64, int32, int64.
         - output (Tensor): The L1 Loss of ``input`` and ``label``.
           If `reduction` is ``'none'``, the shape of output loss is ``[N, *]``, the same as ``input`` .
-          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [].
 
     Examples:
         .. code-block:: python
@@ -650,14 +650,14 @@ class L1Loss(Layer):
             l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.34999999])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.34999999)
 
             l1_loss = paddle.nn.L1Loss(reduction='sum')
             output = l1_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.39999998])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.39999998)
 
             l1_loss = paddle.nn.L1Loss(reduction='none')
             output = l1_loss(input, label)
@@ -747,8 +747,8 @@ class BCELoss(Layer):
             bce_loss = paddle.nn.BCELoss()
             output = bce_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.65537101])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.65537101)
 
     """
 
@@ -835,7 +835,7 @@ class NLLLoss(Layer):
             The data type is int64.
         - output (Tensor): the `negative log likelihood loss` between input `x` and `label`.
             If `reduction` is `'none'`, the shape is `[N, *]`.
-            If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
+            If `reduction` is `'sum'` or `'mean'`, the shape is `[]`.
 
     Examples:
         .. code-block:: python
@@ -853,7 +853,7 @@ class NLLLoss(Layer):
                 log_out = log_softmax(input)
                 label = paddle.to_tensor([0, 2, 1, 1, 0], "int64")
                 result = nll_loss(log_out, label)
-                print(result) # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True, [1.07202101])
+                print(result) # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True, 1.07202101)
 
     """
 
@@ -991,9 +991,9 @@ class KLDivLoss(Layer):
 
     If `reduction` is ``'none'``, the output loss is the same shape as the input, and the loss at each point is calculated separately. There is no reduction to the result.
 
-    If `reduction` is ``'mean'``, the output loss is the shape of [1], and the output is the average of all losses.
+    If `reduction` is ``'mean'``, the output loss is the shape of [], and the output is the average of all losses.
 
-    If `reduction` is ``'sum'``, the output loss is the shape of [1], and the output is the sum of all losses.
+    If `reduction` is ``'sum'``, the output loss is the shape of [], and the output is the sum of all losses.
 
     If `reduction` is ``'batchmean'``, the output loss is the shape of [N], N is the batch size, and the output is the sum of all losses divided by the batch size.
 
@@ -1012,7 +1012,7 @@ class KLDivLoss(Layer):
 
         label (Tensor): ``(N, *)``, same shape as input.
 
-        output (Tensor): tensor with shape: [1] by default.
+        output (Tensor): tensor with shape: [] by default.
 
     Examples:
         .. code-block:: python
@@ -1024,20 +1024,20 @@ class KLDivLoss(Layer):
             x = paddle.uniform(shape, min=-10, max=10).astype('float32')
             target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [1]
+            # 'batchmean' reduction, loss shape will be []
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
             pred_loss = kldiv_criterion(x, target)
-            # shape=[1]
+            # shape=[]
 
-            # 'mean' reduction, loss shape will be [1]
+            # 'mean' reduction, loss shape will be []
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
             pred_loss = kldiv_criterion(x, target)
-            # shape=[1]
+            # shape=[]
 
-            # 'sum' reduction, loss shape will be [1]
+            # 'sum' reduction, loss shape will be []
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
             pred_loss = kldiv_criterion(x, target)
-            # shape=[1]
+            # shape=[]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
@@ -1090,7 +1090,7 @@ class MarginRankingLoss(Layer):
 
         label: N-D Tensor, label have the same shape and dtype as `input`.
 
-        output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
+        output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Returns:
         A callable object of MarginRankingLoss.
@@ -1108,7 +1108,7 @@ class MarginRankingLoss(Layer):
             loss = margin_rank_loss(input, other, label)
 
             print(loss)
-            # [0.75]
+            # 0.75
     """
 
     def __init__(self, margin=0.0, reduction='mean', name=None):
@@ -1149,7 +1149,7 @@ class CTCLoss(Layer):
         - norm_by_times (bool, optional): Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'. Default: False.
 
     Returns:
-        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
+        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``log_probs``.
 
     Examples:
 
@@ -1197,8 +1197,8 @@ class CTCLoss(Layer):
                 input_lengths,
                 label_lengths)
             print(loss)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.13760614])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.13760614)
     """
 
     def __init__(self, blank=0, reduction='mean'):
@@ -1242,7 +1242,7 @@ class RNNTLoss(Layer):
         label_lengths: Tensor of (batch) containing label length of each example
 
     Returns:
-     Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
+     Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``logprobs``.
 
     Examples:
         .. code-block:: python
@@ -1272,8 +1272,8 @@ class RNNTLoss(Layer):
 
             costs = fn(acts, labels, lengths, label_lengths)
             print(costs)
-            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=False,
-            #        [4.49566677])
+            # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+            #        4.49566677)
     """
 
     def __init__(
@@ -1352,7 +1352,7 @@ class SmoothL1Loss(Layer):
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
             print(output)
-            # [0.049606]
+            # 0.049606
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
@@ -1428,7 +1428,7 @@ class MultiLabelSoftMarginLoss(Layer):
                 multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
                 loss = multi_label_soft_margin_loss(input, label)
                 print(loss)
-                # Tensor([1.54908717])
+                # Tensor(1.54908717)
         """
 
     def __init__(self, weight=None, reduction="mean", name=None):
@@ -1529,7 +1529,7 @@ class HingeEmbeddingLoss(Layer):
             hinge_embedding_loss = nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
             loss = hinge_embedding_loss(input, label)
             print(loss)
-            # Tensor([0.22222222])
+            # Tensor(0.22222222)
     """
 
     def __init__(self, margin=1.0, reduction="mean", name=None):
@@ -1590,7 +1590,7 @@ class CosineEmbeddingLoss(Layer):
                          Available dtypes are int32, int64, float32, float64.
         output (Tensor): Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
                          If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
-                         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+                         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [].
 
     Examples:
         .. code-block:: python
@@ -1603,11 +1603,11 @@ class CosineEmbeddingLoss(Layer):
 
             cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='mean')
             output = cosine_embedding_loss(input1, input2, label)
-            print(output) # [0.21155193]
+            print(output) # 0.21155193
 
             cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='sum')
             output = cosine_embedding_loss(input1, input2, label)
-            print(output) # [0.42310387]
+            print(output) # 0.42310387
 
             cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='none')
             output = cosine_embedding_loss(input1, input2, label)
@@ -1717,7 +1717,7 @@ class TripletMarginWithDistanceLoss(Layer):
             triplet_margin_with_distance_loss = TripletMarginWithDistanceLoss(reduction='mean')
             loss = triplet_margin_with_distance_loss(input, positive, negative,)
             print(loss)
-            # Tensor([0.19165580])
+            # Tensor(0.19165580)
 
     """
 
@@ -1825,7 +1825,7 @@ class TripletMarginLoss(Layer):
             triplet_margin_loss = paddle.nn.TripletMarginLoss(margin=1.0, swap=True, reduction='mean', )
             loss = triplet_margin_loss(input, positive, negative,)
             print(loss)
-            # Tensor([0.19165580])
+            # Tensor(0.19165580)
 
     """
 
@@ -1995,7 +1995,7 @@ class SoftMarginLoss(Layer):
           ``input``. The target labels which values should be numbers -1 or 1.
           Available dtype is int32, int64, float32, float64.
         - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-          same as ``input`` , else the shape of output is [1].
+          same as ``input`` , else the shape of output is [].
 
     Returns:
         A callable object of SoftMarginLoss.
@@ -2010,8 +2010,8 @@ class SoftMarginLoss(Layer):
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.64022040])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.64022040)
 
             input_np = paddle.uniform(shape=(5, 5), min=0.1, max=0.8, dtype="float64")
             label_np = paddle.randint(high=2, shape=(5, 5), dtype="int64")

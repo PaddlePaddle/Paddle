@@ -32,9 +32,10 @@
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(reader_queue_speed_test_mode);
+PHI_DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -319,7 +320,7 @@ class MultiDeviceFeedReader {
     PADDLE_ENFORCE_EQ(status,
                       Status::kSuccess,
                       platform::errors::NotFound(
-                          "The function executed sucessfully, but "
+                          "The function executed successfully, but "
                           "the result status is not Status::kSuccess"));
   }
 

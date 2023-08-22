@@ -326,19 +326,16 @@ inline static void ParseEinsumEquation(
     std::vector<int>* output_dims,
     std::string* right,
     std::vector<std::string>* input_strs) {
-  VLOG(5) << "Start ParseEinsumEquation";
+  VLOG(5) << "Start ParseEinsumEquation " << equation;
   auto results = paddle::string::split_string(equation, "->");
   auto left = results[0];
   ReplaceEllipsis(left);
-  *right = results[1].substr(1);
+  *right = results[1];
   ReplaceEllipsis(*right);
   auto op_labels = paddle::string::split_string(left, ",");
-  // split_string("i,") -> ["i"], we push back a "".
+  // split_string("i,") -> ["i", ""], we push back a "".
   // split_string("->") -> [], we push back a "".
-  if (op_labels.size() == 0)
-    op_labels.push_back("");
-  else if (left[left.size() - 1] == ',')
-    op_labels.push_back("");
+  if (op_labels.size() == 0) op_labels.push_back("");
   std::for_each(op_labels.begin(), op_labels.end(), ReplaceEllipsis);
   GlobalInfo(op_labels, *right, labeltype, all_labels);
   InferLabelShape(op_labels, inputs, labelshape, ellipsis_dims, broadcast_dims);
@@ -752,7 +749,7 @@ void EinsumKernel(const Context& dev_ctx,
                   const std::string& equation,
                   DenseTensor* out,
                   std::vector<DenseTensor*> cache,
-                  std::vector<DenseTensor*> xshape) {
+                  std::vector<DenseTensor*> xshape UNUSED) {
   std::vector<char> tmp;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer

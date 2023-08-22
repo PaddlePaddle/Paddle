@@ -15,8 +15,7 @@
 import unittest
 
 import numpy as np
-
-from paddle.fluid.tests.unittests.test_conv3d_op import (
+from test_conv3d_op import (
     TestCase1,
     TestConv3DOp,
     TestWith1x1,

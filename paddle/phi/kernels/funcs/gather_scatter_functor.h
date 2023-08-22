@@ -21,12 +21,14 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-#define Instantiate_Template_Function(func)                                    \
-  Instantiate_Template_Function_index_t(                                       \
-      func, int) Instantiate_Template_Function_index_t(func, float)            \
-      Instantiate_Template_Function_index_t(func, double)                      \
-          Instantiate_Template_Function_index_t(func, int64_t)                 \
-              Instantiate_Template_Function_index_t(func, phi::dtype::float16) \
+#define Instantiate_Template_Function(func)                                  \
+  Instantiate_Template_Function_index_t(                                     \
+      func, int) Instantiate_Template_Function_index_t(func, float)          \
+      Instantiate_Template_Function_index_t(                                 \
+          func, double) Instantiate_Template_Function_index_t(func, int64_t) \
+          Instantiate_Template_Function_index_t(func, phi::dtype::float16)   \
+              Instantiate_Template_Function_index_t(func,                    \
+                                                    phi::dtype::bfloat16)    \
                   Instantiate_Template_Function_index_t(func, unsigned char)
 
 #define Instantiate_Template_Function_index_t(func, tensor_t)          \

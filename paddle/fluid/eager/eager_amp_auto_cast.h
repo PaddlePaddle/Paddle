@@ -27,9 +27,6 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_mlu_place(place) ||
-      paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place) ||
       paddle::platform::is_custom_place(place) ||
       paddle::platform::is_cpu_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
@@ -68,8 +65,8 @@ inline std::vector<paddle::Tensor> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::Tensor>& inputs,
     const phi::DataType& dst_dtype,
-    std::string op_name,
-    bool trace_backward = true) {
+    std::string op_name UNUSED,
+    bool trace_backward UNUSED = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
@@ -92,13 +89,14 @@ inline paddle::Tensor EagerAmpAutoCast(const std::string& input_name,
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
+  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+       op_name == "sync_batch_norm") &&
+      input_name != "x") {
+    return input;
+  }
+
   if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
-      return input;
-    }
-    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-         op_name == "sync_batch_norm") &&
-        input_name != "x") {
       return input;
     }
     if ((op_name == "fused_attention" || op_name == "fused_feedforward")) {

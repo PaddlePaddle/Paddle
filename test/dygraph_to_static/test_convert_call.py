@@ -282,13 +282,13 @@ class TestConvertPaddleAPI(unittest.TestCase):
         func = paddle.nn.functional.relu
         func = paddle.jit.to_static(func)
         self.assertNotIn("_jst.IfElse", func.code)
-        self.assertIn("if in_dygraph_mode()", func.code)
+        self.assertIn("if in_dynamic_mode()", func.code)
 
     def test_class_api(self):
         bn = paddle.nn.SyncBatchNorm(2)
         paddle.jit.to_static(bn)
         self.assertNotIn("_jst.IfElse", bn.forward.code)
-        self.assertIn("if in_dygraph_mode()", bn.forward.code)
+        self.assertIn("if in_dynamic_mode()", bn.forward.code)
 
     def test_class_patch_api(self):
         paddle.nn.SyncBatchNorm.forward = forward

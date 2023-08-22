@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/table/tensor_table.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {}  // namespace distributed
 }  // namespace paddle

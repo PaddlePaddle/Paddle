@@ -760,6 +760,10 @@ struct FeaturePushValue {
   int mf_dim;
   float mf_g[0];
 
+  __device__ __forceinline__ FeaturePushValue() = default;
+  __device__ __forceinline__ FeaturePushValue(const FeaturePushValue&) =
+      default;
+
   __device__ __forceinline__ FeaturePushValue
   operator+(const FeaturePushValue& a) const {
     FeaturePushValue out;

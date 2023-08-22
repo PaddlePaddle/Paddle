@@ -285,13 +285,20 @@ REGISTER_OPERATOR(sequence_pad,
 REGISTER_OPERATOR(sequence_pad_grad,
                   ops::SequencePadGradOp,
                   ops::SequencePadGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(sequence_pad,
-                       ops::SequencePadOpKernel<phi::CPUContext, float>,
-                       ops::SequencePadOpKernel<phi::CPUContext, double>,
-                       ops::SequencePadOpKernel<phi::CPUContext, int>,
-                       ops::SequencePadOpKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(sequence_pad_grad,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, float>,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, double>,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, int>,
-                       ops::SequencePadGradOpKernel<phi::CPUContext, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(sequence_pad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequencePadOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_pad_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequencePadGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

@@ -257,7 +257,6 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     case TracerEventType::UserDefined:
     case TracerEventType::OperatorInner:
     case TracerEventType::Communication:
-    case TracerEventType::MluRuntime:
     case TracerEventType::NumTypes:
     default:
       output_file_stream_ << string_format(

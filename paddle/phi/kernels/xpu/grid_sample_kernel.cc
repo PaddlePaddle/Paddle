@@ -28,13 +28,6 @@ void GridSampleKernel(const Context& dev_ctx,
                       const std::string& padding_mode,
                       bool align_corners,
                       DenseTensor* out) {
-  int n = x.dims()[0];
-  int c = x.dims()[1];
-  int h = x.dims()[2];
-  int w = x.dims()[3];
-  int out_h = grid.dims()[1];
-  int out_w = grid.dims()[2];
-
   // attrs
   // paddle.nn.functional.grid_sample(x, grid, mode='bilinear',
   // padding_mode='zeros', align_corners=True, name=None)
@@ -68,42 +61,77 @@ void GridSampleKernel(const Context& dev_ctx,
         padding_mode));
   }
 
-  bool is_nchw_bool;
-  if (data_format == "NCHW") {
-    is_nchw_bool = true;
-  } else if (data_format == "NHWC") {
-    is_nchw_bool = false;
-  } else {
-    PADDLE_THROW(errors::InvalidArgument(
-        "should not reach here: data_format should be either 'NCHW' or "
-        "'NHWC', bot got %s.",
-        data_format));
-  }
-
-  // data pointers
   const T* input_data = x.data<T>();
   const T* grid_data = grid.data<T>();
-  out->Resize(make_ddim({n, c, out_h, out_w}));
-  T* output_data = dev_ctx.template Alloc<T>(out);
 
-  // int grid_sample(Context* ctx, const T* x, const T* grid, T* y, int n, int
-  // c, int xh, int xw, int yh, int yw, bool is_nearest, bool align_corners,
-  // int padding_mode, bool is_nchw);
-  int r = xpu::grid_sample(dev_ctx.x_context(),
-                           input_data,
-                           grid_data,
-                           output_data,
-                           n,
-                           c,
-                           h,
-                           w,
-                           out_h,
-                           out_w,
-                           is_nearest_bool,
-                           align_corners,
-                           padding_mode_int,
-                           is_nchw_bool);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "grid_sampler");
+  int n = x.dims()[0];
+  int c = x.dims()[1];
+
+  if (x.dims().size() == 4) {  // 2D grid sample
+    int h = x.dims()[2];
+    int w = x.dims()[3];
+    int out_h = grid.dims()[1];
+    int out_w = grid.dims()[2];
+
+    bool is_nchw_bool;
+    if (data_format == "NCHW") {
+      is_nchw_bool = true;
+    } else if (data_format == "NHWC") {
+      is_nchw_bool = false;
+    } else {
+      PADDLE_THROW(errors::InvalidArgument(
+          "should not reach here: data_format should be either 'NCHW' or "
+          "'NHWC', bot got %s.",
+          data_format));
+    }
+
+    out->Resize(make_ddim({n, c, out_h, out_w}));
+    T* output_data = dev_ctx.template Alloc<T>(out);
+
+    int r = xpu::grid_sample(dev_ctx.x_context(),
+                             input_data,
+                             grid_data,
+                             output_data,
+                             n,
+                             c,
+                             h,
+                             w,
+                             out_h,
+                             out_w,
+                             is_nearest_bool,
+                             align_corners,
+                             padding_mode_int,
+                             is_nchw_bool);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "grid_sampler");
+  } else {  // 3D grid sample
+    int d = x.dims()[2];
+    int h = x.dims()[3];
+    int w = x.dims()[4];
+    int out_d = grid.dims()[1];
+    int out_h = grid.dims()[2];
+    int out_w = grid.dims()[3];
+
+    out->Resize(make_ddim({n, c, out_d, out_h, out_w}));
+    T* output_data = dev_ctx.template Alloc<T>(out);
+
+    int r = xpu::grid_sample3d(dev_ctx.x_context(),
+                               input_data,
+                               grid_data,
+                               output_data,
+                               n,
+                               c,
+                               d,
+                               h,
+                               w,
+                               out_d,
+                               out_h,
+                               out_w,
+                               is_nearest_bool,
+                               align_corners,
+                               padding_mode_int,
+                               true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "grid_sampler3d");
+  }
 }
 
 }  // namespace phi

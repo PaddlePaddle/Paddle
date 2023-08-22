@@ -14,7 +14,6 @@
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
@@ -293,7 +292,7 @@ static inline void xpu_conv2d_grad(xpu::Context* ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
  public:
   using XPUT = typename XPUTypeTrait<T>::Type;
@@ -696,7 +695,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
  public:
   using XPUT = typename XPUTypeTrait<T>::Type;
@@ -992,8 +991,14 @@ class ResNetBasicBlockGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_XPU_KERNEL(resnet_basic_block,
-                       ops::ResNetBasicBlockXPUKernel<float>);
-REGISTER_OP_XPU_KERNEL(resnet_basic_block_grad,
-                       ops::ResNetBasicBlockGradXPUKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(resnet_basic_block,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::ResNetBasicBlockXPUKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(resnet_basic_block_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::ResNetBasicBlockGradXPUKernel,
+                          float) {}
 #endif

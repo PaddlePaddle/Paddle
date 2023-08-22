@@ -180,7 +180,7 @@ def save(
         filepath: saved path
         src: the audio tensor
         sample_rate: the number of samples of audio per second.
-        channels_first: src channel infomation
+        channels_first: src channel information
             if True, means input tensor is (channels, time)
             if False, means input tensor is (time, channels)
         encoding: audio encoding format, wave_backend only support PCM16 now.
@@ -216,7 +216,7 @@ def save(
 
     # only support PCM16
     if bits_per_sample not in (None, 16):
-        raise ValueError("Invalid bits_per_sample, only supprt 16 bit")
+        raise ValueError("Invalid bits_per_sample, only support 16 bit")
 
     sample_width = int(bits_per_sample / 8)  # 2
 

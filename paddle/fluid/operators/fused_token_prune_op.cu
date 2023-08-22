@@ -141,8 +141,7 @@ class FusedTokenPruneOpCUDAKernel : public framework::OpKernel<T> {
     ins.emplace_back(attn);
     ins.emplace_back(mask);
     outs.emplace_back(&attn_tmp);
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, -1, AttnMaskFunctor<T>());
+    LaunchElementwiseCudaKernel<T>(dev_ctx, ins, &outs, AttnMaskFunctor<T>());
 
     // 2. Reduce sum
     const std::vector<int64_t> reduce_dims{1, 2};

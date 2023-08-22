@@ -35,6 +35,14 @@ void ProdKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(prod, KPS, ALL_LAYOUT, phi::ProdKernel, float) {}
 #else
-PD_REGISTER_KERNEL(
-    prod, KPS, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::ProdKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

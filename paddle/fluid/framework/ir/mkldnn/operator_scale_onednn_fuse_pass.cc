@@ -31,6 +31,8 @@ void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
       "fused_matmul",
       "matmul",
       "matmul_v2",
+      "fused_elementwise_add",
+      "fused_elementwise_sub",
       "fused_elementwise_mul",
       "fused_elementwise_div",
       "elementwise_add",
@@ -119,6 +121,8 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
             .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
+            .EQ("fused_elementwise_add", 0)
+            .EQ("fused_elementwise_sub", 0)
             .EQ("fused_elementwise_mul", 0)
             .EQ("fused_elementwise_div", 0)
             .LE("elementwise_add", 1)

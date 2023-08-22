@@ -71,6 +71,23 @@ Node* FindNodeWithName(Graph* graph, std::string name) {
   return nullptr;
 }
 
+std::vector<Node*> FindOpNodeByInputName(Graph* graph,
+                                         const std::string& var_name) {
+  std::vector<Node*> ret;
+  for (auto* node : graph->Nodes()) {
+    if (!node->IsOp()) continue;
+    auto inputs = node->Op()->Inputs();
+    for (auto input : inputs) {
+      auto in_names = input.second;
+      if (std::count(in_names.begin(), in_names.end(), var_name) > 0) {
+        ret.push_back(node);
+        break;
+      }
+    }
+  }
+  return ret;
+}
+
 template <typename T>
 std::string IntTypeToString() {
   LOG(FATAL) << "Not support type.";
@@ -193,6 +210,13 @@ template void PrepareWeight<int16_t>(Graph* graph,
                                      Node** dst,
                                      Node** dst_max,
                                      bool transpose);
+template void PrepareWeight<int8_t>(Graph* graph,
+                                    Scope* scope,
+                                    BlockDesc* block,
+                                    Node* src,
+                                    Node** dst,
+                                    Node** dst_max,
+                                    bool transpose);
 
 void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst) {

@@ -88,7 +88,7 @@ void QrGradKernel(const Context& ctx,
   auto m_gt_n_case = [](const Context& ctx,
                         const DenseTensor& dQ,
                         const DenseTensor& dR,
-                        const DenseTensor& A,
+                        const DenseTensor& A UNUSED,
                         const DenseTensor& Q,
                         const DenseTensor& R) -> DenseTensor {
     // Hai-Jun Liao, Jin-Guo Liu, Lei Wang, Tao Xiang (2019). Differentiable

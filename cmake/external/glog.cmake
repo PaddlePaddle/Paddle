@@ -19,9 +19,8 @@ set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
     "${GLOG_INSTALL_DIR}/include"
     CACHE PATH "glog include directory." FORCE)
-set(GLOG_REPOSITORY ${GIT_URL}/google/glog.git)
 set(GLOG_TAG v0.4.0)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
 if(WIN32)
   set(GLOG_LIBRARIES
       "${GLOG_INSTALL_DIR}/lib/glog.lib"
@@ -67,8 +66,7 @@ else()
   ExternalProject_Add(
     extern_glog
     ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${GLOG_REPOSITORY}
-    GIT_TAG ${GLOG_TAG}
+    SOURCE_DIR ${SOURCE_DIR}
     DEPENDS gflags
     PREFIX ${GLOG_PREFIX_DIR}
     UPDATE_COMMAND ""

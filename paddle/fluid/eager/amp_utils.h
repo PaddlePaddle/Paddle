@@ -26,19 +26,24 @@ static inline phi::DataType GetPromoteType(
                                kSlotSmallVectorSize>& amp_tensors_vector,
     const phi::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
+  // only consider the dtype of input(X).
+  if (op_name == "batch_norm" || op_name == "layer_norm" ||
+      op_name == "sync_batch_norm" ||
+      op_name == "moving_average_abs_max_scale") {
+    if (amp_tensors_vector[0][0].dtype() == phi::DataType::FLOAT32) {
+      dst_type = phi::DataType::FLOAT32;
+    }
+    return dst_type;
+  }
+
   if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
       "float16") {
-    if (op_name == "batch_norm" || op_name == "layer_norm" ||
-        op_name == "sync_batch_norm") {
-      if (amp_tensors_vector[0][0].dtype() == phi::DataType::FLOAT32) {
-        dst_type = phi::DataType::FLOAT32;
-      }
-    } else if (op_name == "fused_attention") {
+    if (op_name == "fused_attention") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
         if (i != 3 || i != 4 || i != 9 || i != 10) {
           if (amp_tensors_vector[i][0].dtype() == phi::DataType::FLOAT32) {
             dst_type = phi::DataType::FLOAT32;
-            break;
+            return dst_type;
           }
         }
       }
@@ -47,37 +52,22 @@ static inline phi::DataType GetPromoteType(
         if (i != 7 || i != 8 || i != 9 || i != 10) {
           if (amp_tensors_vector[i][0].dtype() == phi::DataType::FLOAT32) {
             dst_type = phi::DataType::FLOAT32;
-            break;
-          }
-        }
-      }
-    } else {
-      for (const auto& tensors : amp_tensors_vector) {
-        for (const auto& tensor : tensors) {
-          if (tensor.dtype() == phi::DataType::FLOAT32) {
-            dst_type = tensor.dtype();
-            break;
+            return dst_type;
           }
         }
       }
     }
-  } else {
-    for (const auto& tensors : amp_tensors_vector) {
-      for (const auto& tensor : tensors) {
-        if (tensor.dtype() == phi::DataType::FLOAT32) {
-          dst_type = tensor.dtype();
-          break;
-        }
+  }
+
+  for (const auto& tensors : amp_tensors_vector) {
+    for (const auto& tensor : tensors) {
+      if (tensor.dtype() == phi::DataType::FLOAT32) {
+        dst_type = tensor.dtype();
+        break;
       }
     }
   }
-  // NOTE(juncai): moving_average_abs_max_scale only consider the dtype of
-  // input(X)
-  if (op_name == "moving_average_abs_max_scale") {
-    if (amp_tensors_vector[0][0].dtype() == phi::DataType::FLOAT16) {
-      dst_type = phi::DataType::FLOAT16;
-    }
-  }
+
   return dst_type;
 }
 
@@ -96,9 +86,6 @@ inline phi::DataType GetDtypeWithPlace(
       is_right_place = (paddle::platform::is_gpu_place(place) ||
                         paddle::platform::is_cuda_pinned_place(place) ||
                         paddle::platform::is_xpu_place(place) ||
-                        paddle::platform::is_mlu_place(place) ||
-                        paddle::platform::is_npu_place(place) ||
-                        paddle::platform::is_npu_pinned_place(place) ||
                         paddle::platform::is_custom_place(place));
       if (is_right_place) {
         break;
@@ -123,15 +110,36 @@ inline phi::DataType GetAmpDestDtype(
       egr::Controller::Instance().GetCurrentTracer()->GetAmpPhiDtype();
   auto dst_type = amp_setting_dtype;
 
-  if (paddle::imperative::AmpOperators::Instance().GetMutableAllowOps()->count(
-          op_name)) {
-    dst_type = amp_setting_dtype;
-  } else if (paddle::imperative::AmpOperators::Instance()
-                 .GetMutableBlockOps()
-                 ->count(op_name)) {
-    dst_type = phi::DataType::FLOAT32;
+  bool use_promote = true;
+  if (amp_level == paddle::imperative::AmpLevel::O2) {
+    use_promote =
+        egr::Controller::Instance().GetCurrentTracer()->GetUsePromote();
+  }
+
+  if (use_promote) {
+    if (paddle::imperative::AmpOperators::Instance()
+            .GetMutableAllowOps()
+            ->count(op_name)) {
+      dst_type = amp_setting_dtype;
+    } else if (paddle::imperative::AmpOperators::Instance()
+                   .GetMutableBlockOps()
+                   ->count(op_name)) {
+      dst_type = phi::DataType::FLOAT32;
+    } else {
+      if (amp_level == paddle::imperative::AmpLevel::OD) {
+        dst_type = phi::DataType::FLOAT32;
+      } else {
+        dst_type =
+            GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
+      }
+    }
   } else {
-    dst_type = GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
+    // use_promote can be set to false only for O2 training.
+    if (paddle::imperative::AmpOperators::Instance()
+            .GetMutableBlockOps()
+            ->count(op_name)) {
+      dst_type = phi::DataType::FLOAT32;
+    }
   }
 
   if (dst_type == amp_setting_dtype &&

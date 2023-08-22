@@ -1,32 +1,15 @@
 add_subdirectory(check)
 add_subdirectory(store)
+add_subdirectory(auto_parallel)
 
-set(COMM_CONTEXT_MANAGER_DEPS tcp_store)
+set(DISTRIBUTED_COMMON_SRCS comm_context_manager.cc)
 
 if(WITH_NCCL OR WITH_RCCL)
-  cc_library(
-    nccl_comm_context
-    SRCS nccl_comm_context.cc
-    DEPS dense_tensor comm_static_check nccl_dynamic_check)
-
-  list(APPEND COMM_CONTEXT_MANAGER_DEPS nccl_comm_context)
+  list(APPEND DISTRIBUTED_COMMON_SRCS nccl_comm_context.cc)
 endif()
 
 if(WITH_GLOO)
-  cc_library(
-    gloo_utils
-    SRCS gloo_utils.cc
-    DEPS gloo dense_tensor enforce tcp_store)
-
-  cc_library(
-    gloo_comm_context
-    SRCS gloo_comm_context.cc
-    DEPS gloo_utils comm_static_check)
-
-  list(APPEND COMM_CONTEXT_MANAGER_DEPS gloo_comm_context gloo_store)
+  list(APPEND DISTRIBUTED_COMMON_SRCS gloo_utils.cc gloo_comm_context.cc)
 endif()
 
-cc_library(
-  comm_context_manager
-  SRCS comm_context_manager.cc
-  DEPS ${COMM_CONTEXT_MANAGER_DEPS})
+collect_srcs(core_srcs SRCS ${DISTRIBUTED_COMMON_SRCS})

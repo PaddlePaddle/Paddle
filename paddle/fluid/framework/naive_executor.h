@@ -38,7 +38,7 @@ class Scope;
 
 class NaiveExecutor {
  public:
-  using HookFunc = std::function<void(OperatorBase*)>;
+  using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
 
@@ -86,7 +86,7 @@ class NaiveExecutor {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_{nullptr};
 
-  std::vector<HookFunc> hookfunc_;
+  std::vector<HookFunc> hookfuncs_;
 
   // Record information that tensor_a should ShareBufferWith tensor_b.
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>

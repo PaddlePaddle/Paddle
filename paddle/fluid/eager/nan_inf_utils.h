@@ -65,6 +65,10 @@ void CheckTensorHasNanOrInf(
 void CheckTensorHasNanOrInf(const std::string& api_name,
                             const TupleOfTensorAndVector& tensors);
 
+void SetCheckOpList(const std::string& check_op_list);
+
+void SetSkipOpList(const std::string& skip_op_list);
+
 void CheckTensorHasNanOrInf(
     const std::string& api_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,

@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CConcatOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -118,6 +118,5 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_concat,
-                       ops::CConcatOpXPUKernel<float>,
-                       ops::CConcatOpXPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(
+    c_concat, XPU, ALL_LAYOUT, ops::CConcatOpXPUKernel, float, plat::float16) {}

@@ -16,11 +16,7 @@ def {
 }
 extra {
   attrs {
-    name: "x_data_format"
-    type: STRING
-  }
-  attrs {
-    name: "y_data_format"
+    name: "act"
     type: STRING
   }
   attrs {
@@ -34,9 +30,5 @@ extra {
   attrs {
     name: "Scale_out"
     type: FLOAT
-  }
-  attrs {
-    name: "act"
-    type: STRING
   }
 }

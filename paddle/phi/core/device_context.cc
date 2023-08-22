@@ -297,6 +297,7 @@ struct DeviceContext::Impl {
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
+  impl_ = std::make_unique<Impl>();
   impl_->SetHostAllocator(&other.GetHostAllocator());
   impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
@@ -393,11 +394,8 @@ template <typename T>
 T* DeviceContext::Alloc(TensorBase* tensor,
                         size_t requested_size,
                         bool pinned) const {
-  if (pinned) {
-    return impl_->Alloc<T>(
-        tensor, GetPinnedPlace(GetPlace()), requested_size, pinned);
-  }
-  return impl_->Alloc<T>(tensor, GetPlace(), requested_size, pinned);
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
+  return static_cast<T*>(this->Alloc(tensor, dtype, requested_size, pinned));
 }
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,

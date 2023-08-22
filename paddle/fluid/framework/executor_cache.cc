@@ -50,10 +50,6 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 1;
       break;
     }
-    case platform::DeviceType::NPU: {
-      execution_strategy.num_threads_ = 1;
-      break;
-    }
     case platform::DeviceType::CUSTOM_DEVICE: {
       execution_strategy.num_threads_ = 1;
       break;

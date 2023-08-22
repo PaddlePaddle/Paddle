@@ -16,6 +16,7 @@ from paddle.distribution import transform
 from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
+from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.gumbel import Gumbel
@@ -29,11 +30,13 @@ from paddle.distribution.transform import *  # noqa: F403
 from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
+from paddle.distribution.geometric import Geometric
 
 __all__ = [  # noqa
     'Bernoulli',
     'Beta',
     'Categorical',
+    'Cauchy',
     'Dirichlet',
     'Distribution',
     'ExponentialFamily',
@@ -47,6 +50,7 @@ __all__ = [  # noqa
     'Laplace',
     'LogNormal',
     'Gumbel',
+    'Geometric',
 ]
 
 __all__.extend(transform.__all__)

@@ -151,11 +151,31 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
                                          out);                     \
   }
 
+DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedAdd, dnnl::algorithm::binary_add)
+DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedSubtract, dnnl::algorithm::binary_sub)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedMultiply, dnnl::algorithm::binary_mul)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedDivide, dnnl::algorithm::binary_div)
 
 }  // namespace fusion
 }  // namespace phi
+
+PD_REGISTER_KERNEL(fused_elementwise_add,
+                   OneDNN,
+                   ONEDNN,
+                   phi::fusion::FusedAddKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
+
+PD_REGISTER_KERNEL(fused_elementwise_sub,
+                   OneDNN,
+                   ONEDNN,
+                   phi::fusion::FusedSubtractKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(fused_elementwise_mul,
                    OneDNN,

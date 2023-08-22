@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -115,7 +115,11 @@ class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(lars_momentum,
-                       ops::LarsMomentumOpXPUKernel<paddle::platform::float16>,
-                       ops::LarsMomentumOpXPUKernel<float>);
+namespace plat = paddle::platform;
+PD_REGISTER_STRUCT_KERNEL(lars_momentum,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::LarsMomentumOpXPUKernel,
+                          float,
+                          plat::float16) {}
 #endif

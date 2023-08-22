@@ -16,44 +16,8 @@
 
 namespace phi {
 
-KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d",
-                         {"Input", "Filter"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "dilations",
-                          "groups",
-                          "data_format"},
-                         {"Output"});
-}
-
-KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_grad",
-                         {"Input", "Filter", "Output@GRAD"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "dilations",
-                          "groups",
-                          "data_format"},
-                         {"Input@GRAD", "Filter@GRAD"});
-}
-
-KernelSignature Conv2dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_double_grad",
-                         {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "dilations",
-                          "groups",
-                          "data_format"},
-                         {"DInput", "DFilter", "DDOutput"});
-}
-
-KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv2dFusionArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d_fusion_cutlass",
                          {"Input", "Filter", "Bias", "ResidualData"},
                          {"strides",
@@ -68,9 +32,5 @@ KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(conv2d, phi::Conv2dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion_cutlass,
                            phi::Conv2dFusionArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(conv2d_grad, phi::Conv2dGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(conv2d_grad_grad,
-                           phi::Conv2dDoubleGradOpArgumentMapping);

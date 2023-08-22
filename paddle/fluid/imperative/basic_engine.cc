@@ -30,10 +30,11 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(sort_sum_gradient);
+PHI_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {

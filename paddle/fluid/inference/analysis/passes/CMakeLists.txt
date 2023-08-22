@@ -13,7 +13,8 @@ cc_library(
 cc_library(
   convert_to_mixed_precision
   SRCS convert_to_mixed_precision.cc
-  DEPS analysis_pass ir_graph_build_pass auto_mixed_precision_pass)
+  DEPS analysis_pass ir_graph_build_pass auto_mixed_precision_pass
+       constant_folding_pass)
 cc_library(
   ir_params_sync_among_devices_pass
   SRCS ir_params_sync_among_devices_pass.cc
@@ -30,12 +31,17 @@ cc_library(
   inference_op_replace_pass
   SRCS inference_op_replace_pass.cc
   DEPS analysis_pass graph_to_program_pass)
+cc_library(
+  save_optimized_model_pass
+  SRCS save_optimized_model_pass.cc
+  DEPS analysis_pass argument ir_pass_manager graph_to_program_pass)
 
 cc_library(
   analysis_passes
   SRCS passes.cc
   DEPS ir_graph_build_pass
        ir_analysis_pass
+       save_optimized_model_pass
        ir_params_sync_among_devices_pass
        adjust_cudnn_workspace_size_pass
        memory_optim_pass

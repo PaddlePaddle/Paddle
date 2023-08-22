@@ -1212,6 +1212,65 @@ __device__ __inline__ void ReadDataBc(T* dst,
 }
 
 /**
+ * @brief Read 1D data from global memory to register with broadcast form.
+ * The difference from the above function is that it supports different data
+ * types of inputs.
+ * @template paraments
+ * T: The type of data stored in the global memory.
+ * NX: The number of data continuously loaded by each thread.
+ * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
+ * core_id() is used as the index.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x core_num(), boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: The original input data pointer of kernel.
+ * block_offset: The data offset of this block, core_num() * blockIdx.x * NX;
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * read_lens: The number of data continuously loaded by each thread.
+ * total_num_output: Total number of original output.
+ */
+template <typename T,
+          int NX,
+          int NY,
+          typename ArgsT,
+          int Index,
+          bool IsBoundary = false>
+__device__ __forceinline__ void ReadDataBc(
+    ArgsT* dst,
+    const T _global_ptr_* src,
+    int block_offset,
+    const details::BroadcastConfig& config,
+    int total_num_output,
+    int read_lens = NX) {
+  int thread_offset = block_offset + core_id() * read_lens;
+  __local__ T in_temp[NX];
+
+  if (config.cmp_type == details::OptType::MNK_M1K) {
+    ReadDataBcM1kMnk<T>(in_temp, src, thread_offset, config, read_lens);
+  } else if (config.cmp_type == details::OptType::N_1) {
+    ReadDataBc1N<T>(in_temp, src, thread_offset, config, read_lens);
+  } else if (config.cmp_type == details::OptType::MN_M) {
+    ReadDataBcM1Mn<T>(in_temp, src, thread_offset, config, read_lens);
+  } else if (config.cmp_type == details::OptType::MN_N) {
+    ReadDataBc1NMn<T>(in_temp, src, thread_offset, config, read_lens);
+  } else if (config.cmp_type == details::OptType::MNK_1N1) {
+    ReadDataBc1N1Mnk<T>(in_temp, src, thread_offset, config, read_lens);
+  } else {
+    ReadDataBcCanNotCmp<T, IsBoundary>(
+        in_temp, src, thread_offset, config, total_num_output, read_lens);
+  }
+#pragma unroll
+  for (int idx = 0; idx < read_lens; ++idx) {
+    std::get<Index>(dst[idx]) = in_temp[idx];
+  }
+}
+
+/**
  * @brief Initialize register with data index.
  *
  * @template paraments

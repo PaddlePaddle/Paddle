@@ -5,7 +5,7 @@ cc_library(
 cc_library(
   workqueue
   SRCS workqueue.cc
-  DEPS workqueue_utils enforce glog phi_os_info)
+  DEPS workqueue_utils enforce glog phi)
 cc_test(
   workqueue_test
   SRCS workqueue_test.cc

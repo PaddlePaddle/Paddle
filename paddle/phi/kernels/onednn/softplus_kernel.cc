@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void SoftplusKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     float beta,
-                    float threshold,
+                    float threshold UNUSED,
                     DenseTensor* out) {
   funcs::SoftplusOneDNNHandler<T> handler(dev_ctx, &x, beta);
 

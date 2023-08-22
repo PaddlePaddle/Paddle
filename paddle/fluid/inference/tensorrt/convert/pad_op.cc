@@ -26,7 +26,7 @@ class PadOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a transpose op to tensorrt tranpose layer";
+    VLOG(3) << "convert pad op to tensorrt IPaddingLayer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

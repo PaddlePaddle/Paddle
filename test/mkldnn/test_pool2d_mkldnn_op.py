@@ -15,8 +15,7 @@
 import unittest
 
 import numpy as np
-
-from paddle.fluid.tests.unittests.test_pool2d_op import (
+from test_pool2d_op import (
     TestCase1,
     TestCase2,
     TestCase3,

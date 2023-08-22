@@ -189,7 +189,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
       platform::errors::InvalidArgument(
           "Places size and LocalScopes not equal "
           "Places size(%d), LocalScopes size(%d) "
-          "If use multi devices， Places size must equas to LocalScopes size.",
+          "If use multi devices, Places size must equas to LocalScopes size.",
           places_.size(),
           local_scopes_.size()));
 }
@@ -875,7 +875,7 @@ size_t BalanceVarSSAGraphBuilder::GetAppropriateDeviceID(
                       0,
                       platform::errors::InvalidArgument(
                           "The numel of Var(%s) must greater than 0"
-                          "Please check your code，about Var(%s) Shape.",
+                          "Please check your code, about Var(%s) Shape.",
                           var_name,
                           var_name));
     numel_sum += numel;

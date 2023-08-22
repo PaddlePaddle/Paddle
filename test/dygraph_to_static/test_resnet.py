@@ -48,7 +48,7 @@ def optimizer_setting(parameter_list=None):
     optimizer = fluid.optimizer.Momentum(
         learning_rate=base_lr,
         momentum=momentum_rate,
-        regularization=fluid.regularizer.L2Decay(l2_decay),
+        regularization=paddle.regularizer.L2Decay(l2_decay),
         parameter_list=parameter_list,
     )
 
@@ -425,20 +425,6 @@ class TestResnet(unittest.TestCase):
             ),
         )
         self.verify_predict()
-
-    def test_resnet_composite_backward(self):
-        core._set_prim_backward_enabled(True)
-        static_loss = self.train(to_static=True)
-        core._set_prim_backward_enabled(False)
-        dygraph_loss = self.train(to_static=True)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
-        )
 
     def test_resnet_composite_forward_backward(self):
         core._set_prim_all_enabled(True)

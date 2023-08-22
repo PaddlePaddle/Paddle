@@ -78,8 +78,8 @@ void TileKernel(const Context& dev_ctx,
         tmp_out.Resize(make_ddim(vec_x_dims));
         dev_ctx.template Alloc<T>(&tmp_out);
         std::vector<DenseTensor*> outs = {&tmp_out};
-        phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-            dev_ctx, ins, &outs, i, kps::IdentityFunctor<T>());
+        phi::funcs::BroadcastKernel<T>(
+            dev_ctx, ins, &outs, kps::IdentityFunctor<T>(), i);
         tmp_out.Resize(out_dims);
         new_x = tmp_out;
       }
@@ -89,8 +89,8 @@ void TileKernel(const Context& dev_ctx,
       out->Resize(make_ddim(vec_x_dims));
       dev_ctx.template Alloc<T>(out);
       std::vector<DenseTensor*> outs = {out};
-      phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-          dev_ctx, ins, &outs, i, kps::IdentityFunctor<T>());
+      phi::funcs::BroadcastKernel<T>(
+          dev_ctx, ins, &outs, kps::IdentityFunctor<T>(), i);
       out->Resize(out_dims);
     }
   }

@@ -41,7 +41,7 @@ inline int round_up(int seq_len, int multiple = 32) {
       multiple,
       0,
       platform::errors::InvalidArgument(
-          "multiple should be a positive number，but it's (%d)", multiple));
+          "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
 

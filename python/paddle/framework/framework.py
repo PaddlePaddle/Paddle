@@ -40,7 +40,7 @@ def set_default_dtype(d):
 
     """
     if isinstance(d, type):
-        # This branch is for NumPy scalar types
+        # This branch is for np.dtype
         if d in [np.float16, np.float32, np.float64]:
             d = d.__name__
         else:
@@ -49,7 +49,7 @@ def set_default_dtype(d):
                 ", but received %s" % d.__name__
             )
     else:
-        # This branch is for np.dtype and str
+        # This branch is for str
         if d in ['float16', 'float32', 'float64', 'bfloat16']:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need

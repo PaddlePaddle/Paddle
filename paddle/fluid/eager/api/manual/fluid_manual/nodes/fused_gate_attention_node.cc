@@ -45,6 +45,11 @@ fused_gate_attentionGradNodeCompat::operator()(
     has_gating = PADDLE_GET_CONST(bool, attr_map_.at("has_gating"));
   }
 
+  bool use_flash_attn = false;
+  if (attr_map_.count("use_flash_attn")) {
+    use_flash_attn = PADDLE_GET_CONST(bool, attr_map_.at("use_flash_attn"));
+  }
+
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins0 =
       {{"FMHAOut",
         egr::EagerUtils::TrySyncToVars(
@@ -166,6 +171,13 @@ fused_gate_attentionGradNodeCompat::operator()(
     if ((!out_metas[6].empty()) && (!out_metas[6][0].IsStopGradient()))
       outs0["NonbatchedBias@GRAD"] = {std::make_shared<egr::EagerVariable>(
           egr::Controller::Instance().GenerateUniqueName())};
+  }
+
+  if (use_flash_attn) {
+    auto SrcMask = egr::EagerUtils::RecoverTensorWrapper(&this->SrcMask_);
+    ins0["SrcMask"] = egr::EagerUtils::TrySyncToVars(SrcMask);
+    auto SoftmaxLse = egr::EagerUtils::RecoverTensorWrapper(&this->SoftmaxLse_);
+    ins0["SoftmaxLse"] = egr::EagerUtils::TrySyncToVars(SoftmaxLse);
   }
 
   auto& attrs_map0 = this->attr_map_;

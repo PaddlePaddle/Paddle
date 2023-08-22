@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
@@ -62,6 +63,12 @@ class CustomContext : public DeviceContext,
   // The interface used by the training scene, DeviceContext will initialize
   // all resources and delete them when destructing.
   void Init();
+
+  /*! \brief  Return xccl communicators. */
+  phi::ccl::CCLComm xccl_comm() const;
+
+  /*! \brief  Set nccl communicators. */
+  void set_xccl_comm(phi::ccl::CCLComm comm);
 
  private:
   CustomContext();

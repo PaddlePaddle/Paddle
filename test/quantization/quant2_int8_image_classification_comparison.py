@@ -263,7 +263,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                         fetch_list=fetch_targets,
                     )
                     batch_time = (time.time() - start) * 1000  # in miliseconds
-                    batch_acc1, batch_acc5 = out[1][0], out[2][0]
+                    batch_acc1, batch_acc5 = out[1], out[2]
                     outputs.append(batch_acc1)
                 else:
                     # Quant INT8 models do not have accuracy measuring layers

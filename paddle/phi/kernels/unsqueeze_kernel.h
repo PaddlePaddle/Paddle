@@ -39,7 +39,7 @@ void Unsqueeze(const Context& dev_ctx,
                const DenseTensor& x,
                const IntArray& axes,
                DenseTensor* out,
-               DenseTensor* xshape) {
+               DenseTensor* xshape UNUSED) {
   MetaTensor meta_out(out);
   UnsqueezeInferMeta(x, axes, &meta_out);
   UnsqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);

@@ -43,7 +43,7 @@ void LayerNorm(float* x,
     __m256 sum;
     __m256 mean_vec, var_vec;
     __m128 hi, lo;
-    __m256 tmp;
+    __m256 tmp = _mm256_setzero_ps();
     size_t offset;
     size_t j;
     __m256 reverse_num_vec =

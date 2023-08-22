@@ -24,7 +24,7 @@ __all__ = []
 
 
 def has_valid_extension(filename, extensions):
-    """Checks if a file is a vilid extension.
+    """Checks if a file is a valid extension.
 
     Args:
         filename (str): path to a file
@@ -363,7 +363,7 @@ class ImageFolder(Dataset):
                         dirname = list(subpath.keys())[0]
                         make_directory(root / dirname, subpath[dirname])
 
-            directory_hirerarchy = [
+            directory_hierarchy = [
                 "abc.jpg",
                 "def.png",
                 {"ghi": [
@@ -376,7 +376,7 @@ class ImageFolder(Dataset):
             # You can replace this with any directory to explore the structure
             # of generated data. e.g. fake_data_dir = "./temp_dir"
             fake_data_dir = tempfile.mkdtemp()
-            make_directory(fake_data_dir, directory_hirerarchy)
+            make_directory(fake_data_dir, directory_hierarchy)
             image_folder_1 = ImageFolder(fake_data_dir)
             print(image_folder_1.samples)
             # ['./temp_dir/abc.jpg', './temp_dir/def.png',

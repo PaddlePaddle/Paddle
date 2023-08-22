@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void FillDiagonalGradKernel(const Context& ctx,
                             const DenseTensor& out_grad,
-                            float value,
+                            float value UNUSED,
                             int offset,
                             bool wrap,
                             DenseTensor* x_grad) {

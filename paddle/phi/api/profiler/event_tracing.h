@@ -32,13 +32,13 @@ class RecordEvent {
  public:
   static bool IsEnabled();
   /**
-   * @param name: If your string argument has a longer lifetime (e.g.: string
+   * @param name If your string argument has a longer lifetime (e.g.: string
    * literal, static variables, etc) than the event, use 'const char* name'.
    * Do your best to avoid using 'std::string' as the argument type. It will
    * cause deep-copy to harm performance.
-   * @param type: Classification which is used to instruct the profiling
+   * @param type Classification which is used to instruct the profiling
    * data statistics.
-   * @param level: Used to filter events, works like glog VLOG(level).
+   * @param level Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
   explicit RecordEvent(
@@ -48,11 +48,11 @@ class RecordEvent {
       const EventRole role = EventRole::kOrdinary);
 
   /**
-   * @param name: It is the caller's reponsibility to manage the underlying
+   * @param name It is the caller's reponsibility to manage the underlying
    * storage. RecordEvent stores the pointer.
-   * @param type: Classification which is used to instruct the profiling
+   * @param type Classification which is used to instruct the profiling
    * data statistics.
-   * @param level: Used to filter events, works like glog VLOG(level).
+   * @param level Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
   explicit RecordEvent(

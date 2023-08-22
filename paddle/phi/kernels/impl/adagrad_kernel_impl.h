@@ -91,12 +91,13 @@ void AdagradSparseKernel(const Context& ctx,
                          const SelectedRows& grad_t,
                          const DenseTensor& moment_t,
                          const DenseTensor& learning_rate,
-                         const paddle::optional<DenseTensor>& master_param,
+                         const paddle::optional<DenseTensor>& master_param
+                             UNUSED,
                          float epsilon_t,
-                         bool multi_precision,
+                         bool multi_precision UNUSED,
                          DenseTensor* param_out,
                          DenseTensor* moment_out,
-                         DenseTensor* master_param_outs) {
+                         DenseTensor* master_param_outs UNUSED) {
   auto* param_out_tensor = param_out;
   auto* moment_out_tensor = moment_out;
 

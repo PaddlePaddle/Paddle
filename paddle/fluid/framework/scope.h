@@ -122,9 +122,9 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
   // only for dygraph_to_static
-  bool CanReuesd() const { return can_reused_; }
+  bool CanReused() const { return can_reused_; }
 
-  void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
+  void SetCanReused(bool can_reused) { can_reused_ = can_reused; }
 
  protected:
   struct KeyHasher {

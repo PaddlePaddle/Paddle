@@ -25,7 +25,7 @@ if(WITH_ONNXRUNTIME)
   cc_library(
     zero_copy_tensor_dummy
     SRCS zero_copy_tensor_dummy.cc
-    DEPS onnxruntime phi_enforce)
+    DEPS onnxruntime phi)
 else()
   cc_library(
     zero_copy_tensor
@@ -34,7 +34,7 @@ else()
   cc_library(
     zero_copy_tensor_dummy
     SRCS zero_copy_tensor_dummy.cc
-    DEPS phi_enforce)
+    DEPS phi)
 endif()
 
 cc_test(

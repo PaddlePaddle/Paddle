@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature LogsumexpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("logsumexp_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"axis", "keepdim", "reduce_all"},

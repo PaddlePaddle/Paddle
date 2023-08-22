@@ -128,8 +128,9 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
     def test_check_output(self):
         if paddle.is_compiled_with_cuda():
             use_gpu = True
-            if os.path.exists(self.path + "_opt_cache"):
-                shutil.rmtree(self.path + "_opt_cache")
+            opt_path = os.path.join(self.path, '_opt_cache')
+            if os.path.exists(opt_path):
+                shutil.rmtree(opt_path)
             self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
@@ -164,8 +165,9 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
     def test_check_output(self):
         if paddle.is_compiled_with_cuda():
             use_gpu = True
-            if os.path.exists(self.path + "_opt_cache"):
-                shutil.rmtree(self.path + "_opt_cache")
+            opt_path = os.path.join(self.path, '_opt_cache')
+            if os.path.exists(opt_path):
+                shutil.rmtree(opt_path)
             self.check_output_with_option(use_gpu, 1e-3)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
@@ -313,8 +315,9 @@ class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
         self.serialize = True
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
@@ -332,8 +335,9 @@ class TensorRTSubgraphPassLayerNormDynamicFP16Test(
         self.serialize = True
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=0.01, rtol=0.01)
@@ -406,8 +410,9 @@ class TensorRTSubgraphPassElementwiseSerializeTest(
         )
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         super().test_check_output()
 
 
@@ -444,8 +449,9 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
         return paddle.add(x=data1, y=data2)
 
     def test_check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if paddle.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)

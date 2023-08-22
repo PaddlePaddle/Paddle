@@ -24,20 +24,20 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PRecvKernel(const Context& dev_ctx,
-                 int peer,
-                 DataType dtype,
-                 bool dynamic_shape,
-                 DenseTensor* out) {
+void PRecvKernel(const Context& dev_ctx UNUSED,
+                 int peer UNUSED,
+                 DataType dtype UNUSED,
+                 bool dynamic_shape UNUSED,
+                 DenseTensor* out UNUSED) {
   PADDLE_THROW(errors::Unavailable("Do not support recv for cpu kernel now."));
 }
 
 template <typename T, typename Context>
-void PRecvArrayKernel(const Context& dev_ctx,
-                      int peer,
-                      DataType dtype,
-                      const std::vector<int>& out_shape,
-                      TensorArray* out_array) {
+void PRecvArrayKernel(const Context& dev_ctx UNUSED,
+                      int peer UNUSED,
+                      DataType dtype UNUSED,
+                      const std::vector<int>& out_shape UNUSED,
+                      TensorArray* out_array UNUSED) {
   PADDLE_THROW(
       errors::Unavailable("Do not support recv array for cpu kernel now."));
 }

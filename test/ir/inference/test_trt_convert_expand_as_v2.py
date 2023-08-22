@@ -49,8 +49,11 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
             elif self.dims == 1:
                 self.input_shape = [32]
                 return np.random.random([32]).astype(np.float32)
+            elif self.dims == 0:
+                self.input_shape = []
+                return np.random.random([]).astype(np.float32)
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for shape in [
                 [10, 8, 32, 32],
                 [2, 8, 32, 32],
@@ -125,6 +128,10 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
                 self.dynamic_shape.min_input_shape = {"expand_v2_input": [32]}
                 self.dynamic_shape.max_input_shape = {"expand_v2_input": [64]}
                 self.dynamic_shape.opt_input_shape = {"expand_v2_input": [32]}
+            elif self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"expand_v2_input": []}
+                self.dynamic_shape.max_input_shape = {"expand_v2_input": []}
+                self.dynamic_shape.opt_input_shape = {"expand_v2_input": []}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -132,7 +139,9 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape:
+            ver = paddle_infer.get_trt_compile_version()
+            ver_num = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
+            if dynamic_shape and (ver_num > 8000 or self.dims > 0):
                 return 1, 2
             else:
                 return 0, 3

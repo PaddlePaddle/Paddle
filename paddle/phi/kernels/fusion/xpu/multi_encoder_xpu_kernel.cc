@@ -29,6 +29,8 @@ void MultiEncoderXPUKernel(const Context& ctx,
                            const std::vector<const DenseTensor*>& ln_scale,
                            const std::vector<const DenseTensor*>& ln_bias,
                            const paddle::optional<DenseTensor>& mask,
+                           const paddle::optional<DenseTensor>& seq_lod,
+                           const paddle::optional<DenseTensor>& max_seq_len,
                            int layer_num,
                            bool norm_before,
                            int hidden_dim,
@@ -89,19 +91,52 @@ void MultiEncoderXPUKernel(const Context& ctx,
   }
   const float* mask_data =
       mask.get_ptr() == nullptr ? nullptr : mask.get_ptr()->data<float>();
+  const int* seq_lod_data =
+      seq_lod.get_ptr() == nullptr ? nullptr : seq_lod.get_ptr()->data<int>();
+  const int* max_seq_len_data = max_seq_len.get_ptr() == nullptr
+                                    ? nullptr
+                                    : max_seq_len.get_ptr()->data<int>();
   xpu::Activation_t qkv_act(static_cast<xpu::Activation_t::act_enum>(act_type));
 
   int batch = x.dims()[0];
-  int max_seqlen = x.dims()[1];
   // matmul_size * layer_num
   std::vector<xpu::QuantType> quant_types(8 * layer_num,
                                           xpu::QuantType::NOT_QUANT);
-  if (mask_data) {
+  if (seq_lod_data) {
+    xpu::VectorParam<int> query_lod = {
+        seq_lod_data, seq_lod.get_ptr()->numel(), nullptr};
+    int max_seq_len_value = slice_idx == -1 ? max_seq_len_data[0] : -1;
+    xpu::QKVAttnParam qkv_attn_param(query_lod,
+                                     head_num,
+                                     size_per_head,
+                                     qkv_act,
+                                     slice_idx,
+                                     true,
+                                     max_seq_len_value,
+                                     hidden_dim,
+                                     norm_before,
+                                     false);
+    qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
+    qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
+    int r = xpu::transformer_encoder<XPUTypeFP16, int16_t, int16_t>(
+        ctx.x_context(),
+        x_fp16_data,
+        fc_weight_data,
+        out_fp16_data,
+        fc_input_max_data,
+        fc_weight_max_data,
+        fc_bias_data,
+        ln_scale_data,
+        ln_bias_data,
+        qkv_attn_param);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
+  } else if (mask_data) {
     auto mask_dims = mask.get_ptr()->dims();
     std::vector<int> mask_shape(mask_dims.Get(),
                                 mask_dims.Get() + mask_dims.size());
+    int max_seq_len_value = x.dims()[1];
     xpu::QKVAttnParam qkv_attn_param(batch,
-                                     max_seqlen,
+                                     max_seq_len_value,
                                      head_num,
                                      size_per_head,
                                      mask_shape,
@@ -128,9 +163,10 @@ void MultiEncoderXPUKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
   } else {
     // When no mask input, like VIT, create LOD to act as vsl.
+    int max_seq_len_value = x.dims()[1];
     std::vector<int> lod;
     for (int i = 0; i < batch + 1; i++) {
-      lod.push_back(i * max_seqlen);
+      lod.push_back(i * max_seq_len_value);
     }
     xpu::VectorParam<int> query_lod = {
         lod.data(), static_cast<int>(lod.size()), nullptr};
@@ -180,4 +216,7 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    ALL_LAYOUT,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(7).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(8).SetBackend(phi::Backend::CPU);
+}

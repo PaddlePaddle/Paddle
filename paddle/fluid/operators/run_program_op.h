@@ -37,8 +37,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {

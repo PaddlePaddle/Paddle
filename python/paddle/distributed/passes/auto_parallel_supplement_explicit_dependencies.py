@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_amp_flag_sync_op,
     is_data_parallel_reduce_op,
     is_global_norm_sync_op,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     OpRole,
     insert_dependencies_for_vars,
 )

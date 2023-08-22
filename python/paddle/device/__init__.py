@@ -135,7 +135,7 @@ def XPUPlace(dev_id):
 
 def get_cudnn_version():
     """
-    This funciton return the version of cudnn. the retuen value is int which represents the
+    This function return the version of cudnn. the retuen value is int which represents the
     cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
 
     Returns:
@@ -270,7 +270,7 @@ def set_device(device):
 
 def get_device():
     """
-    This funciton can get the current global device of the program is running.
+    This function can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
     set, it will return a string which is 'gpu:x' when cuda is avaliable or it
     will return a string which is 'cpu' when cuda is not avaliable.

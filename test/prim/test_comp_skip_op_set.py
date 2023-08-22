@@ -46,6 +46,11 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
                 for n, vs in self.outputs.items()
             },
         )
+
+        for _, outs in self.outputs.items():
+            for out in outs:
+                block.create_var(name=out + core.grad_var_suffix())
+
         self.fwd = block.ops[0].desc
 
     def tearDown(self):

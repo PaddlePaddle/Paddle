@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -111,13 +111,15 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    beam_search_decode,
-    ops::BeamSearchDecodeXPUKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::BeamSearchDecodeXPUKernel<paddle::platform::XPUDeviceContext, double>,
-    ops::BeamSearchDecodeXPUKernel<paddle::platform::XPUDeviceContext,
-                                   paddle::platform::float16>,
-    ops::BeamSearchDecodeXPUKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::BeamSearchDecodeXPUKernel<paddle::platform::XPUDeviceContext,
-                                   int64_t>);
+namespace plat = paddle::platform;
+
+PD_REGISTER_STRUCT_KERNEL(beam_search_decode,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::BeamSearchDecodeXPUKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          int,
+                          int64_t) {}
 #endif

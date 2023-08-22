@@ -4,7 +4,7 @@ if(WITH_TESTING)
   set(paddle_gtest_main_deps
       device_context
       gtest
-      gflags
+      phi
       init
       memory
       phi_utils

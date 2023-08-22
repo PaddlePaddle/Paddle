@@ -39,7 +39,7 @@ class TestFuseResNetUnit(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.amp.fp16_guard():
             with paddle.static.program_guard(program, startup_program):
-                x = paddle.static.data("x", [1, 64, 64, 8])
+                x = paddle.static.data("x", [1, 64, 64, 8], dtype="float16")
                 conv2d = paddle.nn.Conv2D(
                     8, 32, 1, bias_attr=False, data_format='NHWC'
                 )
@@ -66,3 +66,7 @@ class TestFuseResNetUnit(unittest.TestCase):
         np.testing.assert_allclose(
             before_out[0], after_out[0], rtol=1e-05, atol=0.005
         )
+
+
+if __name__ == '__main__':
+    unittest.main()

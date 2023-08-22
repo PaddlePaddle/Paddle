@@ -19,12 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/platform/device_code.h"
-namespace paddle {
-namespace platform {
+#include "paddle/phi/backends/device_code.h"
+namespace phi {
 class DeviceCodePool;
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -36,7 +34,7 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("fusion_group_pass", graph);
   if (Get<bool>("use_gpu")) {
     // TODO(liuyiqun): open this check.
-    // if (!platform::CUDADeviceCode::IsAvailable()) {
+    // if (!phi::GPUDeviceCode::IsAvailable()) {
     //   LOG(WARNING)
     //       << "Disable fusion_group because CUDA Driver or NVRTC is not
     //       avaiable.";
@@ -54,7 +52,7 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
-  int index = platform::DeviceCodePool::Init({place}).size(place);
+  int index = phi::DeviceCodePool::Init({place}).size(place);
 
   std::vector<std::vector<Node*>> subgraphs =
       fusion_group::ElementwiseGroupDetector()(graph);
@@ -88,11 +86,11 @@ bool FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
 
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
-  std::unique_ptr<platform::CUDADeviceCode> device_code(
-      new platform::CUDADeviceCode(place, subgraph->GetFuncName(), code_str));
+  std::unique_ptr<phi::GPUDeviceCode> device_code(
+      new phi::GPUDeviceCode(place, subgraph->GetFuncName(), code_str));
   bool is_compiled = device_code->Compile();
   if (is_compiled) {
-    platform::DeviceCodePool& pool = platform::DeviceCodePool::Init({place});
+    phi::DeviceCodePool& pool = phi::DeviceCodePool::Init({place});
     pool.Set(std::move(device_code));
   }
   return is_compiled;

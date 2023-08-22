@@ -455,7 +455,7 @@ class SparseAdamFunctor<T, CPUAdam, T> {
                     const int64_t* rows,
                     int64_t row_numel,
                     int64_t row_count,
-                    bool lazy_mode)
+                    bool lazy_mode UNUSED)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),

@@ -32,24 +32,10 @@ void FMinKernel(const Context& dev_ctx,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void MaximumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out);
-
-template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out);
-
-template <typename T, typename Context>
-void MinimumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out);
 
 template <typename T, typename Context>
 void MinimumKernel(const Context& dev_ctx,
@@ -58,37 +44,16 @@ void MinimumKernel(const Context& dev_ctx,
                    DenseTensor* out);
 
 template <typename T, typename Context>
-void RemainderRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        int axis,
-                        DenseTensor* out);
-
-template <typename T, typename Context>
 void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out);
 
 template <typename T, typename Context>
-void FloorDivideRawKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          int axis,
-                          DenseTensor* out);
-
-template <typename T, typename Context>
 void FloorDivideKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        DenseTensor* out);
-
-template <typename T, typename Context>
-void ElementwisePowRawKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             int axis,
-                             DenseTensor* out);
 
 template <typename T, typename Context>
 void ElementwisePowKernel(const Context& dev_ctx,

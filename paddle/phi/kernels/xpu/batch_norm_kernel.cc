@@ -39,6 +39,7 @@ void BatchNormKernel(const Context& dev_ctx,
                      DenseTensor* saved_mean,
                      DenseTensor* saved_variance,
                      DenseTensor* reserve_space) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   bool test_mode = is_test && (!trainable_statistics);
   bool global_stats = test_mode || use_global_stats;
   const auto data_layout = phi::StringToDataLayout(data_layout_str);
@@ -68,12 +69,12 @@ void BatchNormKernel(const Context& dev_ctx,
 
   W = W * D;
 
-  const auto* x_data = x.data<T>();
+  const auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   const auto* scale_data = scale.data<float>();
   const auto* bias_data = bias.data<float>();
 
   // alloc memory
-  auto* y_data = dev_ctx.template Alloc<T>(y);
+  auto* y_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(y));
   dev_ctx.template Alloc<float>(mean_out);
   dev_ctx.template Alloc<float>(variance_out);
   dev_ctx.template Alloc<float>(saved_mean);
@@ -95,43 +96,48 @@ void BatchNormKernel(const Context& dev_ctx,
     auto* saved_mean_data = saved_mean->data<float>();
     auto* saved_variance_data = saved_variance->data<float>();
 
-    int r = xpu::batch_norm<T>(dev_ctx.x_context(),
-                               x_data,
-                               y_data,
-                               N,
-                               C,
-                               H,
-                               W,
-                               epsilon,
-                               momentum,
-                               scale_data,
-                               bias_data,
-                               saved_mean_data,
-                               saved_variance_data,
-                               mean_out_data,
-                               variance_out_data,
-                               is_nchw);
+    int r = xpu::batch_norm<XPUType>(dev_ctx.x_context(),
+                                     x_data,
+                                     y_data,
+                                     N,
+                                     C,
+                                     H,
+                                     W,
+                                     epsilon,
+                                     momentum,
+                                     scale_data,
+                                     bias_data,
+                                     saved_mean_data,
+                                     saved_variance_data,
+                                     mean_out_data,
+                                     variance_out_data,
+                                     is_nchw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm");
   } else {
     const auto* mean_data = mean.data<float>();
     const auto* variance_data = variance.data<float>();
-    int r = xpu::batch_norm_infer(dev_ctx.x_context(),
-                                  x_data,
-                                  y_data,
-                                  N,
-                                  C,
-                                  H,
-                                  W,
-                                  epsilon,
-                                  scale_data,
-                                  bias_data,
-                                  mean_data,
-                                  variance_data,
-                                  is_nchw);
+    int r = xpu::batch_norm_infer<XPUType>(dev_ctx.x_context(),
+                                           x_data,
+                                           y_data,
+                                           N,
+                                           C,
+                                           H,
+                                           W,
+                                           epsilon,
+                                           scale_data,
+                                           bias_data,
+                                           mean_data,
+                                           variance_data,
+                                           is_nchw);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_infer");
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(batch_norm, XPU, ALL_LAYOUT, phi::BatchNormKernel, float) {}
+PD_REGISTER_KERNEL(batch_norm,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormKernel,
+                   float,
+                   phi::dtype::float16) {}

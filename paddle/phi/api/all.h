@@ -14,10 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#if !defined(_MSC_VER) && __cplusplus < 201402L
-#error C++14 or later compatible compiler is required to use Paddle.
-#endif
-
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max

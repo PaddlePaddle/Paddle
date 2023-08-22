@@ -33,7 +33,7 @@ def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
     # clip to shiftx, otherwise, when calc loss with
     # log(exp(shiftx)), may get log(0)=INF
-    shiftx = (x - np.max(x)).clip(-64.0)
+    shiftx = x - np.max(x)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -131,13 +131,13 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             # get input data for rank 0
             np.random.seed(pid0)
             input0 = np.random.uniform(
-                low=-10.0, high=10.0, size=(self.batch_size, local_elements)
+                low=-40.0, high=40.0, size=(self.batch_size, local_elements)
             ).astype(np_data_type)
 
             # get input data for rank 1
             np.random.seed(pid1)
             input1 = np.random.uniform(
-                low=-10.0, high=10.0, size=(self.batch_size, local_elements)
+                low=-40.0, high=40.0, size=(self.batch_size, local_elements)
             ).astype(np_data_type)
 
             # get combined input data

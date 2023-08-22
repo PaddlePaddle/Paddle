@@ -34,7 +34,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/fused_adam_kernel.h"
 #include "paddle/phi/kernels/gaussian_kernel.h"
-#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
 
 namespace phi {
 

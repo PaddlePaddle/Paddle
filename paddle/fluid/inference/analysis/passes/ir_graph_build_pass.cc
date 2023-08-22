@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
 
-#include <memory>
 #include <string>
 
 #include "paddle/fluid/framework/executor.h"

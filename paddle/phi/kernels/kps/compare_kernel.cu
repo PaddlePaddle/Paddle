@@ -55,8 +55,7 @@ inline void CompareKernelImpl(const Context& ctx,
   ctx.template Alloc<bool>(out);
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{out};
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, bool>(
-      ctx, ins, &outs, axis, Functor());
+  funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
 }
 
 #ifndef PADDLE_WITH_XPU_KP

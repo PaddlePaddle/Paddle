@@ -24,7 +24,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void FillKernel(const Context& dev_ctx,
-                const DenseTensor& x,
+                const DenseTensor& x UNUSED,
                 const Scalar& value,
                 DenseTensor* out) {
   T fill_var = value.to<T>();

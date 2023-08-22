@@ -26,8 +26,8 @@ from paddle.fluid.backward import (
 from paddle.framework import core
 from paddle.utils import unique_name
 
-from ..auto_parallel.dist_attribute import OperatorDistAttr
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.dist_attribute import OperatorDistAttr
+from ..auto_parallel.static.utils import (
     get_loss_op,
     insert_dependencies_for_two_ops,
     is_backward_op,

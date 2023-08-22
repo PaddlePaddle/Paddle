@@ -165,7 +165,7 @@ class ImperativeLenet(paddle.nn.Layer):
         x = self.features(x)
 
         x = paddle.flatten(x, 1)
-        x = self.add(x, paddle.to_tensor(0.0))  # For CI
+        x = self.add(x, paddle.to_tensor([0.0]))  # For CI
         x = self.fc(x)
         return x
 

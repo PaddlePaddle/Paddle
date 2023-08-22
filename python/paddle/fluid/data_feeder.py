@@ -17,13 +17,13 @@ import numpy as np
 import os
 import multiprocessing
 import warnings
+import struct
 
 from .framework import (
     Variable,
     default_main_program,
+    in_dygraph_mode,
     _current_expected_place,
-    _non_static_mode,
-    _in_eager_without_dygraph_check,
 )
 from .framework import _cpu_num, _cuda_ids
 
@@ -43,6 +43,32 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX64: 'complex64',
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
+
+
+def convert_float_to_uint16(data, data_format="NCHW"):
+    if data.size == 0:
+        return data.view(np.uint16)
+
+    if data_format == "NHWC":
+        data = np.transpose(data, [0, 3, 1, 2])
+
+    new_data = np.vectorize(
+        lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
+        otypes=[np.uint16],
+    )(data.flat)
+    new_data = np.reshape(new_data, data.shape)
+
+    if data_format == "NHWC":
+        new_data = np.transpose(new_data, [0, 2, 3, 1])
+    return new_data
+
+
+def convert_uint16_to_float(data):
+    new_data = np.vectorize(
+        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        otypes=[np.float32],
+    )(data.flat)
+    return np.reshape(new_data, data.shape)
 
 
 def convert_dtype(dtype):
@@ -86,7 +112,9 @@ def convert_dtype(dtype):
             # type, so it will not be handled by the previous branch. We need
             # to convert it to str here.
             return str(dtype)
-        # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
+        # NOTE(zhangbo): Now numpy does not support bfloat, so use numpy.uint16 to represent paddle.bfloat16, there binaries are consistent.
+        # If cast ndarray to uint16 and trans to tensor, should not ndarray.astype('uint16') directly
+        # should use function 'convert_float_to_uint16' above, otherwise bits is wrong
         if dtype in ['bfloat16']:
             return 'uint16'
 
@@ -112,7 +140,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     # in dynamic graph mode.
     # 2. Performance considerations. Because these checks are executed at
     # each step in dynamic graph mode, it will bring a heavy performance burden.
-    if _non_static_mode():
+    if in_dygraph_mode():
         return
 
     # NOTE: `in_declarative_mode` is used to determined whether this op is called under
@@ -143,7 +171,7 @@ def check_dtype(
     input_dtype, input_name, expected_dtype, op_name, extra_message=''
 ):
     # See NOTE [ Why skip dynamic graph check ]
-    if _non_static_mode():
+    if in_dygraph_mode():
         return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
@@ -180,7 +208,7 @@ def check_shape(
     expected_tensor_dtype=('int32', 'int64'),
 ):
     # See NOTE [ Why skip dynamic graph check ]
-    if _non_static_mode():
+    if in_dygraph_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
     if expected_element_type is not None and not isinstance(shape, Variable):

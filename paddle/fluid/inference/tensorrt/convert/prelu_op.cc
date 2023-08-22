@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/prelu_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -87,7 +86,6 @@ class PReluOpConverter : public OpConverter {
           if (hw_tensor != nullptr) {
             shape_tensor = Concat(
                 std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor, hw_tensor});
-
           } else {
             shape_tensor =
                 Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});

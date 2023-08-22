@@ -18,7 +18,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class GPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -53,5 +53,5 @@ class GPUSeedKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(seed,
-                        paddle::operators::GPUSeedKernel<phi::GPUContext, int>);
+PD_REGISTER_STRUCT_KERNEL(
+    seed, GPU, ALL_LAYOUT, paddle::operators::GPUSeedKernel, int) {}

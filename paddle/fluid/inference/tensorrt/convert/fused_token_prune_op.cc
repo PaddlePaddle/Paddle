@@ -52,7 +52,7 @@ class FusedTokenPruneOpConverter : public OpConverter {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-      if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+      if (engine_->precision() == phi::DataType::INT8) {
         with_fp16 = true;
       }
       bool flag_varseqlen = engine_->use_varseqlen();

@@ -114,7 +114,7 @@ class TestCorrelationOp(unittest.TestCase):
             stride2=1,
         )
 
-        out = fluid.contrib.correlation(
+        out = paddle.incubate.layers.correlation(
             x1,
             x2,
             pad_size=4,
@@ -142,7 +142,7 @@ class Net(paddle.nn.Layer):
         super().__init__(name_scope)
 
     def forward(self, x1, x2):
-        y = fluid.contrib.correlation(
+        y = paddle.incubate.layers.correlation(
             x1,
             x2,
             pad_size=4,

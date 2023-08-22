@@ -20,7 +20,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/impl/nanmedian_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/nanmedian_utils.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
 
 namespace phi {
@@ -138,14 +138,13 @@ __global__ void CalcNanmedianKernel(const T* sort_out_ptr,
 template <typename T, typename Context>
 void ProcessMedianKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         bool ignore_nan,
                          DenseTensor* out,
-                         int64_t* m_ptr) {
-  bool should_ignore_nan = ignore_nan;
+                         DenseTensor* median_index) {
   auto stream = dev_ctx.stream();
+  const T* x_data = x.data<T>();
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  int64_t* m_data = dev_ctx.template Alloc<int64_t>(median_index);
 
-  const T* x_ptr = x.data<T>();
-  T* o_ptr = dev_ctx.template Alloc<T>(out);
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
@@ -156,7 +155,9 @@ void ProcessMedianKernel(const Context& dev_ctx,
   DenseTensor nan_counts, nan_stat;
   int64_t* nan_counts_ptr;
   int64_t max_valid_num = 0;
-  if (should_ignore_nan) {
+
+  bool ignore_nan = true;
+  if (ignore_nan) {
     nan_counts.Resize(phi::make_ddim({pre_dim}));
     dev_ctx.template Alloc<int64_t>(&nan_counts);
     nan_counts_ptr = nan_counts.data<int64_t>();
@@ -167,7 +168,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
     KernelNanCounts<T><<<GET_BLOCKS(numel),
                          PADDLE_CUDA_NUM_THREADS,
                          pre_dim * sizeof(int64_t),
-                         stream>>>(x_ptr,
+                         stream>>>(x_data,
                                    numel,
                                    pre_dim,
                                    stride,
@@ -189,15 +190,19 @@ void ProcessMedianKernel(const Context& dev_ctx,
     // all elements are nan values
     T nan_val = std::numeric_limits<T>::quiet_NaN();
     if (nan_stat_cpu_ptr[0] == numel) {
-      FullLikeKernel<T, Context>(dev_ctx, x, nan_val, x.dtype(), out);
+      phi::funcs::SetConstant<Context, T> set_nan;
+      set_nan(dev_ctx, out, nan_val);
+
+      phi::funcs::SetConstant<Context, int64_t> set_negatvie;
+      set_negatvie(dev_ctx, median_index, static_cast<int64_t>(-1));
       return;
     }
 
-    should_ignore_nan = nan_stat_cpu_ptr[0] > 0;
+    ignore_nan = nan_stat_cpu_ptr[0] > 0;
     max_valid_num = nan_stat_cpu_ptr[1];
   }
 
-  int64_t sort_k = should_ignore_nan ? max_valid_num : ((stride >> 1) + 1);
+  int64_t sort_k = ignore_nan ? max_valid_num : ((stride >> 1) + 1);
   bool is_ori_odd = stride & 1;
 
   DenseTensor sort_out, sort_indices;
@@ -217,14 +222,14 @@ void ProcessMedianKernel(const Context& dev_ctx,
 
   T div_factor = static_cast<T>(2.0);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
-  if (should_ignore_nan) {
+  if (ignore_nan) {
     CalcNanmedianKernel<T>
         <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
             sort_out_ptr,
             sort_indices_ptr,
             nan_counts_ptr,
-            m_ptr,
-            o_ptr,
+            m_data,
+            out_data,
             is_ori_odd,
             pre_dim,
             max_valid_num,
@@ -236,34 +241,13 @@ void ProcessMedianKernel(const Context& dev_ctx,
         <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
             sort_out_ptr,
             sort_indices_ptr,
-            m_ptr,
-            o_ptr,
+            m_data,
+            out_data,
             div_factor,
             is_ori_odd,
             pre_dim,
             sort_k);
   }
-}
-
-template <typename T, typename Context>
-void BaseMedianKernel(const Context& dev_ctx,
-                      const DenseTensor& input,
-                      const IntArray& axes,
-                      bool ignore_nan,
-                      DenseTensor* out,
-                      DenseTensor* median_index) {
-  DenseTensor x;
-  auto rank = input.dims().size();
-  if ((axes.size() == 0) || rank <= 1) {
-    x = input;
-    x.Resize({input.numel()});
-  } else {
-    PreprocessMedianKernel<T, Context>(dev_ctx, input, axes, &x);
-  }
-
-  int64_t* m_ptr = dev_ctx.template Alloc<int64_t>(median_index);
-  ProcessMedianKernel<T, Context>(dev_ctx, x, ignore_nan, out, m_ptr);
-  out->Resize(out->dims());
 }
 
 template <typename T, typename Context>
@@ -273,7 +257,16 @@ void NanmedianKernel(const Context& dev_ctx,
                      bool keepdim,
                      DenseTensor* out,
                      DenseTensor* median_index) {
-  BaseMedianKernel<T, Context>(dev_ctx, x, axes, true, out, median_index);
+  DenseTensor tmp_x;
+  auto rank = x.dims().size();
+  if ((axes.size() == 0) || rank <= 1) {
+    tmp_x = x;
+    tmp_x.Resize({x.numel()});
+  } else {
+    funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
+  }
+
+  ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, out, median_index);
 }
 
 }  // namespace phi

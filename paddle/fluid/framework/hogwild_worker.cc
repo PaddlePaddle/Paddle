@@ -29,8 +29,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(enable_exit_when_partial_worker);
+PHI_DECLARE_bool(enable_exit_when_partial_worker);
 
 namespace paddle {
 namespace framework {

@@ -181,8 +181,7 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
     linewidth = DEFAULT_PRINT_OPTIONS.linewidth
 
     if len(var.shape) == 0:
-        # currently, shape = [], i.e., scaler tensor is not supported.
-        # If it is supported, it should be formatted like this.
+        # 0-D Tensor, whose shape = [], should be formatted like this.
         return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
         item_length = max_width + 2
@@ -291,7 +290,7 @@ def _format_dense_tensor(tensor, indent):
     if tensor.dtype == core.VarDesc.VarType.BF16:
         tensor = tensor.astype('float32')
 
-    # TODO(zhouwei): will remove 0D Tensor.numpy() hack
+    # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
     np_tensor = tensor.numpy(False)
 
     if len(tensor.shape) == 0:

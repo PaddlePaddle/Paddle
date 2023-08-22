@@ -56,6 +56,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -242,7 +243,7 @@ class EventCount {
   Waiter* waiters_{nullptr};
   size_t waiter_num_{0};
 
-  static void CheckState(uint64_t state, bool waiter = false) {
+  static void CheckState(uint64_t state, bool waiter UNUSED = false) {
     static_assert(kEpochBits >= 20, "not enough bits to prevent ABA problem");
     const uint64_t waiters = (state & kWaiterMask) >> kWaiterShift;
     const uint64_t signals = (state & kSignalMask) >> kSignalShift;

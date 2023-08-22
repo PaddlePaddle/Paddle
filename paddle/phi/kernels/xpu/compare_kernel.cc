@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -119,7 +119,8 @@ PD_REGISTER_KERNEL(less_than_raw,
                      int,                                 \
                      int64_t,                             \
                      float,                               \
-                     phi::dtype::float16) {               \
+                     phi::dtype::float16,                 \
+                     bool) {                              \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }                                                       \
   PD_REGISTER_KERNEL(name##_raw,                          \
@@ -129,7 +130,8 @@ PD_REGISTER_KERNEL(less_than_raw,
                      int,                                 \
                      int64_t,                             \
                      float,                               \
-                     phi::dtype::float16) {               \
+                     phi::dtype::float16,                 \
+                     bool) {                              \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 

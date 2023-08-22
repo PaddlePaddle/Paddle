@@ -101,12 +101,12 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      int64_t offset,
-      int64_t numel,
-      bool sync_op,
-      bool use_calc_stream) override {
+      phi::DenseTensor* out_tensor UNUSED,
+      const phi::DenseTensor& in_tensor UNUSED,
+      int64_t offset UNUSED,
+      int64_t numel UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support all_gather.",
         GetBackendName()));
@@ -125,11 +125,11 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const AllreduceOptions& opts,
-      bool sync_op,
-      bool use_calc_stream) override {
+      phi::DenseTensor* out_tensor UNUSED,
+      const phi::DenseTensor& in_tensor UNUSED,
+      const AllreduceOptions& opts UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support all_reduce.",
         GetBackendName()));
@@ -150,12 +150,12 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const std::vector<int64_t>& out_size_each_rank,
-      const std::vector<int64_t>& in_size_each_rank,
-      bool sync_op,
-      bool use_calc_stream) override {
+      phi::DenseTensor* out_tensor UNUSED,
+      const phi::DenseTensor& in_tensor UNUSED,
+      const std::vector<int64_t>& out_size_each_rank UNUSED,
+      const std::vector<int64_t>& in_size_each_rank UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support all_to_all.",
         GetBackendName()));
@@ -174,11 +174,11 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const BroadcastOptions& opts,
-      bool sync_op,
-      bool use_calc_stream) override {
+      phi::DenseTensor* out_tensor UNUSED,
+      const phi::DenseTensor& in_tensor UNUSED,
+      const BroadcastOptions& opts UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support broadcast.",
         GetBackendName()));
@@ -195,11 +195,12 @@ class ProcessGroupWithStream : public ProcessGroup {
                   /*use_calc_stream*/ false);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
-                                             const phi::DenseTensor& in_tensor,
-                                             const ReduceOptions& opts,
-                                             bool sync_op,
-                                             bool use_calc_stream) override {
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      phi::DenseTensor* out_tensor UNUSED,
+      const phi::DenseTensor& in_tensor UNUSED,
+      const ReduceOptions& opts UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support reduce.",
         GetBackendName()));
@@ -218,11 +219,11 @@ class ProcessGroupWithStream : public ProcessGroup {
   }
 
   std::shared_ptr<ProcessGroup::Task> ReduceScatter(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const ReduceScatterOptions& opts,
-      bool sync_op,
-      bool use_calc_stream) override {
+      phi::DenseTensor* out_tensor UNUSED,
+      const phi::DenseTensor& in_tensor UNUSED,
+      const ReduceScatterOptions& opts UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support reduce_scatter.",
         GetBackendName()));
@@ -239,11 +240,12 @@ class ProcessGroupWithStream : public ProcessGroup {
                    /*use_calc_stream*/ false);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
-                                              const phi::DenseTensor& in_tensor,
-                                              const ScatterOptions& opts,
-                                              bool sync_op,
-                                              bool use_calc_stream) override {
+  std::shared_ptr<ProcessGroup::Task> Scatter(
+      phi::DenseTensor* out_tensor UNUSED,
+      const phi::DenseTensor& in_tensor UNUSED,
+      const ScatterOptions& opts UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support scatter.",
         GetBackendName()));
@@ -284,12 +286,13 @@ class ProcessGroupWithStream : public ProcessGroup {
                 use_calc_stream);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
-                                           int src_rank,
-                                           int64_t offset,
-                                           int64_t numel,
-                                           bool sync_op,
-                                           bool use_calc_stream) override {
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor UNUSED,
+                                           int src_rank UNUSED,
+                                           int64_t offset UNUSED,
+                                           int64_t numel UNUSED,
+                                           bool sync_op UNUSED,
+                                           bool use_calc_stream
+                                               UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support recv.",
         GetBackendName()));
@@ -330,12 +333,13 @@ class ProcessGroupWithStream : public ProcessGroup {
                 use_calc_stream);
   }
 
-  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
-                                           int dst_rank,
-                                           int64_t offset,
-                                           int64_t numel,
-                                           bool sync_op,
-                                           bool use_calc_stream) override {
+  std::shared_ptr<ProcessGroup::Task> Send(
+      const phi::DenseTensor& tensor UNUSED,
+      int dst_rank UNUSED,
+      int64_t offset UNUSED,
+      int64_t numel UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support send.",
         GetBackendName()));

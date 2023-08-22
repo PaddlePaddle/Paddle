@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyOp : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -131,13 +131,6 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
       };
       phi::XPUElementwise<T, XPUType>(
           dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
-      ret = xpu::clip<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               N * D,
-                               -64.,
-                               0.);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
     }
 
     // step 3, obtain predict target
@@ -335,13 +328,6 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       };
       phi::XPUElementwise<T, XPUType>(
           dev_ctx, logits_2d, logits_max, axis, &softmax_2d, f);
-      ret = xpu::clip<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               reinterpret_cast<XPUType*>(softmax_2d.data<T>()),
-                               N * D,
-                               -64.,
-                               0.);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "clip");
     }
 
     // step 3, obtain predict target
@@ -468,7 +454,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -535,9 +521,13 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_softmax_with_cross_entropy,
-                       ops::CSoftmaxWithCrossEntropyOp<phi::XPUContext, float>);
-
-REGISTER_OP_XPU_KERNEL(
-    c_softmax_with_cross_entropy_grad,
-    ops::CSoftmaxWithCrossEntropyGrad<phi::XPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyOp,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyGrad,
+                          float) {}

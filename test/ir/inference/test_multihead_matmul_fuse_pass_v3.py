@@ -33,6 +33,9 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
         def generate_elewise_input():
             return np.random.random([1, 12, 128, 128]).astype(np.float32)
 
+        def generate_weight(shape):
+            return np.random.random(shape).astype(np.float32)
+
         mul_0 = OpConfig(
             "mul",
             inputs={"X": ["mul_x"], "Y": ["mul_0_w"]},
@@ -195,13 +198,27 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
                 ),
             },
             weights={
-                "mul_0_w": TensorConfig(shape=[768, 768]),
-                "mul_1_w": TensorConfig(shape=[768, 768]),
-                "mul_2_w": TensorConfig(shape=[768, 768]),
-                "mul_3_w": TensorConfig(shape=[768, 768]),
-                "ele_0_w": TensorConfig(shape=[768]),
-                "ele_1_w": TensorConfig(shape=[768]),
-                "ele_2_w": TensorConfig(shape=[768]),
+                "mul_0_w": TensorConfig(
+                    data_gen=partial(generate_weight, [768, 768])
+                ),
+                "mul_1_w": TensorConfig(
+                    data_gen=partial(generate_weight, [768, 768])
+                ),
+                "mul_2_w": TensorConfig(
+                    data_gen=partial(generate_weight, [768, 768])
+                ),
+                "mul_3_w": TensorConfig(
+                    data_gen=partial(generate_weight, [768, 768])
+                ),
+                "ele_0_w": TensorConfig(
+                    data_gen=partial(generate_weight, [768])
+                ),
+                "ele_1_w": TensorConfig(
+                    data_gen=partial(generate_weight, [768])
+                ),
+                "ele_2_w": TensorConfig(
+                    data_gen=partial(generate_weight, [768])
+                ),
             },
             outputs=[ops[-1].outputs["Out"][0]],
         )

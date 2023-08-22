@@ -59,7 +59,7 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclUint8;
   } else if (type == framework::proto::VarType::BOOL) {
     return ncclUint8;
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
   } else if (type == framework::proto::VarType::BF16) {
     return ncclBfloat16;
 #endif
@@ -86,7 +86,7 @@ inline ncclDataType_t ToNCCLDataType(phi::DataType type) {
     return ncclInt8;
   } else if (type == phi::DataType::BOOL) {
     return ncclUint8;
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
   } else if (type == phi::DataType::BFLOAT16) {
     return ncclBfloat16;
 #endif

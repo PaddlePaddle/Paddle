@@ -472,7 +472,11 @@ class DistributedSummary:
                     for runtimenode in hostnode.runtime_node:
                         for devicenode in runtimenode.device_node:
                             if devicenode.type == TracerEventType.Kernel:
-                                if 'nccl' in devicenode.name.lower():
+                                kernel_name = devicenode.name.lower()
+                                if (
+                                    'nccl' in kernel_name
+                                    or 'xccl' in kernel_name
+                                ):
                                     self.gpu_communication_range.append(
                                         (devicenode.start_ns, devicenode.end_ns)
                                     )

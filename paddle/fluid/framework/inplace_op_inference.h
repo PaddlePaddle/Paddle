@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
-
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 namespace framework {
 
@@ -40,7 +40,7 @@ class InplaceOpInference {
   class class_name final : public ::paddle::framework::InplaceOpInference { \
    public:                                                                  \
     std::unordered_map<std::string, std::string> operator()(                \
-        bool use_cuda) const final {                                        \
+        bool use_cuda UNUSED) const final {                                 \
       return {__VA_ARGS__};                                                 \
     }                                                                       \
   }

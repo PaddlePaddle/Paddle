@@ -51,7 +51,7 @@ def _prepare_data():
 
 def _is_cuda_available():
     """
-    Check whether CUDA is avaiable.
+    Check whether CUDA is available.
     """
     try:
         assert len(paddle.static.cuda_places()) > 0
@@ -67,7 +67,7 @@ def _is_cuda_available():
 
 def _is_xpu_available():
     """
-    Check whether XPU is avaiable.
+    Check whether XPU is available.
     """
     try:
         assert len(paddle.static.xpu_places()) > 0
@@ -154,7 +154,7 @@ def _run_static_single(use_cuda, use_xpu):
 
 def train_for_run_parallel():
     """
-    train script for parallel traning check
+    train script for parallel training check
     """
 
     # to avoid cyclic import

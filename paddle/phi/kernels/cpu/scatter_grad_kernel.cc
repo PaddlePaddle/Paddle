@@ -25,9 +25,9 @@ namespace phi {
 template <typename T, typename Context>
 void ScatterGradKernel(const Context &ctx,
                        const DenseTensor &index,
-                       const DenseTensor &updates,
+                       const DenseTensor &updates UNUSED,
                        const DenseTensor &out_grad,
-                       bool overwrite,
+                       bool overwrite UNUSED,
                        DenseTensor *x_grad,
                        DenseTensor *updates_grad) {
   const auto &index_type = index.dtype();

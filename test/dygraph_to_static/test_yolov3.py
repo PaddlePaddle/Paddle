@@ -107,7 +107,7 @@ def train(to_static):
 
         optimizer = fluid.optimizer.Momentum(
             learning_rate=lr,
-            regularization=fluid.regularizer.L2Decay(cfg.weight_decay),
+            regularization=paddle.regularizer.L2Decay(cfg.weight_decay),
             momentum=cfg.momentum,
             parameter_list=model.parameters(),
         )

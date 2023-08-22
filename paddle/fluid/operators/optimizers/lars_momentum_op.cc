@@ -233,6 +233,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::LarsMomentumOpVarTypeInference);
-REGISTER_OP_CPU_KERNEL(lars_momentum,
-                       ops::LarsMomentumOpKernel<float>,
-                       ops::LarsMomentumOpKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    lars_momentum, CPU, ALL_LAYOUT, ops::LarsMomentumOpKernel, float, double) {}

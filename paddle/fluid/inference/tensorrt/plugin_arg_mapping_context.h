@@ -25,8 +25,8 @@ namespace tensorrt {
 
 class PluginArgumentMappingContext : public ::phi::ArgumentMappingContext {
  public:
-  explicit PluginArgumentMappingContext(framework::OpDesc* op_desc_ptr)
-      : op_desc_ptr_(op_desc_ptr) {}
+  explicit PluginArgumentMappingContext(const framework::OpDesc* op_desc)
+      : op_desc_(op_desc) {}
 
   bool HasInput(const std::string& name) const override;
 
@@ -60,11 +60,12 @@ class PluginArgumentMappingContext : public ::phi::ArgumentMappingContext {
 
   bool IsSelectedRowsOutput(const std::string& name) const override;
 
-  bool IsForInferShape() const override { return false; }
+  bool IsForInferShape() const override;
 
  private:
-  framework::OpDesc* op_desc_ptr_;
+  const framework::OpDesc* op_desc_;
 };
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

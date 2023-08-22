@@ -407,11 +407,10 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<T>(&tol_tensor);
 
-  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
+  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
       dev_ctx,
       atol_tensor,
       rtol_tensor,
-      -1,
       GreaterElementFunctor<T>(),
       &tol_tensor);
 
@@ -421,12 +420,10 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   compare_result.Resize(detail::NewAxisDim(dim_out, k));
   dev_ctx.template Alloc<int64_t>(&compare_result);
 
-  int axis = -1;
   funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int64_t>(
       dev_ctx,
       eigenvalue_tensor,
       tol_tensor,
-      axis,
       funcs::GreaterThanFunctor<T, int64_t>(),
       &compare_result);
 

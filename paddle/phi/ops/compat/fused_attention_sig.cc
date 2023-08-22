@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature AttentionFuseOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_attention",
                          {"X",
                           "LnScale",
@@ -59,7 +59,7 @@ KernelSignature AttentionFuseOpArgumentMapping(
 }
 
 KernelSignature AttentionGradFuseOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_attention_grad",
                          {"Y@GRAD",
                           "X",

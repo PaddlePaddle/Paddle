@@ -70,7 +70,9 @@ class RowwiseMean2D<phi::GPUContext, T> {
 template <typename T>
 class RowwiseMean2D<phi::CPUContext, T> {
  public:
-  RowwiseMean2D(int left, int right, const DeviceContext& dev_ctx) {}
+  RowwiseMean2D(int left UNUSED,
+                int right UNUSED,
+                const DeviceContext& dev_ctx UNUSED) {}
 
   void operator()(const phi::CPUContext& context,
                   const DenseTensor& input,
@@ -126,7 +128,9 @@ class ColwiseSum2D<phi::GPUContext, T> {
 template <typename T>
 class ColwiseSum2D<phi::CPUContext, T> {
  public:
-  ColwiseSum2D(int left, int right, const phi::CPUContext& dev_ctx) {}
+  ColwiseSum2D(int left UNUSED,
+               int right UNUSED,
+               const phi::CPUContext& dev_ctx UNUSED) {}
 
   void operator()(const phi::CPUContext& context,
                   const DenseTensor& input,

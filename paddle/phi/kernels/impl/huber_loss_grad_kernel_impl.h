@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/huber_loss_grad_kernel.h"
@@ -26,14 +27,14 @@ struct HuberLossBackward {
       : sign(sign), delta(delta) {}
 
   HOSTDEVICE T operator()(const T& val) const {
-    T abs_val = std::abs(val);
+    T abs_val = abs(val);
     if (abs_val <= delta) {
       return sign * val;
     } else {
-      if (val > 0) {
+      if (val > static_cast<T>(0)) {
         return sign * delta;
       } else {
-        return -1 * sign * delta;
+        return static_cast<T>(-1) * sign * delta;
       }
     }
   }
@@ -58,16 +59,16 @@ void HuberLossGradKernel(const Context& dev_ctx,
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     auto eigen_input_grad = EigenVector<T>::Flatten(*input_grad);
-    eigen_input_grad.device(place) =
-        eigen_residual.unaryExpr(HuberLossBackward<T>(delta_, -1.0));
+    eigen_input_grad.device(place) = eigen_residual.unaryExpr(
+        HuberLossBackward<T>(delta_, static_cast<T>(-1.0)));
     eigen_input_grad.device(place) = eigen_out_grad * eigen_input_grad;
   }
 
   if (label_grad) {
     dev_ctx.template Alloc<T>(label_grad);
     auto eigen_label_grad = EigenVector<T>::Flatten(*label_grad);
-    eigen_label_grad.device(place) =
-        eigen_residual.unaryExpr(HuberLossBackward<T>(delta_, 1.0));
+    eigen_label_grad.device(place) = eigen_residual.unaryExpr(
+        HuberLossBackward<T>(delta_, static_cast<T>(1.0)));
     eigen_label_grad.device(place) = eigen_out_grad * eigen_label_grad;
   }
 }

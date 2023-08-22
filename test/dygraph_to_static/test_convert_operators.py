@@ -158,7 +158,7 @@ class TestConvertShapeCompare(unittest.TestCase):
                 fetch_list=[eq_out, not_eq_out, long_eq_out],
             )
             np.testing.assert_array_equal(
-                np.array(x_y_eq_out), np.array([[True], [False], [False]])
+                np.array(x_y_eq_out), np.array([True, False, False])
             )
 
             set_a_zero = np.ones([3, 2]).astype(np.float32)
@@ -168,7 +168,7 @@ class TestConvertShapeCompare(unittest.TestCase):
                 fetch_list=[eq_out, not_eq_out, long_eq_out],
             )
             np.testing.assert_array_equal(
-                np.array(x_y_not_eq_out), np.array([[False], [True], [True]])
+                np.array(x_y_not_eq_out), np.array([False, True, True])
             )
         paddle.disable_static()
 

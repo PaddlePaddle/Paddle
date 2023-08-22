@@ -75,8 +75,11 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(unique_with_counts,
                              ops::UniqueWithCountsOp,
                              ops::UniqueWithCountsOpMaker);
-REGISTER_OP_CPU_KERNEL(unique_with_counts,
-                       ops::UniqueWithCountsKernel<float>,
-                       ops::UniqueWithCountsKernel<double>,
-                       ops::UniqueWithCountsKernel<int32_t>,
-                       ops::UniqueWithCountsKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(unique_with_counts,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::UniqueWithCountsKernel,
+                          float,
+                          double,
+                          int32_t,
+                          int64_t) {}

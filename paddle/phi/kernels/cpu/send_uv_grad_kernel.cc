@@ -35,7 +35,7 @@ void CalculateGrad(const Context& ctx,
                    int64_t index_size,
                    int64_t slice_size,
                    T* x_grad,
-                   const DenseTensor& out_grad_tensor,
+                   const DenseTensor& out_grad_tensor UNUSED,
                    const DenseTensor& y) {
   std::vector<int64_t> reduce_idx;
   bool reduce = ReduceGrad(out_grad_dims, x_grad_dims, reduce_idx);

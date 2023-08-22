@@ -26,4 +26,16 @@ OpUtilsMap& OpUtilsMap::Instance() {
   return g_op_utils_map;
 }
 
+BaseKernelNameRegistrar::BaseKernelNameRegistrar(const char* op_type,
+                                                 const char* base_kernel_name) {
+  OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
+  OpUtilsMap::Instance().InsertFluidOplName(op_type, base_kernel_name);
+}
+
+ArgumentMappingFnRegistrar::ArgumentMappingFnRegistrar(
+    const char* op_type, ArgumentMappingFn arg_mapping_fn) {
+  OpUtilsMap::Instance().InsertArgumentMappingFn(op_type,
+                                                 std::move(arg_mapping_fn));
+}
+
 }  // namespace phi

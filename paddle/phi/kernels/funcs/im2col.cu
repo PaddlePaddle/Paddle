@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 
 namespace phi {
@@ -71,7 +72,7 @@ __global__ void im2col(const T* data_im,
         }
         *data_col =
             (rIdx >= im_height || rIdx < 0 || cIdx >= im_width || cIdx < 0)
-                ? 0
+                ? T(0)
                 : data_im[im_idx];
         data_col += col_height * col_width;
       }
@@ -173,7 +174,7 @@ __global__ void col2im(int n,
   int input_channels = n / im_height / im_width;
 
   if (index < n) {
-    T val = 0;
+    T val = static_cast<T>(0);
     int w = (data_layout != DataLayout::kNHWC
                  ? index % im_width + padding_width
                  : (index / input_channels) % im_width + padding_width);
@@ -309,12 +310,24 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
 template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              double>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::GPUContext,
+                             phi::dtype::float16>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::GPUContext,
+                             phi::dtype::bfloat16>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              float>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              double>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::GPUContext,
+                             phi::dtype::float16>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+                             phi::GPUContext,
+                             phi::dtype::bfloat16>;
 
 template <class T>
 __global__ void im2colOCF(const T* im_data,
@@ -560,13 +573,24 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              double>;
-
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::GPUContext,
+                             phi::dtype::float16>;
+template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::GPUContext,
+                             phi::dtype::bfloat16>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              double>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::GPUContext,
+                             phi::dtype::float16>;
+template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+                             phi::GPUContext,
+                             phi::dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -28,7 +28,7 @@ namespace funcs {
 template <class T>
 class Vol2ColFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -154,7 +154,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
 template <class T>
 class Col2VolFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,

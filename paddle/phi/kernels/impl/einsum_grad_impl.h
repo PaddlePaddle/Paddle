@@ -152,7 +152,7 @@ void EinsumGradKernel(const Context& dev_ctx,
   if (x.size() == 1) {  // Unary
     auto splits = paddle::string::split_string(equation, "->");
     auto left = splits[0];
-    right = splits[1].substr(1);
+    right = splits[1];
     auto new_equation = right + "->" + gather_labels_except_reduction(left);
     auto new_operands = std::vector<const DenseTensor*>();
     new_operands.push_back(&out_grad);
@@ -171,8 +171,7 @@ void EinsumGradKernel(const Context& dev_ctx,
     auto splits = paddle::string::split_string(equation, "->");
     auto left = splits[0];
     auto ops = paddle::string::split_string(left, ",");
-    right = splits[1].substr(1);
-
+    right = splits[1];
     auto equation_for_A =
         ops[1] + "," + right + "->" + gather_labels_except_reduction(ops[0]);
     auto equation_for_B =

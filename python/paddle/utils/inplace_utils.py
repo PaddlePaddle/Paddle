@@ -15,8 +15,8 @@
 import warnings
 
 import paddle  # noqa: F401
-from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.framework import in_dynamic_mode
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`
@@ -24,7 +24,7 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 # of the original API will be called.
 def _inplace_apis_in_dygraph_only_(func):
     def __impl__(*args, **kwargs):
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             origin_api_name = func.__name__[:-1]
             warnings.warn(
                 "In static graph mode, {}() is the same as {}() and does not perform inplace operation.".format(

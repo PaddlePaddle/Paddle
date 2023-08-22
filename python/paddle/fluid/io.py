@@ -55,8 +55,6 @@ from paddle.fluid.log_helper import get_logger
 from . import reader
 from . import unique_name
 from .reader import *
-from . import dataloader
-from .dataloader import *
 from . import core
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only

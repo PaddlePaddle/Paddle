@@ -27,6 +27,7 @@ std::tuple<paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor,
+           paddle::Tensor,
            paddle::Tensor>
 fused_gate_attention_dygraph_function(
     const paddle::Tensor& Query,

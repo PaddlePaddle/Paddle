@@ -162,10 +162,7 @@ REGISTER_OPERATOR(unzip,
 
 REGISTER_OPERATOR(unzip_grad, ops::unzipGradientOp);
 
-REGISTER_OP_CPU_KERNEL(unzip,
-                       ops::unzipOpKernel<int64_t>,
-                       ops::unzipOpKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(unzip_grad,
-                       ops::unzipGradOpKernel<int64_t>,
-                       ops::unzipGradOpKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(unzip, CPU, ALL_LAYOUT, ops::unzipOpKernel, int64_t) {
+}
+PD_REGISTER_STRUCT_KERNEL(
+    unzip_grad, CPU, ALL_LAYOUT, ops::unzipGradOpKernel, int64_t) {}

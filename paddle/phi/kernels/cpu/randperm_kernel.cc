@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void RandpermKernel(const Context& dev_ctx,
                     int n,
-                    DataType dtype,
+                    DataType dtype UNUSED,
                     DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
   int seed = 0;

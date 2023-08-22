@@ -63,7 +63,7 @@ __global__ void YoloBoxHeadCudaKernel(const T* input,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class YoloBoxHeadKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -103,4 +103,5 @@ class YoloBoxHeadKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(yolo_box_head, ops::YoloBoxHeadKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    yolo_box_head, GPU, ALL_LAYOUT, ops::YoloBoxHeadKernel, float) {}

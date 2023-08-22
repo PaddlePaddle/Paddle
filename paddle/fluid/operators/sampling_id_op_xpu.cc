@@ -13,8 +13,9 @@
  limitations under the License. */
 
 #include "paddle/fluid/operators/sampling_id_op.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(sampling_id,
-                       paddle::operators::SamplingIdKernel<float>,
-                       paddle::operators::SamplingIdKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    sampling_id, XPU, ALL_LAYOUT, ops::SamplingIdKernel, float, double) {}

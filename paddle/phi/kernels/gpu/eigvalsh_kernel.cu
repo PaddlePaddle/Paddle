@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef PADDLE_WITH_HIP
+
 #include "paddle/phi/kernels/eigvalsh_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -29,3 +31,5 @@ PD_REGISTER_KERNEL(eigvalsh,  // cuda_only
                    phi::dtype::complex<double>) {
   kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
+
+#endif  // not PADDLE_WITH_HIP

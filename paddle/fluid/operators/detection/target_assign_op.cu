@@ -65,6 +65,6 @@ template struct NegTargetAssignFunctor<phi::GPUContext, float, float>;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(target_assign,
-                        ops::TargetAssignKernel<phi::GPUContext, int, float>,
-                        ops::TargetAssignKernel<phi::GPUContext, float, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    target_assign, GPU, ALL_LAYOUT, ops::TargetAssignKernel, int, float) {}

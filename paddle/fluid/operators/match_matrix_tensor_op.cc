@@ -240,7 +240,7 @@ void MatchMatrixTensorOpMaker::Make() {
     )DOC");
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -321,7 +321,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -458,10 +458,13 @@ REGISTER_OPERATOR(
     ops::MatchMatrixTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    match_matrix_tensor,
-    ops::CPUMatchMatrixTensorOPKernel<phi::CPUContext, float>);
-
-REGISTER_OP_CPU_KERNEL(
-    match_matrix_tensor_grad,
-    ops::CPUMatchMatrixTensorOPGradKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(match_matrix_tensor,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUMatchMatrixTensorOPKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(match_matrix_tensor_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUMatchMatrixTensorOPGradKernel,
+                          float) {}

@@ -28,8 +28,8 @@ void NormGradKernel(const Context& ctx,
                     const DenseTensor& norm,
                     const DenseTensor& out_grad,
                     int axis,
-                    float epsilon,
-                    bool is_test,
+                    float epsilon UNUSED,
+                    bool is_test UNUSED,
                     DenseTensor* x_grad) {
   auto* in_x = &x;
   auto* in_dy = &out_grad;

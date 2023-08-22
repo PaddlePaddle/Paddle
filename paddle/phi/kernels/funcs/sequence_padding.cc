@@ -97,7 +97,7 @@ static void fast_mem_init(void* dest,
 template <typename T>
 class PaddingLoDTensorFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& seq_tensor,
                   phi::DenseTensor* pad_tensor,
                   const phi::DenseTensor& pad_value,
@@ -157,7 +157,7 @@ class PaddingLoDTensorFunctor<phi::CPUContext, T> {
 template <typename T>
 class UnpaddingLoDTensorFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& pad_tensor,
                   phi::DenseTensor* seq_tensor,
                   int pad_seq_len = -1,

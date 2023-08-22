@@ -84,8 +84,9 @@ class TensorRTPool3dTest(InferencePassTest):
             self.fetch_list = [pool_out]
 
     def check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             if self.precision == AnalysisConfig.Precision.Float32:
@@ -200,8 +201,9 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
             self.fetch_list = [pool_out]
 
     def check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)
@@ -300,8 +302,9 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
             self.fetch_list = [pool_out]
 
     def check_output(self):
-        if os.path.exists(self.path + "_opt_cache"):
-            shutil.rmtree(self.path + "_opt_cache")
+        opt_path = os.path.join(self.path, '_opt_cache')
+        if os.path.exists(opt_path):
+            shutil.rmtree(opt_path)
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu)

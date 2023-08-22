@@ -39,8 +39,8 @@ class GpuAndCpuSearchSortedCompute {
     return std::isnan(x);
 #endif
   }
-  static HOSTDEVICE bool IsNan(int x) { return false; }
-  static HOSTDEVICE bool IsNan(int64_t x) { return false; }
+  static HOSTDEVICE bool IsNan(int x UNUSED) { return false; }
+  static HOSTDEVICE bool IsNan(int64_t x UNUSED) { return false; }
 
   static HOSTDEVICE bool IsInf(float x) {
 #ifdef __NVCC__
@@ -56,8 +56,8 @@ class GpuAndCpuSearchSortedCompute {
     return std::isinf(x);
 #endif
   }
-  static HOSTDEVICE bool IsInf(int x) { return false; }
-  static HOSTDEVICE bool IsInf(int64_t x) { return false; }
+  static HOSTDEVICE bool IsInf(int x UNUSED) { return false; }
+  static HOSTDEVICE bool IsInf(int64_t x UNUSED) { return false; }
 
   HOSTDEVICE GpuAndCpuSearchSortedCompute(const T1* sequence_data,
                                           const T2* value_data,

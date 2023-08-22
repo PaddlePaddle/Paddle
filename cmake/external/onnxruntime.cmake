@@ -39,19 +39,31 @@ set(ONNXRUNTIME_LIB_DIR
     CACHE PATH "onnxruntime lib directory." FORCE)
 set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" "${ONNXRUNTIME_LIB_DIR}")
 
+set(ONNXRUNTIME_DOWNLOAD_DIR
+    ${PADDLE_SOURCE_DIR}/third_party/onnxruntime/${CMAKE_SYSTEM_NAME})
+
 if(WIN32)
   set(ONNXRUNTIME_URL
       "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-win-x64-${ONNXRUNTIME_VERSION}.zip"
   )
+  set(ONNXRUNTIME_URL_MD5 f21d6bd1feef15935a5f4e1007797593)
+  set(ONNXRUNTIME_CACHE_EXTENSION "zip")
 elseif(APPLE)
   set(ONNXRUNTIME_URL
       "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-osx-x86_64-${ONNXRUNTIME_VERSION}.tgz"
   )
+  set(ONNXRUNTIME_URL_MD5 6a6f6b7df97587da59976042f475d3f4)
+  set(ONNXRUNTIME_CACHE_EXTENSION "tgz")
 else()
   set(ONNXRUNTIME_URL
       "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}.tgz"
   )
+  set(ONNXRUNTIME_URL_MD5 ce3f2376854b3da4b483d6989666995a)
+  set(ONNXRUNTIME_CACHE_EXTENSION "tgz")
 endif()
+
+set(ONNXRUNTIME_CACHE_FILENAME
+    "${ONNXRUNTIME_VERSION}.${ONNXRUNTIME_CACHE_EXTENSION}")
 
 # For ONNXRUNTIME code to include internal headers.
 include_directories(${ONNXRUNTIME_INC_DIR})
@@ -96,38 +108,72 @@ else()
       CACHE FILEPATH "ONNXRUNTIME shared library." FORCE)
 endif()
 
+function(download_onnxruntime)
+  message(
+    STATUS
+      "Downloading ${ONNXRUNTIME_URL} to ${ONNXRUNTIME_DOWNLOAD_DIR}/${ONNXRUNTIME_CACHE_FILENAME}"
+  )
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${ONNXRUNTIME_URL}
+    ${ONNXRUNTIME_DOWNLOAD_DIR}/${ONNXRUNTIME_CACHE_FILENAME}
+    EXPECTED_MD5 ${ONNXRUNTIME_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${ONNXRUNTIME_CACHE_FILENAME} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${ONNXRUNTIME_CACHE_FILENAME} again"
+    )
+  endif()
+endfunction()
+
+find_file(
+  LOCAL_ONNXRUNTIME_LIB_ZIP
+  NAMES ${ONNXRUNTIME_CACHE_FILENAME}
+  PATHS ${ONNXRUNTIME_DOWNLOAD_DIR}
+  NO_DEFAULT_PATH)
+
+if(LOCAL_ONNXRUNTIME_LIB_ZIP)
+  file(MD5 ${ONNXRUNTIME_DOWNLOAD_DIR}/${ONNXRUNTIME_CACHE_FILENAME}
+       ONNXRUNTIME_MD5)
+  if(NOT ONNXRUNTIME_MD5 EQUAL ONNXRUNTIME_URL_MD5)
+    download_onnxruntime()
+  endif()
+else()
+  download_onnxruntime()
+endif()
+
 if(WIN32)
   ExternalProject_Add(
     ${ONNXRUNTIME_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    URL ${ONNXRUNTIME_URL}
+    URL ${ONNXRUNTIME_DOWNLOAD_DIR}/${ONNXRUNTIME_CACHE_FILENAME}
+    URL_MD5 ${ONNXRUNTIME_URL_MD5}
     PREFIX ${ONNXRUNTIME_PREFIX_DIR}
     DOWNLOAD_NO_PROGRESS 1
+    DOWNLOAD_DIR ${ONNXRUNTIME_DOWNLOAD_DIR}
+    SOURCE_DIR ${ONNXRUNTIME_INSTALL_DIR}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     UPDATE_COMMAND ""
-    INSTALL_COMMAND
-      ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SOURCE_LIB}
-      ${ONNXRUNTIME_SHARED_LIB} && ${CMAKE_COMMAND} -E copy
-      ${ONNXRUNTIME_SOURCE_DIR}/lib/onnxruntime.lib ${ONNXRUNTIME_LIB} &&
-      ${CMAKE_COMMAND} -E copy_directory ${ONNXRUNTIME_SOURCE_DIR}/include
-      ${ONNXRUNTIME_INC_DIR}
+    INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${ONNXRUNTIME_LIB})
 else()
   ExternalProject_Add(
     ${ONNXRUNTIME_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    URL ${ONNXRUNTIME_URL}
+    URL ${ONNXRUNTIME_DOWNLOAD_DIR}/${ONNXRUNTIME_CACHE_FILENAME}
+    URL_MD5 ${ONNXRUNTIME_URL_MD5}
     PREFIX ${ONNXRUNTIME_PREFIX_DIR}
     DOWNLOAD_NO_PROGRESS 1
+    DOWNLOAD_DIR ${ONNXRUNTIME_DOWNLOAD_DIR}
+    SOURCE_DIR ${ONNXRUNTIME_INSTALL_DIR}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     UPDATE_COMMAND ""
-    INSTALL_COMMAND
-      ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SOURCE_LIB} ${ONNXRUNTIME_LIB} &&
-      ${CMAKE_COMMAND} -E copy_directory ${ONNXRUNTIME_SOURCE_DIR}/include
-      ${ONNXRUNTIME_INC_DIR} && ${CMAKE_COMMAND} -E create_symlink
-      ${ONNXRUNTIME_LIB_NAME} ${ONNXRUNTIME_LIB_DIR}/${ONNXRUNTIME_LIB_NEW_NAME}
+    INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${ONNXRUNTIME_LIB})
 endif()
 

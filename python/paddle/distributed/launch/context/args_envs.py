@@ -14,6 +14,7 @@
 
 import os
 from argparse import REMAINDER, ArgumentParser
+from distutils.util import strtobool
 
 env_args_mapping = {
     'POD_IP': 'host',
@@ -22,6 +23,7 @@ env_args_mapping = {
     'PADDLE_NNODES': 'nnodes',
     'PADDLE_RUN_MODE': 'run_mode',
     'PADDLE_LOG_LEVEL': 'log_level',
+    'PADDLE_LOG_OVERWRITE': 'log_overwrite',
     'PADDLE_NPROC_PER_NODE': 'nproc_per_node',
     'PADDLE_JOB_ID': 'job_id',
     'PADDLE_RANK': 'rank',
@@ -61,7 +63,7 @@ def parse_args():
     )
 
     base_group.add_argument(
-        "--legacy", type=bool, default=False, help="use legacy launch"
+        "--legacy", type=strtobool, default=False, help="use legacy launch"
     )
 
     base_group.add_argument(
@@ -70,6 +72,13 @@ def parse_args():
 
     base_group.add_argument(
         "--log_level", type=str, default="INFO", help="log level. Default INFO"
+    )
+
+    base_group.add_argument(
+        "--log_overwrite",
+        type=strtobool,
+        default=False,
+        help="overwrite exits logfiles. Default False",
     )
 
     base_group.add_argument(

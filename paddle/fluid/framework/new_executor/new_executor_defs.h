@@ -345,6 +345,8 @@ class OpDepInfo {
   bool CheckAndDecrease() {
     return static_dep_ == 1 || (dynamic_dep_.fetch_sub(1) == 1);
   }
+  size_t StaticDep() const { return static_dep_; }
+  size_t DynamicDep() const { return dynamic_dep_; }
 
  private:
   const size_t static_dep_;

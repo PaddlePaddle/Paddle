@@ -68,7 +68,7 @@ void SequencePoolKernel(const Context& ctx,
       (is_test == false || (ctx.GetPlace() == phi::CPUPlace()) == false)) {
     index = max_index;
     index->Resize({dims});
-    ctx.template Alloc<int>(index);
+    ctx.template Alloc<int32_t>(index);
   }
   phi::funcs::SequencePoolFunctor<Context, T> pool;
   pool(ctx, pooltype, pad_value_, x, out, is_test, index);

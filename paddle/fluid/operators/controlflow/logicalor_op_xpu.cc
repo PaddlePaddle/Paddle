@@ -15,14 +15,22 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/operators/controlflow/logical_op_xpu.h"
 
+namespace paddle {
+namespace operators {
+DEFINE_BINARY_LOGICAL_OP_XPU_KERNEL(OR, XpuLogicalType::XPU_OR);
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    logical_or,
-    ops::BinaryLogicalOpXPUKernel<ops::XpuLogicalType::XPU_OR, bool>,
-    ops::BinaryLogicalOpXPUKernel<ops::XpuLogicalType::XPU_OR, int8_t>,
-    ops::BinaryLogicalOpXPUKernel<ops::XpuLogicalType::XPU_OR, int16_t>,
-    ops::BinaryLogicalOpXPUKernel<ops::XpuLogicalType::XPU_OR, int>,
-    ops::BinaryLogicalOpXPUKernel<ops::XpuLogicalType::XPU_OR, int64_t>,
-    ops::BinaryLogicalOpXPUKernel<ops::XpuLogicalType::XPU_OR, float>,
-    ops::BinaryLogicalOpXPUKernel<ops::XpuLogicalType::XPU_OR, double>);
+PD_REGISTER_STRUCT_KERNEL(logical_or,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::BinaryLogicalORCPUKernel,
+                          bool,
+                          int8_t,
+                          int16_t,
+                          int,
+                          int64_t,
+                          float,
+                          double) {}
 #endif

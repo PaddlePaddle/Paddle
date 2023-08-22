@@ -15,15 +15,8 @@
 import unittest
 
 import numpy as np
-
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    skip_check_grad_ci,
-)
-from paddle.fluid.tests.unittests.test_conv2d_op import (
-    TestConv2DOp,
-    TestConv2DOp_v2,
-)
+from eager_op_test import OpTest, skip_check_grad_ci
+from test_conv2d_op import TestConv2DOp, TestConv2DOp_v2
 
 
 def conv2d_bias_naive(out, bias):

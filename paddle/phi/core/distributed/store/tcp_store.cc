@@ -139,8 +139,9 @@ void MasterDaemon::StopByControlFd() {
 #else
 void MasterDaemon::InitControlFd() {
   ghStopEvent_ = CreateEvent(NULL, TRUE, FALSE, NULL);
-  PADDLE_ENFORCE(ghStopEvent_,
-                 phi::errors::Fatal("failed to cread control pipe"));
+  PADDLE_ENFORCE_NE(ghStopEvent_,
+                    nullptr,
+                    phi::errors::Fatal("failed to cread control pipe"));
 }
 void MasterDaemon::CloseControlFd() { CloseHandle(ghStopEvent_); }
 void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
@@ -422,8 +423,9 @@ void TCPStore::wait(const std::string& key) {
   VLOG(3) << "TCPStore wait.";
   _client->send_command_for_key(Command::WAIT, _key_prefix + key);
   reply = _client->receive_value<ReplyType>();
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       reply == ReplyType::STOP_WAIT,
+      true,
       phi::errors::InvalidArgument("Stop_waiting response is expected"));
 }
 

@@ -32,8 +32,8 @@ PDNode* BuildSeqExpandConcatPattern(PDPattern* pattern) {
 
   // The following variables will be treat as inputs:
   // concat mid input, 0th input for fused op
-  // sequence_expand input, 1th input for fused op
-  // sequence_expand input, 2th input for fused op
+  // sequence_expand input, 1st input for fused op
+  // sequence_expand input, 2nd input for fused op
 
   // The following variables will be treat as outputs:
   // concat output

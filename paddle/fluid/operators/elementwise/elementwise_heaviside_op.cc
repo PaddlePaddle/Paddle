@@ -36,7 +36,7 @@ class ElementwiseHeavisideOpMaker : public ElementwiseOpMaker {
              "which is the value when X = 0. Its dtype should be same as X.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Computes the Heaviside step function determined by Y "
            "for each element in X.";
   }

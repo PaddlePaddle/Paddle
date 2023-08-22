@@ -20,9 +20,8 @@ endif()
 
 set(WARPRNNT_PREFIX_DIR ${THIRD_PARTY_PATH}/warprnnt)
 set(WARPRNNT_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warprnnt)
-set(WARPRNNT_REPOSITORY ${GIT_URL}/PaddlePaddle/warp-transducer.git)
 set(WARPRNNT_TAG 7ea6bfe748779c245a0fcaa5dd9383826273eff2)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/warprnnt)
 set(WARPRNNT_INCLUDE_DIR
     "${WARPRNNT_INSTALL_DIR}/include"
     CACHE PATH "Warp-rnnt Directory" FORCE)
@@ -70,9 +69,8 @@ else()
 endif()
 ExternalProject_Add(
   extern_warprnnt
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${WARPRNNT_REPOSITORY}
-  GIT_TAG ${WARPRNNT_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${WARPRNNT_PREFIX_DIR}
   UPDATE_COMMAND ""
   PATCH_COMMAND ""

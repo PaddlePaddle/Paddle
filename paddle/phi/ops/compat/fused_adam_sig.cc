@@ -18,7 +18,8 @@
 
 namespace phi {
 
-KernelSignature FusedAdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature FusedAdamOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   paddle::small_vector<const char*> in_names = {"Params",
                                                 "Grads",
                                                 "LearningRate",

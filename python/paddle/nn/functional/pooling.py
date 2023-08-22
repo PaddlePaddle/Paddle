@@ -397,7 +397,9 @@ def avg_pool2d(
     else:
         op_type = 'pool2d'
         helper = LayerHelper(op_type, **locals())
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'avg_pool2d'
+        )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
 
@@ -1259,7 +1261,7 @@ def max_pool2d(
         op_type = 'max_pool2d_with_index' if return_mask else "pool2d"
         helper = LayerHelper(op_type, **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'max_pool2d'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'max_pool2d'
         )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
@@ -1419,7 +1421,9 @@ def max_pool3d(
     else:
         op_type = "max_pool3d_with_index" if return_mask else "pool3d"
         helper = LayerHelper(op_type, **locals())
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'max_pool3d'
+        )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
         mask = helper.create_variable_for_type_inference('int32')

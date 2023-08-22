@@ -26,7 +26,6 @@
 using ::paddle::platform::kCPU;
 using ::paddle::platform::kCUDA;
 using ::paddle::platform::kCUSTOM_DEVICE;
-using ::paddle::platform::kNPU;
 using ::paddle::platform::kXPU;
 
 USE_EVENT(kCPU)

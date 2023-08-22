@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature BincountOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature BincountOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("bincount", {"X", "Weights"}, {"minlength"}, {"Out"});
 }
 

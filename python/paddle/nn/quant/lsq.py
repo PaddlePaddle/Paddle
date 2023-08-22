@@ -178,7 +178,7 @@ class FakeQuantActLSQPlus(Layer):
         s_attr = ParamAttr(
             name=self._scale_name, initializer=Constant(1.0), trainable=True
         )
-        self.s = self.create_parameter(shape=[1], attr=s_attr, dtype='float32')
+        self.s = self.create_parameter(shape=[], attr=s_attr, dtype='float32')
         self.s.stop_gradient = False
 
         if not self.symmetric:
@@ -189,7 +189,7 @@ class FakeQuantActLSQPlus(Layer):
                 name=self._beta_name, initializer=Constant(0.0), trainable=True
             )
             self.beta = self.create_parameter(
-                shape=[1], attr=beta_attr, dtype='float32'
+                shape=[], attr=beta_attr, dtype='float32'
             )
             self.beta.stop_gradient = False
 

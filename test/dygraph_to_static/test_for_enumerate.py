@@ -28,7 +28,7 @@ from paddle.static import InputSpec
 def for_in_range(x):
     z = paddle.tensor.fill_constant([1], 'int32', 0)
     x = fluid.dygraph.to_variable(x)
-    for i in range(x.numpy()[0]):
+    for i in range(x.numpy().item()):
         z = z + i
     return z
 

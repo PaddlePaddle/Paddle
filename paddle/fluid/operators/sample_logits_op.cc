@@ -272,9 +272,11 @@ REGISTER_OPERATOR(sample_logits,
                   ops::SampleLogitsGradMaker<paddle::framework::OpDesc>,
                   ops::SampleLogitsGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sample_logits_grad, ops::SampleLogitsOpGrad);
-REGISTER_OP_CPU_KERNEL(sample_logits,
-                       ops::SampleLogitsKernel<float>,
-                       ops::SampleLogitsKernel<double>);
-REGISTER_OP_CPU_KERNEL(sample_logits_grad,
-                       ops::SampleLogitsGradKernel<float>,
-                       ops::SampleLogitsGradKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    sample_logits, CPU, ALL_LAYOUT, ops::SampleLogitsKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(sample_logits_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SampleLogitsGradKernel,
+                          float,
+                          double) {}

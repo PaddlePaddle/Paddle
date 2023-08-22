@@ -78,8 +78,9 @@ void BindTCPStore(py::module *m) {
                        [](phi::distributed::Store &self,
                           const std::string &key) -> py::bytes {
                          auto data = self.get(key);
-                         return py::bytes(reinterpret_cast<char *>(data.data()),
-                                          data.size());
+                         std::string s(data.begin(), data.end());
+                         py::gil_scoped_acquire acquire;
+                         return py::bytes(s);
                        },
                        py::arg("key"),
                        py::call_guard<py::gil_scoped_release>())

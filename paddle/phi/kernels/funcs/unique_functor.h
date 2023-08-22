@@ -190,7 +190,7 @@ static void UniqueFlattendTensor(const Context& context,
 }
 
 template <typename Context, typename ForwardIt, typename InT, typename IndexT>
-static ForwardIt UniqueDimImpl(const Context& context,
+static ForwardIt UniqueDimImpl(const Context& context UNUSED,
                                ForwardIt first,
                                ForwardIt last,
                                const std::vector<IndexT>& sorted_indices_vec,

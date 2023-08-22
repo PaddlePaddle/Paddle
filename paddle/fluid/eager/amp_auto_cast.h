@@ -27,9 +27,6 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_mlu_place(place) ||
-      paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place) ||
       paddle::platform::is_custom_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if ((data_type == phi::DataType::FLOAT32 ||
@@ -46,7 +43,7 @@ inline std::vector<paddle::Tensor> AmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::Tensor>& inputs,
     const phi::DataType& dst_dtype,
-    std::string op_name) {
+    std::string op_name UNUSED) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
@@ -72,13 +69,14 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
+
+  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+       op_name == "sync_batch_norm") &&
+      input_name != "X") {
+    return input;
+  }
   if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
-      return input;
-    }
-    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-         op_name == "sync_batch_norm") &&
-        input_name != "X") {
       return input;
     }
     if ((op_name == "fused_attention" || op_name == "fused_feedforward")) {
@@ -89,6 +87,7 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
       }
     }
   }
+
   if (NeedCast(input, dst_dtype)) {
     paddle::framework::AttributeMap cast_attrs = {
         {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},

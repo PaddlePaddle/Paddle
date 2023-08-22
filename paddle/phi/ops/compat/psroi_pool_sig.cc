@@ -25,7 +25,7 @@ KernelSignature PsroiPoolOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature PsroiPoolGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "psroi_pool_grad",
       {"X", "ROIs", "RoisNum", "Out@GRAD"},

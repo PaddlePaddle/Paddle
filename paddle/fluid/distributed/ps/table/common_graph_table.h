@@ -511,7 +511,7 @@ class GraphTable : public Table {
   }
   virtual ~GraphTable();
 
-  virtual void *GetShard(size_t shard_idx) { return 0; }
+  virtual void *GetShard(size_t shard_idx UNUSED) { return 0; }
 
   static int32_t sparse_local_shard_num(uint32_t shard_num,
                                         uint32_t server_num) {
@@ -624,15 +624,16 @@ class GraphTable : public Table {
   Node *find_node(GraphTableType table_type, int idx, uint64_t id);
   Node *find_node(GraphTableType table_type, uint64_t id);
 
-  virtual int32_t Pull(TableContext &context) { return 0; }  // NOLINT
-  virtual int32_t Push(TableContext &context) { return 0; }  // NOLINT
+  virtual int32_t Pull(TableContext &context UNUSED) { return 0; }  // NOLINT
+  virtual int32_t Push(TableContext &context UNUSED) { return 0; }  // NOLINT
 
   virtual int32_t clear_nodes(GraphTableType table_type, int idx);
   virtual void Clear() {}
   virtual int32_t Flush() { return 0; }
-  virtual int32_t Shrink(const std::string &param) { return 0; }
+  virtual int32_t Shrink(const std::string &param UNUSED) { return 0; }
   // 指定保存路径
-  virtual int32_t Save(const std::string &path, const std::string &converter) {
+  virtual int32_t Save(const std::string &path UNUSED,
+                       const std::string &converter UNUSED) {
     return 0;
   }
   virtual int32_t InitializeShard() { return 0; }

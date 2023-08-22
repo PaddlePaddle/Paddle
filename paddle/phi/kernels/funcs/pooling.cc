@@ -1622,10 +1622,10 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
   void operator()(const CPUContext& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
+                  const std::vector<int>& ksize UNUSED,
+                  const std::vector<int>& strides UNUSED,
+                  const std::vector<int>& paddings UNUSED,
+                  bool adaptive UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_height = input_grad->dims()[2];
@@ -1775,10 +1775,10 @@ class MaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
   void operator()(const CPUContext& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
+                  const std::vector<int>& ksize UNUSED,
+                  const std::vector<int>& strides UNUSED,
+                  const std::vector<int>& paddings UNUSED,
+                  bool adaptive UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_depth = input_grad->dims()[2];

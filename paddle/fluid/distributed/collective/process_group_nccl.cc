@@ -23,9 +23,10 @@
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-DECLARE_bool(nccl_blocking_wait);
+PHI_DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
 // set this flag to `true` and recompile to enable dynamic checks

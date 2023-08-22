@@ -339,7 +339,7 @@ static bool CompareTensor(const PaddleTensor &a, const PaddleTensor &b) {
 }
 
 static std::string DescribeTensor(const PaddleTensor &tensor,
-                                  int max_num_of_data = 15) {
+                                  int max_num_of_data UNUSED = 15) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
   os << " - type: ";

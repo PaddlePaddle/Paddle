@@ -94,6 +94,11 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
       "Out", std::vector<std::string>({"z0"}));  // 2 x 4 x 4 x 4
   elementwise_add1->SetAttr("axis", static_cast<int32_t>(0));
 
+  inference::tensorrt::OpTeller::Global().SetOpConverterType(
+      elementwise_add0, inference::tensorrt::OpConverterType::Default);
+  inference::tensorrt::OpTeller::Global().SetOpConverterType(
+      elementwise_add1, inference::tensorrt::OpConverterType::Default);
+
   // Set inputs' variable shape in BlockDesc
   // the batch size is 2, so the dims of 'x' is {2, 4}
   AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4, 4, 4}));
@@ -170,8 +175,6 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   // Execute them.
   LOG(INFO) << "engine_op run";
-  inference::tensorrt::OpTeller::Global().SetOpConverterType(
-      "elementwise_add", inference::tensorrt::OpConverterType::Default);
   engine_op->Run(scope, place);
 }
 

@@ -78,7 +78,10 @@ std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
   return __builtin_clz(val);
 #elif defined(_MSC_VER)
-  return __lzcnt(val);
+  // windows don't have built-in clz/ctz function
+  DWORD Index;
+  _BitScanReverse(&Index, val);
+  return (uint32_t)Index ^ 31;
 #else
   if (val == 0) {
     return 32;

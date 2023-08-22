@@ -359,9 +359,11 @@ def polynomial_decay(
                     shape=[1], dtype='float32', value=1.0
                 )
 
-                with control_flow.Switch() as switch:
-                    with switch.case(global_step == zero_var):
-                        paddle.assign(one_var, output=div_res)
+                div_val = paddle.static.nn.cond(
+                    global_step == zero_var, lambda: one_var, lambda: div_res
+                )
+                paddle.assign(div_val, output=div_res)
+
                 decay_steps = decay_steps * div_res
             else:
                 decay_steps_var = paddle.tensor.fill_constant(
@@ -411,7 +413,7 @@ def piecewise_decay(boundaries, values):
               optimizer = fluid.optimizer.Momentum(
                   momentum=0.9,
                   learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
-                  regularization=fluid.regularizer.L2Decay(1e-4))
+                  regularization=paddle.regularizer.L2Decay(1e-4))
 
 
     """
@@ -432,7 +434,7 @@ def piecewise_decay(boundaries, values):
                 persistable=True,
                 name="learning_rate",
             )
-
+            # TODO: fluid.layers.control_flow.Switch should be replaced by paddle.static.nn.case(or cond) if possible
             with control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
                     boundary_val = paddle.tensor.fill_constant(
@@ -455,7 +457,6 @@ def piecewise_decay(boundaries, values):
                         value=float(values[len(values) - 1]),
                         out=lr,
                     )
-
             return lr
 
 
@@ -589,17 +590,19 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
             )
 
             global_step = _decay_step_counter()
-
-            with control_flow.Switch() as switch:
-                with switch.case(global_step < warmup_steps):
-                    decayed_lr = start_lr + linear_step * (
-                        global_step / float(warmup_steps)
+            if not isinstance(learning_rate, Variable):
+                learning_rate = paddle.tensor.fill_constant(
+                    shape=[1], dtype=dtype, value=float(learning_rate)
+                )
+            lr_val = paddle.static.nn.case(
+                pred_fn_pairs=[
+                    (
+                        global_step < warmup_steps,
+                        lambda: start_lr
+                        + linear_step * (global_step / float(warmup_steps)),
                     )
-                    paddle.assign(decayed_lr, lr)
-                with switch.default():
-                    if not isinstance(learning_rate, Variable):
-                        learning_rate = paddle.tensor.fill_constant(
-                            shape=[1], dtype=dtype, value=float(learning_rate)
-                        )
-                    paddle.assign(learning_rate, lr)
+                ],
+                default=lambda: learning_rate,
+            )
+            paddle.assign(lr_val, lr)
             return lr

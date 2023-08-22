@@ -33,10 +33,10 @@ inline void CompareKernelImpl(const Context& ctx,
   ctx.template Alloc<bool>(out);
   if (x.dims().size() >= y.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(
-        ctx, x, y, axis, Functor(), out);
+        ctx, x, y, Functor(), out, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-        ctx, x, y, axis, InverseFunctor(), out);
+        ctx, x, y, InverseFunctor(), out, axis);
   }
 }
 
@@ -59,7 +59,7 @@ inline void CompareAllKernelImpl(const Context& ctx,
       tmp_data[0] = Functor()(x.data<T>()[0], y.data<T>()[0]);
     } else {
       funcs::ElementwiseCompute<Functor, T, bool>(
-          ctx, x, y, 0, Functor(), &tmp);
+          ctx, x, y, Functor(), &tmp, 0);
     }
     auto tmp_flat = EigenVector<bool>::Flatten(tmp);
     auto out_es = EigenScalar<bool>::From(*out);

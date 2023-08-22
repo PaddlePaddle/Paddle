@@ -32,14 +32,30 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
-
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
                             false,
                             "Enable rpc profiler or not.");
 
 DEFINE_bool(enable_record_memory, false, "enable memory recorder");
 
+#if defined(_WIN32) && defined(PHI_SHARED)
+phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
+bool phi::ProfilerHelper::g_enable_nvprof_hook = false;
+thread_local uint64_t phi::ProfilerHelper::g_thread_id;
+uint32_t phi::ProfilerHelper::g_next_thread_id = 0;
+std::mutex phi::ProfilerHelper::g_all_event_lists_mutex;
+std::list<std::shared_ptr<phi::EventList<phi::Event>>>
+    phi::ProfilerHelper::g_all_event_lists;
+thread_local std::shared_ptr<phi::EventList<phi::Event>>
+    phi::ProfilerHelper::g_event_list;
+std::list<std::shared_ptr<phi::EventList<phi::MemEvent>>>
+    phi::ProfilerHelper::g_all_mem_event_lists;
+thread_local std::shared_ptr<phi::EventList<phi::MemEvent>>
+    phi::ProfilerHelper::g_mem_event_list;
+std::mutex phi::ProfilerHelper::g_all_mem_event_lists_mutex;
+#endif
 namespace paddle {
 namespace platform {
 

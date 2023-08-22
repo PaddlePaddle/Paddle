@@ -36,19 +36,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 set(TABLE_SRC memory_dense_table.cc barrier_table.cc common_graph_table.cc)
 #set(EXTERN_DEP rocksdb)
-
 cc_library(
   common_table
   SRCS ${TABLE_SRC}
-  DEPS ${TABLE_DEPS}
-       ${RPC_DEPS}
+  DEPS ${RPC_DEPS}
        graph_edge
        graph_node
        device_context
        string_helper
        simple_threadpool
        xxhash
-       generator)
+       phi)
 
 set_source_files_properties(
   tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -91,7 +89,7 @@ cc_library(
        ps_framework_proto
        string_helper
        device_context
-       gflags
+       phi
        glog
        fs
        afs_wrapper

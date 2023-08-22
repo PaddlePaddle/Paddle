@@ -73,7 +73,7 @@ class ReaderBase {
   virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out) {}
+  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out UNUSED) {}
 
   virtual void ShutdownImpl() {}
 

@@ -443,11 +443,11 @@ inline void RunProgramAPI(
       VLOG(4) << "don't require any grad, set this scope can reused";
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
-      global_inner_scope->SetCanReuesd(true);
+      global_inner_scope->SetCanReused(true);
       details::GcScope(global_inner_scope);
     } else {
       VLOG(4) << "not test, set this scope can not reused";
-      global_inner_scope->SetCanReuesd(false);
+      global_inner_scope->SetCanReused(false);
     }
   }
 
@@ -457,8 +457,8 @@ inline void RunProgramAPI(
 }
 
 inline void RunProgramGradAPI(
-    const std::vector<paddle::Tensor> &x,
-    const std::vector<paddle::Tensor> &params,
+    const std::vector<paddle::Tensor> &x UNUSED,
+    const std::vector<paddle::Tensor> &params UNUSED,
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
@@ -582,7 +582,7 @@ inline void RunProgramGradAPI(
                                                    *backward_global_block,
                                                    global_inner_scope);
     VLOG(4) << "after backward gc all vars";
-    global_inner_scope->SetCanReuesd(true);
+    global_inner_scope->SetCanReused(true);
     details::GcScope(global_inner_scope);
   }
 }
@@ -599,9 +599,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
-        global_inner_scope->SetCanReuesd(true);
+        global_inner_scope->SetCanReused(true);
         details::GcScope(global_inner_scope);
-        VLOG(4) << "global_inner_scope SetCanReuesd";
+        VLOG(4) << "global_inner_scope SetCanReused";
       }
     }
   }
@@ -610,8 +610,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                                egr::kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   egr::kSlotSmallVectorSize> &grads,  // NOLINT
-             bool create_graph,
-             bool is_new_grad) override {
+             bool create_graph UNUSED,
+             bool is_new_grad UNUSED) override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
@@ -689,15 +689,26 @@ class GradNodeRunProgram : public egr::GradNodeBase {
  protected:
   void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
                              std::vector<paddle::Tensor> *x_grad) {
+    auto x_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("x_grad_names"));
+    PADDLE_ENFORCE_EQ(
+        x.size(),
+        x_grad_names.size(),
+        paddle::platform::errors::InvalidArgument(
+            "The x.size() and x_grad_names.size() should be equal. "
+            "But received x.size() = %d, x_grad_names.size() = %d",
+            x.size(),
+            x_grad_names.size()));
+
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
-    for (auto &t : x) {
-      if (t.is_dense_tensor()) {
+    for (size_t i = 0; i < x.size(); i++) {
+      if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
-      } else if (t.is_selected_rows()) {
+      } else if (x[i].is_selected_rows()) {
         x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
       }
-      x_grad->back().set_name(t.name() + "@GRAD");
+      x_grad->back().set_name(x_grad_names[i]);
     }
   }
 

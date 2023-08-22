@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature FusedTransposeOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_transpose",
                          {"X"},
                          {"axis",

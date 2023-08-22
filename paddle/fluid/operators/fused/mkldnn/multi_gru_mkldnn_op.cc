@@ -598,7 +598,7 @@ class MultiGRUHandler {
   }
 
   template <typename Tout>
-  void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer) {
+  void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer UNUSED) {
     auto* data = mem->get_data_handle();
     auto* hidden_data =
         phi::funcs::to_void_cast(hidden_->mutable_data<Tout>(place_));

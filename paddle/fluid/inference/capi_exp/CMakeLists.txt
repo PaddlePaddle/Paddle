@@ -39,7 +39,7 @@ if(APPLE)
     utf8proc
     cryptopp
     protobuf
-    gflags
+    phi
     cblas)
 endif()
 

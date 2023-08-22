@@ -33,17 +33,17 @@ class LSTMMKLDNNHandler
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                     const OneDNNContext& dev_ctx,
                     const dnnl::engine onednn_engine,
-                    platform::Place cpu_place,
+                    platform::Place cpu_place UNUSED,
                     const phi::DenseTensor* input,
                     const phi::DenseTensor* weight_h,
                     const phi::DenseTensor* h0,
-                    const phi::DenseTensor* c0,
+                    const phi::DenseTensor* c0 UNUSED,
                     const bool is_reverse,
                     const int64_t N,
                     const int64_t Ti,
                     const int64_t IC,
                     const int64_t OC,
-                    const std::string& unique_name)
+                    const std::string& unique_name UNUSED)
       : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(
             ctx,
             dev_ctx,

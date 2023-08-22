@@ -22,6 +22,7 @@ from .adadelta import Adadelta  # noqa: F401
 from .sgd import SGD  # noqa: F401
 from .momentum import Momentum  # noqa: F401
 from .lamb import Lamb  # noqa: F401
+from .lbfgs import LBFGS  # noqa: F401
 from . import lr  # noqa: F401
 
 __all__ = [  # noqa
@@ -35,4 +36,5 @@ __all__ = [  # noqa
     'SGD',
     'Momentum',
     'Lamb',
+    'LBFGS',
 ]

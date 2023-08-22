@@ -133,7 +133,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
-  std::shared_ptr<paddle::Tensor> grad_{std::make_shared<paddle::Tensor>()};
+  std::shared_ptr<paddle::Tensor> grad_ = std::make_shared<paddle::Tensor>();
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy

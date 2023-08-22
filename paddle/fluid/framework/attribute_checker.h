@@ -44,7 +44,7 @@ class EqualGreaterThanChecker {
     PADDLE_ENFORCE_GE(
         value,
         lower_bound_,
-        platform::errors::OutOfRange("Check for attribute valur equal or "
+        platform::errors::OutOfRange("Check for attribute value equal or "
                                      "greater than a certain value failed."));
   }
 
@@ -73,10 +73,10 @@ class TypedAttrVarInfoChecker {
         platform::errors::InvalidArgument(
             "Required Attribute with Variable type shall not be nullptr."));
     auto shape = var_desc->GetShape();
-    PADDLE_ENFORCE_EQ(shape.size(),
+    PADDLE_ENFORCE_LE(shape.size(),
                       1U,
                       platform::errors::InvalidArgument(
-                          "Required shape rank of Attribute(%s) == 1, "
+                          "Required shape rank of Attribute(%s) <= 1, "
                           "but received rank == %s",
                           var_desc->Name(),
                           shape.size()));
@@ -92,7 +92,7 @@ class TypedAttrVarInfoChecker {
                         true,
                         platform::errors::InvalidArgument(
                             "Required dtype of Attribute(%s) shall be "
-                            "int32|int64, but recevied %s.",
+                            "int32|int64, but received %s.",
                             var_desc->Name(),
                             dtype));
     }
@@ -105,20 +105,21 @@ class TypedAttrVarInfoChecker {
           platform::errors::InvalidArgument(
               "Required Attribute with Variable type shall not be nullptr."));
       auto shape = var_desc->GetShape();
-      PADDLE_ENFORCE_EQ(shape.size(),
+      PADDLE_ENFORCE_LE(shape.size(),
                         1U,
                         platform::errors::InvalidArgument(
-                            "Required shape rank of Attribute(%s) == 1, "
+                            "Required shape rank of Attribute(%s) <= 1, "
                             "but received rank == %s",
                             var_desc->Name(),
                             shape.size()));
-      PADDLE_ENFORCE_EQ(shape[0] == 1U || shape[0] == -1,
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Required shape[0] of Attribute(%s) == 1 or -1, "
-                            "but received shape[0] == %s",
-                            var_desc->Name(),
-                            shape[0]));
+      PADDLE_ENFORCE_EQ(
+          shape.size() == 0U || shape[0] == 1U || shape[0] == -1,
+          true,
+          platform::errors::InvalidArgument(
+              "Required shape is (), or shape[0] of Attribute(%s) == 1 or -1, "
+              "but received shape[0] == %s",
+              var_desc->Name(),
+              shape[0]));
     }
   }
 };

@@ -84,7 +84,7 @@ template <typename T>
 void ReduceSumForMatmulGradOutput(const OneDNNContext &dev_ctx,
                                   const DenseTensor *dx_tmp,
                                   DenseTensor *dx,
-                                  const std::vector<int64_t> &dx_dims,
+                                  const std::vector<int64_t> &dx_dims UNUSED,
                                   const std::vector<int64_t> &x_dims) {
   funcs::ReductionOneDNNHandler<T> handler(dnnl::algorithm::reduction_sum,
                                            0.0f,

@@ -1,7 +1,7 @@
 cc_library(
   dynamic_loader
   SRCS dynamic_loader.cc
-  DEPS glog gflags enforce phi_dynamic_loader)
+  DEPS glog enforce phi)
 
 list(
   APPEND
@@ -57,26 +57,20 @@ if(WITH_ROCM)
   hip_library(
     dynload_cuda
     SRCS ${HIP_SRCS}
-    DEPS dynamic_loader phi_dynload_cuda)
+    DEPS dynamic_loader phi)
   cc_library(
     dynload_warpctc
     SRCS warpctc.cc
-    DEPS dynamic_loader warpctc phi_dynload_warpctc)
+    DEPS dynamic_loader warpctc phi)
 else()
   nv_library(
     dynload_cuda
     SRCS ${CUDA_SRCS}
-    DEPS dynamic_loader phi_dynload_cuda)
+    DEPS dynamic_loader phi)
   cc_library(
     dynload_warpctc
     SRCS warpctc.cc
-    DEPS dynamic_loader warpctc phi_dynload_warpctc)
-endif()
-if(WITH_MKLML)
-  cc_library(
-    dynload_mklml
-    SRCS mklml.cc
-    DEPS dynamic_loader mklml phi_dynload_mklml)
+    DEPS dynamic_loader warpctc phi)
 endif()
 
 # TODO(TJ): add iomp, mkldnn?
@@ -86,6 +80,6 @@ if(MKL_FOUND AND WITH_ONEMKL)
   cc_library(
     dynload_mklrt
     SRCS mklrt.cc
-    DEPS dynamic_loader phi_dynload_mklrt)
+    DEPS dynamic_loader phi)
   target_include_directories(dynload_mklrt PRIVATE ${MKL_INCLUDE})
 endif()

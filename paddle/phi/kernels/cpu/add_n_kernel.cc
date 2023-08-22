@@ -89,6 +89,7 @@ PD_REGISTER_KERNEL(add_n,
                    double,
                    int,
                    phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(add_n_array,
@@ -99,4 +100,5 @@ PD_REGISTER_KERNEL(add_n_array,
                    double,
                    int,
                    phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    int64_t) {}

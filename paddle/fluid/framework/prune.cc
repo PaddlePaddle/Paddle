@@ -149,7 +149,7 @@ int FindMapByValue(const std::map<int, int>& m, int val) {
   return -1;
 }
 
-// In other two cases，the op that has feed vars as output vars is dependent:
+// In other two cases, the op that has feed vars as output vars is dependent:
 // 1. op has subblock, like while/for/ifelse/recurrent
 // 2. op is in subblock
 bool IsSubBlockDependent(const proto::OpDesc& op_desc,

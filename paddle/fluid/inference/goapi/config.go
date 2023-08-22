@@ -231,15 +231,6 @@ func (config *Config) UseXpu() bool {
 }
 
 ///
-/// \brief A boolean state telling whether the NPU is turned on.
-///
-/// \return bool Whether the NPU is turned on.
-///
-func (config *Config) UseNpu() bool {
-	return cvtPDBoolToGo(C.PD_ConfigUseNpu(config.c))
-}
-
-///
 /// \brief Get the GPU device id.
 ///
 /// \return int32 The GPU device id.
@@ -255,15 +246,6 @@ func (config *Config) GpuDeviceId() int32 {
 ///
 func (config *Config) XpuDeviceId() int32 {
 	return int32(C.PD_ConfigXpuDeviceId(config.c))
-}
-
-///
-/// \brief Get the NPU device id.
-///
-/// \return int32 The NPU device id.
-///
-func (config *Config) NpuDeviceId() int32 {
-	return int32(C.PD_ConfigNpuDeviceId(config.c))
 }
 
 ///

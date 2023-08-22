@@ -112,8 +112,8 @@ class AttnMatMul {
       // bias_out = output + bias
       std::vector<const phi::DenseTensor*> ins = {output, bias};
       std::vector<phi::DenseTensor*> outs = {bias_out};
-      phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
-          dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
+      phi::funcs::BroadcastKernel<T>(
+          dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
     }
   }
 

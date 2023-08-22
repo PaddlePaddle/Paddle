@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import _non_static_mode, in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from ..nn import Layer
 
@@ -62,14 +62,6 @@ def viterbi_decode(
             potentials, transition_params, lengths, include_bos_eos_tag
         )
 
-    if _non_static_mode():
-        return _legacy_C_ops.viterbi_decode(
-            potentials,
-            transition_params,
-            lengths,
-            'include_bos_eos_tag',
-            include_bos_eos_tag,
-        )
     check_variable_and_dtype(
         potentials, 'input', ['float32', 'float64'], 'viterbi_decode'
     )

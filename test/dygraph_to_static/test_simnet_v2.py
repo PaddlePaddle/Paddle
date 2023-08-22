@@ -132,7 +132,7 @@ def train(conf_dict, to_static):
     global_step = 0
     losses = []
 
-    train_loader = paddle.io.DataLoader.from_generator(
+    train_loader = paddle.fluid.io.DataLoader.from_generator(
         capacity=16, return_list=True, iterable=True, use_double_buffer=True
     )
     get_train_examples = simnet_process.get_reader("train", epoch=args.epoch)

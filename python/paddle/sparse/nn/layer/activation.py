@@ -116,6 +116,22 @@ class Softmax(Layer):
             #        cols=[0, 1, 3, 1, 2, 0, 1],
             #        values=[0.23070428, 0.27815846, 0.49113727, 0.67227983, 0.32772022,
             #                0.49353254, 0.50646752])
+
+            coo = x.to_sparse_coo(sparse_dim=2)
+            print(coo)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        indices=[[0, 0, 0, 1, 1, 1, 2, 2, 2, 2],
+            #                 [0, 1, 3, 0, 2, 3, 0, 1, 2, 3]],
+            #        values=[0.83438963, 0.70008713, 0.88831252, 0.02200012, 0.75432241,
+            #                0.65136462, 0.96088767, 0.82938021, 0.35367414, 0.86653489])
+
+            out = softmax(coo)
+            print(out)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        indices=[[0, 0, 0, 1, 1, 1, 2, 2, 2, 2],
+            #                 [0, 1, 3, 0, 2, 3, 0, 1, 2, 3]],
+            #        values=[0.34132853, 0.29843226, 0.36023924, 0.20176250, 0.41964683,
+            #                0.37859073, 0.30015597, 0.26316857, 0.16354507, 0.27313042])
     """
 
     def __init__(self, axis=-1, name=None):

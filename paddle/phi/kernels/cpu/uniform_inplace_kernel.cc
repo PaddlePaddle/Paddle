@@ -20,13 +20,13 @@ namespace phi {
 
 template <typename T, typename Context>
 void UniformInplaceKernel(const Context& ctx,
-                          const DenseTensor& x,
+                          const DenseTensor& x UNUSED,
                           float min,
                           float max,
                           int seed,
-                          int diag_num,
-                          int diag_step,
-                          float diag_val,
+                          int diag_num UNUSED,
+                          int diag_step UNUSED,
+                          float diag_val UNUSED,
                           DenseTensor* out) {
   T* data = ctx.template Alloc<T>(out);
   int64_t size = out->numel();

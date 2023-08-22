@@ -26,7 +26,7 @@ void Pool2dKernel(const Context& dev_ctx,
                   const std::vector<int>& paddings,
                   bool ceil_mode,
                   bool exclusive,
-                  const std::string& data_format,
+                  const std::string& data_format UNUSED,
                   const std::string& pooling_type,
                   bool global_pooling,
                   bool adaptive,
@@ -70,6 +70,29 @@ void Pool2dKernel(const Context& dev_ctx,
 
   out->set_mem_desc(dst_memory->get_desc());
 }
+
+phi::KernelKey PoolOpGetKernelTypeForVar(
+    const GetKernelTypeForVarContext* ctx) {
+  const phi::DenseTensor& tensor = ctx->GetTensor();
+  const phi::KernelKey& expected_kernel_type = ctx->GetKernelKey();
+#ifdef PADDLE_WITH_MKLDNN
+  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    const AttributeMap& attrs = ctx->GetAttrs();
+    auto it = attrs.find("data_format");
+    const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
+    auto dl = phi::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+#endif
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(pool2d,
@@ -79,4 +102,6 @@ PD_REGISTER_KERNEL(pool2d,
                    float,
                    int8_t,
                    uint8_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::PoolOpGetKernelTypeForVar;
+}

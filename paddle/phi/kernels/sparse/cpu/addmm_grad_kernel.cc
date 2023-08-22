@@ -21,31 +21,31 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void AddmmCooDenseGradKernel(const Context& dev_ctx,
-                             const DenseTensor& input,
-                             const SparseCooTensor& x,
-                             const DenseTensor& y,
-                             const DenseTensor& dout,
-                             float alpha,
-                             float beta,
-                             DenseTensor* dinput,
-                             SparseCooTensor* dx,
-                             DenseTensor* dy) {
+void AddmmCooDenseGradKernel(const Context& dev_ctx UNUSED,
+                             const DenseTensor& input UNUSED,
+                             const SparseCooTensor& x UNUSED,
+                             const DenseTensor& y UNUSED,
+                             const DenseTensor& dout UNUSED,
+                             float alpha UNUSED,
+                             float beta UNUSED,
+                             DenseTensor* dinput UNUSED,
+                             SparseCooTensor* dx UNUSED,
+                             DenseTensor* dy UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.addmm' now."));
 }
 
 template <typename T, typename Context>
-void AddmmCsrDenseGradKernel(const Context& dev_ctx,
-                             const DenseTensor& input,
-                             const SparseCsrTensor& x,
-                             const DenseTensor& y,
-                             const DenseTensor& dout,
-                             float alpha,
-                             float beta,
-                             DenseTensor* dinput,
-                             SparseCsrTensor* dx,
-                             DenseTensor* dy) {
+void AddmmCsrDenseGradKernel(const Context& dev_ctx UNUSED,
+                             const DenseTensor& input UNUSED,
+                             const SparseCsrTensor& x UNUSED,
+                             const DenseTensor& y UNUSED,
+                             const DenseTensor& dout UNUSED,
+                             float alpha UNUSED,
+                             float beta UNUSED,
+                             DenseTensor* dinput UNUSED,
+                             SparseCsrTensor* dx UNUSED,
+                             DenseTensor* dy UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.addmm' now."));
 }

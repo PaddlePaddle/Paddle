@@ -39,7 +39,7 @@ class AllReduceDelOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
     AddOutput("Out", "(Tensor) the result of allreduced.");
-    AddAttr<int>("reduce_type", "(int) determin the reduce type.")
+    AddAttr<int>("reduce_type", "(int) determine the reduce type.")
         .SetDefault(0);
     AddAttr<bool>(
         "sync_mode",

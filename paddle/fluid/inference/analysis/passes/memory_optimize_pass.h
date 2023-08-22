@@ -15,12 +15,9 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <vector>
 
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
 namespace framework {

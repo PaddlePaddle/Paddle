@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void OverlapAddGradKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
+                          const DenseTensor& x UNUSED,
                           const DenseTensor& out_grad,
                           int hop_length,
                           int axis,

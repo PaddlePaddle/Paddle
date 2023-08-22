@@ -14,14 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/system_allocator.h"
 
+#include <gtest/gtest.h>
 #include <memory>
 
-#include "gflags/gflags.h"
-#include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_pinned_memory);
+PHI_DECLARE_bool(use_pinned_memory);
 
 void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
   bool freed = false;

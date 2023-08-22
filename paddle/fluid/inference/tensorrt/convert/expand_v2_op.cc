@@ -83,7 +83,10 @@ class ExpandOpConverter : public OpConverter {
       input_shape_tensor = Shape(input);
     }
 
-    auto* newInputTensor = Reshape(input, input_shape_tensor);
+    auto* newInputTensor =
+        Reshape(input,
+                input_shape_tensor,
+                ("expand_v2: reshape: (Output(" + output_name + ")").c_str());
 
     std::vector<int32_t> start_vec(shape_rank, 0);
     nvinfer1::Dims start;

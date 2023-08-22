@@ -38,12 +38,12 @@ KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature ReshapeGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("reshape_grad", {"Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature ReshapeDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("reshape_double_grad", {"DOut", "DDX"}, {}, {"DDOut"});
 }
 

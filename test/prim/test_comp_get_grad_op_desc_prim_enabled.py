@@ -67,6 +67,11 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
                 for n, vs in cls.outputs.items()
             },
         )
+
+        for _, outs in cls.outputs.items():
+            for out in outs:
+                block.create_var(name=out + core.grad_var_suffix())
+
         cls.fwd = block.ops[0].desc
 
     @classmethod

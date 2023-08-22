@@ -474,7 +474,7 @@ inline void SeparatedLarsMomentumOpCUDAKernel(const phi::GPUContext& cuda_ctx,
                               is_amp);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
   using MT = MultiPrecisionType<T>;
 
@@ -679,8 +679,11 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    lars_momentum,
-    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, float>,
-    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, double>,
-    ops::LarsMomentumOpCUDAKernel<phi::GPUContext, paddle::platform::float16>);
+namespace plat = paddle::platform;
+PD_REGISTER_STRUCT_KERNEL(lars_momentum,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::LarsMomentumOpCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}

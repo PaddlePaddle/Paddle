@@ -191,7 +191,8 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
 }
 
 template <typename... ArgTypes>
-inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
+inline std::string CreateKey(const OneDNNContext& dev_ctx UNUSED,
+                             ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
   using expand_type = int[];
@@ -282,8 +283,8 @@ inline std::string ThreadIDasStr(void) {
       std::hash<std::thread::id>()(std::this_thread::get_id()));
 }
 
-inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
-                                                   const std::string& key) {
+inline std::string ExtendKeyWithThreadInfoIfNeeded(
+    const OneDNNContext& dev_ctx UNUSED, const std::string& key) {
   return (OneDNNContext::tls().is_tid_used_in_key() == true)
              ? key + "-t:" + ThreadIDasStr()
              : key;

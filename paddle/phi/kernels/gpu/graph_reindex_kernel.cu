@@ -381,10 +381,11 @@ void GraphReindexKernel(const Context& dev_ctx,
                         const DenseTensor& count,
                         const paddle::optional<DenseTensor>& hashtable_value,
                         const paddle::optional<DenseTensor>& hashtable_index,
-                        bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
                         DenseTensor* out_nodes) {
+  bool flag_buffer_hashtable =
+      hashtable_value.is_initialized() && hashtable_index.is_initialized();
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();

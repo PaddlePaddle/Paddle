@@ -163,7 +163,7 @@ GradNodePyLayer::operator()(
                 {paddle::pybind::UnSafeGetTensorFromPyObject(obj)});
           } else if (obj == Py_None) {
             VLOG(4) << "Got None for Tensor with pos: " << i;
-            grad_out.push_back({});
+            grad_out.push_back({paddle::Tensor()});
           } else {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "We can only support Tensor or None for backward output, "

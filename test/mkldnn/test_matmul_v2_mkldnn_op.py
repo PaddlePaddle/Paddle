@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
 
 
 def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
@@ -46,7 +42,7 @@ def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
 
-    Out = np.atleast_1d(np.matmul(X, Y))
+    Out = np.matmul(X, Y)
     return Out
 
 

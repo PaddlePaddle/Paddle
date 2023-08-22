@@ -17,7 +17,7 @@ from typing import List, Tuple
 
 import paddle
 from paddle import _legacy_C_ops as _C_ops
-from paddle.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 from paddle.nn import Layer
 
 
@@ -57,7 +57,7 @@ class LinearQuanter(Layer):
         self._bit_length = bit_length
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.quantize_linear(
                 input,
                 self._scales,
@@ -108,7 +108,7 @@ class LinearDequanter(Layer):
         self._bit_length = bit_length
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.dequantize_linear(
                 input,
                 self._scales,

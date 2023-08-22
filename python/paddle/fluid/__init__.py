@@ -17,7 +17,7 @@ import sys
 import atexit
 
 # The legacy core need to be removed before "import core",
-# in case of users installing paddlepadde without -U option
+# in case of users installing paddlepaddle without -U option
 core_suffix = 'so'
 if os.name == 'nt':
     core_suffix = 'pyd'
@@ -58,9 +58,6 @@ from . import nets
 from . import optimizer
 from . import backward
 from .backward import gradients
-from . import regularizer
-from . import average
-from . import metrics
 from . import incubate
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
@@ -81,7 +78,7 @@ from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from .dygraph.base import enable_dygraph, disable_dygraph
-from .dygraph.varbase_patch_methods import monkey_patch_varbase
+from .dygraph.tensor_patch_methods import monkey_patch_tensor
 from .core import _cuda_synchronize
 from .trainer_desc import (
     TrainerDesc,
@@ -118,7 +115,6 @@ __all__ = (
         'nets',
         'optimizer',
         'backward',
-        'regularizer',
         'LoDTensor',
         'LoDTensorArray',
         'CPUPlace',
@@ -213,13 +209,13 @@ def __bootstrap__():
 # Consider paddle.init(args) or paddle.main(args)
 monkey_patch_variable()
 __bootstrap__()
-monkey_patch_varbase()
+monkey_patch_tensor()
 
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
 
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
-# NOTE(wangran16): clean up DeviceManger in advance manually.
+# NOTE(wangran16): clean up DeviceManager in advance manually.
 # Keep clear_kernel_factory running before clear_device_manager
 atexit.register(core.clear_device_manager)
 atexit.register(core.clear_kernel_factory)

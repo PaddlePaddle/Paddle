@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import unittest
 import uuid
+
+sys.path.insert(0, '.')
 
 import config
 import numpy as np
@@ -110,7 +113,7 @@ paddle.enable_static()
             primops.reduce_sum,
             randn(2, 3),
             {'axis': (0, 1)},
-            (1,),
+            (),
             'float64',
         ),
         (

@@ -24,4 +24,5 @@ PD_REGISTER_KERNEL(selu_grad,
                    phi::SeluGradKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}

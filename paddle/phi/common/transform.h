@@ -70,7 +70,7 @@ struct Transform {
 template <>
 struct Transform<phi::CPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   InputIter first,
                   InputIter last,
                   OutputIter result,

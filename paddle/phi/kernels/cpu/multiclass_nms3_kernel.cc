@@ -29,7 +29,7 @@ class Point_ {
   // default constructor
   Point_() {}
   Point_(T _x, T _y) {}
-  Point_(const Point_& pt) {}
+  Point_(const Point_& pt UNUSED) {}
 
   Point_& operator=(const Point_& pt);
   // conversion to another data type
@@ -116,7 +116,7 @@ T GetContourArea(const std::vector<Point_<T>>& vec) {
 }
 
 template <class T>
-T PolyArea(const T* box, const size_t box_size, const bool normalized) {
+T PolyArea(const T* box, const size_t box_size, const bool normalized UNUSED) {
   // If coordinate values are is invalid
   // if area size <= 0,  return 0.
   std::vector<Point_<T>> vec;
@@ -128,7 +128,7 @@ template <class T>
 T PolyOverlapArea(const T* box1,
                   const T* box2,
                   const size_t box_size,
-                  const bool normalized) {
+                  const bool normalized UNUSED) {
   phi::funcs::gpc_polygon poly1;
   phi::funcs::gpc_polygon poly2;
   Array2Poly<T>(box1, box_size, &poly1);

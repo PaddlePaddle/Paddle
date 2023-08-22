@@ -241,7 +241,7 @@ inline int round_up(int seq_len, int multiple = 32) {
       multiple,
       0,
       platform::errors::InvalidArgument(
-          "multiple should be a positive number，but it's (%d)", multiple));
+          "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
 
@@ -270,7 +270,7 @@ __global__ void broadcast_batch_head_number(const T *src,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -423,12 +423,15 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
-REGISTER_OP_CUDA_KERNEL(
-    multihead_matmul,
-    ops::MultiHeadMatMulV2Kernel<phi::GPUContext, paddle::platform::float16>,
-    ops::MultiHeadMatMulV2Kernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(multihead_matmul,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::MultiHeadMatMulV2Kernel,
+                          float,
+                          plat::float16) {}
 #else
-REGISTER_OP_CUDA_KERNEL(multihead_matmul,
-                        ops::MultiHeadMatMulV2Kernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    multihead_matmul, GPU, ALL_LAYOUT, ops::MultiHeadMatMulV2Kernel, float) {}
 #endif

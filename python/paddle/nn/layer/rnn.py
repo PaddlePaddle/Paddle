@@ -24,7 +24,6 @@ from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.fluid.framework import (
-    _non_static_mode,
     default_startup_program,
     in_dygraph_mode,
     program_guard,
@@ -102,7 +101,7 @@ def rnn(
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -271,7 +270,7 @@ def _rnn_static_graph(
         mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
     with paddle.fluid.framework.device_guard("cpu"):
-        start_i = paddle.zeros([1], dtype="int64")
+        start_i = paddle.zeros([], dtype="int64")
         end = max_seq_len
 
         end = paddle.cast(end, "int64")
@@ -299,13 +298,11 @@ def _rnn_static_graph(
         pre_state = paddle.utils.map_structure(
             lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
-        # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
         outputs, new_states = cell(step_in, pre_state, **kwargs)
         assert isinstance(outputs, paddle.fluid.framework.Variable)
         paddle.utils.assert_same_structure(new_states, pre_state)
         if sequence_length:
             step_mask = paddle.unsqueeze(mask[start_i], 1)
-            # paddle.fluid.layers.Print( step_mask, message="mask")
             # new_states = map_structure(
             #     partial(_maybe_copy, step_mask=step_mask),
             #     pre_state, new_states

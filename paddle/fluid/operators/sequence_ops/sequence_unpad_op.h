@@ -27,7 +27,7 @@ namespace operators {
 using LoDTensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceUnpadOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -81,7 +81,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

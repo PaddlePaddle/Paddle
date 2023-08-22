@@ -24,6 +24,9 @@ endif()
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
+  cmake_policy(SET CMP0104 OLD)
+endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -59,6 +62,7 @@ option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
+option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -89,6 +93,11 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
                "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
 
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER 10.4)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=uninitialized")
+endif()
+
 # MUSL build turn off warnings
 if(WITH_MUSL)
   set(CMAKE_CXX_FLAGS
@@ -103,7 +112,7 @@ endif()
 
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
-
+  message("Build static library of PHI")
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
 
@@ -243,6 +252,7 @@ option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
+option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -255,12 +265,11 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls" OFF)
 option(WITH_PSLIB "Compile with pslib support" OFF)
 option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
-option(WITH_CONTRIB "Compile the third-party contributation" OFF)
 option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
-option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
+option(WITH_NVTX "Paddle with nvtx for profiler" OFF)
 option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
 option(WITH_DGC "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(
@@ -298,7 +307,7 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" OFF)
+option(WITH_IR "Compile PaddlePaddle with NEWIR" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -334,6 +343,11 @@ endif()
 
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
+   AND NOT WITH_GPU
+   AND NOT WITH_ROCM
+   AND NOT WITH_XPU
+   AND NOT WITH_XPU_KP
+   AND NOT WITH_XPU_XFT
    AND WITH_PYTHON)
   set(WITH_CUSTOM_DEVICE
       ON
@@ -609,6 +623,10 @@ if(WITH_MIPS)
   add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if(WITH_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_NVTX)
+endif()
+
 if(WITH_LOONGARCH)
   set(WITH_XBYAK
       OFF
@@ -656,6 +674,21 @@ if(WITH_STRIP)
         OFF
         CACHE STRING "Command strip is only used on Linux when it exists."
               FORCE)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  # TODO(huangjiyi): Separate installing C++ distribution from python package
+  # installation and support for installing C++ distribution on more platforms.
+  if(NOT LINUX OR NOT WITH_PYTHON)
+    set(WITH_CPP_DIST
+        OFF
+        CACHE
+          STRING
+          "Currently C++ Distribution Generation is only available on Linux and compiling WITH_PYTHON=ON."
+          FORCE)
+  else()
+    include(paddle_lib)
   endif()
 endif()
 

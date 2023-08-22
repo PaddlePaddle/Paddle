@@ -112,6 +112,18 @@ class XPUTestGather(XPUOpTestWrapper):
             self.index_type = np.int64
 
 
+class TestGatherOpEmpty(unittest.TestCase):
+    def test_gather_empty_index(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.set_device('xpu')
+            paddle.disable_static()
+            data = paddle.ones([10], dtype='int32')
+            index = paddle.ones([], dtype='int32')
+            out = paddle.gather(data, index)
+            self.assertEqual(out.shape, index.shape)
+            paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('gather')
 for stype in support_types:
     create_test_class(globals(), XPUTestGather, stype)

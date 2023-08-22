@@ -291,7 +291,9 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const int W = (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                                   : x_dims[x_dims.size() - 2]);
 
-  dev_ctx.template Alloc<T>(d_x);
+  if (d_x) {
+    dev_ctx.template Alloc<T>(d_x);
+  }
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   DenseTensor ds, db;

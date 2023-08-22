@@ -16,12 +16,12 @@
 
 #include <set>
 
+#include <map>
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -78,10 +78,39 @@ void InitGpuProperties(Place place,
       for (const int32_t& arch : compiled_archs) {
         compile_arch_str += std::to_string(arch) + " ";
       }
-      LOG(WARNING) << "Paddle with runtime capability " << *compute_capability
-                   << " is not compatible with Paddle installation with arch: "
-                   << compile_arch_str
-                   << ". Please check compiled version of Paddle. ";
+      std::map<int, std::string> arch_computing_mapping_table = {
+          {20, "Fermi"},
+          {30, "Kepler"},
+          {35, "Kapler"},
+          {37, "Kepler"},
+          {50, "Maxwell"},
+          {52, "Maxwell"},
+          {60, "Pascal"},
+          {61, "Pascal"},
+          {70, "Volta"},
+          {75, "Turing"},
+          {80, "Ampere"},
+          {86, "Ampere"},
+          {89, "Ampere"}};
+      if (arch_computing_mapping_table.count(*compute_capability)) {
+        LOG(WARNING)
+            << "The GPU architecture in your current machine is "
+            << arch_computing_mapping_table[*compute_capability]
+            << ", which is not compatible with Paddle installation with arch: "
+            << compile_arch_str
+            << ", it is recommended to install the corresponding wheel package "
+               "according to the installation information on the official "
+               "Paddle "
+               "website.";
+      } else {
+        LOG(WARNING)
+            << "The GPU compute capability in your current machine is "
+            << *compute_capability << ", which is not supported by Paddle"
+            << ", it is recommended to install the corresponding wheel package "
+               "according to the installation information on the official "
+               "Paddle "
+               "website.";
+      }
     }
   }
 #endif

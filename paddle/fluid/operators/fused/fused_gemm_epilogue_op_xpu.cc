@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -66,7 +66,6 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
     phi::XpuFcInfo fc_info;
 
     phi::GetFCInfo(x_mat_dims, y->dims(), trans_x, trans_y, &fc_info);
-    VLOG(0) << "FusedGemmEpilogueXPUKernel 000";
     xpu::Context* xpu_ctx = dev_ctx.x_context();
 
     const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x->data<T>());
@@ -102,7 +101,7 @@ class FusedGemmEpilogueXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -227,15 +226,17 @@ class FusedGemmEpilogueXPUGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(
-    fused_gemm_epilogue,
-    ops::FusedGemmEpilogueXPUKernel<phi::XPUContext, float>,
-    ops::FusedGemmEpilogueXPUKernel<phi::XPUContext,
-                                    paddle::platform::float16>);
-
-REGISTER_OP_XPU_KERNEL(
-    fused_gemm_epilogue_grad,
-    ops::FusedGemmEpilogueXPUGradKernel<phi::XPUContext, float>,
-    ops::FusedGemmEpilogueXPUGradKernel<phi::XPUContext,
-                                        paddle::platform::float16>);
+PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::FusedGemmEpilogueXPUKernel,
+                          float,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::FusedGemmEpilogueXPUGradKernel,
+                          float,
+                          plat::float16) {}

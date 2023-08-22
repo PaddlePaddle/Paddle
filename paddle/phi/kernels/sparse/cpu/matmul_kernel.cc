@@ -22,21 +22,21 @@ namespace sparse {
 
 // TODO(zhouwei25): implement CPU kernel of " CSR @ DENSE -> DENSE"
 template <typename T, typename Context>
-void MatmulCsrDenseKernel(const Context& dev_ctx,
-                          const SparseCsrTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out) {
+void MatmulCsrDenseKernel(const Context& dev_ctx UNUSED,
+                          const SparseCsrTensor& x UNUSED,
+                          const DenseTensor& y UNUSED,
+                          DenseTensor* out UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.matmul' now."));
 }
 
 // TODO(zhouwei25): implement CPU kernel of " DENSE @ DENSE * CSR_MASK -> CSR"
 template <typename T, typename Context>
-void MaskedMatmulCsrKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           const SparseCsrTensor& mask,
-                           SparseCsrTensor* out) {
+void MaskedMatmulCsrKernel(const Context& dev_ctx UNUSED,
+                           const DenseTensor& x UNUSED,
+                           const DenseTensor& y UNUSED,
+                           const SparseCsrTensor& mask UNUSED,
+                           SparseCsrTensor* out UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.masked_matmul' now."));
 }

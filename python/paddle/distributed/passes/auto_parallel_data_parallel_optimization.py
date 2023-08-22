@@ -15,16 +15,16 @@
 from collections import OrderedDict
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
     TensorDistAttr,
 )
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
     is_data_parallel_scale_op,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     find_higher_order_backward_op,
     get_var_numel,
     insert_dependencies_for_vars,

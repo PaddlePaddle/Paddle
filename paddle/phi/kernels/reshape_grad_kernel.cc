@@ -53,7 +53,7 @@ void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
 
 template <typename Context>
 void ReshapeDoubleGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad,
+                             const DenseTensor& out_grad UNUSED,
                              const DenseTensor& x_grad_grad,
                              DenseTensor* out_grad_grad) {
   ReshapeGradKernel(dev_ctx, x_grad_grad, out_grad_grad);

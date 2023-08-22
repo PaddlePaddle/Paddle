@@ -94,26 +94,17 @@ void ExpandKernel(const Context& ctx,
           shape_size,
           rank));
 
-  if (shape_size == 0) {
-    phi::DDim out_dims = phi::make_ddim(final_expand_shape);
-    out->Resize(out_dims);
-    ctx.template Alloc<T>(out);
-
-    int r = xpu::copy<XPUType>(ctx.x_context(),
-                               reinterpret_cast<const XPUType*>(x.data<T>()),
-                               reinterpret_cast<XPUType*>(out->data<T>()),
-                               x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-    return;
-  }
   DDim out_dims = phi::make_ddim(final_expand_shape);
   out->Resize(out_dims);
   ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
   auto out_shape = phi::vectorize<int>(out_dims);
+  if (shape_size == 0) {
+    x_shape = {1};
+    out_shape = {1};
+  }
 
   int r = XPU_SUCCESS;
-
   if (std::is_same<T, bool>::value) {
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
     auto out_data = reinterpret_cast<int8_t*>(out->data<T>());

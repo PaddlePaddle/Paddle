@@ -356,6 +356,8 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
     }
   };
   InsertTransposeOp();
+
+  AddStatis(transposed_ops.size());
 }
 
 }  // namespace ir

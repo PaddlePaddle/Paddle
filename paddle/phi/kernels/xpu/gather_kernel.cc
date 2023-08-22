@@ -29,7 +29,7 @@ void GatherKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   dev_ctx.template Alloc<T>(out);
-  if (x.numel() == 0) return;
+  if (x.numel() == 0 || index.numel() == 0) return;
 
   const auto index_dims = index.dims();
   if (index_dims.size() == 2) {

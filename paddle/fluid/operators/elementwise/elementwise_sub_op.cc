@@ -49,7 +49,7 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
         "should be int32, int64, float32, float64.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Substract two tensors element-wise";
   }
 };
@@ -102,6 +102,42 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class ElementwiseSubCompositeDoubleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+    // get output
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "subtract_doubel_grad but we got: ",
+                                     axis));
+
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+
+    VLOG(6) << "Runing subtract_double_grad composite func";
+    prim::subtract_double_grad<prim::DescTensor>(
+        y, out_grad, ddx, ddy, axis, grad_out_grad);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -124,7 +160,9 @@ REGISTER_OPERATOR(
     ops::ElementwiseGradOpInplaceInferer,
     ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>,
+    ops::ElementwiseSubCompositeDoubleGradOpMaker);
+
 REGISTER_OPERATOR(elementwise_sub_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
                   ops::ElementwiseDoubleGradOpInplaceInferer,
@@ -132,9 +170,9 @@ REGISTER_OPERATOR(elementwise_sub_grad_grad,
 
 REGISTER_OP_VERSION(elementwise_sub)
     .AddCheckpoint(
-        R"ROC(Register elementwise_sub for adding the attribute of Scale_y)ROC",
+        R"ROC(Register elementwise_sub for adding the attribute of scale_y)ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "Scale_y",
+            "scale_y",
             "In order to support the function of scaling the input Y when "
             "using the operator of elementwise_sub.",
             1.0f));

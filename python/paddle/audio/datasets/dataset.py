@@ -44,7 +44,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
             files (:obj:`List[str]`): A list of absolute path of audio files.
             labels (:obj:`List[int]`): Labels of audio files.
             feat_type (:obj:`str`, `optional`, defaults to `raw`):
-                It identifies the feature type that user wants to extrace of an audio file.
+                It identifies the feature type that user wants to extract an audio file.
         """
         super().__init__()
 

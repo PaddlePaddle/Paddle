@@ -90,6 +90,21 @@ class XPUTestTileOpRank1(XPUOpTestWrapper):
             self.ori_shape = (2, 4, 5, 7)
             self.repeat_times = (3, 2, 1, 2)
 
+    class TestTileOpRank_ZeroDim1(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = []
+            self.repeat_times = []
+
+    class TestTileOpRank_ZeroDim2(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = []
+            self.repeat_times = [2]
+
+    class TestTileOpRank_ZeroDim3(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = []
+            self.repeat_times = [2, 3]
+
 
 # Situation 2: repeat_times is a list (with tensor)
 class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):
@@ -207,6 +222,37 @@ class TestTileAPI(unittest.TestCase):
             assert np.array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
             assert np.array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
             assert np.array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
+
+
+class TestTileAPI_ZeroDim(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.tile(x, [])
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.tile(x, [3])
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [3])
+
+        out = paddle.tile(x, [2, 3])
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [2, 3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [2, 3])
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

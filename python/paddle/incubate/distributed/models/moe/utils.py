@@ -26,14 +26,14 @@ from paddle.distributed.models.moe.utils import (
     _number_count,
     _prune_gate_by_capacity,
 )
-from paddle.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 
 def _alltoall(in_tensor_list, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         group = (
             paddle.distributed.collective._get_default_group()
             if group is None

@@ -39,3 +39,4 @@ per-file-ignores =
     .cmake-format.py: F821
     test/dygraph_to_static/test_loop.py: F821
     test/dygraph_to_static/test_closure_analysis.py: F821
+    python/paddle/static/amp/decorator.py: F811

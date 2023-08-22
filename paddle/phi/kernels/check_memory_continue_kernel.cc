@@ -28,7 +28,7 @@ template <typename T, typename Context>
 void CheckMemoryContinueKernel(const Context &dev_ctx,
                                const std::vector<const DenseTensor *> &input,
                                DenseTensor *output,
-                               std::vector<DenseTensor *> xout) {
+                               std::vector<DenseTensor *> xout UNUSED) {
   int64_t size_of_dtype = sizeof(T);
   auto dtype = input.at(0)->dtype();
   int64_t numel = 0;

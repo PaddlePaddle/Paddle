@@ -37,10 +37,10 @@ class IndexSampler {
   }
 
   virtual void init_layerwise_conf(
-      const std::vector<uint16_t>& layer_sample_counts,
-      uint16_t start_sample_layer = 1,
-      uint16_t seed = 0) {}
-  virtual void init_beamsearch_conf(const int64_t k) {}
+      const std::vector<uint16_t>& layer_sample_counts UNUSED,
+      uint16_t start_sample_layer UNUSED = 1,
+      uint16_t seed UNUSED = 0) {}
+  virtual void init_beamsearch_conf(const int64_t k UNUSED) {}
   virtual std::vector<std::vector<uint64_t>> sample(
       const std::vector<std::vector<uint64_t>>& user_inputs,
       const std::vector<uint64_t>& input_targets,

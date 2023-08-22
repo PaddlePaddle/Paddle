@@ -16,15 +16,19 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    sequence_concat,
-    paddle::operators::SeqConcatKernel<phi::GPUContext, float>,
-    paddle::operators::SeqConcatKernel<phi::GPUContext, double>,
-    paddle::operators::SeqConcatKernel<phi::GPUContext, int>,
-    paddle::operators::SeqConcatKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_concat_grad,
-    paddle::operators::SeqConcatGradKernel<phi::GPUContext, float>,
-    paddle::operators::SeqConcatGradKernel<phi::GPUContext, double>,
-    paddle::operators::SeqConcatGradKernel<phi::GPUContext, int>,
-    paddle::operators::SeqConcatGradKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_concat,
+                          GPU,
+                          ALL_LAYOUT,
+                          paddle::operators::SeqConcatKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_concat_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          paddle::operators::SeqConcatGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
