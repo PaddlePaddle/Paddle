@@ -24,7 +24,7 @@
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
 
-class RemoveRedundentReshape : public ir::drr::DrrPatternBuilder {
+class RemoveRedundentReshapePattern : public ir::drr::DrrPatternBuilder {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source patterns：待匹配的子图
@@ -44,7 +44,7 @@ class RemoveRedundentReshape : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class FoldBroadcastToConstant : public ir::drr::DrrPatternBuilder {
+class FoldBroadcastToConstantPattern : public ir::drr::DrrPatternBuilder {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     ir::drr::SourcePattern pat = ctx->SourcePattern();
@@ -53,7 +53,7 @@ class FoldBroadcastToConstant : public ir::drr::DrrPatternBuilder {
         "pd.fill_constant",
         {{"value", pat.Attr("value_1")}, {"dtype", pat.Attr("dtype_1")}});
     const auto &broadcast_to =
-        pat.Op("pd.exkpand", {{"shape", pat.Attr("shape_1")}});
+        pat.Op("pd.expand", {{"shape", pat.Attr("shape_1")}});
     // 匹配fill_constant+broadcast_to，同时对输出张量标记为ret，方便后面加约束
     pat.Tensor("ret") = broadcast_to(fill_constant());
     // Constrains：本Pass无额外的约束规则
@@ -71,7 +71,7 @@ class FoldBroadcastToConstant : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class RemoveRedundentTranspose : public ir::drr::DrrPatternBuilder {
+class RemoveRedundentTransposePattern : public ir::drr::DrrPatternBuilder {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source pattern: 待匹配的子图
@@ -93,7 +93,7 @@ class RemoveRedundentTranspose : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class RemoveRedundentCast : public ir::drr::DrrPatternBuilder {
+class RemoveRedundentCastPattern : public ir::drr::DrrPatternBuilder {
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") =
@@ -106,7 +106,7 @@ class RemoveRedundentCast : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class RemoveUselessCast : public ir::drr::DrrPatternBuilder {
+class RemoveUselessCastPattern : public ir::drr::DrrPatternBuilder {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
@@ -161,10 +161,10 @@ class DrrPatternRewritePass : public ir::Pass {
 
   bool Initialize(ir::IrContext *context) override {
     ir::RewritePatternSet ps(context);
-    ps.Add(RemoveRedundentReshape().Build(context));
-    ps.Add(RemoveRedundentTranspose().Build(context));
-    ps.Add(RemoveRedundentCast().Build(context));
-    ps.Add(RemoveUselessCast().Build(context));
+    ps.Add(RemoveRedundentReshapePattern().Build(context));
+    ps.Add(RemoveRedundentTransposePattern().Build(context));
+    ps.Add(RemoveRedundentCastPattern().Build(context));
+    ps.Add(RemoveUselessCastPattern().Build(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
