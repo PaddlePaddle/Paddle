@@ -1070,6 +1070,7 @@ function(py_proto_compile TARGET_NAME)
   foreach(py_src ${py_srcs})
     add_custom_command(
       TARGET ${TARGET_NAME}_replace
+      POST_BUILD
       COMMAND ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/cmake/replace_string.py
               ${py_src}
       COMMENT
