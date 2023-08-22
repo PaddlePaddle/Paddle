@@ -15,6 +15,8 @@
 import functools
 
 from paddle.autograd.py_layer import PyLayerMeta
+from paddle.common_ops_import import LayerHelper
+from paddle.static import Variable
 from paddle.static.nn import static_pylayer
 
 from .program_translator import convert_to_static, unwrap_decorators
@@ -29,35 +31,38 @@ def is_pylayer_func(func):
 
 
 class StaticPyLayerContext:
+    def __init__(self):
+        self.saved_vars = []
+    
     def save_for_backward(self, *tensors):
-        # insert one OP ?
-        # self.container = tensors
-        print("call save_for_backward")
-        pass
+        for tensor in tensors:
+            assert isinstance(tensor, Variable)
+            self.saved_vars.append(tensor)
 
     def saved_tensor(self):
-        # insert one OP ?
-        # return self.container
-        print("call saved_tensor")
-        pass
+        helper = LayerHelper("StaticPyLayerContext")
+        out_list = []
+        for saved_var in self.saved_vars:
+            out = helper.create_variable(
+                name=saved_var.name,
+                dtype=saved_var.dtype,
+                shape=saved_var.shape
+            )
+            out_list.append(out)
+            
+        return out_list
+        
 
     def mark_not_inplace(self, *args):
-        # insert one OP ?
         # self.not_inplace_tensors = args
-        print("call mark_not_inplace")
-        pass
-
+        raise NotImplementedError()
     def mark_non_differentiable(self, *args):
-        # insert one OP ?
         # self.non_differentiable = args
-        print("call mark_non_differentiable")
-        pass
+        raise NotImplementedError()
 
     def set_materialize_grads(self, value: bool):
-        # insert one OP ?
         # self.materialize_grads = value
-        print("call set_materialize_grads")
-        pass
+        raise NotImplementedError()
 
 
 class StaticPyLayer:
@@ -76,7 +81,7 @@ class StaticPyLayer:
         )
 
     # NOTE: only support position args and Variables Now
-    def apply(self, *args, **kwargs):
+    def apply(self, *args):
         return static_pylayer(
             forward_fn=self.forward_fn_with_ctx,
             inputs=list(args),
