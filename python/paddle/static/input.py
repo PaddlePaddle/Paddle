@@ -26,7 +26,7 @@ __all__ = []
 
 
 def evaluate_flag(val) -> bool:
-    return str(val).lower() in ('false', 'off', '0', 'none')
+    return str(val).lower() not in ('false', 'off', '0', 'none')
 
 
 @static_only
