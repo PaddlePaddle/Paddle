@@ -103,7 +103,7 @@ class SqueezeNet(nn.Layer):
             >>> out = model(x)
 
             >>> print(out.shape)
-            # [1, 1000]
+            [1, 1000]
     """
 
     def __init__(self, version, num_classes=1000, with_pool=True):
@@ -246,7 +246,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
             >>> out = model(x)
 
             >>> print(out.shape)
-            # [1, 1000]
+            [1, 1000]
     """
     return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
 
@@ -280,6 +280,6 @@ def squeezenet1_1(pretrained=False, **kwargs):
             >>> out = model(x)
 
             >>> print(out.shape)
-            # [1, 1000]
+            [1, 1000]
     """
     return _squeezenet('squeezenet1_1', '1.1', pretrained, **kwargs)
