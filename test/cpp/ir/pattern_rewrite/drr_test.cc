@@ -16,8 +16,8 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/fluid/ir/drr/api/drr_pattern_base.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
