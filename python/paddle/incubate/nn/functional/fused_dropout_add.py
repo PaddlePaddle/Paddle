@@ -51,15 +51,26 @@ def fused_dropout_add(
 
     Examples:
 
-        ..  code-block:: python
+        .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn.functional import fused_dropout_add
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> from paddle.incubate.nn.functional import fused_dropout_add
 
-            x = paddle.randn([4, 10], dtype='float16')
-            y = paddle.randn([4, 10], dtype='float16')
-            out = fused_dropout_add(x, y, p=0.5)
+            >>> x = paddle.randn([4, 10], dtype='float16')
+            >>> y = paddle.randn([4, 10], dtype='float16')
+            >>> out = fused_dropout_add(x, y, p=0.5)
+            >>> print(out)
+            Tensor(shape=[4, 10], dtype=float16, place=Place(gpu:0), stop_gradient=True,
+            [[-0.49121094,  0.53808594, -2.58398438,  0.06347656, -1.09960938,
+               0.22082520,  2.19726562,  0.05053711,  0.53417969,  0.84863281],
+             [ 0.78271484, -1.59667969, -0.14404297, -0.77929688, -0.17004395,
+              -0.30981445, -0.36572266, -0.51025391,  1.46386719,  0.61621094],
+             [ 4.50390625, -0.48461914,  0.60742188,  0.33496094, -0.25585938,
+              -1.45214844,  1.06738281,  0.00439453, -0.77343750,  0.67382812],
+             [ 1.29492188,  0.07568359,  0.71923828, -0.71777344, -2.57226562,
+               1.89160156,  3.26367188,  1.10546875, -1.04589844, -1.04882812]])
     """
     if isinstance(p, (int, float)):
         # fast return for p == 0

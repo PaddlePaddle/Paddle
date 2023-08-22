@@ -37,7 +37,7 @@ def fused_ec_moe(
     Examples:
         .. code-block:: python
 
-            # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
             import paddle
             from paddle.incubate.nn.functional import fused_ec_moe
 
@@ -55,7 +55,8 @@ def fused_ec_moe(
             bmm1_bias = paddle.randn([num_expert, d_model, d_feed_forward])
             out = fused_ec_moe(x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, act_type="gelu")
 
-            print(out.shape) # [batch, seq_len, num_expert]
+            print(out.shape)
+            [10, 128, 1024]
     """
     helper = LayerHelper('fused_moe', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
