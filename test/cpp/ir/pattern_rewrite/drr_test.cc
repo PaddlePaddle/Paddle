@@ -18,13 +18,13 @@
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
-#include "paddle/fluid/ir/drr/api/drr_pattern_builder.h"
+#include "paddle/fluid/ir/drr/api/drr_pattern_base.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/ir/transforms/dead_code_elimination_pass.h"
 
-class RemoveRedundentReshapePattern : public ir::drr::DrrPatternBuilder {
+class RemoveRedundentReshapePattern : public ir::drr::DrrPatternBase {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source patterns：待匹配的子图
@@ -44,7 +44,7 @@ class RemoveRedundentReshapePattern : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class FoldBroadcastToConstantPattern : public ir::drr::DrrPatternBuilder {
+class FoldBroadcastToConstantPattern : public ir::drr::DrrPatternBase {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     ir::drr::SourcePattern pat = ctx->SourcePattern();
@@ -71,7 +71,7 @@ class FoldBroadcastToConstantPattern : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class RemoveRedundentTransposePattern : public ir::drr::DrrPatternBuilder {
+class RemoveRedundentTransposePattern : public ir::drr::DrrPatternBase {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     // Source pattern: 待匹配的子图
@@ -93,7 +93,7 @@ class RemoveRedundentTransposePattern : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class RemoveRedundentCastPattern : public ir::drr::DrrPatternBuilder {
+class RemoveRedundentCastPattern : public ir::drr::DrrPatternBase {
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();
     pat.Tensor("tmp") =
@@ -106,7 +106,7 @@ class RemoveRedundentCastPattern : public ir::drr::DrrPatternBuilder {
   }
 };
 
-class RemoveUselessCastPattern : public ir::drr::DrrPatternBuilder {
+class RemoveUselessCastPattern : public ir::drr::DrrPatternBase {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
     auto pat = ctx->SourcePattern();

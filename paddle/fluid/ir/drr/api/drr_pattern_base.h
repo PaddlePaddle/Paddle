@@ -20,7 +20,7 @@
 namespace ir {
 namespace drr {
 
-class DrrPatternBuilder {
+class DrrPatternBase {
  public:
   // Define the Drr Pattern.
   virtual void operator()(ir::drr::DrrPatternContext* ctx) const = 0;
