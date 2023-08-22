@@ -49,9 +49,9 @@ while true;do
 done
 
 pushd ${PADDLE_MUSA_DIR}
-# prepare submodules by copying from the local repo,
-# in this case, CI docker need to be updated once submodules' version changed
-cp -r ${PADDLE_MUSA_REPO_PATH}/third_party/. third_party
+. $CUR_DIR/download_third_party.sh
+# The thiry_party extracted from the compressed package is not a git repository,
+# but it is required to be a git repository to patch when compiling.
 cp -r ${PADDLE_MUSA_REPO_PATH}/.git/modules .git
 
 export INFERENCE_DEMO_INSTALL_DIR="/home/data/paddle_musa/.cache/build"

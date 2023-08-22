@@ -17,7 +17,7 @@ include(ExternalProject)
 # update eigen to the commit id f612df27 on 03/16/2021
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
-set(EIGEN_TAG 6ad1f10acbc311dd82b20cce7f5c305ae8c3eaa9)
+set(EIGEN_TAG f612df273689a19d25b45ca4f8269463207c4fee)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/eigen3)
 
 if(WIN32)
@@ -59,6 +59,64 @@ if(CMAKE_COMPILER_IS_GNUCC)
     set(EIGEN_PATCH_COMMAND
         ${EIGEN_PATCH_COMMAND} && patch -Nd
         ${SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
+  endif()
+  if(WITH_MUSA)
+    file(
+      TO_NATIVE_PATH
+      ${PADDLE_SOURCE_DIR}/patches/eigen/Eigen_src_Core_util_ConfigureVectorization.h.patch
+      configure_vectorization_header)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd ${SOURCE_DIR}/Eigen/src/Core/util/
+        < ${configure_vectorization_header})
+    file(TO_NATIVE_PATH
+         ${PADDLE_SOURCE_DIR}/patches/eigen/Eigen_src_Core_util_Macros.h.patch
+         util_macros_header)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd ${SOURCE_DIR}/Eigen/src/Core/util/
+        < ${util_macros_header})
+    file(TO_NATIVE_PATH
+         ${PADDLE_SOURCE_DIR}/patches/eigen/Eigen_src_Core_util_Meta.h.patch
+         meta_header)
+    set(EIGEN_PATCH_COMMAND ${EIGEN_PATCH_COMMAND} && patch -Nd
+                            ${SOURCE_DIR}/Eigen/src/Core/util/ < ${meta_header})
+    file(TO_NATIVE_PATH
+         ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported_Eigen_CXX11_Tensor.patch
+         cxx11_tensor)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd
+        ${SOURCE_DIR}/unsupported/Eigen/CXX11/ < ${cxx11_tensor})
+    file(
+      TO_NATIVE_PATH
+      ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported_Eigen_CXX11_src_Tensor_TensorContractionGpu.h.patch
+      tensor_contraction_gpu_header)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd
+        ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/ <
+        ${tensor_contraction_gpu_header})
+    file(
+      TO_NATIVE_PATH
+      ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported_Eigen_CXX11_src_Tensor_TensorDeviceDefault.h.patch
+      tensor_device_default_header)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd
+        ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/ <
+        ${tensor_device_default_header})
+    file(
+      TO_NATIVE_PATH
+      ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported_Eigen_CXX11_src_Tensor_TensorGpuHipCudaDefines.h.patch
+      tensor_gpu_hip_cuda_defines_header)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd
+        ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/ <
+        ${tensor_gpu_hip_cuda_defines_header})
+    file(
+      TO_NATIVE_PATH
+      ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported_Eigen_CXX11_src_Tensor_TensorReduction.h.patch
+      tensor_reduction_header)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd
+        ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/ <
+        ${tensor_reduction_header})
   endif()
 endif()
 
