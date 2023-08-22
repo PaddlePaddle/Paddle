@@ -25,8 +25,8 @@ from ..fluid.variable_index import _setitem_impl_, _setitem_static
 __all__ = []
 
 
-def evaluate_flag(val: str) -> bool:
-    return val.lower() in ('false', 'off', '0', 'none')
+def evaluate_flag(val) -> bool:
+    return str(val).lower() in ('false', 'off', '0', 'none')
 
 
 @static_only
