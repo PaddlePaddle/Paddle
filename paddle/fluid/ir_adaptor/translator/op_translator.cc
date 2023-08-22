@@ -201,21 +201,12 @@ inline ir::Operation* InsertStackOperationForTarget(
     ir::Program* program,
     const std::vector<std::string>& args,
     int axis = 0) {
-  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(dialect::StackOp::name());
-
-  std::vector<ir::OpResult> op_inputs;
-  for (const auto& arg_name : args) {
-    auto defining_info = param_map->at(arg_name);
-    op_inputs.push_back(defining_info.value);
-  }
-
-  ir::AttributeMap attribute_map = {
-      {"axis", ir::Int32Attribute::get(ctx, axis)}};
-
-  ir::Operation* operation = ir::Operation::Create(
-      op_inputs, attribute_map, {op_inputs[0].type()}, op_info);
-  program->block()->push_back(operation);
-  return operation;
+  auto* combine_op =
+      InsertCombineOperationForTarget(ctx, param_map, program, args);
+  ir::Builder builder(ctx, program->block());
+  dialect::StackOp stack_op =
+      builder.Build<dialect::StackOp>(combine_op->result(0), axis);
+  return stack_op.operation();
 }
 
 inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
