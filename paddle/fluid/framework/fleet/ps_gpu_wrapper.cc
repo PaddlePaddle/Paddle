@@ -1128,8 +1128,10 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
             shard_values.resize(total);
 
             size_t dedup_index = dedup_size;
-            uint64_t last_key = shard_keys[0];
-
+            uint64_t last_key = 0;
+            if(total > 0) {
+              last_key = shard_keys[0];
+            }
             size_t i = 0;
             size_t k = 0;
 
@@ -1153,19 +1155,21 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
                 ++k;
                 ++dedup_index;
               }
-              uint64_t& key = shard_keys[dedup_size - 1];
-              while (k < merge_num) {
-                auto& merge_key = merge_values.keys[k];
-                if (key == merge_key || last_key == merge_key) {
+              if (dedup_size >= 1) {
+                uint64_t& key = shard_keys[dedup_size - 1];
+                while (k < merge_num) {
+                  auto& merge_key = merge_values.keys[k];
+                  if (key == merge_key || last_key == merge_key) {
+                    ++k;
+                    continue;
+                  }
+                  last_key = merge_key;
+                  shard_keys[dedup_index] = merge_key;
+                  shard_values[dedup_index] =
+                      CONV2FEATURE_PTR(merge_values.values[k]);
                   ++k;
-                  continue;
+                  ++dedup_index;
                 }
-                last_key = merge_key;
-                shard_keys[dedup_index] = merge_key;
-                shard_values[dedup_index] =
-                    CONV2FEATURE_PTR(merge_values.values[k]);
-                ++k;
-                ++dedup_index;
               }
             } else {
               merge_values.offsets.push_back(merge_num);
