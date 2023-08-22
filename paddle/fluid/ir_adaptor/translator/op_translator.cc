@@ -1175,6 +1175,120 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
   }
 };
 
+struct FillConstantTranscriber : public OpTranscriber {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
+    bool has_mutable_attribute = op_desc.HasInput("ShapeTensor", true) &&
+                                 op_desc.Input("ShapeTensor", true).size() > 0;
+    has_mutable_attribute |= op_desc.HasInput("ShapeTensorList", true) &&
+                             op_desc.Input("ShapeTensorList", true).size() > 0;
+    has_mutable_attribute |= op_desc.HasInput("ValueTensor", true) &&
+                             op_desc.Input("ValueTensor", true).size() > 0;
+
+    if (!has_mutable_attribute) {
+      auto op_info = ctx->GetRegisteredOpInfo("pd.full");
+      std::vector<int64_t> shape =
+          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+      auto attr_value = ir::FloatAttribute::get(ctx, value);
+
+      ir::AttributeMap attribute_map = {
+          {"shape",
+           paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape))},
+          {"value", attr_value.dyn_cast<paddle::dialect::ScalarAttribute>()},
+          {"dtype",
+           paddle::dialect::DataTypeAttribute::get(
+               ctx,
+               phi::VarTypeToDataType(
+                   static_cast<paddle::framework::proto::VarType_Type>(
+                       dtype)))}};
+      int place_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place_type"));
+      if (place_type != -1) {
+        switch (place_type) {
+          case 0:
+            attribute_map["place"] =
+                paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+            break;
+          case 1:
+            attribute_map["place"] =
+                paddle::dialect::PlaceAttribute::get(ctx, phi::GPUPlace());
+            break;
+          case 2:
+            attribute_map["place"] = paddle::dialect::PlaceAttribute::get(
+                ctx, phi::GPUPinnedPlace());
+            break;
+          case 3:
+            attribute_map["place"] =
+                paddle::dialect::PlaceAttribute::get(ctx, phi::XPUPlace());
+            break;
+        }
+      }
+
+      auto vars = op_desc.Output("Out");
+      IR_ENFORCE(vars.size() == 1,
+                 "Expected op[%s]'s output Out has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 vars.size());
+      const auto& var_name = vars[0];
+
+      auto defining_info = (*param_map)[var_name];
+      auto& type_translator = TypeTranslator::instance();
+      ir::Operation* operation = ir::Operation::Create(
+          {}, attribute_map, {defining_info.value.type()}, op_info);
+      program->block()->push_back(operation);
+      return operation;
+    } else {
+      auto op_info = ctx->GetRegisteredOpInfo("pd.fill_with_tensor");
+      if (!op_info) {
+        IR_THROW(
+            "Op tril_triu should have corresponding OpInfo "
+            "pd.fill_with_tensor.");
+      }
+
+      if (op_desc.HasInput("ShapeTensor", true) &&
+          op_desc.Input("ShapeTensor", true).size() > 0) {
+      } else if (op_desc.HasInput("ShapeTensorList", true) &&
+                 op_desc.Input("ShapeTensorList", true).size() > 0) {
+      } else {
+      }
+
+      if (op_desc.HasInput("ValueTensor", true) &&
+          op_desc.Input("ValueTensor", true).size() > 0) {
+      } else {
+      }
+
+      std::vector<ir::OpResult> op_inputs;
+      auto legacy_input_vars = op_desc.Input("x", true);
+
+      auto defining_info = (*param_map)[legacy_input_vars[0]];
+      if (defining_info.generated_by_vector) {
+        InsertSliceOperationForTarget(
+            ctx, param_map, program, defining_info, legacy_input_vars[0]);
+        defining_info = param_map->at(legacy_input_vars[0]).value;
+      }
+
+      op_inputs.push_back(defining_info.value);
+
+      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+
+      ir::AttributeMap attribute_map = {
+          {"dtype",
+           phi::VarTypeToDataType(
+               static_cast<paddle::framework::proto::VarType_Type>(dtype))},
+      };
+
+      ir::Operation* operation =
+          ir::Operation::Create(op_inputs, attribute_map, {}, op_info);
+      program->block()->push_back(operation);
+
+      return operation;
+    }
+  }
+};
+
 ir::OpResult TranslateNumClassesForOneHot(ir::IrContext* ctx,
                                           TranslationContext* param_map,
                                           const OpDesc& op_desc,
@@ -1474,6 +1588,7 @@ OpTranslator::OpTranslator() {
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
+  special_handlers["fill_constant"] = FillConstantTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
