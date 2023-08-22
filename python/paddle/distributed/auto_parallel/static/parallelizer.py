@@ -107,7 +107,7 @@ class AutoParallelizer:
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["loss"] = loss
-            if config["dtype"] == "float16" and config["level"] == "o2":
+            if config["use_pure_fp16"]:
                 config["base_opt"] = self._optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply(
