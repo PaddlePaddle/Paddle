@@ -160,6 +160,7 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   // Step2.3.1 Output Partial
   std::vector<int64_t> partial_on_dims =
       ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
+  output_dist_attr_dst.set_partial_status(partial_on_dims);
 
   // Step2.3.2  handle input tensor partial (TODO)
   VLOG(4) << "MatmulSPMDRule InferForward: "

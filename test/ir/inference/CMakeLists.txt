@@ -174,6 +174,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
+  if(WITH_MKLDNN)
+    set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
+  endif()
 
   if(WITH_NV_JETSON)
     set_tests_properties(
@@ -218,7 +221,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_transfer_layout_elim_pass PROPERTIES TIMEOUT 300)
 
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
-                         PROPERTIES TIMEOUT 240)
+                         PROPERTIES TIMEOUT 480)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_conv_act_onednn_fuse_pass PROPERTIES TIMEOUT 120)

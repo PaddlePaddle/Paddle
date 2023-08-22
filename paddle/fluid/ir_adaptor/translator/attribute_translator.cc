@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
@@ -34,7 +34,7 @@ class AttributeVisitor {
  public:
   ir::IrContext* ctx;
   AttributeVisitor() { ctx = ir::IrContext::Instance(); }
-  ~AttributeVisitor() {}
+  ~AttributeVisitor() = default;
 
  public:
   virtual ir::Attribute operator()(int i) {

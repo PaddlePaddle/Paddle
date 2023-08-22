@@ -79,39 +79,39 @@ class Engine:
 
         .. code-block:: python
 
-            import paddle
-            import paddle.vision.transforms as T
-            from paddle.distributed.fleet import auto
-            from paddle.vision.datasets import MNIST
+            >>> import paddle
+            >>> import paddle.vision.transforms as T
+            >>> from paddle.distributed.fleet import auto
+            >>> from paddle.vision.datasets import MNIST
 
-            transform = T.Compose([
-                T.Transpose(),
-                T.Normalize([127.5], [127.5])
-            ])
-            train_dataset = MNIST(mode='train', transform=transform)
-            valid_dataset = MNIST(mode='test', transform=transform)
+            >>> transform = T.Compose([
+            ...     T.Transpose(),
+            ...     T.Normalize([127.5], [127.5])
+            >>> ])
+            >>> train_dataset = MNIST(mode='train', transform=transform)
+            >>> valid_dataset = MNIST(mode='test', transform=transform)
 
-            model = paddle.vision.models.LeNet()
-            loss = paddle.nn.CrossEntropyLoss()
-            optimizer = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=model.parameters())
-            metrics = paddle.metric.Accuracy(topk=(1, 2))
+            >>> model = paddle.vision.models.LeNet()
+            >>> loss = paddle.nn.CrossEntropyLoss()
+            >>> optimizer = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=model.parameters())
+            >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
-            engine = auto.Engine(model, loss, optimizer, metrics)
-            # fit
-            engine.fit(train_dataset,
-                       epochs=2,
-                       batch_size=64)
-            # evaluate
-            engine.evaluate(valid_dataset,
-                            batch_size=64)
-            # predict
-            engine.predict(valid_dataset,
-                           batch_size=64)
-            # save
-            engine.save("./my_model")
-            # load
-            engine.load("./my_model")
+            >>> engine = auto.Engine(model, loss, optimizer, metrics)
+            >>> # fit
+            >>> engine.fit(train_dataset,
+            ...            epochs=2,
+            ...            batch_size=64)
+            >>> # evaluate
+            >>> engine.evaluate(valid_dataset,
+            ...                 batch_size=64)
+            >>> # predict
+            >>> engine.predict(valid_dataset,
+            ...                batch_size=64)
+            >>> # save
+            >>> engine.save("./my_model")
+            >>> # load
+            >>> engine.load("./my_model")
 
     """
 
@@ -133,6 +133,9 @@ class Engine:
                 "'model must be sub classes of `paddle.nn.Layer` or any callable function."
             )
         self._model = model
+        self._parameter_list = (
+            None if not model else [p.name for p in model.parameters()]
+        )
 
         if (
             loss
@@ -146,11 +149,10 @@ class Engine:
 
         if optimizer and not isinstance(
             optimizer,
-            (paddle.optimizer.Optimizer, paddle.static.Optimizer),
+            (paddle.optimizer.Optimizer),
         ):
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-                " or `paddle.static.Optimizer`."
             )
         self._optimizer = auto_utils.validate_opt(optimizer)
 
@@ -243,6 +245,7 @@ class Engine:
         self.history = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+        paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -765,9 +768,9 @@ class Engine:
             self._dist_contexts[mode],
         )
         if not all_ranks:
-            parallelizer.parallel(self._cur_rank)
+            parallelizer.parallel(self._cur_rank, self._parameter_list)
         else:
-            parallelizer.parallel_all()
+            parallelizer.parallel_all(self._parameter_list)
 
     def _init_dist_context(self, mode):
         # Init dist_context['mode'] with the first planned dist_context
@@ -915,27 +918,27 @@ class Engine:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                train_dataset = MNIST(mode='train', transform=transform)
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> train_dataset = MNIST(mode='train', transform=transform)
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                optimizer = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=model.parameters())
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> optimizer = paddle.optimizer.Adam(
+                ...     learning_rate=0.001, parameters=model.parameters())
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
-                engine = auto.Engine(model, loss, optimizer, metrics)
-                engine.fit(train_dataset,
-                           epochs=2,
-                           batch_size=64)
+                >>> engine = auto.Engine(model, loss, optimizer, metrics)
+                >>> engine.fit(train_dataset,
+                ...             epochs=2,
+                ...             batch_size=64)
         """
         self._mode = 'train'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1068,23 +1071,23 @@ class Engine:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                valid_dataset = MNIST(mode='test', transform=transform)
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> valid_dataset = MNIST(mode='test', transform=transform)
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
-                engine = auto.Engine(model, loss, metrics=metrics)
-                engine.evaluate(valid_dataset, batch_size=64)
+                >>> engine = auto.Engine(model, loss, metrics=metrics)
+                >>> engine.evaluate(valid_dataset, batch_size=64)
 
         """
         self._mode = 'eval'
@@ -1178,21 +1181,21 @@ class Engine:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                valid_dataset = MNIST(mode='test', transform=transform)
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> valid_dataset = MNIST(mode='test', transform=transform)
 
-                model = paddle.vision.models.LeNet()
+                >>> model = paddle.vision.models.LeNet()
 
-                engine = auto.Engine(model)
-                engine.predict(valid_dataset, batch_size=64)
+                >>> engine = auto.Engine(model)
+                >>> engine.predict(valid_dataset, batch_size=64)
         """
         self._mode = 'predict'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1647,28 +1650,29 @@ class Engine:
         Examples:
 
             .. code-block:: python
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                train_dataset = MNIST(mode='train', transform=transform)
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                optimizer = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=model.parameters())
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> train_dataset = MNIST(mode='train', transform=transform)
 
-                engine = auto.Engine(model, loss, optimizer, metrics)
-                engine.fit(train_dataset,
-                           epochs=1,
-                           batch_size=64)
-                engine.save("./my_model")
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> optimizer = paddle.optimizer.Adam(
+                ...     learning_rate=0.001, parameters=model.parameters())
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                >>> engine = auto.Engine(model, loss, optimizer, metrics)
+                >>> engine.fit(train_dataset,
+                ...             epochs=1,
+                ...             batch_size=64)
+                >>> engine.save("./my_model")
 
         """
         if training:
@@ -1731,29 +1735,30 @@ class Engine:
         Examples:
 
             .. code-block:: python
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                train_dataset = MNIST(mode='train', transform=transform)
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                optimizer = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=model.parameters())
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> train_dataset = MNIST(mode='train', transform=transform)
 
-                engine = auto.Engine(model, loss, optimizer, metrics)
-                engine.fit(train_dataset,
-                           epochs=1,
-                           batch_size=64)
-                engine.save("./my_model")
-                engine.load("./my_model")
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> optimizer = paddle.optimizer.Adam(
+                ...     learning_rate=0.001, parameters=model.parameters())
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                >>> engine = auto.Engine(model, loss, optimizer, metrics)
+                >>> engine.fit(train_dataset,
+                ...             epochs=1,
+                ...             batch_size=64)
+                >>> engine.save("./my_model")
+                >>> engine.load("./my_model")
 
         """
         self._strict = strict
