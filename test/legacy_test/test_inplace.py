@@ -1352,7 +1352,7 @@ class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
 
             # Here, the gradient computation will use the value of var_b
             var_c = var_b**2
-            paddle.cumsum_(var_b, -1)
+            paddle.cumsum_(var_b, -1, dtype="float32")
 
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
@@ -1424,10 +1424,10 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
 
 class TestDygrapInplaceRenorm(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
-        return paddle.renorm_(var, 1.0, 2, 2.05)
+        return paddle.renorm_(var, 1.0, -1, 2.05)
 
     def non_inplace_api_processing(self, var):
-        return paddle.renorm(var, 1.0, 2, 2.05)
+        return paddle.renorm(var, 1.0, -1, 2.05)
 
     def test_error(self):
         var = paddle.randn([3, 4, 1])
