@@ -84,10 +84,9 @@ static int xpu2_wrapper(Context* ctx,
   int residual_lm_space = TOTAL_LM_SIZE - total_emb_dict_size - 64;
   // The maximum count that can be processed in one iteration.
   int idx_cnt = residual_lm_space / (sizeof(TID) + n * sizeof(T));
-  bool plugin_entry_condition =
-      idx_cnt >= 128;  // Because the xdnn kernel move is 128, its too slow.
+  bool plugin_entry_condition = idx_cnt >= 16;
   // This plugin is suitable for scenarios with relatively small dictionary
-  // sizes, requiring process greater than 128 index count one iter, in order to
+  // sizes, requiring process greater than 16 index count one iter, in order to
   // load the dictionary into local memory at once, and to leave enough space
   // for the local memory to store the results.
   if (plugin_entry_condition) {
