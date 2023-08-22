@@ -40,68 +40,8 @@ class TensorNode final {
 
   OpNode producer() const { return OpNode(node_data_.GetDefiningOp()); }
 
-  // class ConsumerOpListView {
-  //  public:
-  //   ConsumerOpListView(const std::set<common::Shared<common::GraphEdge>,
-  //                                     common::GraphEdgeCompare>& edges,
-  //                      const hlir::framework::Graph* graph)
-  //       : edges_(edges), graph_(graph) {}
-
-  //   ConsumerOpListView(const ConsumerOpListView& other) = delete;
-  //   ConsumerOpListView(ConsumerOpListView&& other) = delete;
-
-  //   ConsumerOpListView& operator=(const ConsumerOpListView& other) = delete;
-
-  //   class Iterator {
-  //    public:
-  //     Iterator(std::set<common::Shared<common::GraphEdge>,
-  //                       common::GraphEdgeCompare>::const_iterator it,
-  //              const hlir::framework::Graph* graph)
-  //         : iter_(it), graph_(graph) {}
-
-  //     Iterator& operator++() {
-  //       ++iter_;
-  //       return *this;
-  //     }
-
-  //     Iterator operator++(int) {
-  //       Iterator tmp = *this;
-  //       ++iter_;
-  //       return tmp;
-  //     }
-
-  //     bool operator==(const Iterator& other) const {
-  //       return iter_ == other.iter_;
-  //     }
-
-  //     bool operator!=(const Iterator& other) const { return !(*this ==
-  //     other); }
-
-  //     OpNode operator*() const;
-
-  //    private:
-  //     std::set<common::Shared<common::GraphEdge>,
-  //              common::GraphEdgeCompare>::const_iterator iter_;
-  //     const hlir::framework::Graph* graph_;
-  //   };
-
-  //   size_t size() const { return edges_.size(); }
-
-  //   Iterator begin() const { return Iterator(this->edges_.begin(), graph_); }
-
-  //   Iterator end() const { return Iterator(this->edges_.end(), graph_); }
-
-  //  private:
-  //   const std::set<Shared<common::GraphEdge>, common::GraphEdgeCompare>&
-  //   edges_;
-  // };
-
-  // const ConsumerOpListView& consumers() const { return consumers_; }
-
  private:
   ::ir::Value node_data_;
-
-  // const ConsumerOpListView consumers_;
 };
 
 }  // namespace api

@@ -21,21 +21,27 @@
 
 #include "paddle/fluid/ir/transforms/fusion_merge_pass.h"
 
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace ir {
 
 std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd.add", OpPatternKind::kElementWise},
-    {"pd.sub", OpPatternKind::kElementWise},
-    {"pd.mul", OpPatternKind::kElementWise},
-    {"pd.div", OpPatternKind::kElementWise},
+    {"pd.subtract", OpPatternKind::kElementWise},
+    {"pd.multiply", OpPatternKind::kElementWise},
+    {"pd.divide", OpPatternKind::kElementWise},
     {"pd.sqrt", OpPatternKind::kElementWise},
     {"pd.full", OpPatternKind::kElementWise},
     {"pd.relu", OpPatternKind::kElementWise},
+    {"pd.exp", OpPatternKind::kElementWise},
     {"pd.sum", OpPatternKind::kReduction},
+    {"pd.reduce_sum", OpPatternKind::kReduction},
+    {"pd.reduce_max", OpPatternKind::kReduction},
+    {"pd.cinn_broadcast", OpPatternKind::kBroadcast},
 };
 
 OpPatternKind GetOpKind(const std::string& op_name) {
@@ -81,11 +87,10 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 int GetSharedSize(const Operation* node) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(node->result(0)));
 
-  auto axes = node->attributes()
-                  .at("axis")
-                  .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                  .data()
-                  .GetData();
+  std::cerr << "get shard size " << std::endl;
+  auto axes = GetVectorAttr(node, "axis");
+
+  std::cerr << "fin" << std::endl;
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
     for (size_t idx = axes.back() + 1; idx < inshape.size(); ++idx) {
@@ -150,6 +155,7 @@ class OpFusionPassHelper {
       local_ops_.insert(node);
     }
 
+    int index = 0;
     for (auto it = graph.block()->begin(); it != graph.block()->end(); ++it) {
       auto node = *it;
       if (node) {
@@ -174,7 +180,7 @@ class OpFusionPassHelper {
         group->master_nodes.insert(node);
 
         // get opration unique id
-        group->group_id = "id";
+        group->group_id = "id_" + std::to_string(index++);
         fusion_groups_[node] = group;
       }
     }
@@ -299,6 +305,7 @@ class OpFusionPassHelper {
         }
 
         std::cerr << "22 " << std::endl;
+
         if (!can_fuse || !CanFuse(producer, consumer)) continue;
         // VLOG(3) << "Fuse Op " << producer->id() << " into Op "
         //         << consumer->id();
@@ -307,6 +314,10 @@ class OpFusionPassHelper {
         // TODO(phrain) : support id
         // consumer_fusion->group_id =
         //     producer->id() + "_" + consumer_fusion->group_id;
+
+        std::cerr << "can fuse here" << std::endl;
+        std::cerr << producer->name() << "\t " << consumer->name() << std::endl;
+
         consumer_fusion->group_id = consumer_fusion->group_id;
         consumer_fusion->nodes.push_back(producer);
         consumer_fusion->nodes_set.insert(producer);
@@ -372,13 +383,15 @@ class OpFusionPassHelper {
           // merge pass.
           {kBroadcast,
            [](const Operation* producer, const GroupPtr& consumer) -> bool {
+             // NOTE, producer and consumer NEVER be same size
              if (is_same_size(producer, consumer)) {
                return true;
              }
 
-             // TODO(phlrain): why return
+             // NOTE, original code is below, if produer is not output node,
+             // result always be true
              // !helper->output_nodes_set_.count(producer);
-             return false;
+             return true;
            }},
           // horizontal or vertical relation, check with same output shape with
           // horizontal relation or with last
@@ -519,6 +532,8 @@ GroupList OpFusionPassInternal(const ir::Program& program) {
     auto group = res[i];
 
     std::cerr << "group : " << i << std::endl;
+    std::cerr << "cusomuer size " << group->consumer_groups().size()
+              << std::endl;
     for (size_t j = 0; j < group->nodes.size(); ++j) {
       std::cerr << group->nodes[j]->name() << std::endl;
     }

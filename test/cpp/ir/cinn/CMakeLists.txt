@@ -19,6 +19,7 @@ cc_test_old(
   SRCS
   ir_op_fusion_test.cc
   DEPS
+  general_fusion_merge_pass
   fusion_merge_pass
   pd_dialect
   ir

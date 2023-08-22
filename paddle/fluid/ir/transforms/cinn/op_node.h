@@ -19,7 +19,6 @@
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
-namespace cinn {
 namespace api {
 
 class OpNode {
@@ -42,39 +41,22 @@ class OpNode {
 
   bool operator<(const OpNode& other) const { return node_ < other.node_; }
 
-  // const InputTensorListView& inputs() const { return input_tensors_; }
-
-  // const OutputTensorListView& outputs() const { return output_tensors_; }
-
-  // template <typename T>
-  // const T& GetAttr(const std::string& attr_name) const {
-  //   return absl::get<T>(GetAttr(attr_name));
-  // }
+  const Operation* Op() const { return node_; }
 
  private:
-  // using Attribute = cinn::utils::Attribute;
-  // const Attribute& GetAttr(const std::string& attr_name) const {
-  //   return node_->attrs.attr_store.at(attr_name);
-  // }
-
   friend struct std::hash<OpNode>;
 
   const Operation* node_;
-  // const hlir::framework::Graph* graph_;
-
-  // const vector input_tensors_;
-  // const OutputTensorListView output_tensors_;
 };
 
 }  // namespace api
-}  // namespace cinn
 }  // namespace ir
 
 namespace std {
 
 template <>
-struct hash<ir::cinn::api::OpNode> {
-  size_t operator()(const ir::cinn::api::OpNode& obj) const {
+struct hash<ir::api::OpNode> {
+  size_t operator()(const ir::api::OpNode& obj) const {
     return std::hash<size_t>()(reinterpret_cast<size_t>(obj.node_));
   }
 };

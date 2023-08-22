@@ -19,8 +19,6 @@
 
 namespace ir {
 
-using framework::OpPatternKind;
-
 using OpGroupPtr = api::OpGroup;
 using OpGroupList = std::vector<OpGroupPtr>;
 
@@ -44,25 +42,34 @@ static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
   api::OpNode src_master_node = GetMasterNode(src);
   api::OpNode dst_master_node = GetMasterNode(dst);
 
-  auto size_0 = src_master_node.outputs()[0].shape().numel();
-  auto size_1 = dst_master_node.outputs()[0].shape().numel();
+  auto size_0 = src_master_node.Op()
+                    ->result(0)
+                    .type()
+                    .dyn_cast<paddle::dialect::DenseTensorType>()
+                    .dims();
+  auto size_1 = dst_master_node.Op()
+                    ->result(0)
+                    .type()
+                    .dyn_cast<paddle::dialect::DenseTensorType>()
+                    .dims();
 
-  return size_0 == size_1;
+  return phi::product(size_0) == phi::product(size_1);
 }
 
 static std::unordered_set<api::OpNode> GetInputOps(const OpGroupPtr& op_group) {
-  std::unordered_set<api::OpNode> ops_set;
+  std::unordered_set<const ::ir::Operation*> ops_set;
   op_group.WalkOpNodes(
-      [&ops_set](const api::OpNode& op_node) { ops_set.insert(op_node); });
+      [&ops_set](const api::OpNode& op_node) { ops_set.insert(op_node.Op()); });
 
   std::unordered_set<api::OpNode> input_ops;
   op_group.WalkOpNodes([&](const api::OpNode& op) {
-    const auto& input_tensors = op.inputs();
-    for (size_t i = 0; i < input_tensors.size(); ++i) {
-      if (input_tensors[i].HasProducer()) {
-        api::OpNode producer = input_tensors[i].producer();
-        if (ops_set.find(producer) == ops_set.end()) {
-          input_ops.insert(producer);
+    // const auto& input_tensors = op.inputs();
+    auto* ir_op = op.Op();
+    for (size_t i = 0; i < ir_op->num_operands(); ++i) {
+      auto in = ir_op->operand(i);
+      if (in) {
+        if (!ops_set.count(in.GetDefiningOp())) {
+          input_ops.insert(api::OpNode(in.GetDefiningOp()));
         }
       }
     }
@@ -72,18 +79,21 @@ static std::unordered_set<api::OpNode> GetInputOps(const OpGroupPtr& op_group) {
 
 static std::unordered_set<api::OpNode> GetOutputOps(
     const OpGroupPtr& op_group) {
-  std::unordered_set<api::OpNode> ops_set;
+  std::unordered_set<const ::ir::Operation*> ops_set;
   op_group.WalkOpNodes(
-      [&ops_set](const api::OpNode& op_node) { ops_set.insert(op_node); });
+      [&ops_set](const api::OpNode& op_node) { ops_set.insert(op_node.Op()); });
   std::unordered_set<api::OpNode> output_ops;
   op_group.WalkOpNodes([&](const api::OpNode& op) {
-    const auto& output_tensors = op.outputs();
-    for (size_t i = 0; i < output_tensors.size(); ++i) {
-      const auto& consumers = output_tensors[i].consumers();
-      for (const auto& consumer : consumers) {
-        if (ops_set.find(consumer) == ops_set.end()) {
-          output_ops.insert(consumer);
-          break;
+    auto* ir_op = op.Op();
+    for (size_t i = 0; i < ir_op->num_results(); ++i) {
+      auto out = ir_op->result(i);
+      if (out) {
+        for (auto it = out.begin(); it != out.end(); ++it) {
+          auto* op = it->owner();
+          if (!ops_set.count(op)) {
+            output_ops.insert(api::OpNode(op));
+            break;
+          }
         }
       }
     }
@@ -110,7 +120,7 @@ static bool limit_args(const OpGroupPtr& first, const OpGroupPtr& second) {
   }
 }
 
-bool WithoutLastDimInReduce(const api::Shape& inshape,
+bool WithoutLastDimInReduce(const phi::DDim& inshape,
                             const std::vector<int>& axes) {
   // if last axis is in reduce.
   if (std::find(axes.begin(), axes.end(), inshape.size() - 1) != axes.end() ||
@@ -131,22 +141,29 @@ bool WithoutLastDimInReduce(const api::Shape& inshape,
 }
 
 static int GetSharedSize(const api::OpNode& op_node) {
-  const auto& producers = op_node.inputs();
-  CHECK_GT(producers.size(), 0);
-  const auto& inshape = producers[0].shape();
-  const auto& axes = op_node.GetAttr<std::vector<int>>("dim");
+  const auto& inshape = op_node.Op()
+                            ->operand(0)
+                            .type()
+                            .dyn_cast<paddle::dialect::DenseTensorType>()
+                            .dims();
+  // const auto& axes = op_node.GetAttr<std::vector<int>>("dim");
+  // const auto& axes = op_node.Op()->attributes().at("dim").dyn_cast<>
+  // TODO(phlrain): get vector from attribute
+  std::vector<int> axes = {1};
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
     for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
       lane = inshape[idx];
     }
-    int max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+    // int max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+    int max_num_threads = 1000;
     if (lane > max_num_threads / 2) {
       return 0;
     }
     int index = axes.size() - 1;
     for (; index >= 0; --index) {
-      if (index + 1 < axes.size() && axes[index] != axes[index + 1] - 1) {
+      if (static_cast<size_t>(index + 1) < axes.size() &&
+          axes[index] != axes[index + 1] - 1) {
         break;
       }
       lane *= inshape[axes[index]];
@@ -183,7 +200,7 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
   }
   std::unique_ptr<api::OpNode> reducer_0 = nullptr;
   first.WalkOpNodes([&](const api::OpNode& op) {
-    if (!reducer_0 && op.kind() == OpPatternKind::kReduction) {
+    if (!reducer_0 && op.kind() == kReduction) {
       reducer_0.reset(new api::OpNode(op));
     }
   });
@@ -191,7 +208,7 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
 
   std::unique_ptr<api::OpNode> reducer_1 = nullptr;
   second.WalkOpNodes([&](const api::OpNode& op) {
-    if (!reducer_1 && op.kind() == OpPatternKind::kReduction) {
+    if (!reducer_1 && op.kind() == kReduction) {
       reducer_1.reset(new api::OpNode(op));
     }
   });
@@ -199,14 +216,21 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
   CHECK(reducer_1) << "Can't find reduce op in group " << second.group_id();
 
   // check reduce has same input shape and output shape
-  const auto& reducer_0_input_shape = reducer_0->inputs()[0].shape();
-  const auto& reducer_0_output_shape = reducer_0->outputs()[0].shape();
+  const auto& reducer_0_input_shape =
+      GetValueShape(reducer_0->Op()->operand(0));
+  const auto& reducer_0_output_shape =
+      GetValueShape(reducer_0->Op()->result(0));
 
-  const auto& reducer_1_input_shape = reducer_1->inputs()[0].shape();
-  const auto& reducer_1_output_shape = reducer_1->outputs()[0].shape();
+  const auto& reducer_1_input_shape =
+      GetValueShape(reducer_1->Op()->operand(0));
+  const auto& reducer_1_output_shape =
+      GetValueShape(reducer_1->Op()->result(0));
 
-  auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int>>("dim");
-  auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int>>("dim");
+  // auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int>>("dim");
+  // auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int>>("dim");
+
+  std::vector<int> reducer_0_reduce_dim = {0};
+  std::vector<int> reducer_1_reduce_dim = {0};
 
   for (auto& dim : reducer_0_reduce_dim) {
     // if dim = -1, set as shape.size() - 1

@@ -24,4 +24,7 @@ using GroupList = std::vector<GroupPtr>;
 
 GroupList OpFusionPassInternal(const ir::Program& program);
 
+GroupList GeneralFusionMergePassInternal(const ::ir::Program* graph,
+                                         const GroupList& group_list);
+
 }  // namespace ir

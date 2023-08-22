@@ -55,6 +55,33 @@ enum OpPatternKind {
 
 OpPatternKind GetOpKind(const std::string& op_name);
 
+template <typename T = int64_t>
+std::vector<T> GetVectorAttr(const ::ir::Operation* op,
+                             const std::string& name) {
+  auto& attr_map = op->attributes();
+  PADDLE_ENFORCE(
+      attr_map.count(name),
+      phi::errors::PreconditionNotMet(
+          "attr [%s] MUST in attribute map for [%s] op", name, op->name()));
+  auto& val = attr_map.at(name);
+
+  PADDLE_ENFORCE(val.isa<ir::ArrayAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "axis Type MUST ArrayAttribute for [%s] op", op->name()));
+  auto array_list = val.dyn_cast<ir::ArrayAttribute>().AsVector();
+  std::vector<T> vec_res;
+  if (array_list.size() > 0) {
+    PADDLE_ENFORCE_EQ(array_list[0].isa<ir::Int64Attribute>(),
+                      true,
+                      phi::errors::Unimplemented(
+                          "the 0th elementwise MUST be ir::Int64Attribute"));
+    for (size_t i = 0; i < array_list.size(); ++i) {
+      vec_res.push_back(array_list[i].dyn_cast<ir::Int64Attribute>().data());
+    }
+  }
+  return vec_res;
+}
+
 struct Group {
   Group() = default;
 
@@ -195,21 +222,25 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 
 int GetSharedSize(const Operation* node);
 
-#define CONDITION_FUNC(func)                  \
-  inline bool func(const Operation* producer, \
-                   const std::shared_ptr<Group>& consumer)
+inline bool always_fuse(const Operation* producer,
+                        const std::shared_ptr<Group>& consumer) {
+  return true;
+}
 
-CONDITION_FUNC(always_fuse) { return true; }
+inline bool no_fuse(const Operation* producer,
+                    const std::shared_ptr<Group>& consumer) {
+  return false;
+}
 
-CONDITION_FUNC(no_fuse) { return false; }
-
-CONDITION_FUNC(is_same_shape) {
+inline bool is_same_shape(const Operation* producer,
+                          const std::shared_ptr<Group>& consumer) {
   auto master_node = consumer->master_nodes.begin();
   return GetValueShape(producer->result(0)) ==
          GetValueShape((*master_node)->result(0));
 }
 
-CONDITION_FUNC(is_same_size) {
+inline bool is_same_size(const Operation* producer,
+                         const std::shared_ptr<Group>& consumer) {
   auto master_node = consumer->master_nodes.begin();
   auto producer_shape = GetValueShape(producer->result(0));
   auto consumer_shape = GetValueShape((*master_node)->result(0));
@@ -221,17 +252,15 @@ CONDITION_FUNC(is_same_size) {
   return psize == csize;
 }
 
-CONDITION_FUNC(without_last_dimension_in_reduce) {
+inline bool without_last_dimension_in_reduce(
+    const Operation* producer, const std::shared_ptr<Group>& consumer) {
   auto in_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
-  auto reduce_axes = producer->attributes()
-                         .at("axis")
-                         .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                         .data()
-                         .GetData();
+  auto reduce_axes = GetVectorAttr(producer, "axis");
   return WithoutLastDimInReduce(in_shape, reduce_axes);
 }
 
-CONDITION_FUNC(reduce_fuse_reduce) {
+inline bool reduce_fuse_reduce(const Operation* producer,
+                               const std::shared_ptr<Group>& consumer) {
   Operation* reducer = NULL;
   for (auto* master : consumer->master_nodes) {
     if (GetOpKind(master->name()) == kReduction) {
@@ -250,16 +279,8 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   auto reducer_output_shape =
       phi::vectorize<int64_t>(GetValueShape(reducer->result(0)));
 
-  auto producer_reduce_dim = producer->attributes()
-                                 .at("axis")
-                                 .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                                 .data()
-                                 .GetData();
-  auto reducer_reduce_dim = reducer->attributes()
-                                .at("axis")
-                                .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                                .data()
-                                .GetData();
+  auto producer_reduce_dim = GetVectorAttr(producer, "axis");
+  auto reducer_reduce_dim = GetVectorAttr(reducer, "axis");
 
   for (auto& dim : producer_reduce_dim) {
     // if dim = -1, set as shape.size() - 1
@@ -301,7 +322,8 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   return false;
 }
 
-CONDITION_FUNC(is_horizontal_relation) {
+inline bool is_horizontal_relation(const Operation* producer,
+                                   const std::shared_ptr<Group>& consumer) {
   auto check_depency = [&](const Operation* node) {
     std::queue<const Operation*> candidates;
     std::unordered_set<const Operation*> visited_set;
@@ -342,9 +364,10 @@ CONDITION_FUNC(is_horizontal_relation) {
   }
 
   return true;
-};
+}
 
-CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
+inline bool horizontal_or_vertical_reduce_relation(
+    const Operation* producer, const std::shared_ptr<Group>& consumer) {
   // check is same shape with horizontal relation.
   if (is_same_size(producer, consumer)) {
     return true;
@@ -361,11 +384,7 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
 
   // check producer has same shape with reducer node.
   auto reduce_shape = phi::vectorize(GetFirstInputShape(reducer));
-  auto reduce_axes = reducer->attributes()
-                         .at("axis")
-                         .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                         .data()
-                         .GetData();
+  auto reduce_axes = GetVectorAttr(reducer, "axis");
 
   for (auto& axis : reduce_axes) {
     // if axis = -1, set as shape.size() - 1
@@ -408,7 +427,8 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
              : true;
 }
 
-CONDITION_FUNC(horizontal_or_can_inline) {
+inline bool horizontal_or_can_inline(const Operation* producer,
+                                     const std::shared_ptr<Group>& consumer) {
   // horizontal relation.
   if (is_horizontal_relation(producer, consumer)) {
     if (is_same_size(producer, consumer)) {
@@ -439,12 +459,14 @@ CONDITION_FUNC(horizontal_or_can_inline) {
   return false;
 }
 
-CONDITION_FUNC(horizontal_with_same_size) {
+inline bool horizontal_with_same_size(const Operation* producer,
+                                      const std::shared_ptr<Group>& consumer) {
   return is_horizontal_relation(producer, consumer) &&
          is_same_size(producer, consumer);
 }
 
-CONDITION_FUNC(reduce_fuse_broadcast) {
+inline bool reduce_fuse_broadcast(const Operation* producer,
+                                  const std::shared_ptr<Group>& consumer) {
   if (is_horizontal_relation(producer, consumer)) {
     if (is_same_size(producer, consumer)) {
       return true;
@@ -457,11 +479,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
   // }
 
   auto rinput_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
-  auto reduce_axes = producer->attributes()
-                         .at("axis")
-                         .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                         .data()
-                         .GetData();
+  auto reduce_axes = GetVectorAttr(producer, "axis");
   auto keep_dim = producer->attributes()
                       .at("keep_dim")
                       .dyn_cast<ir::BoolAttribute>()
@@ -520,16 +538,8 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
       continue;
     }
 
-    auto broadcast_shape = node->attributes()
-                               .at("out_shape")
-                               .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                               .data()
-                               .GetData();
-    auto broadcast_axes = node->attributes()
-                              .at("broadcast_axes")
-                              .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                              .data()
-                              .GetData();
+    auto broadcast_shape = GetVectorAttr(node, "out_shape");
+    auto broadcast_axes = GetVectorAttr(node, "broadcast_axes");
 
     for (auto& axis : broadcast_axes) {
       if (axis < 0) {
@@ -564,35 +574,5 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
   }
   return true;
 }
-
-#undef CONDITION_FUNC
-
-#define GROUP_CONDITION_FUNC(func)                         \
-  inline bool func(const std::shared_ptr<Group>& producer, \
-                   const std::shared_ptr<Group>& consumer)
-
-GROUP_CONDITION_FUNC(always_fuse) { return true; }
-
-GROUP_CONDITION_FUNC(no_fuse) { return false; }
-
-GROUP_CONDITION_FUNC(is_same_shape) { return true; }
-
-GROUP_CONDITION_FUNC(is_same_size) { return true; }
-
-GROUP_CONDITION_FUNC(without_last_dimension_in_reduce) { return true; }
-
-GROUP_CONDITION_FUNC(reduce_fuse_reduce) { return true; }
-
-GROUP_CONDITION_FUNC(is_horizontal_relation) { return true; };
-
-GROUP_CONDITION_FUNC(horizontal_or_vertical_reduce_relation) { return true; }
-
-GROUP_CONDITION_FUNC(horizontal_or_can_inline) { return true; }
-
-GROUP_CONDITION_FUNC(horizontal_with_same_size) { return true; }
-
-GROUP_CONDITION_FUNC(reduce_fuse_broadcast) { return true; }
-
-#undef CONDITION_FUNC
 
 }  // namespace ir

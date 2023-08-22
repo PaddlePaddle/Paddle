@@ -111,6 +111,8 @@ class OpGroup {
 
     size_t size() const {
       CHECK(group_.lock());
+      std::cerr << "cumsumer size !!! "
+                << group_.lock()->consumer_groups().size() << std::endl;
       return group_.lock()->consumer_groups().size();
     }
 
@@ -152,7 +154,7 @@ class OpGroup {
   void WalkOpNodes(
       const std::function<void(const OpNode&)>& VisitOpNode) const {
     group_.lock()->WalkNodes(
-        [&](const hlir::framework::Node* node) { VisitOpNode(OpNode(node)); });
+        [&](const Operation* node) { VisitOpNode(OpNode(node)); });
   }
 
   ProducerOpGroupListView producers() const {
