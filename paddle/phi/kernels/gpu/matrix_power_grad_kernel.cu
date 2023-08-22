@@ -23,4 +23,6 @@ PD_REGISTER_KERNEL(matrix_power_grad,
                    ALL_LAYOUT,
                    phi::MatrixPowerGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex64,
+                   phi::dtype::complex128) {}
