@@ -14,7 +14,7 @@
 
 #include "paddle/ir/dialect/shape/utils/shape_utils.h"
 #include <string>
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 namespace ir {
 
 bool compareSymbolicDimNames(const std::string& lhs, const std::string& rhs) {
