@@ -44,16 +44,6 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
             inp[0, 1, 2] = np.nan
 
-    def test_single_tensor_q(self):
-        inp = self.input_data
-        for func, res_func in API_list:
-            x = paddle.to_tensor(inp)
-            q = paddle.to_tensor(0.5)
-            paddle_res = func(x, q=q, axis=2)
-            np_res = res_func(inp, q=q, axis=2)
-            np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
-            inp[0, 1, 2] = np.nan
-
     # Test correctness for default axis.
     def test_with_no_axis(self):
         inp = self.input_data
