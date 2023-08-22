@@ -130,9 +130,9 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   return axis_to_dim_map;
 }
 
-auto_parallel::TensorDistAttr CopyTensorDistAttrForOutput(
-    const auto_parallel::TensorDistAttr& src_dist_attr) {
-  auto_parallel::TensorDistAttr new_dist_attr = auto_parallel::TensorDistAttr();
+TensorDistAttr CopyTensorDistAttrForOutput(
+    const TensorDistAttr& src_dist_attr) {
+  TensorDistAttr new_dist_attr = TensorDistAttr();
   new_dist_attr.set_process_mesh(src_dist_attr.process_mesh());
   new_dist_attr.set_batch_dim(src_dist_attr.batch_dim());
   new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());

@@ -20,10 +20,8 @@
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 class TensorDistAttr;
-}  // namespace auto_parallel
-using auto_parallel::TensorDistAttr;
+
 using SpmdInfo =
     std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>;
 

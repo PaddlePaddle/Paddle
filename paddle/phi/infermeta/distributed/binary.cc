@@ -28,14 +28,13 @@ using phi::distributed::auto_parallel::str_join;
 
 ////////////////// Utils Functions //////////////////
 
-auto_parallel::TensorDistAttr GetMatmulInferedDistAttr(
-    const auto_parallel::TensorDistAttr& origin_dist_attr,
+TensorDistAttr GetMatmulInferedDistAttr(
+    const TensorDistAttr& origin_dist_attr,
     const std::vector<int64_t>& shape,
     const std::string& tensor_axis,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     bool trans_axis) {
-  auto_parallel::TensorDistAttr dist_attr =
-      CopyTensorDistAttrForOutput(origin_dist_attr);
+  TensorDistAttr dist_attr = CopyTensorDistAttrForOutput(origin_dist_attr);
   std::vector<int64_t> infered_dims_mapping;
   infered_dims_mapping.reserve(tensor_axis.size());
 
@@ -67,15 +66,16 @@ auto_parallel::TensorDistAttr GetMatmulInferedDistAttr(
 SpmdInfo MatmulInferSpmd(const MetaTensor& x,
                          const MetaTensor& y,
                          bool trans_x,
-                         bool trans_y,
-                         const MetaTensor& out) {
+                         bool trans_y) {
   // Step0: verify input args based on matmul logic
   auto x_shape = phi::vectorize(x.dims());
   auto y_shape = phi::vectorize(y.dims());
+  VLOG(0) << "get dims done";
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   auto y_dist_attr_src = y.dist_attr();
+  VLOG(0) << "get dist attr done";
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -177,7 +177,7 @@ SpmdInfo MatmulInferSpmd(const MetaTensor& x,
   auto axis_to_dim_map = ShardingMergeForTensors({x_pair, y_pair});
 
   // Step2.2: Infer Output's Dims Mapping.
-  auto_parallel::TensorDistAttr output_dist_attr_dst =
+  TensorDistAttr output_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   std::vector<int64_t> out_dims_mapping;
   out_dims_mapping.reserve(out_axes.size());
@@ -187,9 +187,9 @@ SpmdInfo MatmulInferSpmd(const MetaTensor& x,
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   // Step2.3: Merge and get Inputs' New Dims Mapping.
-  auto_parallel::TensorDistAttr x_dist_attr_dst = GetMatmulInferedDistAttr(
+  TensorDistAttr x_dist_attr_dst = GetMatmulInferedDistAttr(
       x_dist_attr_src, x_shape, x_axes, axis_to_dim_map, trans_x);
-  auto_parallel::TensorDistAttr y_dist_attr_dst = GetMatmulInferedDistAttr(
+  TensorDistAttr y_dist_attr_dst = GetMatmulInferedDistAttr(
       y_dist_attr_src, y_shape, y_axes, axis_to_dim_map, trans_y);
 
   // Step2.3: Handle Partial
@@ -219,4 +219,4 @@ SpmdInfo MatmulInferSpmd(const MetaTensor& x,
 }  // namespace distributed
 }  // namespace phi
 
-PD_REGISTER_INFER_SPMD_FN(matmul, PD_INFER_SPMD(MatmulInferSpmd));
+PD_REGISTER_INFER_SPMD_FN(matmul, phi::distributed::MatmulInferSpmd);

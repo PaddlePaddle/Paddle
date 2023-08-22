@@ -23,12 +23,9 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 class TensorDistAttr;
-}  // namespace auto_parallel
-}  //  namespace distributed
+}  // namespace distributed
 
-using distributed::auto_parallel::TensorDistAttr;
 struct MetaConfig {
   bool is_runtime{true};
   bool is_run_mkldnn_kernel{false};
@@ -94,7 +91,7 @@ class MetaTensor {
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   // For auto parallel
-  const TensorDistAttr& dist_attr() const;
+  const distributed::TensorDistAttr& dist_attr() const;
 #endif
 
   virtual operator unspecified_bool_type() const {

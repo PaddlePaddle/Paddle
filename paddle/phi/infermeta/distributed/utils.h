@@ -21,9 +21,7 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 class TensorDistAttr;
-}
 
 // Generate the axis notation of tensor for the einsum notation of a broadcast
 // operation(alignment star from the rightmost axis). tenosr_ndim: the size of
@@ -54,8 +52,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
 // activation TensorDistAttr. The process_mesh, batch_dim, dynamic_dim are
 // copied with annotated is forced to False, and dims_mapping is leave to be
 // null.
-auto_parallel::TensorDistAttr CopyTensorDistAttrForOutput(
-    const auto_parallel::TensorDistAttr& src_dist_attr);
+TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr);
 
 // Resolute the partial mesh dimension of a output tensor, giving the
 // merged sharding specifcation of input tensors and the axis names of output

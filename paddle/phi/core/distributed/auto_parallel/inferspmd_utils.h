@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
@@ -50,14 +51,14 @@ class InferSpmdContext {
 
  private:
   paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs_;
-  paddle::small_vector<Attribute, kAttrSmallVectorSize> attrs_;
+  paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs_;
 };
 
-using TensorDistAttr = auto_parallel::TensorDistAttr;
 using InferSpmdFn = SpmdInfo (*)(const InferSpmdContext&);
 
-#define PD_INFER_SPMD(...) \
-  ::phi::InferSpmdFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
+#define PD_INFER_SPMD(...)                                    \
+  ::phi::distributed::InferSpmdFnImpl<decltype(&__VA_ARGS__), \
+                                      &__VA_ARGS__>::Call
 
 template <typename T>
 struct InferSpmdTypeTag {};
@@ -109,7 +110,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   /* End case */
   template <typename T>
   struct InferSpmdFnCallHelper<InferSpmdTypeTag<T>> {
-    template <int in_idx, int attr_idx, int out_idx>
+    template <int in_idx, int attr_idx>
     static SpmdInfo Call(const InferSpmdContext& ctx UNUSED, Args&... args) {
       return infer_spmd_fn(args...);
     }
@@ -146,9 +147,9 @@ struct InferSpmdFnRegistrar {
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
       PD_REGISTER_infer_spmd_fn_ns_check_##kernel_name,                 \
       "PD_REGISTER_INFER_SPMD_FN must be called in global namespace."); \
-  static const ::phi::InferSpmdFnRegistrar                              \
+  static const ::phi::distributed::InferSpmdFnRegistrar                 \
       __registrar_infer_spmd_fn_for_##kernel_name(                      \
-          #kernel_name, PD_INFER_SPMD(variadic_infer_meta_fn))
+          #kernel_name, PD_INFER_SPMD(variadic_infer_spmd_fn))
 
 }  // namespace distributed
 }  // namespace phi

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <iostream>
 #include <sstream>
+
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -22,13 +24,14 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/infermeta/distributed/binary.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
+namespace test {
 
 TEST(MatmulSPMDRule, Ctor) {
   // build input data class
-  std::vector<int64_t> x_shape = {64, 32};
-  std::vector<int64_t> y_shape = {32, 48};
+  auto x_shape = DDim({64, 32});
+  auto y_shape = DDim({32, 48});
 
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
@@ -45,8 +48,19 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
 
-  phi::MetaTensor x(phi::distributed::DistTensor(x_shape, x_dist_attr));
-  phi::MetaTensor y(phi::distributed::DistTensor(y_shape, x_dist_attr));
+  // update after dist tensor refactor
+  // phi::MetaTensor x(phi::distributed::DistTensor(x_shape, x_dist_attr));
+  // phi::MetaTensor y(phi::distributed::DistTensor(y_shape, x_dist_attr));
+  VLOG(0) << "meta tensor prepare.";
+  phi::MetaTensor x(phi::distributed::DistTensor(
+      std::make_shared<DenseTensor>(),
+      DenseTensorMeta(DataType::FLOAT32, x_shape),
+      std::make_shared<TensorDistAttr>(x_dist_attr)));
+  phi::MetaTensor y(phi::distributed::DistTensor(
+      std::make_shared<DenseTensor>(),
+      DenseTensorMeta(DataType::FLOAT32, y_shape),
+      std::make_shared<TensorDistAttr>(y_dist_attr)));
+  VLOG(0) << "meta tensor prepare done.";
 
   size_t input_size = 2;
   size_t output_size = 1;
@@ -67,7 +81,7 @@ TEST(MatmulSPMDRule, Ctor) {
   EXPECT_EQ(infered_dist_attrs_dy.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1}));
   EXPECT_EQ(infered_dist_attrs_dy.second[0].is_partial(), false);
-  VLOG(4) << "test1 dynamic done." << std::endl << std::endl << std::endl;
+  VLOG(0) << "test1 dynamic done.";
 
   // static infer spmd
   phi::distributed::InferSpmdContext ctx;
@@ -89,8 +103,9 @@ TEST(MatmulSPMDRule, Ctor) {
   EXPECT_EQ(infered_dist_attrs_st.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1}));
   EXPECT_EQ(infered_dist_attrs_st.second[0].is_partial(), false);
-  VLOG(4) << "test1 static done." << std::endl << std::endl << std::endl;
+  VLOG(0) << "test1 static done.";
 }
 
+}  // namespace test
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

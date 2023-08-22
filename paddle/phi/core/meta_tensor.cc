@@ -301,7 +301,7 @@ const LoD& MetaTensor::lod() const {
 
 /////////////// For Auto Parallel ////////////////
 
-const TensorDistAttr& MetaTensor::dist_attr() const {
+const distributed::TensorDistAttr& MetaTensor::dist_attr() const {
   PADDLE_ENFORCE_EQ(
       this->is_dist(),
       true,
