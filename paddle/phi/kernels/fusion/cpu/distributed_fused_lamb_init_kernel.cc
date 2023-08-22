@@ -72,9 +72,9 @@ PD_REGISTER_KERNEL(distributed_fused_lamb_init,
   kernel->OutputAt(10).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(11).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(12).SetDataType(phi::DataType::INT32);
-  kernel->OutputAt(13).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(13).SetDataType(kernel_key.dtype());
   kernel->OutputAt(14).SetDataType(phi::DataType::FLOAT32);
-  kernel->OutputAt(15).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(15).SetDataType(kernel_key.dtype());
   kernel->OutputAt(16).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(17).SetDataType(phi::DataType::INT64);
 }
