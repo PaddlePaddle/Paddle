@@ -47,7 +47,6 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
 OpPatternKind GetOpKind(const std::string& op_name) {
   auto found_it = OpKindMap.find(op_name);
   if (found_it == OpKindMap.end()) {
-    std::cerr << "op not support:  " << op_name << std::endl;
     throw std::runtime_error("not support op yet in op kind map");
   }
 
@@ -87,10 +86,8 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 int GetSharedSize(const Operation* node) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(node->result(0)));
 
-  std::cerr << "get shard size " << std::endl;
   auto axes = GetVectorAttr(node, "axis");
 
-  std::cerr << "fin" << std::endl;
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
     for (size_t idx = axes.back() + 1; idx < inshape.size(); ++idx) {
@@ -191,17 +188,13 @@ class OpFusionPassHelper {
   // return a vector of groups in topological order.
   GroupList operator()(bool do_fusion = true) {
     // do op fusion.
-    std::cerr << "begin fuse" << std::endl;
     if (do_fusion) {
       DoOpFusion();
     }
 
-    std::cerr << "after fuse" << std::endl;
-
     // find all fusion group.
     GroupList fusion_groups;
     std::unordered_set<Group*> groups_set;
-    std::cerr << "after fuse 1" << std::endl;
     for (auto node : nodes_) {
       auto& group = fusion_groups_[node];
       if (!groups_set.count(group.get())) {
@@ -212,26 +205,17 @@ class OpFusionPassHelper {
       }
     }
 
-    std::cerr << "after fuse 2" << std::endl;
     // producer consumer
     for (auto& consumer : fusion_groups) {
-      std::cerr << "consumer " << std::endl;
       for (auto& input_node : consumer->input_nodes) {
         if (!local_ops_.count(input_node.first)) {
           continue;
         }
-        std::cerr << "t1" << std::endl;
-        std::cerr << input_node.first->name() << std::endl;
         auto& producer = fusion_groups_[input_node.first];
-        std::cerr << "31" << std::endl;
         consumer->mut_producer_groups()->insert(producer);
-        std::cerr << "32" << std::endl;
-        std::cerr << "producerr " << (producer != nullptr) << std::endl;
         producer->mut_consumer_groups()->insert(consumer);
-        std::cerr << "33" << std::endl;
       }
     }
-    std::cerr << "after fuse 3" << std::endl;
 
     // init group depth.
     for (auto& group : fusion_groups) {
@@ -241,7 +225,6 @@ class OpFusionPassHelper {
       }
     }
 
-    std::cerr << "after fuse 5" << std::endl;
     // reverse to keep fusion group in order.
     std::reverse(fusion_groups.begin(), fusion_groups.end());
 
@@ -261,7 +244,6 @@ class OpFusionPassHelper {
       auto consumer_fusion = fusion_groups_[consumer];  //
       // check all linkin node
       for (size_t i = 0; i < consumer->num_operands(); ++i) {
-        std::cerr << "i " << i << std::endl;
         auto producer_data = consumer->operand(i);
 
         auto producer = producer_data.GetDefiningOp();
@@ -278,7 +260,6 @@ class OpFusionPassHelper {
         if (!producer) {
           continue;
         }
-        std::cerr << "11 " << std::endl;
         // kNonFusible op can't fuse any other op.
         auto producer_kind = GetOpKind(producer->name());
         if (producer_kind == kNonFusible) {
@@ -304,8 +285,6 @@ class OpFusionPassHelper {
           }
         }
 
-        std::cerr << "22 " << std::endl;
-
         if (!can_fuse || !CanFuse(producer, consumer)) continue;
         // VLOG(3) << "Fuse Op " << producer->id() << " into Op "
         //         << consumer->id();
@@ -314,9 +293,6 @@ class OpFusionPassHelper {
         // TODO(phrain) : support id
         // consumer_fusion->group_id =
         //     producer->id() + "_" + consumer_fusion->group_id;
-
-        std::cerr << "can fuse here" << std::endl;
-        std::cerr << producer->name() << "\t " << consumer->name() << std::endl;
 
         consumer_fusion->group_id = consumer_fusion->group_id;
         consumer_fusion->nodes.push_back(producer);
@@ -328,7 +304,6 @@ class OpFusionPassHelper {
                 ? consumer_fusion->op_pattern_kind
                 : producer_kind;
 
-        std::cerr << "33 " << std::endl;
         if (producer_kind == kReduction) {
           consumer_fusion->master_nodes.insert(producer);
         }
@@ -342,25 +317,16 @@ class OpFusionPassHelper {
           consumer_fusion->internal_nodes.insert(producer);
         }
 
-        std::cerr << "55 " << std::endl;
         // fuse input node
 
         auto producer_fusion = fusion_groups_[producer];
-        std::cerr << "producer " << producer->name() << std::endl;
         for (auto input_node : producer_fusion->input_nodes) {
-          std::cerr << "11" << std::endl;
-          std::cerr << "input_node " << input_node.first->name() << std::endl;
           if (consumer_fusion->input_nodes.count(input_node.first)) {
-            std::cerr << "21" << std::endl;
             consumer_fusion->input_nodes[input_node.first] += input_node.second;
-            std::cerr << "22" << std::endl;
           } else {
-            std::cerr << "31" << std::endl;
             consumer_fusion->input_nodes.insert(input_node);
-            std::cerr << "32" << std::endl;
           }
         }
-        std::cerr << "66 " << std::endl;
         // update node group
         fusion_groups_[producer] = consumer_fusion;
       }
@@ -526,16 +492,10 @@ GroupList OpFusionPassInternal(const ir::Program& program) {
   auto op_fusion_helper = OpFusionPassHelper(program);
   auto res = op_fusion_helper();
 
-  std::cerr << "size " << res.size() << std::endl;
-
   for (size_t i = 0; i < res.size(); ++i) {
     auto group = res[i];
 
-    std::cerr << "group : " << i << std::endl;
-    std::cerr << "cusomuer size " << group->consumer_groups().size()
-              << std::endl;
     for (size_t j = 0; j < group->nodes.size(); ++j) {
-      std::cerr << group->nodes[j]->name() << std::endl;
     }
   }
 

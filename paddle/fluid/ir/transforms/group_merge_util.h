@@ -539,7 +539,6 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
   if (!limit_args(first, second)) {
     return false;
   }
-  std::cerr << "begin to reduce" << std::endl;
   ::ir::Operation* reducer_0 = nullptr;
   for (auto& reducer : first->master_nodes) {
     if (GetOpKind(reducer->name()) == kReduction) {
@@ -549,7 +548,6 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
   }
   // CHECK(reducer_0) << "Can't find reduce op in group " << first->group_id;
 
-  std::cerr << "11" << std::endl;
   ::ir::Operation* reducer_1 = nullptr;
   for (auto& reducer : second->master_nodes) {
     if (GetOpKind(reducer->name()) == kReduction) {
@@ -558,15 +556,13 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
     }
   }
   CHECK(reducer_1) << "Can't find reduce op in group " << second->group_id;
-  std::cerr << "12" << std::endl;
   // check reduce has same input shape and output shape
   auto reducer_0_input_shape = GetValueShape(reducer_0->operand(0));
   auto reducer_0_output_shape = GetValueShape(reducer_0->result(0));
 
   auto reducer_1_input_shape = GetValueShape(reducer_1->operand(0));
   auto reducer_1_output_shape = GetValueShape(reducer_1->result(0));
-  std::cerr << "reduce 0 out " << reducer_0_output_shape << "\t"
-            << reducer_1_output_shape << std::endl;
+  << reducer_1_output_shape << std::endl;
 
   // auto reducer_0_reduce_dim =
   //     absl::get<std::vector<int>>(reducer_0->attrs.attr_store.at("dim"));
@@ -576,7 +572,6 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
   std::vector<int> reducer_0_reduce_dim = GetVectorAttr<int>(reducer_0, "axis");
   std::vector<int> reducer_1_reduce_dim = GetVectorAttr<int>(reducer_1, "axis");
 
-  std::cerr << "13" << std::endl;
   for (auto& dim : reducer_0_reduce_dim) {
     // if dim = -1, set as shape.size() - 1
     if (dim == -1) {
@@ -591,7 +586,6 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
     }
   }
 
-  std::cerr << "15" << std::endl;
   // check shape is same
   if (reducer_0_input_shape == reducer_1_input_shape &&
       reducer_0_output_shape == reducer_1_output_shape &&
@@ -610,11 +604,9 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
       return false;
     }
 #undef MAX_AVAILABLE_SHREAD
-    std::cerr << "reduce !!!!!!!!!!! true" << std::endl;
     return true;
   }
 
-  std::cerr << "16" << std::endl;
   if (WithoutLastDimInReduce(reducer_0_input_shape, reducer_0_reduce_dim) &&
       WithoutLastDimInReduce(reducer_1_input_shape, reducer_1_reduce_dim) &&
       reducer_0_output_shape == reducer_1_output_shape &&

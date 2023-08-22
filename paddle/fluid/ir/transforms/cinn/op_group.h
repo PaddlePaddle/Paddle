@@ -111,8 +111,6 @@ class OpGroup {
 
     size_t size() const {
       CHECK(group_.lock());
-      std::cerr << "cumsumer size !!! "
-                << group_.lock()->consumer_groups().size() << std::endl;
       return group_.lock()->consumer_groups().size();
     }
 

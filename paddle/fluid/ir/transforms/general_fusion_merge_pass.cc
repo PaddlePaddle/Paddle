@@ -399,16 +399,12 @@ struct HorizontalFuseUtil {
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
     const KindKeyT kind_pair(src.kind(), dst.kind());
-    std::cerr << src.kind() << "\t" << dst.kind() << std::endl;
-    std::cerr << "111 " << std::endl;
     const auto& map = GetConditionMap();
     const auto& iter = map.find(kind_pair);
     if (iter == map.end()) {
       return false;
     }
-    std::cerr << "begin " << std::endl;
     auto out = iter->second(src, dst);
-    std::cerr << "fin " << std::endl;
     return out;
   }
 
@@ -610,7 +606,6 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
   int Benefit() const override { return 100; }
 
   void operator()(LightwareFusePassCtx* ctx) const override {
-    std::cerr << "horizer " << std::endl;
     const auto& producer = ctx->PickOpGroup();
     const std::unordered_set<OpGroupPtr> consumer_candidates =
         [&]() -> std::unordered_set<OpGroupPtr> {
@@ -623,14 +618,12 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
       }
       return consumers;
     }();
-    std::cerr << "horizer " << consumer_candidates.size() << std::endl;
     if (consumer_candidates.size() <= 1) {
       return;
     }
 
     std::vector<OpGroupList> fusionable_consumers;
     for (auto& candidate : consumer_candidates) {
-      std::cerr << "cand  " << candidate.group_id() << std::endl;
       if (ctx->fuse_helper().IsConsumerSetsReachable(candidate,
                                                      consumer_candidates)) {
         continue;
@@ -645,10 +638,8 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
         auto& last = groups.back();
         if (!HorizontalFuseUtil<LightwareFusePassCtx>::DetectFusabilityByKind(
                 ctx, candidate, last)) {
-          std::cerr << "continue" << std::endl;
           continue;
         }
-        std::cerr << "fuse here" << std::endl;
         groups.push_back(candidate);
         fusionable = true;
         break;
@@ -656,11 +647,9 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
 
       // if can't fuse to othors Groups, new Groups.
       if (!fusionable) {
-        std::cerr << "push back" << std::endl;
         fusionable_consumers.push_back({candidate});
       }
     }
-    std::cerr << "horizer 11 " << std::endl;
 
     for (const auto& groups : fusionable_consumers) {
       if (groups.size() > 1) {
@@ -679,8 +668,6 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
         ctx->MarkFusible(groups);
       }
     }
-
-    std::cerr << "horizer 22" << std::endl;
   }
 };
 
@@ -706,7 +693,6 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
 
   void operator()(LightwareFusePassCtx* ctx) const override {
     const auto& producer = ctx->PickOpGroup();
-    std::cerr << "in default vertial fuse pass" << std::endl;
     const OpGroupList consumers = [&]() {
       OpGroupList consumers;
       for (const auto& consumer : producer.consumers()) {
@@ -1107,7 +1093,6 @@ class GeneralFusionMergePassHelper {
       if (producer->belong_groups.size()) {
         continue;
       }
-      std::cerr << "general hori " << idx << std::endl;
       // do horizontal fusion.
       updated |= GeneralHorizontalFuse(producer);
     }
@@ -1127,11 +1112,9 @@ class GeneralFusionMergePassHelper {
               << producer->group_id;
       // if producer is sub group.
       if (producer->belong_groups.size()) {
-        std::cerr << "continue here " << std::endl;
         continue;
       }
       // do horizontal fusion.
-      std::cerr << "index " << idx << std::endl;
       updated |= GeneralHorizontalFuse(producer);
       updated |= GeneralVerticalFuse(producer);
     }
@@ -1238,11 +1221,9 @@ class GeneralFusionMergePassHelper {
       return;
     }
     const auto& fuse_passes = GetHorizontalFusePasses();
-    std::cerr << "horizon " << fuse_passes.size() << std::endl;
     for (const auto& fuse_pass : fuse_passes) {
       (*fuse_pass)(ctx);
     }
-    std::cerr << "horizon fin" << std::endl;
   }
 
   bool GeneralHorizontalFuse(const GroupPtr& producer) {
@@ -1513,18 +1494,12 @@ class GeneralFusionMergePassHelper {
   }
 
   void TagVerticalGroups(LightwareFusePassCtx* ctx) const {
-    std::cerr << "tar input  " << std::endl;
     const auto& producer = ctx->PickOpGroup();
-    std::cerr << "tag here" << std::endl;
-    std::cerr << "tag vertial " << producer.consumers().size() << std::endl;
     if (producer.consumers().size() == 0) {
       return;
     }
-    std::cerr << "begin to fuse " << std::endl;
     const auto& fuse_passes = GetVerticalFusePasses();
-    std::cerr << "fuse passes size " << fuse_passes.size() << std::endl;
     for (const auto& fuse_pass : fuse_passes) {
-      std::cerr << "=================" << std::endl;
       (*fuse_pass)(ctx);
     }
   }
@@ -1538,7 +1513,6 @@ class GeneralFusionMergePassHelper {
                                     const OpGroupPtr& second) {
         tagged_sets.push_back(std::make_pair(first, second));
       };
-      std::cerr << "get group set" << std::endl;
       GraphGroupLightwareFusePassCtx fuse_ctx(api::OpGroup(producer),
                                               MarkFusible);
       TagVerticalGroups(&fuse_ctx);
@@ -1548,7 +1522,6 @@ class GeneralFusionMergePassHelper {
     auto GetFusableConsumerGroupSet =
         [&]() -> std::unordered_set<GroupPtr, Hasher, Comparator> {
       const auto& group_sets = GetFusableConsumerOpGroupSets();
-      std::cerr << "groups sets " << group_sets.size() << std::endl;
       if (group_sets.empty()) {
         return {};
       }
@@ -1561,7 +1534,6 @@ class GeneralFusionMergePassHelper {
 
     bool update = false;
     auto consumer_groups = GetFusableConsumerGroupSet();
-    std::cerr << "consumer groups " << consumer_groups.size() << std::endl;
     if (consumer_groups.size()) {
       SelectConsumerToFuse(producer, &consumer_groups);
     }
@@ -2143,18 +2115,12 @@ GroupList GeneralFusionMergePassInternal(const ::ir::Program* graph,
 
   GeneralFusionMergePassHelper fusion_merge_pass_helper(graph, group_list);
   auto res = fusion_merge_pass_helper();
-  std::cerr << "group size " << res.size() << std::endl;
 
   for (size_t i = 0; i < res.size(); ++i) {
     auto group = res[i];
 
-    std::cerr << "group : " << i << std::endl;
-    std::cerr << group->nodes.size() << "\t" << group->nodes_set.size()
-              << std::endl;
-    std::cerr << group->fused_sub_groups.size() << std::endl;
     for (auto& sub_group : group->fused_sub_groups) {
       for (auto& n : sub_group->nodes) {
-        std::cerr << n->name() << std::endl;
       }
     }
   }
