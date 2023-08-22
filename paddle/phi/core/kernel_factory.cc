@@ -25,8 +25,14 @@
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/phi/backends/custom/custom_device_op_list.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    use_stride_kernel,
+    false,
+    "Whether to use strdie kernel if op support stride.");
 
 DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
@@ -210,13 +216,27 @@ KernelFactory::GetLowPrecisionKernelList() {
 }
 
 KernelResult KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name, const KernelKey& const_kernel_key) const {
+    const std::string& kernel_name,
+    const KernelKey& const_kernel_key,
+    bool use_strided_kernel) const {
   auto iter = kernels_.find(kernel_name);
 
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+
+  if (FLAGS_use_stride_kernel && use_strided_kernel) {
+    auto stride_kernel_iter = iter->second.find(
+        {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
+             ? paddle::experimental::Backend::GPU
+             : const_kernel_key.backend(),
+         phi::DataLayout::STRIDED,
+         const_kernel_key.dtype()});
+    if (stride_kernel_iter != iter->second.end()) {
+      return {stride_kernel_iter->second, false, true};
+    }
+  }
 
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
                                    phi::DataLayout::ALL_LAYOUT,
@@ -226,7 +246,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
-      return {kernel_iter->second, false};
+      return {kernel_iter->second, false, false};
     }
     kernel_key =
         KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
@@ -307,7 +327,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
 
-    return {kernel_iter->second, true};
+    return {kernel_iter->second, true, false};
   }
 
   PADDLE_ENFORCE_NE(
@@ -322,7 +342,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
-  return {kernel_iter->second, false};
+  return {kernel_iter->second, false, false};
 }
 
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
@@ -542,10 +562,9 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   // corresponding kernel_name
   std::string message = "Currently, paddle support following kernel keys of `" +
                         kernel_name + "`: { ";
-  for (auto iter = all_kernel_key.begin(); iter != all_kernel_key.end();
-       ++iter) {
-    std::vector<std::string>& dtype_vec = iter->second;
-    message += "(" + iter->first + ", [";
+  for (auto& item : all_kernel_key) {
+    std::vector<std::string>& dtype_vec = item.second;
+    message += "(" + item.first + ", [";
     message += paddle::string::join_strings(dtype_vec, ", ");
     message += "]); ";
   }

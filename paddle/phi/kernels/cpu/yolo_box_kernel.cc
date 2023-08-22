@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/yolo_box_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -66,7 +67,7 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   memset(scores_data, 0, scores->numel() * sizeof(T));
 
-  T box[4];
+  std::array<T, 4> box;
   for (int i = 0; i < n; i++) {
     int img_height = imgsize_data[2 * i];
     int img_width = imgsize_data[2 * i + 1];
@@ -90,7 +91,7 @@ void YoloBoxKernel(const Context& dev_ctx,
 
           int box_idx = funcs::GetEntryIndex(
               i, j, k * w + l, an_num, an_stride, stride, 0, iou_aware);
-          funcs::GetYoloBox<T>(box,
+          funcs::GetYoloBox<T>(box.data(),
                                input_data,
                                anchors_data,
                                l,
@@ -107,8 +108,12 @@ void YoloBoxKernel(const Context& dev_ctx,
                                scale,
                                bias);
           box_idx = (i * box_num + j * stride + k * w + l) * 4;
-          funcs::CalcDetectionBox<T>(
-              boxes_data, box, box_idx, img_height, img_width, clip_bbox);
+          funcs::CalcDetectionBox<T>(boxes_data,
+                                     box.data(),
+                                     box_idx,
+                                     img_height,
+                                     img_width,
+                                     clip_bbox);
 
           int label_idx = funcs::GetEntryIndex(
               i, j, k * w + l, an_num, an_stride, stride, 5, iou_aware);

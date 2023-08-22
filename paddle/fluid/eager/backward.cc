@@ -424,8 +424,8 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
   VLOG(3) << "Run in Backward";
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::UserDefined, 1);
-  egr::Controller::Instance().ClearForceSequentialNodes();
   RunBackward(tensors, grad_tensors, retain_graph);
+  egr::Controller::Instance().ClearForceSequentialNodes();
   phi::autotune::AutoTuneStatus::Instance().Update();
 }
 

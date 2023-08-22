@@ -35,7 +35,7 @@ namespace tensorrt {
 
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
-  SimpleOpTypeSetTeller() {
+  SimpleOpTypeSetTeller() {  // NOLINT
 #if IS_TRT_VERSION_GE(7130)
     // use TensorRT plugin
     teller_set.insert("group_norm");
@@ -919,7 +919,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
         if (!with_dynamic_shape) {
           VLOG(3) << "Static shape don't support the OutSize for op_type "
@@ -944,18 +943,11 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto align_corners =
-          PADDLE_GET_CONST(bool, desc.GetAttr("align_corners"));
-      if (align_corners != false) {
-        VLOG(3)
-            << "The bilinear_interp_v2 only supports align_corners with false.";
-        return false;
-      }
-
       bool has_scale_input_size =
           (resize_inputs.find("Scale") != resize_inputs.end());
 
-      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+      if (!has_scale_input_size ||
+          (has_scale_input_size && desc.Input("Scale").size() != 1)) {
         const std::vector<float> scale =
             PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
         if (scale.size() <= 1) {
@@ -3083,7 +3075,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
 struct GenericPluginTeller : public Teller {
  public:
-  GenericPluginTeller() {}
+  GenericPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false) override {
@@ -3125,7 +3117,7 @@ struct GenericPluginTeller : public Teller {
 
 struct CustomPluginTeller : public Teller {
  public:
-  CustomPluginTeller() {}
+  CustomPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false) override {
@@ -3178,7 +3170,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   return false;
 }
 
-OpTeller::OpTeller() {
+OpTeller::OpTeller() {  // NOLINT
   tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);

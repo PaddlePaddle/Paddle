@@ -29,7 +29,7 @@ namespace tensorrt {
 
 class TopKOpConverter : public OpConverter {
  public:
-  TopKOpConverter() {}
+  TopKOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {

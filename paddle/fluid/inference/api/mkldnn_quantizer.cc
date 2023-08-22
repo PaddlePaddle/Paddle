@@ -592,7 +592,7 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   auto& arg = predictor_.argument_;
   if (!arg->scope_valid()) arg->SetScope(new framework::Scope);
   arg->SetMainProgramNotOwned(predictor_.inference_program_.get());
-  auto graph = std::unique_ptr<Graph>(new Graph(arg->main_program()));
+  auto graph = std::make_unique<Graph>(arg->main_program());
   arg->SetMainGraph(graph.release());
   auto* scope_ptr = arg->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(

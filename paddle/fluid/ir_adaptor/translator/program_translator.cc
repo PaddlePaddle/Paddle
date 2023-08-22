@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
@@ -75,6 +76,11 @@ void ProgramTranslator::Translate() {
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     SetStopGradientAttributeForAllValue(block);
+  }
+
+  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
+    const BlockDesc& block = legacy_program_->Block(block_idx);
+    SetIsPersisableAttributeForAllValue(block);
   }
 }
 
@@ -137,12 +143,16 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter || is_unseen_variable;
+        bool need_get_parameter_op = is_parameter && is_unseen_variable;
         if (need_get_parameter_op) {
+          PADDLE_ENFORCE_NOT_NULL(
+              var_desc,
+              phi::errors::PreconditionNotMet(
+                  "VarDesc of [%s] can not be nullptr", var_name));
           ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
           param_map_[var_name] = VariableDefiningInfo(op->result(0));
-          VLOG(10) << "[op translated][get parameter]" << op;
+          VLOG(10) << "[op translated][get parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
           parameter_visited_.insert(var_name);
@@ -163,6 +173,11 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
+    if (op->Type() == "shadow_output") {
+      if (!param_map_.count(op->Input("x")[0])) {
+        continue;
+      }
+    }
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
@@ -171,6 +186,14 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
+    if ((*op_desc)->Type() == "data") {
+      continue;
+    }
+
+    const auto& input_var_names = (*op_desc)->InputArgumentNames();
+    std::unordered_set<std::string> set_input_var_names(input_var_names.begin(),
+                                                        input_var_names.end());
+
     for (const auto& n : (*op_desc)->Outputs()) {
       const auto& output_var_names = n.second;
       for (const auto& var_name : output_var_names) {
@@ -178,8 +201,19 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                                       parameter_name_mappings_.end());
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
+        need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
+          if (!defining_op_result) {
+            continue;
+          }
+
+          if (param_map_[var_name].generated_by_vector) {
+            InsertSliceOperationForTarget(
+                ctx_, &param_map_, program_, param_map_[var_name], var_name);
+            defining_op_result = param_map_.at(var_name).value;
+          }
+
           ir::Operation* op = InsertSetParamaterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
@@ -194,7 +228,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           insert_pos++;
 
           block->insert(insert_pos, op);
-          VLOG(10) << "[op translated][set parameter]" << op;
+          VLOG(10) << "[op translated][set parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
           parameter_visited_.insert(var_name);
@@ -209,6 +243,7 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
   // Currently we set stop gradient for operation that generated a value
   // connected with VarDesc
   for (const auto& [var_name, value_info] : param_map_) {
+    if (no_cast_var_names.count(var_name) != 0) continue;
     VLOG(10) << "[op translated][stop gradient]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
@@ -239,6 +274,45 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
         ir::BoolAttribute::get(ctx_, var->StopGradient());
     defining_op->set_attribute(kAttrStopGradients,
                                ir::ArrayAttribute::get(ctx_, stop_gradients));
+  }
+}
+
+void ProgramTranslator::SetIsPersisableAttributeForAllValue(
+    const BlockDesc& block) {
+  // Currently we set is persisable for operation that generated a value
+  // connected with VarDesc
+  for (const auto& [var_name, value_info] : param_map_) {
+    if (no_cast_var_names.count(var_name) != 0) continue;
+    VLOG(10) << "[op translated][is persisable]" << var_name;
+    VarDesc* var = block.FindVarRecursive(var_name);
+    if (var == nullptr) {
+      continue;
+    }
+    ir::OpResult value = value_info.value;
+    if (!value) {
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "Value of [%s] can not ber None", var_name));
+    }
+    auto* defining_op = value.owner();
+    PADDLE_ENFORCE_NOT_NULL(
+        defining_op,
+        phi::errors::PreconditionNotMet(
+            "Defining operator of [%s] can not be nullptr", var_name));
+    VLOG(8) << "[op translated][is persisable]" << var_name
+            << " from: " << defining_op->name();
+    std::vector<ir::Attribute> is_persisable;
+    if (defining_op->HasAttribute(kAttrIsPersisable)) {
+      is_persisable = defining_op->attribute(kAttrIsPersisable)
+                          .dyn_cast<ir::ArrayAttribute>()
+                          .AsVector();
+    } else {
+      is_persisable = std::vector<ir::Attribute>(
+          defining_op->num_results(), ir::BoolAttribute::get(ctx_, false));
+    }
+    is_persisable[value.GetResultIndex()] =
+        ir::BoolAttribute::get(ctx_, var->Persistable());
+    defining_op->set_attribute(kAttrIsPersisable,
+                               ir::ArrayAttribute::get(ctx_, is_persisable));
   }
 }
 

@@ -19,26 +19,22 @@ namespace phi {
 class DeviceContext;
 
 namespace distributed {
-namespace auto_parallel {
-class TensorDistAttr;
-}  // namespace auto_parallel
 
 class DistTensor;
-using auto_parallel::TensorDistAttr;
+class TensorDistAttr;
 
 class ReshardFunction {
  public:
   ReshardFunction() = default;
   virtual ~ReshardFunction() = default;
 
-  virtual bool IsSuitable(
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
+  virtual bool IsSuitable(const DistTensor& in,
+                          const TensorDistAttr& out_dist_attr) = 0;
 
   virtual std::shared_ptr<DistTensor> Eval(
-      const DeviceContext& dev_ctx,
+      DeviceContext* dev_ctx,
       const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
+      const TensorDistAttr& out_dist_attr) = 0;
 };
 
 }  // namespace distributed

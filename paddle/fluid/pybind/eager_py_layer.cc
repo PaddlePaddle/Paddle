@@ -393,8 +393,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
 
-    for (auto it = inplace_tensors.begin(); it != inplace_tensors.end(); ++it) {
-      auto inplace_tensor = *it;
+    for (auto inplace_tensor : inplace_tensors) {
       auto inplace_tensor_autograd_meta =
           egr::EagerUtils::autograd_meta(inplace_tensor);
       PADDLE_ENFORCE_EQ(!inplace_tensor_autograd_meta->StopGradient() &&
@@ -663,15 +662,17 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyMethodDef pylayer_methods[] = {
-    {"name", (PyCFunction)(void (*)())pylayer_method_name, METH_NOARGS, NULL},
-    {"apply",
-     (PyCFunction)(void (*)())pylayer_method_apply,
-     METH_CLASS | METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {NULL, NULL, 0, NULL}};
+PyMethodDef pylayer_methods[] = {{"name",  // NOLINT
+                                  (PyCFunction)(void (*)())pylayer_method_name,
+                                  METH_NOARGS,
+                                  nullptr},
+                                 {"apply",
+                                  (PyCFunction)(void (*)())pylayer_method_apply,
+                                  METH_CLASS | METH_VARARGS | METH_KEYWORDS,
+                                  nullptr},
+                                 {nullptr, nullptr, 0, nullptr}};
 
-struct PyGetSetDef pylayer_properties[] {
+struct PyGetSetDef pylayer_properties[] {  // NOLINT
   {"container",
    (getter)tensor_properties_get_container,
    (setter)tensor_properties_set_container,

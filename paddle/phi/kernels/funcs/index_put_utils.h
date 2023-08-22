@@ -105,6 +105,9 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
       }
       SplitWithNumKernel<int64_t, Context>(
           dev_ctx, nonzero_indices, rank, 1, integer_indices);
+#ifdef PADDLE_WITH_XPU
+      dev_ctx.Wait();
+#endif
 
     } else if ((indices_v[i]->dtype() == phi::DataType::INT64) ||
                (indices_v[i]->dtype() == phi::DataType::INT32)) {

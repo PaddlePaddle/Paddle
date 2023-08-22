@@ -148,11 +148,10 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
   auto inputs = op->inputs;
   auto var_names = op->Op()->Inputs().at(input_name);
   std::vector<std::string> unique_var_names;
-  for (unsigned i = 0; i < var_names.size(); i++)
-    if (std::find(unique_var_names.begin(),
-                  unique_var_names.end(),
-                  var_names[i]) == unique_var_names.end())
-      unique_var_names.push_back(var_names[i]);
+  for (auto& var_name : var_names)
+    if (std::find(unique_var_names.begin(), unique_var_names.end(), var_name) ==
+        unique_var_names.end())
+      unique_var_names.push_back(var_name);
 
   auto output = op->outputs[0];
   PADDLE_ENFORCE_GE(inputs.size(),
@@ -549,16 +548,6 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
       conv_op->Op()->SetAttr("force_fp32_output", true);
     }
 
-    // change threshold in bounded ReLu
-    if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
-        "relu6") {
-      float scale_out =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("Scale_out"));
-      float threshold =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("fuse_alpha"));
-      conv_op->Op()->SetAttr("fuse_alpha", scale_out * threshold);
-    }
-
     ++quantize_conv_count;
   };
 
@@ -725,9 +714,9 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     // if all inputs were unsigned, then the output was set to unsigned
     // during the scale calculation step
     auto inputs = concat_op->inputs;
-    for (size_t i = 0; i < inputs.size(); i++) {
-      if (AreScalesPresentForVarNames({inputs[i]->Name()})) {
-        auto scale_data = GetScaleDataByName(inputs[i]->Name());
+    for (auto& input : inputs) {
+      if (AreScalesPresentForVarNames({input->Name()})) {
+        auto scale_data = GetScaleDataByName(input->Name());
         if (scale_data.first == false) {
           are_all_inputs_unsigned = false;
           break;

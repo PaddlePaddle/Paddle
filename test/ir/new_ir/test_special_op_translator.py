@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import ir
 from paddle.fluid import core
+from paddle.framework import LayerHelper
 
 paddle.enable_static()
 
@@ -35,6 +36,69 @@ class TestCastOpTranscriber(unittest.TestCase):
                 y = paddle.cast(x, 'uint8')
 
         _ = ir.translate_to_new_ir(main_program.desc)
+
+
+class TestElementwiseOpTranscriber(unittest.TestCase):
+    def test_elementwise_without_y_grad(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x_data = np.random.rand(100, 2, 3)
+                y_data = np.random.rand(100)
+                x = paddle.to_tensor(x_data, dtype='float32')
+                x.stop_gradient = False
+                y = paddle.to_tensor(y_data, dtype='float32')
+
+                out1 = paddle.tensor.math._elementwise_op(
+                    LayerHelper('elementwise_add', x=x, y=y, axis=0)
+                )
+                out1.stop_gradient = False
+                mean = paddle.mean(out1)
+                paddle.static.append_backward(mean)
+
+                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                np.testing.assert_allclose(
+                    out[0],
+                    x_data + y_data.reshape(100, 1, 1),
+                    rtol=1e-6,
+                    atol=1e-6,
+                )
+
+    def test_elementwise_with_y_grad(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x_data = np.random.rand(100, 2, 3)
+                y_data = np.random.rand(100)
+                x = paddle.to_tensor(x_data, dtype='float32')
+                x.stop_gradient = False
+                y = paddle.to_tensor(y_data, dtype='float32')
+                y.stop_gradient = False
+
+                out1 = paddle.tensor.math._elementwise_op(
+                    LayerHelper('elementwise_add', x=x, y=y, axis=0)
+                )
+                out1.stop_gradient = False
+                mean = paddle.mean(out1)
+                paddle.static.append_backward(mean)
+
+                out = exe.run(main_program, {}, fetch_list=[out1.name])
+                np.testing.assert_allclose(
+                    out[0],
+                    x_data + y_data.reshape(100, 1, 1),
+                    rtol=1e-6,
+                    atol=1e-6,
+                )
 
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
@@ -208,6 +272,57 @@ class TestIndexPutOpTranscriber(unittest.TestCase):
                 y = paddle.index_put(x, indices, value, False)
 
         _ = ir.translate_to_new_ir(main_program.desc)
+
+
+class TestGradAddOpTranscriber(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x_data = np.random.rand(100, 2, 3)
+                y_data = np.random.rand(100, 1, 1)
+                x = paddle.to_tensor(x_data, dtype='float32')
+                x.stop_gradient = False
+                y = paddle.to_tensor(y_data, dtype='float32')
+
+                helper = LayerHelper('grad_add')
+                out = helper.create_variable_for_type_inference("float")
+                helper.append_op(
+                    type="grad_add",
+                    inputs={"X": x, "Y": y},
+                    outputs={"Out": out},
+                    attrs={"axis": -1},
+                )
+
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+
+class TestShadowOutputSlice(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.rand([3, 9, 5])
+                y = paddle.static.data(
+                    name="y", shape=[3, 9, 5], dtype="float32"
+                )
+
+                _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
+                helper = LayerHelper('shadow_output')
+                helper.append_op(
+                    type="shadow_output",
+                    inputs={"x": [out.name]},
+                    outputs={"out": [y.name]},
+                    attrs={"name": out.name},
+                )
+
+        l = ir.translate_to_new_ir(main_program.desc)
 
 
 if __name__ == "__main__":

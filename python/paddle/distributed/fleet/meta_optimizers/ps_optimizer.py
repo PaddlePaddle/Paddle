@@ -204,7 +204,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     % (platform.system())
                 )
 
-        if not isinstance(self.inner_opt, paddle.fluid.optimizer.SGDOptimizer):
+        if not isinstance(self.inner_opt, paddle.optimizer.SGD):
             return False
 
         free = get_sys_free_mem()

@@ -38,6 +38,7 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_py_reader",
     "depend",
     "fetch_v2",
+    "send_v2",
     "nop"};
 
 std::set<std::string> StaticBuildBlackList = {
@@ -47,6 +48,14 @@ std::set<std::string> StaticBuildBlackList = {
     "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
+// TODO(lizhiyu): This operator list is only for pipeline strategy temporarily.
+std::set<std::string> SkipCheckForPipelineTempList = {"c_broadcast",
+                                                      "c_allreduce_sum",
+                                                      "c_allgather",
+                                                      "layer_norm",
+                                                      "recv_v2",
+                                                      "reshape2_grad",
+                                                      "c_identity"};
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -63,6 +72,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
+    if (SkipCheckForPipelineTempList.find(op_type) !=
+        SkipCheckForPipelineTempList.end()) {
+      continue;
+    }
     const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
@@ -407,8 +420,8 @@ void FakeInitializeOutputsForFunctionKernel(
       continue;
     }
     auto& outs_vector = it->second;
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
+    for (auto out_var : outs_vector) {
+      phi::TensorBase* out_tensor = GetTensorFormVar(out_var);
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
 
@@ -424,6 +437,10 @@ void FakeInitializeOutputsForFunctionKernel(
             if (beta1_pow->place() == beta2_pow->place()) {
               backend = phi::TransToPhiBackend(beta1_pow->place());
             }
+          } else if (op_type == "reshape2") {
+            phi::TensorBase* x =
+                GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
+            backend = phi::TransToPhiBackend(x->place());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "Unsupported UNDEFINED backend for op: %s, parameter: %s",
@@ -469,6 +486,13 @@ void FakeInitializeOutputsForFunctionKernel(
                   (in_dtype == DataType::BOOL || in_dtype == DataType::INT32)
                       ? DataType::INT64
                       : in_dtype;
+            }
+          } else if (op_type == "searchsorted") {
+            bool out_int32 = op.Attr<bool>("out_int32");
+            if (out_int32) {
+              dtype = DataType::INT32;
+            } else {
+              dtype = DataType::INT64;
             }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
