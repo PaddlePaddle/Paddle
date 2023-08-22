@@ -541,8 +541,7 @@ phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
     if (out->impl() == nullptr) {
       auto dense_t = std::make_shared<phi::DenseTensor>();
       // TODO(chenweihang): polish code, dist_attr is null now
-      auto dist_attr =
-          std::make_shared<phi::distributed::auto_parallel::TensorDistAttr>();
+      auto dist_attr = std::make_shared<phi::distributed::TensorDistAttr>();
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           dense_t, phi::DenseTensorMeta(), dist_attr);
       out->set_impl(dist_t);

@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
-#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
@@ -33,10 +33,10 @@
 
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
-#include "paddle/fluid/ir/dialect/kernel_attribute.h"
-#include "paddle/fluid/ir/dialect/kernel_type.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -54,7 +54,10 @@ void AddNewData(ir::Value value,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id,
                 std::vector<paddle::framework::Variable*>* variable_list) {
-  value_2_var_name->emplace(value, name);
+  if (value_2_var_name->count(value) == 0) {
+    value_2_var_name->emplace(value, name);
+  }
+
   variable_2_var_name->emplace(var, name);
   if (var_name_2_id->count(name) == 0) {
     auto id = var_name_2_id->size();
@@ -174,7 +177,6 @@ void BuildValue(ir::Value value,
                     var_name_2_id,
                     variable_list);
   }
-
   // Only support DenseTensor or Vector<DenseTensor>
   if (!value.type()) {
     var->GetMutable<phi::DenseTensor>();
@@ -200,6 +202,7 @@ void BuildValue(ir::Value value,
                              variable_2_var_name,
                              var_name_2_id,
                              variable_list);
+
       var_i->GetMutable<phi::DenseTensor>();
       tensor_array->emplace_back(var_i);
     }
@@ -412,6 +415,30 @@ void HandleForSpecialOp(
     std::string var_name = variable_2_var_name->at(variable_array[index]);
     value_2_var_name->emplace(out_value, var_name);
   }
+
+  if (op_name == "builtin.split") {
+    VLOG(6) << "Handle for builtin.split";
+    auto in_value = op->operand_source(0);
+    PADDLE_ENFORCE_EQ(value_2_var_name->count(in_value),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "input of buildin split not in name map"));
+
+    auto in_var = inner_scope->FindVar(value_2_var_name->at(in_value));
+    auto variable_array = in_var->Get<paddle::framework::VariableRefArray>();
+
+    for (uint64_t idx = 0; idx < variable_array.size(); ++idx) {
+      auto out_value = op->result(idx);
+      PADDLE_ENFORCE_EQ(
+          variable_2_var_name->count(variable_array[idx]),
+          true,
+          phi::errors::PreconditionNotMet("[%d] the variable in build split "
+                                          "input MUST in variable name map",
+                                          idx));
+      std::string var_name = variable_2_var_name->at(variable_array[idx]);
+      value_2_var_name->emplace(out_value, var_name);
+    }
+  }
 }
 
 void HandleForInplaceOp(
@@ -498,7 +525,8 @@ void BuildScope(const ir::Block& block,
     if (op_name == "pd.feed" || op_name == "pd.fetch" ||
         op_name == "builtin.combine" || op_name == "builtin.set_parameter" ||
         op_name == "builtin.get_parameter" || op_name == "builtin.slice" ||
-        op_name == "pd.data" || op_name == "pd.shadow_output") {
+        op_name == "builtin.split" || op_name == "pd.data" ||
+        op_name == "pd.shadow_output") {
       HandleForSpecialOp(op,
                          inner_scope,
                          var_name_prefix,

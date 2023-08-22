@@ -16,18 +16,18 @@
 
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
-#include "paddle/fluid/ir/dialect/kernel_attribute.h"
-#include "paddle/fluid/ir/dialect/kernel_dialect.h"
-#include "paddle/fluid/ir/dialect/kernel_op.h"
-#include "paddle/fluid/ir/dialect/kernel_type.h"
-#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
-#include "paddle/fluid/ir/trait/inplace.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
@@ -54,6 +54,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "pd.data",
     "builtin.combine",
     "builtin.slice",
+    "builtin.split",
     "pd.feed",
     "pd.fetch",
     "builtin.set_parameter",
@@ -105,6 +106,24 @@ bool NeedFallBackFromGPUDNN2GPU(ir::Operation* op,
   }
 
   return false;
+}
+
+std::set<std::string> GetSkipFeedNames(ir::Block* block) {
+  std::set<std::string> data_op_names;
+  for (auto op_item : *block) {
+    if (op_item->name() == "pd.data") {
+      data_op_names.insert(op_item->attributes()
+                               .at("name")
+                               .dyn_cast<ir::StrAttribute>()
+                               .AsString());
+    }
+  }
+  return data_op_names;
+}
+
+bool SkipFeedOp(ir::Operation* op, const std::set<std::string>& feed_names) {
+  return feed_names.count(
+      op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString());
 }
 
 std::vector<phi::DenseTensor> GetFakeTensorList(ir::Value new_input_tmp) {
@@ -377,8 +396,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
   std::string phi_kernel_op_name = paddle::dialect::PhiKernelOp::name();
   ir::OpInfo phi_kernel_op_info = ctx->GetRegisteredOpInfo(phi_kernel_op_name);
 
+  auto skip_feed_names = GetSkipFeedNames(block);
+
   for (auto op_item : *block) {
     VLOG(6) << "op name " << op_item->name();
+    if ((op_item->name() == "pd.feed") &&
+        SkipFeedOp(op_item, skip_feed_names)) {
+      continue;
+    }
 
     if (op_item->name() == "builtin.combine") {
       std::vector<phi::Place> out_places;
@@ -523,7 +548,76 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             op_output_types.push_back(allocated_dense_tensor_dtype);
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
-                "builtin.combine Result type only support DenseTensorType"));
+                "builtin.slice Result type only support DenseTensorType"));
+          }
+        }
+      }
+      // Get op info
+      ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
+      // Generate new op
+      ir::Operation* op = ir::Operation::Create(
+          vec_inputs, op_item->attributes(), op_output_types, op_info);
+      program->block()->push_back(op);
+      map_op_pair[op_item] = op;
+      // only deal with single output
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          map_value_pair[op_item->result(i)] = op->result(i);
+        }
+      }
+      VLOG(6) << "Deep copy a new builtin op: " << op_item->name();
+      continue;
+    }
+
+    if (op_item->name() == "builtin.split") {
+      phi::Place out_place = place;
+      // Copy op inputs
+      std::vector<ir::OpResult> vec_inputs;
+      if (op_item->num_operands() > 0) {
+        for (size_t i = 0; i < op_item->num_operands(); ++i) {
+          auto cur_in = op_item->operand_source(i);
+          if (!cur_in) {
+            vec_inputs.emplace_back();
+            continue;
+          }
+          PADDLE_ENFORCE_EQ(map_value_pair.count(cur_in),
+                            true,
+                            phi::errors::PreconditionNotMet(
+                                "[%d]'s input of [%s] op MUST in map pair",
+                                i,
+                                op_item->name()));
+          auto new_in = map_value_pair.at(cur_in);
+          vec_inputs.push_back(new_in);
+
+          if (new_in.type().isa<ir::VectorType>()) {
+            auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
+            out_place =
+                vec_types[0]
+                    .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                    .place();
+          } else {
+            PADDLE_THROW(
+                phi::errors::Unimplemented("only support vector type for now"));
+          }
+        }
+      }
+      // Copy op output type
+      std::vector<ir::Type> op_output_types;
+      if (op_item->num_results() > 0) {
+        for (size_t i = 0; i < op_item->num_results(); ++i) {
+          auto result_type = op_item->result(i).type();
+          if (!result_type) {
+            op_output_types.push_back(result_type);
+          } else if (result_type.isa<dialect::DenseTensorType>()) {
+            auto allocated_dense_tensor_dtype =
+                paddle::dialect::AllocatedDenseTensorType::get(
+                    ctx,
+                    out_place,
+                    result_type.dyn_cast<dialect::DenseTensorType>());
+            op_output_types.push_back(allocated_dense_tensor_dtype);
+          } else {
+            PADDLE_THROW(phi::errors::Unimplemented(
+                "builtin.split Result type only support DenseTensorType"));
           }
         }
       }
@@ -826,9 +920,18 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     program->block()->push_back(op);
-
-    if (op_item->name() == "pd.feed" && platform::is_gpu_place(place)) {
-      // add shadow feed op
+    bool feed_op_add_shadow_feed =
+        (op_item->name() == "pd.feed") && platform::is_gpu_place(place);
+    bool data_op_add_shadow_feed = (op_item->name() == "pd.data") &&
+                                   platform::is_gpu_place(place) &&
+                                   (op->attributes()
+                                        .at("place")
+                                        .dyn_cast<dialect::PlaceAttribute>()
+                                        .data()
+                                        .GetType() != phi::AllocationType::GPU);
+    bool add_shadow_feed = feed_op_add_shadow_feed || data_op_add_shadow_feed;
+    if (add_shadow_feed) {
+      // if shadow data op place not gpu,add shadow feed op
       phi::KernelKey shadow_key{
           phi::Backend::GPU,
           phi::DataLayout::ANY,
