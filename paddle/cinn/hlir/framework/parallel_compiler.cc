@@ -58,7 +58,7 @@ void ParallelCompiler::SplitTask() {
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
   for (int i = 0; i < context_->graph->fusion_groups.size(); ++i) {
-    tasks_.emplace_back(this, context_, i);
+    tasks_.emplace_back(i, this, context_);
   }
 }
 
