@@ -151,8 +151,20 @@
   outputs: []
   no_need_buffer: null
   data_transform: null
+  kernel:
+    func: [assert]
+    param: [cond, data, summarize]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [cond]
+      to_complex_flag: [false]
+    dispatch: {assert: null}
+    force_backend: null
   inplace: null
   backward: null
+
 
 - name: print
   inputs:
