@@ -41,7 +41,7 @@
 #endif
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
