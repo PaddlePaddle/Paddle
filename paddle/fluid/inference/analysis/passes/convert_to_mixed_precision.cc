@@ -33,7 +33,8 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     phi::DataType mixed_precision,
     phi::Backend backend,
     bool keep_io_types,
-    const std::unordered_set<std::string>& black_list)
+    const std::unordered_set<std::string>& black_list,
+    const std::unordered_set<std::string>& white_list)
     : model_file_(model_file),
       params_file_(params_file),
       mixed_model_file_(mixed_model_file),
@@ -41,7 +42,8 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
       mixed_precision_(mixed_precision),
       backend_(backend),
       keep_io_types_(keep_io_types),
-      black_list_(black_list) {
+      black_list_(black_list),
+      white_list_(white_list) {
   switch (backend_) {
     case phi::Backend::GPU:
       PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16 ||
@@ -99,6 +101,8 @@ void ConvertToMixedPrecisionPass::Run() {
   }
   pass.Set("mixed_black_list",
            new std::unordered_set<std::string>{black_list_});
+  pass.Set("mixed_white_list",
+           new std::unordered_set<std::string>{white_list_});
   pass.Set("enable_low_precision_io", new bool{!keep_io_types_});
   pass.Apply(main_graph_.get());
 
@@ -184,9 +188,10 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
                         phi::DataType precision,
-                        const std::unordered_set<std::string>& black_list) {
+                        const std::unordered_set<std::string>& black_list,
+                        const std::unordered_set<std::string>& white_list) {
   return framework::ir::OpSupportPrecision(
-      op_type, backend, precision, black_list);
+      op_type, backend, precision, black_list, white_list);
 }
 
 void InsertCastOp(
@@ -216,7 +221,8 @@ void ConvertToMixedPrecision(
     phi::DataType mixed_precision,
     phi::Backend backend,
     bool keep_io_types,
-    const std::unordered_set<std::string>& black_list) {
+    const std::unordered_set<std::string>& black_list,
+    const std::unordered_set<std::string>& white_list) {
   ConvertToMixedPrecisionPass pass(model_file,
                                    params_file,
                                    mixed_model_file,
@@ -224,7 +230,8 @@ void ConvertToMixedPrecision(
                                    mixed_precision,
                                    backend,
                                    keep_io_types,
-                                   black_list);
+                                   black_list,
+                                   white_list);
   pass.Run();
 }
 

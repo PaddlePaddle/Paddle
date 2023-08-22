@@ -416,6 +416,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mixed_black_list,
                       MixedBlackList,
                       std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(mixed_white_list,
+                      MixedWhiteList,
+                      std::unordered_set<std::string>);
   DECL_ARGUMENT_FIELD(enable_gpu_mixed, EnableGPUMixed, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
   DECL_ARGUMENT_FIELD(enable_low_precision_io, EnableLowPrecisionIO, bool);

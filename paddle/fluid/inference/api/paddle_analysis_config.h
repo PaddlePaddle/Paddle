@@ -1131,6 +1131,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
+  ///
+  /// \brief Set a list of operators that do support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the whitelist must be the same as the model conversion whitelist.
+  ///
+  void Exp_EnableMixedPrecisionOps(
+      const std::unordered_set<std::string>& white_list);
+
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
@@ -1163,6 +1171,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Mixed precision related.
   Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
+  std::unordered_set<std::string> mixed_white_list_;
   bool enable_low_precision_io_{false};
 
   // GPU related.
