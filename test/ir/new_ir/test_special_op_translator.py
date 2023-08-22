@@ -300,5 +300,30 @@ class TestGradAddOpTranscriber(unittest.TestCase):
         _ = ir.translate_to_new_ir(main_program.desc)
 
 
+class TestShadowOutputSlice(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.rand([3, 9, 5])
+                y = paddle.static.data(
+                    name="y", shape=[3, 9, 5], dtype="float32"
+                )
+
+                _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
+                helper = LayerHelper('shadow_output')
+                helper.append_op(
+                    type="shadow_output",
+                    inputs={"x": [out.name]},
+                    outputs={"out": [y.name]},
+                    attrs={"name": out.name},
+                )
+
+        l = ir.translate_to_new_ir(main_program.desc)
+
+
 if __name__ == "__main__":
     unittest.main()
