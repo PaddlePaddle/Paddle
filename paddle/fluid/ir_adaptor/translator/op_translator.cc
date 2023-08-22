@@ -213,7 +213,7 @@ inline ir::Operation* InsertStackOperationForTarget(
       {"axis", ir::Int32Attribute::get(ctx, axis)}};
 
   ir::Operation* operation = ir::Operation::Create(
-      op_inputs, attribute_map, {op_inputs[0].value.type()}, op_info);
+      op_inputs, attribute_map, {op_inputs[0].type()}, op_info);
   program->block()->push_back(operation);
   return operation;
 }
@@ -1258,7 +1258,6 @@ struct FillConstantTranscriber : public OpTranscriber {
       const auto& var_name = vars[0];
 
       auto defining_info = (*param_map)[var_name];
-      auto& type_translator = TypeTranslator::instance();
       ir::Operation* operation = ir::Operation::Create(
           {}, attribute_map, {defining_info.value.type()}, op_info);
       program->block()->push_back(operation);
@@ -1316,14 +1315,6 @@ struct FillConstantTranscriber : public OpTranscriber {
                    static_cast<paddle::framework::proto::VarType_Type>(
                        dtype)))}};
 
-      int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
-
-      ir::AttributeMap attribute_map = {
-          {"dtype",
-           phi::VarTypeToDataType(
-               static_cast<paddle::framework::proto::VarType_Type>(dtype))},
-      };
-
       auto vars = op_desc.Output("Out");
       IR_ENFORCE(vars.size() == 1,
                  "Expected op[%s]'s output Out has only 1 variable, but got %d",
@@ -1332,7 +1323,6 @@ struct FillConstantTranscriber : public OpTranscriber {
       const auto& var_name = vars[0];
 
       auto defining_info = (*param_map)[var_name];
-      auto& type_translator = TypeTranslator::instance();
       ir::Operation* operation = ir::Operation::Create(
           {}, attribute_map, {defining_info.value.type()}, op_info);
       program->block()->push_back(operation);

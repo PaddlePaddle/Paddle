@@ -25,7 +25,7 @@ void FullWithTensorKernel(const Context& dev_ctx,
                           DataType dtype,
                           DenseTensor* out) {
   auto shape_tmp = IntArray(shape);
-  out->Resize(phi::make_ddim(shape_tmp));
+  out->Resize(phi::make_ddim(shape_tmp.GetData()));
   FullKernel<T, Context>(
       dev_ctx,
       shape_tmp,
