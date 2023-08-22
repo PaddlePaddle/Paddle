@@ -66,7 +66,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     case phi::Backend::ONEDNN:
       return phi::CPUPlace();
 #endif
@@ -124,7 +124,7 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   return phi_kernel_name;
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype) {
   switch (dtype) {
     case DataType::FLOAT32:

@@ -14,40 +14,58 @@
 
 #pragma once
 
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-
-#include <math.h>
-#include <vector>
-
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
 
 namespace paddle {
 namespace primitive {
-namespace experimental {
+
+using IntArray = paddle::experimental::IntArray;
 // TODO(wanghao107):
 //  op's vjp will be auto generated.
 std::vector<std::vector<paddle::Tensor>> tanh_vjp(
     const Tensor& out,
     const Tensor& grad_out,
-    const std::vector<std::vector<int>>& stop_gradients);
+    const std::vector<std::vector<bool>>& stop_gradients);
 
 std::vector<std::vector<paddle::Tensor>> mean_vjp(
     const Tensor& x,
     const Tensor& out_grad,
-    std::vector<int64_t> axis,
+    const IntArray& axis,
     bool keepdim,
     bool reduce_all,
-    const std::vector<std::vector<int>>& stop_gradients);
+    const std::vector<std::vector<bool>>& stop_gradients);
 
-namespace details {
-// NOTE: this namespace will store
-// primitive ops grad composite rules.
+std::vector<std::vector<paddle::Tensor>> concat_vjp(
+    const std::vector<Tensor>& x,
+    const Tensor& out_grad,
+    const Tensor& axis,
+    const std::vector<std::vector<bool>>& stop_gradients);
 
-}  // namespace details
-}  // namespace experimental
+std::vector<std::vector<paddle::Tensor>> add_vjp(
+    const Tensor& x,
+    const Tensor& y,
+    const Tensor& out_grad,
+    int axis,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
+std::vector<std::vector<paddle::Tensor>> divide_vjp(
+    const Tensor& x,
+    const Tensor& y,
+    const Tensor& out,
+    const Tensor& out_grad,
+    int axis,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
+std::vector<std::vector<paddle::Tensor>> sum_vjp(
+    const Tensor& x,
+    const Tensor& out_grad,
+    const IntArray& axis,
+    bool keepdim,
+    bool reduce_all,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 }  // namespace primitive
 }  // namespace paddle

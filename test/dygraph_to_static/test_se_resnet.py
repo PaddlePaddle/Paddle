@@ -78,13 +78,13 @@ def optimizer_setting(params, parameter_list):
     bd = [step * e for e in ls["epochs"]]
     lr = params["lr"]
     num_epochs = params["num_epochs"]
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=fluid.layers.cosine_decay(
-            learning_rate=lr, step_each_epoch=step, epochs=num_epochs
+    optimizer = paddle.optimizer.Momentum(
+        learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=lr, T_max=num_epochs
         ),
         momentum=momentum_rate,
-        regularization=paddle.regularizer.L2Decay(l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
@@ -454,8 +454,9 @@ class TestSeResnet(unittest.TestCase):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                [img],
+                                [img, label],
                                 output_spec=[pred],
+                                input_names_after_prune=[img.name],
                             )
                         else:
                             paddle.save(
@@ -493,7 +494,7 @@ class TestSeResnet(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,

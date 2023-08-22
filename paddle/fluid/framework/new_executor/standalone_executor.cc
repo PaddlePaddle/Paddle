@@ -15,6 +15,7 @@
 
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/program_interpreter.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
@@ -103,6 +104,22 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
       interpretercores_.back()->SetCopyProgram(program);
+      // NOTE(lizhiyu): Now we only check backward subprogram. After static
+      // build strategy is completely, we should
+      //                check all the program in the PP strategy.
+      if (job_type == "backward" && jobs.size() > 1) {
+        PADDLE_ENFORCE_EQ(static_cast<const ProgramInterpreter*>(
+                              interpretercores_.back()->Impl())
+                              ->IsStaticBuild(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "When using pipeline strategy in auto "
+                              "prarallelism with new executor, "
+                              "the backward subprogram must be builded in real "
+                              "static build mode, but it can not "
+                              "be staticly builded in this case. You can "
+                              "enable 'GLOG_v=1' to obtain log information."));
+      }
     }
   }
 }
@@ -159,7 +176,6 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   // return Fetch Tensors
   if (FLAGS_enable_new_ir_in_executor) {
     framework::FetchList fetch_res;
-
     for (auto& var_name : fetch_var_names_) {
       auto* var = scope_->FindVar(var_name);
       fetch_res.push_back(var->Get<phi::DenseTensor>());

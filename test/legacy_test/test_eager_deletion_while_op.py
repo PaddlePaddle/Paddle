@@ -117,7 +117,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         fc = paddle.static.nn.fc(tmp, size=256)
         loss = paddle.mean(sum_result)
 
-        optim = fluid.optimizer.Adam(learning_rate=1e-3)
+        optim = paddle.optimizer.Adam(learning_rate=1e-3)
         optim.minimize(loss)
 
         gc_vars = core._get_eager_deletion_vars(

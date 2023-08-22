@@ -195,7 +195,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir/interface/vjp.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -305,7 +305,7 @@ bool IsCompiledWithIPU() {
 }
 
 bool IsCompiledWithMKLDNN() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return true;
@@ -338,7 +338,7 @@ bool IsCompiledWithHETERPS() {
 }
 
 bool SupportsBfloat16() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
@@ -349,7 +349,7 @@ bool SupportsBfloat16() {
 }
 
 bool SupportsBfloat16FastPerformance() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16))
@@ -360,7 +360,7 @@ bool SupportsBfloat16FastPerformance() {
 }
 
 bool SupportsInt8() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
@@ -369,7 +369,7 @@ bool SupportsInt8() {
 }
 
 bool SupportsVNNI() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return phi::backends::cpu::MayIUse(
@@ -693,7 +693,7 @@ void BindVjp(pybind11::module *m) {
       "call_vjp",
       [](ir::Operation &fwd_op,
          const std::vector<std::vector<ir::OpResult>> &out_grads,
-         const std::vector<std::vector<int>> &stop_gradients) {
+         const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
         ir::IrContext *ctx = ir::IrContext::Instance();
         ir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
@@ -731,7 +731,7 @@ void BindVjp(pybind11::module *m) {
                                 vjp_res[i].size()));
           py::list sub_res;
           for (size_t j = 0; j < vjp_res[i].size(); ++j) {
-            if (stop_gradients[i][j]) {
+            if (!vjp_res[i][j]) {
               sub_res.append(nullptr);
             } else {
               sub_res.append(vjp_res[i][j]);
@@ -1419,6 +1419,8 @@ All parameter, weight, gradient are variables in Paddle.
             defalut_val.index() - 1);
       });
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_set_bwd_prim_blacklist",
+        &paddle::prim::PrimCommonUtils::SetPrimBackwardBlacklist);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",
@@ -1999,12 +2001,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("init_tensor_operants", []() {
-    paddle::OperantsManager::Instance().eager_operants.reset(
-        new paddle::prim::EagerTensorOperants());
-    paddle::OperantsManager::Instance().static_operants.reset(
-        new paddle::prim::StaticTensorOperants());
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().eager_operants =
+        std::make_unique<paddle::prim::EagerTensorOperants>();
+    paddle::OperantsManager::Instance().static_operants =
+        std::make_unique<paddle::prim::StaticTensorOperants>();
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);

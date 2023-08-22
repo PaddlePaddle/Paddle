@@ -140,9 +140,9 @@ void Program::Export(const std::vector<std::string>& persistent_vars,
   int instplaceholder = writeplaceholder(4 * 3, insnum, f);
   int findex = 0;
   for (auto& ins : instrs_) {
-    auto in_args = ins->GetInArgs();
-    auto out_args = ins->GetOutArgs();
-    auto fn_names = ins->GetFnNames();
+    auto& in_args = ins->GetInArgs();
+    auto& out_args = ins->GetOutArgs();
+    auto& fn_names = ins->GetFnNames();
     for (int i = 0; i < fn_names.size(); i++, findex++) {
       std::vector<std::string> all_args(in_args[i].begin(), in_args[i].end());
       all_args.insert(

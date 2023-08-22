@@ -39,6 +39,7 @@ class StreamSafeCustomDeviceAllocation : public Allocation {
   bool CanBeFreed();
   void MarkAsWillBeFreed();
   phi::stream::stream_t GetOwningStream() const;
+  void SetOwningStream(phi::stream::stream_t s);
 
  private:
   thread_local static std::once_flag once_flag_;

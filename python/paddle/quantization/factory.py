@@ -81,23 +81,24 @@ def quanter(class_name):
         class_name (str) - The name of factory class to be declared.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            # Given codes in ./customized_quanter.py
-            from paddle.quantization import quanter
-            from paddle.quantization import BaseQuanter
-            @quanter("CustomizedQuanter")
-            class CustomizedQuanterLayer(BaseQuanter):
-                def __init__(self, arg1, kwarg1=None):
-                    pass
+            >>> # doctest: +SKIP
+            >>> # Given codes in ./customized_quanter.py
+            >>> from paddle.quantization import quanter
+            >>> from paddle.quantization import BaseQuanter
+            >>> @quanter("CustomizedQuanter")
+            >>> class CustomizedQuanterLayer(BaseQuanter):
+            ...     def __init__(self, arg1, kwarg1=None):
+            ...         pass
 
-            # Used in ./test.py
-            # from .customized_quanter import CustomizedQuanter
-            from paddle.quantization import QuantConfig
-            arg1_value = "test"
-            kwarg1_value = 20
-            quanter = CustomizedQuanter(arg1_value, kwarg1=kwarg1_value)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> # Used in ./test.py
+            >>> # from .customized_quanter import CustomizedQuanter
+            >>> from paddle.quantization import QuantConfig
+            >>> arg1_value = "test"
+            >>> kwarg1_value = 20
+            >>> quanter = CustomizedQuanter(arg1_value, kwarg1=kwarg1_value)
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
 
     """
 
