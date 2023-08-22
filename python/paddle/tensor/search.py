@@ -715,14 +715,8 @@ def where_(condition, x=None, y=None, name=None):
     Inplace version of ``where`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_where`.
     """
-    if np.isscalar(x):
-        x = paddle.full([1], x, np.array([x]).dtype.name)
-
-    if np.isscalar(y):
-        y = paddle.full([1], y, np.array([y]).dtype.name)
-
-    if x is None and y is None:
-        return nonzero(condition, as_tuple=True)
+    if np.isscalar(x) or np.isscalar(y):
+        raise ValueError("either both or neither of x and y should be given")
 
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
@@ -743,13 +737,7 @@ def where_(condition, x=None, y=None, name=None):
 
         broadcast_zeros = paddle.add(zeros_like_x, zeros_like_y)
         broadcast_zeros = paddle.add(broadcast_zeros, zeros_like_condition)
-        broadcast_x = paddle.add_(x, broadcast_zeros)
-        if broadcast_x.shape != x.shape:
-            raise ValueError(
-                "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                    broadcast_x.shape, x.shape
-                )
-            )
+        broadcast_x = x.add_(broadcast_zeros)
         broadcast_y = paddle.add(y, broadcast_zeros)
         broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')

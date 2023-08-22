@@ -832,6 +832,11 @@ class TestDygraphInplaceGcd(TestDygraphInplace):
     def test_backward_success_2(self):
         pass
 
+    def test_error(self):
+        x = paddle.randn([1, 10])
+        y = paddle.randn([20, 1])
+        self.assertRaises(ValueError, paddle.gcd_, x, y)
+
 
 class TestDygraphInplaceNanToNum(TestDygraphInplace):
     def init_data(self):
@@ -973,7 +978,7 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
         with paddle.fluid.dygraph.guard():
-            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a = paddle.to_tensor(self.input_var_numpy).astype("float64")
             var_a.stop_gradient = False
 
             var_b = var_a**2
@@ -991,6 +996,19 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
             ):
                 loss.backward()
 
+    def test_error(self):
+        x = 1
+        x_normal = paddle.randn([3, 4])
+        y = 1
+        with self.assertRaisesRegex(
+            TypeError, f"x must be tensor type, but got {type(x)}"
+        ):
+            paddle.ldexp_(x, y)
+        with self.assertRaisesRegex(
+            TypeError, f"y must be tensor type, but got {type(y)}"
+        ):
+            paddle.ldexp_(x_normal, y)
+
 
 class TestDygraphInplaceWhere(TestDygraphInplaceWithContinuous):
     def init_data(self):
@@ -1002,6 +1020,59 @@ class TestDygraphInplaceWhere(TestDygraphInplaceWithContinuous):
 
     def non_inplace_api_processing(self, var):
         return paddle.where(var > self.y, var, self.y)
+
+    def test_error(self):
+        cond = paddle.to_tensor([[False, True, False], [False, True, False]])
+        self.assertRaises(ValueError, paddle.where_, cond, 1, 2)
+        self.assertRaises(ValueError, paddle.where_, cond, None, None)
+
+
+class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        super().init_data()
+        self.y = paddle.randn([10, 1, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.where_(var > self.y, var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.where(var > self.y, var, self.y)
+
+    def test_forward_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 2)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 5)
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            self.inplace_api_processing(var_b)
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                    2, 0
+                ),
+            ):
+                loss.backward()
 
 
 class TestDygraphInplacePolygamma(TestDygraphInplaceWithContinuous):
@@ -1232,9 +1303,6 @@ class TestDygraphInplaceCast(TestDygraphInplaceWithContinuous):
     def non_inplace_api_processing(self, var):
         return paddle.cast(var, "float64")
 
-    def test_leaf_inplace_var_error(self):
-        pass
-
 
 class TestDygraphInplaceFloorDivide(TestDygraphInplace):
     def init_data(self):
@@ -1260,21 +1328,111 @@ class TestDygraphInplaceFloorDivide(TestDygraphInplace):
     def test_leaf_inplace_var_error(self):
         pass
 
+    def test_error(self):
+        x = paddle.randn([1, 10])
+        y = paddle.randn([20, 1])
+        self.assertRaises(ValueError, paddle.floor_divide_, x, y)
+
 
 class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
-        return paddle.cumsum_(var)
+        return paddle.cumsum_(var, dtype="float32")
 
     def non_inplace_api_processing(self, var):
-        return paddle.cumsum(var)
+        return paddle.cumsum(var, dtype="float32")
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype("float64")
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            paddle.cumsum_(var_b, -1)
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                    1, 0
+                ),
+            ):
+                loss.backward()
+
+    def test_forward_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 2)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 3)
 
 
 class TestDygraphInplaceCumprod(TestDygraphInplace):
     def inplace_api_processing(self, var):
-        return paddle.cumprod_(var, -1)
+        return paddle.cumprod_(var, -1, dtype="float32")
 
     def non_inplace_api_processing(self, var):
-        return paddle.cumprod(var, -1)
+        return paddle.cumprod(var, -1, dtype="float32")
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.fluid.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            paddle.cumprod_(var_b, -1, dtype="float64")
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                    2, 0
+                ),
+            ):
+                loss.backward()
+
+    def test_forward_version(self):
+        with paddle.fluid.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 1)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 2)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 3)
+
+
+class TestDygrapInplaceRenorm(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.renorm_(var, 1.0, 2, 2.05)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.renorm(var, 1.0, 2, 2.05)
+
+    def test_error(self):
+        var = paddle.randn([3, 4, 1])
+        self.assertRaises(ValueError, paddle.renorm_, var, 1.0, 5, 2.05)
+        self.assertRaises(ValueError, paddle.renorm_, var, 1.0, -5, 2.05)
 
 
 if __name__ == '__main__':

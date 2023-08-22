@@ -2411,6 +2411,7 @@ def renorm(x, p, axis, max_norm):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def renorm_(x, p, axis, max_norm):
     """
     Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.

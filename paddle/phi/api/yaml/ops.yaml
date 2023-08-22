@@ -2083,12 +2083,13 @@
 
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : renorm
+  inplace: (x -> out)
   backward : renorm_grad
 
 - op : reverse
