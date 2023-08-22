@@ -34,6 +34,12 @@
 #ifdef PADDLE_WITH_LITE
 #include "paddle/fluid/operators/lite/lite_engine_op.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    naive_executor_sync_op,
+    false,
+    "Enable sync after each op run, used for debug.");
 
 namespace paddle {
 namespace framework {
@@ -124,14 +130,10 @@ if(nvtx)
                                 platform::NvtxRangeColor::Green);
 #endif
 
-
-    // std::cout << op->Type() << "run" << std::endl;
-    // paddle::platform::DeviceContextPool &pool =
-    //     paddle::platform::DeviceContextPool::Instance();
-    // auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(place_));
-    // auto success = cudaStreamSynchronize(dev_ctx->stream());
-    // PADDLE_ENFORCE_GPU_SUCCESS(success);
-
+if (FLAGS_naive_executor_sync_op)
+{
+  std::cout << op->Type() << "run" << std::endl;
+}
 
     // if (op->Type() == "while") {
     //   op->SetOutputHooks(hookfuncs_);
@@ -139,11 +141,15 @@ if(nvtx)
 
     op->Run(*scope_, place_);
 
-
-    // std::cout << op->OutputVars(true).front() << std::endl;
-    // success = cudaStreamSynchronize(dev_ctx->stream());
-    // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
-    // PADDLE_ENFORCE_GPU_SUCCESS(success);
+  if (FLAGS_naive_executor_sync_op)
+  {
+    std::cout << op->OutputVars(true).front() << std::endl;
+    paddle::platform::DeviceContextPool &pool = paddle::platform::DeviceContextPool::Instance();
+    auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(place_));
+    auto success = cudaStreamSynchronize(dev_ctx->stream());
+      std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
+      PADDLE_ENFORCE_GPU_SUCCESS(success);
+  }
 
 #ifdef PADDLE_WITH_NVTX
 if(nvtx)
