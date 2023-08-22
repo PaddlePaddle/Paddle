@@ -45,7 +45,7 @@ template <>
 struct radix_key_codec_base<phi::dtype::bfloat16>
     : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
 
-#if ROCM_VERSION_MAJOR >= 5 && ROCM_VERSION_MINOR >= 4
+#if HIP_VERSION >= 50400000
 template <>
 struct float_bit_mask<phi::dtype::float16> : float_bit_mask<rocprim::half> {};
 
@@ -61,7 +61,13 @@ namespace cub {
 template <>
 struct NumericTraits<phi::dtype::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+
+template <>
+struct NumericTraits<phi::dtype::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
+};
 }  // namespace cub
+
 #endif
 
 namespace phi {
