@@ -88,7 +88,8 @@ class TestFuseAdamWPass(unittest.TestCase):
                 optimizer,
                 init_loss_scaling=128.0,
                 use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
+                dtype="float16",
+                level="o2",
                 use_fp16_guard=False,
             )
         with paddle.static.program_guard(train_program, startup_program):
