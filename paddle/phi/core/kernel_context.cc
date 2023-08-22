@@ -13,6 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/ir/core/type_name.h"
+#include "paddle/phi/core/enforce.h"
+
+#include "glog/logging.h"
 
 namespace phi {
 
@@ -116,10 +120,16 @@ const std::pair<int, int>& KernelContext::OutputRangeAt(size_t idx) const {
 template <typename AttrType>
 const AttrType& KernelContext::AttrAt(size_t idx) const {
   try {
+    VLOG(6) << "Attribute at index `" << idx << "` trying";
+    VLOG(6) << "Attribute at index `" << attrs_.at(idx).index() << "` trying";
+    PADDLE_GET_CONST(AttrType, attrs_.at(idx));
     return paddle::get<AttrType>(attrs_.at(idx));
   } catch (paddle::bad_variant_access const& ex) {
+    VLOG(6) << "Attribute at index `" << idx << "` not found in kernel";
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Attribute cast error in Op Kernel Context."));
+        "Attribute  %s %d cast error in Op Kernel Context.",
+        ir::get_type_name<AttrType>(),
+        attrs_.at(idx).index()));
   }
 }
 

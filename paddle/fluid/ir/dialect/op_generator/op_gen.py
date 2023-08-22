@@ -294,6 +294,9 @@ class OpInfoParser:
             self.mutable_attribute_name_list,
             self.mutable_attribute_type_list,
         ) = self.parse_mutable_attribute()
+        if "set_value" in self.op_phi_name:
+            print(self.mutable_attribute_name_list)
+            print(self.mutable_attribute_type_list)
 
         (
             self.non_mutable_attribute_name_list,
@@ -363,6 +366,8 @@ class OpInfoParser:
         """
         {'axis': 'paddle::dialect::ScalarAttribute', 'rotl': 'paddle::dialect::IntArrayAttribute'}
         """
+        if "set_value" in self.op_phi_name:
+            print(self.op_compat_item)
         mutable_attribute_name_list = []
         mutable_attribute_type_list = []
         # scalar
@@ -417,6 +422,9 @@ class OpInfoParser:
                         ],
                     ]
                 )
+        if "set_value" in self.op_phi_name:
+            print(mutable_attribute_name_list)
+            print(mutable_attribute_type_list)
         sorted_mutable_attribute_name_list = []
         sorted_mutable_attribute_type_list = []
         for attr_name in self.attribute_name_list:
@@ -684,6 +692,9 @@ def OpGenerator(
         op_info_items.append(
             OpInfoParser(op, op_compat_parser.get_compat(op['name']))
         )
+        if op["name"] == "set_value":
+            print(op_compat_parser.get_compat(op['name']))
+            print(op_info_items[-1].mutable_attribute_name_list)
 
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list

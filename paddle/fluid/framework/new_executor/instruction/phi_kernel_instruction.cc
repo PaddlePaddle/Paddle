@@ -32,6 +32,8 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
+#include "paddle/phi/core/kernel_context.h"
+
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 namespace paddle {
 namespace framework {
@@ -167,11 +169,22 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
+void PrintKernelContext(const phi::KernelContext& kernel_context) {
+  VLOG(6) << "------------kernel_contxt start-----------";
+  VLOG(6) << "inputs: " << kernel_context.InputsSize();
+  VLOG(6) << "output: " << kernel_context.OutputsSize();
+  VLOG(6) << "attrs: " << kernel_context.AttrsSize();
+  VLOG(6) << "------------kernel_contxt end-------------";
+}
+
 void PhiKernelInstruction::Run() {
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
   VLOG(6) << "Run op " << phi_op_name_ << " infer meta.";
+
+  PrintKernelContext(kernel_context_);
+
   (*(phi_kernel_))(&(kernel_context_));
   VLOG(6) << "Run op " << phi_op_name_ << " kernel.";
 }

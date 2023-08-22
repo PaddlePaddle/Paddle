@@ -113,7 +113,7 @@ class AttributeVisitor {
   }
 
   virtual ir::Attribute operator()(const std::vector<int64_t>& i64s) {
-    VLOG(10) << "translating vector<int64>";
+    VLOG(10) << "translating vector<int64> size: " << i64s.size();
     std::vector<ir::Attribute> attrs;
     attrs.reserve(i64s.size());
     for (const auto& v : i64s) {
@@ -168,6 +168,11 @@ class Int64ArrayAttributeVisitor : public AttributeVisitor {
       attrs.push_back(ir::Int64Attribute::get(ctx, v));
     }
     return ir::ArrayAttribute::get(ctx, attrs);
+  }
+
+  ir::Attribute operator()(const paddle::blank& blank) override {
+    VLOG(10) << "translating paddle::blank to int64[]";
+    return ir::ArrayAttribute::get(ctx, {});
   }
 };
 

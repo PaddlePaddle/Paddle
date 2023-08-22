@@ -347,13 +347,14 @@
 - name : set_value
   inputs:
     - {typename: Tensor, name: x, optional: false, no_need_buffer: false, data_transform: {} }
-    - {typename: Tensor, name: starts, optional: false, no_need_buffer: false, data_transform: {} }
-    - {typename: Tensor, name: ends, optional: false, no_need_buffer: false, data_transform: {} }
-    - {typename: Tensor, name: steps, optional: false, no_need_buffer: false, data_transform: {} }
   attrs:
+    - {typename: 'int64_t[]', name: starts}
+    - {typename: 'int64_t[]', name: ends}
+    - {typename: 'int64_t[]', name: steps}
     - {typename: 'int64_t[]', name: axes}
     - {typename: 'int64_t[]', name: decrease_axes}
     - {typename: 'int64_t[]', name: none_axes}
+    - {typename: 'int64_t[]', name: shapes}
     - {typename: 'Scalar[]', name: values}
   outputs:
     - {typename: Tensor, name: out, optional: false, intermediate: false}
@@ -362,7 +363,7 @@
     param: [x]
   kernel:
     func: [set_value]
-    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, values]
+    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shapes, values]
   inplace: null
   backward: null
 
@@ -370,10 +371,10 @@
   inputs:
     - {typename: Tensor, name: x, optional: false, no_need_buffer: false, data_transform: {} }
     - {typename: Tensor, name: values, optional: false, no_need_buffer: false, data_transform: {} }
-    - {typename: Tensor, name: starts, optional: false, no_need_buffer: false, data_transform: {} }
-    - {typename: Tensor, name: ends, optional: false, no_need_buffer: false, data_transform: {} }
-    - {typename: Tensor, name: steps, optional: false, no_need_buffer: false, data_transform: {} }
   attrs:
+    - {typename: 'int64_t[]', name: starts}
+    - {typename: 'int64_t[]', name: ends}
+    - {typename: 'int64_t[]', name: steps}
     - {typename: 'int64_t[]', name: axes}
     - {typename: 'int64_t[]', name: decrease_axes}
     - {typename: 'int64_t[]', name: none_axes}
@@ -385,5 +386,28 @@
   kernel:
     func: [set_value_with_tensor]
     param: [x, values, starts, ends, steps, axes, decrease_axes, none_axes]
+  inplace: null
+  backward: null
+
+
+- name : set_value_grad
+  inputs:
+    - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false, data_transform: {} }
+  attrs:
+    - {typename: 'int64_t[]', name: starts}
+    - {typename: 'int64_t[]', name: ends}
+    - {typename: 'int64_t[]', name: steps}
+    - {typename: 'int64_t[]', name: axes}
+    - {typename: 'int64_t[]', name: decrease_axes}
+    - {typename: 'int64_t[]', name: none_axes}
+  outputs:
+    - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+    - {typename: Tensor, name: value_grad, optional: false, intermediate: false}
+  infer_meta:
+    func: SetValueInferMeta
+    param: [x]
+  kernel:
+    func: [set_value]
+    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shapes, values]
   inplace: null
   backward: null
