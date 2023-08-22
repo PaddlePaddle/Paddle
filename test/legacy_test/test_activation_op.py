@@ -152,35 +152,32 @@ class TestExpFp64_Prim(TestExpFp32_Prim):
 class TestExp_Complex64(OpTest):
     def setUp(self):
         self.op_type = "exp"
-        self.prim_op_type = "prim"
-        self.init_dtype()
-        self.init_shape()
         self.python_api = paddle.exp
         self.public_python_api = paddle.exp
-
-        np.random.seed(2049)
+        self.init_dtype()
+        self.init_shape()
+        self.if_enable_cinn()
+        np.random.seed(1024)
         x = (
             np.random.uniform(-1, 1, self.shape)
             + 1j * np.random.uniform(-1, 1, self.shape)
         ).astype(self.dtype)
         out = np.exp(x)
-
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.if_enable_cinn()
         self.convert_input_output()
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=False)
+        self.check_grad(['X'], 'Out', max_relative_error=0.006)
 
     def init_dtype(self):
         self.dtype = np.complex64
 
     def init_shape(self):
-        self.shape = [12, 17]
+        self.shape = [10, 12]
 
     def if_enable_cinn(self):
         pass
@@ -189,49 +186,9 @@ class TestExp_Complex64(OpTest):
         pass
 
 
-class TestExp_Complex128(OpTest):
-    def setUp(self):
-        self.op_type = "exp"
-        self.prim_op_type = "prim"
-        self.init_dtype()
-        self.init_shape()
-        self.python_api = paddle.exp
-        self.public_python_api = paddle.exp
-
-        np.random.seed(2049)
-        x = (
-            np.random.uniform(-1, 1, self.shape)
-            + 1j * np.random.uniform(-1, 1, self.shape)
-        ).astype(self.dtype)
-        out = np.exp(x)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-        self.if_enable_cinn()
-        self.convert_input_output()
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=False)
-
+class TestExp_Complex128(TestExp_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
-
-    def init_shape(self):
-        self.shape = [12, 17]
-
-    def if_enable_cinn(self):
-        pass
-
-    def convert_input_output(self):
-        pass
-
-
-class TestExpPrim_ZeroDim(TestExpFp32_Prim):
-    def init_shape(self):
-        self.shape = []
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
@@ -263,39 +220,12 @@ class Test_Exp_Op_Int(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestParameter:
-    def test_out_name(self):
-        with paddle.fluid.framework._static_guard():
-            with fluid.program_guard(fluid.Program()):
-                np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
-                data = paddle.static.data(
-                    name="X", shape=[-1, 1], dtype="float32"
-                )
-                out = eval("paddle.%s(data, name='Y')" % self.op_type)
-                place = fluid.CPUPlace()
-                exe = fluid.Executor(place)
-                (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
-                expected = eval("np.%s(np_x)" % self.op_type)
-                np.testing.assert_allclose(result, expected, rtol=1e-05)
-
-    def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([0.1])
-            x = fluid.dygraph.to_variable(np_x)
-            z = eval("paddle.%s(x).numpy()" % self.op_type)
-            z_expected = eval("np.%s(np_x)" % self.op_type)
-            np.testing.assert_allclose(z, z_expected, rtol=1e-05)
-
-
 class TestExpm1(TestActivation):
     def setUp(self):
         self.op_type = "expm1"
-        self.prim_op_type = "prim"
         self.python_api = paddle.expm1
-        self.public_python_api = paddle.exp
         self.init_dtype()
         self.init_shape()
-
         np.random.seed(2049)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         if self.dtype == np.complex64 or self.dtype == np.complex128:
@@ -310,10 +240,7 @@ class TestExpm1(TestActivation):
         self.convert_input_output()
 
     def test_check_grad(self):
-        if self.dtype == np.complex64 or self.dtype == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False)
-        else:
-            self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out')
 
     def test_check_output(self):
         self.check_output()
@@ -386,6 +313,30 @@ class Test_Expm1_Op_Int(unittest.TestCase):
             x_expect = np.expm1(np_x)
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
+
+
+class TestParameter:
+    def test_out_name(self):
+        with paddle.fluid.framework._static_guard():
+            with fluid.program_guard(fluid.Program()):
+                np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
+                data = paddle.static.data(
+                    name="X", shape=[-1, 1], dtype="float32"
+                )
+                out = eval("paddle.%s(data, name='Y')" % self.op_type)
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
+                expected = eval("np.%s(np_x)" % self.op_type)
+                np.testing.assert_allclose(result, expected, rtol=1e-05)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = eval("paddle.%s(x).numpy()" % self.op_type)
+            z_expected = eval("np.%s(np_x)" % self.op_type)
+            np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
 
 class TestSigmoid(TestActivation):

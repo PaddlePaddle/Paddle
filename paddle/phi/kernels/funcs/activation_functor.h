@@ -97,25 +97,6 @@ struct Cosine<dtype::bfloat16> {
 };
 
 template <typename T>
-struct Exp {
-  HOSTDEVICE T operator()(const T& val) const { return exp(val); }
-};
-
-template <>
-struct Exp<dtype::float16> {
-  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
-    return dtype::float16(exp(static_cast<float>(val)));
-  }
-};
-
-template <>
-struct Exp<dtype::bfloat16> {
-  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
-    return dtype::bfloat16(exp(static_cast<float>(val)));
-  }
-};
-
-template <typename T>
 using ComplexType = phi::dtype::complex<T>;
 
 // T is phi::dtype::complex<float> or phi::dtype::complex<double>
@@ -1194,12 +1175,35 @@ struct ExpGradFunctor<ComplexType<T>>
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    dx.device(d) =
-        dout * x.unaryExpr(Exp<ComplexType<T>>()).unaryExpr(Conj<T>());
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * out.unaryExpr(Conj<T>());
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct Expm1 {
+  HOSTDEVICE T operator()(const T& val) const {
+    return exp(val) - static_cast<T>(1);
+  }
+};
+
+template <>
+struct Expm1<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+    return dtype::float16(exp(static_cast<float>(val)) - static_cast<float>(1));
+  }
+};
+
+template <>
+struct Expm1<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(exp(static_cast<float>(val)) -
+                           static_cast<float>(1));
+  }
 };
 
 // expm1(x) = e^x - 1
@@ -1210,6 +1214,15 @@ struct Expm1Functor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.template cast<U>().expm1();
+  }
+};
+
+template <typename T>
+struct Expm1Functor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Expm1<ComplexType<T>>()).eval();
   }
 };
 
@@ -1237,12 +1250,11 @@ struct Expm1GradFunctor<ComplexType<T>>
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    dx.device(d) =
-        dout * x.unaryExpr(Exp<ComplexType<T>>()).unaryExpr(Conj<T>());
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * out.unaryExpr(Conj<T>()) + dout;
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 // relu(x) = max(x, 0)
@@ -2926,7 +2938,9 @@ struct CudaExpGradFunctor<ComplexType<T>>
     return static_cast<ComplexType<T>>(dout * conj(out));
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
@@ -2987,10 +3001,12 @@ struct CudaExpm1GradFunctor<ComplexType<T>>
   // dx = dout * exp(x)
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> out) const {
-    return static_cast<ComplexType<T>>(dout * conj(out));
+    return static_cast<ComplexType<T>>(dout * conj(out) + dout);
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
 };
 
 template <typename T>
