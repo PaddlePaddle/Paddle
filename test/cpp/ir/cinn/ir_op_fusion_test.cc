@@ -51,7 +51,6 @@ TEST(IROpFusionPass, demo) {
   auto add = builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]);
   builder.Build<paddle::dialect::ReluOp>(add.result(0));
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   ASSERT_EQ(res.size(), 1u);
@@ -69,15 +68,11 @@ TEST(IROpFusionPass, ElementWise_Fusion_0) {
   ::ir::Program program(ctx);
   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  // E = A + B
-  // F = E + C
-  // G = E + D
   auto e =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
   auto f = builder.Build<paddle::dialect::AddOp>(e, inputs[2]).result(0);
   builder.Build<paddle::dialect::AddOp>(f, inputs[2]);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -98,9 +93,6 @@ TEST(IROpFusionPass, Broadcast_Test_0) {
   ::ir::Program program(ctx);
   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  // E = A + B
-  // F = C + D
-  // G = F + E
   auto e =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
   auto f =
@@ -111,7 +103,6 @@ TEST(IROpFusionPass, Broadcast_Test_0) {
                 .result(0);
   builder.Build<paddle::dialect::AddOp>(e1, f);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -132,9 +123,6 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
   ::ir::Program program(ctx);
   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  // E = A + B
-  // F = C + E
-  // G = D + E
   auto e =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
   auto f = builder.Build<paddle::dialect::AddOp>(inputs[2], e).result(0);
@@ -144,7 +132,6 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
                 .result(0);
   builder.Build<paddle::dialect::AddOp>(inputs[3], e1);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -165,10 +152,6 @@ TEST(IROpFusionPass, Broadcast_Test_2) {
   ::ir::Program program(ctx);
   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  // F = A + B
-  // G = C + F
-  // H = D + F  // F need broadcast
-  // i = E + F  // F need broadcast
   auto f =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
   builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
@@ -179,7 +162,6 @@ TEST(IROpFusionPass, Broadcast_Test_2) {
   builder.Build<paddle::dialect::AddOp>(inputs[3], f1);
   builder.Build<paddle::dialect::AddOp>(inputs[4], f1);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -200,10 +182,6 @@ TEST(IROpFusionPass, reduce_test_0) {
   ::ir::Program program(ctx);
   ::ir::Builder builder = ::ir::Builder(ctx, program.block());
 
-  // F = A + B
-  // G = C + F
-  // H = D + F  // F need broadcast
-  // i = E + F  // F need broadcast
   std::vector<int64_t> axes{0};
   auto c =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
@@ -211,7 +189,6 @@ TEST(IROpFusionPass, reduce_test_0) {
   builder.Build<paddle::dialect::ReduceSumOp>(c, axes, true).result(0);
   builder.Build<paddle::dialect::ReduceSumOp>(c, axes, true).result(0);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -239,7 +216,6 @@ TEST(IROpFusionPass, reduce_test_1) {
   builder.Build<paddle::dialect::ReduceSumOp>(c, axes, true).result(0);
   builder.Build<paddle::dialect::ReduceSumOp>(c, axes1, true).result(0);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -253,15 +229,6 @@ TEST(IROpFusionPass, reduce_test_2) {
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ::ir::Program program_base(ctx);
   ::ir::Builder builder_base = ::ir::Builder(ctx, program_base.block());
-
-  // auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-  //   auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-  //   auto C = net_builder.CreateInput(Float(32), {w}, "C");
-  //   auto D = net_builder.Add(A, B);
-  //   auto E = net_builder.ReduceSum(D, {0});
-  //   auto F = net_builder.ReduceSum(D, {1});
-  //   auto G = net_builder.Add(C, E);
-  //   auto H = net_builder.Add(C, F);
 
   int h = 32, w = 32;
   auto inputs = BuildInput(&builder_base, {{h, w}, {h, w}, {w}});
@@ -280,7 +247,6 @@ TEST(IROpFusionPass, reduce_test_2) {
   builder.Build<paddle::dialect::AddOp>(inputs[2], e).result(0);
   builder.Build<paddle::dialect::AddOp>(inputs[2], f).result(0);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -315,7 +281,6 @@ TEST(IROpFusionPass, reduce_test_3) {
                 .result(0);
   builder.Build<paddle::dialect::AddOp>(inputs[2], f1).result(0);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -353,7 +318,6 @@ TEST(IROpFusionPass, reduce_test_4) {
                 .result(0);
   builder.Build<paddle::dialect::AddOp>(inputs[3], f2).result(0);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -382,7 +346,6 @@ TEST(IROpFusionPass, reduce_test_5) {
   builder.Build<paddle::dialect::ReduceSumOp>(inputs[1], axes, false).result(0);
   builder.Build<paddle::dialect::ReduceSumOp>(c, axes, false).result(0);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);
@@ -390,7 +353,7 @@ TEST(IROpFusionPass, reduce_test_5) {
   ASSERT_EQ(new_group.size(), 1u);
 }
 
-TEST(IROpFusionPass, softmax) {
+TEST(IROpFusionPass, layer_norm) {
   ::ir::IrContext* ctx = ::ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ::ir::Program program_base(ctx);
@@ -456,7 +419,6 @@ TEST(IROpFusionPass, softmax) {
   auto t5 = builder.Build<paddle::dialect::MultiplyOp>(t3, scale).result(0);
   builder.Build<paddle::dialect::MultiplyOp>(t5, bias).result(0);
 
-  program.Print(std::cout);
   auto res = ::ir::OpFusionPassInternal(program);
 
   auto new_group = ::ir::GeneralFusionMergePassInternal(&program, res);

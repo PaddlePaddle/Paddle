@@ -562,7 +562,6 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
 
   auto reducer_1_input_shape = GetValueShape(reducer_1->operand(0));
   auto reducer_1_output_shape = GetValueShape(reducer_1->result(0));
-  << reducer_1_output_shape << std::endl;
 
   // auto reducer_0_reduce_dim =
   //     absl::get<std::vector<int>>(reducer_0->attrs.attr_store.at("dim"));
