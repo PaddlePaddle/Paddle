@@ -752,8 +752,8 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
   }
   PADDLE_ENFORCE_NOT_NULL(
       op_info,
-      platform::errors::NotFound("Operator (%s) is not registered.",
-                                 fluid_op_name));
+      paddle::platform::errors::NotFound("Operator (%s) is not registered.",
+                                         fluid_op_name));
 
   auto ptr =
       op_info->Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);
