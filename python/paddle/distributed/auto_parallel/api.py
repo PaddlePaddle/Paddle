@@ -71,14 +71,32 @@ class DistAttr(core.TensorDistAttr):
 
     @property
     def process_mesh(self):
+        """
+        Get process_mesh of the dist_attr
+
+        Returns:
+            paddle.distributed.ProcessMesh: process_mesh
+        """
         return self._process_mesh
 
     @property
     def dims_mapping(self):
+        """
+        Get dims_mapping of the dist_attr
+
+        Returns:
+            list[int]: dims_mapping
+        """
         return self._dims_mapping
 
     @property
     def sharding_specs(self):
+        """
+        Get sharding_specs of the dist_attr
+
+        Returns:
+            list[str]: sharding_specs
+        """
         return self._sharding_specs
 
 
