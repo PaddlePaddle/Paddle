@@ -611,10 +611,18 @@ def save_distributed_checkpoint(
     Examples:
         .. code-block:: python
 
-            path = os.path.join("./output", "step_%d" % step)
-            os.makedirs(path, exist_ok=True)
-            add_info = {'batch': step, "batch_size": global_batch_size}
-            save_distributed_checkpoint(program, path, path, add_info)
+            >>> import os
+            >>> from paddle.distributed.auto_parallel.static.utils import save_distributed_checkpoint
+
+            >>> step = 16000
+            >>> global_batch_size = 32
+            >>> path = os.path.join("./output", "step_%d" % step)
+            >>> os.makedirs(path, exist_ok=True)
+            >>> program = paddle.static.Program()
+
+            >>> add_info = {'batch': step, "batch_size": global_batch_size}
+            >>> save_distributed_checkpoint(program, path, path, add_info)
+
     """
     from .dist_context import get_default_distributed_context
 
@@ -653,11 +661,18 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     Examples:
         .. code-block:: python
 
-            ckpt_path = ['./model_state_rank0.pdmodel',
-                         './model_state_rank1.pdmodel']
-            dist_attr_path = ['./dist_attr_rank0.pdattr',
-                              './dist_attr_rank1.pdattr']
-            param_dict, dist_attr, add_info = load_distributed_checkpoint(ckpt_path, dist_attr_path)
+            >>> # doctest: +SKIP('Depends on external files.')
+            >>> from paddle.distributed.auto_parallel.static.utils import load_distributed_checkpoint
+
+            >>> ckpt_path = [
+            ...     './model_state_rank0.pdmodel',
+            ...     './model_state_rank1.pdmodel',
+            ... ]
+            >>> dist_attr_path = [
+            ...     './dist_attr_rank0.pdattr',
+            ...     './dist_attr_rank1.pdattr',
+            ... ]
+            >>> param_dict, dist_attr, add_info = load_distributed_checkpoint(ckpt_path, dist_attr_path)
     """
     assert _check_valid_path(
         checkpoint_path
@@ -692,12 +707,19 @@ def load_checkpoint_into_program(
     Examples:
         .. code-block:: python
 
-            exe.run(startup_program)
-            ckpt_path = ['./model_state_rank0.pdmodel',
-                         './model_state_rank1.pdmodel']
-            dist_attr_path = ['./dist_attr_rank0.pdattr',
-                              './dist_attr_rank1.pdattr']
-            load_checkpoint_into_program(ckpt_path, dist_attr_path, main_program)
+            >>> # doctest: +SKIP('Depends on external files.')
+            >>> from paddle.distributed.auto_parallel.static.utils import load_checkpoint_into_program
+
+            >>> exe.run(startup_program)
+            >>> ckpt_path = [
+            ...     './model_state_rank0.pdmodel',
+            ...     './model_state_rank1.pdmodel',
+            ... ]
+            >>> dist_attr_path = [
+            ...     './dist_attr_rank0.pdattr',
+            ...     './dist_attr_rank1.pdattr',
+            ... ]
+            >>> load_checkpoint_into_program(ckpt_path, dist_attr_path, main_program)
     """
     from .dist_context import get_default_distributed_context
 
@@ -999,13 +1021,18 @@ def _merge_parameter(
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            partition_param_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
-            param = np.array([[[1.13, 1.14]]])
-            partition_index = [[0,1],[0,1],[2,4]]
+            >>> import numpy as np
+            >>> from paddle.distributed.auto_parallel.static.utils import _merge_parameter
 
-            _merge_parameter(partition_param_list, param, partition_index)
-            # partition_param_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
+            >>> partition_param_list = [(np.array([[[1.11, 1.12]]]), [[0, 1],[0, 1],[0, 2]])]
+            >>> param = np.array([[[1.13, 1.14]]])
+            >>> partition_index = [[0, 1],[0, 1],[2, 4]]
+            >>> complete_shape = [2, 2, 4]
+
+            >>> _merge_parameter(partition_param_list, param, partition_index, complete_shape)
+            >>> print(partition_param_list)
+            [(array([[[1.11, 1.12, 1.13, 1.14]]]), [[0, 1],[0, 1],[0, 4]])]
+
     """
     from .reshard import Resharder
 
@@ -1061,16 +1088,20 @@ def _slice_parameter(complete_param, partition_index_list, length):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-            rank = 2
-            complete_shape = [1, 1, 6]
-            dims_mapping = [-1, -1, 0]
-            process_shape = [3]
-            process_group = [0, 1, 2]
+            >>> import numpy as np
+            >>> from paddle.distributed.auto_parallel.static.utils import _slice_parameter
 
-            sliced_param_list = _slice_parameter(complete_param, [[], [], [2, 4]], 3)
-            # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+            >>> complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+            >>> rank = 2
+            >>> complete_shape = [1, 1, 6]
+            >>> dims_mapping = [-1, -1, 0]
+            >>> process_shape = [3]
+            >>> process_group = [0, 1, 2]
+
+            >>> sliced_param_list = _slice_parameter(complete_param, [[], [], [2, 4]], 3)
+            >>> print(sliced_param_list)
+            [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+
     """
     sliced_param_list = []
     axis = len(complete_param.shape) - length
@@ -1098,21 +1129,24 @@ def _get_sliced_param_index(
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-            rank = 2
-            complete_shape = [1, 1, 6]
-            dims_mapping = [-1, -1, 0]
-            process_shape = [3]
-            process_group = [0, 1, 2]
+            >>> import numpy as np
+            >>> from paddle.distributed.auto_parallel.static.utils import _get_sliced_param_index
 
-            slice_param = _slice_parameter(complete_param, [[], [], [2, 4]], 3)
-            # slice_param:
-            # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+            >>> complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+            >>> rank = 2
+            >>> complete_shape = [1, 1, 6]
+            >>> dims_mapping = [-1, -1, 0]
+            >>> process_shape = [3]
+            >>> process_group = [0, 1, 2]
 
-            index = _get_sliced_param_index(rank, complete_shape, dims_mapping
-                                            process_shape, process_group)
-            # index: 2
+            >>> slice_param = _slice_parameter(complete_param, [[], [], [2, 4]], 3)
+            >>> print(slice_param)
+            [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+
+            >>> index = _get_sliced_param_index(rank, complete_shape, dims_mapping,
+            ...                                 process_shape, process_group)
+            >>> print(index)
+            2
     """
     from .reshard import Resharder
 
@@ -1145,15 +1179,18 @@ def _get_split_indices(
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-            complete_shape = [1, 1, 6]
-            dims_mapping = [-1, -1, 0]
-            process_shape = [3]
-            process_group = [0, 1, 2]
+            >>> import numpy as np
+            >>> from paddle.distributed.auto_parallel.static.utils import _get_split_indices
 
-            index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
-            # index: [[], [], [2, 4]]
+            >>> complete_param = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+            >>> complete_shape = [1, 1, 6]
+            >>> dims_mapping = [-1, -1, 0]
+            >>> process_shape = [3]
+            >>> process_group = [0, 1, 2]
+
+            >>> index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
+            >>> print(index)
+            [[], [], [2, 4]]
     """
     from .reshard import Resharder
 
@@ -2410,19 +2447,26 @@ def wrap_data_for_completion(
       output_specs: list, DistTensorSpec for each output tensor of the dist_op
       attrs: dict, attribute map of the dist op
 
-    Usage:
-      op_desc = dist_op.serial_op.desc
-      input_name_list = []
-      output_name_list = []
-      input_name_list.append(op_desc.input('X')[0]) # 'X' is the arg name for op
-      input_name_list.append(op_desc.input('Y')[0])
-      output_name_list.append(op_desc.output('Out')[0])
-      attr_name_list = ['trans_x', 'trans_y']
-      input_specs, output_specs, attrs = wrap_data_for_completion(
-          dist_op,
-          input_name_list,
-          output_name_list,
-          attr_name_list)
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('Depends on other ops.')
+            >>> from paddle.distributed.auto_parallel.static.utils import wrap_data_for_completion
+
+            >>> op_desc = dist_op.serial_op.desc
+            >>> input_name_list = []
+            >>> output_name_list = []
+
+            >>> input_name_list.append(op_desc.input('X')[0]) # 'X' is the arg name for op
+            >>> input_name_list.append(op_desc.input('Y')[0])
+            >>> output_name_list.append(op_desc.output('Out')[0])
+
+            >>> attr_name_list = ['trans_x', 'trans_y']
+            >>> input_specs, output_specs, attrs = wrap_data_for_completion(
+            ...        dist_op,
+            ...        input_name_list,
+            ...        output_name_list,
+            ...        attr_name_list)
 
     """
 
