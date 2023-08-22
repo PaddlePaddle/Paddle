@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed.auto_parallel.interface import (
+    shard_tensor as shard_tensor_static,
+)
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.framework import core
 
@@ -55,6 +58,7 @@ class DistAttr(core.TensorDistAttr):
             for dim_name in sharding_specs
         ), 'The dimension name in sharding_specs must be an instance of str.'
 
+        self._sharding_specs = sharding_specs
         dims_mapping = [
             mesh.dim_names.index(dim_name) if dim_name is not None else -1
             for dim_name in sharding_specs
@@ -62,8 +66,20 @@ class DistAttr(core.TensorDistAttr):
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
-        self.process_mesh = mesh
-        self.dims_mapping = dims_mapping
+        self._process_mesh = mesh
+        self._dims_mapping = dims_mapping
+
+    @property
+    def process_mesh(self):
+        return self._process_mesh
+
+    @property
+    def dims_mapping(self):
+        return self._dims_mapping
+
+    @property
+    def sharding_specs(self):
+        return self._sharding_specs
 
 
 def shard_tensor(
@@ -121,6 +137,7 @@ def shard_tensor(
     if paddle.in_dynamic_mode():
         return paddle.Tensor(data, dist_attr=dist_attr)
     else:
-        raise NotImplementedError(
-            "The `paddle.distributed.shard_tensor` for static mode will be implemented later."
+        # TODO(zhiqiu): we need to refine the static shard_tensor
+        shard_tensor_static(
+            data, dist_attr.process_mesh, dist_attr.sharding_specs
         )
