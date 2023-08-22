@@ -408,7 +408,7 @@ def get_available_custom_device():
 
 
 class Event:
-    """
+    '''
     A device event wrapper around StreamBase.
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
@@ -421,18 +421,15 @@ class Event:
         Event: The event.
     Examples:
         .. code-block:: python
+            # required: custom_device
+            import paddle
 
-            >>> # doctest: +SKIP('raise OSError')
-            >>> # +REQUIRES(env:CUSTOM_DEVICE)
-
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> e1 = paddle.device.Event()
-            >>> e2 = paddle.device.Event('custom_cpu')
-            >>> e3 = paddle.device.Event('custom_cpu:0')
-            >>> e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
-    """
+            paddle.set_device('custom_cpu')
+            e1 = paddle.device.Event()
+            e2 = paddle.device.Event('custom_cpu')
+            e3 = paddle.device.Event('custom_cpu:0')
+            e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
+    '''
 
     def __init__(
         self,
@@ -470,7 +467,7 @@ class Event:
             )
 
     def record(self, stream=None):
-        """
+        '''
         Records the event in a given stream.
         Parameters:
             stream(Stream, optional): The given stream. By default, stream is None,
@@ -479,64 +476,61 @@ class Event:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
+                paddle.set_device('custom_cpu')
+                e = paddle.device.Event()
+                e.record()
 
-                >>> paddle.set_device('custom_cpu')
-                >>> e = paddle.device.Event()
-                >>> e.record()
-
-                >>> s = paddle.device.Stream()
-                >>> e.record(s)
-        """
+                s = paddle.device.Stream()
+                e.record(s)
+        '''
         if stream is None:
             stream = current_stream(self.device)
 
         self.event_base.record(stream.stream_base)
 
     def query(self):
-        """
+        '''
         Checks if all work currently captured by event has completed.
         Returns:
             bool: Whether all work currently captured by event has completed.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> e = paddle.device.Event()
-                >>> e.record()
-                >>> e.query()
-        """
+                paddle.set_device('custom_cpu')
+                e = paddle.device.Event()
+                e.record()
+                e.query()
+        '''
         return self.event_base.query()
 
     def elapsed_time(self, end_event):
-        """
+        '''
         Returns the time elapsed in milliseconds after the event was
         recorded and before the end_event was recorded.
         Returns:
             int: The time.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
+                paddle.set_device('custom_cpu')
+                e1 = paddle.device.Event()
+                e1.record()
 
-                >>> paddle.set_device('custom_cpu')
-                >>> e1 = paddle.device.Event()
-                >>> e1.record()
-
-                >>> e2 = paddle.device.Event()
-                >>> e2.record()
-                >>> e1.elapsed_time(e2)
-        """
+                e2 = paddle.device.Event()
+                e2.record()
+                e1.elapsed_time(e2)
+        '''
         return 0
 
     def synchronize(self):
-        """
+        '''
         Waits for the event to complete.
         Waits until the completion of all work currently captured in this event.
         This prevents the CPU thread from proceeding until the event completes.
@@ -544,16 +538,14 @@ class Event:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +SKIP('raise OSError')
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> e = paddle.device.Event()
-                >>> e.record()
-                >>> e.synchronize()
-        """
+                paddle.set_device('custom_cpu')
+                e = paddle.device.Event()
+                e.record()
+                e.synchronize()
+        '''
         self.event_base.synchronize()
 
     def __repr__(self):
@@ -561,7 +553,7 @@ class Event:
 
 
 class Stream:
-    """
+    '''
     A device stream wrapper around StreamBase.
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
@@ -574,17 +566,15 @@ class Stream:
         Stream: The stream.
     Examples:
         .. code-block:: python
+            # required: custom_device
+            import paddle
 
-            >>> # doctest: +SKIP('raise OSError')
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> s1 = paddle.device.Stream()
-            >>> s2 = paddle.device.Stream('custom_cpu')
-            >>> s3 = paddle.device.Stream('custom_cpu:0')
-            >>> s4 = paddle.device.Stream(paddle.CustomPlace('custom_cpu', 0))
-    """
+            paddle.set_device('custom_cpu')
+            s1 = paddle.device.Stream()
+            s2 = paddle.device.Stream('custom_cpu')
+            s3 = paddle.device.Stream('custom_cpu:0')
+            s4 = paddle.device.Stream(paddle.CustomPlace('custom_cpu', 0))
+    '''
 
     def __init__(self, device=None, priority=2, stream_base=None):
         if stream_base is not None:
@@ -627,7 +617,7 @@ class Stream:
             )
 
     def wait_event(self, event):
-        """
+        '''
         Makes all future work submitted to the stream wait for an event.
         Parameters:
             event (Event): an event to wait for.
@@ -635,21 +625,20 @@ class Stream:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> s1 = paddle.device.Stream()
-                >>> s2 = paddle.device.Stream()
-                >>> e = paddle.device.Event()
-                >>> e.record(s1)
-                >>> s2.wait_event(e)
-        """
+                paddle.set_device('custom_cpu')
+                s1 = paddle.device.Stream()
+                s2 = paddle.device.Stream()
+                e = paddle.device.Event()
+                e.record(s1)
+                s2.wait_event(e)
+        '''
         self.stream_base.wait_event(event.event_base)
 
     def wait_stream(self, stream):
-        """
+        '''
         Synchronizes with another stream.
         All future work submitted to this stream will wait until all kernels
         submitted to a given stream at the time of call complete.
@@ -659,19 +648,18 @@ class Stream:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> s1 = paddle.device.Stream()
-                >>> s2 = paddle.device.Stream()
-                >>> s1.wait_stream(s2)
-        """
+                paddle.set_device('custom_cpu')
+                s1 = paddle.device.Stream()
+                s2 = paddle.device.Stream()
+                s1.wait_stream(s2)
+        '''
         self.stream_base.wait_stream(stream.stream_base)
 
     def record_event(self, event=None):
-        """
+        '''
         Records an event.
         Parameters:
             event (Event, optional): event to record. If not given, a new one
@@ -680,55 +668,51 @@ class Stream:
             Event: Recorded event.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
+                paddle.set_device('custom_cpu')
+                s = paddle.device.Stream()
+                e1 = s.record_event()
 
-                >>> paddle.set_device('custom_cpu')
-                >>> s = paddle.device.Stream()
-                >>> e1 = s.record_event()
-
-                >>> e2 = paddle.device.Event()
-                >>> s.record_event(e2)
-        """
+                e2 = paddle.device.Event()
+                s.record_event(e2)
+        '''
         if event is None:
             event = Event(self.device)
         event.record(self)
         return event
 
     def query(self):
-        """
+        '''
         Checks if all the work submitted has been completed.
         Returns:
             bool: Whether all kernels in this stream are completed.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> s = paddle.device.Stream()
-                >>> s.query()
-        """
+                paddle.set_device('custom_cpu')
+                s = paddle.device.Stream()
+                s.query()
+        '''
         return self.stream_base.query()
 
     def synchronize(self):
-        """
+        '''
         Wait for all the kernels in this stream to complete.
         Returns:
             None.
         Examples:
             .. code-block:: python
+                # required: custom_device
+                import paddle
 
-                >>> # doctest: +SKIP('raise OSError')
-                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-                >>> import paddle
-
-                >>> paddle.set_device('custom_cpu')
-                >>> s = paddle.device.Stream()
-                >>> s.synchronize()
-        """
+                paddle.set_device('custom_cpu')
+                s = paddle.device.Stream()
+                s.synchronize()
+        '''
         self.stream_base.synchronize()
 
     @property
@@ -753,7 +737,7 @@ class Stream:
 
 
 def current_stream(device=None):
-    """
+    '''
     Return the current stream by the device.
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): The device which want to get stream from.  If device is None, the device is the current device. Default: None.
@@ -763,17 +747,15 @@ def current_stream(device=None):
         Stream: The stream to the device.
     Examples:
         .. code-block:: python
+            # required: custom_device
+            import paddle
 
-            >>> # doctest: +SKIP('raise OSError')
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> s1 = paddle.device.current_stream()
-            >>> s2 = paddle.device.current_stream("custom_cpu:0")
-            >>> place = paddle.CustomPlace('custom_cpu', 0)
-            >>> s3 = paddle.device.current_stream(place)
-    """
+            paddle.set_device('custom_cpu')
+            s1 = paddle.device.current_stream()
+            s2 = paddle.device.current_stream("custom_cpu:0")
+            place = paddle.CustomPlace('custom_cpu', 0)
+            s3 = paddle.device.current_stream(place)
+    '''
     if device is None:
         place = paddle.framework._current_expected_place()
     elif isinstance(device, str):
@@ -800,7 +782,7 @@ def current_stream(device=None):
 
 
 def set_stream(stream):
-    """
+    '''
     Set the current stream.
     Parameters:
         stream(Stream): The selected stream.
@@ -808,14 +790,13 @@ def set_stream(stream):
         Stream: The previous stream.
     Examples:
         .. code-block:: python
+            # required: custom_device
+            import paddle
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> s = paddle.device.Stream()
-            >>> paddle.device.set_stream(s)
-    """
+            paddle.set_device('custom_cpu')
+            s = paddle.device.Stream()
+            paddle.device.set_stream(s)
+    '''
 
     prev_stream = current_stream(stream.stream_base.place)
 
@@ -840,7 +821,7 @@ def set_stream(stream):
 
 
 class stream_guard:
-    """
+    '''
     Notes:
         This API only supports dynamic graph mode currently.
     A context manager that specifies the current stream context by the given stream.
@@ -850,19 +831,18 @@ class stream_guard:
         None.
     Examples:
         .. code-block:: python
+            # required: custom_device
+            import paddle
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> s = paddle.device.Stream()
-            >>> data1 = paddle.ones(shape=[20])
-            >>> data2 = paddle.ones(shape=[20])
-            >>> data3 = data1 + data2
-            >>> with paddle.device.stream_guard(s):
-            ...    s.wait_stream(paddle.device.default_stream())
-            ...    data4 = data1 + data3
-    """
+            paddle.set_device('custom_cpu')
+            s = paddle.device.Stream()
+            data1 = paddle.ones(shape=[20])
+            data2 = paddle.ones(shape=[20])
+            data3 = data1 + data2
+            with paddle.device.stream_guard(s):
+                s.wait_stream(paddle.device.default_stream())
+                data4 = data1 + data3
+    '''
 
     def __init__(self, stream=None):
         self.stream = stream
@@ -904,7 +884,6 @@ def synchronize(device=None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP('raise OSError')
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
 
