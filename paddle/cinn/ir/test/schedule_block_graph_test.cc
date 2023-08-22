@@ -173,6 +173,50 @@ TEST(ScheduleBlockGraph, reduce) {
   }
   CHECK_EQ(dfs_topo_order_ids.size(), 8);
 }
+
+TEST(ScheduleBlockGraph, arg_max) {
+  frontend::NetBuilder builder("net_builder");
+  auto x = builder.CreateInput(Float(32), {8, 16}, "X");
+  auto y = builder.Argmax(x, 0);
+  frontend::Program program = builder.Build();
+
+  IRSchedule ir_sch = MakeIRSchedule(&program);
+  ScheduleBlockGraph sbg(ir_sch);
+  LOG(INFO) << GetIR(ir_sch);
+  LOG(INFO) << sbg.Visualize();
+  CHECK_EQ(sbg.BlockIdsInOrder().size(), 3);
+  CHECK_EQ(sbg.nodes().size(), 3);
+
+  ScheduleBlockNode* v0_idx = sbg.RetrieveNode("var_0_index");
+  CHECK(v0_idx);
+  CHECK_EQ(v0_idx->UpstreamNodes().size(), 1);
+  CHECK_EQ(v0_idx->DownstreamNodes().size(), 1);
+
+  ScheduleBlockNode* v0 = sbg.RetrieveNode("var_0");
+  CHECK(v0);
+  CHECK_EQ(v0->UpstreamNodes().size(), 2);
+  CHECK_EQ(v0->DownstreamNodes().size(), 0);
+
+  std::vector<std::string> reverse_dfs_topo_order_ids;
+  sbg.DFSTopoWalk([&reverse_dfs_topo_order_ids](const ScheduleBlockNode* node) {
+    reverse_dfs_topo_order_ids.push_back(node->id());
+  });
+  for (const std::string& id : reverse_dfs_topo_order_ids) {
+    LOG(INFO) << id;
+  }
+  CHECK_EQ(reverse_dfs_topo_order_ids.size(), 3);
+
+  std::vector<std::string> dfs_topo_order_ids;
+  sbg.DFSTopoWalk(
+      [&dfs_topo_order_ids](const ScheduleBlockNode* node) {
+        dfs_topo_order_ids.push_back(node->id());
+      },
+      false);
+  for (const std::string& id : dfs_topo_order_ids) {
+    LOG(INFO) << id;
+  }
+  CHECK_EQ(dfs_topo_order_ids.size(), 3);
+}
 #endif
 
 }  // namespace ir

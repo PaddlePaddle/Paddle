@@ -873,7 +873,7 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
                                ->name;
   ir::CollectIRNodesWithoutTensor(
       compute_body, [&producer_tensor_names, &block_name](const Expr* x) {
-        auto* load = x->As<ir::Load>();
+        const ir::Load* load = x->As<ir::Load>();
         if (load) {
           producer_tensor_names.insert(load->tensor.as_tensor()->name);
           if (load->tensor.as_tensor()->name == block_name) {
@@ -881,6 +881,16 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
                 GenReduceInitTensorNameOf(load->tensor.as_tensor()->name));
           }
           return true;
+        }
+        const ir::Store* store = x->As<ir::Store>();
+        if (store && store->value.As<ir::Call>()) {
+          const std::vector<ir::Expr>& read_args =
+              store->value.As<ir::Call>()->read_args;
+          for (const ir::Expr& arg : read_args) {
+            if (arg.as_tensor()) {
+              producer_tensor_names.insert(arg.as_tensor_ref()->name);
+            }
+          }
         }
         return false;
       });
@@ -932,13 +942,23 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
     auto block_body = i.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
-    auto find_load =
+    auto find_load_or_call =
         ir::CollectIRNodesWithoutTensor(block_body, [&](const Expr* x) {
+          if (x->As<ir::Store>() && x->As<ir::Store>()->value.As<ir::Call>()) {
+            const std::vector<ir::Expr>& read_args =
+                x->As<ir::Store>()->value.As<ir::Call>()->read_args;
+            for (const ir::Expr& arg : read_args) {
+              if (arg.as_tensor() &&
+                  arg.as_tensor_ref()->name == block_tensor) {
+                return true;
+              }
+            }
+          }
           return x->As<ir::Load>() &&
                  x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
                      block_tensor;
         });
-    if (!find_load.empty()) consumers.emplace_back(i);
+    if (!find_load_or_call.empty()) consumers.emplace_back(i);
   }
   return consumers;
 }
