@@ -66,7 +66,7 @@ static std::unordered_set<api::OpNode> GetInputOps(const OpGroupPtr& op_group) {
     // const auto& input_tensors = op.inputs();
     auto* ir_op = op.Op();
     for (size_t i = 0; i < ir_op->num_operands(); ++i) {
-      auto in = ir_op->operand(i);
+      auto in = ir_op->operand_source(i);
       if (in) {
         if (!ops_set.count(in.GetDefiningOp())) {
           input_ops.insert(api::OpNode(in.GetDefiningOp()));
@@ -217,12 +217,12 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
 
   // check reduce has same input shape and output shape
   const auto& reducer_0_input_shape =
-      GetValueShape(reducer_0->Op()->operand(0));
+      GetValueShape(reducer_0->Op()->operand_source(0));
   const auto& reducer_0_output_shape =
       GetValueShape(reducer_0->Op()->result(0));
 
   const auto& reducer_1_input_shape =
-      GetValueShape(reducer_1->Op()->operand(0));
+      GetValueShape(reducer_1->Op()->operand_source(0));
   const auto& reducer_1_output_shape =
       GetValueShape(reducer_1->Op()->result(0));
 

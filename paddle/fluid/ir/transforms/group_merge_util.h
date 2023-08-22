@@ -21,8 +21,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
@@ -237,7 +237,7 @@ inline bool elementwise_fuse_reduce(
   //   return false;
   // }
 
-  auto input_shape = GetValueShape(reducer->operand(0));
+  auto input_shape = GetValueShape(reducer->operand_source(0));
   std::vector<int> reduce_axes = GetVectorAttr<int>(reducer, "axis");
 
   // int max_num_threads = helper->target_.max_num_threads();
@@ -295,7 +295,7 @@ inline bool broadcast_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
   }
   // CHECK(reducer) << "Can't find reduce op in group " << second->group_id;
 
-  auto input_shape = GetValueShape(reducer->operand(0));
+  auto input_shape = GetValueShape(reducer->operand_source(0));
   auto input_size = phi::product(input_shape);
 
   auto output_shape = GetValueShape((*first->master_nodes.begin())->result(0));
@@ -357,7 +357,7 @@ inline bool horizontal_relation(const std::shared_ptr<::ir::Group>& first,
       // visit all producer node
       // Get all the input Op
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto producer = candidate->operand(i).GetDefiningOp();
+        auto producer = candidate->operand_source(i).GetDefiningOp();
         // check dependency.
         if (first_set.count(producer)) {
           return true;
@@ -430,7 +430,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<::ir::Group>& first,
     // First type conditions
     // Get some reduce information
     auto reducer_input_shape =
-        phi::vectorize(GetValueShape(reducer->operand(0)));
+        phi::vectorize(GetValueShape(reducer->operand_source(0)));
     auto reducer_output_shape =
         phi::vectorize(GetValueShape(reducer->result(0)));
     std::vector<int64_t> reduce_axes = GetVectorAttr(reducer, "axis");
@@ -557,10 +557,10 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
   }
   CHECK(reducer_1) << "Can't find reduce op in group " << second->group_id;
   // check reduce has same input shape and output shape
-  auto reducer_0_input_shape = GetValueShape(reducer_0->operand(0));
+  auto reducer_0_input_shape = GetValueShape(reducer_0->operand_source(0));
   auto reducer_0_output_shape = GetValueShape(reducer_0->result(0));
 
-  auto reducer_1_input_shape = GetValueShape(reducer_1->operand(0));
+  auto reducer_1_input_shape = GetValueShape(reducer_1->operand_source(0));
   auto reducer_1_output_shape = GetValueShape(reducer_1->result(0));
 
   // auto reducer_0_reduce_dim =

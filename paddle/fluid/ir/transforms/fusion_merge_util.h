@@ -21,8 +21,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
@@ -270,12 +270,12 @@ inline bool reduce_fuse_reduce(const Operation* producer,
   }
   // check reduce has same input shape and output shape
   auto producer_input_shape =
-      phi::vectorize<int64_t>(GetValueShape(producer->operand(0)));
+      phi::vectorize<int64_t>(GetValueShape(producer->operand_source(0)));
   auto producer_output_shape =
       phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
 
   auto reducer_input_shape =
-      phi::vectorize<int64_t>(GetValueShape(reducer->operand(0)));
+      phi::vectorize<int64_t>(GetValueShape(reducer->operand_source(0)));
   auto reducer_output_shape =
       phi::vectorize<int64_t>(GetValueShape(reducer->result(0)));
 
@@ -334,7 +334,7 @@ inline bool is_horizontal_relation(const Operation* producer,
       candidates.pop();
       // visit all producer node
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto tmp_node = candidate->operand(i).GetDefiningOp();
+        auto tmp_node = candidate->operand_source(i).GetDefiningOp();
         // check depency.
         if (producer == tmp_node) {
           return true;
@@ -515,7 +515,7 @@ inline bool reduce_fuse_broadcast(const Operation* producer,
       candidates.pop();
 
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto producer = candidate->operand(i).GetDefiningOp();
+        auto producer = candidate->operand_source(i).GetDefiningOp();
         if (producer == reducer) {
           return true;
         }

@@ -1858,8 +1858,8 @@ class GeneralFusionMergePassHelper {
         auto consumer_output_shape = phi::vectorize(
             GetValueShape((*consumer->output_nodes.begin())->result(0)));
 
-        auto consumer_master_input_shape = phi::vectorize(
-            GetValueShape((*(consumer->master_nodes.begin()))->operand(0)));
+        auto consumer_master_input_shape = phi::vectorize(GetValueShape(
+            (*(consumer->master_nodes.begin()))->operand_source(0)));
 
         int producer_output_numel =
             std::accumulate(producer_output_shape.begin(),
@@ -2043,7 +2043,7 @@ class GeneralFusionMergePassHelper {
       for (auto& node : group->nodes_set) {
         // collect producer node data.
         for (size_t i = 0; i < node->num_operands(); ++i) {
-          auto in = node->operand(i);
+          auto in = node->operand_source(i);
           if (in) {
             input_to_consumers_[in].insert(group);
           }

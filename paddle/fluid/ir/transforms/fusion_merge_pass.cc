@@ -165,7 +165,7 @@ class OpFusionPassHelper {
         // input node
 
         for (size_t i = 0; i < node->num_operands(); ++i) {
-          auto input = node->operand(i).GetDefiningOp();
+          auto input = node->operand_source(i).GetDefiningOp();
           if (input && (local_ops_.count(input))) {
             group->input_nodes[input] = 1;
           }
@@ -244,7 +244,7 @@ class OpFusionPassHelper {
       auto consumer_fusion = fusion_groups_[consumer];  //
       // check all linkin node
       for (size_t i = 0; i < consumer->num_operands(); ++i) {
-        auto producer_data = consumer->operand(i);
+        auto producer_data = consumer->operand_source(i);
 
         auto producer = producer_data.GetDefiningOp();
         if (!local_ops_.count(producer)) {
