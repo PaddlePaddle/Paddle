@@ -45,7 +45,7 @@ std::set<std::string> StaticBuildBlackList = {
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
-    "sparse_sparse_coo_tensor" /*: to handle sparse output*/
+    "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
     "shuffle_batch",
     "shuffle_batch_grad"};
 
