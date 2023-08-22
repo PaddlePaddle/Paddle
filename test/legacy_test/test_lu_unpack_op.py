@@ -317,7 +317,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
 
 class TestLU_UnpackAPIError(unittest.TestCase):
     def test_errors_1(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in lu should not be 0.
             def test_x_size():
                 x = paddle.to_tensor(
@@ -337,7 +337,7 @@ class TestLU_UnpackAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_x_size)
 
     def test_errors_2(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in lu should not be 0.
             def test_y_size():
                 x = paddle.to_tensor(
@@ -357,7 +357,7 @@ class TestLU_UnpackAPIError(unittest.TestCase):
             self.assertRaises(ValueError, test_y_size)
 
     def test_errors_3(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in lu should not be 0.
             def test_y_data():
                 x = paddle.to_tensor(

@@ -26,9 +26,9 @@ class TestGetAllRegisteredOpKernels(unittest.TestCase):
 
     # sign kernel is removed from base and added into phi
     def test_base_kernels(self):
-        self.assertTrue(core._get_all_register_op_kernels('base')['reshape'])
+        self.assertTrue(core._get_all_register_op_kernels('fluid')['reshape'])
         with self.assertRaises(KeyError):
-            core._get_all_register_op_kernels('base')['sign']
+            core._get_all_register_op_kernels('fluid')['sign']
 
     def test_all_kernels(self):
         self.assertTrue(core._get_all_register_op_kernels('all')['reshape'])
@@ -42,13 +42,12 @@ class TestGetAllOpNames(unittest.TestCase):
     def test_get_all_op_names(self):
         all_op_names = core.get_all_op_names()
         all_op_with_phi_kernels = core.get_all_op_names("phi")
-        all_op_with_base_kernels = core.get_all_op_names("base")
+        all_op_with_fluid_kernels = core.get_all_op_names("fluid")
 
         self.assertTrue(
             len(all_op_names)
-            > len(set(all_op_with_phi_kernels) | set(all_op_with_base_kernels))
+            > len(set(all_op_with_phi_kernels) | set(all_op_with_fluid_kernels))
         )
-        self.assertTrue("scale" in all_op_with_phi_kernels)
         self.assertTrue("scale" in all_op_with_phi_kernels)
 
 

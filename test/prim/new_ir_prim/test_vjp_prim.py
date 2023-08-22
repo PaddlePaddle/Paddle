@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import ir
-from paddle.fluid.core import call_vjp
+from paddle.base.core import call_vjp
 
 paddle.enable_static()
 
@@ -64,7 +64,7 @@ def get_ir_program_1():
 class TestVjpPrim(unittest.TestCase):
     def test_divide_grad_prim_case1(self):
         newir_program = get_ir_program_0()
-        paddle.fluid.core._set_prim_backward_enabled(True)
+        paddle.base.core._set_prim_backward_enabled(True)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False], [False]]
@@ -105,7 +105,7 @@ class TestVjpPrim(unittest.TestCase):
 
     def test_divide_grad_no_prim(self):
         newir_program = get_ir_program_0()
-        paddle.fluid.core._set_prim_backward_enabled(False)
+        paddle.base.core._set_prim_backward_enabled(False)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False], [False]]
@@ -123,7 +123,7 @@ class TestVjpPrim(unittest.TestCase):
 
     def test_sum_grad_prim(self):
         newir_program = get_ir_program_1()
-        paddle.fluid.core._set_prim_backward_enabled(True)
+        paddle.base.core._set_prim_backward_enabled(True)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False]]
@@ -149,7 +149,7 @@ class TestVjpPrim(unittest.TestCase):
 
     def test_sum_grad_no_prim(self):
         newir_program = get_ir_program_1()
-        paddle.fluid.core._set_prim_backward_enabled(False)
+        paddle.base.core._set_prim_backward_enabled(False)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
         stop_gradients = [[False]]

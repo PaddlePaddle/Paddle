@@ -325,7 +325,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                 stop_gradient = origin_input.stop_gradient
                 input_var = paddle.static.InputSpec.from_tensor(origin_input)
                 input_var.stop_gradient = stop_gradient
-            elif isinstance(origin_input, paddle.fluid.framework.Variable):
+            elif isinstance(origin_input, paddle.base.framework.Variable):
                 stop_gradient = origin_input.stop_gradient
                 input_var = paddle.static.InputSpec(
                     origin_input.shape, origin_input.dtype, origin_input.name
@@ -339,7 +339,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                 (
                     np.ndarray,
                     core.eager.Tensor,
-                    paddle.fluid.framework.Variable,
+                    paddle.base.framework.Variable,
                 ),
             ):
                 input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{str(index)}"

@@ -16,6 +16,9 @@ import warnings
 from functools import partial, reduce
 
 import paddle
+from paddle.base import core
+from paddle.base.backward import _infer_var_data_type_shape_
+from paddle.base.framework import Operator, Program, Variable, static_only
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -23,9 +26,6 @@ from paddle.common_ops_import import (
     convert_dtype,
     in_dygraph_mode,
 )
-from paddle.base import core
-from paddle.base.backward import _infer_var_data_type_shape_
-from paddle.base.framework import Operator, Program, Variable, static_only
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -589,7 +589,7 @@ def assign_skip_lod_tensor_array(input, output):
         # input is not generated in While sub block and modified by in-place and only
         # belong to inplace ops in constructing program process, because in-place pass
         # is only available in Graph level.
-        with paddle.fluid.framework._stride_in_no_check_dy2st_diff():
+        with paddle.base.framework._stride_in_no_check_dy2st_diff():
             paddle.assign(input, output)
 
 

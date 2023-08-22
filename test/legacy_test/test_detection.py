@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph import base
+from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
@@ -137,11 +137,11 @@ class TestGenerateProposals(LayerTest):
             )
 
         with self.dynamic_graph():
-            scores_dy = base.to_variable(scores_np)
-            bbox_deltas_dy = base.to_variable(bbox_deltas_np)
-            im_info_dy = base.to_variable(im_info_np)
-            anchors_dy = base.to_variable(anchors_np)
-            variances_dy = base.to_variable(variances_np)
+            scores_dy = imperative_base.to_variable(scores_np)
+            bbox_deltas_dy = imperative_base.to_variable(bbox_deltas_np)
+            im_info_dy = imperative_base.to_variable(im_info_np)
+            anchors_dy = imperative_base.to_variable(anchors_np)
+            variances_dy = imperative_base.to_variable(variances_np)
             rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
                 scores_dy,
                 bbox_deltas_dy,
@@ -218,8 +218,8 @@ class TestDistributeFpnProposals(LayerTest):
                     output_stat_np.append(output_np)
 
         with self.dynamic_graph():
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
+            rois_dy = imperative_base.to_variable(rois_np)
+            rois_num_dy = imperative_base.to_variable(rois_num_np)
             (
                 multi_rois_dy,
                 restore_ind_dy,
