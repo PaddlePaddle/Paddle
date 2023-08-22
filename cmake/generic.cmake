@@ -1077,8 +1077,7 @@ function(py_proto_compile TARGET_NAME)
       COMMENT "Replace ${py_src}")
   endforeach()
 
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs} protobuf
-                                               ${TARGET_NAME}_replace)
+  add_custom_target(${TARGET_NAME} ALL DEPENDS protobuf ${TARGET_NAME}_replace)
 endfunction()
 
 function(py_test TARGET_NAME)
