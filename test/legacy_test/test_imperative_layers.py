@@ -125,10 +125,12 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(
             str(module), 'UpsamplingBilinear2D(size=[12, 12], data_format=NCHW)'
         )
+
         module = nn.UpsamplingBilinear2D(size=12)
         self.assertEqual(
             str(module), 'UpsamplingBilinear2D(size=[12, 12], data_format=NCHW)'
         )
+
         module = nn.Bilinear(in1_features=5, in2_features=4, out_features=1000)
         self.assertEqual(
             str(module),
