@@ -46,19 +46,19 @@ class NormalAttribute {
   std::string attr_name_;
 };
 
+using AttrComputeFunc = std::function<std::any(const MatchContext&)>;
+
 class ComputeAttribute {
  public:
-  explicit ComputeAttribute(
-      const std::function<std::any(const MatchContext&)>& attr_compute_func)
+  explicit ComputeAttribute(const AttrComputeFunc& attr_compute_func)
       : attr_compute_func_(attr_compute_func) {}
 
-  const std::function<std::any(const MatchContext&)>& attr_compute_func()
-      const {
+  const AttrComputeFunc& attr_compute_func() const {
     return attr_compute_func_;
   }
 
  private:
-  std::function<std::any(const MatchContext&)> attr_compute_func_;
+  AttrComputeFunc attr_compute_func_;
 };
 
 using Attribute = std::variant<NormalAttribute, ComputeAttribute>;
@@ -267,8 +267,7 @@ class ResultPattern {
   Attribute Attr(const std::string& attr_name) const {
     return NormalAttribute(attr_name);
   }
-  Attribute Attr(
-      std::function<std::any(const MatchContext&)> attr_compute_func) const {
+  Attribute Attr(const AttrComputeFunc& attr_compute_func) const {
     return ComputeAttribute(attr_compute_func);
   }
 
