@@ -450,9 +450,13 @@ if is_compiled_with_cinn():
 
 disable_static()
 
-from .new_ir_utils import _switch_to_new_ir  # noqa: F401
-
-_switch_to_new_ir()
+if paddle.ir.core._use_new_ir_api():
+    paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
+    paddle.static.Program = paddle.ir.Program
+    paddle.fluid.Program = paddle.ir.Program
+    paddle.fluid.program_guard = paddle.ir.core.program_guard
+    paddle.static.program_guard = paddle.ir.core.program_guard
+    paddle.framework.default_main_program = paddle.ir.core.default_main_program
 
 __all__ = [  # noqa
     'iinfo',
