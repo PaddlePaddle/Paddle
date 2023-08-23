@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <any>
 #include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 
 #include "paddle/fluid/ir/drr/api/match_context.h"
 
@@ -34,15 +36,32 @@ class PatternGraph;
 class SourcePatternGraph;
 class ResultPatternGraph;
 
-class Attribute {
+class NormalAttribute {
  public:
-  explicit Attribute(const std::string& name) : attr_name_(name) {}
+  explicit NormalAttribute(const std::string& name) : attr_name_(name) {}
 
   const std::string& name() const { return attr_name_; }
 
  private:
   std::string attr_name_;
 };
+
+class ComputeAttribute {
+ public:
+  explicit ComputeAttribute(
+      const std::function<std::any(const MatchContext&)>& attr_compute_func)
+      : attr_compute_func_(attr_compute_func) {}
+
+  const std::function<std::any(const MatchContext&)>& attr_compute_func()
+      const {
+    return attr_compute_func_;
+  }
+
+ private:
+  std::function<std::any(const MatchContext&)> attr_compute_func_;
+};
+
+using Attribute = std::variant<NormalAttribute, ComputeAttribute>;
 
 class TensorShape {
  public:
@@ -245,7 +264,13 @@ class ResultPattern {
     return ctx_->ResultTensorPattern(name);
   }
 
-  Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
+  Attribute Attr(const std::string& attr_name) const {
+    return NormalAttribute(attr_name);
+  }
+  Attribute Attr(
+      std::function<std::any(const MatchContext&)> attr_compute_func) const {
+    return ComputeAttribute(attr_compute_func);
+  }
 
  private:
   friend class SourcePattern;
@@ -269,7 +294,9 @@ class SourcePattern {
     return ctx_->SourceTensorPattern(name);
   }
 
-  Attribute Attr(const std::string& attr_name) { return Attribute(attr_name); }
+  Attribute Attr(const std::string& attr_name) const {
+    return NormalAttribute(attr_name);
+  }
 
   void RequireEqual(const TensorShape& first, const TensorShape& second) {
     ctx_->RequireEqual(first, second);

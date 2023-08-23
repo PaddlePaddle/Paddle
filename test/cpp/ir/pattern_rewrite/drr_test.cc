@@ -88,9 +88,18 @@ class RemoveRedundentTransposePattern
 
     // Result patterns: 要替换的子图
     ir::drr::ResultPattern res = pat.ResultPattern();
-    // todo 先简单用perm2替换
+    const auto &new_perm_attr =
+        res.Attr([](const ir::drr::MatchContext &match_ctx) -> std::any {
+          const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
+          const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");
+          std::vector<int> new_perm;
+          for (int v : perm2) {
+            new_perm.emplace_back(perm1[v]);
+          }
+          return new_perm;
+        });
     const auto &tranpose_continuous =
-        res.Op("pd.transpose", {{"perm", pat.Attr("perm_2")}});
+        res.Op("pd.transpose", {{"perm", new_perm_attr}});
 
     res.Tensor("ret") = tranpose_continuous(res.Tensor("arg_transpose"));
   }

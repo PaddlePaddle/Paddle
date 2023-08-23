@@ -107,15 +107,22 @@ class MatchContextImpl final {
     operation_map_.emplace(op_call, op);
     const auto& attrs = op_call->attributes();
     for (const auto& kv : attrs) {
-      BindIrAttr(kv.second.name(), op->get()->attribute(kv.first));
+      std::visit(
+          [&](auto&& arg) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
+                                         NormalAttribute>) {
+              BindIrAttr(arg.name(), op->get()->attribute(kv.first));
+            }
+          },
+          kv.second);
     }
   }
 
+ private:
   void BindIrAttr(const std::string& attr_name, ir::Attribute attr) {
     attr_map_.emplace(attr_name, attr);
   }
 
- private:
   std::unordered_map<std::string, std::shared_ptr<IrValue>> tensor_map_;
   std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>
       operation_map_;
