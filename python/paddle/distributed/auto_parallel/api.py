@@ -16,7 +16,6 @@ import paddle
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.framework import core
 
 # There are the auto parallel API of the unified version of dynamic and static mode.
@@ -47,7 +46,7 @@ class DistAttr(core.TensorDistAttr):
 
     def __init__(self, mesh, sharding_specs):
         # 1. inputs checking
-        if not isinstance(mesh, ProcessMesh):
+        if not isinstance(mesh, core.ProcessMesh):
             raise ValueError(
                 "The mesh must be an instance of paddle.distributed.ProcessMesh."
             )
@@ -66,28 +65,12 @@ class DistAttr(core.TensorDistAttr):
 
         # 2. init core.TensorDistAttr
         core.TensorDistAttr.__init__(self)
-        self._process_mesh = mesh
-        self._dims_mapping = dims_mapping
 
-    @property
-    def process_mesh(self):
-        """
-        Get process_mesh of the dist_attr
+        self.process_mesh = mesh
+        self.dims_mapping = dims_mapping
 
-        Returns:
-            paddle.distributed.ProcessMesh: process_mesh
-        """
-        return self._process_mesh
-
-    @property
-    def dims_mapping(self):
-        """
-        Get dims_mapping of the dist_attr
-
-        Returns:
-            list[int]: dims_mapping
-        """
-        return self._dims_mapping
+        self.mark_annotated("process_mesh")
+        self.mark_annotated("dims_mapping")
 
     @property
     def sharding_specs(self):

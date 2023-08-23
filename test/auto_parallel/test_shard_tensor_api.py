@@ -55,6 +55,27 @@ class TestDistAttrBasic(unittest.TestCase):
         self.assertIsNotNone(exception)
 
 
+class TestShardTensorDynamic(unittest.TestCase):
+    def setUp(self):
+        self.mesh = dist.ProcessMesh(
+            [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
+        )
+
+    def test_dynamic(self):
+        dist_attr = dist.DistAttr(
+            mesh=self.mesh, sharding_specs=['x', None, None]
+        )
+
+        input = paddle.rand([4, 1024, 512])
+        d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
+        print(dist_attr.dims_mapping)
+
+        self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
+        self.assertEqual(d_tensor.dist_attr.dims_mapping, [0, -1, -1])
+        self.assertTrue(d_tensor.dist_attr.is_annotated("process_mesh"))
+        self.assertTrue(d_tensor.dist_attr.is_annotated("dims_mapping"))
+
+
 class TestShardTensorStatic(unittest.TestCase):
     def setUp(self):
         self.mesh = dist.ProcessMesh(
