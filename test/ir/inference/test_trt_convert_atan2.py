@@ -120,7 +120,13 @@ class TrtConvertAtan2TestOneInputSpecialCase1(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape:
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            if not dynamic_shape or (
+                runtime_version[0] * 1000
+                + runtime_version[1] * 100
+                + runtime_version[2] * 10
+                < 8400
+            ):
                 return 0, 4
             return 1, 3
 
