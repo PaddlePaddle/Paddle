@@ -162,7 +162,7 @@ class ProcessGroup:
                 )
                 if use_new_comm in ["1", "True", "true"]:
                     store = paddle.distributed.collective.StaticTCPStore()
-                    core.CommContextManager.set_cuda_device_id(genv.device_id)
+                    core.CommContextManager.set_device_id(genv.device_id)
                     core.CommContextManager.create_nccl_comm_context(
                         store,
                         str(ring_id),

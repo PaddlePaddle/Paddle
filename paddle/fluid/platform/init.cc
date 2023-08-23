@@ -455,8 +455,8 @@ void InitMemoryMethod() {
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-    memory_method->get_allocator = [](int device_id,
-                                      cudaStream_t stream) -> phi::Allocator * {
+    memory_method->get_allocator =
+        [](int device_id, phi::gpuStream_t stream) -> phi::Allocator * {
       return paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(phi::GPUPlace(device_id), stream)
           .get();

@@ -340,7 +340,7 @@ def _init_parallel_env(backend):
                 store, "0", rank, world_size
             )
         elif backend == "nccl":
-            core.CommContextManager.set_cuda_device_id(dev_id)
+            core.CommContextManager.set_device_id(dev_id)
             core.CommContextManager.create_nccl_comm_context(
                 store, "0", rank, world_size
             )
