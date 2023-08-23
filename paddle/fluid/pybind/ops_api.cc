@@ -40,6 +40,10 @@ static PyObject *divide(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_divide(self, args, kwargs);
 }
 
+static PyObject *concat(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_concat(self, args, kwargs);
+}
+
 static PyMethodDef OpsAPI[] = {{"add_n",
                                 (PyCFunction)(void (*)(void))add_n,
                                 METH_VARARGS | METH_KEYWORDS,
@@ -56,6 +60,10 @@ static PyMethodDef OpsAPI[] = {{"add_n",
                                 (PyCFunction)(void (*)(void))divide,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for divide."},
+                               {"concat",
+                                (PyCFunction)(void (*)(void))concat,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for concat."},
                                {"full",
                                 (PyCFunction)(void (*)(void))full,
                                 METH_VARARGS | METH_KEYWORDS,

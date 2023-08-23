@@ -28,12 +28,22 @@ struct SumFunctor {
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
     using XPUType = typename XPUTypeTrait<X>::Type;
+#ifndef PADDLE_WITH_XPU_PLUGIN
     int r = xpu::reduce_sum<XPUType>(ctx,
                                      reinterpret_cast<const XPUType*>(x),
                                      reinterpret_cast<XPUType*>(y),
                                      xdims,
                                      reduce_dims);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+#else
+    int r = xpu::plugin::fast_reduce_sum<XPUType>(
+        ctx,
+        reinterpret_cast<const XPUType*>(x),
+        reinterpret_cast<XPUType*>(y),
+        xdims,
+        reduce_dims);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_reduce_sum");
+#endif
   }
 };
 }  // namespace phi

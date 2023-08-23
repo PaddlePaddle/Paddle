@@ -389,6 +389,15 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  phi::DDim dim = x.dims();
+  dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
+  if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
+  out->set_dims(dim);
+  out->set_layout(x.layout());
+  out->set_dtype(x.dtype());
+}
+
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
   auto dims = x.dims();
   auto rank = dims.size();
@@ -5032,6 +5041,48 @@ void UnStackInferMeta(const MetaTensor& x,
   }
 }
 
+void WeightQuantizeInferMeta(const MetaTensor& x,
+                             const std::string& algo,
+                             MetaTensor* out,
+                             MetaTensor* scale) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0] % 64,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 64, but got[%d]",
+          x_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The second dimension of input must be divisible by 16, but got[%d]",
+          x_dims[1]));
+  std::vector<int64_t> dim_scale({x_dims[1]});
+  std::vector<int64_t> dim_out;
+  if (algo == "weight_only_int8" || algo == "llm.int8") {
+    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
+  } else if (algo == "weight_only_int4") {
+    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
+  } else {
+    phi::errors::InvalidArgument(
+        "The algo must be in ['weight_only_int8', 'weight_only_int4', "
+        "'llm.int8'], but got[%s]",
+        algo);
+  }
+  out->set_dims(phi::make_ddim(dim_out));
+
+  out->set_dtype(DataType::INT8);
+
+  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dtype(DataType::FLOAT32);
+}
+
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
@@ -5090,46 +5141,6 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
   stats->set_dims(phi::make_ddim({3}));
   values->set_dtype(DataType::FLOAT32);
   values->set_dims(phi::make_ddim({3}));
-}
-
-void QuantForCompressInferMeta(const MetaTensor& x,
-                               int bits,
-                               const std::string& layout,
-                               MetaTensor* out,
-                               MetaTensor* scale) {
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      2UL,
-      phi::errors::InvalidArgument(
-          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
-  PADDLE_ENFORCE_GE(
-      x_dims[0],
-      64,
-      phi::errors::OutOfRange("The first dimension of input is out of range "
-                              "(expected at least 64, but got %ld).",
-                              x_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0] % 64,
-      0,
-      phi::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 64, but got[%d]",
-          x_dims[0]));
-  std::vector<int64_t> dim_scale({x_dims[1]});
-  std::vector<int64_t> dim_out;
-  if (bits == 8) {
-    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
-  } else if (bits == 4) {
-    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
-  } else {
-    phi::errors::InvalidArgument("The bit must be 8 or 4, but got %d", bits);
-  }
-  out->set_dims(phi::make_ddim(dim_out));
-
-  out->set_dtype(DataType::INT8);
-
-  scale->set_dims(phi::make_ddim(dim_scale));
-  scale->set_dtype(DataType::FLOAT32);
 }
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
