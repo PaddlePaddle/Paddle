@@ -205,7 +205,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             >>> y = paddle.rand([5])
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
-            [10,]
+            [10]
 
             >>> # batched matrix * broadcasted vector
             >>> x = paddle.rand([10, 5, 2])
