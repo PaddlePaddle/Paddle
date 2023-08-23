@@ -57,6 +57,7 @@ void AddNewData(ir::Value value,
   if (value_2_var_name->count(value) == 0) {
     value_2_var_name->emplace(value, name);
   }
+
   variable_2_var_name->emplace(var, name);
   if (var_name_2_id->count(name) == 0) {
     auto id = var_name_2_id->size();
