@@ -19,30 +19,6 @@
 
 namespace paddle {
 namespace dialect {
-std::vector<ir::OpResult> split(ir::OpResult x,
-                                const std::vector<int64_t>& sections,
-                                int axis) {
-  paddle::dialect::SplitOp pd_split_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitOp>(
-          x, sections, axis);
-  auto builtin_split_op =
-      APIBuilder::Instance().GetBuilder()->Build<ir::SplitOp>(
-          pd_split_op.result(0));
-  return builtin_split_op.outputs();
-}
-std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
-                                      ir::OpResult out_grad,
-                                      ir::OpResult axis) {
-  auto combine_op =
-      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(x);
-  paddle::dialect::ConcatGradOp concat_grad_op =
-      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::ConcatGradOp>(
-          combine_op.out(), out_grad, axis);
-  auto split_op = APIBuilder::Instance().GetBuilder()->Build<ir::SplitOp>(
-      concat_grad_op.result(0));
-  return split_op.outputs();
-}
-
 ir::OpResult split_grad(std::vector<ir::OpResult> out_grads,
                         ir::OpResult axis) {
   auto combine_op =
@@ -53,6 +29,5 @@ ir::OpResult split_grad(std::vector<ir::OpResult> out_grads,
 
   return split_grad_op.x_grad();
 }
-
 }  // namespace dialect
 }  // namespace paddle

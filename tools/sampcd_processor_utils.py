@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import argparse
-import collections
+import dataclasses
 import inspect
 import logging
 import os
@@ -42,20 +42,17 @@ API_DIFF_SPEC_FN = 'dev_pr_diff_api.spec'
 TEST_TIMEOUT = 10
 
 
-TestResult = collections.namedtuple(
-    "TestResult",
-    (
-        "name",
-        "nocode",
-        "passed",
-        "skipped",
-        "failed",
-        "time",
-        "test_msg",
-        "extra_info",
-    ),
-    defaults=(None, False, False, False, False, -1, "", None),
-)
+@dataclasses.dataclass
+class TestResult:
+    name: str
+    nocode: bool = False
+    passed: bool = False
+    skipped: bool = False
+    failed: bool = False
+    timeout: bool = False
+    time: float = float('inf')
+    test_msg: str = ""
+    extra_info: str = ""
 
 
 class DocTester:
@@ -76,18 +73,20 @@ class DocTester:
                 If the `style` is set to `google` and `target` is set to `codeblock`, we should implement/overwrite `ensemble_docstring` method,
                 where ensemble the codeblock into a docstring with a `Examples:` and some indents as least.
         directives(list[str]): `DocTester` hold the default directives, we can/should replace them with method `convert_directive`.
+            For example:
+            ``` text
+            # doctest: +SKIP
+            # doctest: +REQUIRES(env:CPU)
+            # doctest: +REQUIRES(env:GPU)
+            # doctest: +REQUIRES(env:XPU)
+            # doctest: +REQUIRES(env:DISTRIBUTED)
+            # doctest: +REQUIRES(env:GPU, env:XPU)
+            ```
     """
 
     style = 'google'
     target = 'docstring'
-    directives = [
-        "# doctest: +SKIP",
-        "# doctest: +REQUIRES(env:CPU)",
-        "# doctest: +REQUIRES(env:GPU)",
-        "# doctest: +REQUIRES(env:XPU)",
-        "# doctest: +REQUIRES(env:DISTRIBUTED)",
-        "# doctest: +REQUIRES(env:GPU, env:XPU)",
-    ]
+    directives = None
 
     def ensemble_docstring(self, codeblock: str) -> str:
         """Ensemble a cleaned codeblock into a docstring.

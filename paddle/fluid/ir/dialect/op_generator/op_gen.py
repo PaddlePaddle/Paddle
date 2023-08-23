@@ -134,7 +134,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
   paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{"{kernel_key_dtype}"}}, {{{inplace}}}, {{{view}}});
 
-  return std::make_tuple(inputs, attributes, outputs, run_time_info);
+  return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
 }}
 """
 CONSTRUCT_INPUT_INFO_TEMPLATE = """paddle::dialect::OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute})"""
@@ -1024,6 +1024,7 @@ def OpGenerator(
                 kernel_key_dtype=kernel_key_dtype,
                 inplace=inplace_str,
                 view=view_str,
+                origin_op_name=op_info.op_yaml_item['name'],
             )
 
             # generate op verify function str
