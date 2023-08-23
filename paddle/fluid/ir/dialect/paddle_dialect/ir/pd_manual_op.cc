@@ -169,7 +169,8 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
                     {},
                     {});
 
-  return std::make_tuple(inputs, attributes, outputs, run_time_info);
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "split_grad");
 }
 
 void SplitGradOp::Build(ir::Builder &builder,
