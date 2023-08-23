@@ -531,6 +531,7 @@ void Free<platform::CustomPlace>(const platform::CustomPlace &place,
                                  size_t size) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+
   if (phi::DeviceManager::HasDeviceType(place.GetDeviceType())) {
     GetBuddyAllocator(place)->Free(p);
   }
