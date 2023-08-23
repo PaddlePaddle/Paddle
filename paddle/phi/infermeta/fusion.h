@@ -73,6 +73,24 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* out_max);
 
+void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const std::vector<int>& paddings,
+                        const std::vector<int>& dilations,
+                        const std::vector<int>& strides,
+                        const std::string& padding_algorithm,
+                        int act_type,
+                        float act_param,
+                        DataType out_dtype,
+                        const std::vector<int>& pool2d_paddings,
+                        const std::vector<int>& pool2d_strides,
+                        const std::vector<int>& pool2d_ksize,
+                        MetaTensor* out,
+                        MetaTensor* out_max);
+
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
