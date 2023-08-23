@@ -596,7 +596,7 @@ void LarsMomentumKernel(
     auto* velocity_data = velocity[0]->data<MT>();
     auto* lr = learning_rate[0]->data<MT>();
     auto* param_out_data = dev_ctx.template Alloc<T>(param_out[0]);
-    auto* velocity_out_data = dev_ctx.template Alloc<T>(velocity_out[0]);
+    auto* velocity_out_data = dev_ctx.template Alloc<MT>(velocity_out[0]);
     const MT* master_param_data =
         multi_precision ? master_param.get()[0]->data<MT>() : nullptr;
     MT* master_param_out_data =
@@ -682,7 +682,6 @@ PD_REGISTER_KERNEL(lars_momentum,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   }
