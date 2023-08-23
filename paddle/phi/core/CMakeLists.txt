@@ -12,6 +12,7 @@ collect_srcs(
   flags.cc
   errors.cc
   enforce.cc
+  storage_properties.cc
   os_info.cc
   kernel_context.cc
   ddim.cc
