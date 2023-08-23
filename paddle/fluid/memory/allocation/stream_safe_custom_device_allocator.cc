@@ -117,7 +117,7 @@ StreamSafeCustomDeviceAllocator::StreamSafeCustomDeviceAllocator(
       place_(std::move(place)),
       default_stream_(std::move(default_stream)) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
-  allocator_map_[place].emplace_back(this);
+  allocator_map_[place_].emplace_back(this);
 }
 
 StreamSafeCustomDeviceAllocator::~StreamSafeCustomDeviceAllocator() {
