@@ -45,33 +45,7 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
 template <typename T, typename DeviceContext>
 class ShuffleBatchGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *out_grad =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto *shuffleidx = context.Input<phi::DenseTensor>("ShuffleIdx");
-    auto *x_grad =
-        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-
-    auto embed_size = out_grad->dims()[out_grad->dims().size() - 1];
-    auto elem_size = 1;
-    for (auto i = 0; i < out_grad->dims().size() - 1; i++)
-      elem_size *= out_grad->dims()[i];
-
-    std::vector<int> idx_vec_grad(elem_size);
-    auto *shuffleidx_data = shuffleidx->data<int64_t>();
-    for (size_t i = 0; i < idx_vec_grad.size(); i++) {
-      idx_vec_grad[shuffleidx_data[i]] = i;
-    }
-
-    // copy data according to idx_vec_grad
-    auto *out_grad_data = out_grad->data<T>();
-    auto *x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
-    for (auto i = 0; i < elem_size; i++) {
-      memcpy(x_grad_data + idx_vec_grad[i] * embed_size,
-             out_grad_data + i * embed_size,
-             embed_size * sizeof(T));
-    }
-  }
+  void Compute(const framework::ExecutionContext &context) const override {}
 };
 }  // namespace operators
 }  // namespace paddle

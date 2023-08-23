@@ -158,12 +158,3 @@ REGISTER_OPERATOR(shuffle_batch,
                   ops::ShuffleBatchGradOpMaker<paddle::framework::OpDesc>,
                   ops::ShuffleBatchGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(shuffle_batch_grad, ops::ShuffleBatchOpGrad);
-
-PD_REGISTER_STRUCT_KERNEL(shuffle_batch_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::ShuffleBatchGradKernel,
-                          float,
-                          double,
-                          int32_t,
-                          int64_t) {}

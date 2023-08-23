@@ -24,6 +24,17 @@ KernelSignature ShuffleBatchOpArgumentMapping(
                          {"Out", "ShuffleIdx", "SeedOut"});
 }
 
+KernelSignature ShuffleBatchGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("shuffle_batch_grad",
+                         {"ShuffleIdx", "Out@GRAD"},
+                         {"startup_seed"},
+                         {"X@GRAD"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(shuffle_batch, phi::ShuffleBatchOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(shuffle_batch_grad,
+                           phi::ShuffleBatchGradOpArgumentMapping);
