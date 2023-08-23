@@ -84,10 +84,10 @@ def get_weights_path_from_url(url, md5sum=None):
     Examples:
         .. code-block:: python
 
-            from paddle.utils.download import get_weights_path_from_url
+            >>> from paddle.utils.download import get_weights_path_from_url
 
-            resnet18_pretrained_weight_url = 'https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams'
-            local_weight_path = get_weights_path_from_url(resnet18_pretrained_weight_url)
+            >>> resnet18_pretrained_weight_url = 'https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams'
+            >>> local_weight_path = get_weights_path_from_url(resnet18_pretrained_weight_url)
 
     """
     path = get_path_from_url(url, WEIGHTS_HOME, md5sum)

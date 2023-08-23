@@ -23,14 +23,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 
 #include "paddle/fluid/platform/init_phi.h"
 

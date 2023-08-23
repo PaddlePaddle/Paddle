@@ -457,7 +457,7 @@
   outputs :
     out : Out
 
-- op : check_finite_and_unscale_
+- op : check_finite_and_unscale_(check_finite_and_unscale)
   inputs :
     {x : X, scale: Scale}
   outputs :
@@ -2215,6 +2215,11 @@
   attrs :
     {axis : Axis, reduce : Reduce}
 
+- op : pylayer
+  backward : pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : qr
   backward : qr_grad
   inputs :
@@ -2987,7 +2992,7 @@
   outputs :
     out : Y
 
-- op : update_loss_scaling_
+- op : update_loss_scaling_(update_loss_scaling)
   inputs :
     {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
   outputs :
@@ -3076,6 +3081,12 @@
     {out: Out, pivots : Pivots, infos : Infos}
   attrs:
     pivot : pivots
+
+- op: memcpy_d2h
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: reindex_graph (graph_reindex)
   inputs :

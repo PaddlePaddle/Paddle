@@ -16,6 +16,7 @@
 #include <thread>
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/context_pool.h"
 
 namespace paddle {
 namespace memory {
@@ -55,7 +56,6 @@ void StreamSafeCustomDeviceAllocation::RecordStream(
 }
 
 void StreamSafeCustomDeviceAllocation::MarkAsWillBeFreed() {
-  std::call_once(once_flag_, [this] { phi::DeviceManager::SetDevice(place_); });
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
   if (!will_be_freed_) {
     will_be_freed_ = false;
@@ -63,6 +63,8 @@ void StreamSafeCustomDeviceAllocation::MarkAsWillBeFreed() {
     if (phi::DeviceManager::HasDeviceType(place_.GetDeviceType()) &&
         outstanding_event_map_.find(owning_stream_) ==
             outstanding_event_map_.end()) {
+      std::call_once(once_flag_,
+                     [this] { phi::DeviceManager::SetDevice(place_); });
       outstanding_event_map_[owning_stream_].Init(place_);
       VLOG(9) << "Create a new event "
               << outstanding_event_map_[owning_stream_].raw_event();
@@ -76,11 +78,11 @@ void StreamSafeCustomDeviceAllocation::MarkAsWillBeFreed() {
 }
 
 bool StreamSafeCustomDeviceAllocation::CanBeFreed() {
-  std::call_once(once_flag_, [this] { phi::DeviceManager::SetDevice(place_); });
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
   if (!phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
     return true;
   }
+  std::call_once(once_flag_, [this] { phi::DeviceManager::SetDevice(place_); });
   for (auto it = outstanding_event_map_.begin();
        it != outstanding_event_map_.end();
        ++it) {
@@ -100,6 +102,11 @@ bool StreamSafeCustomDeviceAllocation::CanBeFreed() {
 phi::stream::stream_t StreamSafeCustomDeviceAllocation::GetOwningStream()
     const {
   return owning_stream_;
+}
+
+void StreamSafeCustomDeviceAllocation::SetOwningStream(
+    phi::stream::stream_t s) {
+  owning_stream_ = s;
 }
 
 StreamSafeCustomDeviceAllocator::StreamSafeCustomDeviceAllocator(
@@ -172,6 +179,13 @@ void StreamSafeCustomDeviceAllocator::FreeImpl(phi::Allocation* allocation) {
       static_cast<StreamSafeCustomDeviceAllocation*>(allocation);
 
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
+  if (!stream_safe_cuda_allocation->GetOwningStream()) {
+    stream_safe_cuda_allocation->SetOwningStream(
+        default_stream_ ? default_stream_
+                        : reinterpret_cast<phi::CustomContext*>(
+                              phi::DeviceContextPool::Instance().Get(place_))
+                              ->stream());
+  }
   stream_safe_cuda_allocation->MarkAsWillBeFreed();
   if (stream_safe_cuda_allocation->CanBeFreed()) {
     VLOG(9) << "Directly delete allocation";
