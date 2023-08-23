@@ -336,7 +336,6 @@ class TestCheckUnregisteredOp(unittest.TestCase):
             y, h = cell(x, prev_h)
 
         ops = ir.check_unregistered_ops(main_program.desc)
-        print(ops)
         assert len(ops) == 0
 
 
