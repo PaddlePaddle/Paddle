@@ -74,11 +74,6 @@ FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
   return impl_->Run(feed_names, need_fetch);
 }
 
-FetchList InterpreterCore::BetaRun(const std::vector<std::string>& feed_names,
-                                   bool need_fetch) {
-  return impl_->BetaRun(feed_names, need_fetch);
-}
-
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
   impl_->ShareWorkQueueFrom(const_cast<InterpreterBaseImpl*>(src->Impl()));
 }

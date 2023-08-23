@@ -34,6 +34,7 @@ void BuiltinDialect::initialize() {
                 Int16Type,
                 Int32Type,
                 Int64Type,
+                IndexType,
                 BoolType,
                 Complex64Type,
                 Complex128Type,
@@ -54,6 +55,7 @@ void BuiltinDialect::initialize() {
               SetParameterOp,
               CombineOp,
               SliceOp,
+              SplitOp,
               ConstantOp>();
 }
 

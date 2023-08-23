@@ -31,5 +31,8 @@ ir::Operation* InsertSliceOperationForTarget(
     const VariableDefiningInfo& defining_info,
     const std::string& arg_name);
 
+std::ostream& operator<<(std::ostream& os,
+                         const std::vector<std::string>& vec_str);
+
 }  // namespace translator
 }  // namespace paddle
