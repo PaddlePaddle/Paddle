@@ -346,8 +346,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
 
         # trans_x = true, trans_y = true, abmn[-1, -1, 0, 1] --> abmk[-1, -1, -1, 0], a1kn[-1, -1, 1, -1]
         self.out_dist_tensor_spec.shape = [512, 48, 64, 48]
-        self.x_dist_tensor_spec.shape = [512, 48, 64, 32]
-        self.y_dist_tensor_spec.shape = [512, 1, 32, 48]
+        self.x_dist_tensor_spec.shape = [512, 48, 32, 64]
+        self.y_dist_tensor_spec.shape = [512, 1, 48, 32]
         self.out_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
         self.attrs['trans_x'] = True
         self.attrs['trans_y'] = True
