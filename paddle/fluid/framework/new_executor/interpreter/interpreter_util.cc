@@ -23,9 +23,9 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
@@ -1076,36 +1076,17 @@ void BuildOpFuncList(
                       "not found kernel for [%s]",
                       kernel_name);
 
-    if (kernel_name == "fused_softmax_mask_upper_triangle" ||
-        kernel_name == "fused_softmax_mask_upper_triangle_grad") {
-      // builder operator
-      op_func_node.operator_base_ =
-          ir::BuildOperatorBase(op, value_2_name_map, op_yaml_info_parser);
-      paddle::framework::VariableValueMap in_map;
-      paddle::framework::VariableValueMap out_map;
-      op_func_node.runtime_ctx_ =
-          std::make_shared<paddle::framework::RuntimeContext>(
-              paddle::framework::RuntimeContext(in_map, out_map));
-      ir::BuildRuntimeContext(op,
-                              value_2_name_map,
-                              scope,
-                              local_scope,
-                              op_yaml_info_parser,
-                              op_func_node.runtime_ctx_.get());
-      op_func_node.fluid_op = true;
-    } else {
-      ::ir::BuildPhiContext<phi::KernelContext,
-                            const phi::TensorBase*,
-                            phi::TensorBase*,
-                            paddle::small_vector<const phi::TensorBase*>,
-                            paddle::small_vector<phi::TensorBase*>,
-                            true>(op,
-                                  value_2_name_map,
-                                  scope,
-                                  local_scope,
-                                  op_yaml_info_parser,
-                                  &(op_func_node.kernel_context_));
-    }
+    ::ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          paddle::small_vector<phi::TensorBase*>,
+                          true>(op,
+                                value_2_name_map,
+                                scope,
+                                local_scope,
+                                op_yaml_info_parser,
+                                &(op_func_node.kernel_context_));
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(

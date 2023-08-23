@@ -195,7 +195,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir/interface/vjp.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -1419,6 +1419,8 @@ All parameter, weight, gradient are variables in Paddle.
             defalut_val.index() - 1);
       });
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_set_bwd_prim_blacklist",
+        &paddle::prim::PrimCommonUtils::SetPrimBackwardBlacklist);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",

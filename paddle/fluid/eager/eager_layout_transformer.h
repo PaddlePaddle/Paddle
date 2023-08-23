@@ -199,7 +199,7 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
   explicit EagerHeavilyLayoutSensitiveOpTransformer(const std::string& op_name,
                                                     std::string* layout)
       : op_name_(op_name), desired_layout_(DesiredLayout()) {
-    VLOG(4) << "Heavily op: " << op_name;
+    VLOG(4) << "Heavily op: " << op_name << " layout " << *layout;
     *layout = phi::DataLayoutToString(DesiredLayout());
   }
 

@@ -106,7 +106,7 @@ class TestMeanVjp(unittest.TestCase):
                 .source()
                 .get_defining_op()
                 .name(),
-                "builtin.get_parameter",
+                "pd.data",
             )
             self.assertEqual(
                 grad_outs[0][0]
