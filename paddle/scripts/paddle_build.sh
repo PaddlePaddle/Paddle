@@ -1164,7 +1164,7 @@ EOF
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR\n"
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR.\n"
                 echo "=========================================================================================="
                 exit 6
             fi
