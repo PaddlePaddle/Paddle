@@ -1630,7 +1630,6 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
             >>> #out1's data type is float32; out2's data type is float64
             >>> #out1 and out2's value is as follows:
             >>> print(out1)
-            >>> print(out2)
             Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[-7.12783957 , -2.12783957 , -9.12783909 , -0.12783945 ],
               [-2.12705135 , -9.12705135 , -0.12705141 , -11.12705135],
@@ -1638,6 +1637,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
              [[-3.05181193 , -6.05181217 , -7.05181217 , -0.05181199 ],
               [-12.31326675, -1.31326652 , -0.31326646 , -15.31326675],
               [-3.44018984 , -2.44018984 , -1.44018972 , -0.44018975 ]]])
+            >>> print(out2)
             Tensor(shape=[2, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[[-7.12783948 , -2.12783948 , -9.12783948 , -0.12783948 ],
               [-2.12705141 , -9.12705141 , -0.12705141 , -11.12705141],
