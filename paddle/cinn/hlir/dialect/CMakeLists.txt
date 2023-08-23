@@ -31,9 +31,10 @@ if(NOT CINN_ONLY)
 
   add_custom_command(
     OUTPUT ${cinn_op_header_file} ${cinn_op_source_file}
+           ${cinn_op_parsed_yaml_file}
+    COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
+            ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
     COMMAND
-      ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
-      ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
       ${PYTHON_EXECUTABLE} ${cinn_op_gen_file} --op_yaml_files
       ${cinn_op_parsed_yaml_files} --op_compat_yaml_file
       ${cinn_op_compat_yaml_file} --namespaces ${cinn_op_namespace}
