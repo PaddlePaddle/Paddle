@@ -32,6 +32,20 @@ from .utils import (
 )
 
 
+def log_program(dist_context, name=""):
+    import paddle
+
+    if paddle.distributed.get_rank() == 0:
+        if name in ["before_update", "after_update", "final"]:
+            from .dist_context import set_default_distributed_context
+
+            set_default_distributed_context(dist_context)
+        with open(f"./main_program_{name}.txt", "w+") as f:
+            f.write(str(dist_context.serial_main_program))
+        with open(f"./startup_program_{name}.txt", "w+") as f:
+            f.write(str(dist_context.serial_startup_program))
+
+
 def compute_compatible_dim_mapping(dim_mapping_list):
     """Compute the compatible dim mapping given a list of dim mapping."""
     if not dim_mapping_list:
@@ -274,21 +288,34 @@ class Completer:
                         op_dist_impl.is_auto_compatible(dist_op)
                         and dist_op.validate_dist_attr()
                     ):
-                        if op_dist_impl.type == "elementwise":
-                            op_dist_attr.impl_type = "default"
-                        else:
-                            op_dist_attr.impl_type = op_dist_impl.type
+                        # if op_dist_impl.type == "elementwise":
+                        #     op_dist_attr.impl_type = "default"
+                        # else:
+                        op_dist_attr.impl_type = op_dist_impl.type
                         # op_dist_attr.impl_type = op_dist_impl.type
                         op_dist_attr.impl_idx = op_dist_impl.idx
                         not_compatible = False
                         break
                     else:
+                        print("not-compatible I:")
+                        print(dist_op.dist_attr)
+                        print()
+                        print(backup_op_dist_attr)
+                        print()
                         dist_op.dist_attr = backup_op_dist_attr
                         changed = backup_changed
                 if not_compatible:
+                    print("not-compatible II:")
+                    print(dist_op.dist_attr)
+                    print()
+                    print(original_op_dist_attr)
                     dist_op.dist_attr = original_op_dist_attr
                     changed = False
             else:
+                print("not-compatible III:")
+                print(dist_op.dist_attr)
+
+                print(original_op_dist_attr)
                 dist_op.dist_attr = original_op_dist_attr
                 changed = False
         else:
@@ -346,10 +373,10 @@ class Completer:
                         op_dist_impl.is_auto_compatible(dist_op)
                         and dist_op.validate_dist_attr()
                     ):
-                        if op_dist_impl.type == "elementwise":
-                            op_dist_attr.impl_type = "default"
-                        else:
-                            op_dist_attr.impl_type = op_dist_impl.type
+                        # if op_dist_impl.type == "elementwise":
+                        #     op_dist_attr.impl_type = "default"
+                        # else:
+                        op_dist_attr.impl_type = op_dist_impl.type
                         # op_dist_attr.impl_type = op_dist_impl.type
                         op_dist_attr.impl_idx = op_dist_impl.idx
                         not_compatible = False
@@ -948,12 +975,15 @@ class Completer:
             self._dist_context._serial_main_program = serial_main_program
 
         if not is_naive_data_parallel(self._dist_context):
+            log_program(self._dist_context, "user_annotaion")
+            log_program(self._dist_context, "before_update")
             self._dist_context.initialize(with_graph=True)
             self._prepare()
             self._update_process_mesh()
             self._update_dims_mapping()
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
+            log_program(self._dist_context, "after_update")
         else:
             self._logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
@@ -965,6 +995,7 @@ class Completer:
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
         self._dist_context.validate_dist_attr_for_program()
+        log_program(self._dist_context, "final")
         return serial_main_program
 
     def _update_dist_attr_for_dp(self):
@@ -1924,10 +1955,10 @@ class Completer:
                     for op_dist_impl in op_dist_impls:
                         dim_changed = op_dist_impl.update_dims_mapping(dist_op)
                         if op_dist_impl.is_auto_compatible(dist_op):
-                            if op_dist_impl.type == "elementwise":
-                                dist_op.dist_attr.impl_type = "default"
-                            else:
-                                dist_op.dist_attr.impl_type = op_dist_impl.type
+                            # if op_dist_impl.type == "elementwise":
+                            #     dist_op.dist_attr.impl_type = "default"
+                            # else:
+                            dist_op.dist_attr.impl_type = op_dist_impl.type
                             # op_dist_attr.impl_type = op_dist_impl.type
                             dist_op.dist_attr.impl_idx = op_dist_impl.idx
                             break
