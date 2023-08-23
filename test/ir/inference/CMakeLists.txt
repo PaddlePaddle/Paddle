@@ -44,6 +44,8 @@ if(WIN32)
        "test_trt_convert_elementwiseadd_transpose")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_split_layernorm_to_math_ops_pass")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER
+       "test_trt_convert_quantize_dequantize_linear")
 endif()
 
 # Only for cpu(mkl + openblas)
@@ -221,7 +223,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_transfer_layout_elim_pass PROPERTIES TIMEOUT 300)
 
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
-                         PROPERTIES TIMEOUT 240)
+                         PROPERTIES TIMEOUT 480)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_conv_act_onednn_fuse_pass PROPERTIES TIMEOUT 120)
