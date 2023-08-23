@@ -123,7 +123,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   phi_kernel_ = new phi::Kernel(kernel_result.kernel);
   PADDLE_ENFORCE_EQ(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
-  VLOG(6) << "finish process select kernel";
+  VLOG(6) << "finish process select kernel: " << kernel_name;
 
   Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
 
