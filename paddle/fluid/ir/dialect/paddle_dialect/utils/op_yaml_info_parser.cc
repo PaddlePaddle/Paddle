@@ -187,5 +187,9 @@ void OpYamlInfoParser::parse() {
   }
 }
 
+const std::string& OpYamlInfoParser::GetOriginOpName() const {
+  return std::get<4>(op_info_tuple_);
+}
+
 }  // namespace dialect
 }  // namespace paddle
