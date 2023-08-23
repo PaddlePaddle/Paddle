@@ -52,6 +52,23 @@ Tensor _Tensor_::Make(const std::string &name,
 
   return Tensor(n);
 }
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Expr> &shape,
+                      const std::vector<Expr> &domain,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Tensor name is set empty";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->shape = shape;
+  n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
+  n->set_type(dtype);
+  n->InitAxis();
+
+  return Tensor(n);
+}
 
 size_t Tensor::ndims() const { return operator->()->shape.size(); }
 

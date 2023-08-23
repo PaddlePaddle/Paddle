@@ -120,6 +120,9 @@ from ..core_api.ir import (  # noqa: F401
     _Module_,
     _Tensor_,
     _Var_,
+    _Buffer_,
+    Buffer,
+    For,
 )
 
 

@@ -811,6 +811,7 @@ struct For : public ExprNode<For>, public ForBase {
                    Expr body,
                    VectorizeInfo vector_info = VectorizeInfo(),
                    BindInfo bind_info = BindInfo());
+  static Expr Make(Var loop_var, Expr min, Expr extent, Expr body);
 
   void Verify() const override;
 

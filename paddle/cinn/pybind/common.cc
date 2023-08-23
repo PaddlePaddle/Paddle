@@ -94,6 +94,7 @@ void BindTarget(py::module *m) {
 void BindType(py::module *m) {
   py::class_<Type> type(*m, "Type");
   type.def(py::init<>())
+      .def(py::init<Type &>())
       .def(py::init<Type::type_t, int, int, Type::specific_type_t>());
 #define DEFINE_TYPE_METHOD(__name) (type = type.def(#__name, &Type::__name))
   DEFINE_TYPE_METHOD(is_primitive);
@@ -140,7 +141,7 @@ void BindType(py::module *m) {
       .export_values();
 
   py::enum_<Type::specific_type_t> specific_type_t(type, "specific_type_t");
-  specific_type_t.value("None", Type::specific_type_t::None)
+  specific_type_t.value("UNK", Type::specific_type_t::None)
       .value("FP16", Type::specific_type_t::FP16)
       .value("BF16", Type::specific_type_t::BF16)
       .export_values();

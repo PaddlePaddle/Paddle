@@ -65,6 +65,16 @@ LoweredFunc _LoweredFunc_::Make(const std::string& name,
   return LoweredFunc(n);
 }
 
+LoweredFunc _LoweredFunc_::Make(const std::string& name,
+                                const std::vector<Argument>& args,
+                                const Expr& body) {
+  auto* n = make_shared<_LoweredFunc_>();
+  n->name = name;
+  n->args = args;
+  n->body = body;
+  return LoweredFunc(n);
+}
+
 void _LoweredFunc_::CheckValid() const {
   // check there is at least one output
   int out_count = 0;

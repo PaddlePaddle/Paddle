@@ -162,6 +162,11 @@ class _Tensor_ : public ExprNode<_Tensor_> {
                      const std::vector<Expr>& domain,
                      FunctionRef fn,
                      const std::vector<Var>& reduce_axis = {});
+  static Tensor Make(const std::string& name,
+                     Type dtype,
+                     const std::vector<Expr>& shape,
+                     const std::vector<Expr>& domain,
+                     const std::vector<Var>& reduce_axis = {});
 
   void Verify() const override;
 

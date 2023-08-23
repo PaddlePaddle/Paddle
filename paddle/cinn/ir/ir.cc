@@ -268,6 +268,27 @@ Expr For::Make(Var loop_var,
 
   return Expr(node);
 }
+Expr For::Make(Var loop_var, Expr min, Expr extent, Expr body) {
+  auto node = make_shared<For>();
+  CHECK(loop_var.defined());
+  CHECK(min.defined());
+  CHECK(extent.defined());
+  node->loop_var = loop_var;
+  node->min = min;
+  node->extent = extent;
+  node->device_api = DeviceAPI::UNK;
+  node->body = body;
+  node->set_for_type(ForType::Serial);
+  node->set_vectorize_info(VectorizeInfo());
+  BindInfo bind_info = BindInfo();
+  node->set_bind_info(BindInfo());
+
+  if (node->is_vectorized()) CHECK(node->vectorize_info().valid());
+  if (node->is_binded() && bind_info.offset >= 0)
+    CHECK(node->bind_info().valid());
+
+  return Expr(node);
+}
 
 std::vector<Expr *> For::expr_fields() { return {&min, &extent, &body}; }
 std::vector<const Expr *> For::expr_fields() const {

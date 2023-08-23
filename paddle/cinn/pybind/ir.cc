@@ -62,7 +62,8 @@ void BindLoweredFunc(py::module *m) {
 
   py::enum_<Argument::IO> io(argument, "IO");
   io.value("kInput", Argument::IO::kInput)
-      .value("kOutput", Argument::IO::kOutput);
+      .value("kOutput", Argument::IO::kOutput)
+      .value("kUnknown", Argument::IO::kUnknown);
 
   argument
       .def(py::init<const ir::Buffer &, Argument::IO>(),
@@ -93,10 +94,18 @@ void BindLoweredFunc(py::module *m) {
            [](const ir::LoweredFunc &self) -> std::string {
              return utils::GetStreamCnt(Expr(self));
            })
-      .def("__repr__", [](const ir::LoweredFunc &self) -> std::string {
-        return llvm::formatv(
-            "<LoweredFunc {0}>", self.get(), self->name.c_str());
-      });
+      .def("__repr__",
+           [](const ir::LoweredFunc &self) -> std::string {
+             return llvm::formatv(
+                 "<LoweredFunc {0}>", self.get(), self->name.c_str());
+           })
+      .def_static("make",
+                  py::overload_cast<const std::string &,
+                                    const std::vector<Argument> &,
+                                    const Expr &>(&ir::_LoweredFunc_::Make));
+
+  py::class_<ir::Buffer> buffer(*m, "Buffer");
+  buffer.def(py::init<>());
 }
 
 void BindNode(py::module *m) {
@@ -254,6 +263,12 @@ void BindNode(py::module *m) {
       .def("__div__", [](const Expr &self, const Var &other) -> Expr {
         return self / other;
       });
+  // struct For : public ExprNode<For>
+  DefineExprNode<ir::For>(m, "For");
+  py::class_<ir::For, ExprNode<ir::For>> for_pybind(*m, "For");
+  for_pybind.def(py::init<>())
+      .def_static("make",
+                  py::overload_cast<Var, Expr, Expr, Expr>(&ir::For::Make));
 }
 
 // empty visitor
@@ -537,6 +552,14 @@ void BindIrIr(py::module *m) {
       .def_readwrite("buffers", &ir::_Module_::buffers)
       .def_readwrite("functions", &ir::_Module_::functions)
       .def_readwrite("submodules", &ir::_Module_::submodules);
+
+  DefineExprNode<ir::_Buffer_>(m, "_Buffer_");
+  py::class_<ir::_Buffer_, ir::ExprNode<ir::_Buffer_>> _buffer_(*m, "_Buffer_");
+  _buffer_
+      .def_static(
+          "make",
+          py::overload_cast<const std::string &, Type>(&ir::_Buffer_::Make))
+      .def_static("make", py::overload_cast<>(&ir::_Buffer_::Make));
 }
 
 void BindOperation(py::module *m) {
@@ -586,9 +609,11 @@ void BindIrTensor(py::module *m) {
            [](ir::Tensor &self, Expr a, Expr b, Expr c) {
              return self(a, b, c);
            })
-      .def("__call__", [](ir::Tensor &self, Expr a, Expr b, Expr c, Expr d) {
-        return self(a, b, c, d);
-      });
+      .def("__call__",
+           [](ir::Tensor &self, Expr a, Expr b, Expr c, Expr d) {
+             return self(a, b, c, d);
+           })
+      .def("Expr", [](ir::Tensor &self) { return self.operator Expr(); });
 
   DefineExprNode<ir::_Tensor_>(m, "_Tensor_");
   py::class_<ir::_Tensor_, ir::ExprNode<ir::_Tensor_>> _tensor_(*m, "_Tensor_");
@@ -600,7 +625,18 @@ void BindIrTensor(py::module *m) {
       .def("domain_with_reduce_axis", &ir::_Tensor_::domain_without_reduce_axis)
       .def("domain_without_reduce_axis",
            &ir::_Tensor_::domain_without_reduce_axis)
-      .def_static("make", &ir::_Tensor_::Make)
+      .def_static(
+          "make",
+          py::overload_cast<const std::string &,
+                            Type,
+                            const std::vector<Expr> &,
+                            const std::vector<Expr> &,
+                            const std::vector<Var> &>(&ir::_Tensor_::Make),
+          py::arg("name"),
+          py::arg("dtype"),
+          py::arg("shape"),
+          py::arg("domain"),
+          py::arg("reduce_axis") = std::vector<Var>({}))
       .def("is_tuple", &ir::_Tensor_::is_tuple)
       .def("is_tuple_get", &ir::_Tensor_::is_tuple_get)
       .def("tuple_get", &ir::_Tensor_::TupleGet)

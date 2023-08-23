@@ -1,4 +1,4 @@
-# Copyright (c) 2021 CINN Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.framework import (  # noqa: F401
-    Instruction,
-    NodeAttr,
-    Operator,
-    OpValueType,
-    OpValueType1,
-    Scope,
-    SharedTensor,
-    Tensor,
-)
+from .compiler import compile
+
+__all__ = ["compile"]
