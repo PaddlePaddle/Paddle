@@ -581,7 +581,7 @@ void DistributedFusedLambInitOpKernel(
     master_param_out[info.idx]->Resize(info.param_t->dims());
     master_param_out[info.idx]->ShareBufferWith(sliced_tensor);
     // PADDLE_ENFORCE_EQ(
-    //     master_params[info.idx]->mutable_data<float>(place),
+    //     dev_ctx.template Alloc<float>(master_param_out[info.idx]),
     //     sliced_tensor.data<float>(),
     //     errors::InvalidArgument("Invalid master weight tensor pointer."));
     if (info.grad_t->IsInitialized()) {
@@ -610,7 +610,7 @@ void DistributedFusedLambInitOpKernel(
     CopyAndShareBufferForInitedTensor(
         dev_ctx, info.param_t, fp16_p_t, info.numel_offset);
     // PADDLE_ENFORCE_EQ(
-    //     master_params[info.idx]->mutable_data<float>(place),
+    //     dev_ctx.template Alloc<float>(master_param_out[info.idx]),
     //     sliced_tensor.data<float>(),
     //     errors::InvalidArgument("Invalid master weight tensor pointer."));
 
