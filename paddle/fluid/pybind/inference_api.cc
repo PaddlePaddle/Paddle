@@ -271,6 +271,16 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         static_cast<phi::dtype::float16 *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::BFLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<bfloat16 *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::BOOL) {
+    tensor.ShareExternalData(
+        static_cast<bool *>(input_tensor.data()),
+        shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
   } else if (input_tensor.dtype() == phi::DataType::INT32) {
     tensor.ShareExternalData(
         static_cast<int32_t *>(input_tensor.data()),
@@ -284,7 +294,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT64, FLOAT32 and FLOAT16."));
+        "INT64, FLOAT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -311,6 +321,16 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
             paddle_tensor.data<paddle::platform::float16>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::BFLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<bfloat16 *>(paddle_tensor.data<bfloat16>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::BOOL) {
+    tensor.ShareExternalData(
+        static_cast<bool *>(paddle_tensor.data<bool>()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else if (paddle_tensor.dtype() == phi::DataType::INT32) {
     tensor.ShareExternalData(
         static_cast<int32_t *>(paddle_tensor.data<int32_t>()),
@@ -324,7 +344,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, FLOAT32 and FLOAT16."));
+        "INT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -871,6 +891,9 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_dynamic_shape_enabled",
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
+      .def("mark_trt_engine_outputs",
+           &AnalysisConfig::MarkTrtEngineOutputs,
+           py::arg("output_tensor_names") = std::vector<std::string>({}))
       .def("enable_tensorrt_varseqlen", &AnalysisConfig::EnableVarseqlen)
       .def("tensorrt_varseqlen_enabled",
            &AnalysisConfig::tensorrt_varseqlen_enabled)
@@ -895,6 +918,10 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableTensorRtInspector)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
+      .def("enable_tensorrt_explicit_quantization",
+           &AnalysisConfig::EnableTensorRtExplicitQuantization)
+      .def("tensorrt_explicit_quantization_enabled",
+           &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,

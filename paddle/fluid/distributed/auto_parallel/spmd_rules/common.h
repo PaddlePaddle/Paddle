@@ -125,14 +125,14 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
 TensorDistAttr ReplicatedOnMesh(const TensorDistAttr& src_dist_attr);
 
 // Check whether the given DistTensorSpec objects are valid. For each
-// DistTensorSpec, the rank of its dimsmapping must be equal to the rank of its
+// DistTensorSpec, the rank of its dims mapping must be equal to the rank of its
 // corresponding tensor shape. the parameter op_name is used for logging error
 // message.
 void VerifySpecs(const std::vector<DistTensorSpec>& specs,
                  const std::string& op_name);
 
-// Get dimsmapping for the given tensors. Return the pair of each
-// tensor's einsum notation and the corresponding dimsmapping.
+// Get dims mapping for the given tensors. Return the pair of each
+// tensor's einsum notation and the corresponding dims mapping.
 std::vector<std::pair<std::string, std::vector<int64_t>>>
 GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
                        const std::vector<DistTensorSpec>& specs);

@@ -23,7 +23,7 @@ from paddle.nn.utils import dygraph_utils
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
 
-def _c_identity(tensor, group=None):
+def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
     """
     Return a copy of the tensor, mainly used with model parallel.
 
@@ -45,15 +45,18 @@ def _c_identity(tensor, group=None):
         class c_identity_eager(PyLayer):
             @staticmethod
             def forward(ctx, tensor):
-                return _legacy_C_ops.c_identity(
-                    tensor,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    group.id,
-                    'use_model_parallel',
-                    True,
-                )
+                if skip_c_identity_dynamic:
+                    return tensor
+                else:
+                    return _legacy_C_ops.c_identity(
+                        tensor,
+                        'use_calc_stream',
+                        True,
+                        'ring_id',
+                        group.id,
+                        'use_model_parallel',
+                        True,
+                    )
 
             @staticmethod
             def backward(ctx, dy):
@@ -70,7 +73,7 @@ def _c_identity(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
 
@@ -130,7 +133,7 @@ def _c_concat(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_concat',
         )
 
@@ -196,7 +199,7 @@ def _c_split(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_split',
         )
 
@@ -221,6 +224,7 @@ def _mp_allreduce(
     group=None,
     use_calc_stream=True,
     use_model_parallel=True,
+    skip_c_identity_dynamic=False,
 ):
     """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]"""
     if group is not None and not group.is_member():
@@ -256,15 +260,18 @@ def _mp_allreduce(
 
             @staticmethod
             def backward(ctx, dy):
-                return _legacy_C_ops.c_identity(
-                    dy,
-                    'use_calc_stream',
-                    True,
-                    'ring_id',
-                    ctx.ring_id,
-                    'use_model_parallel',
-                    True,
-                )
+                if skip_c_identity_dynamic:
+                    return dy
+                else:
+                    return _legacy_C_ops.c_identity(
+                        dy,
+                        'use_calc_stream',
+                        True,
+                        'ring_id',
+                        ctx.ring_id,
+                        'use_model_parallel',
+                        True,
+                    )
 
         return mp_allreduce_eager.apply(
             tensor, group, use_calc_stream, use_model_parallel
@@ -278,7 +285,7 @@ def _mp_allreduce(
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64' 'uint16'],
             op_type,
         )
 

@@ -17,7 +17,7 @@
 #include <memory>
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/ir/core/program.h"
 
 namespace paddle {
