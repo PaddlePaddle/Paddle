@@ -50,66 +50,63 @@ class LookAhead(Optimizer):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.nn as nn
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            BATCH_SIZE = 16
-            BATCH_NUM = 4
-            EPOCH_NUM = 4
+            >>> BATCH_SIZE = 16
+            >>> BATCH_NUM = 4
+            >>> EPOCH_NUM = 4
 
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
-            # define a random dataset
-            class RandomDataset(paddle.io.Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> IMAGE_SIZE = 784
+            >>> CLASS_NUM = 10
+            >>> # define a random dataset
+            >>> class RandomDataset(paddle.io.Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+            ...         label = np.random.randint(0, CLASS_NUM - 1,
+            ...                                 (1, )).astype('int64')
+            ...         return image, label
+            ...     def __len__(self):
+            ...         return self.num_samples
 
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1,
-                                            (1, )).astype('int64')
-                    return image, label
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            ...         self.bias = self._linear.bias
+            ...     @paddle.jit.to_static
+            ...     def forward(self, x):
+            ...         return self._linear(x)
 
-                def __len__(self):
-                    return self.num_samples
+            >>> def train(layer, loader, loss_fn, opt):
+            ...     for epoch_id in range(EPOCH_NUM):
+            ...         for batch_id, (image, label) in enumerate(loader()):
+            ...             out = layer(image)
+            ...             loss = loss_fn(out, label)
+            ...             loss.backward()
+            ...             opt.step()
+            ...             opt.clear_grad()
+            ...             print("Train Epoch {} batch {}: loss = {}".format(
+            ...                 epoch_id, batch_id, np.mean(loss.numpy())))
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-                    self.bias = self._linear.bias
+            >>> layer = LinearNet()
+            >>> loss_fn = nn.CrossEntropyLoss()
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.1, parameters=layer.parameters())
+            >>> lookahead = paddle.incubate.LookAhead(optimizer, alpha=0.2, k=5)
 
-                @paddle.jit.to_static
-                def forward(self, x):
-                    return self._linear(x)
+            >>> # create data loader
+            >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            >>> loader = paddle.io.DataLoader(
+            ...     dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2)
 
-            def train(layer, loader, loss_fn, opt):
-                for epoch_id in range(EPOCH_NUM):
-                    for batch_id, (image, label) in enumerate(loader()):
-                        out = layer(image)
-                        loss = loss_fn(out, label)
-                        loss.backward()
-                        opt.step()
-                        opt.clear_grad()
-                        print("Train Epoch {} batch {}: loss = {}".format(
-                            epoch_id, batch_id, np.mean(loss.numpy())))
-
-            layer = LinearNet()
-            loss_fn = nn.CrossEntropyLoss()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.1, parameters=layer.parameters())
-            lookahead = paddle.incubate.LookAhead(optimizer, alpha=0.2, k=5)
-
-            # create data loader
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = paddle.io.DataLoader(
-                dataset,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
-
-            train(layer, loader, loss_fn, lookahead)
+            >>> train(layer, loader, loss_fn, lookahead)
 
     """
     _slow_str = "slow"
@@ -161,16 +158,16 @@ class LookAhead(Optimizer):
 
             .. code-block:: python
 
-                import paddle
-                inp = paddle.rand([1,10], dtype="float32")
-                linear = paddle.nn.Linear(10, 1)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
-                loss.backward()
-                lookahead.step()
-                lookahead.clear_grad()
+                >>> import paddle
+                >>> inp = paddle.rand([1,10], dtype="float32")
+                >>> linear = paddle.nn.Linear(10, 1)
+                >>> out = linear(inp)
+                >>> loss = paddle.mean(out)
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
+                >>> loss.backward()
+                >>> lookahead.step()
+                >>> lookahead.clear_grad()
 
         """
         self.inner_optimizer.step()
@@ -274,17 +271,17 @@ class LookAhead(Optimizer):
 
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                inp = paddle.rand([1, 10], dtype="float32")
-                linear = paddle.nn.Linear(10, 1)
-                out = linear(inp)
-                loss = paddle.mean(out)
-                sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
-                lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
-                loss.backward()
-                lookahead.minimize(loss)
-                lookahead.clear_grad()
+                >>> inp = paddle.rand([1, 10], dtype="float32")
+                >>> linear = paddle.nn.Linear(10, 1)
+                >>> out = linear(inp)
+                >>> loss = paddle.mean(out)
+                >>> sgd = paddle.optimizer.SGD(learning_rate=0.1,parameters=linear.parameters())
+                >>> lookahead = paddle.incubate.LookAhead(sgd, alpha=0.2, k=5)
+                >>> loss.backward()
+                >>> lookahead.minimize(loss)
+                >>> lookahead.clear_grad()
 
         """
         assert isinstance(loss, Variable), "The loss should be an Tensor."
