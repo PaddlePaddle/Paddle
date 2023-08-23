@@ -275,16 +275,20 @@ class CodeGen:
             return 'return;'
 
     def _gen_one_impl(self, op_info, op_name, is_mutable_attr):
+        ret_type = self._gen_ret_type(op_info)
         in_combine, in_combine_op_list = self._gen_in_combine(op_info)
         compute_op, op_inst_name = self._gen_compute_op(
             op_info, op_name, in_combine_op_list, is_mutable_attr
         )
+        if ret_type == 'void':
+            compute_op += f' (void){op_inst_name};'
+
         out_split, ret_list = self._gen_out_split_and_ret_list(
             op_info, op_inst_name
         )
 
         ret = API_IMPL_TEMPLATE.format(
-            ret_type=self._gen_ret_type(op_info),
+            ret_type=ret_type,
             api_name=op_name,
             args=self._gen_api_args(op_info, False, is_mutable_attr),
             in_combine=in_combine,
