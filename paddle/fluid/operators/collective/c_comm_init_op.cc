@@ -27,8 +27,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_XPU_BKCL) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -92,8 +93,8 @@ class CCommInitOp : public framework::OperatorBase {
           platform::errors::PreconditionNotMet(
               "CCommInitOp can run on gpu or xpu place only."));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_XPU_BKCL)
       auto var = scope.FindVar(Input("X"));
       PADDLE_ENFORCE_NOT_NULL(
           var, platform::errors::InvalidArgument("Input con not be empty."));

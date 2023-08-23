@@ -51,8 +51,9 @@ void MessageBus::Init(
                           addr_));
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_XPU_BKCL) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   // NOTE: To make the brpc is compatible with collective,
   // need release the handler holding the ip address.
   if (addr_ != "") {
