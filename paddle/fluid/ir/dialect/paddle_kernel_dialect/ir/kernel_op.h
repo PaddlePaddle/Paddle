@@ -24,7 +24,7 @@ namespace dialect {
 class PhiKernelOp : public ir::Op<PhiKernelOp> {
  public:
   using Op::Op;
-  static const char *name() { return "phi.kernel"; }
+  static const char *name() { return "pd_kernel.phi_kernel"; }
   static constexpr uint32_t attributes_num = 3;
   static const char *attributes_name[attributes_num];
   std::string op_name();

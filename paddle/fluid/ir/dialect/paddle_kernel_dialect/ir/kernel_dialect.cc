@@ -33,9 +33,9 @@ PaddleKernelDialect::PaddleKernelDialect(ir::IrContext *context)
 
 void PaddleKernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
-  RegisterTypes<paddle::dialect::AllocatedSelectedRowsType>();
-  RegisterOps<dialect::PhiKernelOp>();
-  RegisterOps<dialect::LegacyKernelOp>();
+  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
+                paddle::dialect::AllocatedSelectedRowsType>();
+  RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
   RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
