@@ -95,7 +95,6 @@ using mudnnStatus_t = ::musa::dnn::Status;
 #include <error.h>
 
 #include "paddle/phi/backends/dynload/mccl.h"
-// #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_MUSA
 

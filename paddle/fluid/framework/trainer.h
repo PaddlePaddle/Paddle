@@ -250,8 +250,8 @@ class HeterXpuTrainer : public TrainerBase {
 
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
-     defined PADDLE_WITH_MCCL || defined PADDLE_WITH_XPU_BKCL) &&                        \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL ||      \
+     defined PADDLE_WITH_MCCL || defined PADDLE_WITH_XPU_BKCL) && \
     (defined PADDLE_WITH_PSLIB)
 class PSGPUTrainer : public TrainerBase {
  public:

@@ -27,15 +27,6 @@ namespace dynload {
   using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
-// using DynLoad__ncclCommInitAll = phi::dynload::DynLoad__ncclCIA;
-// extern DynLoad__ncclCommInitAll ncclCommInitAll;
-
-// using DynLoad__mcclCommInitAll = phi::dynload::DynLoad__mcclCIA;
-// extern DynLoad__mcclCommInitAll ncclCommInitAll;
-
-// #define xxx(mcclName, NcclName)
-
-
 #define NCCL_RAND_ROUTINE_EACH(__macro) \
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \

@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
-     defined PADDLE_WITH_MCCL || defined PADDLE_WITH_XPU_BKCL) &&                        \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL ||      \
+     defined PADDLE_WITH_MCCL || defined PADDLE_WITH_XPU_BKCL) && \
     (defined PADDLE_WITH_PSLIB)
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
