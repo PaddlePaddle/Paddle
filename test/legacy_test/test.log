@@ -1,0 +1,54 @@
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+I0822 03:53:26.949735 20573 dynamic_loader.cc:204] Set paddle lib path : /root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/libs
+Traceback (most recent call last):
+  File "/root/dev/Paddle/test/legacy_test/test_inplace.py", line 21, in <module>
+    import paddle
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/__init__.py", line 31, in <module>
+    from .framework import monkey_patch_variable
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/framework/__init__.py", line 17, in <module>
+    from . import random  # noqa: F401
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/framework/random.py", line 17, in <module>
+    from paddle import fluid
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/fluid/__init__.py", line 46, in <module>
+    from . import dataset
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/fluid/dataset.py", line 19, in <module>
+    from ..utils import deprecated
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/utils/__init__.py", line 23, in <module>
+    from . import download  # noqa: F401
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/paddle/utils/download.py", line 25, in <module>
+    import httpx
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpx/__init__.py", line 2, in <module>
+    from ._api import delete, get, head, options, patch, post, put, request, stream
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpx/_api.py", line 4, in <module>
+    from ._client import Client
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpx/_client.py", line 30, in <module>
+    from ._transports.default import AsyncHTTPTransport, HTTPTransport
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpx/_transports/default.py", line 30, in <module>
+    import httpcore
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpcore/__init__.py", line 1, in <module>
+    from ._api import request, stream
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpcore/_api.py", line 5, in <module>
+    from ._sync.connection_pool import ConnectionPool
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpcore/_sync/__init__.py", line 1, in <module>
+    from .connection import HTTPConnection
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpcore/_sync/connection.py", line 14, in <module>
+    from .http11 import HTTP11Connection
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 16, in <module>
+    import h11
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/h11/__init__.py", line 9, in <module>
+    from h11._connection import Connection, NEED_DATA, PAUSED
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/h11/_connection.py", line 5, in <module>
+    from ._events import (
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/site-packages/h11/_events.py", line 129, in <module>
+    class _ResponseBase(Event):
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/dataclasses.py", line 1175, in wrap
+    return _process_class(cls, init, repr, eq, order, unsafe_hash,
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/dataclasses.py", line 1075, in _process_class
+    for fn in _frozen_get_del_attr(cls, field_list, globals):
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/dataclasses.py", line 606, in _frozen_get_del_attr
+    return (_create_fn('__setattr__',
+  File "/root/miniconda3/envs/inplace_2/lib/python3.10/dataclasses.py", line 432, in _create_fn
+    exec(txt, globals, ns)
+  File "<string>", line 1, in <module>
+KeyboardInterrupt
