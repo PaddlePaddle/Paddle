@@ -171,12 +171,11 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     T adaptive_threshold = nms_threshold;
     const T* bbox_data = bbox.data<T>();
 
-    while (sorted_indices.size() != 0) {
+    while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
-      for (size_t k = 0; k < selected_indices->size(); ++k) {
+      for (const auto kept_idx : *selected_indices) {
         if (keep) {
-          const int kept_idx = (*selected_indices)[k];
           T overlap = T(0.);
           // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
@@ -267,8 +266,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           sdata = score_slice.data<T>();
         }
         const std::vector<int>& label_indices = it.second;
-        for (size_t j = 0; j < label_indices.size(); ++j) {
-          int idx = label_indices[j];
+        for (auto idx : label_indices) {
           score_index_pairs.push_back(
               std::make_pair(sdata[idx], std::make_pair(label, idx)));
         }
@@ -281,9 +279,9 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
-      for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-        int label = score_index_pairs[j].second.first;
-        int idx = score_index_pairs[j].second.second;
+      for (auto& score_index_pair : score_index_pairs) {
+        int label = score_index_pair.second.first;
+        int idx = score_index_pair.second.second;
         new_indices[label].push_back(idx);
       }
       if (scores_size == 2) {
@@ -329,8 +327,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         sdata = scores_data + label * predict_dim;
       }
 
-      for (size_t j = 0; j < indices.size(); ++j) {
-        int idx = indices[j];
+      for (auto idx : indices) {
         odata[count * out_dim] = label;  // label
         const T* bdata;
         if (scores_size == 3) {
@@ -607,44 +604,11 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
   }
 };
 
-class MultiClassNMS3Op : public MultiClassNMS2Op {
- public:
-  MultiClassNMS3Op(const std::string& type,
-                   const framework::VariableNameMap& inputs,
-                   const framework::VariableNameMap& outputs,
-                   const framework::AttributeMap& attrs)
-      : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"), ctx.GetPlace());
-  }
-};
-
-class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {
- public:
-  void Make() override {
-    MultiClassNMS2OpMaker::Make();
-    AddInput("RoisNum",
-             "(Tensor) The number of RoIs in shape (B),"
-             "B is the number of images")
-        .AsDispensable();
-    AddOutput("NmsRoisNum", "(Tensor), The number of NMS RoIs in each image")
-        .AsDispensable();
-  }
-};
-
 template <typename T, typename DeviceContext>
 class MultiClassNMS2Kernel : public MultiClassNMSKernel<T, DeviceContext> {};
 
 }  // namespace operators
 }  // namespace paddle
-
-DECLARE_INFER_SHAPE_FUNCTOR(multiclass_nms3,
-                            MultiClassNMSShapeFunctor,
-                            PD_INFER_META(phi::MultiClassNMSInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
@@ -668,11 +632,3 @@ PD_REGISTER_STRUCT_KERNEL(multiclass_nms2,
                           ops::MultiClassNMS2Kernel,
                           float,
                           double) {}
-
-REGISTER_OPERATOR(
-    multiclass_nms3,
-    ops::MultiClassNMS3Op,
-    ops::MultiClassNMS3OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    MultiClassNMSShapeFunctor);

@@ -470,7 +470,7 @@ PHI_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";  // NOLINT
 PHI_DEFINE_EXPORTED_string(
     allocator_strategy,
     kDefaultAllocatorStrategy,
@@ -542,7 +542,7 @@ PHI_DEFINE_EXPORTED_double(
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
 
 /**
  * Memory related FLAG
@@ -1060,19 +1060,24 @@ DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
-DEFINE_bool(enable_slotpool_wait_release,
+DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
             false,
             "enable slotrecord object wait release, default false");
-DEFINE_bool(enable_slotrecord_reset_shrink,
+DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
             false,
             "enable slotrecord object reset shrink memory, default false");
-DEFINE_bool(enable_ins_parser_file,
+DEFINE_bool(enable_ins_parser_file,  // NOLINT
             false,
             "enable parser ins file, default false");
 PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,
     "enable hash collisions stat for hbm table, default false");
+PHI_DEFINE_EXPORTED_bool(
+    cache_inference_while_scope,
+    false,
+    "Cache the scope of the while op to avoid repeated creation of the scope "
+    "for each iteration and improve inference performance.");
 PHI_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
                            0.75,
                            "the load factor of hbm table, default 0.75");
@@ -1256,3 +1261,40 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
 PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
+                         false,
+                         "Enable new IR in executor");
+
+/**
+ * Using new IR API in Python
+ * Name: enable_new_ir_api
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, New IR API will be used in Python
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
+                         false,
+                         "Enable new IR API in Python");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor_trace_run
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR and run in beta version by for trace
+ * version.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
+                         false,
+                         "Enable new IR in executor");

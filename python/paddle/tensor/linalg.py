@@ -670,8 +670,8 @@ def dist(x, y, p=2, name=None):
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
 
     Args:
-        x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
-        y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
+        x (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is bfloat16, float16, float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
         name (str, optional): The default value is `None`. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -701,8 +701,12 @@ def dist(x, y, p=2, name=None):
     if in_dynamic_mode():
         return _C_ops.dist(x, y, p)
 
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
-    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(
+        x, 'dtype', ['bfloat16', 'float16', 'float32', 'float64'], 'dist'
+    )
+    check_variable_and_dtype(
+        y, 'dtype', ['bfloat16', 'float16', 'float32', 'float64'], 'dist'
+    )
     check_type(p, 'p', (float, int), 'dist')
     helper = LayerHelper("dist", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -1076,8 +1080,8 @@ def dot(x, y, name=None):
        is the batch dimension, which means that the vectors of multiple batches are dotted.
 
     Parameters:
-        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``
-        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
+        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -1113,13 +1117,31 @@ def dot(x, y, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             op_type,
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             op_type,
         )
 
@@ -1589,13 +1611,13 @@ def bmm(x, y, name=None):
                     x_shape, y_shape
                 )
             )
-        if x_shape[2] != y_shape[1]:
+        if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
             raise ValueError(
                 "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape
                 )
             )
-        if x_shape[0] != y_shape[0]:
+        if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
             raise ValueError(
                 "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
                     x_shape, y_shape
@@ -1963,6 +1985,159 @@ def svd(x, full_matrices=False, name=None):
         return u, s, vh
 
 
+def pca_lowrank(x, q=None, center=True, niter=2, name=None):
+    r"""
+    Performs linear Principal Component Analysis (PCA) on a low-rank matrix or batches of such matrices.
+
+    Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
+
+    .. math::
+        X = U * diag(S) * V^{T}
+
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
+            where `...` is zero or more batch dimensions. N and M can be arbitraty
+            positive number. The data type of x should be float32 or float64.
+        q (int, optional): a slightly overestimated rank of :math:`X`.
+            Default value is :math:`q=min(6,N,M)`.
+        center (bool, optional): if True, center the input tensor.
+            Default value is True.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        - Tensor U, is N x q matrix.
+        - Tensor S, is a vector with length q.
+        - Tensor V, is M x q matrix.
+
+        tuple (U, S, V): which is the nearly optimal approximation of a singular value decomposition of a centered matrix :math:`X`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn((5, 5), dtype='float64')
+            U, S, V = paddle.linalg.pca_lowrank(x)
+            print(U)
+            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [[ 0.41057070,  0.40364287,  0.59099574, -0.34529432,  0.44721360],
+            #         [-0.30243321,  0.55670611, -0.15025419,  0.61321785,  0.44721360],
+            #         [ 0.57427340, -0.15936327, -0.66414981, -0.06097905,  0.44721360],
+            #         [-0.63897516, -0.09968973, -0.17298615, -0.59316819,  0.44721360],
+            #         [-0.04343573, -0.70129598,  0.39639442,  0.38622370,  0.44721360]])
+
+            print(S)
+            # Tensor(shape=[5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [3.33724265, 2.57573259, 1.69479048, 0.68069312, 0.00000000])
+
+            print(V)
+            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [[ 0.09800724, -0.32627008, -0.23593953,  0.81840445,  0.39810690],
+            #         [-0.60100303,  0.63741176, -0.01953663,  0.09023999,  0.47326173],
+            #         [ 0.25073864, -0.21305240, -0.32662950, -0.54786156,  0.69634740],
+            #         [ 0.33057205,  0.48282641, -0.75998527,  0.06744040, -0.27472705],
+            #         [ 0.67604895,  0.45688227,  0.50959437,  0.13179682,  0.23908071]])
+    """
+
+    def conjugate(x):
+        if x.is_complex():
+            return x.conj()
+        return x
+
+    def transpose(x):
+        shape = x.shape
+        perm = list(range(0, len(shape)))
+        perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+        return paddle.transpose(x, perm)
+
+    def transjugate(x):
+        return conjugate(transpose(x))
+
+    def get_approximate_basis(x, q, niter=2, M=None):
+        niter = 2 if niter is None else niter
+        m, n = x.shape[-2:]
+        qr = paddle.linalg.qr
+
+        R = paddle.randn((n, q), dtype=x.dtype)
+
+        A_t = transpose(x)
+        A_H = conjugate(A_t)
+        if M is None:
+            Q = qr(paddle.matmul(x, R))[0]
+            for i in range(niter):
+                Q = qr(paddle.matmul(A_H, Q))[0]
+                Q = qr(paddle.matmul(x, Q))[0]
+        else:
+            M_H = transjugate(M)
+            Q = qr(paddle.matmul(x, R) - paddle.matmul(M, R))[0]
+            for i in range(niter):
+                Q = qr(paddle.matmul(A_H, Q) - paddle.matmul(M_H, Q))[0]
+                Q = qr(paddle.matmul(x, Q) - paddle.matmul(M, Q))[0]
+
+        return Q
+
+    def svd_lowrank(x, q=6, niter=2, M=None):
+        q = 6 if q is None else q
+        m, n = x.shape[-2:]
+        if M is None:
+            M_t = None
+        else:
+            M_t = transpose(M)
+        A_t = transpose(x)
+
+        if m < n or n > q:
+            Q = get_approximate_basis(A_t, q, niter=niter, M=M_t)
+            Q_c = conjugate(Q)
+            if M is None:
+                B_t = paddle.matmul(x, Q_c)
+            else:
+                B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
+            assert B_t.shape[-2] == m, (B_t.shape, m)
+            assert B_t.shape[-1] == q, (B_t.shape, q)
+            assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
+            U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
+            V = transjugate(Vh)
+            V = Q.matmul(V)
+        else:
+            Q = get_approximate_basis(x, q, niter=niter, M=M)
+            Q_c = conjugate(Q)
+            if M is None:
+                B = paddle.matmul(A_t, Q_c)
+            else:
+                B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
+            B_t = transpose(B)
+            assert B_t.shape[-2] == q, (B_t.shape, q)
+            assert B_t.shape[-1] == n, (B_t.shape, n)
+            assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
+            U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
+            V = transjugate(Vh)
+            U = Q.matmul(U)
+
+        return U, S, V
+
+    if not paddle.is_tensor(x):
+        raise ValueError(f'Input must be tensor, but got {type(x)}')
+
+    (m, n) = x.shape[-2:]
+
+    if q is None:
+        q = min(6, m, n)
+    elif not (q >= 0 and q <= min(m, n)):
+        raise ValueError(
+            'q(={}) must be non-negative integer'
+            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+        )
+    if not (niter >= 0):
+        raise ValueError(f'niter(={niter}) must be non-negative integer')
+
+    if not center:
+        return svd_lowrank(x, q, niter=niter, M=None)
+
+    C = x.mean(axis=-2, keepdim=True)
+    return svd_lowrank(x - C, q, niter=niter, M=None)
+
+
 def matrix_power(x, n, name=None):
     r"""
 
@@ -2111,6 +2286,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
     P mat can be get by pivots:
 
     .. code-block:: text
+
         ones = eye(rows) #eye matrix of rank rows
         for i in range(cols):
             swap(ones[i], ones[pivots[i]])
@@ -2210,6 +2386,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
     P mat can be get by pivots:
 
     .. code-block:: text
+
         ones = eye(rows) #eye matrix of rank rows
         for i in range(cols):
             swap(ones[i], ones[pivots[i]])
@@ -2274,7 +2451,14 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
 
             # one can verify : X = P @ L @ U ;
     """
-
+    if x.ndim < 2:
+        raise ValueError(
+            f"The shape of x should be (*, M, N), but received ndim is [{x.ndim} < 2]"
+        )
+    if y.ndim < 1:
+        raise ValueError(
+            f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
+        )
     if in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
@@ -2977,10 +3161,10 @@ def cholesky_solve(x, y, upper=False, name=None):
     is also batches.
 
     Args:
-        x (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
-        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
+        x (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
             zero or more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
         upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
         name(str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.

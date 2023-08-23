@@ -20,6 +20,10 @@ import unittest
 
 import numpy as np
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
 
@@ -27,17 +31,17 @@ from paddle import fluid
 def convolution_net(
     data, label, input_dim, class_dim=2, emb_dim=32, hid_dim=32
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
-    conv_3 = fluid.nets.sequence_conv_pool(
+    conv_3 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=3,
         act="tanh",
         pool_type="sqrt",
     )
-    conv_4 = fluid.nets.sequence_conv_pool(
+    conv_4 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=4,
@@ -80,7 +84,7 @@ def train(
     else:
         raise NotImplementedError()
 
-    adagrad = fluid.optimizer.Adagrad(learning_rate=0.002)
+    adagrad = paddle.optimizer.Adagrad(learning_rate=0.002)
     adagrad.minimize(cost)
 
     train_data = paddle.batch(
@@ -106,8 +110,8 @@ def train(
                 print("cost=" + str(cost_val) + " acc=" + str(acc_val))
                 if cost_val < 0.4 and acc_val > 0.8:
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(
-                            save_dirname, ["words"], prediction, exe
+                        paddle.static.io.save_inference_model(
+                            save_dirname, data, prediction, exe
                         )
                     return
                 if math.isnan(float(cost_val)):
@@ -149,7 +153,7 @@ def infer(word_dict, use_cuda, save_dirname=None):
 
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -157,7 +161,7 @@ def infer(word_dict, use_cuda, save_dirname=None):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         word_dict_len = len(word_dict)
 

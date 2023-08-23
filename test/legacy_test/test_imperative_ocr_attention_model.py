@@ -285,7 +285,6 @@ class SimpleAttention(paddle.nn.Layer):
         self.fc_2 = Linear(decoder_size, 1, bias_attr=False)
 
     def forward(self, encoder_vec, encoder_proj, decoder_state):
-
         decoder_state_fc = self.fc_1(decoder_state)
         decoder_state_proj_reshape = paddle.reshape(
             decoder_state_fc, [-1, 1, decoder_state_fc.shape[1]]
@@ -452,13 +451,13 @@ class TestDygraphOCRAttention(unittest.TestCase):
             ocr_attention = OCRAttention()
 
             if Config.learning_rate_decay == "piecewise_decay":
-                learning_rate = fluid.layers.piecewise_decay(
+                learning_rate = paddle.optimizer.lr.piecewise_decay(
                     [50000], [Config.LR, Config.LR * 0.01]
                 )
             else:
                 learning_rate = Config.LR
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=0.001, parameter_list=ocr_attention.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.001, parameters=ocr_attention.parameters()
             )
             dy_param_init_value = {}
             for param in ocr_attention.parameters():
@@ -528,13 +527,13 @@ class TestDygraphOCRAttention(unittest.TestCase):
             ocr_attention = OCRAttention()
 
             if Config.learning_rate_decay == "piecewise_decay":
-                learning_rate = fluid.layers.piecewise_decay(
+                learning_rate = paddle.optimizer.lr.piecewise_decay(
                     [50000], [Config.LR, Config.LR * 0.01]
                 )
             else:
                 learning_rate = Config.LR
 
-            optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
 
             images = paddle.static.data(
                 name='pixel', shape=[-1] + Config.DATA_SHAPE, dtype='float32'

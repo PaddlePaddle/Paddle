@@ -54,6 +54,31 @@ class TestExpandAsBasic(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestExpandAs_ZeroDim1(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random(()).astype(self.dtype)
+        target_tensor = np.random.random(1).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+
+class TestExpandAs_ZeroDim2(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random(()).astype(self.dtype)
+        target_tensor = np.random.random(()).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = []
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -255,7 +280,7 @@ class TestExpandAsV2API(unittest.TestCase):
             feed={"x": input1, "target_tensor": input2},
             fetch_list=[out_1],
         )
-        assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+        np.testing.assert_array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
 if __name__ == "__main__":

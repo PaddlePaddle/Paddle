@@ -14,14 +14,12 @@
 
 __all__ = []
 
-import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.utils import convert_to_list
 
 from ...binary import add
-from ...unary import reshape
 
 
 def _conv3d(
@@ -148,20 +146,13 @@ def _conv2d(
         )
 
     channel_last = data_format == "NHWC"
-    n_dim = 0
     channel_dim = -1 if channel_last else 1
-    h_dim = 1 if channel_last else 2
-    w_dim = 2 if channel_last else -1
     if len(x.shape) != 4:
         raise ValueError(
             "Input x should be 4D tensor, but received x with the shape of {}".format(
                 x.shape
             )
         )
-    n = x.shape[n_dim]
-    d = 1
-    h = x.shape[h_dim]
-    w = x.shape[w_dim]
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
@@ -173,16 +164,6 @@ def _conv2d(
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
 
-    padding.insert(0, 0)
-    stride.insert(0, 1)
-    dilation.insert(0, 1)
-
-    x = reshape(x, [n, d, h, w, num_channels])
-    h_filter = weight.shape[0]
-    w_filter = weight.shape[1]
-    c_filter = weight.shape[2]
-    m_filter = weight.shape[3]
-    weight = paddle.reshape(weight, [d, h_filter, w_filter, c_filter, m_filter])
     if in_dynamic_mode():
         pre_bias = _C_ops.sparse_conv3d(
             x,
@@ -194,21 +175,33 @@ def _conv2d(
             subm,
             key if key is not None else "",
         )
-        x = reshape(x, [n, h, w, -1])
-        weight = paddle.reshape(
-            weight, [h_filter, w_filter, c_filter, m_filter]
-        )
-        n_out = pre_bias.shape[0]
-        h_out = pre_bias.shape[2]
-        w_out = pre_bias.shape[3]
-        channels_out = pre_bias.shape[4]
-        pre_bias = reshape(pre_bias, [n_out, h_out, w_out, channels_out])
-        if bias is not None:
-            return add(pre_bias, bias)
-        else:
-            return pre_bias
     else:
-        raise ValueError("Only support dynamic_mode now.")
+        inputs = {'x': x, 'kernel': weight}
+        attrs = {
+            'paddings': padding,
+            'dilations': dilation,
+            'strides': stride,
+            'groups': groups,
+            'subm': subm,
+            'key': key,
+        }
+        op_type = 'sparse_conv3d'
+        helper = LayerHelper(op_type, **locals())
+        rulebook = helper.create_variable_for_type_inference(
+            dtype='int32', stop_gradient=True
+        )
+        counter = helper.create_variable_for_type_inference(
+            dtype='int32', stop_gradient=True
+        )
+        pre_bias = helper.create_sparse_variable_for_type_inference(x.dtype)
+        outputs = {"out": pre_bias, "rulebook": rulebook, "counter": counter}
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
+        )
+    if bias is not None:
+        return add(pre_bias, bias)
+    else:
+        return pre_bias
 
 
 def conv3d(

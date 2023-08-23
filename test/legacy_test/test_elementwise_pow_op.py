@@ -19,6 +19,7 @@ from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 
 
 def pow_grad(x, y, dout):
@@ -59,7 +60,6 @@ class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -74,7 +74,6 @@ class TestElementwisePowOp_ZeroDim2(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -89,7 +88,6 @@ class TestElementwisePowOp_ZeroDim3(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
         self.public_python_api = paddle.pow
-        self.enable_cinn = False
         self.prim_op_type = "prim"
 
         self.inputs = {
@@ -267,11 +265,17 @@ class TestElementwisePowOpFP16(OpTest):
         )
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestElementwisePowBF16Op(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
 
         x = np.random.uniform(0, 1, [20, 5]).astype(np.float32)
         y = np.random.uniform(0, 1, [20, 5]).astype(np.float32)
@@ -290,6 +294,14 @@ class TestElementwisePowBF16Op(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X', 'Y'],
+                'Out',
+                check_prim=True,
+                only_check_prim=True,
+            )
 
 
 if __name__ == '__main__':

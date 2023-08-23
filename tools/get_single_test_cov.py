@@ -84,8 +84,7 @@ def analysisFNDAFile(rootPath, test):
         notrelated_ut_map_file
     ):
         print(
-            "make %s and %s successfully"
-            % (related_ut_map_file, related_ut_map_file)
+            f"make {related_ut_map_file} and {related_ut_map_file} successfully"
         )
     else:
         print(f"make {related_ut_map_file} and {related_ut_map_file} failed")
@@ -132,8 +131,7 @@ def analysisFNDAFile(rootPath, test):
                     clazz_filename not in related_file_list
                 ):  # xx.pb.cc in RELATED xx.pb.h not in RELATED
                     os.system(
-                        'echo %s >> %s'
-                        % (clazz_filename, notrelated_ut_map_file)
+                        f'echo {clazz_filename} >> {notrelated_ut_map_file}'
                     )
     f.close()
 

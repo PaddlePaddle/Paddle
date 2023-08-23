@@ -56,12 +56,26 @@ message MpConfig {
     optional bool sync_grad= 2 [ default = false ];
     optional bool sync_moment= 3 [ default = false ];
     optional string sync_mode= 4 [ default = 'broadcast' ];
+    // Support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
+    optional bool mp_async_allreduce= 5 [default = false ];
+    // Support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when mp_async_allreduce is true.
+    optional bool mp_skip_c_identity= 6 [default = false ];
+    // Support fused_linear_param_grad_add in ColumnParallelLinear. Only works when mp_async_allreduce is true.
+    optional bool mp_fused_linear_param_grad_add= 7 [default = false ];
 }
 
 message PpConfig {
     optional bool dp_comm_overlap = 1 [ default = false ];
     optional bool delay_scale_loss = 2 [ default = false ];
     optional bool enable_timer = 3 [ default = false ];
+    optional bool sharding_comm_overlap = 4 [ default = false ];
+    optional bool profiling = 5 [ default = false ];
+}
+
+message DygraphShardingConfig {
+  optional bool tensor_fusion = 1 [ default = false ];
+  optional int32 accumulate_steps = 2 [ default = 1 ];
+  optional bool comm_overlap = 3 [ default = false ];
 }
 
 message HybridConfig {
@@ -71,6 +85,7 @@ message HybridConfig {
   optional int32 sharding_degree = 4 [ default = 1 ];
   optional MpConfig mp_configs = 5;
   optional PpConfig pp_configs = 6;
+  optional DygraphShardingConfig sharding_configs = 7;
 }
 
 message AMPConfig {

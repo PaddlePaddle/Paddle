@@ -614,12 +614,12 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
     if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
         !HasOptimizedOneDNNKernel(ctx)) {
       this->SetDnnFallback(true);
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
@@ -696,12 +696,12 @@ class ReduceGradOp : public framework::OperatorWithKernel {
             : OperatorWithKernel::IndicateVarDataType(
                   ctx, framework::GradVarName("Out"));
 
-    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
     // max 5D tensor is supported
     if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
       dnn_fallback_ = true;
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -832,7 +832,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
       pt_out_dtype = d_out->dtype();
     }
 
-    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     phi::ReduceGrad<TransformOp<T, MPType>>(dev_ctx,
                                             pt_d_out.get(),
                                             pt_d_x.get(),

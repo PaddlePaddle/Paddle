@@ -71,7 +71,6 @@ from .layer.common import AlphaDropout  # noqa: F401
 from .layer.common import Unfold  # noqa: F401
 from .layer.common import Fold  # noqa: F401
 from .layer.common import Unflatten  # noqa: F401
-
 from .layer.pooling import AvgPool1D  # noqa: F401
 from .layer.pooling import AvgPool2D  # noqa: F401
 from .layer.pooling import AvgPool3D  # noqa: F401

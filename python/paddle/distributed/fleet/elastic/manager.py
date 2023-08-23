@@ -25,6 +25,8 @@ import traceback
 from paddle.distributed.fleet import cloud_utils, launch_utils
 from paddle.distributed.utils.log_utils import get_logger
 
+from ...backup_env import getenv_or_backup
+
 logger = get_logger("INFO", "ELASTIC")
 
 ELASTIC_EXIT_CODE = 101
@@ -123,7 +125,6 @@ class LauncherInterface:
 
 class ElasticManager:
     def __init__(self, args, etcd_client):
-
         self.args = args
         server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
         name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
@@ -150,7 +151,7 @@ class ElasticManager:
             self.np = len(self.trainers.split(","))
             self.start_port = int(os.getenv("PADDLE_PORT", "6170"))
             self.dist_endpoints = os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS', '')
-            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS', '')
+            trainer_endpoints = getenv_or_backup('PADDLE_TRAINER_ENDPOINTS', '')
             self.trainer_endpoints_list = trainer_endpoints.split(",")
         else:
             self.trainers = args.ips or os.getenv('PADDLE_TRAINERS', '')
@@ -603,7 +604,6 @@ class ElasticManager:
         self.launcher.launch()
 
     def watch(self):
-
         if self.need_sync:
             self.need_sync = False
 

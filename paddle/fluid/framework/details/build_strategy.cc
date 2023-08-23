@@ -232,7 +232,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
             "but received strategy_.trainer_id_ = %d.",
             strategy_.trainer_id_));
 
-    if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
+    if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty()) {
       PADDLE_ENFORCE_LT(
           static_cast<size_t>(strategy_.trainer_id_),
           strategy_.trainers_endpoints_.size(),
@@ -303,7 +303,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void AppendPassToSetMkldnnAttr(const std::string &pass_name) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       AppendPass(pass_name);
     } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
@@ -542,7 +542,7 @@ USE_PASS(build_cinn_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_feedforward_pass);
 #endif
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 USE_PASS(mkldnn_placement_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \

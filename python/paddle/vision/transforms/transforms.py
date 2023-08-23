@@ -583,7 +583,6 @@ class RandomResizedCrop(BaseTransform):
         )
 
         def central_crop(width, height):
-
             height = paddle.assign([height]).astype("float32")
             width = paddle.assign([width]).astype("float32")
 
@@ -1982,7 +1981,6 @@ class RandomErasing(BaseTransform):
             return counter < ten and (erase_h >= h or erase_w >= w)
 
         def body(counter, ten, erase_h, erase_w):
-
             erase_area = (
                 paddle.uniform([1], min=scale[0], max=scale[1]) * img_area
             )

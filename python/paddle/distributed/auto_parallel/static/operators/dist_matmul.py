@@ -305,7 +305,6 @@ def _is_auto_compatible_for_matmul(dist_op):
 
 
 def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
-
     # by now the backward function only insert the gradient allreduce for dist op itself
 
     dist_op_context = ctx.dist_op_context
@@ -386,7 +385,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             break
 
     if is_parameter_related(Y_var.name, main_block) and Y_var_partitioned:
-
         if Y_var_dim_mapping[0] >= 0:
             # row parallel: c_identity + matmul
             assert Y_var_dim_mapping[1] < 0
@@ -541,7 +539,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
 
 def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
-
     if Weight_var.name in dist_op_context.already_init_sync_vars:
         return
     assert startup_block.has_var(Weight_var.name)

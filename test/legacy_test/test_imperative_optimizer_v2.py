@@ -22,22 +22,6 @@ import paddle
 from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
-from paddle.fluid.optimizer import (
-    AdadeltaOptimizer,
-    AdagradOptimizer,
-    AdamaxOptimizer,
-    DecayedAdagradOptimizer,
-    DpsgdOptimizer,
-    ExponentialMovingAverage,
-    FtrlOptimizer,
-    LarsMomentumOptimizer,
-    LookaheadOptimizer,
-    ModelAverage,
-    MomentumOptimizer,
-    PipelineOptimizer,
-    RecomputeOptimizer,
-    RMSPropOptimizer,
-)
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -656,16 +640,48 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 )
                 adam.set_lr(0.01)
 
+    def test_set_lr_scheduler(self):
+        with fluid.dygraph.guard():
+            a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            linear = paddle.nn.Linear(10, 10)
+
+            a = fluid.dygraph.to_variable(a)
+
+            b = linear(a)
+
+            loss = paddle.mean(b)
+
+            adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
+
+            # float to LRScheduler
+            scheduler = paddle.optimizer.lr.StepDecay(
+                learning_rate=0.2, step_size=5, gamma=0.6
+            )
+            adam.set_lr_scheduler(scheduler)
+            adam.minimize(loss)
+            lr = adam.get_lr()
+            np.testing.assert_allclose(lr, 0.2, rtol=1e-06, atol=0.0)
+
+            # LRScheduler to another LRScheduler
+            scheduler = paddle.optimizer.lr.MultiStepDecay(
+                learning_rate=0.5, milestones=[2, 4, 6], gamma=0.8
+            )
+            adam.set_lr_scheduler(scheduler)
+            adam.minimize(loss)
+            lr = adam.get_lr()
+            np.testing.assert_allclose(lr, 0.5, rtol=1e-06, atol=0.0)
+
 
 class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Momentum(
+            learning_rate=0.001, momentum=0.9, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
         return optimizer
 
     def test_momentum(self):
@@ -674,13 +690,15 @@ class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = LarsMomentumOptimizer(
+        optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
             learning_rate=0.001, momentum=0.9, parameter_list=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9
+        )
         return optimizer
 
     def test_larsmomentum(self):
@@ -689,13 +707,13 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Adagrad(
+            learning_rate=0.2, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdagradOptimizer(learning_rate=0.2)
+        optimizer = paddle.optimizer.Adagrad(learning_rate=0.2)
         return optimizer
 
     def test_adagrad(self):
@@ -704,69 +722,31 @@ class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdamaxOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Adamax(
+            learning_rate=0.2, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdamaxOptimizer(learning_rate=0.2)
+        optimizer = paddle.optimizer.Adamax(learning_rate=0.2)
         return optimizer
 
     def test_adamax(self):
         self._check_mlp()
 
 
-class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01,
-            clip=10.0,
-            batch_size=16.0,
-            sigma=1.0,
-            parameter_list=parameter_list,
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DpsgdOptimizer(
-            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0
-        )
-        optimizer._seed = 100
-        return optimizer
-
-    def test_dpsgd(self):
-        self._check_mlp(place=fluid.CPUPlace())
-
-
-class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DecayedAdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = DecayedAdagradOptimizer(learning_rate=0.2)
-        return optimizer
-
-    def test_decayadagrad(self):
-        self._check_mlp()
-
-
 class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdadeltaOptimizer(
+        optimizer = paddle.optimizer.Adadelta(
             learning_rate=0.0003,
             epsilon=1.0e-6,
             rho=0.95,
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdadeltaOptimizer(
+        optimizer = paddle.optimizer.Adadelta(
             learning_rate=0.0003, epsilon=1.0e-6, rho=0.95
         )
         return optimizer
@@ -777,31 +757,16 @@ class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = RMSPropOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list
+        optimizer = paddle.optimizer.RMSProp(
+            learning_rate=0.1, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = RMSPropOptimizer(learning_rate=0.1)
+        optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
         return optimizer
 
     def test_rmsprop(self):
-        self._check_mlp()
-
-
-class TestImperativeFtrlOptimizer(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = FtrlOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list
-        )
-        return optimizer
-
-    def get_optimizer(self):
-        optimizer = FtrlOptimizer(learning_rate=0.1)
-        return optimizer
-
-    def test_ftrl(self):
         self._check_mlp()
 
 
@@ -829,18 +794,6 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-class TestImperativeModelAverage(TestImperativeOptimizerBase):
-    def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ModelAverage(
-            0.15, min_average_window=10000, max_average_window=12500
-        )
-        return optimizer
-
-    def test_modelaverage(self):
-        exception_message = "In dygraph, don't support ModelAverage."
-        self._check_exception(exception_message)
-
-
 class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = DGCMomentumOptimizer(
@@ -859,7 +812,7 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = ExponentialMovingAverage(0.999)
+        optimizer = paddle.static.ExponentialMovingAverage(0.999)
         return optimizer
 
     def test_exponentialmoving(self):
@@ -874,7 +827,7 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = PipelineOptimizer(optimizer)
+        optimizer = paddle.incubate.optimizer.PipelineOptimizer(optimizer)
         return optimizer
 
     def test_pipline(self):
@@ -887,7 +840,9 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = LookaheadOptimizer(optimizer, alpha=0.5, k=5)
+        optimizer = paddle.incubate.optimizer.LookAhead(
+            optimizer, alpha=0.5, k=5
+        )
         return optimizer
 
     def test_lookahead(self):
@@ -900,7 +855,7 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.5, parameters=parameter_list
         )
-        optimizer = RecomputeOptimizer(optimizer)
+        optimizer = paddle.incubate.optimizer.RecomputeOptimizer(optimizer)
         return optimizer
 
     def test_recompute(self):

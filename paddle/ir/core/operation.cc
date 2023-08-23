@@ -16,6 +16,7 @@
 
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
@@ -24,31 +25,27 @@
 #include "paddle/ir/core/value_impl.h"
 
 namespace ir {
-Operation *Operation::create(OperationArgument &&argument) {
-  Operation *op = create(argument.inputs,
+Operation *Operation::Create(OperationArgument &&argument) {
+  Operation *op = Create(argument.inputs,
                          argument.attributes,
                          argument.output_types,
                          argument.info,
                          argument.regions.size());
 
   for (size_t index = 0; index < argument.regions.size(); ++index) {
-    op->GetRegion(index).TakeBody(std::move(*argument.regions[index]));
+    op->region(index).TakeBody(std::move(*argument.regions[index]));
   }
   return op;
 }
 
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
-// OpInlineResult, Operation, Operand.
-Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
+// OpInlineResult, Operation, operand.
+Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                              const AttributeMap &attributes,
                              const std::vector<ir::Type> &output_types,
                              ir::OpInfo op_info,
                              size_t num_regions) {
-  // 0. Verify
-  if (op_info) {
-    op_info.verify(inputs, output_types, attributes);
-  }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -85,7 +82,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
-    throw("The address of OpOperandImpl must be divisible by 8.");
+    IR_THROW("The address of OpOperandImpl must be divisible by 8.");
   }
   for (size_t idx = 0; idx < num_operands; idx++) {
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
@@ -99,20 +96,45 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
       base_ptr += sizeof(Region);
     }
   }
+
+  // 0. Verify
+  if (op_info) {
+    op_info.Verify(op);
+  }
   return op;
 }
 
-// Call destructors for OpResults, Operation, and OpOperands in sequence, and
-// finally free memory.
-void Operation::destroy() {
-  // Deconstruct Regions.
+// Call destructors for Region , OpResults, Operation, and OpOperands in
+// sequence, and finally free memory.
+void Operation::Destroy() {
+  VLOG(6) << "Destroy Operation [" << name() << "] ...";
+  // 1. Deconstruct Regions.
   if (num_regions_ > 0) {
     for (size_t idx = 0; idx < num_regions_; idx++) {
       regions_[idx].~Region();
     }
   }
 
-  // 1. Get aligned_ptr by result_num.
+  // 2. Deconstruct Result.
+  for (size_t idx = 0; idx < num_results_; ++idx) {
+    detail::OpResultImpl *impl = result(idx).impl();
+    IR_ENFORCE(impl->use_empty(),
+               name() + " operation destroyed but still has uses.");
+    if (detail::OpOutlineResultImpl::classof(*impl)) {
+      static_cast<detail::OpOutlineResultImpl *>(impl)->~OpOutlineResultImpl();
+    } else {
+      static_cast<detail::OpInlineResultImpl *>(impl)->~OpInlineResultImpl();
+    }
+  }
+
+  // 3. Deconstruct Operation.
+  this->~Operation();
+
+  // 4. Deconstruct OpOperand.
+  for (size_t idx = 0; idx < num_operands_; idx++) {
+    operand(idx).impl()->~OpOperandImpl();
+  }
+  // 5. Free memory.
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
   size_t result_mem_size =
@@ -121,49 +143,16 @@ void Operation::destroy() {
                     (num_results_ - max_inline_result_num) +
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results_;
-  char *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
-  // 2.1. Deconstruct OpResult.
-  char *base_ptr = aligned_ptr;
-  for (size_t idx = num_results_; idx > 0; idx--) {
-    // release the uses of this result
-    detail::OpOperandImpl *first_use =
-        reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
-    while (first_use != nullptr) {
-      first_use->remove_from_ud_chain();
-      first_use =
-          reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
-    }
-    // destory the result
-    if (idx > max_inline_result_num) {
-      reinterpret_cast<detail::OpOutlineResultImpl *>(base_ptr)
-          ->~OpOutlineResultImpl();
-      base_ptr += sizeof(detail::OpOutlineResultImpl);
-    } else {
-      reinterpret_cast<detail::OpInlineResultImpl *>(base_ptr)
-          ->~OpInlineResultImpl();
-      base_ptr += sizeof(detail::OpInlineResultImpl);
-    }
-  }
-  // 2.2. Deconstruct Operation.
-  if (reinterpret_cast<uintptr_t>(base_ptr) !=
-      reinterpret_cast<uintptr_t>(this)) {
-    throw("Operation address error");
-  }
-  reinterpret_cast<Operation *>(base_ptr)->~Operation();
-  base_ptr += sizeof(Operation);
-  // 2.3. Deconstruct OpOperand.
-  for (size_t idx = 0; idx < num_operands_; idx++) {
-    reinterpret_cast<detail::OpOperandImpl *>(base_ptr)->~OpOperandImpl();
-    base_ptr += sizeof(detail::OpOperandImpl);
-  }
-  // 3. Free memory.
-  VLOG(4) << "Destroy an Operation: {ptr = "
-          << reinterpret_cast<void *>(aligned_ptr)
-          << ", size = " << result_mem_size << "}";
-  aligned_free(reinterpret_cast<void *>(aligned_ptr));
+  void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
+
+  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+          << ", size = " << result_mem_size << "} done.";
+  aligned_free(aligned_ptr);
 }
 
 IrContext *Operation::ir_context() const { return info_.ir_context(); }
+
+Dialect *Operation::dialect() const { return info_.dialect(); }
 
 Operation::Operation(const AttributeMap &attributes,
                      ir::OpInfo op_info,
@@ -176,9 +165,9 @@ Operation::Operation(const AttributeMap &attributes,
       num_operands_(num_operands),
       num_regions_(num_regions) {}
 
-ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
+ir::OpResult Operation::result(uint32_t index) const {
   if (index >= num_results_) {
-    throw("index exceeds OP output range.");
+    IR_THROW("index exceeds OP output range.");
   }
   uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
   const char *ptr =
@@ -197,13 +186,18 @@ ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
   }
 }
 
-ir::OpOperand Operation::GetOperandByIndex(uint32_t index) const {
+OpOperand Operation::operand(uint32_t index) const {
   if (index >= num_operands_) {
-    throw("index exceeds OP input range.");
+    IR_THROW("index exceeds OP input range.");
   }
   const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
                     (index) * sizeof(detail::OpOperandImpl);
-  return ir::OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+  return OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+}
+
+Value Operation::operand_source(uint32_t index) const {
+  OpOperand val = operand(index);
+  return val ? val.source() : Value();
 }
 
 std::string Operation::name() const {
@@ -211,16 +205,21 @@ std::string Operation::name() const {
   return p_name ? p_name : "";
 }
 
-Region *Operation::GetParentRegion() const {
-  return parent_ ? parent_->GetParentRegion() : nullptr;
+Attribute Operation::attribute(const std::string &key) const {
+  IR_ENFORCE(HasAttribute(key), "operation(%s): no attribute %s", name(), key);
+  return attributes_.at(key);
+}
+
+Region *Operation::GetParentRegion() {
+  return parent_ ? parent_->GetParent() : nullptr;
 }
 
 Operation *Operation::GetParentOp() const {
   return parent_ ? parent_->GetParentOp() : nullptr;
 }
 
-Program *Operation::GetParentProgram() {
-  Operation *op = this;
+const Program *Operation::GetParentProgram() const {
+  Operation *op = const_cast<Operation *>(this);
   while (Operation *parent_op = op->GetParentOp()) {
     op = parent_op;
   }
@@ -228,9 +227,57 @@ Program *Operation::GetParentProgram() {
   return module_op ? module_op.program() : nullptr;
 }
 
-Region &Operation::GetRegion(unsigned index) {
+Region &Operation::region(unsigned index) {
   assert(index < num_regions_ && "invalid region index");
   return regions_[index];
+}
+
+const Region &Operation::region(unsigned index) const {
+  assert(index < num_regions_ && "invalid region index");
+  return regions_[index];
+}
+
+void Operation::SetParent(Block *parent, const Block::iterator &position) {
+  parent_ = parent;
+  position_ = position;
+}
+
+void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
+  IR_ENFORCE(num_results_ == values.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(values[i]);
+  }
+}
+
+void Operation::ReplaceAllUsesWith(const std::vector<OpResult> &op_results) {
+  IR_ENFORCE(num_results_ == op_results.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(op_results[i]);
+  }
+}
+
+void Operation::Verify() {
+  if (info_) {
+    info_.Verify(this);
+  }
+}
+
+std::vector<OpOperand> Operation::operands() const {
+  std::vector<OpOperand> res;
+  for (uint32_t i = 0; i < num_operands(); ++i) {
+    res.push_back(operand(i));
+  }
+  return res;
+}
+
+std::vector<OpResult> Operation::results() const {
+  std::vector<OpResult> res;
+  for (uint32_t i = 0; i < num_results(); ++i) {
+    res.push_back(result(i));
+  }
+  return res;
 }
 
 }  // namespace ir

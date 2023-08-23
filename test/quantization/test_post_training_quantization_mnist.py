@@ -30,6 +30,23 @@ random.seed(0)
 np.random.seed(0)
 
 
+class TransedMnistDataSet(paddle.io.Dataset):
+    def __init__(self, mnist_data):
+        self.mnist_data = mnist_data
+
+    def __getitem__(self, idx):
+        img = (
+            np.array(self.mnist_data[idx][0])
+            .astype('float32')
+            .reshape(1, 28, 28)
+        )
+        batch = img / 127.5 - 1.0
+        return {"img": batch}
+
+    def __len__(self):
+        return len(self.mnist_data)
+
+
 class TestPostTrainingQuantization(unittest.TestCase):
     def setUp(self):
         self.root_path = tempfile.TemporaryDirectory()
@@ -64,7 +81,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def download(self, url, dirname, md5sum, save_name=None):
         import shutil
 
-        import requests
+        import httpx
 
         filename = os.path.join(
             dirname, url.split('/')[-1] if save_name is None else save_name
@@ -91,30 +108,30 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
             sys.stderr.write("Begin to download\n")
             try:
-                r = requests.get(url, stream=True)
-                total_length = r.headers.get('content-length')
+                with httpx.stream("GET", url) as r:
+                    total_length = r.headers.get('content-length')
 
-                if total_length is None:
-                    with open(filename, 'wb') as f:
-                        shutil.copyfileobj(r.raw, f)
-                else:
-                    with open(filename, 'wb') as f:
-                        chunk_size = 4096
-                        total_length = int(total_length)
-                        total_iter = total_length / chunk_size + 1
-                        log_interval = (
-                            total_iter // 20 if total_iter > 20 else 1
-                        )
-                        log_index = 0
-                        bar = paddle.hapi.progressbar.ProgressBar(
-                            total_iter, name='item'
-                        )
-                        for data in r.iter_content(chunk_size=chunk_size):
-                            f.write(data)
-                            log_index += 1
-                            bar.update(log_index, {})
-                            if log_index % log_interval == 0:
-                                bar.update(log_index)
+                    if total_length is None:
+                        with open(filename, 'wb') as f:
+                            shutil.copyfileobj(r.raw, f)
+                    else:
+                        with open(filename, 'wb') as f:
+                            chunk_size = 4096
+                            total_length = int(total_length)
+                            total_iter = total_length / chunk_size + 1
+                            log_interval = (
+                                total_iter // 20 if total_iter > 20 else 1
+                            )
+                            log_index = 0
+                            bar = paddle.hapi.progressbar.ProgressBar(
+                                total_iter, name='item'
+                            )
+                            for data in r.iter_bytes(chunk_size=chunk_size):
+                                f.write(data)
+                                log_index += 1
+                                bar.update(log_index, {})
+                                if log_index % log_interval == 0:
+                                    bar.update(log_index)
 
             except Exception as e:
                 # re-try
@@ -215,17 +232,29 @@ class TestPostTrainingQuantization(unittest.TestCase):
         skip_tensor_list=None,
         bias_correction=False,
     ):
-
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        val_reader = paddle.dataset.mnist.train()
+
+        train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', transform=None
+        )
+        train_dataset = TransedMnistDataSet(train_dataset)
+        BatchSampler = paddle.io.BatchSampler(
+            train_dataset, batch_size=batch_size
+        )
+        val_data_generator = paddle.io.DataLoader(
+            train_dataset,
+            batch_sampler=BatchSampler,
+            places=paddle.static.cpu_places(),
+        )
 
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
             model_filename=model_filename,
             params_filename=params_filename,
-            sample_generator=val_reader,
+            sample_generator=None,
+            data_loader=val_data_generator,
             batch_size=batch_size,
             batch_nums=batch_nums,
             algo=algo,
@@ -262,7 +291,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         onnx_format=False,
         skip_tensor_list=None,
     ):
-
         origin_model_path = self.download_model(data_url, data_md5, model_name)
         origin_model_path = os.path.join(origin_model_path, model_name)
 

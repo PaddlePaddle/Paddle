@@ -145,7 +145,6 @@ class TestFoldshape(TestFoldOp):
 
 
 class TestFoldAPI(TestFoldOp):
-
     # This is for test on paddle.nn.Fold
 
     def setUp(self):

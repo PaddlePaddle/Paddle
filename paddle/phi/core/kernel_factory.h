@@ -298,11 +298,14 @@ using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
 using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
 
 struct KernelResult {
-  KernelResult(const Kernel& kernel, bool fallback_cpu)
-      : kernel(kernel), has_fallback_cpu(fallback_cpu) {}
+  KernelResult(const Kernel& kernel, bool fallback_cpu, bool is_stride_kernel)
+      : kernel(kernel),
+        has_fallback_cpu(fallback_cpu),
+        is_stride_kernel(is_stride_kernel) {}
 
   const Kernel& kernel;
   bool has_fallback_cpu = false;
+  bool is_stride_kernel = false;
 };
 
 /**
@@ -322,13 +325,17 @@ class KernelFactory {
   bool HasStructuredKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-                                        const KernelKey& kernel_key) const;
+                                        const KernelKey& kernel_key,
+                                        bool use_strided_kernel = false) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;
 
   const Kernel& SelectKernel(const std::string& kernel_name,
                              const KernelKey& kernel_key) const;
+
+  const Kernel& SelectKernelWithGPUDNN(const std::string& kernel_name,
+                                       const KernelKey& kernel_key) const;
 
   KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
 

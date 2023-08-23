@@ -322,21 +322,14 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
-  /// std::string&, const paddle_infer::Tensor&>). Here, the first parameter is
-  /// op's type, the second param is output var name of the op, and the third
-  /// parameter is output tensor with the var name.
-  ///
-  void RegisterOutputHook(const OutputTensorHookFunc &hookfunc) override;
-
-  ///
-  /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
-  /// The hook function signature is void(const std::string&, const
   /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  void RegisterOutputHook(const OutputTensorHookFunc_V2 &hookfunc) override;
+  void RegisterOutputHook(const OutputTensorHookFunc &hookfunc) override;
+
+  /// \brief Same as RegisterOutputHook
+  void RegisterInputHook(const InputTensorHookFunc &hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
@@ -508,8 +501,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   void StatisticShapeRangeInfo();
-  void CollectShapeRangeInfo();
-
+  void HookCollectShapeRangeInfo();
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
@@ -579,10 +571,12 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  std::once_flag register_input_hook_flag_;
+  std::once_flag register_output_hook_flag_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   // Helper class to perform quantization
   class MkldnnQuantizer;
   MkldnnQuantizer *mkldnn_quantizer_{nullptr};
@@ -608,8 +602,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   std::vector<OutputTensorHookFunc> hookfuncs_;
-  std::vector<OutputTensorHookFunc_V2> hookfuncs_v2_;
-
+  std::vector<OutputTensorHookFunc> output_hookfuncs_;
+  std::vector<InputTensorHookFunc> input_hookfuncs_;
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
 

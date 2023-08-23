@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/core/value.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/value_impl.h"
 
 namespace ir {
@@ -33,12 +34,22 @@ OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
 }
 OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
-OpOperand OpOperand::next_use() const { return impl_->next_use(); }
+OpOperand OpOperand::next_use() const { return impl()->next_use(); }
 
-Value OpOperand::source() const { return impl_->source(); }
+Value OpOperand::source() const { return impl()->source(); }
 
-Operation *OpOperand::owner() const { return impl_->owner(); }
+Type OpOperand::type() const { return source().type(); }
 
+void OpOperand::set_source(Value value) { impl()->set_source(value); }
+
+Operation *OpOperand::owner() const { return impl()->owner(); }
+
+void OpOperand::RemoveFromUdChain() { return impl()->RemoveFromUdChain(); }
+
+detail::OpOperandImpl *OpOperand::impl() const {
+  IR_ENFORCE(impl_, "Can't use impl() interface while op_operand is null.");
+  return impl_;
+}
 // Value
 Value::Value(const detail::ValueImpl *impl)
     : impl_(const_cast<detail::ValueImpl *>(impl)) {}
@@ -55,30 +66,51 @@ bool Value::operator!() const { return impl_ == nullptr; }
 
 Value::operator bool() const { return impl_; }
 
-detail::ValueImpl *Value::impl() const { return impl_; }
+ir::Type Value::type() const { return impl()->type(); }
 
-ir::Type Value::type() const { return impl_->type(); }
-
-void Value::SetType(ir::Type type) { impl_->SetType(type); }
+void Value::set_type(ir::Type type) { impl()->set_type(type); }
 
 Operation *Value::GetDefiningOp() const {
   if (auto result = dyn_cast<OpResult>()) return result.owner();
   return nullptr;
 }
 
-std::string Value::print_ud_chain() { return impl_->print_ud_chain(); }
+std::string Value::PrintUdChain() { return impl()->PrintUdChain(); }
 
-Value::use_iterator Value::begin() const {
-  return ir::OpOperand(impl_->first_use());
-}
+Value::use_iterator Value::begin() const { return ir::OpOperand(first_use()); }
 
 Value::use_iterator Value::end() const { return Value::use_iterator(); }
 
 OpOperand Value::first_use() const { return impl()->first_use(); }
 
+bool Value::use_empty() const { return !first_use(); }
+
+bool Value::HasOneUse() const { return impl()->HasOneUse(); }
+
+void Value::ReplaceUsesWithIf(
+    Value new_value,
+    const std::function<bool(OpOperand)> &should_replace) const {
+  for (auto it = begin(); it != end();) {
+    if (should_replace(*it)) {
+      (it++)->set_source(new_value);
+    }
+  }
+}
+
+void Value::ReplaceAllUsesWith(Value new_value) const {
+  for (auto it = begin(); it != end();) {
+    (it++)->set_source(new_value);
+  }
+}
+
+detail::ValueImpl *Value::impl() const {
+  IR_ENFORCE(impl_, "Can't use impl() interface while value is null.");
+  return impl_;
+}
+
 // OpResult
 bool OpResult::classof(Value value) {
-  return ir::isa<detail::OpResultImpl>(value.impl());
+  return value && ir::isa<detail::OpResultImpl>(value.impl());
 }
 
 Operation *OpResult::owner() const { return impl()->owner(); }
@@ -86,7 +118,17 @@ Operation *OpResult::owner() const { return impl()->owner(); }
 uint32_t OpResult::GetResultIndex() const { return impl()->GetResultIndex(); }
 
 detail::OpResultImpl *OpResult::impl() const {
+  IR_ENFORCE(impl_, "Can't use impl() interface while value is null.");
   return reinterpret_cast<detail::OpResultImpl *>(impl_);
+}
+
+bool OpResult::operator==(const OpResult &other) const {
+  return impl_ == other.impl_;
+}
+
+detail::ValueImpl *OpResult::value_impl() const {
+  IR_ENFORCE(impl_, "Can't use value_impl() interface while value is null.");
+  return impl_;
 }
 
 uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
@@ -103,22 +145,33 @@ ir::detail::OpOperandImpl *OpOperandImpl::next_use() { return next_use_; }
 
 ir::Value OpOperandImpl::source() const { return source_; }
 
-void OpOperandImpl::release_source() { source_ = nullptr; }
+void OpOperandImpl::set_source(Value source) {
+  RemoveFromUdChain();
+  if (!source) {
+    return;
+  }
+  source_ = source;
+  InsertToUdChain();
+}
 
 OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
     : source_(source), owner_(owner) {
   if (!source) {
     return;
   }
-  prev_use_addr_ = source.impl()->first_use_addr();
-  next_use_ = source.impl()->first_use();
+  InsertToUdChain();
+}
+
+void OpOperandImpl::InsertToUdChain() {
+  prev_use_addr_ = source_.impl()->first_use_addr();
+  next_use_ = source_.impl()->first_use();
   if (next_use_) {
     next_use_->prev_use_addr_ = &next_use_;
   }
-  source.impl()->SetFirstUse(this);
+  source_.impl()->SetFirstUse(this);
 }
 
-void OpOperandImpl::remove_from_ud_chain() {
+void OpOperandImpl::RemoveFromUdChain() {
   if (!source_) return;
   if (!prev_use_addr_) return;
   if (prev_use_addr_ == source_.impl()->first_use_addr()) {
@@ -134,10 +187,10 @@ void OpOperandImpl::remove_from_ud_chain() {
   }
   next_use_ = nullptr;
   prev_use_addr_ = nullptr;
-  release_source();
+  source_ = nullptr;
 }
 
-OpOperandImpl::~OpOperandImpl() { remove_from_ud_chain(); }
+OpOperandImpl::~OpOperandImpl() { RemoveFromUdChain(); }
 
 uint32_t ValueImpl::index() const {
   uint32_t index =
@@ -147,7 +200,7 @@ uint32_t ValueImpl::index() const {
       ->GetResultIndex();
 }
 
-std::string ValueImpl::print_ud_chain() {
+std::string ValueImpl::PrintUdChain() {
   std::stringstream result;
   result << "Value[" << this << "] -> ";
   OpOperandImpl *tmp = first_use();

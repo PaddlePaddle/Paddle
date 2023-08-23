@@ -167,6 +167,21 @@ class LayoutAutoTune(unittest.TestCase):
         self.assertEqual(conv_out1.shape, [1, 8, 14, 12])
         self.assertEqual(out.shape, [2, 8, 14, 12])
 
+    def test_padding_tranpose(self):
+        conv = paddle.nn.Conv2D(3, 8, (3, 3))
+        data = paddle.rand([1, 3, 16, 14])
+        mode = "constant"
+        pad = [1, 0, 1, 2]
+        padding = paddle.nn.Pad2D(padding=pad, mode=mode, data_format='NCHW')
+        with paddle.amp.auto_cast(level="O2", dtype="bfloat16"):
+            conv_out = conv(data)
+            # conv_out.shape = [1, 14, 12, 8] with NHWC
+            out = padding(conv_out)
+            # from NHWC to NCHW
+
+        self.assertEqual(conv_out.shape, [1, 8, 14, 12])
+        self.assertEqual(out.shape, [1, 8, 17, 13])
+
 
 class TestAutoTuneAPI(unittest.TestCase):
     def test_set_config_warnings(self):

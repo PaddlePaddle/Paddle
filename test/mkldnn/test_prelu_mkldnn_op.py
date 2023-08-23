@@ -162,7 +162,6 @@ def create_bf16_test_class(parent):
                             dout[:, i],
                             dout[:, i] * self.alpha[i],
                         )
-                    self.dx
             elif self.mode == "element":
                 self.dx = np.where(self.x[:] > 0, dout[:], dout[:] * self.alpha)
 

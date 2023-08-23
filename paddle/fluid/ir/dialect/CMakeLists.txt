@@ -1,0 +1,2 @@
+add_subdirectory(paddle_dialect)
+add_subdirectory(paddle_kernel_dialect)

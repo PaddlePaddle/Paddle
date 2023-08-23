@@ -474,7 +474,6 @@ class TestCompositelayer_norm(unittest.TestCase):
                 self.compare_comp_forward()
 
     def test_backward_withNone(self):
-
         for t in range(0, len(self.shape1s)):
             if paddle.device.get_device() == "cpu":
                 print("need pass this case")

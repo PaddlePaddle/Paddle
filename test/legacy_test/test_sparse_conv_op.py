@@ -94,7 +94,7 @@ class TestSparseConv(unittest.TestCase):
         )
         out.backward(out)
         out = paddle.sparse.coalesce(out)
-        assert np.array_equal(correct_out_values, out.values().numpy())
+        np.testing.assert_array_equal(correct_out_values, out.values().numpy())
 
     def test_subm_conv2d(self):
         indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
@@ -126,7 +126,9 @@ class TestSparseConv(unittest.TestCase):
         y = paddle.sparse.nn.functional.subm_conv3d(
             sparse_x, weight, key='subm_conv'
         )
-        assert np.array_equal(sparse_x.indices().numpy(), y.indices().numpy())
+        np.testing.assert_array_equal(
+            sparse_x.indices().numpy(), y.indices().numpy()
+        )
 
     def test_Conv2D(self):
         # (3, non_zero_num), 3-D:(N, H, W)
@@ -223,7 +225,7 @@ class TestSparseConv(unittest.TestCase):
 
         sparse_out = subm_conv3d(sparse_input)
         # the output shape of subm_conv is same as input shape
-        assert np.array_equal(indices, sparse_out.indices().numpy())
+        np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
 
         # test errors
         with self.assertRaises(ValueError):
@@ -294,14 +296,16 @@ class TestSparseConv(unittest.TestCase):
         dense_out = sp_out.to_dense()
         sp_loss = dense_out.mean()
         sp_loss.backward()
-        assert np.allclose(out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3)
-        assert np.allclose(
+        np.testing.assert_allclose(
+            out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3
+        )
+        np.testing.assert_allclose(
             conv3d.weight.grad.numpy().transpose(2, 3, 4, 1, 0),
             sp_conv3d.weight.grad.numpy(),
             atol=1e-3,
             rtol=1e-3,
         )
-        assert np.allclose(
+        np.testing.assert_allclose(
             conv3d.bias.grad.numpy(),
             sp_conv3d.bias.grad.numpy(),
             atol=1e-5,
@@ -312,63 +316,266 @@ class TestSparseConv(unittest.TestCase):
 class TestStatic(unittest.TestCase):
     def test(self):
         paddle.enable_static()
-        indices = paddle.static.data(
-            name='indices', shape=[4, 4], dtype='int32'
-        )
-        values = paddle.static.data(
-            name='values', shape=[4, 1], dtype='float32'
-        )
-        dense_shape = [1, 1, 3, 4, 1]
-        sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
+            indices = paddle.static.data(
+                name='indices', shape=[4, 4], dtype='int32'
+            )
+            values = paddle.static.data(
+                name='values', shape=[4, 1], dtype='float32'
+            )
+            dense_shape = [1, 1, 3, 4, 1]
+            sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
 
-        weight_shape = [1, 3, 3, 1, 1]
-        weight = paddle.static.data(
-            name='weight', shape=weight_shape, dtype='float32'
-        )
-        bias_shape = [1]
-        bias = paddle.static.data(
-            name='bias', shape=bias_shape, dtype='float32'
-        )
-        out = sparse.nn.functional.conv3d(
-            sp_x,
-            weight,
-            bias,
-            stride=1,
-            padding=0,
-            dilation=1,
-            groups=1,
-            data_format="NDHWC",
-        )
-        sp_out = sparse.nn.functional.relu(out)
-        out_indices = sp_out.indices()
-        out_values = sp_out.values()
-        out = sp_out.to_dense()
+            weight_shape = [1, 3, 3, 1, 1]
+            weight = paddle.static.data(
+                name='weight', shape=weight_shape, dtype='float32'
+            )
+            bias_shape = [1]
+            bias = paddle.static.data(
+                name='bias', shape=bias_shape, dtype='float32'
+            )
+            out = sparse.nn.functional.conv3d(
+                sp_x,
+                weight,
+                bias,
+                stride=1,
+                padding=0,
+                dilation=1,
+                groups=1,
+                data_format="NDHWC",
+            )
+            sp_out = sparse.nn.functional.relu(out)
+            out_indices = sp_out.indices()
+            out_values = sp_out.values()
+            out = sp_out.to_dense()
 
-        exe = paddle.static.Executor()
+            exe = paddle.static.Executor()
 
-        indices_data = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-        values_data = [[1.0], [2.0], [3.0], [4.0]]
-        weight_data = np.array(
-            [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
-        ).astype('float32')
-        weight_data = weight_data.reshape(weight_shape)
-        bias_data = np.array([1]).astype('float32')
+            indices_data = [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 1, 2],
+                [1, 3, 2, 3],
+            ]
+            values_data = [[1.0], [2.0], [3.0], [4.0]]
+            weight_data = np.array(
+                [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
+            ).astype('float32')
+            weight_data = weight_data.reshape(weight_shape)
+            bias_data = np.array([1]).astype('float32')
 
-        fetch = exe.run(
-            feed={
-                'indices': indices_data,
-                'values': values_data,
-                'weight': weight_data,
-                'bias': bias_data,
-            },
-            fetch_list=[out, out_indices, out_values],
-            return_numpy=True,
-        )
-        correct_out = np.array([[[[[5.0], [11.0]]]]]).astype('float64')
-        correct_out_values = [[5.0], [11.0]]
-        assert np.array_equal(correct_out, fetch[0])
-        assert np.array_equal(correct_out_values, fetch[2])
-        assert out_indices.dtype == paddle.int32
+            fetch = exe.run(
+                feed={
+                    'indices': indices_data,
+                    'values': values_data,
+                    'weight': weight_data,
+                    'bias': bias_data,
+                },
+                fetch_list=[out, out_indices, out_values],
+                return_numpy=True,
+            )
+            correct_out = np.array([[[[[5.0], [11.0]]]]]).astype('float64')
+            correct_out_values = [[5.0], [11.0]]
+            np.testing.assert_array_equal(correct_out, fetch[0])
+            np.testing.assert_array_equal(correct_out_values, fetch[2])
+            self.assertTrue(out_indices.dtype == paddle.int32)
+        paddle.disable_static()
+
+    def test_cpu(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
+            indices = paddle.static.data(
+                name='indices', shape=[4, 4], dtype='int32'
+            )
+            values = paddle.static.data(
+                name='values', shape=[4, 1], dtype='float32'
+            )
+            dense_shape = [1, 1, 3, 4, 1]
+            sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
+
+            weight_shape = [1, 3, 3, 1, 1]
+            weight = paddle.static.data(
+                name='weight', shape=weight_shape, dtype='float32'
+            )
+            bias_shape = [1]
+            bias = paddle.static.data(
+                name='bias', shape=bias_shape, dtype='float32'
+            )
+            out = sparse.nn.functional.conv3d(
+                sp_x,
+                weight,
+                bias,
+                stride=1,
+                padding=0,
+                dilation=1,
+                groups=1,
+                data_format="NDHWC",
+            )
+            sp_out = sparse.nn.functional.relu(out)
+            out_indices = sp_out.indices()
+            out_values = sp_out.values()
+            out = sp_out.to_dense()
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor()
+
+            indices_data = [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 1, 2],
+                [1, 3, 2, 3],
+            ]
+            values_data = [[1.0], [2.0], [3.0], [4.0]]
+            weight_data = np.array(
+                [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
+            ).astype('float32')
+            weight_data = weight_data.reshape(weight_shape)
+            bias_data = np.array([1]).astype('float32')
+
+            fetch = exe.run(
+                feed={
+                    'indices': indices_data,
+                    'values': values_data,
+                    'weight': weight_data,
+                    'bias': bias_data,
+                },
+                fetch_list=[out, out_indices, out_values],
+                return_numpy=True,
+            )
+            correct_out = np.array([[[[[5.0], [11.0]]]]]).astype('float64')
+            correct_out_values = [[5.0], [11.0]]
+            np.testing.assert_array_equal(correct_out, fetch[0])
+            np.testing.assert_array_equal(correct_out_values, fetch[2])
+            self.assertTrue(out_indices.dtype == paddle.int32)
+        paddle.disable_static()
+
+    def test2D(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
+            indices = paddle.static.data(
+                name='indices', shape=[3, 4], dtype='int32'
+            )
+            values = paddle.static.data(
+                name='values', shape=[4, 1], dtype='float32'
+            )
+            dense_shape = [1, 3, 4, 1]
+            sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
+
+            weight_shape = [3, 3, 1, 1]
+            weight = paddle.static.data(
+                name='weight', shape=weight_shape, dtype='float32'
+            )
+            bias_shape = [1]
+            bias = paddle.static.data(
+                name='bias', shape=bias_shape, dtype='float32'
+            )
+            out = sparse.nn.functional.conv2d(
+                sp_x,
+                weight,
+                bias,
+                stride=1,
+                padding=0,
+                dilation=1,
+                groups=1,
+                data_format="NHWC",
+            )
+            sp_out = sparse.nn.functional.relu(out)
+            out_indices = sp_out.indices()
+            out_values = sp_out.values()
+            out = sp_out.to_dense()
+
+            exe = paddle.static.Executor()
+
+            indices_data = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values_data = [[1.0], [2.0], [3.0], [4.0]]
+            weight_data = np.array(
+                [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
+            ).astype('float32')
+            weight_data = weight_data.reshape(weight_shape)
+            bias_data = np.array([1]).astype('float32')
+
+            fetch = exe.run(
+                feed={
+                    'indices': indices_data,
+                    'values': values_data,
+                    'weight': weight_data,
+                    'bias': bias_data,
+                },
+                fetch_list=[out, out_indices, out_values],
+                return_numpy=True,
+            )
+            correct_out = np.array([[[[5.0], [11.0]]]]).astype('float64')
+            correct_out_values = [[5.0], [11.0]]
+            np.testing.assert_array_equal(correct_out, fetch[0])
+            np.testing.assert_array_equal(correct_out_values, fetch[2])
+            self.assertTrue(out_indices.dtype == paddle.int32)
+        paddle.disable_static()
+
+    def test2D_cpu(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
+            indices = paddle.static.data(
+                name='indices', shape=[3, 4], dtype='int32'
+            )
+            values = paddle.static.data(
+                name='values', shape=[4, 1], dtype='float32'
+            )
+            dense_shape = [1, 3, 4, 1]
+            sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
+
+            weight_shape = [3, 3, 1, 1]
+            weight = paddle.static.data(
+                name='weight', shape=weight_shape, dtype='float32'
+            )
+            bias_shape = [1]
+            bias = paddle.static.data(
+                name='bias', shape=bias_shape, dtype='float32'
+            )
+            out = sparse.nn.functional.conv2d(
+                sp_x,
+                weight,
+                bias,
+                stride=1,
+                padding=0,
+                dilation=1,
+                groups=1,
+                data_format="NHWC",
+            )
+            sp_out = sparse.nn.functional.relu(out)
+            out_indices = sp_out.indices()
+            out_values = sp_out.values()
+            out = sp_out.to_dense()
+
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor()
+
+            indices_data = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values_data = [[1.0], [2.0], [3.0], [4.0]]
+            weight_data = np.array(
+                [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
+            ).astype('float32')
+            weight_data = weight_data.reshape(weight_shape)
+            bias_data = np.array([1]).astype('float32')
+
+            fetch = exe.run(
+                feed={
+                    'indices': indices_data,
+                    'values': values_data,
+                    'weight': weight_data,
+                    'bias': bias_data,
+                },
+                fetch_list=[out, out_indices, out_values],
+                return_numpy=True,
+            )
+            correct_out = np.array([[[[5.0], [11.0]]]]).astype('float64')
+            correct_out_values = [[5.0], [11.0]]
+            np.testing.assert_array_equal(correct_out, fetch[0])
+            np.testing.assert_array_equal(correct_out_values, fetch[2])
+            self.assertTrue(out_indices.dtype == paddle.int32)
         paddle.disable_static()
 
 

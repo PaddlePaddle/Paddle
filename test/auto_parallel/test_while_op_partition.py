@@ -85,7 +85,6 @@ class MLPLayer(nn.Layer):
         )
 
     def forward(self, input):
-
         auto.shard_tensor(self.norm.weight, _g_process_mesh, [None])
         auto.shard_tensor(self.norm.bias, _g_process_mesh, [None])
         auto.shard_tensor(self.linear0.weight, _g_process_mesh, [None, 'x'])
@@ -113,7 +112,6 @@ def get_program():
     train_program = static.Program()
     start_program = static.Program()
     with fluid.program_guard(train_program, start_program):
-
         # 循环计数器
         i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
         auto.shard_tensor(i, _g_process_mesh, [None])
@@ -147,8 +145,18 @@ def get_program():
         auto.shard_tensor(label, _g_process_mesh, [None, None, None])
 
         # fill constant bsz like
-        tmp = paddle.fluid.layers.fill_constant_batch_size_like(
-            input=input, shape=[-1, 16, 0, 48], dtype='float32', value=0
+        block = train_program.current_block()
+        fill_shape = [-1, 16, 0, 48]
+        tmp = block.create_var(name='tmp', dtype='float32')
+        block.append_op(
+            type='fill_constant_batch_size_like',
+            outputs={'Out': [tmp]},
+            inputs={'Input': [input]},
+            attrs={
+                'shape': fill_shape,
+                'value': 0,
+            },
+            stop_gradient=True,
         )
         auto.shard_tensor(tmp, _g_process_mesh, [None, 'x', None, None])
 
@@ -174,7 +182,6 @@ def get_program():
 
         while_op = paddle.static.nn.control_flow.While(cond=cond)
         with while_op.block():
-
             pre_input = paddle.tensor.array_read(array=input_array, i=i)
             auto.shard_tensor(pre_input, _g_process_mesh, [None, None, None])
 
@@ -354,7 +361,6 @@ def completion(train_program, start_program, dist_context):
 
 
 def partition(train_program, start_program, dist_context):
-
     # optimizer = paddle.optimizer.SGD(learning_rate=0.00001)
     rank = paddle.distributed.get_rank()
     partitioner = Partitioner(dist_context, rank)
@@ -367,14 +373,12 @@ def partition(train_program, start_program, dist_context):
 
 class TestMLP(unittest.TestCase):
     def test_partitioner(self):
-
         train_program, start_program, dataloader, i, loss = get_program()
         dist_context = get_default_distributed_context()
         train_program, start_program = completion(
             train_program, start_program, dist_context
         )
         dist_context.block_state.parse_forward_blocks(train_program)
-
         dist_main_prog, dist_startup_prog = partition(
             train_program, start_program, dist_context
         )
@@ -393,8 +397,8 @@ class TestMLP(unittest.TestCase):
         self.assertTrue("c_allreduce_sum" in sub_block_ops)
 
         # test fill_constant_batch_size_like
-
         self.assertIsNotNone(fill_op)
+
         ref_shape = [-1, 8, 0, 48]
         shape = fill_op.attr("shape")
         self.assertTrue(ref_shape == shape)

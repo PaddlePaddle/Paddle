@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -33,8 +34,10 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+        self.trt_param.workspace_size = random.randint(1024, 1 << 30)
+
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 56, 56, 192]).astype(np.float32)
+            return np.random.random([1, 56, 56, 192]).astype(np.float32)
 
         for axis in [[1, 2]]:
             for shifts in [[-1, -1], [-3, -3]]:
@@ -104,10 +107,12 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-3
@@ -115,10 +120,12 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3

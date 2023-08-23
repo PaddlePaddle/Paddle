@@ -72,7 +72,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
             # build dnn model
             dnn_layer_dims = [128, 64, 32, 1]
-            dnn_embedding = fluid.layers.embedding(
+            dnn_embedding = paddle.static.nn.embedding(
                 is_distributed=False,
                 input=dnn_data,
                 size=[dnn_input_dim, dnn_layer_dims[0]],
@@ -88,7 +88,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             dnn_out = dnn_pool
 
             # build lr model
-            lr_embedding = fluid.layers.embedding(
+            lr_embedding = paddle.static.nn.embedding(
                 is_distributed=False,
                 input=lr_data,
                 size=[lr_input_dim, 1],
@@ -146,7 +146,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             wn.write(str(program))
 
     def do_dataset_training(self, fleet):
-
         train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -190,7 +189,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         exe.close()
 
     def do_dataset_heter_training(self, fleet):
-
         exe = fluid.Executor()
         exe.run(fluid.default_startup_program())
         fleet.init_worker()

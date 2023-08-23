@@ -220,13 +220,11 @@ class TestImperativeQatAmp(unittest.TestCase):
             )
 
             _logger.info(
-                'fp32_acc_top1: %f, int8_acc_top1: %f'
-                % (fp32_acc_top1, int8_acc_top1)
+                f'fp32_acc_top1: {fp32_acc_top1:f}, int8_acc_top1: {int8_acc_top1:f}'
             )
             self.assertTrue(
                 int8_acc_top1 > fp32_acc_top1 - 0.01,
-                msg='fp32_acc_top1: %f, int8_acc_top1: %f'
-                % (fp32_acc_top1, int8_acc_top1),
+                msg=f'fp32_acc_top1: {fp32_acc_top1:f}, int8_acc_top1: {int8_acc_top1:f}',
             )
 
         input_spec = [

@@ -109,7 +109,10 @@ class FakeQuantAbsMax(Layer):
                     persistable=False,
                 )
                 out_scale.stop_gradient = True
-            out, _, = _legacy_C_ops.fake_quantize_dequantize_abs_max(
+            (
+                out,
+                _,
+            ) = _legacy_C_ops.fake_quantize_dequantize_abs_max(
                 input, quant_out, out_scale, *attrs
             )
             return out
@@ -608,19 +611,21 @@ class QuantizedConv2DTranspose(Layer):
     The only difference is that its inputs are all fake quantized.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
-          from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 
-          x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
-          conv = nn.Conv2DTranspose(4, 6, (3, 3))
-          conv_quantized = QuantizedConv2DTranspose(conv)
-          y_quantized = conv_quantized(x_var)
-          y_var = conv(x_var)
-          print(y_var.shape, y_quantized.shape)
-          # [2, 6, 10, 10], [2, 6, 10, 10]
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> conv = nn.Conv2DTranspose(4, 6, (3, 3))
+            >>> conv_quantized = QuantizedConv2DTranspose(conv)
+            >>> y_quantized = conv_quantized(x_var)
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 10, 10]
+            >>> print(y_quantized.shape)
+            [2, 6, 10, 10]
 
     """
 
@@ -1099,7 +1104,6 @@ class FakeQuantMAOutputScaleLayer(Layer):
         *args,
         **kwargs,
     ):
-
         super().__init__()
         self._layer = layer
         self._fake_quant_output = _get_fake_quant_type(

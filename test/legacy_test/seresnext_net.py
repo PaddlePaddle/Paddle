@@ -22,7 +22,6 @@ from seresnext_test_base import DeviceType
 from simple_nets import init_data
 
 import paddle
-from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)
@@ -130,7 +129,6 @@ img_shape = [3, 224, 224]
 
 
 def SE_ResNeXt50Small(use_feed):
-
     img = paddle.static.data(
         name='image', shape=[-1] + img_shape, dtype='float32'
     )
@@ -173,19 +171,19 @@ def SE_ResNeXt50Small(use_feed):
     # Classifier layer:
     prediction = paddle.static.nn.fc(x=dropout, size=1000, activation='softmax')
     loss = paddle.nn.functional.cross_entropy(
-        input=prediction, label=label, reduction='none', use_softmax=False
+        input=prediction, label=label, reduction='none', use_softmax=True
     )
     loss = paddle.mean(loss)
     return loss
 
 
 def optimizer(learning_rate=0.01):
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=cosine_decay(
-            learning_rate=learning_rate, step_each_epoch=2, epochs=1
+    optimizer = paddle.optimizer.Momentum(
+        learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=learning_rate, T_max=1
         ),
         momentum=0.9,
-        regularization=paddle.regularizer.L2Decay(1e-4),
+        weight_decay=paddle.regularizer.L2Decay(1e-4),
     )
     return optimizer
 

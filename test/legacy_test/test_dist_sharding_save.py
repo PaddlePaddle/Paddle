@@ -37,7 +37,6 @@ class TestDistMnistFleetSave(TestDistBase):
         shutil.rmtree(dirname)
 
     def _test_saved_files(self, dirname):
-
         sharding_save_files = sorted(os.listdir(dirname))
 
         check_files = [

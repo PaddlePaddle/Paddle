@@ -167,7 +167,6 @@ class TestStackBF16Op(OpTest):
         self.initParameters()
         self.op_type = 'stack'
         self.prim_op_type = "comp"
-        self.enable_cinn = False
         self.python_api = paddle.stack
         self.public_python_api = paddle.stack
         self.x = []
@@ -191,8 +190,7 @@ class TestStackBF16Op(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        # concat_grad unspport bfloat16 dtype, skip check_prim
-        self.check_grad(self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y', check_prim=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):
@@ -374,6 +372,21 @@ class TestStackAPI_ZeroDim(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [])
         self.assertEqual(out.grad.shape, [2])
 
+        paddle.enable_static()
+
+
+class TestStackListOfSingleTensor(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(2022)
+        self.x = [paddle.randn((4, 2, 6), dtype="float32")]
+
+    def test_list_single_tensor(self):
+        expect = paddle.stack(self.x)
+        paddle.fluid.core._set_prim_all_enabled(True)
+        st_model = paddle.jit.to_static(paddle.stack)
+        actual = st_model(self.x)
+        np.testing.assert_allclose(expect, actual)
         paddle.enable_static()
 
 

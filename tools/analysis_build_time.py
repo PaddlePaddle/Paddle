@@ -25,12 +25,10 @@ def strToSecond(strTime):
 
 def getUsefulBuildTimeFile(filename):
     os.system(
-        "grep -Po -- '-o .*' %s | grep ' elapsed' | grep -P -v '0:00.* elapse' > %s/tools/analysis_build_time"
-        % (filename, root_path)
+        f"grep -Po -- '-o .*' {filename} | grep ' elapsed' | grep -P -v '0:00.* elapse' > {root_path}/tools/analysis_build_time"
     )
     os.system(
-        "grep -v  -- '-o .*' %s |grep ' elapse' |  grep -P -v '0:00.* elapse' >> %s/tools/analysis_build_time"
-        % (filename, root_path)
+        f"grep -v  -- '-o .*' {filename} |grep ' elapse' |  grep -P -v '0:00.* elapse' >> {root_path}/tools/analysis_build_time"
     )
 
 
@@ -48,22 +46,19 @@ def analysisBuildTime():
                     buildTime = line.split(', ')[1].split('elapsed')[0].strip()
                     secondTime = strToSecond(buildTime)
                     os.system(
-                        "echo %s, %s >> %s/tools/tempbuildTime.txt"
-                        % (buildFile, secondTime, root_path)
+                        f"echo {buildFile}, {secondTime} >> {root_path}/tools/tempbuildTime.txt"
                     )
                 else:
                     buildTime = line.split(', ')[1].split('elapsed')[0].strip()
                     secondTime = strToSecond(buildTime)
                     if secondTime > 30:
                         os.system(
-                            "echo %s, %s >> %s/tools/tempbuildTime.txt"
-                            % (line, secondTime, root_path)
+                            f"echo {line}, {secondTime} >> {root_path}/tools/tempbuildTime.txt"
                         )
             except ValueError:
                 print(line)
     os.system(
-        'sort -n -k 2 -r %s/tools/tempbuildTime.txt > %s/tools/buildTime.txt'
-        % (root_path, root_path)
+        f'sort -n -k 2 -r {root_path}/tools/tempbuildTime.txt > {root_path}/tools/buildTime.txt'
     )
 
 

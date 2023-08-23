@@ -119,7 +119,6 @@ class TestRandomCrop_random(TestTransformUnitTestBase):
         self.api = transforms.RandomCrop(self.crop_size)
 
     def assert_test_random_equal(self, res, eps=10e-5):
-
         _, h, w = self.get_shape()
         c_h, c_w = self.crop_size
         res_assert = True
@@ -170,7 +169,6 @@ class TestRandomRotation_expand_True(TestTransformUnitTestBase):
 
 class TestRandomErasing(TestTransformUnitTestBase):
     def set_trans_api(self):
-
         self.value = 100
         self.scale = (0.02, 0.33)
         self.ratio = (0.3, 3.3)
@@ -188,7 +186,6 @@ class TestRandomErasing(TestTransformUnitTestBase):
         self.assert_test_erasing(st_res)
 
     def assert_test_erasing(self, arr):
-
         _, h, w = arr.shape
         area = h * w
 

@@ -101,6 +101,14 @@ const Scope* Scope::FindScope(const std::string& name) const {
   return FindScopeInternal(name);
 }
 
+const Scope* Scope::root() const {
+  const Scope* root_scope = this;
+  while (root_scope->parent()) {
+    root_scope = root_scope->parent();
+  }
+  return root_scope;
+}
+
 void Scope::DropKids() {
   {
     SCOPE_KIDS_WRITER_LOCK

@@ -22,8 +22,10 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
+using phi::distributed::auto_parallel::str_join;
+using phi::distributed::auto_parallel::TensorDistAttrProto;
 
+// partial is not allow annotated by user by now.
 std::vector<std::string> TensorDistAttr::fields_{
     "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
 
@@ -44,6 +46,7 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
   std::swap(this->batch_dim_, tmp.batch_dim_);
   std::swap(this->dynamic_dims_, tmp.dynamic_dims_);
   std::swap(this->annotated_, tmp.annotated_);
+  std::swap(this->partial_status_, tmp.partial_status_);
   return *this;
 }
 
@@ -53,6 +56,7 @@ void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_batch_dim(dist_attr.batch_dim());
   set_dynamic_dims(dist_attr.dynamic_dims());
   set_annotated(dist_attr.annotated());
+  set_partial_status(dist_attr.partial_status());
 }
 
 void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
@@ -77,16 +81,54 @@ void TensorDistAttr::set_annotated(
   annotated_ = annotated;
 }
 
+const std::set<int64_t> TensorDistAttr::partial_dims() const {
+  std::set<int64_t> keys;
+  for (auto& kv : partial_status_) {
+    keys.emplace(kv.first);
+  }
+  return keys;
+}
+
+void TensorDistAttr::set_partial_status(
+    const paddle::flat_hash_map<int64_t, ReduceType>& partial_status) {
+  partial_status_ = partial_status;
+}
+
+void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
+                                        const ReduceType& type) {
+  for (const auto& dim : dims) {
+    if (partial_status_.count(dim) != 0) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Trying to Set dim %d as Partial which is already a Partial dim.",
+          dim));
+    }
+    partial_status_.emplace(dim, type);
+  }
+}
+
+void TensorDistAttr::clean_partial_status() { partial_status_.clear(); }
+
+void TensorDistAttr::clean_partial_dims(const std::vector<int64_t>& dims) {
+  for (const auto& dim : dims) {
+    if (partial_status_.count(dim) == 0) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Trying to clean Partial on dim %d but it is not Partial.", dim));
+    } else {
+      partial_status_.erase(dim);
+    }
+  }
+}
+
 void TensorDistAttr::set_default_dims_mapping(
     const std::vector<int64_t>& tensor_shape) {
-  if (tensor_shape.size() != 0) {
+  if (!tensor_shape.empty()) {
     dims_mapping_ = std::vector<int64_t>(tensor_shape.size(), -1);
   }
 }
 
 void TensorDistAttr::set_default_dynamic_dims(
     const std::vector<int64_t>& tensor_shape) {
-  if (tensor_shape.size() != 0) {
+  if (!tensor_shape.empty()) {
     dynamic_dims_ = std::vector<bool>(tensor_shape.size(), false);
   }
 }
@@ -160,7 +202,7 @@ bool TensorDistAttr::verify_dynamic_dims(
     const std::vector<bool>& dynamic_dims,
     const std::vector<int64_t>& tensor_shape) const {
   VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " << str_join(dynamic_dims);
-  if (dynamic_dims.size() > 0 && dynamic_dims.size() != tensor_shape.size()) {
+  if (!dynamic_dims.empty() && dynamic_dims.size() != tensor_shape.size()) {
     return false;
   }
   return true;
@@ -172,6 +214,20 @@ bool TensorDistAttr::verify_annotated(
   for (const auto& item : annotated) {
     auto result = std::find(std::begin(fields_), std::end(fields_), item.first);
     if (result == std::end(fields_)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool TensorDistAttr::verify_partial_status() const {
+  VLOG(4) << "[TensorDistAttr verify_partial_status] "
+          << partial_status_string();
+  for (auto& itr : partial_status_) {
+    if (itr.first < 0 || itr.first >= process_mesh_.ndim()) {
+      return false;
+    }
+    if (itr.second < ReduceType::kRedSum || itr.second <= ReduceType::kRedAll) {
       return false;
     }
   }
@@ -194,6 +250,9 @@ bool TensorDistAttr::verify(const std::vector<int64_t>& tensor_shape) const {
   if (!verify_annotated(annotated_)) {
     return false;
   }
+  if (!verify_partial_status()) {
+    return false;
+  }
   return true;
 }
 
@@ -203,7 +262,8 @@ std::string TensorDistAttr::to_string() const {
   dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
-  dist_str += "annotated: [" + str_join(annotated_) + "]}";
+  dist_str += "annotated: [" + str_join(annotated_) + "], ";
+  dist_str += "partial: " + partial_status_string() + ".}";
   return dist_str;
 }
 
@@ -267,9 +327,26 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   if (lhs.dynamic_dims() != rhs.dynamic_dims()) {
     return false;
   }
+  if (lhs.partial_status() != rhs.partial_status()) {
+    return false;
+  }
   return true;
 }
 
-}  // namespace auto_parallel
+std::string TensorDistAttr::partial_status_string() const {
+  std::string partial_status_str = "[";
+  for (auto& itr : partial_status_) {
+    partial_status_str += "Partial(dims:" + std::to_string(itr.first) + ", " +
+                          ReduceTypeStrings[static_cast<int>(itr.second)] +
+                          "), ";
+  }
+  partial_status_str += "]";
+  return partial_status_str;
+}
+
+bool TensorDistAttr::empty() const {
+  return process_mesh_.empty() || dims_mapping_.empty();
+}
+
 }  // namespace distributed
 }  // namespace phi

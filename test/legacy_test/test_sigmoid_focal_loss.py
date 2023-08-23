@@ -91,7 +91,6 @@ def test_dygraph(
 def calc_sigmoid_focal_loss(
     logit_np, label_np, normalizer_np, alpha=0.25, gamma=2.0, reduction='sum'
 ):
-
     loss = (
         np.maximum(logit_np, 0)
         - logit_np * label_np

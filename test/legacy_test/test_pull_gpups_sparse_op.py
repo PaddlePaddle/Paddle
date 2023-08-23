@@ -31,7 +31,6 @@ class TestPullGpupsSparse(unittest.TestCase):
         train_program = fluid.Program()
         slots = []
         with fluid.program_guard(train_program, startup_program):
-
             l = paddle.static.data(
                 name='input', shape=[-1, 1], dtype="int64", lod_level=1
             )
@@ -40,7 +39,7 @@ class TestPullGpupsSparse(unittest.TestCase):
                 slots, size=[11], is_distributed=True, is_sparse=True
             )
             cost = paddle.mean(output)
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(cost, train_program)
             block = train_program.global_block()
             place = fluid.CPUPlace()

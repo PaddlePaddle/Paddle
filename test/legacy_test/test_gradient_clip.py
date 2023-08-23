@@ -33,7 +33,7 @@ def bow_net(
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, is_sparse=True, size=[dict_dim, emb_dim]
     )
     bow = paddle.static.nn.sequence_lod.sequence_pool(
@@ -217,7 +217,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         def backward_func(cost):
             clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=5.0)
             paddle.nn.clip.set_gradient_clip(clip)
-            sgd_optimizer = fluid.optimizer.SGD(
+            sgd_optimizer = paddle.optimizer.SGD(
                 learning_rate=0.01, grad_clip=clip
             )
             # if 'set_gradient_clip' and 'optimize(grad_clip)' together, 'set_gradient_clip' will be ineffective
@@ -233,7 +233,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     def test_tpyeError(self):
         # the type of optimizer(grad_clip=) must be an instance of GradientClipBase's derived class
         with self.assertRaises(TypeError):
-            sgd_optimizer = fluid.optimizer.SGD(
+            sgd_optimizer = paddle.optimizer.SGD(
                 learning_rate=0.1, grad_clip="test"
             )
 
@@ -428,9 +428,9 @@ class TestDygraphGradientClip(unittest.TestCase):
             out = linear(fluid.dygraph.to_variable(inputs))
             loss = paddle.mean(out)
             loss.backward()
-            sgd_optimizer = fluid.optimizer.SGD(
+            sgd_optimizer = paddle.optimizer.SGD(
                 learning_rate=0.0,
-                parameter_list=linear.parameters(),
+                parameters=linear.parameters(),
                 grad_clip=paddle.nn.ClipGradByGlobalNorm(0.1),
             )
             self.check_clip_result(loss, sgd_optimizer)
@@ -476,8 +476,7 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
         b = global_norm_clip
         self.assertTrue(
             np.isclose(a=a, b=b, rtol=1e-6, atol=1e-8),
-            "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
-            % (a, b),
+            f"gradient clip by global norm has wrong results, expetcd:{a:f}, but received:{b:f}",
         )
 
 
@@ -505,8 +504,7 @@ class TestDygraphGradientClipByNorm(TestDygraphGradientClip):
             b = np.sqrt(np.sum(np.power(v, 2)))
             self.assertTrue(
                 np.isclose(a=a, b=b, rtol=1e-6, atol=1e-8),
-                "gradient clip by norm has wrong results, expetcd:%f, but received:%f"
-                % (a, b),
+                f"gradient clip by norm has wrong results, expetcd:{a:f}, but received:{b:f}",
             )
 
 
@@ -602,8 +600,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                 b = global_norm_clip
                 self.assertTrue(
                     np.isclose(a=a, b=b, rtol=1e-3, atol=1e-8),
-                    "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
-                    % (a, b),
+                    f"gradient clip by global norm has wrong results, expetcd:{a:f}, but received:{b:f}",
                 )
 
 
@@ -647,8 +644,7 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
 
             self.assertTrue(
                 np.isclose(a=a, b=b, rtol=1e-6, atol=1e-8),
-                "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
-                % (a, b),
+                f"gradient clip by global norm has wrong results, expetcd:{a:f}, but received:{b:f}",
             )
 
 

@@ -124,17 +124,11 @@ class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
         self.x = np.random.uniform(0.1, 1, []).astype("float64")
         self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMaxFP16Op_ZeroDim1(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
-
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
@@ -142,17 +136,11 @@ class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMaxFP16Op_ZeroDim2(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
-
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
@@ -160,17 +148,11 @@ class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
         self.x = np.random.uniform(0.1, 1, []).astype("float64")
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
 
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
-
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -198,7 +180,6 @@ class TestElementwiseBF16Op(OpTest):
         self.python_api = paddle.maximum
         self.public_python_api = paddle.maximum
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = np.uint16
         self.inputs = {
             'X': convert_float_to_uint16(self.x),
@@ -207,12 +188,16 @@ class TestElementwiseBF16Op(OpTest):
         self.outputs = {
             'Out': convert_float_to_uint16(np.maximum(self.x, self.y))
         }
+        self.if_enable_cinn()
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
             self.check_output(check_dygraph=True)
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -221,16 +206,26 @@ class TestElementwiseBF16Op(OpTest):
                 ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_dygraph=False
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', numeric_grad_delta=0.05)
+            self.check_grad(
+                ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_prim=True
+            )
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', numeric_grad_delta=0.05, no_grad_set=set("X")
+            ['Y'],
+            'Out',
+            numeric_grad_delta=0.05,
+            no_grad_set=set("X"),
+            check_prim=True,
         )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', numeric_grad_delta=0.05, no_grad_set=set('Y')
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.05,
+            no_grad_set=set('Y'),
+            check_prim=True,
         )
 
 

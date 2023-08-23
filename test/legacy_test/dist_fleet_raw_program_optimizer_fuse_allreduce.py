@@ -14,6 +14,7 @@
 
 from functools import reduce
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
@@ -32,7 +33,7 @@ fluid.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
         filter_size=5,
         num_filters=20,
@@ -43,7 +44,7 @@ def cnn_model(data):
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
@@ -102,7 +103,7 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
 
-        optimizer = paddle.fluid.optimizer.Adam(0.01)
+        optimizer = paddle.optimizer.Adam(0.01)
         if single_device:
             optimizer.minimize(avg_cost)
         else:

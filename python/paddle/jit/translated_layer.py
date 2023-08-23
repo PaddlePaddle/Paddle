@@ -338,6 +338,7 @@ class _ProgramHolder:
         self._output_descs = []
         self._double_grad_descs = []
         self._persistable_names = []
+        self._grad_var_names = {}
 
         # execution scope
         self._inner_scope = core.Scope()
@@ -350,7 +351,6 @@ class _ProgramHolder:
         self._train_program_desc = self._append_backward_desc(
             self._infer_program_desc
         )
-        self._grad_var_names = {}
 
     # forward:
     @switch_to_static_graph
@@ -896,9 +896,9 @@ def _valid_vars(vars):
 
 
 def _run_dygraph(instance, input, program_holder):
-
     # 1. prepare inputs, outputs, attrs
     input_vars = []
+    input_var_names = []
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
@@ -919,6 +919,7 @@ def _run_dygraph(instance, input, program_holder):
             # NOTE: we changed var name here,
             # but it may be an important name set by user
             var.name = program_holder.input_descs[i].name()
+        input_var_names.append(var.name)
         input_vars.append(var)
     if instance._input_args_names is None:
         instance._input_args_names = [
@@ -987,6 +988,8 @@ def _run_dygraph(instance, input, program_holder):
         instance._is_test,
         'program_id',
         paddle.utils._hash_with_id(trace_program, instance),
+        'x_names',
+        input_var_names,
     ]
     if not instance._is_test:
         attrs.extend(
@@ -1313,87 +1316,86 @@ class TranslatedLayer(layers.Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
+            >>> # doctest: +SKIP
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
 
-            BATCH_SIZE = 16
-            BATCH_NUM = 4
-            EPOCH_NUM = 4
+            >>> BATCH_SIZE = 16
+            >>> BATCH_NUM = 4
+            >>> EPOCH_NUM = 4
 
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
+            >>> IMAGE_SIZE = 784
+            >>> CLASS_NUM = 10
 
-            # define a random dataset
-            class RandomDataset(paddle.io.Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> # define a random dataset
+            >>> class RandomDataset(paddle.io.Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            ...
+            ...     @paddle.jit.to_static
+            ...     def forward(self, x):
+            ...         return self._linear(x)
+            ...
+            >>> def train(layer, loader, loss_fn, opt):
+            ...     for epoch_id in range(EPOCH_NUM):
+            ...         for batch_id, (image, label) in enumerate(loader()):
+            ...             out = layer(image)
+            ...             loss = loss_fn(out, label)
+            ...             loss.backward()
+            ...             opt.step()
+            ...             opt.clear_grad()
+            ...             print("Epoch {} batch {}: loss = {}".format(
+            ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+            ...
+            >>> # 1. train & save model.
+            >>> # create network
+            >>> layer = LinearNet()
+            >>> loss_fn = nn.CrossEntropyLoss()
+            >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                    return image, label
+            >>> # create data loader
+            >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            >>> loader = paddle.io.DataLoader(dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2
+            ... )
+            >>> # train
+            >>> train(layer, loader, loss_fn, adam)
 
-                def __len__(self):
-                    return self.num_samples
+            >>> # save
+            >>> model_path = "linear.example.model"
+            >>> paddle.jit.save(layer, model_path)
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            >>> # 2. load model as TranslatedLayer
+            >>> # load
+            >>> translated_layer = paddle.jit.load(model_path)
 
-                @paddle.jit.to_static
-                def forward(self, x):
-                    return self._linear(x)
+            >>> # inference
+            >>> translated_layer.eval()
+            >>> x = paddle.randn([1, IMAGE_SIZE], 'float32')
+            >>> pred = translated_layer(x)
 
-            def train(layer, loader, loss_fn, opt):
-                for epoch_id in range(EPOCH_NUM):
-                    for batch_id, (image, label) in enumerate(loader()):
-                        out = layer(image)
-                        loss = loss_fn(out, label)
-                        loss.backward()
-                        opt.step()
-                        opt.clear_grad()
-                        print("Epoch {} batch {}: loss = {}".format(
-                            epoch_id, batch_id, np.mean(loss.numpy())))
-
-            # 1. train & save model.
-
-            # create network
-            layer = LinearNet()
-            loss_fn = nn.CrossEntropyLoss()
-            adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
-
-            # create data loader
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = paddle.io.DataLoader(dataset,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
-
-            # train
-            train(layer, loader, loss_fn, adam)
-
-            # save
-            model_path = "linear.example.model"
-            paddle.jit.save(layer, model_path)
-
-            # 2. load model as TranslatedLayer
-
-            # load
-            translated_layer = paddle.jit.load(model_path)
-
-            # inference
-            translated_layer.eval()
-            x = paddle.randn([1, IMAGE_SIZE], 'float32')
-            pred = translated_layer(x)
-
-            # fine-tune
-            translated_layer.train()
-            adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
-            train(translated_layer, loader, loss_fn, adam)
+            >>> # fine-tune
+            >>> translated_layer.train()
+            >>> adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
+            >>> train(translated_layer, loader, loss_fn, adam)
 
     """
 
@@ -1524,76 +1526,76 @@ class TranslatedLayer(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
+                >>> # doctest: +SKIP
+                >>> import numpy as np
+                >>> import paddle
+                >>> from paddle import nn
+                >>> import paddle.optimizer as opt
 
-                BATCH_SIZE = 16
-                BATCH_NUM = 4
-                EPOCH_NUM = 4
+                >>> BATCH_SIZE = 16
+                >>> BATCH_NUM = 4
+                >>> EPOCH_NUM = 4
 
-                IMAGE_SIZE = 784
-                CLASS_NUM = 10
+                >>> IMAGE_SIZE = 784
+                >>> CLASS_NUM = 10
 
-                # define a random dataset
-                class RandomDataset(paddle.io.Dataset):
-                    def __init__(self, num_samples):
-                        self.num_samples = num_samples
+                >>> # define a random dataset
+                >>> class RandomDataset(paddle.io.Dataset):
+                ...     def __init__(self, num_samples):
+                ...         self.num_samples = num_samples
+                ...
+                ...     def __getitem__(self, idx):
+                ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         return image, label
+                ...
+                ...     def __len__(self):
+                ...         return self.num_samples
+                ...
+                >>> class LinearNet(nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                ...
+                ...     @paddle.jit.to_static
+                ...     def forward(self, x):
+                ...         return self._linear(x)
+                ...
+                >>> def train(layer, loader, loss_fn, opt):
+                ...     for epoch_id in range(EPOCH_NUM):
+                ...         for batch_id, (image, label) in enumerate(loader()):
+                ...             out = layer(image)
+                ...             loss = loss_fn(out, label)
+                ...             loss.backward()
+                ...             opt.step()
+                ...             opt.clear_grad()
+                ...             print("Epoch {} batch {}: loss = {}".format(
+                ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+                ...
+                >>> # create network
+                >>> layer = LinearNet()
+                >>> loss_fn = nn.CrossEntropyLoss()
+                >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+                >>> # create data loader
+                >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+                >>> loader = paddle.io.DataLoader(dataset,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2
+                ... )
+                >>> # train
+                >>> train(layer, loader, loss_fn, adam)
 
-                    def __getitem__(self, idx):
-                        image = np.random.random([IMAGE_SIZE]).astype('float32')
-                        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                        return image, label
+                >>> # save
+                >>> model_path = "linear.example.model"
+                >>> paddle.jit.save(layer, model_path)
 
-                    def __len__(self):
-                        return self.num_samples
+                >>> # load
+                >>> translated_layer = paddle.jit.load(model_path)
 
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
-                    @paddle.jit.to_static
-                    def forward(self, x):
-                        return self._linear(x)
-
-                def train(layer, loader, loss_fn, opt):
-                    for epoch_id in range(EPOCH_NUM):
-                        for batch_id, (image, label) in enumerate(loader()):
-                            out = layer(image)
-                            loss = loss_fn(out, label)
-                            loss.backward()
-                            opt.step()
-                            opt.clear_grad()
-                            print("Epoch {} batch {}: loss = {}".format(
-                                epoch_id, batch_id, np.mean(loss.numpy())))
-
-                # create network
-                layer = LinearNet()
-                loss_fn = nn.CrossEntropyLoss()
-                adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
-
-                # create data loader
-                dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-                loader = paddle.io.DataLoader(dataset,
-                    batch_size=BATCH_SIZE,
-                    shuffle=True,
-                    drop_last=True,
-                    num_workers=2)
-
-                # train
-                train(layer, loader, loss_fn, adam)
-
-                # save
-                model_path = "linear.example.model"
-                paddle.jit.save(layer, model_path)
-
-                # load
-                translated_layer = paddle.jit.load(model_path)
-
-                # get program
-                program = translated_layer.program()
+                >>> # get program
+                >>> program = translated_layer.program()
         """
         # 1. get program holder
         program_holder = self._get_program_holder(method_name)

@@ -83,4 +83,10 @@ DenseTensor FullLike(const Context& dev_ctx,
   return dense_out;
 }
 
+template <typename T, typename Context>
+void FullIntArrayKernel(const Context& dev_ctx,
+                        const IntArray& val,
+                        DataType dtype,
+                        DenseTensor* out);
+
 }  // namespace phi

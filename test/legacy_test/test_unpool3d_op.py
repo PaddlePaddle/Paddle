@@ -382,7 +382,6 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-
                 input_data = np.array(
                     [
                         [

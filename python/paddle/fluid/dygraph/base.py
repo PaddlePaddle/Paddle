@@ -82,7 +82,6 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 @signature_safe_contextmanager
 def _switch_declarative_mode_guard_(is_declarative=True):
-
     global global_var
     original_val = global_var._in_declarative_mode_
     global_var._in_declarative_mode_ = is_declarative
@@ -107,15 +106,17 @@ def program_desc_tracing_guard(enable):
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
     if in_declarative_mode() and not paddle.in_dynamic_mode() and parameters:
-        origin_parameters = parameters.copy()
-        for name, var_base in parameters.items():
-            if isinstance(var_base, list):
-                new_var = [_convert_into_variable(var) for var in var_base]
-            else:
-                new_var = _convert_into_variable(var_base)
-            parameters[name] = new_var
-        yield
-        parameters.update(origin_parameters)
+        try:
+            origin_parameters = parameters.copy()
+            for name, var_base in parameters.items():
+                if isinstance(var_base, list):
+                    new_var = [_convert_into_variable(var) for var in var_base]
+                else:
+                    new_var = _convert_into_variable(var_base)
+                parameters[name] = new_var
+            yield
+        finally:
+            parameters.update(origin_parameters)
     else:
         yield
 

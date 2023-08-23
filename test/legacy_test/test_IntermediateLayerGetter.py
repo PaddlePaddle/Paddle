@@ -21,7 +21,6 @@ from paddle.vision.models._utils import IntermediateLayerGetter
 
 class TestBase:
     def setUp(self):
-
         self.init_model()
         self.model.eval()
 
@@ -44,12 +43,10 @@ class TestBase:
 
     @paddle.no_grad()
     def test_inter_result(self):
-
         inp = paddle.randn([1, 3, 80, 80])
         inter_oup = self.new_model(inp)
 
         for layer_name, layer in self.model.named_children():
-
             if (isinstance(layer, paddle.nn.Linear) and inp.ndim == 4) or (
                 len(layer.sublayers()) > 0
                 and isinstance(layer.sublayers()[0], paddle.nn.Linear)

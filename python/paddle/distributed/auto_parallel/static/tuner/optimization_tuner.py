@@ -111,7 +111,6 @@ def parse_results(results):
 # TODO only dependent on dist context
 # all env need to be start a new pass are member of dist context
 def _copy_context(ref_dist_context):
-
     # clear all process groups and recover the world process group
     clear_all_process_groups()
     ranks = []
@@ -210,7 +209,6 @@ class OptimizationTuner:
         batch_size,
         rank,
     ):
-
         self._config = TuningConfig(dist_context.strategy)
         # should not modify dist context from calling function
         self._baseline_dist_context = _copy_context(dist_context)
@@ -250,7 +248,6 @@ class OptimizationTuner:
     # TODO Generate compelet program with all parts like forward, backward, update
     # as well as parallelism transformation.
     def _build_programs_without_optimization(self):
-
         serial_main_program = self._baseline_dist_context.serial_main_program
         serial_startup_program = (
             self._baseline_dist_context.serial_startup_program
@@ -287,7 +284,6 @@ class OptimizationTuner:
             )
 
     def _select_tuning_algorithm(self):
-
         selected_passes_set = self._config.tuning_passes_name
         algorithm_name = "_".join(sorted(selected_passes_set))
         self._algorithm = new_algorithm(algorithm_name, self._config)
@@ -415,7 +411,6 @@ class OptimizationTuner:
         return trial
 
     def _get_profile_context(self, trial, result_path):
-
         profile_ctx = {}
 
         profile_ctx['distributed_env'] = copy.deepcopy(
@@ -446,7 +441,6 @@ class OptimizationTuner:
         return input_names
 
     def _launch_profile(self, ctx_path, trial_dir):
-
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
         else:
@@ -528,7 +522,6 @@ class OptimizationTuner:
             return Error_results
 
     def _evaluate_trial(self, trial):
-
         self._logger.info(f"Trial {trial.name} evaluation start.")
         self._apply_optimization(trial)
 

@@ -358,7 +358,6 @@ class TestPool2D_API(unittest.TestCase):
 
     def test_pool2d(self):
         for place in self.places:
-
             self.check_max_dygraph_results(place)
             self.check_avg_dygraph_results(place)
             self.check_max_static_results(place)

@@ -157,7 +157,6 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         src_op = dist_op_context.cur_src_op
@@ -271,7 +270,6 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         backward_op = dist_op_context.cur_src_op

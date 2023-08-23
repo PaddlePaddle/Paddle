@@ -19,7 +19,7 @@ from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 np.random.seed(1024)
 
@@ -102,8 +102,11 @@ class TestIndexSelectFP16OP(TestIndexSelectOp):
 class TestIndexSelectBF16Op(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
+        self.public_python_api = paddle.index_select
+        self.prim_op_type = "comp"
         self.op_type = "index_select"
         self.init_dtype_type()
+        self.if_skip_cinn()
         index_np = np.random.randint(
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
@@ -124,6 +127,9 @@ class TestIndexSelectBF16Op(OpTest):
         out = np.reshape(out_list, self.out_shape)
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
+    def if_skip_cinn(self):
+        self.enable_cinn = False
+
     def init_dtype_type(self):
         self.dim = 1
         self.x_type = np.uint16
@@ -132,10 +138,12 @@ class TestIndexSelectBF16Op(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 class TestIndexSelectAPI(unittest.TestCase):

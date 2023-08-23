@@ -242,7 +242,7 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        getattr(self.proxy_layer, func_name).concrete_program
+        getattr(self.proxy_layer, func_name).concrete_program  # noqa: B018
 
         self._build_startup_program()
 

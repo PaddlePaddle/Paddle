@@ -35,25 +35,10 @@ namespace ir {
 /// \endcode
 ///
 
-// NOTE(dev): Currently BF16 and Int8 are not considered as a cached member
-// in IrContextImpl because they are not widely used.
-class BFloat16Type : public Type {
- public:
-  using Type::Type;
+// NOTE(dev): Currently Int8 are not considered as a cached member
+// in IrContextImpl because it is not widely used.
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(BFloat16Type, TypeStorage);
-
-  static BFloat16Type get(IrContext *context);
-};
-
-class Int8Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int8Type, TypeStorage);
-};
-
-class VectorType : public Type {
+class IR_API VectorType : public Type {
  public:
   using Type::Type;
 
@@ -68,24 +53,30 @@ class VectorType : public Type {
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                         \
-  class __name##Type : public Type {                         \
-   public:                                                   \
-    using Type::Type;                                        \
-                                                             \
-    DECLARE_TYPE_UTILITY_FUNCTOR(__name##Type, TypeStorage); \
-                                                             \
-    static __name##Type get(IrContext *context);             \
+#define DECLARE_BUILTIN_TYPE(__name)                   \
+  class IR_API __name : public Type {                  \
+   public:                                             \
+    using Type::Type;                                  \
+                                                       \
+    DECLARE_TYPE_UTILITY_FUNCTOR(__name, TypeStorage); \
+                                                       \
+    static __name get(IrContext *context);             \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \
-  __macro(Float16);                   \
-  __macro(Float32);                   \
-  __macro(Float64);                   \
-  __macro(Int16);                     \
-  __macro(Int32);                     \
-  __macro(Int64);                     \
-  __macro(Bool);
+  __macro(BFloat16Type);              \
+  __macro(Float16Type);               \
+  __macro(Float32Type);               \
+  __macro(Float64Type);               \
+  __macro(Int8Type);                  \
+  __macro(UInt8Type);                 \
+  __macro(Int16Type);                 \
+  __macro(Int32Type);                 \
+  __macro(Int64Type);                 \
+  __macro(IndexType);                 \
+  __macro(BoolType);                  \
+  __macro(Complex64Type);             \
+  __macro(Complex128Type);
 
 FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 
@@ -93,3 +84,18 @@ FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 #undef DECLARE_BUILTIN_TYPE
 
 }  // namespace ir
+
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::UInt8Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int8Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::VectorType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BFloat16Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Float16Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Float32Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Float64Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int16Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BoolType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::IndexType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex64Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex128Type)

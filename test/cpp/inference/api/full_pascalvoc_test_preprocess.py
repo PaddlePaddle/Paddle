@@ -47,7 +47,7 @@ BIN_FULLSIZE = 5348678856
 
 def preprocess(img):
     img_width, img_height = img.size
-    img = img.resize((RESIZE_W, RESIZE_H), Image.ANTIALIAS)
+    img = img.resize((RESIZE_W, RESIZE_H), Image.LANCZOS)
     img = np.array(img)
     # HWC to CHW
     if len(img.shape) == 3:

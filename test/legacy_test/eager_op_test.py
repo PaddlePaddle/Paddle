@@ -47,6 +47,8 @@ from paddle.fluid.framework import (
     Program,
     _current_expected_place,
     canonicalize_attrs,
+    get_flags,
+    set_flags,
 )
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
@@ -386,6 +388,7 @@ class OpTest(unittest.TestCase):
         cls.input_shape_is_large = True
         cls.is_calc_ref = False
         cls.check_prim = False
+        cls._check_cinn = False
 
         np.random.seed(123)
         random.seed(124)
@@ -550,8 +553,20 @@ class OpTest(unittest.TestCase):
             not in op_accuracy_white_list.NO_FP16_COMPARED_WITH_FP32_OP_LIST
         )
 
+    def is_bf16_compared_with_fp32(self):
+        return self.is_bfloat16_op() and (
+            self.op_type
+            not in op_accuracy_white_list.NO_BF16_COMPARED_WITH_FP32_OP_LIST
+        )
+
+    def is_compared_with_fp32(self):
+        return (
+            self.is_fp16_compared_with_fp32()
+            or self.is_bf16_compared_with_fp32()
+        )
+
     def enable_cal_ref_output(self):
-        self.is_calc_ref = self.is_fp16_compared_with_fp32()
+        self.is_calc_ref = True
 
     def disable_cal_ref_output(self):
         self.is_calc_ref = False
@@ -652,20 +667,47 @@ class OpTest(unittest.TestCase):
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
                         dtype = np.array(np_value[1]).dtype
-                        if self.is_calc_ref and dtype == np.float16:
-                            if isinstance(np_value[1], list):
-                                tensor.set_recursive_sequence_lengths(
-                                    np.array(np_value[1]).astype(np.float32)
-                                )
+
+                        if self.is_calc_ref:
+                            # convert the float16 to float by numpy.astype
+                            if dtype == np.float16:
+                                if isinstance(np_value[1], list):
+                                    tensor.set_recursive_sequence_lengths(
+                                        np.array(np_value[1]).astype(np.float32)
+                                    )
+                                else:
+                                    tensor.set_recursive_sequence_lengths(
+                                        np_value[1].astype(np.float32)
+                                    )
+                            # convert the bfloat16 to float by convert_uint16_to_float
+                            # provided in this file
+                            elif dtype == np.uint16:
+                                if isinstance(np_value[1], list):
+                                    tensor.set_recursive_sequence_lengths(
+                                        convert_uint16_to_float(
+                                            np.array(np_value[1])
+                                        )
+                                    )
+                                else:
+                                    tensor.set_recursive_sequence_lengths(
+                                        convert_uint16_to_float(np_value[1])
+                                    )
                             else:
                                 tensor.set_recursive_sequence_lengths(
-                                    np_value[1].astype(np.float32)
+                                    np_value[1]
                                 )
                         else:
                             tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        if self.is_calc_ref and np_value.dtype == np.float16:
-                            tensor.set(np_value.astype(np.float32), place)
+                        if self.is_calc_ref:
+                            if np_value.dtype == np.float16:
+                                tensor.set(np_value.astype(np.float32), place)
+                            elif np_value.dtype == np.uint16:
+                                tensor.set(
+                                    convert_uint16_to_float(np_value), place
+                                )
+                            else:
+                                tensor.set(np_value, place)
                         else:
                             tensor.set(np_value, place)
                     feed_map[name] = tensor
@@ -673,25 +715,57 @@ class OpTest(unittest.TestCase):
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
-                    if (
-                        self.is_calc_ref
-                        and self.inputs[var_name][1].dtype == np.float16
-                    ):
-                        tensor.set_recursive_sequence_lengths(
-                            self.inputs[var_name][1].astype(np.float32)
-                        )
+                    if self.is_calc_ref:
+                        if isinstance(self.inputs[var_name][1], list):
+                            dtype = np.array(self.inputs[var_name][1]).dtype
+                            if dtype == np.float16:
+                                tensor.set_recursive_sequence_lengths(
+                                    np.array(self.inputs[var_name][1]).astype(
+                                        np.float32
+                                    )
+                                )
+                            elif dtype == np.uint16:
+                                tensor.set_recursive_sequence_lengths(
+                                    convert_uint16_to_float(
+                                        np.array(self.inputs[var_name][1])
+                                    )
+                                )
+                            else:
+                                tensor.set_recursive_sequence_lengths(
+                                    self.inputs[var_name][1]
+                                )
+
+                        elif self.inputs[var_name][1].dtype == np.float16:
+                            tensor.set_recursive_sequence_lengths(
+                                self.inputs[var_name][1].astype(np.float32)
+                            )
+                        elif self.inputs[var_name][1].dtype == np.uint16:
+                            tensor.set_recursive_sequence_lengths(
+                                convert_uint16_to_float(
+                                    self.inputs[var_name][1]
+                                )
+                            )
+                        else:
+                            tensor.set_recursive_sequence_lengths(
+                                self.inputs[var_name][1]
+                            )
                     else:
                         tensor.set_recursive_sequence_lengths(
                             self.inputs[var_name][1]
                         )
                 else:
-                    if (
-                        self.is_calc_ref
-                        and self.inputs[var_name].dtype == np.float16
-                    ):
-                        tensor.set(
-                            self.inputs[var_name].astype(np.float32), place
-                        )
+                    if self.is_calc_ref:
+                        if self.inputs[var_name].dtype == np.float16:
+                            tensor.set(
+                                self.inputs[var_name].astype(np.float32), place
+                            )
+                        elif self.inputs[var_name].dtype == np.uint16:
+                            tensor.set(
+                                convert_uint16_to_float(self.inputs[var_name]),
+                                place,
+                            )
+                        else:
+                            tensor.set(self.inputs[var_name], place)
                     else:
                         tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
@@ -709,7 +783,8 @@ class OpTest(unittest.TestCase):
             self.__class__.use_xpu = True
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-        "infer datatype from inputs and outputs for this test case"
+        # "infer datatype from inputs and outputs for this test case"
+
         if self.is_float16_op():
             self.dtype = np.float16
             self.__class__.dtype = self.dtype
@@ -720,6 +795,7 @@ class OpTest(unittest.TestCase):
             self.output_dtype = np.uint16
         else:
             self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+
         inputs = append_input_output(
             block, op_proto, self.inputs, True, self.dtype, self.is_calc_ref
         )
@@ -918,7 +994,7 @@ class OpTest(unittest.TestCase):
                 ), f"Duplicable {name} should be set as list"
                 var_list = []
                 slot_name = name
-                for (name, np_value) in np_list[slot_name]:
+                for name, np_value in np_list[slot_name]:
                     v = create_var(
                         np_value,
                         name,
@@ -1125,6 +1201,63 @@ class OpTest(unittest.TestCase):
             )
             return outputs
 
+    def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
+        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+            return
+        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
+            return
+        if self.check_prim:
+            return
+        if self._check_cinn:
+            return
+        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        try:
+            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            new_scope = paddle.static.Scope()
+            executor = Executor(place)
+            new_program = None
+            if isinstance(program, paddle.static.CompiledProgram):
+                new_program = fluid.CompiledProgram(
+                    program._program, build_strategy=program._build_strategy
+                )
+            else:
+                new_program = program.clone()
+            ir_outs = executor.run(
+                new_program,
+                feed=feed_map,
+                fetch_list=fetch_list,
+                return_numpy=False,
+                scope=new_scope,
+            )
+            assert len(outs) == len(
+                ir_outs
+            ), "Fetch result should have same length when executed in new ir"
+
+            check_method = np.testing.assert_array_equal
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+                check_method = lambda x, y, z: np.testing.assert_allclose(
+                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
+                )
+
+            for i in range(len(outs)):
+                check_method(
+                    outs[i],
+                    ir_outs[i],
+                    err_msg='Operator Check ('
+                    + self.op_type
+                    + ') has diff at '
+                    + str(place)
+                    + '\nExpect '
+                    + str(outs[i])
+                    + '\n'
+                    + 'But Got'
+                    + str(ir_outs[i])
+                    + ' in class '
+                    + self.__class__.__name__,
+                )
+        finally:
+            set_flags(stored_flag)
+
     def _calc_output(
         self,
         place,
@@ -1192,6 +1325,7 @@ class OpTest(unittest.TestCase):
                     build_strategy.enable_inplace = enable_inplace
                 if enable_cinn_test:
                     build_strategy.build_cinn_pass = check_cinn
+                    self._check_cinn = enable_cinn_test
 
                 compiled_prog = fluid.CompiledProgram(
                     program, build_strategy=build_strategy
@@ -1205,6 +1339,9 @@ class OpTest(unittest.TestCase):
                 fetch_list=fetch_list,
                 return_numpy=False,
             )
+
+            self._check_ir_output(place, program, feed_map, fetch_list, outs)
+
             self.op = op
             self.program = original_program
         if for_inplace_test:
@@ -1568,6 +1705,9 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
+        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+            return
+
         has_infer_inplace = fluid.core.has_infer_inplace(self.op_type)
         has_grad_op_maker = fluid.core.has_grad_op_maker(self.op_type)
         fwd_res = self._calc_output(
@@ -1624,6 +1764,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
+        only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
     ):
@@ -1761,7 +1902,7 @@ class OpTest(unittest.TestCase):
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
                 # expect_np = expect[0] if isinstance(expect, tuple) else expect
-                if self.op_test.is_fp16_compared_with_fp32():
+                if self.op_test.is_compared_with_fp32():
                     expect, expect_np = self.find_expect_value(name)
                 else:
                     expect_np = (
@@ -1771,7 +1912,6 @@ class OpTest(unittest.TestCase):
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
-
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1816,7 +1956,7 @@ class OpTest(unittest.TestCase):
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
-                if self.op_test.is_fp16_compared_with_fp32():
+                if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     ref_outs, ref_fetch_list = self.op_test._calc_output(
                         place, no_check_set=no_check_set
@@ -1883,7 +2023,7 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = dygraph_outs
-                if self.op_test.is_fp16_compared_with_fp32():
+                if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
                     self.ref_outputs = self.op_test._calc_python_api_output(
@@ -2033,6 +2173,8 @@ class OpTest(unittest.TestCase):
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
+            if only_check_prim:
+                return
 
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
@@ -2150,8 +2292,8 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         inplace_atol=None,
         check_cinn=False,
+        only_check_prim=False,
     ):
-
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -2172,9 +2314,12 @@ class OpTest(unittest.TestCase):
                 equal_nan,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
+                only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
             )
+            if not res and only_check_prim:
+                continue
             if check_dygraph:
                 outs, dygraph_dygraph_outs, fetch_list = res
             else:
@@ -2183,6 +2328,8 @@ class OpTest(unittest.TestCase):
                 self.op_type
                 not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST
             ):
+                if os.getenv("FLAGS_enable_new_ir_in_executor"):
+                    return
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
@@ -2228,9 +2375,8 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
-                    )
-                    % (
+                        "Operator {} error, {} variable {} (shape: {}, dtype: {}) max gradient diff over limit"
+                    ).format(
                         self.op_type,
                         msg_prefix,
                         name,
@@ -2408,9 +2554,7 @@ class OpTest(unittest.TestCase):
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
                 check_dygraph = False
-                atol = 1e-2 if atol < 1e-2 else atol
-            else:
-                atol = 1e-1 if atol < 1e-1 else atol
+            atol = 1e-2 if atol < 1e-2 else atol
 
         if self.is_float16_op():
             atol = 1e-3 if atol < 1e-3 else atol
@@ -2423,6 +2567,14 @@ class OpTest(unittest.TestCase):
             numeric_grad_delta = 1e-5
             max_relative_error = 1e-7
 
+        if (
+            self.dtype == np.complex128
+            and self.op_type
+            not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+        ):
+            numeric_grad_delta = 1e-5
+            max_relative_error = 1e-6
+
         cache_list = None
         if hasattr(self, "cache_name_list"):
             cache_list = self.cache_name_list
@@ -2432,7 +2584,6 @@ class OpTest(unittest.TestCase):
         if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
-
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -2478,8 +2629,9 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        if user_defined_grads is None and self.is_fp16_compared_with_fp32():
+        if user_defined_grads is None and self.is_compared_with_fp32():
             self.enable_cal_ref_output()
+
             numeric_grads = self._get_gradient(
                 inputs_to_check,
                 place,
@@ -2513,6 +2665,7 @@ class OpTest(unittest.TestCase):
         )
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
+
         fp32_analytic_grads = []
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
@@ -2740,6 +2893,60 @@ class OpTest(unittest.TestCase):
             output_names.append(cast_output.name)
         return output_names
 
+    def _check_ir_grad_output(
+        self, place, program, scope, feed_dict, fetch_list, gradients
+    ):
+        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+            return
+        if os.getenv("FLAGS_NEW_IR_OPTEST_WHITE_LIST") is None:
+            return
+        if self.check_prim:
+            return
+        if self._check_cinn:
+            return
+
+        stored_flag = get_flags('FLAGS_enable_new_ir_in_executor')
+        try:
+            set_flags({"FLAGS_enable_new_ir_in_executor": True})
+            executor = Executor(place)
+            new_gradients = list(
+                map(
+                    np.array,
+                    executor.run(
+                        program,
+                        feed_dict,
+                        fetch_list,
+                        scope=scope,
+                        return_numpy=False,
+                    ),
+                )
+            )
+
+            check_method = np.testing.assert_array_equal
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+                check_method = lambda x, y, z: np.testing.assert_allclose(
+                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
+                )
+
+            for i in range(len(new_gradients)):
+                check_method(
+                    gradients[i],
+                    new_gradients[i],
+                    err_msg='Operator GradCheck ('
+                    + self.op_type
+                    + ') has diff at '
+                    + str(place)
+                    + '\nExpect '
+                    + str(gradients[i])
+                    + '\n'
+                    + 'But Got'
+                    + str(new_gradients[i])
+                    + ' in class '
+                    + self.__class__.__name__,
+                )
+        finally:
+            set_flags(stored_flag)
+
     def _get_gradient(
         self,
         input_to_check,
@@ -2753,6 +2960,7 @@ class OpTest(unittest.TestCase):
         with paddle.fluid.framework._static_guard():
             prog = Program()
             scope = core.Scope()
+            ir_scope = core.Scope()
             block = prog.global_block()
             self._append_ops(block)
 
@@ -2761,7 +2969,7 @@ class OpTest(unittest.TestCase):
             feed_dict = self.feed_var(inputs, place)
 
             if user_defined_grad_outputs is None:
-                if self.dtype == np.uint16:
+                if self.dtype == np.uint16 and not self.is_calc_ref:
                     cast_inputs = list(map(block.var, output_names))
                     if self.op_type in ["broadcast_tensors", "meshgrid"]:
                         output_names = self.cast_bf16_output(block, cast_inputs)
@@ -2807,6 +3015,11 @@ class OpTest(unittest.TestCase):
                     tensor = true_var.get_tensor()
                     tensor.set(grad_out_value, place)
                     grad_outputs.append(var)
+                    if os.getenv("FLAGS_NEW_IR_OPTEST") is not None:
+                        ir_true_var = ir_scope.var(var.name)
+                        ir_tensor = ir_true_var.get_tensor()
+                        ir_tensor.set(grad_out_value, place)
+
                 targets = [
                     outputs[name] for name in outputs if name in output_names
                 ]
@@ -2816,7 +3029,7 @@ class OpTest(unittest.TestCase):
                 grad_inputs = paddle.static.gradients(
                     targets, inputs, grad_outputs, no_grad_set
                 )
-                fetch_list = grad_inputs
+                fetch_list = [grad.name for grad in grad_inputs]
 
             enable_cinn_test = check_cinn and self._enable_check_cinn_test(
                 place, feed_dict, outputs
@@ -2836,6 +3049,7 @@ class OpTest(unittest.TestCase):
                 if enable_cinn_test:
                     build_strategy = fluid.BuildStrategy()
                     build_strategy.build_cinn_pass = check_cinn
+                    self._check_cinn = True
 
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
@@ -2852,6 +3066,11 @@ class OpTest(unittest.TestCase):
                     ),
                 )
             )
+
+            self._check_ir_grad_output(
+                place, prog, ir_scope, feed_dict, fetch_list, res
+            )
+
         return res
 
 

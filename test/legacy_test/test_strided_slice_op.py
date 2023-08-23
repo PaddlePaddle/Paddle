@@ -96,10 +96,10 @@ class TestStrideSliceOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad({'Input'}, 'Out')
+        self.check_grad({'Input'}, 'Out', check_cinn=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -605,13 +605,13 @@ class TestStridedSliceAPI(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
         )
-        assert np.array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_5, input[-3:3, 0:100:2, -1:2:-1, :])
-        assert np.array_equal(res_6, input[-3:3, 0:100:2, :, -1:2:-1])
-        assert np.array_equal(res_7, input[-1, 0:100:2, :, -1:2:-1])
+        np.testing.assert_array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
+        np.testing.assert_array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
+        np.testing.assert_array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
+        np.testing.assert_array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
+        np.testing.assert_array_equal(res_5, input[-3:3, 0:100:2, -1:2:-1, :])
+        np.testing.assert_array_equal(res_6, input[-3:3, 0:100:2, :, -1:2:-1])
+        np.testing.assert_array_equal(res_7, input[-1, 0:100:2, :, -1:2:-1])
 
     def test_dygraph_op(self):
         x = paddle.zeros(shape=[3, 4, 5, 6], dtype="float32")
@@ -718,7 +718,6 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
     def is_grads_equal(self, g1, g2):
         for i, g in enumerate(g1):
-
             self.assertTrue(
                 self.grad_equal(g, g2[i]),
                 msg=f"gradient_1:\n{g} \ngradient_2:\n{g2}",
@@ -1032,10 +1031,10 @@ class TestStrideSliceFP16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad({'Input'}, 'Out')
+        self.check_grad({'Input'}, 'Out', check_cinn=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)

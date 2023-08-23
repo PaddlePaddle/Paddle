@@ -120,7 +120,6 @@ def copy_parameters(block_, params):
 def insert_sync_op(
     block, idx, tp_degree, sync_mode, sync_ring_id, src_rank, varname, op_role
 ):
-
     if sync_mode == "broadcast":
         block._insert_op_without_sync(
             idx,
@@ -171,11 +170,9 @@ def insert_synchronization(
     sync_mode,
     src_rank,
 ):
-
     unsync_param_names = [p.name for p in params_to_sync]
 
     for idx, op in reversed(list(enumerate(block.ops))):
-
         if op.type in _supported_optimizer_type:
             assert "Param" in op.input_names
             assert len(op.input("Param")) == 1
@@ -183,7 +180,6 @@ def insert_synchronization(
             op_role = op.attr(OP_ROLE_KEY)
 
             if param_name in unsync_param_names:
-
                 unsync_param_names.remove(param_name)
 
                 # Param sync after opt

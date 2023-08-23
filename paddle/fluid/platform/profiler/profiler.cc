@@ -31,6 +31,7 @@
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/fluid/platform/profiler/xpu_tracer.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
@@ -52,6 +53,10 @@ void SynchronizeDevice() {
     auto place = paddle::platform::CustomPlace(dev_type, i);
     phi::DeviceManager::SynchronizeDevice(place);
   }
+#endif
+#ifdef PADDLE_WITH_XPU
+  // TODO(zhangxiaoci) xpu do not support device sync yet
+  // KL3 might do
 #endif
 }
 
@@ -82,6 +87,14 @@ bool Profiler::IsCnpapiSupported() {
   return supported;
 }
 
+bool Profiler::IsXPTISupported() {
+  bool supported = false;
+#ifdef PADDLE_WITH_XPTI
+  supported = true;
+#endif
+  return supported;
+}
+
 Profiler::Profiler(const ProfilerOptions& options,
                    const std::vector<std::string>& custom_device_types) {
   options_ = options;
@@ -98,6 +111,9 @@ Profiler::Profiler(const ProfilerOptions& options,
     for (const auto& dev_type : custom_device_types) {
       tracers_.emplace_back(&CustomTracer::GetInstance(dev_type), false);
     }
+  }
+  if (trace_switch.test(kProfileXPUOptionBit)) {
+    tracers_.emplace_back(&XPUTracer::GetInstance(), false);
   }
 }
 
@@ -148,10 +164,9 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   std::vector<int32_t> device_ids = GetSelectedDevices();
-  for (auto index = 0u; index < device_ids.size(); index++) {
-    const gpuDeviceProp& device_property =
-        GetDeviceProperties(device_ids[index]);
-    device_property_map[device_ids[index]] = device_property;
+  for (auto device_id : device_ids) {
+    const gpuDeviceProp& device_property = GetDeviceProperties(device_id);
+    device_property_map[device_id] = device_property;
   }
   ProfilerResult* profiler_result_ptr = new platform::ProfilerResult(
       std::move(tree), extrainfo, device_property_map);

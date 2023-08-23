@@ -80,6 +80,18 @@ void FullLikeKernel(const Context& dev_ctx,
   FullValue<T>(dev_ctx, out, value);
 }
 
+template <typename T, typename Context>
+void FullIntArrayKernel(const Context& dev_ctx,
+                        const IntArray& val,
+                        DataType dtype UNUSED,
+                        DenseTensor* out) {
+  out->Resize(phi::make_ddim({static_cast<int64_t>(val.GetData().size())}));
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  for (size_t i = 0; i < val.GetData().size(); ++i) {
+    out_data[i] = static_cast<T>(val.GetData()[i]);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full,
@@ -115,3 +127,6 @@ PD_REGISTER_KERNEL(full_like,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
+
+PD_REGISTER_KERNEL(
+    full_int_array, CPU, ALL_LAYOUT, phi::FullIntArrayKernel, int, int64_t) {}

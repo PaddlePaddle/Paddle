@@ -30,11 +30,14 @@ class TestErfOp(OpTest):
         self.public_python_api = paddle.erf
         self.python_api = paddle.erf
         self.dtype = self._init_dtype()
-        self.x_shape = [11, 17]
+        self.init_shape()
         x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
         y_ref = erf(x).astype(self.dtype)
         self.inputs = {'X': x}
         self.outputs = {'Out': y_ref}
+
+    def init_shape(self):
+        self.x_shape = [11, 17]
 
     def _init_dtype(self):
         return "float64"
@@ -44,6 +47,11 @@ class TestErfOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestErfOp_ZeroDim(TestErfOp):
+    def init_shape(self):
+        self.x_shape = []
 
 
 class TestErfLayer(unittest.TestCase):
@@ -57,15 +65,17 @@ class TestErfLayer(unittest.TestCase):
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
-        self._test_case(fluid.CPUPlace())
-        if fluid.is_compiled_with_cuda():
-            self._test_case(fluid.CUDAPlace(0))
+        with paddle.fluid.framework._static_guard():
+            self._test_case(fluid.CPUPlace())
+            if fluid.is_compiled_with_cuda():
+                self._test_case(fluid.CUDAPlace(0))
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
-            x = paddle.static.data('x', [3, 4])
-            y = paddle.erf(x, name='erf')
-            self.assertTrue('erf' in y.name)
+        with paddle.fluid.framework._static_guard():
+            with fluid.program_guard(fluid.Program()):
+                x = paddle.static.data('x', [3, 4])
+                y = paddle.erf(x, name='erf')
+                self.assertTrue('erf' in y.name)
 
 
 class TestErfFP16OP(OpTest):

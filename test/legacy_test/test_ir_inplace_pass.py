@@ -53,7 +53,6 @@ class TestIrInplace(TestParallelExecutorBase):
         os.environ['CPU_NUM'] = str(4)
 
     def _fc_with_batchnorm(self, ir_memory_optimize, enable_inplace):
-
         if not core.is_compiled_with_cuda():
             return
         np.random.seed(5)

@@ -27,15 +27,16 @@ class TestWhereOp(OpTest):
     def setUp(self):
         self.op_type = 'where'
         self.python_api = paddle.where
+        self.check_cinn = True
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.check_cinn)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_cinn=self.check_cinn)
 
     def init_config(self):
         self.x = np.random.uniform((-3), 5, 100).astype('float64')
@@ -68,6 +69,7 @@ class TestWhereBF16OP(OpTest):
         self.op_type = 'where'
         self.dtype = np.uint16
         self.python_api = paddle.where
+        self.check_cinn = True
         self.init_config()
         self.inputs = {
             'Condition': self.cond,
@@ -80,12 +82,16 @@ class TestWhereBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_cinn=self.check_cinn)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', numeric_grad_delta=0.05
+            place,
+            ['X', 'Y'],
+            'Out',
+            numeric_grad_delta=0.05,
+            check_cinn=self.check_cinn,
         )
 
     def init_config(self):
@@ -160,17 +166,17 @@ class TestWhereAPI(unittest.TestCase):
                             feed={'cond': self.cond, 'x': self.x, 'y': self.y},
                             fetch_list=fetch_list,
                         )
-                        assert np.array_equal(out[0], self.out)
+                        np.testing.assert_array_equal(out[0], self.out)
                         if x_stop_gradient is False:
-                            assert np.array_equal(
+                            np.testing.assert_array_equal(
                                 out[2], self.ref_x_backward(out[1])
                             )
                             if y.stop_gradient is False:
-                                assert np.array_equal(
+                                np.testing.assert_array_equal(
                                     out[3], self.ref_y_backward(out[1])
                                 )
                         elif y.stop_gradient is False:
-                            assert np.array_equal(
+                            np.testing.assert_array_equal(
                                 out[2], self.ref_y_backward(out[1])
                             )
 
@@ -196,7 +202,9 @@ class TestWhereAPI(unittest.TestCase):
                     feed={'x': x_i, 'y': y_i},
                     fetch_list=[result],
                 )
-                assert np.array_equal(out[0], np.where((x_i > 1), x_i, y_i))
+                np.testing.assert_array_equal(
+                    out[0], np.where((x_i > 1), x_i, y_i)
+                )
 
     def test_scalar(self):
         paddle.enable_static()
@@ -222,7 +230,7 @@ class TestWhereAPI(unittest.TestCase):
                     fetch_list=[result],
                 )
                 expect = np.where(cond_data, x_data, y_data)
-                assert np.array_equal(out[0], expect)
+                np.testing.assert_array_equal(out[0], expect)
 
     def __test_where_with_broadcast_static(self, cond_shape, x_shape, y_shape):
         paddle.enable_static()
@@ -256,7 +264,7 @@ class TestWhereAPI(unittest.TestCase):
                     fetch_list=[result],
                 )
                 expect = np.where(cond_data, x_data, y_data)
-                assert np.array_equal(out[0], expect)
+                np.testing.assert_array_equal(out[0], expect)
 
     def test_static_api_broadcast_1(self):
         cond_shape = [2, 4]
@@ -317,7 +325,9 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = fluid.dygraph.to_variable(y_i)
             cond = fluid.dygraph.to_variable(cond_i)
             out = paddle.where(cond, x, y)
-            assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
+            np.testing.assert_array_equal(
+                out.numpy(), np.where(cond_i, x_i, y_i)
+            )
 
     def test_scalar(self):
         with fluid.dygraph.guard():
@@ -326,7 +336,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = 2.0
             cond = fluid.dygraph.to_variable(cond_i)
             out = paddle.where(cond, x, y)
-            assert np.array_equal(out.numpy(), np.where(cond_i, x, y))
+            np.testing.assert_array_equal(out.numpy(), np.where(cond_i, x, y))
 
     def __test_where_with_broadcast_dygraph(self, cond_shape, a_shape, b_shape):
         with fluid.dygraph.guard():

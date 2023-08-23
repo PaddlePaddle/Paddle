@@ -16,6 +16,7 @@ import os
 import tempfile
 import unittest
 
+import nets
 import numpy as np
 from test_imperative_base import new_program_scope
 
@@ -25,7 +26,7 @@ from paddle.fluid import core
 
 
 def convolutional_neural_network(img):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
@@ -34,7 +35,7 @@ def convolutional_neural_network(img):
         act="relu",
     )
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
@@ -56,7 +57,7 @@ def static_train_net(img, label):
     )
     avg_loss = paddle.mean(loss)
 
-    optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
     return prediction, avg_loss
@@ -124,13 +125,11 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                     param.name
                 )
 
-            fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 self.save_dirname,
-                ["img"],
+                [img],
                 [prediction],
                 exe,
-                model_filename=self.model_filename,
-                params_filename=self.params_filename,
             )
 
         return static_param_dict

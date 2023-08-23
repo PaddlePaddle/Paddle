@@ -17,8 +17,7 @@ import abc
 from paddle import fluid
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import SGD
-from paddle.optimizer import SGD as SGD_v2
+from paddle.optimizer import SGD
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 
 __all__ = []
@@ -291,10 +290,8 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, optimizer, strategy=None):
-        if (
-            not isinstance(optimizer, SGD.__bases__)
-            and not isinstance(optimizer, OptimizerWithMixedPrecision)
-            and not isinstance(optimizer, SGD_v2.__base__)
+        if not isinstance(optimizer, SGD.__bases__) and not isinstance(
+            optimizer, OptimizerWithMixedPrecision
         ):
             raise TypeError("optimizer must be an instance of Optimizer")
 
@@ -346,12 +343,13 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         Examples:
             .. code-block:: python
 
-                loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                params_grads = optimizer.backward(loss)
-                # you may append operations for params_grads here
-                # ...
-                optimizer.apply_gradients(params_grads)
+                >>> # doctest: +SKIP('The network is not defined.')
+                >>> loss = network()
+                >>> optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                >>> params_grads = optimizer.backward(loss)
+                >>> # you may append operations for params_grads here
+                >>> # ...
+                >>> optimizer.apply_gradients(params_grads)
         """
         pass
 

@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -25,7 +26,6 @@
 #include "paddle/ir/core/type_name.h"
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/utils.h"
-#include "paddle/utils/optional.h"
 
 namespace ir {
 
@@ -73,6 +73,8 @@ class PreservedAnalyses {
   void Unpreserve() {
     preserved_ids_.erase(TypeId::get<AnalysisT>());
   }
+
+  friend ir::detail::TypeIdResolver<AllAnalysesType>;
 
  private:
   template <typename>
@@ -147,14 +149,13 @@ class AnalysisMap {
   }
 
   template <typename AnalysisT>
-  paddle::optional<std::reference_wrapper<AnalysisT>> GetCachedAnalysis()
-      const {
+  std::optional<std::reference_wrapper<AnalysisT>> GetCachedAnalysis() const {
     auto res = analyses_.find(TypeId::get<AnalysisT>());
-    if (res == analyses_.end()) return paddle::none;
+    if (res == analyses_.end()) return std::nullopt;
     return {static_cast<AnalysisModel<AnalysisT>&>(*res->second).analysis};
   }
 
-  Operation* getOperation() const { return ir_; }
+  Operation* GetOperation() const { return ir_; }
 
   void Clear() { analyses_.clear(); }
 
@@ -255,8 +256,7 @@ class AnalysisManager {
   }
 
   template <typename AnalysisT>
-  paddle::optional<std::reference_wrapper<AnalysisT>> GetCachedAnalysis()
-      const {
+  std::optional<std::reference_wrapper<AnalysisT>> GetCachedAnalysis() const {
     return analyses_->GetCachedAnalysis<AnalysisT>();
   }
 
@@ -267,11 +267,11 @@ class AnalysisManager {
     analyses_->Invalidate(pa);
   }
 
-  void clear() { analyses_->Clear(); }
+  void Clear() { analyses_->Clear(); }
 
   PassInstrumentor* GetPassInstrumentor() const { return instrumentor_; }
 
-  Operation* GetOperation() { return analyses_->getOperation(); }
+  Operation* GetOperation() { return analyses_->GetOperation(); }
 
  private:
   AnalysisManager(detail::AnalysisMap* impl, PassInstrumentor* pi)
@@ -304,3 +304,5 @@ class AnalysisManagerHolder {
 };
 
 }  // namespace ir
+
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::detail::PreservedAnalyses::AllAnalysesType)

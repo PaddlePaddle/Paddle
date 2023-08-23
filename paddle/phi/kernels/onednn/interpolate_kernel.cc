@@ -97,7 +97,7 @@ std::vector<int> ComputeOutputShape(
     out_dims.push_back(out_w);
   }
 
-  if (size_tensor && size_tensor.get().size() > 0) {
+  if (size_tensor && !size_tensor.get().empty()) {
     auto new_size = funcs::get_new_shape(size_tensor.get());
     if (new_size.size() == out_dims.size()) {
       out_dims = new_size;
@@ -117,7 +117,7 @@ std::vector<int> ComputeOutputShape(
       scale.resize(3, scale_data[0]);
       std::copy(scale_data.begin(), scale_data.end(), scale.begin());
     } else {
-      if (scale_attr.size() > 0) {
+      if (!scale_attr.empty()) {
         scale.resize(3, scale_attr[0]);
         std::copy(scale_attr.begin(), scale_attr.end(), scale.begin());
       }

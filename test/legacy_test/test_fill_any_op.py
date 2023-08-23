@@ -20,10 +20,8 @@ from eager_op_test import OpTest
 import paddle
 
 
-def fill_any_wrapper(x, value_float=0, value_int=0):
-    return paddle._legacy_C_ops.fill_any(
-        x, "value_float", value_float, "value_int", value_int
-    )
+def fill_any_wrapper(x, value=0):
+    return paddle._legacy_C_ops.fill_any(x, "value", value)
 
 
 class TestFillAnyOp(OpTest):
@@ -34,10 +32,7 @@ class TestFillAnyOp(OpTest):
         self.value = 0.0
         self.init()
         self.inputs = {'X': np.random.random((20, 30)).astype(self.dtype)}
-        self.attrs = {
-            'value_float': float(self.value),
-            'value_int': int(self.value),
-        }
+        self.attrs = {'value': float(self.value)}
         self.outputs = {
             'Out': self.value
             * np.ones_like(self.inputs["X"]).astype(self.dtype)

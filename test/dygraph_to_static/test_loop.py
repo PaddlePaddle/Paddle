@@ -462,7 +462,6 @@ class Net(paddle.nn.Layer):
 
 class TestForLoopMeetDict(unittest.TestCase):
     def test_start(self):
-
         net = Net()
         model = paddle.jit.to_static(
             net,

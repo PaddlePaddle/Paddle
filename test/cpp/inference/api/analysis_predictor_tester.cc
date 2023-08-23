@@ -341,7 +341,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.SwitchIrOptim(true);
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
   else
@@ -365,14 +365,12 @@ TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
   ASSERT_EQ(passes.size(), (size_t)0);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableMKLDNN();
   const std::vector<std::string> fc_passes_to_erase(
-      {"fc_mkldnn_pass",
-       "fc_act_mkldnn_fuse_pass",
-       "fc_elementwise_add_mkldnn_fuse_pass"});
+      {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
   for (const auto& pass : fc_passes_to_erase) {
     ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
@@ -389,7 +387,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMKLDNN();
   config.DisableMkldnnFcPasses();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   ASSERT_TRUE(config.mkldnn_fc_passes_disabled());
 #else
   ASSERT_FALSE(config.mkldnn_fc_passes_disabled());
@@ -668,53 +666,6 @@ TEST(Predictor, Streams) {
 #endif
 
 TEST(AnalysisPredictor, OutputTensorHookFunc) {
-  auto hookfunc = [](const std::string& type,
-                     const std::string& var_name,
-                     const Tensor& tensor) { LOG(INFO) << "in hook function"; };
-
-  {
-    Config config;
-    config.SetModel(FLAGS_dirname);
-    config.EnableUseGpu(100, 0);
-
-    auto predictor = CreatePredictor(config);
-
-    predictor->RegisterOutputHook(hookfunc);
-    auto w0 = predictor->GetInputHandle("firstw");
-    auto w1 = predictor->GetInputHandle("secondw");
-    auto w2 = predictor->GetInputHandle("thirdw");
-    auto w3 = predictor->GetInputHandle("forthw");
-    w0->Reshape({4, 1});
-    w1->Reshape({4, 1});
-    w2->Reshape({4, 1});
-    w3->Reshape({4, 1});
-    auto* w0_data = w0->mutable_data<int64_t>(PlaceType::kCPU);
-    auto* w1_data = w1->mutable_data<int64_t>(PlaceType::kCPU);
-    auto* w2_data = w2->mutable_data<int64_t>(PlaceType::kCPU);
-    auto* w3_data = w3->mutable_data<int64_t>(PlaceType::kCPU);
-    for (int i = 0; i < 4; i++) {
-      w0_data[i] = i;
-      w1_data[i] = i;
-      w2_data[i] = i;
-      w3_data[i] = i;
-    }
-    predictor->Run();
-    predictor->TryShrinkMemory();
-  }
-
-  {
-    Config config;
-    config.SetModel(FLAGS_dirname);
-    config.EnableMemoryOptim();
-    config.EnableUseGpu(100, 0);
-
-    auto predictor = CreatePredictor(config);
-
-    predictor->RegisterOutputHook(hookfunc);
-  }
-}
-
-TEST(AnalysisPredictor, OutputTensorHookFunc_V2) {
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
                      const paddle::Tensor& tensor) {

@@ -187,8 +187,7 @@ class TestCooSoftmax(unittest.TestCase):
             )
         else:
             print(
-                "`dim(=%s)` must be smaller than `sparse_dim(=%s) + dense_dim(=%s)`"
-                % (dim, sparse_dim, dense_dim)
+                f"`dim(={dim})` must be smaller than `sparse_dim(={sparse_dim}) + dense_dim(={dense_dim})`"
             )
 
     def check_run(self, dense_shape):

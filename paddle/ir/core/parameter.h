@@ -20,7 +20,7 @@ namespace ir {
 ///
 /// \brief Parameter represents the weight in the calculation graph.
 ///
-class Parameter {
+class IR_API Parameter {
  public:
   Parameter(void* data, size_t size, ir::Type type) {
     data_ = malloc(size);

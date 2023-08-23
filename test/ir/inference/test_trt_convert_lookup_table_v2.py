@@ -25,9 +25,11 @@ import paddle.inference as paddle_infer
 
 class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
     def sample_program_configs(self):
+        self.trt_param.workspace_size = 102400
+
         def generate_input1(dims, attrs: List[Dict[str, Any]]):
             if dims == 1:
-                return np.array([32]).astype(np.int64)
+                return np.array([32, 2, 19]).astype(np.int64)
             elif dims == 2:
                 return np.array([[3, 16, 24], [6, 4, 47]]).astype(np.int64)
             else:
@@ -82,37 +84,37 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
                     "data": [64, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "indices": [1],
+                    "indices": [16],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "indices": [1],
+                    "indices": [8],
                     "data": [64, 4],
                 }
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
-                    "indices": [2, 3],
+                    "indices": [1, 1],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "indices": [2, 3],
+                    "indices": [16, 32],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "indices": [2, 3],
+                    "indices": [2, 16],
                     "data": [64, 4],
                 }
             else:
                 self.dynamic_shape.min_input_shape = {
-                    "indices": [3, 3, 3],
+                    "indices": [1, 1, 1],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "indices": [3, 3, 3],
+                    "indices": [16, 16, 16],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "indices": [3, 3, 3],
+                    "indices": [2, 8, 8],
                     "data": [64, 4],
                 }
 
@@ -126,10 +128,12 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
         # for dynamic_shape mode
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)

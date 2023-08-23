@@ -120,7 +120,7 @@ def append_input_output(
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
-            if is_calc_ref and dtype == np.float16:
+            if is_calc_ref and (dtype == np.float16 or dtype == np.uint16):
                 dtype = np.float32
         return block.create_var(
             dtype=dtype, shape=shape, lod_level=lod_level, name=name
@@ -140,7 +140,7 @@ def append_input_output(
                 np_list[var_name], list
             ), f"Duplicable {var_name} should be set as list"
             var_list = []
-            for (name, np_value) in np_list[var_name]:
+            for name, np_value in np_list[var_name]:
                 var_list.append(
                     create_var(
                         block, name, {name: np_value}, var_proto, is_calc_ref

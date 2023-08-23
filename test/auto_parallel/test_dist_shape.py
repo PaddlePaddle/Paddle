@@ -57,7 +57,6 @@ def parallelizer(program_func, rank):
 
 class TestDistShape(unittest.TestCase):
     def test_dist_shape(self):
-
         dist_main_prog, dist_context = parallelizer(make_program, 0)
         ops = dist_main_prog.global_block().ops
         shape_op = ops[0]

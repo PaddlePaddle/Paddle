@@ -152,17 +152,20 @@ class TestReduceMeanOp(OpTest):
         self.public_python_api = reduce_mean_wrapper
         self.prim_op_type = "comp"
         self.dtype = 'float64'
-        self.shape = [2, 3, 4, 5]
+        self.init_shapes()
         self.axis = [0]
+        if self.shape == []:
+            self.axis = []
         self.keepdim = False
         self.set_attrs()
         self.if_enable_cinn()
 
         np.random.seed(10)
         x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        if not hasattr(self, "reduce_all"):
+        if not hasattr(self, "reduce_all") and not x_np.shape == ():
             self.reduce_all = (not self.axis) or len(self.axis) == len(x_np)
-
+        if x_np.shape == ():
+            self.reduce_all = True
         out_np = ref_reduce_mean(x_np, self.axis, self.keepdim, self.reduce_all)
         self.inputs = {'X': x_np}
         self.outputs = {'Out': out_np}
@@ -171,6 +174,9 @@ class TestReduceMeanOp(OpTest):
             'keep_dim': self.keepdim,
             'reduce_all': self.reduce_all,
         }
+
+    def init_shapes(self):
+        self.shape = [2, 3, 4, 5]
 
     def set_attrs(self):
         pass
@@ -193,6 +199,12 @@ class TestReduceMeanOp(OpTest):
             self.check_grad_with_place(
                 place, ['X'], ['Out'], numeric_grad_delta=0.5, check_prim=True
             )
+
+
+class TestReduceMeanOp_ZeroDim(TestReduceMeanOp):
+    def init_shapes(self):
+        self.shape = []
+        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -284,9 +296,6 @@ class TestReduceMeanOpShape6D(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestReduceMeanOpShape6DBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
@@ -297,9 +306,6 @@ class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
         self.dtype = 'float16'
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestReduceMeanOpAxisAll(TestReduceMeanOp):

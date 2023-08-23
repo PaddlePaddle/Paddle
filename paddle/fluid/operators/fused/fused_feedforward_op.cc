@@ -18,11 +18,21 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
+
+/**
+ * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+ * original x_dim is returned.
+ */
+static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
+  if (x_dim.size() > 1) {
+    return x_dim;
+  }
+  return phi::make_ddim({1, x_dim[0]});
+}
 
 class FusedFeedForwardOp : public framework::OperatorWithKernel {
  public:

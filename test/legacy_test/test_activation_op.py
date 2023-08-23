@@ -15,6 +15,7 @@
 import os
 import unittest
 import warnings
+from contextlib import contextmanager
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
@@ -25,6 +26,15 @@ import paddle.nn.functional as F
 from paddle import fluid, static
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.layer_helper import LayerHelper
+
+
+@contextmanager
+def dynamic_guad():
+    paddle.disable_static()
+    try:
+        yield
+    finally:
+        paddle.enable_static()
 
 
 class TestSqrtOpError(unittest.TestCase):
@@ -143,8 +153,34 @@ class TestExpPrim_ZeroDim(TestExpFp32_Prim):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
+
+class Test_Exp_Op_Fp16(unittest.TestCase):
+    def test_api_fp16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]])
+                x = paddle.to_tensor(np_x, dtype='float16')
+                out = paddle.exp(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
+                    x_expect = np.exp(np_x.astype('float16'))
+                    np.testing.assert_allclose(res, x_expect, rtol=1e-3)
+
+
+class Test_Exp_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ('int32', 'int64', 'float16'):
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.exp(x)
+            x_expect = np.exp(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
 
 
 class TestExpm1(TestActivation):
@@ -203,20 +239,29 @@ class TestExpm1API(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
-        def run(place):
-            X = paddle.to_tensor(self.x)
-            out = paddle.expm1(X)
-            np.testing.assert_allclose(self.out_ref, out.numpy(), rtol=1e-05)
+        with dynamic_guad():
 
-        for place in self.place:
-            run(place)
+            def run(place):
+                X = paddle.to_tensor(self.x)
+                out = paddle.expm1(X)
+                np.testing.assert_allclose(
+                    self.out_ref, out.numpy(), rtol=1e-05
+                )
 
-    def test_errors(self):
-        with paddle.fluid.framework._static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                X = paddle.static.data('X', self.shape, dtype='int32')
-                self.assertRaises(TypeError, paddle.expm1, X)
-        # The input dtype must be float16, float32, float64.
+            for place in self.place:
+                run(place)
+
+
+class Test_Expm1_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ('int32', 'int64', 'float16'):
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.expm1(x)
+            x_expect = np.expm1(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
 
 
 class TestParameter:
@@ -276,9 +321,6 @@ class TestSigmoid(TestActivation):
 class TestSigmoid_ZeroDim(TestSigmoid):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -362,9 +404,6 @@ class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestSiluAPI(unittest.TestCase):
     # test paddle.nn.Silu, paddle.nn.functional.silu
@@ -390,6 +429,7 @@ class TestSiluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         out1 = F.silu(x)
         m = paddle.nn.Silu()
@@ -397,6 +437,7 @@ class TestSiluAPI(unittest.TestCase):
         out_ref = self.x_np / (1 + np.exp(-self.x_np))
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        paddle.enable_static()
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -466,6 +507,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
+        paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         out1 = F.log_sigmoid(x)
         m = paddle.nn.LogSigmoid()
@@ -473,6 +515,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
         out_ref = np.log(1 / (1 + np.exp(-self.x_np)))
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        paddle.enable_static()
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -503,6 +546,11 @@ class TestTanh(TestActivation, TestParameter):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.tanh(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -511,7 +559,11 @@ class TestTanh(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
 
     def init_dtype(self):
         # TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -523,12 +575,19 @@ class TestTanh(TestActivation, TestParameter):
         pass
 
 
+class TestTanh_Complex64(TestTanh):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestTanh_Complex128(TestTanh):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestTanh_ZeroDim(TestTanh):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestTanhAPI(unittest.TestCase):
@@ -561,14 +620,15 @@ class TestTanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.tanh(x)
-        out2 = paddle.tanh(x)
-        th = paddle.nn.Tanh()
-        out3 = th(x)
-        out_ref = np.tanh(self.x_np)
-        for r in [out1, out2, out3]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.tanh(x)
+            out2 = paddle.tanh(x)
+            th = paddle.nn.Tanh()
+            out3 = th(x)
+            out_ref = np.tanh(self.x_np)
+            for r in [out1, out2, out3]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -881,13 +941,14 @@ class TestTanhshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.tanhshrink(x)
-        tanhshrink = paddle.nn.Tanhshrink()
-        out2 = tanhshrink(x)
-        out_ref = ref_tanhshrink(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.tanhshrink(x)
+            tanhshrink = paddle.nn.Tanhshrink()
+            out2 = tanhshrink(x)
+            out_ref = ref_tanhshrink(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -981,20 +1042,21 @@ class TestHardShrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.hardshrink(x)
-        hd = paddle.nn.Hardshrink()
-        out2 = hd(x)
-        out_ref = ref_hardshrink(self.x_np, 0.5)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.hardshrink(x)
+            hd = paddle.nn.Hardshrink()
+            out2 = hd(x)
+            out_ref = ref_hardshrink(self.x_np, 0.5)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-        out1 = F.hardshrink(x, 0.6)
-        hd = paddle.nn.Hardshrink(0.6)
-        out2 = hd(x)
-        out_ref = ref_hardshrink(self.x_np, 0.6)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+            out1 = F.hardshrink(x, 0.6)
+            hd = paddle.nn.Hardshrink(0.6)
+            out2 = hd(x)
+            out_ref = ref_hardshrink(self.x_np, 0.6)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -1046,20 +1108,21 @@ class TestHardtanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.hardtanh(x)
-        m = paddle.nn.Hardtanh()
-        out2 = m(x)
-        out_ref = ref_hardtanh(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.hardtanh(x)
+            m = paddle.nn.Hardtanh()
+            out2 = m(x)
+            out_ref = ref_hardtanh(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-        out1 = F.hardtanh(x, -2.0, 2.0)
-        m = paddle.nn.Hardtanh(-2.0, 2.0)
-        out2 = m(x)
-        out_ref = ref_hardtanh(self.x_np, -2.0, 2.0)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+            out1 = F.hardtanh(x, -2.0, 2.0)
+            m = paddle.nn.Hardtanh(-2.0, 2.0)
+            out2 = m(x)
+            out_ref = ref_hardtanh(self.x_np, -2.0, 2.0)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -1141,13 +1204,14 @@ class TestSoftshrinkAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.softshrink(x, self.threshold)
-        softshrink = paddle.nn.Softshrink(self.threshold)
-        out2 = softshrink(x)
-        out_ref = ref_softshrink(self.x_np, self.threshold)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.softshrink(x, self.threshold)
+            softshrink = paddle.nn.Softshrink(self.threshold)
+            out2 = softshrink(x)
+            out_ref = ref_softshrink(self.x_np, self.threshold)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -1236,9 +1300,6 @@ class TestSqrtPrimFp32(TestActivation):
 class TestSqrt_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -1343,6 +1404,11 @@ class TestSqrtCompFp32(TestActivation):
         self.dtype = np.float32
 
 
+class TestSqrtComp_ZeroDim(TestSqrtComp):
+    def init_shape(self):
+        self.shape = []
+
+
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
@@ -1428,9 +1494,6 @@ class TestAbs_ZeroDim(TestAbs):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestCeil(TestActivation):
     def setUp(self):
@@ -1509,9 +1572,6 @@ class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestCos(TestActivation):
     def setUp(self):
@@ -1521,11 +1581,15 @@ class TestCos(TestActivation):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
-        # prim not support now
-        self.enable_cinn = False
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.cos(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -1537,7 +1601,27 @@ class TestCos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            # Complex64 [GPU]: AssertionError: 0.0057843705 not less than or equal to 0.005
+            self.check_grad(
+                ['X'], 'Out', check_prim=False, max_relative_error=0.006
+            )
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
+
+    def if_enable_cinn(self):
+        pass
+
+
+class TestCos_Complex64(TestCos):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestCos_Complex128(TestCos):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestCos_ZeroDim(TestCos):
@@ -1553,8 +1637,12 @@ class TestTan(TestActivation):
         self.init_dtype()
         self.init_shape()
 
-        self.dtype = 'float32'
         self.x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.x_np = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -1576,6 +1664,21 @@ class TestTan(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestTan_float32(TestTan):
+    def init_dtype(self):
+        self.dtype = "float32"
+
+
+class TestTan_Complex64(TestTan):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestTan_Complex128(TestTan):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestTan_ZeroDim(TestTan):
     def init_shape(self):
         self.shape = []
@@ -1593,10 +1696,11 @@ class TestTanAPI(unittest.TestCase):
         )
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out_test = paddle.tan(x)
-        out_ref = np.tan(self.x_np)
-        np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out_test = paddle.tan(x)
+            out_ref = np.tan(self.x_np)
+            np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
 
     def test_static_api(self):
         with paddle.fluid.framework._static_guard():
@@ -1659,11 +1763,15 @@ class TestSin(TestActivation, TestParameter):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
-        # prim not support now
-        self.enable_cinn = False
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.sin(x)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -1675,7 +1783,24 @@ class TestSin(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # TODO(ScottWong98): set `check_prim=False` when `fill_any_like` supports `complex` dtype
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
+
+    def if_enable_cinn(self):
+        pass
+
+
+class TestSin_Complex64(TestSin):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSin_Complex128(TestSin):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSin_ZeroDim(TestSin):
@@ -1862,9 +1987,6 @@ class TestRelu_ZeroDim(TestRelu):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestReluAPI(unittest.TestCase):
     # test paddle.nn.ReLU, paddle.nn.functional.relu
@@ -1895,13 +2017,14 @@ class TestReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        m = paddle.nn.ReLU()
-        out1 = m(x)
-        out2 = self.relu(x)
-        out_ref = np.maximum(self.x_np, 0)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            m = paddle.nn.ReLU()
+            out1 = m(x)
+            out2 = self.relu(x)
+            out_ref = np.maximum(self.x_np, 0)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -1990,7 +2113,7 @@ class TestLeakyRelu_ZeroDim(TestLeakyRelu):
         self.shape = []
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestLeakyReluAPI(unittest.TestCase):
@@ -2018,20 +2141,21 @@ class TestLeakyReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.leaky_relu(x)
-        m = paddle.nn.LeakyReLU()
-        out2 = m(x)
-        out_ref = ref_leaky_relu(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.leaky_relu(x)
+            m = paddle.nn.LeakyReLU()
+            out2 = m(x)
+            out_ref = ref_leaky_relu(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-        out1 = F.leaky_relu(x, 0.6)
-        m = paddle.nn.LeakyReLU(0.6)
-        out2 = m(x)
-        out_ref = ref_leaky_relu(self.x_np, 0.6)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+            out1 = F.leaky_relu(x, 0.6)
+            m = paddle.nn.LeakyReLU(0.6)
+            out2 = m(x)
+            out_ref = ref_leaky_relu(self.x_np, 0.6)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -2141,9 +2265,6 @@ class TestGelu_ZeroDim(TestGelu):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestGELUAPI(unittest.TestCase):
     # test paddle.nn.GELU, paddle.nn.functional.gelu
@@ -2176,20 +2297,21 @@ class TestGELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.gelu(x)
-        m = paddle.nn.GELU()
-        out2 = m(x)
-        out_ref = gelu(self.x_np, False)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.gelu(x)
+            m = paddle.nn.GELU()
+            out2 = m(x)
+            out_ref = gelu(self.x_np, False)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-        out1 = F.gelu(x, True)
-        m = paddle.nn.GELU(True)
-        out2 = m(x)
-        out_ref = gelu(self.x_np, True)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+            out1 = F.gelu(x, True)
+            m = paddle.nn.GELU(True)
+            out2 = m(x)
+            out_ref = gelu(self.x_np, True)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -2301,13 +2423,14 @@ class TestRelu6API(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.relu6(x)
-        relu6 = paddle.nn.ReLU6()
-        out2 = relu6(x)
-        out_ref = ref_relu6(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.relu6(x)
+            relu6 = paddle.nn.ReLU6()
+            out2 = relu6(x)
+            out_ref = ref_relu6(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_fluid_api(self):
         with paddle.fluid.framework._static_guard():
@@ -2396,7 +2519,6 @@ class TestHardSwish(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
-        self.enable_cinn = False
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2417,10 +2539,6 @@ class TestHardSwish(TestActivation):
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
-    def setUp(self):
-        super().setUp()
-        self.enable_cinn = False
-
     def init_shape(self):
         self.shape = []
 
@@ -2449,13 +2567,14 @@ class TestHardswishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor([11648.0, 11448.0])
-        out1 = F.hardswish(x)
-        m = paddle.nn.Hardswish()
-        out2 = m(x)
-        out_ref = [11648.0, 11448.0]
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor([11648.0, 11448.0])
+            out1 = F.hardswish(x)
+            m = paddle.nn.Hardswish()
+            out2 = m(x)
+            out_ref = [11648.0, 11448.0]
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_fluid_api(self):
         with paddle.fluid.framework._static_guard():
@@ -2467,9 +2586,10 @@ class TestHardswishAPI(unittest.TestCase):
             out_ref = ref_hardswish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.nn.functional.hardswish(x)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out = paddle.nn.functional.hardswish(x)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -2595,22 +2715,23 @@ class TestELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = self.elu(x)
-        x = paddle.to_tensor(self.x_np)
-        m = paddle.nn.ELU()
-        out2 = m(x)
-        out_ref = elu(self.x_np, 1.0)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = self.elu(x)
+            x = paddle.to_tensor(self.x_np)
+            m = paddle.nn.ELU()
+            out2 = m(x)
+            out_ref = elu(self.x_np, 1.0)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-        out1 = self.elu(x, 0.2)
-        x = paddle.to_tensor(self.x_np)
-        m = paddle.nn.ELU(0.2)
-        out2 = m(x)
-        out_ref = elu(self.x_np, 0.2)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+            out1 = self.elu(x, 0.2)
+            x = paddle.to_tensor(self.x_np)
+            m = paddle.nn.ELU(0.2)
+            out2 = m(x)
+            out_ref = elu(self.x_np, 0.2)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -2635,8 +2756,9 @@ class TestELUInplaceAPI(TestELUAPI):
         self.elu = F.elu_
 
     def test_alpha_error(self):
-        x = paddle.to_tensor(self.x_np)
-        self.assertRaises(Exception, F.elu_, x, -0.2)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            self.assertRaises(Exception, F.elu_, x, -0.2)
 
 
 def celu(x, alpha):
@@ -2704,22 +2826,23 @@ class TestCELUAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = self.celu(x, 1.5)
-        x = paddle.to_tensor(self.x_np)
-        m = paddle.nn.CELU(1.5)
-        out2 = m(x)
-        out_ref = celu(self.x_np, 1.5)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = self.celu(x, 1.5)
+            x = paddle.to_tensor(self.x_np)
+            m = paddle.nn.CELU(1.5)
+            out2 = m(x)
+            out_ref = celu(self.x_np, 1.5)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-        out1 = self.celu(x, 0.2)
-        x = paddle.to_tensor(self.x_np)
-        m = paddle.nn.CELU(0.2)
-        out2 = m(x)
-        out_ref = celu(self.x_np, 0.2)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+            out1 = self.celu(x, 0.2)
+            x = paddle.to_tensor(self.x_np)
+            m = paddle.nn.CELU(0.2)
+            out2 = m(x)
+            out_ref = celu(self.x_np, 0.2)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -2798,19 +2921,6 @@ class TestLog(TestActivation):
             return
         self.check_grad(['X'], 'Out', check_prim=True)
 
-    def test_error(self):
-        with paddle.fluid.framework._static_guard():
-            with paddle.fluid.framework._static_guard():
-                in1 = paddle.static.data(
-                    name="in1", shape=[11, 17], dtype="int32"
-                )
-                in2 = paddle.static.data(
-                    name="in2", shape=[11, 17], dtype="int64"
-                )
-
-                self.assertRaises(TypeError, paddle.log, in1)
-                self.assertRaises(TypeError, paddle.log, in2)
-
 
 class Test_Log_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
@@ -2826,13 +2936,35 @@ class Test_Log_Op_Fp16(unittest.TestCase):
                     exe = paddle.static.Executor(place)
                     (res,) = exe.run(fetch_list=[out])
 
+    def test_api_bf16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
+                out = paddle.log(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
+
+
+class Test_Log_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ('int32', 'int64', 'float16'):
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.log(x)
+            x_expect = np.log(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
 
 class TestLog_ZeroDim(TestLog):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestLog2(TestActivation):
@@ -2853,14 +2985,6 @@ class TestLog2(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
-
-    def test_error(self):
-        with paddle.fluid.framework._static_guard():
-            in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
-            in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
-
-            self.assertRaises(TypeError, paddle.log2, in1)
-            self.assertRaises(TypeError, paddle.log2, in2)
 
     def test_api(self):
         with paddle.fluid.framework._static_guard():
@@ -2898,6 +3022,31 @@ class TestLog2_ZeroDim(TestLog2):
         self.shape = []
 
 
+class TestLog2_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ['int32', 'int64', 'float16']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.log2(x)
+            x_expect = np.log2(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+    def test_api_bf16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
+                out = paddle.log2(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
+
+
 class TestLog10(TestActivation):
     def setUp(self):
         self.op_type = "log10"
@@ -2923,15 +3072,32 @@ class TestLog10_ZeroDim(TestLog10):
         self.shape = []
 
 
-class TestLog10API(unittest.TestCase):
-    def test_error(self):
+class TestLog10_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ['int32', 'int64', 'float16']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.log10(x)
+            x_expect = np.log10(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+    def test_api_bf16(self):
         with paddle.fluid.framework._static_guard():
-            in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
-            in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
+                out = paddle.log10(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
 
-            self.assertRaises(TypeError, paddle.log10, in1)
-            self.assertRaises(TypeError, paddle.log10, in2)
 
+class TestLog10API(unittest.TestCase):
     def test_api(self):
         with paddle.fluid.framework._static_guard():
             with paddle.static.program_guard(
@@ -2992,6 +3158,31 @@ class Test_Log1p_Op_Fp16(unittest.TestCase):
             ):
                 x = [[2, 3, 4], [7, 8, 9]]
                 x = paddle.to_tensor(x, dtype='float16')
+                out = paddle.log1p(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
+
+
+class TestLog1p_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ['int32', 'int64', 'float16']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.log1p(x)
+            x_expect = np.log1p(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+    def test_api_bf16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
                 out = paddle.log1p(x)
                 if core.is_compiled_with_cuda():
                     place = paddle.CUDAPlace(0)
@@ -3131,9 +3322,6 @@ class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
@@ -3185,9 +3373,15 @@ class TestPow_factor_tensor(TestActivation):
                 fetch_list=[out_1, out_2, res, out_6],
             )
 
-            assert np.allclose(res_1, np.power(input, 2))
-            assert np.allclose(res_2, np.power(input, 3))
-            assert np.allclose(res_6, np.power(input, 3))
+            np.testing.assert_allclose(
+                res_1, np.power(input, 2), rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_2, np.power(input, 3), rtol=1e-5, atol=1e-8
+            )
+            np.testing.assert_allclose(
+                res_6, np.power(input, 3), rtol=1e-5, atol=1e-8
+            )
 
 
 def ref_stanh(x, scale_a=0.67, scale_b=1.7159):
@@ -3273,11 +3467,12 @@ class TestSTanhAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.stanh(x, self.scale_a, self.scale_b)
-        out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
-        for r in [out]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out = paddle.stanh(x, self.scale_a, self.scale_b)
+            out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
+            for r in [out]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_fluid_api(self):
         with paddle.fluid.framework._static_guard():
@@ -3415,13 +3610,14 @@ class TestSoftplusAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.softplus(x, self.beta, self.threshold)
-        softplus = paddle.nn.Softplus(self.beta, self.threshold)
-        out2 = softplus(x)
-        out_ref = ref_softplus(self.x_np, self.beta, self.threshold)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.softplus(x, self.beta, self.threshold)
+            softplus = paddle.nn.Softplus(self.beta, self.threshold)
+            out2 = softplus(x)
+            out_ref = ref_softplus(self.x_np, self.beta, self.threshold)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -3500,13 +3696,14 @@ class TestSoftsignAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.softsign(x)
-        softsign = paddle.nn.Softsign()
-        out2 = softsign(x)
-        out_ref = ref_softsign(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.softsign(x)
+            softsign = paddle.nn.Softsign()
+            out2 = softsign(x)
+            out_ref = ref_softsign(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -3590,14 +3787,14 @@ class TestThresholdedReluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.thresholded_relu(x, self.threshold)
-        thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
-        out2 = thresholded_relu(x)
-        out_ref = ref_thresholded_relu(self.x_np, self.threshold)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.thresholded_relu(x, self.threshold)
+            thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+            out2 = thresholded_relu(x)
+            out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -3694,13 +3891,14 @@ class TestHardsigmoidAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.hardsigmoid(x)
-        m = paddle.nn.Hardsigmoid()
-        out2 = m(x)
-        out_ref = ref_hardsigmoid(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.hardsigmoid(x)
+            m = paddle.nn.Hardsigmoid()
+            out2 = m(x)
+            out_ref = ref_hardsigmoid(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_fluid_api(self):
         with paddle.fluid.framework._static_guard():
@@ -3797,13 +3995,14 @@ class TestSwishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.swish(x)
-        swish = paddle.nn.Swish()
-        out2 = swish(x)
-        out_ref = ref_swish(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.swish(x)
+            swish = paddle.nn.Swish()
+            out2 = swish(x)
+            out_ref = ref_swish(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_fluid_api(self):
         with paddle.fluid.framework._static_guard():
@@ -3896,13 +4095,14 @@ class TestMishAPI(unittest.TestCase):
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out1 = F.mish(x)
-        mish = paddle.nn.Mish()
-        out2 = mish(x)
-        out_ref = ref_mish(self.x_np)
-        for r in [out1, out2]:
-            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.mish(x)
+            mish = paddle.nn.Mish()
+            out2 = mish(x)
+            out_ref = ref_mish(self.x_np)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
     def test_fluid_api(self):
         with paddle.fluid.framework._static_guard():

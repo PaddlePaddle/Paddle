@@ -27,18 +27,30 @@ def make_program_lookup_table_v1_mp_dp():
     start_program = paddle.fluid.Program()
     block = main_program.global_block()
     with paddle.static.program_guard(main_program, start_program):
-
         src_ids = paddle.static.data(
             name='src_ids', shape=[12, 512, 1], dtype='int64'
         )
         src_ids.stop_gradient = True
-        emb_out = paddle.fluid.layers.embedding(
-            input=src_ids,
-            size=[64, 128],
-            param_attr=paddle.fluid.ParamAttr(name="emb_weight"),
-            dtype="float32",
-            is_sparse=False,
+
+        emb_out = block.create_var(name='emb_out', dtype='float32')
+        w = paddle.create_parameter(
+            attr=paddle.fluid.ParamAttr(name="emb_weight"),
+            shape=[64, 128],
+            dtype='float32',
+            is_bias=False,
         )
+        block.append_op(
+            type='lookup_table',
+            outputs={'Out': emb_out},
+            inputs={'Ids': src_ids, 'W': w},
+            attrs={
+                'is_sparse': False,
+                'is_distributed': False,
+                'remote_prefetch': False,
+                'padding_idx': None,
+            },
+        )
+
         loss = paddle.mean(emb_out)
 
         auto.shard_tensor(
@@ -58,7 +70,6 @@ def make_program_lookup_table_v1_mp_dp():
 
 class TestDistPNorm(unittest.TestCase):
     def test_lookup_table_v1_mp_dp(self):
-
         for rank in range(4):
             dist_main_prog, dist_context = parallelizer(
                 make_program_lookup_table_v1_mp_dp, rank

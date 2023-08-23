@@ -114,13 +114,16 @@ def test_dygraph(
 def calc_bce_with_logits_loss(
     logit_np, label_np, reduction='mean', weight_np=None, pos_weight=None
 ):
-    expected = (
-        np.maximum(logit_np, 0)
-        - logit_np * label_np
-        + np.log(1 + np.exp(-np.abs(logit_np)))
-    )
+    item1 = np.maximum(logit_np, 0)
+    item2 = logit_np * label_np
+    item3 = np.log(1 + np.exp(-np.abs(logit_np)))
+
     if pos_weight is not None:
-        expected = expected * ((pos_weight - 1) * label_np + 1)
+        pos_weight = (pos_weight - 1) * label_np + 1
+        expected = item1 - item2 + item3 * pos_weight
+    else:
+        expected = item1 - item2 + item3
+
     if weight_np is not None:
         expected = weight_np * expected
 

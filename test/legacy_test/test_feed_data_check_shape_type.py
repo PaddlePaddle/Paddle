@@ -76,7 +76,7 @@ class TestFeedData(unittest.TestCase):
             )
         )
 
-        optimizer = fluid.optimizer.Adam()
+        optimizer = paddle.optimizer.Adam()
         optimizer.minimize(loss)
         return in_data, label, loss
 
@@ -103,9 +103,8 @@ class TestFeedData(unittest.TestCase):
                 self._test_feed_data_shape_mismatch(use_cuda)
             self.assertEqual(
                 str(shape_mismatch_err.exception),
-                "The fed Variable %r should have dimensions = %r, "
-                "shape = %r, but received fed shape %r on each device"
-                % (
+                "The fed Variable {!r} should have dimensions = {!r}, "
+                "shape = {!r}, but received fed shape {!r} on each device".format(
                     'data',
                     len(in_shape_tuple),
                     in_shape_tuple,
@@ -117,8 +116,8 @@ class TestFeedData(unittest.TestCase):
                 self._test_feed_data_dtype_mismatch(use_cuda)
             self.assertEqual(
                 str(dtype_mismatch_err.exception),
-                "The data type of fed Variable %r must be 'int64', but "
-                "received 'float64'" % ('label'),
+                "The data type of fed Variable {!r} must be 'int64', but "
+                "received 'float64'".format('label'),
             )
 
     def _test_feed_data_dtype_mismatch(self, use_cuda):
@@ -232,7 +231,6 @@ class TestFeedData(unittest.TestCase):
         feed_label,
         use_cuda,
     ):
-
         startup_program = fluid.Program()
         main_program = fluid.Program()
 

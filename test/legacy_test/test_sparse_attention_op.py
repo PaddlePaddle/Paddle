@@ -132,7 +132,11 @@ def ref_batch_sparse_attention(
     result_softmax = np.zeros((batch_size, num_heads, nnz))
     for i in range(batch_size):
         for j in range(num_heads):
-            cur_q, cur_k, cur_v, = (
+            (
+                cur_q,
+                cur_k,
+                cur_v,
+            ) = (
                 q[i][j],
                 k[i][j],
                 v[i][j],

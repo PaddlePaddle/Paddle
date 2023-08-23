@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static constexpr double kMB = 1 / (1024 * 1024);
+static constexpr double kMB = 1.0 / (1024.0 * 1024.0);
 
 static void GetTensors(Variable *var,
                        std::unordered_set<phi::DenseTensor *> *tensor_set) {
@@ -133,7 +133,7 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
     }
 
     if (VLOG_IS_ON(10)) {
-      if (incr_local_exec_scopes.at(scope_id).size() &&
+      if (!incr_local_exec_scopes.at(scope_id).empty() &&
           FLAGS_local_exe_sub_scope_limit > 0) {
         VLOG(10)
             << "FLAGS_local_exe_sub_scope_limit is "

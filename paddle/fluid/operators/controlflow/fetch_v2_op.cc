@@ -35,7 +35,7 @@ static void DeepCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
                      phi::DenseTensor *dst_item) {
   if (src_item.IsInitialized()) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == phi::DataLayout::ONEDNN) {
       phi::DenseTensor out;
@@ -140,6 +140,8 @@ class FetchV2Kernel {
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",
             col));
+    VLOG(3) << "Fetch variable " << fetch_var_name << "'s " << col
+            << " column.";
 
     auto *fetch_list = out_var->GetMutable<framework::FetchList>();
 

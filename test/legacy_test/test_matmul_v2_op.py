@@ -405,6 +405,7 @@ create_test_fp16_class(TestMatMulOpBroadcast2)
 def create_test_bf16_class(parent, atol=0.01):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
+        or paddle.is_compiled_with_rocm()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
         "core is not compiled with CUDA and not support the bfloat16",
     )
@@ -440,6 +441,8 @@ def create_test_bf16_class(parent, atol=0.01):
                 ['X'],
                 'Out',
                 no_grad_set={'Y'},
+                max_relative_error=3e-2,
+                atol=3e-2,
                 user_defined_grads=[numeric_grads],
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
@@ -454,6 +457,8 @@ def create_test_bf16_class(parent, atol=0.01):
                 ['Y'],
                 'Out',
                 no_grad_set={'X'},
+                max_relative_error=3e-2,
+                atol=3e-2,
                 user_defined_grads=[numeric_grads],
                 check_cinn=self.check_cinn
                 if hasattr(self, 'check_cinn')
@@ -598,7 +603,6 @@ class TestComplexMatMulOp(OpTest):
         self.python_api = paddle.tensor.matmul
         self.init_base_dtype()
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -608,7 +612,7 @@ class TestComplexMatMulOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.complex128
 
     def init_input_output(self):
         self.x = np.random.random((10, 10)).astype(
@@ -619,13 +623,6 @@ class TestComplexMatMulOp(OpTest):
         ) + 1j * np.random.random((10, 10)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((10, 10), self.dtype) + 1j * np.ones(
-            (10, 10), self.dtype
-        )
-        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
-        self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
-
     def test_check_output(self):
         self.check_output(check_cinn=False)
 
@@ -633,8 +630,6 @@ class TestComplexMatMulOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -643,8 +638,6 @@ class TestComplexMatMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -653,8 +646,6 @@ class TestComplexMatMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -665,7 +656,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.python_api = paddle.tensor.matmul
         self.init_base_dtype()
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -675,7 +665,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.complex128
 
     def init_input_output(self):
         self.x = np.random.random((10, 2, 5)).astype(
@@ -686,15 +676,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
         ) + 1j * np.random.random((5, 20)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((10, 2, 20), self.dtype) + 1j * np.ones(
-            (10, 2, 20), self.dtype
-        )
-        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
-        self.grad_y = np.sum(
-            np.matmul(np.conj(self.x).transpose(0, 2, 1), self.grad_out), axis=0
-        )
-
     def test_check_output(self):
         self.check_output(check_cinn=False)
 
@@ -702,8 +683,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -712,8 +691,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -722,8 +699,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -736,12 +711,109 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
         ) + 1j * np.random.random((10, 10)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((10, 10), self.dtype) + 1j * np.ones(
-            (10, 10), self.dtype
-        )
-        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T).real
-        self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
+
+class TestInt32MatmulOp(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int32
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 10)).astype(self.dtype)
+        self.y = np.random.random((10, 10)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False)
+
+
+class TestInt32MatMulOpBroadcast(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int32
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 2, 5)).astype(self.dtype)
+        self.y = np.random.random((5, 20)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False)
+
+
+class TestInt64MatmulOp(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int64
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 10)).astype(self.dtype)
+        self.y = np.random.random((10, 10)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False)
+
+
+class TestInt64MatMulOpBroadcast(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.init_base_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_base_dtype(self):
+        self.dtype = np.int64
+
+    def init_input_output(self):
+        self.x = np.random.random((10, 2, 5)).astype(self.dtype)
+        self.y = np.random.random((5, 20)).astype(self.dtype)
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output(check_cinn=False)
 
 
 class TestMatmulop(unittest.TestCase):

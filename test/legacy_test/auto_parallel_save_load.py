@@ -89,7 +89,6 @@ def mlp_forward(train_program, start_program):
     with static.program_guard(
         train_program, start_program
     ), utils.unique_name.guard():
-
         batch_size = 4
         hidden_size = 64
         input = static.data(
@@ -132,7 +131,7 @@ def get_distributed_program():
         train_program, startup_program
     )
 
-    optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
+    optimizer = paddle.optimizer.SGD(learning_rate=0.01)
     optimizer = fleet.distributed_optimizer(optimizer)
     _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
         loss, startup_program

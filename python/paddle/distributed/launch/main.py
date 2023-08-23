@@ -287,14 +287,427 @@ def launch():
     ctx = Context()
 
     if ctx.is_legacy_mode():
-
         # legacy mode
         from paddle.distributed.fleet import launch
 
         launch.launch()
 
-    else:
+    elif ctx.is_auto_tuner_mode():
+        import copy
+        import json
+        import os
+        import sys
+        import time
 
+        from ..auto_tuner.recorder import HistoryRecorder
+        from ..auto_tuner.tuner import AutoTuner
+        from ..auto_tuner.utils import gen_new_args, read_log
+        from . import controllers
+
+        start_time = time.time()
+        # read user defined tuner config json
+        try:
+            with open(ctx.args.auto_tuner_json, "r") as f:
+                tuner_cfg = json.load(f)
+        except:
+            raise ValueError("Please check your auto tuner json whether valid.")
+
+        # copy training script args
+        if ctx.args.training_script.endswith('.py'):
+            entrypoint = [sys.executable, "-u", ctx.args.training_script]
+        else:
+            entrypoint = [ctx.args.training_script]
+        entrypoint.extend(ctx.args.training_script_args)
+        raw_args = copy.deepcopy(ctx.args.training_script_args)
+
+        # get nodes and gpus from args
+        if not ctx.args.devices:
+            gpus_per_node = 8
+        else:
+            gpus_per_node = len(ctx.args.devices.split(","))
+        nnodes = ctx.args.nnodes
+        if isinstance(nnodes, str):
+            nnodes = int(nnodes.split(":")[0])
+        else:
+            nnodes = int(nnodes)
+        tuner_cfg["nodes"] = nnodes
+        tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
+
+        if nnodes > 1:
+            from .utils.etcd_client import ETCDClient
+
+            assert "etcd://" in ctx.args.master
+            master_ip, port = ctx.args.master.strip("etcd://").split(':')
+            client = ETCDClient(host=master_ip, port=port)
+            client.delete("best_cfg")
+            client.delete_prefix("auto_tuner")
+
+        # get max time per task run
+        max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
+        ctx.max_time_per_task = max_time_per_task
+
+        # warmup
+        warmup_time = (
+            max_time_per_task
+            if "warmup_time" not in tuner_cfg
+            else tuner_cfg.get("warmup_time")
+        )
+
+        is_first_task = True
+        # build history recorder
+        recorder = HistoryRecorder()
+
+        job_id = 0
+        ctx.args.max_restart = -1
+        raw_ctx = copy.deepcopy(ctx)
+
+        # gbs search
+        if (
+            tuner_cfg.get('model_cfg', {}).get('global_batch_size', 'auto')
+            == "auto"
+        ):
+            # adjust micron batch size until out of memory to get best global batch size
+            gbs_tuner_cfg = copy.deepcopy(tuner_cfg)
+            gbs_tuner_cfg["search_algo"] = "gbs"
+            gbs_tuner = AutoTuner(gbs_tuner_cfg)
+
+            gbs_cur_cfg = gbs_tuner.search_once()
+            best_gbs = None
+            while gbs_cur_cfg:
+                ctx = copy.deepcopy(raw_ctx)
+                log_dir = "GBSSearch/GBS{}_DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
+                    gbs_cur_cfg["global_batch_size"],
+                    gbs_cur_cfg["dp_degree"],
+                    gbs_cur_cfg["mp_degree"],
+                    gbs_cur_cfg["pp_degree"],
+                    gbs_cur_cfg["sharding_degree"],
+                    gbs_cur_cfg["sharding_stage"],
+                    gbs_cur_cfg["micro_batch_size"],
+                    gbs_cur_cfg["use_recompute"],
+                    gbs_cur_cfg["recompute_granularity"],
+                )
+                ctx.args.log_dir = log_dir
+
+                # every task has own job id
+                job_id += 1
+                task_job_id = "gbs_tuner_" + str(job_id)
+                ctx.args.job_id = task_job_id
+
+                # generate script args of task
+                gbs_new_args = gen_new_args(
+                    raw_args, gbs_cur_cfg, gbs_tuner_cfg
+                )
+                ctx.args.training_script_args = gbs_new_args
+
+                # launch task
+                ctx.logger.info(
+                    "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
+                        task_job_id, log_dir, gbs_cur_cfg
+                    )
+                )
+                c = controllers.init(ctx)
+                c.run()
+
+                # process generated result
+                # TODO diffentiate out of memory and no loss(maybe over time)
+                # TODO integragte memory and metric read
+                metric, mem, err = read_log(
+                    path=ctx.args.log_dir,
+                    metric_file="workerlog.0",
+                    target_metric=tuner_cfg["metric_cfg"]["name"],
+                    memory_file=f"{ctx.args.job_id}.gpu.log",
+                )
+
+                if err & (1 << 0):
+                    ctx.logger.warning(
+                        f"Read metric failed for parameters: {log_dir}"
+                    )
+                    # for pruner use
+                    gbs_cur_cfg['time'] = -1
+                    gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                    gbs_cur_cfg["max_mem_usage"] = mem
+
+                if err & (1 << 1):
+                    ctx.logger.warning(
+                        f"Out of memory for parameters: {log_dir}"
+                    )
+                    # for pruner use
+                    gbs_cur_cfg['time'] = -1
+                    gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                    gbs_cur_cfg["max_mem_usage"] = "OOM"
+
+                # not err & (1 << 1): do not record memory usage when out of memory
+                if err & (1 << 2) and not err & (1 << 1):
+                    ctx.logger.warning(
+                        f"Read memory usage failed for parameters: {log_dir}"
+                    )
+                    gbs_cur_cfg["max_mem_usage"] = None
+
+                if not err:
+                    # for pruner use
+                    gbs_cur_cfg['time'] = metric
+                    gbs_cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
+                    gbs_cur_cfg["max_mem_usage"] = mem
+
+                if err & (1 << 0) or err & (1 << 1):
+                    # no metric or out of memory, end gbs search
+                    break
+
+                # store and update args for next round
+                gbs_cur_cfg["job_id"] = job_id
+                best_gbs = gbs_cur_cfg["global_batch_size"]
+                recorder.add_cfg(**gbs_cur_cfg)
+                c.finalize(exit=False)
+                recorder.store_history("./tuner_gbs_history.csv")
+
+                # new cfgs for next round
+                gbs_new_cfg = gbs_tuner.search_once()
+                gbs_cur_cfg = copy.deepcopy(gbs_new_cfg)
+                gbs_tuner.add_cfg(gbs_cur_cfg)
+
+                # per task launch interval
+                time.sleep(3)
+            # prevent no valid global batch size found
+            if best_gbs is None:
+                raise ValueError(
+                    "No valid global batch size found, check memory or valid search time. cur_tuner_cfg{}".format(
+                        gbs_tuner_cfg
+                    )
+                )
+            # set best global batch size to tuner cfg
+            tuner_cfg["model_cfg"]["global_batch_size"] = best_gbs
+
+            recorder.store_history("./tuner_gbs_history.csv")
+            recorder.clean_history()
+
+            end_time = time.time()
+            ctx.logger.info(
+                f"AtuoTuner for GBS search ends in {end_time-start_time}s."
+            )
+        # build AutoTuner to get new config
+        auto_tuner = AutoTuner(tuner_cfg)
+        cur_cfg = auto_tuner.search_once()
+        auto_tuner.add_cfg(cur_cfg)
+
+        while cur_cfg:
+            ctx = copy.deepcopy(raw_ctx)
+            if is_first_task:
+                ctx.max_time_per_task = warmup_time
+            is_first_task = False
+            # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
+            log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
+                cur_cfg["dp_degree"],
+                cur_cfg["mp_degree"],
+                cur_cfg["pp_degree"],
+                cur_cfg["sharding_degree"],
+                cur_cfg["sharding_stage"],
+                cur_cfg["micro_batch_size"],
+                cur_cfg["use_recompute"],
+                cur_cfg["recompute_granularity"],
+            )
+
+            ctx.args.log_dir = log_dir
+
+            # every task has own job id
+            job_id += 1
+            task_job_id = "auto_tuner_" + str(job_id)
+            ctx.args.job_id = task_job_id
+
+            # generate script args of task
+            new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
+            ctx.args.training_script_args = new_args
+
+            # launch task
+            ctx.logger.info(
+                "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
+                    task_job_id, log_dir, cur_cfg
+                )
+            )
+            c = controllers.init(ctx)
+            c.run()
+
+            # process generated result
+
+            metric, mem, err = read_log(
+                path=ctx.args.log_dir,
+                metric_file="workerlog.0",
+                target_metric=tuner_cfg["metric_cfg"]["name"],
+                memory_file=f"{ctx.args.job_id}.gpu.log",
+            )
+            # sync sigint
+            timeout_flag = True
+
+            if nnodes > 1:
+                import socket
+
+                ip = None
+                try:
+                    hostname = socket.gethostname()
+                    ip = socket.gethostbyname(socket.getfqdn(hostname))
+                except:
+                    ip = '127.0.0.1'
+                assert ip != '127.0.0.1'
+                path = f"auto_tuner/{job_id}/{ip}"
+                OOM_flag = err & (1 << 1)
+                if OOM_flag:
+                    client.put(path, "OOM".encode('latin-1'))
+                    ctx.logger.info(f"Put OOM to {path}")
+                elif hasattr(c, 'sigint') and c.sigint == 14:
+                    client.put(path, "OK".encode('latin-1'))
+                    ctx.logger.info(f"Put OK to {path}")
+                else:
+                    client.put(path, "Error".encode('latin-1'))
+                    ctx.logger.info(f"Put Error to {path}")
+
+                result = list(client.get_prefix(f"auto_tuner/{job_id}/"))
+                size = len(result)
+                while size != nnodes:
+                    time.sleep(1)
+                    result = list(client.get_prefix(f"auto_tuner/{job_id}/"))
+                    size = len(result)
+
+                status = [i[0].decode() for i in result]
+                ctx.logger.info(f"Status of auto_tuner/{job_id}/: {status}")
+
+                if "OOM" in status:
+                    timeout_flag = False
+                elif "OK" not in status:
+                    timeout_flag = False
+
+            if err & (1 << 0):
+                ctx.logger.warning(
+                    f"Read metric failed for parameters: {log_dir}"
+                )
+                # for pruner use
+                cur_cfg['time'] = -1
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                cur_cfg["max_mem_usage"] = mem
+
+            if err & (1 << 1):
+                ctx.logger.warning(f"Out of memory for parameters: {log_dir}")
+                # for pruner use
+                cur_cfg['time'] = -1
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                cur_cfg["max_mem_usage"] = "OOM"
+
+            # not err & (1 << 1): do not record memory usage when out of memory
+            if err & (1 << 2) and not err & (1 << 1):
+                ctx.logger.warning(
+                    f"Read memory usage failed for parameters: {log_dir}"
+                )
+                cur_cfg["max_mem_usage"] = None
+
+            if not err and timeout_flag:
+                # for pruner use
+                cur_cfg['time'] = metric
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
+                cur_cfg["max_mem_usage"] = mem
+
+            if not err and not timeout_flag:
+                cur_cfg['time'] = -1
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                cur_cfg["max_mem_usage"] = None
+
+            # record history
+            cur_cfg['job_id'] = job_id
+            recorder.add_cfg(**cur_cfg)
+            cur_best_cfgs, err = recorder.get_best(
+                metric=tuner_cfg['metric_cfg']['name'],
+                direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+            )
+            if not err:
+                ctx.logger.info(f"Current best config: {cur_best_cfgs}")
+                recorder.store_history(
+                    ctx.args.auto_tuner_json.split(".")[0] + "_history.csv"
+                )
+            else:
+                ctx.logger.info(
+                    "Get best config failed. Currently there are no appropriate configs."
+                )
+            c.finalize(exit=False)
+
+            # generate a new config
+            new_cfg = auto_tuner.search_once()
+            cur_cfg = copy.deepcopy(new_cfg)
+            auto_tuner.add_cfg(cur_cfg)
+
+            # per task launch interval
+            self_pid = str(os.getpid())
+            processes = os.popen(
+                "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
+            ).readlines()
+            for process in processes:
+                pid = str(process.strip())
+                if pid != self_pid:
+                    os.system("kill -9 " + pid)
+            time.sleep(3)
+        recorder.store_history()
+
+        # get best config to run
+        best_cfg = None
+        ctx = copy.deepcopy(raw_ctx)
+        if nnodes > 1:
+            import socket
+
+            ip = None
+            try:
+                hostname = socket.gethostname()
+                ip = socket.gethostbyname(socket.getfqdn(hostname))
+            except:
+                ip = '127.0.0.1'
+
+            collective_master_ip = os.environ.get("COLLECTIVE_MASTER_IP", None)
+            assert collective_master_ip is not None
+            if ip == collective_master_ip:
+                best_cfg, err = recorder.get_best(
+                    metric=tuner_cfg['metric_cfg']['name'],
+                    direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+                )
+                if err:
+                    raise ValueError(
+                        "Get best config failed. Currently there are no appropriate configs."
+                    )
+                data = json.dumps(best_cfg)
+                while not client.put("best_cfg", data):
+                    time.sleep(1)
+                    continue
+            else:
+                for i in range(10):
+                    try:
+                        data = client.get("best_cfg")[0].decode()
+                        best_cfg = json.loads(data)
+                    except Exception as e:
+                        ctx.logger.warning(e)
+                        time.sleep(2)
+                    if best_cfg:
+                        break
+                assert best_cfg
+        else:
+            best_cfg, err = recorder.get_best(
+                metric=tuner_cfg['metric_cfg']['name'],
+                direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+            )
+            if err:
+                raise ValueError(
+                    "Get best config failed. Currently there are no appropriate configs."
+                )
+        assert best_cfg
+
+        end_time = time.time()
+        ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
+        # launch best cfg
+        new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
+        ctx.run_best = True
+        ctx.args.training_script_args = new_args
+        ctx.args.job_id = "best_cfg"
+        ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
+        ctx.args.log_dir = "best_cfg"
+        # run best cfg
+        c = controllers.init(ctx)
+        c.run()
+        c.finalize(exit=True)
+
+    else:
         from . import controllers
 
         # initialize the selected controller

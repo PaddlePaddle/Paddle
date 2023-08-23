@@ -22,13 +22,16 @@ limitations under the License. */
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
  */
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  // NOLINT
 #endif
 
 namespace phi {
 
 class DenseTensorUtils;
+namespace distributed {
+class DistTensor;
+}  // namespace distributed
 
 /// \brief The Dense tensor stores values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional
@@ -85,6 +88,14 @@ class DenseTensor : public TensorBase,
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override { return meta_.dims; }
+
+  /// \brief Returns the stride of the tensor.
+  /// \return The stride of the tensor.
+  const DDim& strides() const noexcept { return meta_.strides; }
+
+  /// \brief Sets the stride of the tensor.
+  /// \param meta The stride of the tensor.
+  void set_strides(const DDim& strides) { meta_.strides = strides; }
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
@@ -179,8 +190,14 @@ class DenseTensor : public TensorBase,
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
 
+  void clear() {
+    holder_.reset();
+    meta_.offset = 0;
+  }
+
  private:
   friend class DenseTensorUtils;
+  friend class phi::distributed::DistTensor;
 
  protected:
   DenseTensorMeta meta_;
@@ -278,7 +295,7 @@ We temporarily leave them here to unblock Tensor Unification progress.
 In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   /// \brief memory descriptor of tensor which have layout set as kMKLDNN
   dnnl::memory::desc mem_desc_;
 #endif

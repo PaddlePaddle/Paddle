@@ -118,7 +118,6 @@ def get_program():
     train_program = static.Program()
     start_program = static.Program()
     with static.program_guard(train_program, start_program):
-
         # input
         input = static.data(
             name="input",

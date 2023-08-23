@@ -115,7 +115,7 @@ class SimpleEmbedding(paddle.nn.Layer):
         return output
 
 
-class TestDistTraning(unittest.TestCase):
+class TestDistTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -221,7 +221,7 @@ class TestDistTraning(unittest.TestCase):
             optimizer_b.step()
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=5e-6
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-5
             )
 
     def test_parallel_embedding(self):

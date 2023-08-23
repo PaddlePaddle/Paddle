@@ -27,6 +27,9 @@ class Watcher:
 
         self.gpu_util = []
 
+        if not self.ctx.args.enable_gpu_log:
+            return
+
         # gpu log file
         self.gpus = self.ctx.args.devices or self.ctx.node.device.labels
         if len(self.gpus) > 0:

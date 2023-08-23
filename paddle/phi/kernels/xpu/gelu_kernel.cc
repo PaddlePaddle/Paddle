@@ -27,16 +27,26 @@ void GeluKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 bool approximate,
                 DenseTensor* out) {
-  if (approximate) {
-    LOG_FIRST_N(INFO, 1) << "XPU does not support gelu with approximate.";
-  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
-  int r = xpu::gelu<XPUType>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x.data<T>()),
-                             reinterpret_cast<XPUType*>(out->data<T>()),
-                             out->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
+  if (approximate) {
+    // int approximate_gelu(Context* ctx, const T* x, T* y, int64_t len, const
+    // float* max_x = nullptr, float* max_y = nullptr);
+    int r = xpu::approximate_gelu<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "approximate_gelu");
+  } else {
+    // int gelu(Context* ctx, const T* x, T* y, int64_t len, const float* max_x
+    // = nullptr, float* max_y = nullptr);
+    int r = xpu::gelu<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
+  }
 }
 }  // namespace phi
 

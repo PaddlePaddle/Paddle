@@ -57,7 +57,6 @@ def parallelizer(program_func, rank):
 
 class TestDistSplit(unittest.TestCase):
     def test_dist_split_dp2(self):
-
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
             ops = dist_main_prog.global_block().ops

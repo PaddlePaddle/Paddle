@@ -92,6 +92,28 @@ void AddActXPUInferMeta(const MetaTensor& x,
   out_max->set_layout(x.layout());
 }
 
+void AddLayernormXPUInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& scale,
+                              const MetaTensor& bias,
+                              int begin_norm_axis,
+                              float epsilon,
+                              MetaTensor* out) {
+  int axis = -1;
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto out_dims = x_dims;
+  if (x_dims != y_dims) {
+    out_dims = BroadCastInferShape(x_dims, y_dims, axis);
+    out->set_dims(out_dims);
+  } else {
+    out->set_dims(out_dims);
+  }
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 inline int ConvOutSize(int input_size,
                        int filter_size,
                        int dilation,
@@ -103,6 +125,99 @@ inline int ConvOutSize(int input_size,
       (input_size + (pad_left + pad_right) - dkernel) / stride + 1;
 
   return output_size;
+}
+
+void Conv1dXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const MetaTensor& branch,
+                        const MetaTensor& branch_max,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        int dilations,
+                        int strides,
+                        int groups,
+                        int act_type,
+                        float act_param,
+                        MetaTensor* out,
+                        MetaTensor* out_max) {
+  auto in_dims = x.dims();
+  auto filter_dims = filter.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      3,
+      phi::errors::InvalidArgument(
+          "The input of Op(Conv_xpu) should be a 3-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      filter_dims.size(),
+      phi::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(Conv_xpu) should be equal. But received: the input's shape is "
+          "[%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims,
+          in_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  const auto input_channels = in_dims[1];
+
+  PADDLE_ENFORCE_GT(
+      dilations,
+      0,
+      phi::errors::InvalidArgument(
+          "The dilation of Op(Conv) should be larget than 0, but received "
+          "dilation is %d.",
+          dilations));
+
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(Conv_xpu). But received: the input's channels is "
+          "%d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d. ",
+          input_channels,
+          in_dims,
+          filter_dims[1],
+          filter_dims,
+          groups));
+
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0] % groups,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of output's channels (filter's first dimension) of "
+          "Op(Conv) should be divided by groups. But received: "
+          "the output channels is %d, the filter's shape is [%s], "
+          "the groups is %d.",
+          filter_dims[0],
+          filter_dims,
+          groups));
+
+  std::vector<int64_t> out_shape({in_dims[0], filter_dims[0]});
+  out_shape.push_back(ConvOutSize(in_dims[2],
+                                  filter_dims[2],
+                                  dilations,
+                                  paddings[0],
+                                  paddings[1],
+                                  strides));
+  // set output and output max dims
+  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out_max->set_dims(phi::make_ddim({6}));
 }
 
 void Conv2dXPUInferMeta(const MetaTensor& x,
@@ -117,10 +232,9 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const std::vector<int>& strides,
                         const std::string& padding_algorithm,
                         int groups,
-                        bool has_bias,
-                        bool has_branch,
                         int act_type,
                         float act_param,
+                        DataType out_dtype,
                         MetaTensor* out,
                         MetaTensor* out_max) {
   auto in_dims = x.dims();
@@ -230,6 +344,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out_max->set_dims(phi::make_ddim({6}));
+  out->set_dtype(out_dtype);
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
@@ -268,6 +383,7 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
+                    DataType out_dtype,
                     MetaTensor* out,
                     MetaTensor* out_max) {
   std::vector<int> out_shape(in_num_col_dims + 1);
@@ -276,7 +392,7 @@ void FcXPUInferMeta(const MetaTensor& x,
   }
   out_shape[in_num_col_dims] = w.dims()[0];
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
-  out->set_dtype(x.dtype());
+  out->set_dtype(out_dtype);
   out->set_layout(x.layout());
   out_max->set_dims(phi::make_ddim({6}));
   out_max->set_dtype(x.dtype());
@@ -391,7 +507,7 @@ void FusedMultiTransformerXpuInferMeta(
           "shape of input x = [%s], and the shape of input qkv_weight = [%s]",
           x_dim,
           y_dim));
-  if (cache_kv.size() > 0) {
+  if (!cache_kv.empty()) {
     const auto& c_dim = cache_kv[0]->dims();
     PADDLE_ENFORCE_EQ(
         c_dim.size(),
@@ -516,6 +632,193 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   out_max->set_dims(phi::make_ddim({6}));
   out_max->set_dtype(x.dtype());
   out_max->set_layout(x.layout());
+}
+
+void ConvTransposeXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& filter,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               const std::vector<int>& output_padding,
+                               const std::vector<int>& output_size,
+                               const std::string& padding_algorithm,
+                               int groups,
+                               const std::vector<int>& dilations,
+                               const std::string& data_format,
+                               MetaTensor* out,
+                               MetaTensor* out_max) {
+  auto x_dims = x.dims();
+  auto filter_dims = filter.dims();
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> dilations_ = dilations;
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() == 4,
+      true,
+      errors::InvalidArgument("Input of Op(conv_transpose) should be 4-D "
+                              "Tensor. But received: %u-D Tensor, "
+                              "the shape of input is [%s]",
+                              x_dims.size(),
+                              x_dims));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      filter_dims.size(),
+      errors::InvalidArgument(
+          "The input's dimension size and filter's dimension size of "
+          "Op (conv_transpose) should be equal. But received: the shape of "
+          "input is [%s], the dimension size of input is [%d], the shape "
+          "of filter is [%s],  the dimension size of filter is [%d]. ",
+          x_dims,
+          x_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0,
+        errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  int in_sub_stride_size = x_dims.size() - stride_size;
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() - strides.size(),
+      2U,
+      errors::InvalidArgument(
+          "The input's dimension size minus Attr(stride)'s size must "
+          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "input's dimension size is [%d], the shape of input "
+          "is [%s], the Attr(stride)'s size is [%d].",
+          in_sub_stride_size,
+          x_dims.size(),
+          x_dims,
+          strides.size()));
+  if (!output_size.empty())
+    PADDLE_ENFORCE_EQ(
+        output_size.size(),
+        strides.size(),
+        errors::InvalidArgument(
+            "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
+  if (!output_padding.empty())
+    PADDLE_ENFORCE_EQ(
+        output_padding.size(),
+        strides.size(),
+        errors::InvalidArgument(
+            "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
+
+  const int64_t C =
+      (data_format != "NHWC" ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  PADDLE_ENFORCE_EQ(
+      C,
+      filter_dims[0],
+      errors::InvalidArgument(
+          "The number of input channels should be equal to filter channels "
+          "for Op(conv_transpose). But received: the input's channels is "
+          "[%d], the shape of input is [%s], the filter's channels is [%d], "
+          "the shape of filter is [%s]. The data_format is %s."
+          "The error may come from wrong data_format setting.",
+          C,
+          x_dims,
+          filter_dims[0],
+          filter_dims,
+          data_format));
+
+  DDim x_data_dims;
+  if (data_format != "NHWC") {
+    x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  } else {
+    x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  }
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  UpdatePaddingAndDilation(
+      &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
+
+  std::vector<int64_t> output_shape({x_dims[0]});
+  if (data_format != "NHWC") {
+    output_shape.push_back(filter_dims[1] * groups);
+  }
+  const int offset = (data_format != "NHWC" ? 2 : 1);
+  for (size_t i = 0; i < strides.size(); ++i) {
+    auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
+    auto infer_shape = (x_dims[i + offset] > 0)
+                           ? (x_dims[i + offset] - 1) * strides[i] -
+                                 paddings_[2 * i] - paddings_[2 * i + 1] +
+                                 filter_extent
+                           : -1;
+    if (!output_size.empty()) {
+      output_shape.push_back(output_size[i]);
+    } else if (!output_padding.empty()) {
+      output_shape.push_back((infer_shape + output_padding[i]));
+    } else {
+      output_shape.push_back(infer_shape);
+    }
+  }
+  if (data_format == "NHWC") {
+    output_shape.push_back(filter_dims[1] * groups);
+  }
+
+  out->set_dims(make_ddim(output_shape));
+  out->set_dtype(x.dtype());
+  out_max->set_dims(phi::make_ddim({6}));
+}
+
+void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
+                                 const MetaTensor& x_max,
+                                 const MetaTensor& filter,
+                                 const MetaTensor& filter_max,
+                                 const MetaTensor& bias,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& output_padding,
+                                 const IntArray& output_size,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::vector<int>& dilations,
+                                 const std::string& data_format,
+                                 bool has_bias,
+                                 bool with_act,
+                                 const std::string& act_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_max) {
+  std::vector<int32_t> vec_output_size(output_size.GetData().begin(),
+                                       output_size.GetData().end());
+  ConvTransposeXPUInferMeta(x,
+                            filter,
+                            strides,
+                            paddings,
+                            output_padding,
+                            vec_output_size,
+                            padding_algorithm,
+                            groups,
+                            dilations,
+                            data_format,
+                            out,
+                            out_max);
+}
+
+void FastWhereXPUInferMeta(const MetaTensor& condition,
+                           const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 }  // namespace phi

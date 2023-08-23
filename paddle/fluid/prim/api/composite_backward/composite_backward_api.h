@@ -66,9 +66,21 @@ void silu_grad(const Tensor& x,
                const Tensor& out_grad,
                Tensor* x_grad) {
   if (x_grad) {
-    auto sigmoid = out / x;
-    auto res = out_grad * sigmoid * (1.0 + x * (1.0 - sigmoid));
-    set_output<T>(res, x_grad);
+    auto org_dtype = x.dtype();
+    bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
+                     org_dtype == phi::DataType::BFLOAT16;
+    if (need_cast) {
+      auto x_cast = cast<T>(x, phi::DataType::FLOAT32);
+      auto out_cast = cast<T>(out, phi::DataType::FLOAT32);
+      auto out_grad_cast = cast<T>(out_grad, phi::DataType::FLOAT32);
+      auto sigmoid = 1.0 / (1.0 + exp<T>(-x_cast));
+      auto res = out_grad_cast * sigmoid * (1.0 + x_cast - out_cast);
+      set_output<T>(cast<T>(res, org_dtype), x_grad);
+    } else {
+      auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
+      auto res = out_grad * sigmoid * (1.0 + x - out);
+      set_output<T>(res, x_grad);
+    }
   }
 }
 
@@ -150,11 +162,20 @@ void gather_grad(const Tensor& x,
   }
 
   // transpose out_grad and zero grad to target rank.
-  auto tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
-  auto tmp_out_grad = transpose<T>(out_grad, tmp_perm);
+  auto tmp_zero_x_grad = zero_tensor;
+  auto tmp_out_grad = out_grad;
+  if (zero_tensor.dims().size() > 0) {
+    tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
+  }
+  if (out_grad.dims().size() > 0) {
+    tmp_out_grad = transpose<T>(out_grad, tmp_perm);
+  }
   // scatter grad to grad_x
   auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
-  auto tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+  auto tmp_grad_x_tranposed = tmp_grad_x;
+  if (tmp_grad_x.dims().size() > 0) {
+    tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+  }
   set_output<T>(tmp_grad_x_tranposed, grad_x);
 }
 
@@ -693,11 +714,13 @@ void group_norm_grad(const Tensor& x,
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
 
-  if (x.dtype() == phi::DataType::FLOAT16) {
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
     x_data = cast<T>(x, phi::DataType::FLOAT32);
   }
 
-  if (out_grad.dtype() == phi::DataType::FLOAT16) {
+  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
+      out_grad.dtype() == phi::DataType::BFLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
 
@@ -728,7 +751,8 @@ void group_norm_grad(const Tensor& x,
     Tensor p1;
     if (scale_ptr) {
       auto scale_data = scale.get();
-      if (scale_data.dtype() == phi::DataType::FLOAT16) {
+      if (scale_data.dtype() == phi::DataType::FLOAT16 ||
+          scale_data.dtype() == phi::DataType::BFLOAT16) {
         scale_data = cast<T>(scale_data, phi::DataType::FLOAT32);
       }
       d1 = (reshape<T>(sum_y_grad_mul_x * scale_data, shape_group))
@@ -757,7 +781,8 @@ void group_norm_grad(const Tensor& x,
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
     auto x_grad_data = tmp_1 + tmp_2;
     x_grad_data = reshape<T>(x_grad_data, x.shape());
-    if (x.dtype() == phi::DataType::FLOAT16) {
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
       x_grad_data = cast<T>(x_grad_data, x.dtype());
     }
 
@@ -770,9 +795,9 @@ void group_norm_grad(const Tensor& x,
                    reshape<T>(sum_y_grad, shape_group) *
                        reshape<T>(mean, third_shape)) *
                   reshape<T>(inv_std, third_shape);
-      auto scale_grad_tmp =
-          reshape<T>(tmp1.sum(std::vector<int64_t>({0}), dtype, false),
-                     IntArray(std::vector<int64_t>({C})));
+      auto scale_grad_tmp = reshape<T>(
+          tmp1.sum(std::vector<int64_t>({0}), scale_ptr->dtype(), false),
+          IntArray(std::vector<int64_t>({C})));
       set_output<T>(scale_grad_tmp, scale_grad);
     } else {
       scale_grad = nullptr;
@@ -782,7 +807,7 @@ void group_norm_grad(const Tensor& x,
   if (bias_grad) {
     if (bias_ptr) {
       auto bias_grad_tmp =
-          sum_y_grad.sum(std::vector<int64_t>({0}), dtype, false);
+          sum_y_grad.sum(std::vector<int64_t>({0}), bias_ptr->dtype(), false);
       set_output<T>(bias_grad_tmp, bias_grad);
     } else {
       bias_grad = nullptr;
@@ -933,7 +958,12 @@ void topk_grad(const Tensor& x,
                const bool& sorted,
                Tensor* x_grad) {
   if (x_grad) {
-    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+    // put_along_axis doesn't support zero dim
+    if (x.dims().size() == 0) {
+      by_pass<T>(out_grad, x_grad);
+      return;
+    }
+    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0, x.dtype());
     auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
     set_output<T>(x_grad_tmp, x_grad);
   }
@@ -1206,12 +1236,17 @@ void batch_norm_grad(const Tensor& x,
 
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
-  if (x.dtype() == phi::DataType::FLOAT16) {
+
+  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
+                   x.dtype() == phi::DataType::BFLOAT16;
+  if (need_cast) {
     x_data = cast<T>(x, phi::DataType::FLOAT32);
   }
-  if (out_grad.dtype() == phi::DataType::FLOAT16) {
+  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
+      out_grad.dtype() == phi::DataType::BFLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
+
   auto x_dims = x_data.dims();
   const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
                                                    : x_dims[x_dims.size() - 1]);
@@ -1274,7 +1309,7 @@ void batch_norm_grad(const Tensor& x,
         if (use_global_stats) {
           auto nhwc_x_grad = scale * rsqrt_var * nhwc_out_grad;
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
-          if (x.dtype() == phi::DataType::FLOAT16) {
+          if (need_cast) {
             nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
           }
           set_output<T>(nchw_x_grad, x_grad);
@@ -1287,7 +1322,7 @@ void batch_norm_grad(const Tensor& x,
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
-          if (x.dtype() == phi::DataType::FLOAT16) {
+          if (need_cast) {
             nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
           }
           set_output<T>(nchw_x_grad, x_grad);
@@ -1298,7 +1333,7 @@ void batch_norm_grad(const Tensor& x,
         set_output<T>(scale_grad_data, scale_grad);
       }
       if (bias_grad) {
-        set_output<T>(nhwc_out_grad_sum, bias_grad);
+        set_output<T>(assign<T>(nhwc_out_grad_sum), bias_grad);
       }
       break;
     }
@@ -1310,7 +1345,7 @@ void batch_norm_grad(const Tensor& x,
             out_grad_data * (x_data - mean_data), reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
-          if (x.dtype() == phi::DataType::FLOAT16) {
+          if (need_cast) {
             x_grad_data = cast<T>(x_grad_data, x.dtype());
           }
           set_output<T>(x_grad_data, x_grad);
@@ -1324,7 +1359,7 @@ void batch_norm_grad(const Tensor& x,
               out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
-          if (x.dtype() == phi::DataType::FLOAT16) {
+          if (need_cast) {
             x_grad_data = cast<T>(x_grad_data, x.dtype());
           }
           set_output<T>(x_grad_data, x_grad);
@@ -1334,7 +1369,7 @@ void batch_norm_grad(const Tensor& x,
           set_output<T>(scale_grad_data, scale_grad);
         }
         if (bias_grad) {
-          set_output<T>(out_grad_data_sum, bias_grad);
+          set_output<T>(assign<T>(out_grad_data_sum), bias_grad);
         }
       }
       break;
@@ -1361,40 +1396,80 @@ void instance_norm_grad(const Tensor& x,
   const int h = x.dims()[2];
   const int w = x.dims()[3];
 
+  auto promoted_y_grad = y_grad;
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
+    promoted_y_grad = cast<T>(y_grad, phi::DataType::FLOAT32);
+  }
+
   Tensor x_hat;
   Tensor std_inv;
   if (scale_grad || x_grad) {
-    auto mean = reshape<T>(saved_mean, IntArray({n, c, 1, 1}))
+    auto promoted_x = x;
+    auto promoted_saved_mean = saved_mean;
+    auto promoted_saved_var = saved_variance;
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      promoted_x = cast<T>(x, phi::DataType::FLOAT32);
+      promoted_saved_mean = cast<T>(saved_mean, phi::DataType::FLOAT32);
+      promoted_saved_var = cast<T>(saved_variance, phi::DataType::FLOAT32);
+    }
+    auto mean = reshape<T>(promoted_saved_mean, IntArray({n, c, 1, 1}))
                     .tile(IntArray({1, 1, h, w}));
-    std_inv = reshape<T>(saved_variance, IntArray({n, c, 1, 1}))
+    std_inv = reshape<T>(promoted_saved_var, IntArray({n, c, 1, 1}))
                   .tile(IntArray({1, 1, h, w}));
-    x_hat = (x - mean) * std_inv;
+    x_hat = (promoted_x - mean) * std_inv;
   }
 
   // x_grad = scale * inv_var * (y_grad - y_grad.mean(2,3) - x_hat * (y_grad *
   // x_hat).mean((h,w)))
   if (x_grad) {
-    auto scale_t =
+    auto scale_data =
         reshape<T>(scale.get_ptr() ? scale.get()
                                    : full<T>(IntArray({c}), 1., x.dtype()),
                    IntArray({1, c, 1, 1}))
             .tile(IntArray({n, 1, h, w}));
-    set_output<T>(
-        (scale_t * std_inv) *
-            (y_grad -
-             y_grad.sum(IntArray({2, 3}), y_grad.dtype(), true) / (h * w) -
-             (x_hat *
-              ((y_grad * x_hat).sum(IntArray({2, 3}), y_grad.dtype(), true) /
-               (h * w)))),
-        x_grad);
+    auto promoted_scale = scale_data;
+    if (scale_data.dtype() == phi::DataType::FLOAT16 ||
+        scale_data.dtype() == phi::DataType::BFLOAT16) {
+      promoted_scale = cast<T>(scale_data, phi::DataType::FLOAT32);
+    }
+    auto result =
+        (promoted_scale * std_inv) *
+        (promoted_y_grad -
+         promoted_y_grad.sum(IntArray({2, 3}), promoted_y_grad.dtype(), true) /
+             (h * w) -
+         (x_hat * ((promoted_y_grad * x_hat)
+                       .sum(IntArray({2, 3}), promoted_y_grad.dtype(), true) /
+                   (h * w))));
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      set_output<T>(cast<T>(result, x.dtype()), x_grad);
+    } else {
+      set_output<T>(result, x_grad);
+    }
   }
   // scale_grad = x_hat * y_grad.sum(n, h, w)
   if (scale_grad) {
-    set_output<T>((y_grad * x_hat).sum(IntArray({0, 2, 3})), scale_grad);
+    auto result = (promoted_y_grad * x_hat).sum(IntArray({0, 2, 3}));
+    auto scale_dtype = scale.get_ptr() ? scale.get().dtype() : x.dtype();
+    if (scale_dtype == phi::DataType::FLOAT16 ||
+        scale_dtype == phi::DataType::BFLOAT16) {
+      set_output<T>(cast<T>(result, scale_dtype), scale_grad);
+    } else {
+      set_output<T>(result, scale_grad);
+    }
   }
   // d_bias = y_grad.sum(n, h, w)
   if (bias_grad) {
-    set_output<T>(y_grad.sum(IntArray({0, 2, 3})), bias_grad);
+    auto result = promoted_y_grad.sum(IntArray({0, 2, 3}));
+    auto scale_dtype = scale.get_ptr() ? scale.get().dtype() : x.dtype();
+    if (scale_dtype == phi::DataType::FLOAT16 ||
+        scale_dtype == phi::DataType::BFLOAT16) {
+      set_output<T>(cast<T>(result, scale_dtype), bias_grad);
+    } else {
+      set_output<T>(result, bias_grad);
+    }
   }
 }
 

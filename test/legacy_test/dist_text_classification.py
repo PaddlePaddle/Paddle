@@ -17,6 +17,7 @@ import re
 import string
 import tarfile
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
@@ -54,7 +55,7 @@ def conv_net(
     fc0_dim=96,
     class_dim=2,
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=input,
         size=[dict_dim, emb_dim],
         is_sparse=False,
@@ -63,7 +64,7 @@ def conv_net(
         ),
     )
 
-    conv_3 = fluid.nets.sequence_conv_pool(
+    conv_3 = nets.sequence_conv_pool(
         input=emb,
         num_filters=num_filters,
         filter_size=window_size,
@@ -113,7 +114,7 @@ def get_reader(word_dict, batch_size):
 
 
 def get_optimizer(learning_rate):
-    optimizer = fluid.optimizer.SGD(learning_rate=learning_rate)
+    optimizer = paddle.optimizer.SGD(learning_rate=learning_rate)
     return optimizer
 
 

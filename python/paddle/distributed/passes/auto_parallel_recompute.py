@@ -55,7 +55,7 @@ class RecomputeState(ProgramStats):
         return self._reserved_vars
 
     def is_recompute(self):
-        return any([is_recompute_op(op) for op in self.ops])
+        return any(is_recompute_op(op) for op in self.ops)
 
     def build_states(self):
         for i, op in enumerate(self.ops):

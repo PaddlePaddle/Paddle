@@ -30,10 +30,14 @@ void BuiltinDialect::initialize() {
                 Float32Type,
                 Float64Type,
                 Int8Type,
+                UInt8Type,
                 Int16Type,
                 Int32Type,
                 Int64Type,
+                IndexType,
                 BoolType,
+                Complex64Type,
+                Complex128Type,
                 VectorType>();
 
   RegisterAttributes<StrAttribute,
@@ -41,16 +45,20 @@ void BuiltinDialect::initialize() {
                      FloatAttribute,
                      DoubleAttribute,
                      PointerAttribute,
-                     Int32_tAttribute,
-                     Int64_tAttribute,
-                     ArrayAttribute>();
+                     Int32Attribute,
+                     Int64Attribute,
+                     ArrayAttribute,
+                     TypeAttribute>();
 
   RegisterOps<ModuleOp,
               GetParameterOp,
               SetParameterOp,
               CombineOp,
               SliceOp,
+              SplitOp,
               ConstantOp>();
 }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::BuiltinDialect)

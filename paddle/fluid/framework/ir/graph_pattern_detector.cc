@@ -942,29 +942,6 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
-PDNode *patterns::LayerNormShiftScale::operator()() {
-  auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
-                           ->AsInput()
-                           ->assert_is_op_input("layer_norm", "X");
-  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
-                             ->AsInput()
-                             ->assert_is_op_input("layer_norm", "Bias");
-  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
-                              ->AsInput()
-                              ->assert_is_op_input("layer_norm", "Scale");
-
-  auto layer_norm_op =
-      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
-
-  auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
-                            ->assert_is_op_output("layer_norm", "Y")
-                            ->AsOutput();
-
-  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
-      .LinksTo({layer_norm_out});
-  return layer_norm_out;
-}
-
 PDNode *patterns::OperatorActivation::operator()(
     const std::string &operator_type, const std::string &activation_type) {
   auto *preceding_op =
@@ -1210,7 +1187,7 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   } else {
     fc_op->assert_more([&](Node *x) {
       if (!HasInput(x, "ResidualData") ||
-          x->Op()->Input("ResidualData").size() == 0)
+          x->Op()->Input("ResidualData").empty())
         return true;
       return false;
     });
@@ -1741,7 +1718,7 @@ PDNode *patterns::LinearAct::operator()(
     elementwise_add_grad_op->LinksFrom({matmul_out_var});
   }
 
-  if (act_types.size() > 0) {
+  if (!act_types.empty()) {
     ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
 
     auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
@@ -1812,7 +1789,7 @@ PDNode *patterns::ElewiseAddMatmulAct::operator()(
     matmul_grad->LinksTo({matmul_grad_dx_var, matmul_grad_dw_var});
   }
 
-  if (!without_x_gradient && act_grad_types.size() > 0) {
+  if (!without_x_gradient && !act_grad_types.empty()) {
     matmul_grad_dx_var->AsIntermediate()->assert_is_ops_input(
         act_grad_types, GradVarName("Out"));
 
@@ -2059,7 +2036,7 @@ PDNode *patterns::FusedMatmul::operator()(bool with_residual) {
   if (!with_residual) {
     matmul_op->assert_more([&](Node *x) {
       return (!HasInput(x, "ResidualData") ||
-              x->Op()->Input("ResidualData").size() == 0);
+              x->Op()->Input("ResidualData").empty());
     });
   }
 
@@ -2115,7 +2092,7 @@ PDNode *patterns::ConvResidual::operator()(const std::string &conv_type,
   if (!with_residual_data) {
     conv_op->assert_more([&](Node *x) {
       if (!HasInput(x, "ResidualData") ||
-          x->Op()->Input("ResidualData").size() == 0)
+          x->Op()->Input("ResidualData").empty())
         return true;
       return false;
     });
@@ -2613,6 +2590,81 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
   reshape2_out->LinksFrom({reshape2_op});
 
   return reshape2_out;
+}
+
+PDNode *patterns::SelfAttention::operator()(PDNode *in) {
+  in->AsInput();
+
+  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  auto transpose2_0_op =
+      pattern->NewNode(transpose2_0_op_repr())->assert_is_op("transpose2");
+  auto transpose2_0_out = pattern->NewNode(transpose2_0_out_repr())
+                              ->assert_is_op_output("transpose2", "Out")
+                              ->assert_is_op_input("slice", "Input")
+                              ->AsIntermediate();
+  auto slice_0_op = pattern->NewNode(slice_0_op_repr())->assert_is_op("slice");
+  auto slice_0_out = pattern->NewNode(slice_0_out_repr())
+                         ->assert_is_op_output("slice", "Out")
+                         ->assert_is_ops_input(matmul_ops, "X")
+                         ->AsIntermediate();
+  auto slice_1_op = pattern->NewNode(slice_1_op_repr())->assert_is_op("slice");
+  auto slice_1_out = pattern->NewNode(slice_1_out_repr())
+                         ->assert_is_op_output("slice", "Out")
+                         ->assert_is_op_input("transpose2", "X")
+                         ->AsIntermediate();
+  auto slice_2_op = pattern->NewNode(slice_2_op_repr())->assert_is_op("slice");
+  auto slice_2_out = pattern->NewNode(slice_2_out_repr())
+                         ->assert_is_op_output("slice", "Out")
+                         ->assert_is_ops_input(matmul_ops, "Y")
+                         ->AsIntermediate();
+  auto matmul_0_op =
+      pattern->NewNode(matmul_0_op_repr())->assert_is_ops(matmul_ops);
+  auto matmul_0_out = pattern->NewNode(matmul_0_out_repr())
+                          ->assert_is_ops_output(matmul_ops, "Out")
+                          ->assert_is_op_input("transpose2", "X")
+                          ->AsIntermediate();
+  auto matmul_1_op =
+      pattern->NewNode(matmul_1_op_repr())->assert_is_ops(matmul_ops);
+  auto matmul_1_out = pattern->NewNode(matmul_1_out_repr())
+                          ->assert_is_ops_output(matmul_ops, "Out")
+                          ->assert_is_op_input("softmax", "X")
+                          ->AsIntermediate();
+  auto transpose2_1_op =
+      pattern->NewNode(transpose2_1_op_repr())->assert_is_op("transpose2");
+  auto transpose2_1_out = pattern->NewNode(transpose2_1_out_repr())
+                              ->assert_is_op_output("transpose2", "Out")
+                              ->assert_is_ops_input(matmul_ops, "Y")
+                              ->AsIntermediate();
+  auto softmax_op =
+      pattern->NewNode(softmax_op_repr())->assert_is_op("softmax");
+  auto softmax_out = pattern->NewNode(softmax_out_repr())
+                         ->assert_is_op_output("softmax", "Out")
+                         ->assert_is_ops_input(matmul_ops, "X")
+                         ->AsIntermediate();
+  auto transpose2_2_op =
+      pattern->NewNode(transpose2_2_op_repr())->assert_is_op("transpose2");
+  auto transpose2_2_out = pattern->NewNode(transpose2_2_out_repr())
+                              ->assert_is_op_output("transpose2", "Out")
+                              ->AsOutput();
+  transpose2_0_op->LinksFrom({in});
+  transpose2_0_out->LinksFrom({transpose2_0_op});
+  slice_0_op->LinksFrom({transpose2_0_out});
+  slice_0_out->LinksFrom({slice_0_op});
+  slice_1_op->LinksFrom({transpose2_0_out});
+  slice_1_out->LinksFrom({slice_1_op});
+  slice_2_op->LinksFrom({transpose2_0_out});
+  slice_2_out->LinksFrom({slice_2_op});
+  transpose2_1_op->LinksFrom({slice_1_out});
+  transpose2_1_out->LinksFrom({transpose2_1_op});
+  matmul_1_op->LinksFrom({slice_0_out, transpose2_1_out});
+  matmul_1_out->LinksFrom({matmul_1_op});
+  softmax_op->LinksFrom({matmul_1_out});
+  softmax_out->LinksFrom({softmax_op});
+  matmul_0_op->LinksFrom({softmax_out, slice_2_out});
+  matmul_0_out->LinksFrom({matmul_0_op});
+  transpose2_2_op->LinksFrom({matmul_0_out});
+  transpose2_2_out->LinksFrom({transpose2_2_op});
+  return transpose2_2_out;
 }
 
 PDNode *patterns::ConvElementwiseadd2Act::operator()(
@@ -3724,7 +3776,7 @@ PDNode *patterns::AddSupportInt8::operator()() {
   auto quant_out =
       pattern->NewNode(quant_out_repr())
           ->assert_is_var()
-          ->assert_more([&](Node *node) { return node->outputs.size() > 0; })
+          ->assert_more([&](Node *node) { return !node->outputs.empty(); })
           ->AsOutput();
   quant_op->LinksTo({quant_out});
   return quant_out;

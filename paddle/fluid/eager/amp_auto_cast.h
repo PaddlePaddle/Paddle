@@ -69,13 +69,14 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
+
+  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+       op_name == "sync_batch_norm") &&
+      input_name != "X") {
+    return input;
+  }
   if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
-      return input;
-    }
-    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-         op_name == "sync_batch_norm") &&
-        input_name != "X") {
       return input;
     }
     if ((op_name == "fused_attention" || op_name == "fused_feedforward")) {
@@ -86,6 +87,7 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
       }
     }
   }
+
   if (NeedCast(input, dst_dtype)) {
     paddle::framework::AttributeMap cast_attrs = {
         {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},

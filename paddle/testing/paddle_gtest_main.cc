@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   }
 
   char* env_str = nullptr;
-  if (envs.size() > 0) {
+  if (!envs.empty()) {
     std::string env_string = "--tryfromenv=";
     for (auto t : envs) {
       env_string += t + ",";
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
   }
 
   char* undefok_str = nullptr;
-  if (undefok.size() > 0) {
+  if (!undefok.empty()) {
     std::string undefok_string = "--undefok=";
     for (auto t : undefok) {
       undefok_string += t + ",";

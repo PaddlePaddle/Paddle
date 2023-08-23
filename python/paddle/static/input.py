@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle.fluid import Variable, core
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
+
+from ..fluid.variable_index import _setitem_impl_, _setitem_static
 
 __all__ = []
 
@@ -94,7 +98,7 @@ def data(name, shape, dtype=None, lod_level=0):
             shape[i] = -1
 
     if dtype:
-        return helper.create_global_variable(
+        out = helper.create_global_variable(
             name=name,
             shape=shape,
             dtype=dtype,
@@ -105,7 +109,7 @@ def data(name, shape, dtype=None, lod_level=0):
             need_check_feed=True,
         )
     else:
-        return helper.create_global_variable(
+        out = helper.create_global_variable(
             name=name,
             shape=shape,
             dtype=paddle.get_default_dtype(),
@@ -115,6 +119,21 @@ def data(name, shape, dtype=None, lod_level=0):
             is_data=True,
             need_check_feed=True,
         )
+
+    if os.environ.get("FLAGS_enable_new_ir_in_executor", None):
+        helper = LayerHelper('data', **locals())
+        helper.append_op(
+            type='data',
+            inputs={},
+            outputs={'out': out},
+            attrs={
+                'index': 0,
+                'dtype': 0,
+                'place': 0,
+                'name': name,
+            },
+        )
+    return out
 
 
 class InputSpec:
@@ -342,3 +361,31 @@ class InputSpec:
 
     def __ne__(self, other):
         return not self == other
+
+
+def setitem(x, index, value):
+    """
+    x(Tensor): input Tensor.
+    index(Scalar|Tuple|List|Tensor): Where should be set value.
+    value(Scalar|Tensor): The value which is going to be set.
+
+    [How to write index?]
+    1. ':' -> slice(),
+       (1) a[:]=v -> setitem(a, slice(None,None,None), v)
+       (2) a[1::2] -> setitem(a, slice(1,None,2), v)
+
+    2. if there are multiple indexes for axes, use TUPLE (Not LIST) to pack them.
+       (1) a[1, 2]=v -> setitem(a, (1, 2), v)
+       (2) a[[1,2],[2,3]]=v -> setitem(a, ([1,2],[2,3]), v)
+       (3) a[1,:, 3] = v -> setitem(a, (1, slice(None,None,None),3), v)
+       (4) a[1, ..., 2]=v -> setitem(a, (1, ..., 2), v)
+
+    3. You can always use TUPLE as index input， even there is only one index.
+       (1) a[Tensor([10,10])]=v -> setitem(a, (Tensor([10,10]),), v)
+       (2) a[1] = v -> setitem(a, (1,), v)
+    """
+    if core.is_compiled_with_xpu():
+        # (NOTE): Currently, there is no index_put_xpu kernel.
+        return _setitem_impl_(x, index, value)
+    else:
+        return _setitem_static(x, index, value)

@@ -62,14 +62,13 @@ def get_program(args):
             sigmoid = paddle.nn.functional.sigmoid(bn)
             out = paddle.sum(sigmoid)
             if not args.only_forward:
-                sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                sgd_opt = paddle.optimizer.SGD(learning_rate=0.0)
                 opt = fleet.distributed_optimizer(sgd_opt)
                 opt.minimize(out)
     return main, startup, [out, conv, bn]
 
 
 def train(args):
-
     build_strategy = fluid.BuildStrategy()
     build_strategy.sync_batch_norm = True
     build_strategy.enable_inplace = False
@@ -119,7 +118,6 @@ def train(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, required=True)
     parser.add_argument('--dshape', type=str, required=True)

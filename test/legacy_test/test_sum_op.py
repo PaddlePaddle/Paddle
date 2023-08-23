@@ -108,7 +108,6 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         w2_has_data=False,
         w3_has_data=False,
     ):
-
         self.create_selected_rows(scope, place, "W1", w1_has_data)
         self.create_selected_rows(scope, place, "W2", w2_has_data)
         self.create_selected_rows(scope, place, "W3", w3_has_data)
@@ -199,7 +198,6 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         w2_has_data=False,
         w3_has_data=False,
     ):
-
         self.create_selected_rows(scope, place, "W1", w1_has_data)
         self.create_selected_rows(scope, place, "W2", w2_has_data)
         self.create_selected_rows(scope, place, "W3", w3_has_data)

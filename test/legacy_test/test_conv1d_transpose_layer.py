@@ -59,7 +59,6 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         self.dtype = dtype
 
     def setUp(self):
-
         self.channel_last = False if self.data_format == "NCL" else True
         input_shape = (
             (self.batch_size, self.in_channels, self.spartial_shape)

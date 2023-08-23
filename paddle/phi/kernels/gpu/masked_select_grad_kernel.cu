@@ -21,13 +21,18 @@
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/expand_grad_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
 
 namespace phi {
 
 template <typename MT, typename InT, typename OutT>
 struct MaskedSelectGradFunctor {
-  HOSTDEVICE MaskedSelectGradFunctor() {}
+  HOSTDEVICE MaskedSelectGradFunctor() = default;
 
   HOSTDEVICE inline void operator()(OutT* out,
                                     const MT* mask,
@@ -50,12 +55,51 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
-  auto mask_size = mask.numel();
+  // x_grad.size() == x.size()
+  // x.size() == mask.size(), no broadcast, expand_mask = false, expand_x =
+  // false x.size() < mask.size(), x broadcast to mask, expand_mask = false,
+  // expand_x = true x.size() > mask.size(), mask broadcast to x, epxand_mask =
+  // true, expand_x = false
+  DenseTensor mask_expand;
+  DenseTensor x_grad_expand;
+  bool expand_x = false;
+
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x_grad->dims()), vectorize(mask.dims()));
+  auto expaned_dims = make_ddim(expanded_size);
+
+  if (mask.dims() != expaned_dims) {
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
+
+  if (x_grad->dims() != expaned_dims) {
+    x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
+    expand_x = true;
+  } else {
+    expand_x = false;
+  }
+
   dev_ctx.template Alloc<T>(x_grad);
+  auto mask_size = mask_expand.numel();
   if (mask_size <= 0) return;
+
   using Functor = MaskedSelectGradFunctor<bool, T, T>;
+
+  DenseTensor* x_grad_tmp = x_grad;
+  if (expand_x) {
+    x_grad_tmp = &x_grad_expand;
+  }
+
   phi::funcs::SelectKernel<bool, T, T, 2, Functor>(
-      dev_ctx, mask, out_grad, x_grad, Functor());
+      dev_ctx, mask_expand, out_grad, x_grad_tmp, Functor());
+
+  if (expand_x) {
+    ExpandGradKernel<T, Context>(
+        dev_ctx, x, x_grad_expand, IntArray(expanded_size), x_grad);
+  }
 }
 
 }  // namespace phi

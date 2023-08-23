@@ -102,7 +102,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
     else:
         padding_algorithm = "EXPLICIT"
         padding = convert_to_list(padding, num_dims, 'padding')
-    if not all([p >= 0 for p in padding]):
+    if not all(p >= 0 for p in padding):
         raise ValueError(
             "Invalid padding, all value should be larger than or equal to 0, but received: {}".format(
                 padding
@@ -127,7 +127,6 @@ def _conv_nd(
     use_mkldnn=False,
     name=None,
 ):
-
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dynamic_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
@@ -450,6 +449,9 @@ def conv1d(
         )
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    from ...tensor.creation import assign as paddle_assign
+
+    weight = paddle_assign(weight)
     weight = unsqueeze(weight, axis=[-2])
 
     l_type = "conv2d"

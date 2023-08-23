@@ -62,7 +62,10 @@ void DropoutRawKernel(const Context& dev_ctx,
       seed_data = dev_ctx.GetGenerator()->Random64();
     }
 
-    auto* mask_data = dev_ctx.template Alloc<T>(mask);
+    auto* mask_data = dev_ctx.template Alloc<uint8_t>(mask);
+
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    XPUType* mask_tmp_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
     // Special case when dropout_prob is 1.0
     if (dropout_prob == 1.0f) {
       int r = xpu::constant(dev_ctx.x_context(),
@@ -70,22 +73,26 @@ void DropoutRawKernel(const Context& dev_ctx,
                             y->numel(),
                             XPUType(0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-      r = xpu::constant(dev_ctx.x_context(),
-                        reinterpret_cast<XPUType*>(mask_data),
-                        mask->numel(),
-                        XPUType(0));
+      r = xpu::constant(
+          dev_ctx.x_context(), mask_tmp_data, mask->numel(), XPUType(0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      r = xpu::cast<XPUType, uint8_t>(
+          dev_ctx.x_context(), mask_tmp_data, mask_data, mask->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       return;
     }
     int r = xpu::dropout(dev_ctx.x_context(),
                          reinterpret_cast<const XPUType*>(x.data<T>()),
                          reinterpret_cast<XPUType*>(y->data<T>()),
-                         reinterpret_cast<XPUType*>(mask_data),
+                         mask_tmp_data,
                          seed_data,
                          mask->numel(),
                          is_upscale,
                          dropout_prob);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout");
+    r = xpu::cast<XPUType, uint8_t>(
+        dev_ctx.x_context(), mask_tmp_data, mask_data, mask->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
     float scale =
         (is_upscale) ? (1.0) : (static_cast<float>(1.0f - dropout_prob));
@@ -107,4 +114,6 @@ PD_REGISTER_KERNEL(dropout,
                    ALL_LAYOUT,
                    phi::DropoutRawKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}

@@ -40,7 +40,7 @@ struct ParametricStorageManager;
 /// provide method 'bool operator==(const ParamKey &) const', used to compare
 /// Storage instance and ParamKey instance.
 ///
-class StorageManager {
+class IR_API StorageManager {
  public:
   ///
   /// \brief This class is the base class of all storage classes,
@@ -100,7 +100,9 @@ class StorageManager {
   ///
   template <typename Storage>
   void RegisterParametricStorage(TypeId type_id) {
-    return RegisterParametricStorageImpl(type_id);
+    return RegisterParametricStorageImpl(type_id, [](StorageBase *storage) {
+      delete static_cast<Storage *>(storage);
+    });
   }
 
   ///
@@ -129,7 +131,8 @@ class StorageManager {
 
   StorageBase *GetParameterlessStorageImpl(TypeId type_id);
 
-  void RegisterParametricStorageImpl(TypeId type_id);
+  void RegisterParametricStorageImpl(
+      TypeId type_id, std::function<void(StorageBase *)> destroy);
 
   void RegisterParameterlessStorageImpl(
       TypeId type_id, std::function<StorageBase *()> constructor);

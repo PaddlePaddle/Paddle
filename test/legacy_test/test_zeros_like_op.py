@@ -52,7 +52,7 @@ class TestZerosLikeAPI(unittest.TestCase):
             feed={'X': np.ones(shape).astype('float32')},
             fetch_list=[out1, out2, out3, out4, out5],
         )
-        for (i, dtype) in enumerate(
+        for i, dtype in enumerate(
             [np.float32, np.bool_, np.float64, np.int32, np.int64]
         ):
             self.assertEqual(outs[i].dtype, dtype)

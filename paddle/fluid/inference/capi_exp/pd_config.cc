@@ -55,7 +55,7 @@ __pd_give PD_Config* PD_ConfigCreate() {
 }
 
 void PD_ConfigDestroy(__pd_take PD_Config* pd_config) {
-  if (pd_config != NULL) {
+  if (pd_config != nullptr) {
     delete reinterpret_cast<Config*>(pd_config);
   }
 }
@@ -154,20 +154,20 @@ void PD_ConfigEnableORTOptimization(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
-                        int32_t l3_workspace_size,
-                        PD_Bool locked,
-                        PD_Bool autotune,
-                        const char* autotune_file,
-                        const char* precision,
-                        PD_Bool adaptive_seqlen,
+                        int32_t l3_size,
+                        PD_Bool l3_locked,
+                        PD_Bool conv_autotune,
+                        const char* conv_autotune_file,
+                        const char* transformer_encoder_precision,
+                        PD_Bool transformer_encoder_adaptive_seqlen,
                         PD_Bool enable_multi_stream) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableXpu(l3_workspace_size,
-                    locked,
-                    autotune,
-                    autotune_file,
-                    precision,
-                    adaptive_seqlen,
+  config->EnableXpu(l3_size,
+                    l3_locked,
+                    conv_autotune,
+                    conv_autotune_file,
+                    transformer_encoder_precision,
+                    transformer_encoder_adaptive_seqlen,
                     enable_multi_stream);
 }
 

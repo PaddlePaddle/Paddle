@@ -64,7 +64,8 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestFillAnyLikeOpBfloat16(OpTest):
     def setUp(self):
@@ -88,7 +89,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.check_output_with_place(place, check_prim=True)
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):

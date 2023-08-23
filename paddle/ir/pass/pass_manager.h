@@ -34,7 +34,7 @@ namespace detail {
 class PassAdaptor;
 }
 
-class PassManager {
+class IR_API PassManager {
  public:
   explicit PassManager(IrContext *context, uint8_t opt_level = 2);
 
@@ -42,7 +42,7 @@ class PassManager {
 
   const std::vector<std::unique_ptr<Pass>> &passes() const { return passes_; }
 
-  bool empty() const { return passes_.empty(); }
+  bool Empty() const { return passes_.empty(); }
 
   IrContext *context() const { return context_; }
 
@@ -91,9 +91,9 @@ class PassManager {
       }
     }
 
-    bool EnablePrintModule() const { return print_module_; }
+    bool print_module() const { return print_module_; }
 
-    bool EnablePrintOnChange() const { return print_on_change_; }
+    bool print_on_change() const { return print_on_change_; }
 
    private:
     // The enable_print_before_ and enable_print_after_ can be used to specify
@@ -102,6 +102,7 @@ class PassManager {
     std::function<bool(Pass *, Operation *)> enable_print_after_;
 
     bool print_module_;
+
     bool print_on_change_;
 
     std::ostream &os;
@@ -109,7 +110,10 @@ class PassManager {
     // TODO(liuyuanle): Add flags to control printing behavior.
   };
 
-  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> config);
+  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> option =
+                            std::make_unique<IRPrinterOption>());
+
+  void EnablePassTiming(bool print_module = true);
 
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 

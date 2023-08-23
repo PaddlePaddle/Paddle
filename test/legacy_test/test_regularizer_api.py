@@ -39,7 +39,7 @@ def bow_net(
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = paddle.static.nn.sequence_lod.sequence_pool(
@@ -116,9 +116,9 @@ class TestRegularizer(unittest.TestCase):
 
             avg_cost = model(data, label, self.word_len)
 
-            optimizer = fluid.optimizer.Adagrad(
+            optimizer = paddle.optimizer.Adagrad(
                 learning_rate=0.1,
-                regularization=paddle.regularizer.L2Decay(1.0),
+                weight_decay=paddle.regularizer.L2Decay(1.0),
             )
             optimizer.minimize(avg_cost)
             param_sum = self.run_program(place, [data, label])
@@ -149,7 +149,7 @@ class TestRegularizer(unittest.TestCase):
                 para_sum.append(paddle.sum(para_mul))
             avg_cost_l2 += paddle.add_n(para_sum) * 0.5
 
-            optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)
+            optimizer = paddle.optimizer.Adagrad(learning_rate=0.1)
             optimizer.minimize(avg_cost_l2)
             param_sum = self.run_program(place, [data, label])
         return param_sum
@@ -186,7 +186,7 @@ class TestRegularizer(unittest.TestCase):
             x = paddle.uniform([2, 2, 3])
             out = paddle.static.nn.fc(x, 5, weight_attr=fc_param_attr)
             loss = paddle.sum(out)
-            sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
+            sgd = paddle.optimizer.SGD(learning_rate=0.1, weight_decay=l2)
             sgd.minimize(loss)
         with fluid.dygraph.guard():
             input = fluid.dygraph.to_variable(
@@ -206,16 +206,16 @@ class TestRegularizer(unittest.TestCase):
             loss1.backward()
             # set l2 regularizer in optimizer, but l1 in fluid.ParamAttr
 
-            fluid.optimizer.SGD(
-                parameter_list=linear1.parameters(),
+            paddle.optimizer.SGD(
+                parameters=linear1.parameters(),
                 learning_rate=1e-2,
-                regularization=l2,
+                weight_decay=l2,
             ).minimize(loss1)
             # only set l1 in fluid.ParamAttr
             loss2 = linear2(input)
             loss2.backward()
-            fluid.optimizer.SGD(
-                parameter_list=linear2.parameters(), learning_rate=1e-2
+            paddle.optimizer.SGD(
+                parameters=linear2.parameters(), learning_rate=1e-2
             ).minimize(loss2)
             # they should both be applied by l1, and keep the same
             np.testing.assert_allclose(

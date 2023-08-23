@@ -36,18 +36,25 @@ struct EngineConfig {
   std::vector<std::string> neglected_passes;
   lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
   bool model_from_memory{true};
-  // TODO(wilber): now only works for xpu, lite gpu can support device_id or
-  // not?
-  int device_id = 0;
 
   // for xpu
-  size_t xpu_l3_workspace_size;
-  bool locked = false;
-  bool autotune = true;
-  std::string autotune_file = "";
-  std::string precision = "int16";
-  bool adaptive_seqlen = false;
-  bool enable_multi_stream = false;
+  int xpu_device_id{0};
+  size_t xpu_l3_size{0};
+  void* xpu_l3_ptr{nullptr};
+  size_t xpu_l3_autotune_size{0};
+  void* xpu_stream{nullptr};
+  int xpu_conv_autotune_level{0};
+  std::string xpu_conv_autotune_file;
+  bool xpu_conv_autotune_file_writeback{false};
+  int xpu_fc_autotune_level{0};
+  std::string xpu_fc_autotune_file;
+  bool xpu_fc_autotune_file_writeback{false};
+  int xpu_gemm_compute_precision{1};
+  int xpu_transformer_softmax_optimize_level{0};
+  bool xpu_transformer_encoder_adaptive_seqlen{true};
+  float xpu_quant_post_static_gelu_out_threshold{10.f};
+  int xpu_quant_post_dynamic_activation_method{0};
+  bool xpu_enable_multi_stream = false;
 
   // for x86 or arm
   int cpu_math_library_num_threads{1};
@@ -78,6 +85,8 @@ class EngineManager {
   paddle::lite_api::PaddlePredictor* Get(const std::string& name) const;
   paddle::lite_api::PaddlePredictor* Create(const std::string& name,
                                             const EngineConfig& cfg);
+  void Set(const std::string& name,
+           std::shared_ptr<paddle::lite_api::PaddlePredictor> p);
   void DeleteAll();
 
  private:

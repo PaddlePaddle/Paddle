@@ -39,7 +39,6 @@ def multiclass_nms3(
     return_rois_num=True,
     name=None,
 ):
-
     helper = LayerHelper('multiclass_nms3', **locals())
 
     if paddle.in_dynamic_mode():

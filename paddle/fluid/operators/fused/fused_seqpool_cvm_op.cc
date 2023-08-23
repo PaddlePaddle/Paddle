@@ -78,7 +78,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
             PADDLE_GET(framework::Variable*, inputs_tensor[i]);
         const auto& x_tensor = x_var->Get<phi::DenseTensor>();
         const auto& x_lod = x_tensor.lod();
-        if (x_lod.size() > 0) {
+        if (!x_lod.empty()) {
           cur_batch_size = x_lod[0].size() - 1;
         } else {
           cur_batch_size = x_tensor.dims()[0];
@@ -135,11 +135,11 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 0;
+    bool flag = false;
     for (auto* input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
-        flag = 1;
+        flag = true;
         break;
       }
     }

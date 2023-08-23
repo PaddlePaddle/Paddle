@@ -55,23 +55,20 @@ def set_printoptions(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.seed(10)
-            a = paddle.rand([10, 20])
-            paddle.set_printoptions(4, 100, 3)
-            print(a)
-
-            '''
-            Tensor(shape=[10, 20], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-                   [[0.0002, 0.8503, 0.0135, ..., 0.9508, 0.2621, 0.6661],
-                    [0.9710, 0.2605, 0.9950, ..., 0.4427, 0.9241, 0.9363],
-                    [0.0948, 0.3226, 0.9955, ..., 0.1198, 0.0889, 0.9231],
-                    ...,
-                    [0.7206, 0.0941, 0.5292, ..., 0.4856, 0.1379, 0.0351],
-                    [0.1745, 0.5621, 0.3602, ..., 0.2998, 0.4011, 0.1764],
-                    [0.0728, 0.7786, 0.0314, ..., 0.2583, 0.1654, 0.0637]])
-            '''
+            >>> paddle.seed(10)
+            >>> a = paddle.rand([10, 20])
+            >>> paddle.set_printoptions(4, 100, 3)
+            >>> print(a)
+            Tensor(shape=[10, 20], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.2727, 0.5489, 0.8655, ..., 0.2916, 0.8525, 0.9000],
+             [0.3806, 0.8996, 0.0928, ..., 0.9535, 0.8378, 0.6409],
+             [0.1484, 0.4038, 0.8294, ..., 0.0148, 0.6520, 0.4250],
+             ...,
+             [0.3426, 0.1909, 0.7240, ..., 0.4218, 0.2676, 0.5679],
+             [0.5561, 0.2081, 0.0676, ..., 0.9778, 0.3302, 0.9559],
+             [0.2665, 0.8483, 0.5389, ..., 0.4956, 0.6862, 0.9178]])
     """
     kwargs = {}
 
@@ -362,6 +359,27 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         )
 
 
+def dist_tensor_to_string(tensor, prefix='Tensor'):
+    # TODO(dev): Complete tensor will be printed after reshard
+    # is ready.
+    indent = len(prefix) + 1
+    dtype = convert_dtype(tensor.dtype)
+    if tensor.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
+    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, dist_attr={dist_attr},\n{indent}{data})"
+    return _template.format(
+        prefix=prefix,
+        shape=tensor.shape,
+        dtype=dtype,
+        place=tensor._place_str,
+        stop_gradient=tensor.stop_gradient,
+        dist_attr=tensor.dist_attr,
+        indent=' ' * indent,
+        data=None,
+    )
+
+
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
@@ -373,6 +391,9 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
+
+    if tensor.is_dist():
+        return dist_tensor_to_string(tensor, prefix)
 
     if not tensor._is_dense_tensor_hold_allocation():
         return "Tensor(Not initialized)"

@@ -49,7 +49,6 @@ def row_conv_forward(x, lod, wt):
 
 class TestRowConvOp1(OpTest):
     def setUp(self):
-
         self.op_type = "row_conv"
         lod = [[2, 3, 2]]
         T = sum(lod[0])
@@ -82,7 +81,6 @@ class TestRowConvOp1(OpTest):
 
 class TestRowConvOp2(OpTest):
     def setUp(self):
-
         self.op_type = "row_conv"
         lod = [[20, 30, 50]]
         T = sum(lod[0])

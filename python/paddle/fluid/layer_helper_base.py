@@ -381,6 +381,7 @@ class LayerHelperBase:
                     and dtype != core.VarDesc.VarType.FP64
                     and dtype != core.VarDesc.VarType.FP16
                     and dtype != core.VarDesc.VarType.BF16
+                    and dtype != core.VarDesc.VarType.INT8
                 ):
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16'] type. Set default_initializer to fit the parameter dtype!"
@@ -392,6 +393,7 @@ class LayerHelperBase:
                     'float64',
                     'bfloat16',
                     'float',
+                    'int8',
                 ]:
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16', 'float'] type. Set default_initializer to fit the parameter dtype!"
@@ -463,6 +465,39 @@ class LayerHelperBase:
             persistable=False,
             stop_gradient=stop_gradient,
         )
+
+    def _create_global_variable_for_type_inference(
+        self, dtype, stop_gradient=False, shape=None
+    ):
+        """Create a global variable that should be type inferred layer.
+
+        Note:
+            The default type will be set to LOD_TENSOR. However, when
+            the var is used as operator output, its type will be updated
+            based on operator's `VarTypeInference` implementation in
+            infer_var_type.
+        """
+        # set global dtype
+        if not dtype:
+            dtype = self.__dtype
+        output = self.main_program.global_block().create_var(
+            name=unique_name.generate_with_ignorable_key(
+                ".".join([self.name, 'tmp'])
+            ),
+            dtype=dtype,
+            shape=shape,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=stop_gradient,
+        )
+        saved_block_id = self.main_program.current_block_idx
+        self.main_program.current_block_idx = 0
+        paddle.tensor.creation.fill_constant(
+            output.shape, dtype, 0.0, force_cpu=False, out=output
+        )
+        output.stop_gradient = stop_gradient
+        self.main_program.current_block_idx = saved_block_id
+        return output
 
     def create_sparse_variable_for_type_inference(
         self, dtype, stop_gradient=False, shape=None

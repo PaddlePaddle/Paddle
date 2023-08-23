@@ -14,6 +14,7 @@
 
 from functools import reduce
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
@@ -31,7 +32,7 @@ fluid.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
         filter_size=5,
         num_filters=20,
@@ -42,7 +43,7 @@ def cnn_model(data):
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
@@ -94,10 +95,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
         inference_program = fluid.default_main_program().clone()
         # Optimization
         # TODO(typhoonzero): fix distributed adam optimizer
-        # opt = fluid.optimizer.AdamOptimizer(
+        # opt = paddle.optimizer.Adam(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
         if not use_dgc:
-            opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+            opt = paddle.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
             opt = paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
                 learning_rate=self.lr, momentum=0.9, rampup_begin_step=2

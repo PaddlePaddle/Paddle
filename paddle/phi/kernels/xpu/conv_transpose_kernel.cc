@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -51,11 +53,6 @@ void Conv2dTransposeKernel(const Context& ctx,
                            DenseTensor* out) {
   using XPUT = typename XPUTypeTrait<T>::Type;
 
-  // The filter will be reshaped in the calculations,
-  // so here use an assignment operation,
-  // that avoids modifying the variable in the Scope.
-  DenseTensor filter_ = filter;
-
   ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_EQ(
@@ -65,7 +62,7 @@ void Conv2dTransposeKernel(const Context& ctx,
           ("XPU do support data_format is NCHW in conv_transpose op.")));
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
-  DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
+  DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
 
   std::vector<int> paddings_ = paddings;
@@ -84,7 +81,7 @@ void Conv2dTransposeKernel(const Context& ctx,
     int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
         ctx.x_context(),
         x.data<float>(),
-        filter_.data<float>(),
+        filter.data<float>(),
         out->data<float>(),
         batch_size,
         img_yc,
@@ -105,7 +102,7 @@ void Conv2dTransposeKernel(const Context& ctx,
     int r = xpu::conv2d_transpose_v2<float, float, float, float>(
         ctx.x_context(),
         x.data<float>(),
-        filter_.data<float>(),
+        filter.data<float>(),
         out->data<float>(),
         batch_size,
         img_yc,
@@ -122,6 +119,57 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
+  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+    if (output_size.size()) {
+      VLOG(4) << "int_with_ll quantization is not supported when output_size "
+                 "is specified, "
+              << "use int31 instead";
+      int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
+          ctx.x_context(),
+          x.data<float>(),
+          filter.data<float>(),
+          out->data<float>(),
+          batch_size,
+          img_yc,
+          img_xh,
+          img_xw,
+          img_xc,
+          ksize,
+          strides,
+          paddings_,
+          dilations_,
+          groups,
+          nullptr,
+          nullptr,
+          nullptr,
+          true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
+    } else {
+      // xpu::conv2d_transpose_v2 do not support int_with_ll now
+      // use xpu::conv2d_transpose
+      int img_yh = static_cast<int>(x.dims()[2]);
+      int img_yw = static_cast<int>(x.dims()[3]);
+      int r = xpu::conv2d_transpose<float, float, float, int_with_ll_t>(
+          ctx.x_context(),
+          x.data<float>(),
+          filter.data<float>(),
+          out->data<float>(),
+          batch_size,
+          img_yc,
+          img_yh,
+          img_yw,
+          img_xc,
+          ksize,
+          strides,
+          paddings_,
+          dilations_,
+          groups,
+          nullptr,
+          nullptr,
+          nullptr,
+          true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
+    }
   } else {
     int r = xpu::conv2d_transpose_v2<XPUT, XPUT, XPUT, int16_t>(
         ctx.x_context(),

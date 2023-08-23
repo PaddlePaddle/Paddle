@@ -143,7 +143,6 @@ class AutoParallelizer:
         no_grad_set,
         callbacks,
     ):
-
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
                 loss,
@@ -158,7 +157,6 @@ class AutoParallelizer:
         return params_grads
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
-
         optimizer = copy.deepcopy(self._optimizer)
         with program_guard(main_program, startup_program):
             optimize_ops = optimizer.apply_gradients(params_grads)
@@ -173,7 +171,6 @@ class AutoParallelizer:
     def _apply_post_optimization_passes(
         self, main_program, startup_program, rank, params_grads
     ):
-
         if self._dist_strategy.sharding:
             config = copy.deepcopy(self._dist_strategy.sharding_configs)
             config["dist_context"] = self._dist_context

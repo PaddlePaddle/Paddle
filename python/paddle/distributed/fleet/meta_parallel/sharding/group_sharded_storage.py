@@ -30,6 +30,14 @@ from paddle.framework import core
 from .group_sharded_utils import Type, cvt_to_device, device_guard
 
 
+class BufferWarper(core.eager.Tensor):
+    def __init__(self):
+        super().__init__()
+        self.need_clip = True
+        self.is_distributed = False
+        self.trainable = True
+
+
 class InternalStorage:
     """
     This is a basic class, which is responsible for consolidating the basic storage tensor.
@@ -76,11 +84,16 @@ class InternalStorage:
         ), "Conversion type is not supported now"
 
         if self._device != device:
-            tmp_buffer = (
-                cvt_to_device(self.buffer, self.dev_id)
-                if device in ["gpu", "xpu"]
-                else self.buffer.cpu()
-            )
+            if device in paddle.device.get_all_custom_device_type():
+                tmp_buffer = self.buffer._copy_to(
+                    paddle.CustomPlace(device, self.dev_id), True
+                )
+            else:
+                tmp_buffer = (
+                    cvt_to_device(self.buffer, self.dev_id)
+                    if device in ["gpu", "xpu"]
+                    else self.buffer.cpu()
+                )
             for param in self._params:
                 param.clear_gradient(False)
 
@@ -91,6 +104,12 @@ class InternalStorage:
         if dtype is not None:
             self.buffer = self.buffer.cast(dtype=dtype)
             self._dtype = dtype
+
+    def warp_buffer(self):
+        tmp_buffer = BufferWarper()
+        self._buffer = self.buffer
+        tmp_buffer.get_tensor()._share_data_with(self.buffer.get_tensor())
+        self.buffer = tmp_buffer
 
 
 class ParamStorage(InternalStorage):
@@ -119,7 +138,7 @@ class ParamStorage(InternalStorage):
         """
 
         assert all(
-            [id(param) not in self._param_ids for param in trainable_params]
+            id(param) not in self._param_ids for param in trainable_params
         ), "The same param cannot be checked in twice"
         assert self.buffer is not None
 
@@ -133,8 +152,13 @@ class ParamStorage(InternalStorage):
             cpu_param_shape.append(p_shape)
 
         if convert_gpu:
-            # buffer convert from cpu to cuda
-            self.buffer = cvt_to_device(self.buffer, self.dev_id)
+            if self._device in paddle.device.get_all_custom_device_type():
+                self.buffer = self.buffer._copy_to(
+                    paddle.CustomPlace(self._device, self.dev_id), True
+                )
+            else:
+                # buffer convert from cpu to cuda
+                self.buffer = cvt_to_device(self.buffer, self.dev_id)
 
         self._fill = 0
 
@@ -147,7 +171,6 @@ class ParamStorage(InternalStorage):
 
     @paddle.autograd.no_grad()
     def _add_param_as_view(self, param, align, convert_gpu=True):
-
         assert (
             param.dtype == self.buffer.dtype
         ), "Different types for the InternalStorage and the param, cannot proceed: {} - {}".format(
@@ -182,7 +205,6 @@ class ParamStorage(InternalStorage):
 
     @paddle.autograd.no_grad()
     def _convert_buffer(self, param, p_shape, align):
-
         var_end = self._fill + np.prod(p_shape).tolist()
         offset = var_end + align
         assert offset <= self.buffer._numel()
@@ -315,7 +337,12 @@ class GradStorage(InternalStorage):
         assert (
             param._numel() > 0
         ), "Cannot add a gradient to a released InternalStorage, please rebuild"
-        assert param.dtype == self.buffer.dtype
+
+        use_main_grad = hasattr(param, "main_grad")
+        if use_main_grad:
+            assert self.buffer.dtype == paddle.float32
+        else:
+            assert param.dtype == self.buffer.dtype
 
         grad_end = self._fill + param._numel()
         offset = grad_end + align
@@ -325,7 +352,10 @@ class GradStorage(InternalStorage):
         with device_guard(self.dev_id, self._device):
             tmp_var = self.buffer._slice(self._fill, grad_end)
             tmp_var.get_tensor()._set_dims(param.shape)
-            param._copy_gradient_from(tmp_var)
+            if not use_main_grad:
+                param._copy_gradient_from(tmp_var)
+            else:
+                param.main_grad = tmp_var
             del tmp_var
 
         self._fill = offset

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -125,6 +126,7 @@ class TestNanmedian(unittest.TestCase):
                 pd_res = paddle.nanmedian(
                     paddle.to_tensor(data), keepdim=keep_dim
                 )
+                assert np_res.shape == pd_res.numpy().shape
                 np.testing.assert_allclose(
                     np_res, pd_res.numpy(), rtol=1e-05, equal_nan=True
                 )
@@ -187,6 +189,23 @@ class TestNanmedian(unittest.TestCase):
         x_np[0, :] = np.nan
         x_np[1, :3] = np.nan
         x_np[2, 3:] = np.nan
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
+        y = paddle.nanmedian(x_tensor, keepdim=True)
+        dx = paddle.grad(y, x_tensor)[0].numpy()
+
+        np_grad = np.zeros(shape)
+        np_grad[1, 3] = 0.5
+        np_grad[3, 2] = 0.5
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_check_grad_axis(self):
+        paddle.disable_static(place=self.place)
+        shape = (4, 5)
+        x_np = np.random.uniform(-1, 1, shape).astype(np.float64)
+        x_np[0, :] = np.nan
+        x_np[1, :3] = np.nan
+        x_np[2, 3:] = np.nan
         x_np_sorted = np.sort(x_np)
         nan_counts = np.count_nonzero(np.isnan(x_np).astype(np.int32), axis=1)
         np_grad = np.zeros(shape)
@@ -205,9 +224,69 @@ class TestNanmedian(unittest.TestCase):
                     np_grad[i, j] = 1 if is_odd else 0.5
 
         x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
-        y = paddle.nanmedian(x_tensor, axis=1, keepdim=True)
+        y = paddle.nanmedian(x_tensor, axis=1)
         dx = paddle.grad(y, x_tensor)[0].numpy()
         np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_check_grad_0d(self):
+        paddle.disable_static(place=self.place)
+        x = paddle.rand([])
+        x.stop_gradient = False
+        y = paddle.nanmedian(x)
+        y.backward()
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, np.array(1.0))
+
+        x = paddle.to_tensor(float('nan'), stop_gradient=False)
+        y = paddle.nanmedian(x)
+        y.backward()
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad, np.array(0.0))
+
+
+class TestNanmedianFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = paddle.nanmedian
+        self.public_python_api = paddle.nanmedian
+        self.dtype = np.float16
+        self.python_out_sig = ["Out"]
+        X = np.random.random((100, 100)).astype('float16')
+        Out = np.nanmedian(X)
+        self.inputs = {'X': X}
+        self.outputs = {'Out': Out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestNanmedianBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = paddle.nanmedian
+        self.public_python_api = paddle.nanmedian
+        self.dtype = np.uint16
+        self.python_out_sig = ["Out"]
+        X = np.random.random((100, 100)).astype('float32')
+        Out = np.nanmedian(X)
+        self.inputs = {'X': convert_float_to_uint16(X)}
+        self.outputs = {'Out': convert_float_to_uint16(Out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":

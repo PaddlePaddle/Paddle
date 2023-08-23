@@ -28,7 +28,7 @@ class Dialect;
 /// of all types is TypeId (and possibly others). Therefore, construct a class
 /// with TypeId as its member.
 ///
-class AbstractType {
+class IR_API AbstractType {
  public:
   ///
   /// \brief Construct an AbstractType by TypeId directly.
@@ -100,7 +100,7 @@ struct TypeManager;
 /// be included. So that, non-parametric type can be constructed by TypeStorage
 /// directly but parametric type should be constructed by Derived TypeStorage.
 ///
-class TypeStorage : public StorageManager::StorageBase {
+class IR_API TypeStorage : public StorageManager::StorageBase {
   friend StorageManager;
   friend TypeManager;
 
@@ -141,7 +141,7 @@ class TypeStorage : public StorageManager::StorageBase {
 /// \brief TypeManager is a utility class that provides interfaces for get or
 /// unique Type instances in IrContext.
 ///
-struct TypeManager {
+struct IR_API TypeManager {
   ///
   /// \brief Get a unique instance of Type T from IrContext. Note: For a
   /// parametric_type, if not found in IrContext, it will try to create a new

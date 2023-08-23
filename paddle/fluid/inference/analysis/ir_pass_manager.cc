@@ -90,9 +90,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
-    bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
-                               argument->min_input_shape().size() > 0 &&
-                               argument->optim_input_shape().size() > 0) ||
+    bool with_dynamic_shape = (!argument->max_input_shape().empty() &&
+                               !argument->min_input_shape().empty() &&
+                               !argument->optim_input_shape().empty()) ||
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
@@ -133,7 +133,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "cudnn_placement_pass") {
       pass->Set("cudnn_enabled_op_types",
                 new std::unordered_set<std::string>());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     } else if (pass_name == "cpu_quantize_placement_pass") {
       pass->Set("quantize_enabled_op_types",
                 new std::unordered_set<std::string>(
@@ -160,6 +160,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
+      pass->Set("mark_output", new bool(argument->trt_mark_output()));
+      pass->Set(
+          "output_tensor_names",
+          new std::vector<std::string>(argument->trt_output_tensor_names()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
@@ -267,20 +271,44 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(lite_enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
-      pass->Set("xpu_l3_workspace_size",
-                new int(argument->xpu_l3_workspace_size()));
+      pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+      pass->Set("xpu_l3_size", new size_t(argument->xpu_l3_size()));
+      pass->Set("xpu_l3_ptr", new void *(argument->xpu_l3_ptr()));
+      pass->Set("xpu_l3_autotune_size",
+                new size_t(argument->xpu_l3_autotune_size()));
+      pass->Set("xpu_context_gm_size",
+                new int(argument->xpu_context_gm_size()));
+      pass->Set("xpu_context", new void *(argument->xpu_context()));
+      pass->Set("xpu_stream", new void *(argument->xpu_stream()));
+      pass->Set("xpu_conv_autotune_level",
+                new int(argument->xpu_conv_autotune_level()));
+      pass->Set("xpu_conv_autotune_file",
+                new std::string(argument->xpu_conv_autotune_file()));
+      pass->Set("xpu_conv_autotune_file_writeback",
+                new bool(argument->xpu_conv_autotune_file_writeback()));
+      pass->Set("xpu_fc_autotune_level",
+                new int(argument->xpu_fc_autotune_level()));
+      pass->Set("xpu_fc_autotune_file",
+                new std::string(argument->xpu_fc_autotune_file()));
+      pass->Set("xpu_fc_autotune_file_writeback",
+                new bool(argument->xpu_fc_autotune_file_writeback()));
+      pass->Set("xpu_gemm_compute_precision",
+                new int(argument->xpu_gemm_compute_precision()));
+      pass->Set("xpu_transformer_softmax_optimize_level",
+                new int(argument->xpu_transformer_softmax_optimize_level()));
+      pass->Set("xpu_transformer_encoder_adaptive_seqlen",
+                new bool(argument->xpu_transformer_encoder_adaptive_seqlen()));
+      pass->Set(
+          "xpu_quant_post_static_gelu_out_threshold",
+          new float(argument->xpu_quant_post_static_gelu_out_threshold()));
+      pass->Set("xpu_quant_post_dynamic_activation_method",
+                new int(argument->xpu_quant_post_dynamic_activation_method()));
+      pass->Set("xpu_l3_locked", new bool(argument->xpu_lite_l3_locked()));
+      pass->Set("xpu_enable_multi_stream",
+                new bool(argument->xpu_lite_enable_multi_stream()));
       pass->Set("use_opencl", new bool(argument->use_opencl()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
-      pass->Set("locked", new bool(argument->xpu_locked()));
-      pass->Set("autotune", new bool(argument->xpu_autotune()));
-      pass->Set("autotune_file",
-                new std::string(argument->xpu_autotune_file()));
-      pass->Set("precision", new std::string(argument->xpu_precision()));
-      pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
-      pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
-      pass->Set("enable_multi_stream",
-                new bool(argument->xpu_enable_multi_stream()));
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",
@@ -304,21 +332,19 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->nnadapter_model_cache_token()));
     } else if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
-      bool fc_mkldnn_pass = 0;
+      bool fc_mkldnn_pass = false;
       for (const std::string &pass_n : passes) {
         if (pass_n == "fc_mkldnn_pass") {
-          fc_mkldnn_pass = 1;
+          fc_mkldnn_pass = true;
         }
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
     } else if (pass_name == "fused_multi_transformer_xpu_pass") {
-      auto op_types = argument->xpu_quant_post_dynamic_op_types();
-      if (std::count(op_types.begin(),
-                     op_types.end(),
-                     "fused_multi_transformer") > 0) {
-        pass->Set("quant_weight_bits",
-                  new int(argument->xpu_quant_post_dynamic_weight_bits()));
+      int quant_post_dynamic_weight_precision =
+          argument->xpu_quant_post_dynamic_weight_precision();
+      if (quant_post_dynamic_weight_precision == 0) {
+        pass->Set("quant_post_dynamic_weight_precision ", new int(0));
       }
     }
     pre_pass = pass_name;

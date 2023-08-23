@@ -22,7 +22,7 @@ from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers.control_flow import select_input, select_output
+from paddle.static.nn.control_flow import select_input, select_output
 
 paddle.enable_static()
 
@@ -107,7 +107,6 @@ class TestSelectInputOpError(unittest.TestCase):
 class TestSelectOutput_Error(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-
             in1 = paddle.static.data(name='in1', shape=[-1, 1], dtype='int32')
             mask_int32 = paddle.static.data(
                 name='mask_int32', shape=[-1, 1], dtype='int32'

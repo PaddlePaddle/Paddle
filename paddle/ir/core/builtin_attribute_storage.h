@@ -19,31 +19,42 @@
 #include <type_traits>
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/attribute_base.h"
+#include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/type.h"
 #include "paddle/ir/core/utils.h"
 
 namespace ir {
 
-#define DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(concrete_storage, base_type) \
-  struct concrete_storage : public ir::AttributeStorage {                \
-    using ParamKey = base_type;                                          \
-                                                                         \
-    explicit concrete_storage(const ParamKey &key) { data_ = key; }      \
-                                                                         \
-    static concrete_storage *Construct(ParamKey key) {                   \
-      return new concrete_storage(key);                                  \
-    }                                                                    \
-                                                                         \
-    static std::size_t HashValue(const ParamKey &key) {                  \
-      return std::hash<base_type>()(key);                                \
-    }                                                                    \
-                                                                         \
-    bool operator==(const ParamKey &key) const { return data_ == key; }  \
-                                                                         \
-    ParamKey GetAsKey() const { return data_; }                          \
-                                                                         \
-   private:                                                              \
-    ParamKey data_;                                                      \
-  };
+#define DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(ConcreteStorage, BaseType) \
+  struct ConcreteStorage : public AttributeStorage {                   \
+    using ParamKey = BaseType;                                         \
+                                                                       \
+    explicit ConcreteStorage(ParamKey key) { data_ = key; }            \
+                                                                       \
+    static ConcreteStorage *Construct(ParamKey key) {                  \
+      return new ConcreteStorage(key);                                 \
+    }                                                                  \
+                                                                       \
+    static size_t HashValue(ParamKey key) {                            \
+      return std::hash<ParamKey>{}(key);                               \
+    }                                                                  \
+                                                                       \
+    bool operator==(ParamKey key) const { return data_ == key; }       \
+                                                                       \
+    BaseType data() const { return data_; }                            \
+                                                                       \
+   private:                                                            \
+    BaseType data_;                                                    \
+  }
+
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(BoolAttributeStorage, bool);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(FloatAttributeStorage, float);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(DoubleAttributeStorage, double);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int32AttributeStorage, int32_t);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int64AttributeStorage, int64_t);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(PointerAttributeStorage, void *);
+DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(TypeAttributeStorage, Type);
 
 ///
 /// \brief Define Parametric AttributeStorage for StrAttribute.
@@ -51,55 +62,55 @@ namespace ir {
 struct StrAttributeStorage : public AttributeStorage {
   using ParamKey = std::string;
 
-  explicit StrAttributeStorage(const ParamKey &key) {
-    data_ = reinterpret_cast<char *>(malloc(key.size()));
-    memcpy(data_, key.c_str(), key.size());
-    size_ = key.size();
+  explicit StrAttributeStorage(const ParamKey &key) : size_(key.size()) {
+    if (size_ > kLocalSize) {
+      data_ = static_cast<char *>(::operator new(size_));
+      memcpy(data_, key.c_str(), size_);
+    } else {
+      memcpy(buff_, key.c_str(), size_);
+    }
   }
 
-  ~StrAttributeStorage() { free(data_); }
+  ~StrAttributeStorage() {
+    if (size_ > kLocalSize) ::operator delete(data_);
+  }
 
-  static StrAttributeStorage *Construct(ParamKey key) {
+  static StrAttributeStorage *Construct(const ParamKey &key) {
     return new StrAttributeStorage(key);
   }
 
-  static std::size_t HashValue(const ParamKey &key) {
-    return std::hash<std::string>()(key);
+  static size_t HashValue(const ParamKey &key) {
+    return std::hash<std::string>{}(key);
   }
 
   bool operator==(const ParamKey &key) const {
-    return std::equal(data_, data_ + size_, key.c_str());
+    if (size_ != key.size()) return false;
+    const char *data = size_ > kLocalSize ? data_ : buff_;
+    return std::equal(data, data + size_, key.c_str());
   }
 
-  ParamKey GetAsKey() const { return ParamKey(data_, size_); }
+  // Note: The const char* is not end with '\0'.
+  const char *data() const { return size_ > kLocalSize ? data_ : buff_; }
+  size_t size() const { return size_; }
+  std::string AsString() const { return std::string(data(), size_); }
 
  private:
-  char *data_;
-  uint32_t size_;
+  static constexpr size_t kLocalSize = sizeof(void *) / sizeof(char);
+  union {
+    char *data_;
+    char buff_[kLocalSize];
+  };
+  const size_t size_;
 };
-
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(BoolAttributeStorage, bool);
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(FloatAttributeStorage, float);
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(DoubleAttributeStorage, double);
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int32_tAttributeStorage, int32_t);
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(Int64_tAttributeStorage, int64_t);
-DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(PointerAttributeStorage, void *);
 
 struct ArrayAttributeStorage : public AttributeStorage {
   using ParamKey = std::vector<Attribute>;
 
-  explicit ArrayAttributeStorage(const ParamKey &key) {
-    data_ =
-        reinterpret_cast<Attribute *>(malloc(sizeof(Attribute) * key.size()));
-    memcpy(reinterpret_cast<void *>(data_),
-           reinterpret_cast<const void *>(key.data()),
-           sizeof(Attribute) * key.size());
-    length_ = key.size();
-  }
+  explicit ArrayAttributeStorage(const ParamKey &key);
 
-  ~ArrayAttributeStorage() { free(reinterpret_cast<void *>(data_)); }
+  ~ArrayAttributeStorage();
 
-  static ArrayAttributeStorage *Construct(ParamKey key) {
+  static ArrayAttributeStorage *Construct(const ParamKey &key) {
     return new ArrayAttributeStorage(key);
   }
 
@@ -112,22 +123,28 @@ struct ArrayAttributeStorage : public AttributeStorage {
   }
 
   bool operator==(const ParamKey &key) const {
-    if (key.size() != length_) {
-      return false;
-    }
-    for (size_t i = 0; i < length_; ++i) {
-      if (data_[i] != key[i]) {
-        return false;
-      }
-    }
-    return true;
+    return key.size() == size_ && std::equal(key.begin(), key.end(), data_);
   }
 
-  ParamKey GetAsKey() const { return ParamKey(data_, data_ + length_); }
+  std::vector<Attribute> AsVector() const {
+    return std::vector<Attribute>(data_, data_ + size_);
+  }
+
+  size_t size() const { return size_; }
+
+  bool empty() const { return size_ == 0u; }
+
+  Attribute at(size_t index) const {
+    IR_ENFORCE(index < size_,
+               "The index (%d) must be less than size (%d).",
+               index,
+               size_);
+    return data_[index];
+  }
 
  private:
-  Attribute *data_ = nullptr;
-  size_t length_ = 0;
+  Attribute *data_;
+  const size_t size_;
 };
 
 }  // namespace ir

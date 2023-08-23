@@ -319,7 +319,7 @@ class AutoAlignTool:
             assert os.path.isfile(filepath)
             if "vars" in filename:
                 assert filename.endswith("pkl")
-                with (open(filepath, "rb")) as f:
+                with open(filepath, "rb") as f:
                     vars_list.append(pickle.load(f))
             elif "program" in filename:
                 assert filename.endswith("pdmodel")
@@ -328,7 +328,7 @@ class AutoAlignTool:
                 program_list.append(deserialize_program(program_string))
             elif "dist_attr" in filename:
                 assert filename.endswith("pkl")
-                with (open(filepath, "rb")) as f:
+                with open(filepath, "rb") as f:
                     dist_attr_list.append(pickle.load(f))
 
         dist_attr_map = {}

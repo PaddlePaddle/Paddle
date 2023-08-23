@@ -469,7 +469,11 @@ class TestCustomOptionalJit(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 for np_y in [None, self.np_y]:
-                    (pd_x, pd_out, pd_x_grad,) = optional_static_add(
+                    (
+                        pd_x,
+                        pd_out,
+                        pd_x_grad,
+                    ) = optional_static_add(
                         False,
                         device,
                         dtype,
@@ -496,7 +500,11 @@ class TestCustomOptionalJit(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 for np_y in [None, self.np_y]:
-                    (pd_x, pd_out, pd_x_grad,) = optional_dynamic_add(
+                    (
+                        pd_x,
+                        pd_out,
+                        pd_x_grad,
+                    ) = optional_dynamic_add(
                         False,
                         device,
                         dtype,
@@ -605,7 +613,11 @@ class TestCustomOptionalJit(unittest.TestCase):
                         self.np_x,
                         np_y,
                     )
-                    (pd_x, pd_out, pd_x_grad,) = optional_vector_static_add(
+                    (
+                        pd_x,
+                        pd_out,
+                        pd_x_grad,
+                    ) = optional_vector_static_add(
                         False,
                         device,
                         dtype,
@@ -632,7 +644,11 @@ class TestCustomOptionalJit(unittest.TestCase):
                         self.np_x,
                         np_y,
                     )
-                    (pd_x, pd_out, pd_x_grad,) = optional_vector_dynamic_add(
+                    (
+                        pd_x,
+                        pd_out,
+                        pd_x_grad,
+                    ) = optional_vector_dynamic_add(
                         False,
                         device,
                         dtype,

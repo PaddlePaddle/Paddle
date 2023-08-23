@@ -30,7 +30,6 @@ fluid.default_main_program().random_seed = 1
 
 class TestDistCTR2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
-
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
         dnn_data = paddle.static.data(
@@ -54,7 +53,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         # build dnn model
         dnn_layer_dims = [128, 64, 32, 1]
-        dnn_embedding = fluid.layers.embedding(
+        dnn_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
@@ -81,7 +80,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embedding = fluid.layers.embedding(
+        lr_embedding = paddle.static.nn.embedding(
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
@@ -118,15 +117,13 @@ class TestDistCTR2x2(TestDistRunnerBase):
         use_lr_decay = bool(os.getenv('LR_DECAY', 0))
         lr = 0.0001
         if use_lr_decay:
-            lr = fluid.layers.exponential_decay(
+            lr = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.0001,
-                decay_steps=10000,
-                decay_rate=0.999,
-                staircase=True,
+                gamma=0.999,
             )
 
-        sgd_optimizer = fluid.optimizer.SGD(
-            learning_rate=lr, regularization=regularization
+        sgd_optimizer = paddle.optimizer.SGD(
+            learning_rate=lr, weight_decay=regularization
         )
         sgd_optimizer.minimize(avg_cost)
 

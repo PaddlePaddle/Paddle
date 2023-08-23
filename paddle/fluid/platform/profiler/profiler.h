@@ -34,12 +34,13 @@ namespace platform {
 
 static constexpr uint32_t kProfileCPUOptionBit = 0;
 static constexpr uint32_t kProfileGPUOptionBit = 1;
+static constexpr uint32_t kProfileXPUOptionBit = 2;
 static constexpr uint32_t kProfileCustomDeviceOptionBit = 3;
 
 void SynchronizeDevice();
 
 struct ProfilerOptions {
-  uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu
+  uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu, bit 2: xpu
   uint32_t trace_level = FLAGS_host_trace_level;
 };
 
@@ -56,6 +57,8 @@ class Profiler {
   static bool IsCuptiSupported();
 
   static bool IsCnpapiSupported();
+
+  static bool IsXPTISupported();
 
   void Prepare();
 

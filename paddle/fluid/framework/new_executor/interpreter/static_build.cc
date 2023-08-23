@@ -38,21 +38,8 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_py_reader",
     "depend",
     "fetch_v2",
+    "send_v2",
     "nop"};
-
-// Cannot static analysis these Ops' output dtype or backend because their
-// kernels have not moved to PHI yet.
-std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
-    "cudnn_lstm",
-    "dequantize",
-    "distributed_fused_lamb",
-    "fused_batch_norm_act",
-    "fused_batch_norm_act_grad",
-    "fusion_group",
-    "pow2_decay_with_linear_warmup",
-    "sequence_mask",
-    "sequence_pool",
-    "stft"};
 
 std::set<std::string> StaticBuildBlackList = {
     "batch_norm" /*: to handle reserve_space output*/,
@@ -61,6 +48,14 @@ std::set<std::string> StaticBuildBlackList = {
     "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
+// TODO(lizhiyu): This operator list is only for pipeline strategy temporarily.
+std::set<std::string> SkipCheckForPipelineTempList = {"c_broadcast",
+                                                      "c_allreduce_sum",
+                                                      "c_allgather",
+                                                      "layer_norm",
+                                                      "recv_v2",
+                                                      "reshape2_grad",
+                                                      "c_identity"};
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -77,6 +72,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
+    if (SkipCheckForPipelineTempList.find(op_type) !=
+        SkipCheckForPipelineTempList.end()) {
+      continue;
+    }
     const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
@@ -95,8 +94,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
-    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel) &&
-                            OpsWithFluidKernelNeedMoveToPhi.count(op_type);
+    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
 
     KernelCode kernel_code =
         (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
@@ -158,6 +156,11 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
   }
 
   if (op_type == "dgc" && parameter_name == "k") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
+  }
+
+  if (op_type == "distributed_fused_lamb" && parameter_name == "ParamOut") {
     VLOG(2) << "Skip fake initialization for: " << parameter_name;
     return false;
   }
@@ -417,8 +420,8 @@ void FakeInitializeOutputsForFunctionKernel(
       continue;
     }
     auto& outs_vector = it->second;
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
-      phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
+    for (auto out_var : outs_vector) {
+      phi::TensorBase* out_tensor = GetTensorFormVar(out_var);
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
 
@@ -434,6 +437,10 @@ void FakeInitializeOutputsForFunctionKernel(
             if (beta1_pow->place() == beta2_pow->place()) {
               backend = phi::TransToPhiBackend(beta1_pow->place());
             }
+          } else if (op_type == "reshape2") {
+            phi::TensorBase* x =
+                GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
+            backend = phi::TransToPhiBackend(x->place());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "Unsupported UNDEFINED backend for op: %s, parameter: %s",
@@ -467,15 +474,25 @@ void FakeInitializeOutputsForFunctionKernel(
           } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
+            phi::DataType in_dtype = GetInputDType(runtime_ctx, "X");
             int dtype_attr = op.Attr<int>("out_dtype");
             if (dtype_attr != -1) {
               dtype = phi::TransToPhiDataType(dtype_attr);
+              if (dtype == DataType::UNDEFINED) {
+                dtype = in_dtype;
+              }
             } else {
-              phi::DataType in_dtype = GetInputDType(runtime_ctx, "X");
               dtype =
                   (in_dtype == DataType::BOOL || in_dtype == DataType::INT32)
                       ? DataType::INT64
                       : in_dtype;
+            }
+          } else if (op_type == "searchsorted") {
+            bool out_int32 = op.Attr<bool>("out_int32");
+            if (out_int32) {
+              dtype = DataType::INT32;
+            } else {
+              dtype = DataType::INT64;
             }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
@@ -489,7 +506,6 @@ void FakeInitializeOutputsForFunctionKernel(
 
         // analyze layout
         phi::DataLayout layout = tensor_arg_def.layout;
-
         FakeInitializeTensorBase(dev_ctx, place, dtype, layout, out_tensor);
       }
     }

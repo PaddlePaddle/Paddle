@@ -17,11 +17,15 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 namespace phi {
 
@@ -46,6 +50,14 @@ DDim MetaTensor::dims() const {
   }
 }
 
+DDim MetaTensor::strides() const {
+  ValidCheck(*this);
+  if (dynamic_cast<DenseTensor*>(tensor_)) {
+    return dynamic_cast<DenseTensor*>(tensor_)->strides();
+  }
+  return DDim();
+}
+
 DataType MetaTensor::dtype() const {
   ValidCheck(*this);
   return tensor_->dtype();
@@ -59,8 +71,12 @@ DataLayout MetaTensor::layout() const {
 void MetaTensor::set_dims(const DDim& dims) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->dims =
-        dims;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->dims = dims;
+    if (!strided_kernel_used_) {
+      meta->strides = meta->calc_strides(dims);
+    }
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
         ->dims = dims;
@@ -72,9 +88,21 @@ void MetaTensor::set_dims(const DDim& dims) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dims = dims;
+#ifdef PADDLE_WITH_DISTRIBUTE
+  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+    static_cast<distributed::DistTensor*>(tensor_)->set_dims(dims);
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
+  }
+}
+
+void MetaTensor::set_strides(const DDim& strides) {
+  ValidCheck(*this);
+  if (dynamic_cast<DenseTensor*>(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(dynamic_cast<DenseTensor*>(tensor_))
+        ->strides = strides;
   }
 }
 
@@ -95,7 +123,10 @@ void MetaTensor::set_dtype(DataType dtype) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dtype = dtype;
-    // No need to set dtype
+#ifdef PADDLE_WITH_DISTRIBUTE
+  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+    // skip, DistTensor no need to set dtype
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -105,20 +136,31 @@ void MetaTensor::set_dtype(DataType dtype) {
 void MetaTensor::set_layout(DataLayout layout) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
-        ->layout = layout;
+    auto meta =
+        DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
+    meta->layout = layout;
+    if (!strided_kernel_used_) {
+      meta->strides = meta->calc_strides(meta->dims);
+    }
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
   } else if (phi::SelectedRows::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(
-        static_cast<SelectedRows*>(tensor_)->mutable_value())
-        ->layout = layout;
+    auto meta = DenseTensorUtils::GetMutableMeta(
+        static_cast<SelectedRows*>(tensor_)->mutable_value());
+    meta->layout = layout;
+    if (!strided_kernel_used_) {
+      meta->strides = meta->calc_strides(meta->dims);
+    }
   } else if (phi::SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
         ->layout = layout;
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->layout = layout;
+#ifdef PADDLE_WITH_DISTRIBUTE
+  } else if (phi::distributed::DistTensor::classof(tensor_)) {
+    // skip, DistTensor no need to set dtype
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
@@ -129,10 +171,14 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   ValidCheck(meta_tensor);
   if (phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_)) {
+      phi::SparseCsrTensor::classof(tensor_)
+#ifdef PADDLE_WITH_DISTRIBUTE
+      || phi::distributed::DistTensor::classof(tensor_)
+#endif
+  ) {
     return;
   }
-  if (meta_tensor.lod().size() == 0) {
+  if (meta_tensor.lod().empty()) {
     // no need share
     return;
   }
@@ -155,7 +201,11 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   if (phi::DenseTensor::classof(tensor_) ||
       phi::SelectedRows::classof(tensor_) ||
       phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_)) {
+      phi::SparseCsrTensor::classof(tensor_)
+#ifdef PADDLE_WITH_DISTRIBUTE
+      || phi::distributed::DistTensor::classof(tensor_)
+#endif
+  ) {
     share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
     set_layout(meta_tensor.layout());
@@ -180,7 +230,12 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   bool is_selected_rows = phi::SelectedRows::classof(tensor_);
   bool is_sparse_coo = phi::SparseCooTensor::classof(tensor_);
   bool is_sparse_csr = phi::SparseCsrTensor::classof(tensor_);
-  if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr) {
+  bool is_dist_tensor = false;
+#ifdef PADDLE_WITH_DISTRIBUTE
+  is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
+#endif
+  if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr ||
+      is_dist_tensor) {
     if (is_selected_rows) {
       const auto in_tensor_base = meta_tensor.tensor();
       PADDLE_ENFORCE_EQ(
@@ -192,15 +247,25 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
       auto* selected_rows_in = static_cast<SelectedRows*>(in_tensor_base);
       selected_rows_out->set_rows(selected_rows_in->rows());
       selected_rows_out->set_height(selected_rows_in->height());
-      DenseTensorUtils::GetMutableMeta(
-          static_cast<SelectedRows*>(tensor_)->mutable_value())
-          ->dims = selected_rows_in->mutable_value()->dims();
+      auto meta = DenseTensorUtils::GetMutableMeta(
+          static_cast<SelectedRows*>(tensor_)->mutable_value());
+      meta->dims = selected_rows_in->mutable_value()->dims();
+      if (!strided_kernel_used_) {
+        meta->strides = meta->calc_strides(meta->dims);
+      }
     } else {
       set_dims(meta_tensor.dims());
     }
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported sharing dims for `%s`.", tensor_->type_info().name()));
+  }
+}
+
+void MetaTensor::share_strides(const MetaTensor& meta_tensor) {
+  ValidCheck(*this);
+  if (phi::DenseTensor::classof(tensor_)) {
+    set_strides(meta_tensor.strides());
   }
 }
 

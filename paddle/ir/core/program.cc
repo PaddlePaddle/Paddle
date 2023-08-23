@@ -18,23 +18,23 @@
 namespace ir {
 
 Program::Program(IrContext* context) {
-  module_ = ModuleOp::create(context, this);
+  module_ = ModuleOp::Create(context, this);
 }
 
 Program::~Program() {
   if (module_) {
-    module_.destroy();
+    module_.Destroy();
   }
 }
 
-Parameter* Program::GetParameter(std::string name) const {
+Parameter* Program::GetParameter(const std::string& name) const {
   if (parameters_.count(name) != 0) {
     return parameters_.at(name).get();
   }
   return nullptr;
 }
 
-void Program::SetParameter(std::string name,
+void Program::SetParameter(const std::string& name,
                            std::unique_ptr<Parameter>&& parameter) {
   parameters_[name].reset(parameter.release());
 }

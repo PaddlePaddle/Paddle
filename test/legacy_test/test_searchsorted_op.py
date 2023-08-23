@@ -132,7 +132,6 @@ class TestSearchSortedAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         def run(place):
-
             paddle.disable_static(place)
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
             values = paddle.to_tensor(self.values)

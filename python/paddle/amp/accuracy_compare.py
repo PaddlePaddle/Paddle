@@ -458,7 +458,6 @@ class ExcelWriter:
     def add_worksheet(
         self, mp_tensor_info_list, sheetname, loss_scale, skip_normal_tensors
     ):
-
         assert self.workbook is not None
 
         worksheet = self.workbook.add_worksheet(sheetname)

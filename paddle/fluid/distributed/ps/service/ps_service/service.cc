@@ -51,7 +51,7 @@ paddle::distributed::PSParameter load_from_prototxt(
 void PSCore::InitGFlag(const std::string& gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
   std::vector<std::string> flags = paddle::string::split_string(gflags);
-  if (flags.size() < 1) {
+  if (flags.empty()) {
     flags.push_back("-max_body_size=314217728");
     flags.push_back("-socket_max_unwritten_bytes=2048000000");
     flags.push_back("-max_connection_pool_size=1950");

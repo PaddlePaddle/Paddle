@@ -35,7 +35,6 @@ class RecurrentTest(paddle.nn.Layer):
 
 class TestRecurrentFeed(unittest.TestCase):
     def test_recurrent_feed(self):
-
         seed = 90
         original_np1 = np.arange(1, 5).reshape(2, 2).astype("float32")
         original_np2 = np.arange(5, 9).reshape(2, 2).astype("float32")

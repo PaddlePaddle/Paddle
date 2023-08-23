@@ -89,7 +89,7 @@ class CSplitOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 class CSplitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be split.");
     AddOutput("Out", "(Tensor) the result of split.");
     AddAttr<int>("rank", "(int default 0) rank id.").SetDefault(0);
@@ -120,13 +120,3 @@ REGISTER_OPERATOR(c_split,
                   ops::CSplitOpGradMaker<paddle::framework::OpDesc>,
                   ops::CSplitOpGradMaker<paddle::imperative::OpBase>,
                   ops::CSplitOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(c_split,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CSplitOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}

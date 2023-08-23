@@ -123,6 +123,10 @@ const AttrType& KernelContext::AttrAt(size_t idx) const {
   }
 }
 
+const Attribute& KernelContext::AttrAt(size_t idx) const {
+  return attrs_.at(idx);
+}
+
 template const bool& KernelContext::AttrAt(size_t idx) const;
 template const int& KernelContext::AttrAt(size_t idx) const;
 template const int64_t& KernelContext::AttrAt(size_t idx) const;
@@ -142,5 +146,7 @@ template const IntArray& KernelContext::AttrAt(size_t idx) const;
 template const DataType& KernelContext::AttrAt(size_t idx) const;
 template const DataLayout& KernelContext::AttrAt(size_t idx) const;
 template const Place& KernelContext::AttrAt(size_t idx) const;
+template const TensorRef& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<TensorRef>& KernelContext::AttrAt(size_t idx) const;
 
 }  // namespace phi

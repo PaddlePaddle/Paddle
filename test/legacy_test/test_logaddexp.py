@@ -66,6 +66,18 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.dtype = np.float32
         self.api_case()
 
+    def test_api_int32(self):
+        self.xshape = [10, 200, 300]
+        self.yshape = [10, 200, 300]
+        self.dtype = np.int32
+        self.api_case()
+
+    def test_api_int64(self):
+        self.xshape = [10, 200, 300]
+        self.yshape = [10, 200, 300]
+        self.dtype = np.int64
+        self.api_case()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -150,7 +150,6 @@ class Predictor:
         ]
 
     def predict(self, data):
-
         self.input_handles[0].copy_from_cpu(data)
         self.predictor.run()
         input_ids = self.output_handles[0].copy_to_cpu()

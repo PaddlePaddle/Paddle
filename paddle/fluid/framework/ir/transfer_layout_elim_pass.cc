@@ -51,7 +51,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
   int op_node_useful_output = 0;
   Node *var2;
   for (auto ele : op_node->outputs) {
-    if (ele->outputs.size() >= 1) {
+    if (!ele->outputs.empty()) {
       op_node_useful_output++;
       var2 = ele;
     }
@@ -68,7 +68,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(
     // }
     useful_var1s.push_back(var1);
   }
-  CHECK_EQ(useful_var1s.size() >= 1L, true);
+  CHECK_EQ(!useful_var1s.empty(), true);
 
   auto transfer_layout_opdesc = *useful_var1s[0]->inputs[0]->Op()->Proto();
   auto block = useful_var1s[0]->inputs[0]->Op()->Block();
@@ -153,7 +153,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
     // appear before this var, but temporarily diasble this if.
-    if (var->Var()->Persistable() && 0) {
+    if (var->Var()->Persistable() && false) {
       auto var_dims =
           scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
       if (var_dims.size() == 1) {

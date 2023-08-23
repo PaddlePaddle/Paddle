@@ -34,7 +34,7 @@ class DialectInterfaceBase : public BaseT {
   explicit DialectInterfaceBase(Dialect *dialect) : BaseT(dialect, id()) {}
 };
 
-class DialectInterface {
+class IR_API DialectInterface {
  public:
   virtual ~DialectInterface();
 

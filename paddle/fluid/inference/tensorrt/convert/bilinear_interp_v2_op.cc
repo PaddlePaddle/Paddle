@@ -48,10 +48,21 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
-    if (align_mode == 0 && !align_corners) {
+    if (align_mode == 0) {
       layer->setResizeMode(nvinfer1::ResizeMode::kLINEAR);
     }
-
+#if IS_TRT_VERSION_GE(8000)
+    if (align_corners == true) {
+      layer->setCoordinateTransformation(
+          nvinfer1::ResizeCoordinateTransformation::kALIGN_CORNERS);
+    } else {
+      layer->setCoordinateTransformation(
+          nvinfer1::ResizeCoordinateTransformation::kHALF_PIXEL);
+    }
+#endif
+#if !IS_TRT_VERSION_GE(8000)
+    layer->setAlignCorners(align_corners);
+#endif
     auto in_dim = input->getDimensions();
     float scale_h = -1.f;
     float scale_w = -1.f;
@@ -60,7 +71,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     bool has_scale_input_attr =
         (resize_inputs.find("Scale") != resize_inputs.end());
     bool has_scale_input =
-        has_scale_input_attr && (op_desc.Input("Scale").size() > 0);
+        has_scale_input_attr && (!op_desc.Input("Scale").empty());
     if (has_scale_input) {
       auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
       auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
@@ -90,12 +101,12 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     nvinfer1::ITensor* outsize_tensor = nullptr;
     if (engine_->with_dynamic_shape() &&
         resize_inputs.find("OutSize") != resize_inputs.end()) {
-      if (op_desc.Input("OutSize").size() >= 1) {
+      if (!op_desc.Input("OutSize").empty()) {
         outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
       }
     }
 
-    if (out_h > 0 && out_w > 0) {
+    if (out_h > 0 && out_w > 0 && !(scale_w > 0. && scale_h > 0.)) {
       scale_h =
           static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
       scale_w =

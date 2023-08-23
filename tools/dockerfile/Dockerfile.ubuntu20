@@ -57,22 +57,22 @@ WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
-
 RUN apt-get update && \
   apt-get install -y python3.7 python3.7-dev python3.7-distutils\
   python3.8 python3.8-dev python3.8-distutils \
-  python3.9 python3.9-dev python3.9-distutils && \
+  python3.9 python3.9-dev python3.9-distutils \
+  python3.10 python3.10-dev python3.10-distutils && \
   apt-get install python-is-python3 && \
-  rm /usr/bin/python && ln -s /usr/bin/python3.7 /usr/bin/python && \
-  rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
-
+  rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
+  rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
 
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
 WORKDIR /home/setuptools-50.3.2
 RUN python3.9 setup.py build && python3.9 setup.py install && \
   python3.8 setup.py build && python3.8 setup.py install && \
-  python3.7 setup.py build && python3.7 setup.py install
+  python3.7 setup.py build && python3.7 setup.py install && \
+  python3.10 setup.py build && python3.10 setup.py install
 
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
@@ -80,21 +80,18 @@ WORKDIR pip-20.0.1
 
 RUN python3.9 setup.py install && \
   python3.8 setup.py install && \
-  python3.7 setup.py install
+  python3.7 setup.py install && \
+  python3.10 setup.py install
 
 WORKDIR /home
 RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
     rm -r setuptools-50.3.2 pip-20.0.1
-RUN rm /usr/local/bin/pip && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip && \
-  rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
-
 
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \ 
     tar -xzf binutils-2.33.1.tar.gz && \ 
     cd binutils-2.33.1 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.33.1 binutils-2.33.1.tar.gz
-
 
 # Install Go and glide
 RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.17.2.linux-amd64.tar.gz | \
@@ -106,7 +103,7 @@ ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
 ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
 # install glide
-RUN curl -s -q https://glide.sh/get | sh
+RUN apt-get install -y golang-glide
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
@@ -114,46 +111,60 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
+#For pre-commit
+RUN python3.7 -m pip --no-cache-dir install --upgrade pip && \
+    python3.8 -m pip --no-cache-dir install --upgrade pip && \
+    python3.9 -m pip --no-cache-dir install --upgrade pip && \
+    python3.10 -m pip --no-cache-dir install --upgrade pip
+
+RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip && \
+    rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip3
+
 RUN pip3.7 --no-cache-dir install ipython==5.3.0 && \
     pip3.7 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.8 --no-cache-dir install ipython==5.3.0 && \
     pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.9 --no-cache-dir install ipython==5.3.0 && \
-    pip3.9 --no-cache-dir install ipykernel==4.6.0 wheel
+    pip3.9 --no-cache-dir install ipykernel==4.6.0 wheel && \
+    pip3.10 --no-cache-dir install ipython==5.3.0 && \
+    pip3.10 --no-cache-dir install ipykernel==4.6.0 wheel
 
 #For docstring checker
 RUN pip3.7 --no-cache-dir install pytest astroid isort && \
     pip3.8 --no-cache-dir install pytest astroid isort && \
-    pip3.9 --no-cache-dir install pytest astroid isort
-
-#For pre-commit
-RUN pip3.7 --no-cache-dir install --upgrade pip && \
-    pip3.8 --no-cache-dir install --upgrade pip && \
-    pip3.9 --no-cache-dir install --upgrade pip
+    pip3.9 --no-cache-dir install pytest astroid isort && \
+    pip3.10 --no-cache-dir install pytest astroid isort
 
 RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
+    pip3.10 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
     pip3.7 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
+    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.10 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
 COPY ./python/requirements.txt /root/
+COPY ./python/unittest_py/requirements.txt /home/
+
 RUN pip3.7 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.7 --no-cache-dir install -r /home/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.9 --no-cache-dir install -r /root/requirements.txt
+    pip3.8 --no-cache-dir install -r /home/requirements.txt && \
+    pip3.9 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.9 --no-cache-dir install -r /home/requirements.txt && \
+    pip3.10 --no-cache-dir install -r /root/requirements.txt && \
+    pip3.10 --no-cache-dir install -r /home/requirements.txt
 
-# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
-#RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-#CMD source ~/.bashrc
 
-# ccache 3.7.9
-RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
-    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
-    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+# ccache 4.2.0
+RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
+    tar xf ccache-4.8.2.tar.gz && mkdir /usr/local/ccache-4.8.2 && cd ccache-4.8.2 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.8.2 .. && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
-    cd ../ && rm -rf ccache-3.7.9 ccache-3.7.9.tar.gz
+    ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
+    cd ../../ && rm -rf ccache-4.8.2.tar.gz
 
 # clang+llvm 3.8.0
 RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 

@@ -53,7 +53,6 @@ class TestPTQ(unittest.TestCase):
         return count
 
     def test_trace(self):
-
         quant_model, ptq = self._get_model_for_qat()
         image = paddle.rand([1, 3, 32, 32], dtype="float32")
         quantizer_count_in_dygraph = self._count_layers(

@@ -34,11 +34,20 @@ void MaxKernel(const Context& dev_ctx,
               T* y,
               const std::vector<int>& xdims,
               const std::vector<int>& reduce_dims) {
+#ifndef PADDLE_WITH_XPU_PLUGIN
     return xpu::reduce_max<XPUType>(ctx,
                                     reinterpret_cast<const XPUType*>(x),
                                     reinterpret_cast<XPUType*>(y),
                                     xdims,
                                     reduce_dims);
+#else
+    return xpu::plugin::fast_reduce_max<XPUType>(
+        ctx,
+        reinterpret_cast<const XPUType*>(x),
+        reinterpret_cast<XPUType*>(y),
+        xdims,
+        reduce_dims);
+#endif
   };
 
   int r = XPUReduce<Context, T>(
@@ -48,4 +57,4 @@ void MaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(max, XPU, ALL_LAYOUT, phi::MaxKernel, float, int) {}
+PD_REGISTER_KERNEL(max, XPU, ALL_LAYOUT, phi::MaxKernel, float, int, int64_t) {}

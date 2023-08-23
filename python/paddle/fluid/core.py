@@ -308,8 +308,6 @@ try:
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
     from .libpaddle import _get_phi_kernel_name
-    from .libpaddle import _add_skip_comp_ops
-    from .libpaddle import _remove_skip_comp_ops
 
     # prim controller flags
     from .libpaddle import __set_bwd_prim_enabled
@@ -320,6 +318,9 @@ try:
     from .libpaddle import _is_eager_prim_enabled
     from .libpaddle import __set_eager_prim_enabled
     from .libpaddle import _set_prim_target_grad_name
+    from .libpaddle import _add_skip_comp_ops
+    from .libpaddle import _set_bwd_prim_blacklist
+    from .libpaddle import _remove_skip_comp_ops
 
     # custom devivce
     from .libpaddle import _get_current_custom_device_stream
@@ -338,6 +339,10 @@ try:
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
         from .libpaddle import _set_max_memory_map_allocation_pool_size
+
+    # CINN
+    from .libpaddle import is_run_with_cinn
+
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(
@@ -392,6 +397,7 @@ def set_paddle_lib_path():
 
 
 set_paddle_lib_path()
+
 
 # We have 3 FLAGS to judge whether prim is enabled
 # FLAGS_prim_forward: Open or close forward prim strategy
@@ -460,23 +466,43 @@ def _test_use_sync(value):
 prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 
-def _set_prim_forward_blacklist(ops=None):
-    if ops is None:
-        prim_config["forward_blacklist"] = []
-    elif isinstance(ops, str):
-        prim_config["forward_blacklist"].add(ops)
-    elif isinstance(ops, (list, tuple)):
-        for item in ops:
-            if not isinstance(item, str):
-                raise TypeError(
-                    "ops set in forward_blacklist must belong to [str, str of tuple or list]"
-                )
-            else:
-                prim_config["forward_blacklist"].add(item)
+def _get_batch_norm_none_var(op):
+    """Some outputs of batch_norm's replaced composite rule are not needed and will be removed."""
+    use_run_stat = (
+        op.attr("is_test") and (not op.attr("trainable_statistics"))
+    ) or op.attr("use_global_stats")
+    if use_run_stat:
+        return ["ReserveSpace", "SavedMean", "SavedVariance"]
     else:
-        raise TypeError(
-            "ops set in forward_blacklist must belong to [str, str of tuple or list]"
-        )
+        return ["ReserveSpace"]
+
+
+# In some case, inputs and outputs of composite op or its replaced composite rule might be None.
+# It means such arg will be no longer required in processed program by composite mechanism.
+# Therefore, such special ops should be recorded in advance and be released in args check.
+ops_contain_none = {
+    "batch_norm": _get_batch_norm_none_var,
+    "flatten_contiguous_range": ["XShape"],
+    "squeeze2": ["XShape"],
+    "unsqueeze2": ["XShape"],
+}
+
+
+def _set_prim_forward_blacklist(*args):
+    for item in args:
+        if not isinstance(item, str):
+            raise TypeError("ops set in forward_blacklist must belong to str")
+        else:
+            prim_config["forward_blacklist"].add(item)
+    return
+
+
+def _set_prim_backward_blacklist(*args):
+    ops = set(args)
+    for item in ops:
+        if not isinstance(item, str):
+            raise TypeError("all items in set must belong to string")
+    _set_bwd_prim_blacklist(ops)
     return
 
 

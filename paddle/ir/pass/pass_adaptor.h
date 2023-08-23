@@ -46,7 +46,7 @@ class PassAdaptor final : public Pass {
                           uint8_t opt_level,
                           bool verify);
 
-  // Use for RunImpl later.
+ private:
   PassManager* pm_;
 
   // For accessing RunPipeline.

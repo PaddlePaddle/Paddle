@@ -28,7 +28,6 @@ from paddle.distributed.auto_parallel.static.process_group import (
 )
 from paddle.distributed.auto_parallel.static.utils import _get_comm_group
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 
 paddle.enable_static()
@@ -37,7 +36,6 @@ _global_process_mesh = None
 
 
 def check_tensor_split(prog1, varnames1, prog2, varnames2, axis, nsplit):
-
     for i in range(len(varnames1)):
         var1 = prog1.global_block().var(varnames1[i] + '@GRAD')
         var2 = prog2.global_block().var(varnames2[i])
@@ -48,7 +46,6 @@ def check_tensor_split(prog1, varnames1, prog2, varnames2, axis, nsplit):
 
 
 def is_valid_completed_program(dist_context, program):
-
     # TODO (ZJ-LIANG) should check all block
     ops = program.global_block().ops
     vars_ = program.list_vars()
@@ -220,18 +217,10 @@ class MultiHeadAttention(nn.Layer):
             k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
-            k = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
-            v = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
+            fill_shape = [-1, self.num_heads, 0, self.head_dim]
+            fill_shape[0] = paddle.shape(key)[0].item()
+            k = paddle.full(shape=fill_shape, fill_value=0, dtype=key.dtype)
+            v = paddle.full(shape=fill_shape, fill_value=0, dtype=key.dtype)
             return self.Cache(k, v)
         else:
             # incremental_state with initial value, mainly for usage like UniLM

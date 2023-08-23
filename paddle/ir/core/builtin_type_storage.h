@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ir/core/type.h"
+#include "paddle/ir/core/type_base.h"
 #include "paddle/ir/core/utils.h"
 
 namespace ir {
@@ -35,7 +36,7 @@ struct VectorTypeStorage : public TypeStorage {
   /// \brief Each derived TypeStorage must define a Construc method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
-  static VectorTypeStorage *Construct(ParamKey key) {
+  static VectorTypeStorage *Construct(const ParamKey &key) {
     return new VectorTypeStorage(key);
   }
 

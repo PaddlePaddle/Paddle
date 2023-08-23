@@ -17,56 +17,128 @@
 #include <list>
 
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
+class Type;
+class UInt8Type;
+class Int8Type;
+class VectorType;
+class BFloat16Type;
+class Float32Type;
+class Float64Type;
+class Int16Type;
+class IndexType;
+class BoolType;
+class Complex64Type;
+class Complex128Type;
+class StrAttribute;
+class BoolAttribute;
+class FloatAttribute;
+class DoubleAttribute;
+class Int32Attribute;
+class Int64Attribute;
+class ArrayAttribute;
+class PointerAttribute;
+
 ///
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
 class Builder {
  public:
-  explicit Builder(IrContext *context,
-                   Block *block,
-                   Block::iterator insert_point)
-      : context_(context), block_(block), insert_point_(insert_point) {}
-
-  static Builder AtBlockBegin(IrContext *context, Block *block) {
-    return Builder(context, block, block->begin());
+  Builder(IrContext *context, Block *block, Block::iterator insert_point)
+      : context_(context) {
+    SetInsertionPoint(block, insert_point);
   }
 
-  static Builder AtBlockEnd(IrContext *context, Block *block) {
-    return Builder(context, block, block->end());
+  Builder(IrContext *context, Block *block)
+      : Builder(context, block, block->end()) {}
+
+  explicit Builder(IrContext *context)
+      : Builder(context, nullptr, Block::iterator{}) {}
+
+  /// Set the insertion point to the specified location.
+  void SetInsertionPoint(Block *block, Block::iterator insert_point) {
+    // TODO(liuyuanle): check that insertPoint is in this rather than some other
+    // block.
+    this->block_ = block;
+    this->insert_point_ = insert_point;
   }
 
-  IrContext *context() const { return context_; }
+  /// Set the insertion point to the specified operation, which will cause
+  /// subsequent insertions to go right before it.
+  void SetInsertionPoint(Operation *op) {
+    SetInsertionPoint(op->GetParent(), Block::iterator{*op});
+  }
+
+  /// Set the insertion point to the node after the specified operation, which
+  /// will cause subsequent insertions to go right after it.
+  void SetInsertionPointAfter(Operation *op) {
+    SetInsertionPoint(op->GetParent(), std::next(Block::iterator{*op}));
+  }
+
+  /// Set the insertion point to the start of the specified block.
+  void SetInsertionPointToStart(Block *block) {
+    SetInsertionPoint(block, block->begin());
+  }
+
+  /// Set the insertion point to the end of the specified block.
+  void SetInsertionPointToEnd(Block *block) {
+    SetInsertionPoint(block, block->end());
+  }
+
+  IrContext *ir_context() const { return context_; }
 
   Block *block() const { return block_; }
 
-  Operation *insert(Operation *op);
-
   /// Creates an operation given the fields represented as an OperationState.
-  Operation *create(OperationArgument &&argument);
+  IR_API Operation *Build(OperationArgument &&argument);
 
   /// Creates an operation with the given fields.
-  Operation *create(const std::vector<ir::OpResult> &inputs,
-                    const AttributeMap &attribute,
-                    const std::vector<ir::Type> &output_types,
-                    ir::OpInfo op_info);
+  IR_API Operation *Build(const std::vector<ir::OpResult> &inputs,
+                          const AttributeMap &attribute,
+                          const std::vector<ir::Type> &output_types,
+                          ir::OpInfo op_info);
 
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>
-  OpTy create(Args &&...args) {
+  OpTy Build(Args &&...args) {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
-    OpTy::build(*this, argument, std::forward<Args>(args)...);
-    Operation *op = create(std::move(argument));
+    OpTy::Build(*this, argument, std::forward<Args>(args)...);
+    Operation *op = Build(std::move(argument));
     return op->dyn_cast<OpTy>();
   }
 
+  IR_API UInt8Type uint8_type();
+  IR_API Int8Type int8_type();
+  IR_API VectorType vec_type(const std::vector<Type> &);
+  IR_API BFloat16Type bfloat16_type();
+  IR_API IndexType index_type();
+  IR_API Float32Type float32_type();
+  IR_API Float64Type float64_type();
+  IR_API Int16Type int16_type();
+  IR_API BoolType bool_type();
+  IR_API Complex64Type complex64_type();
+  IR_API Complex128Type complex128_type();
+
+  IR_API StrAttribute str_attr(const std::string &value);
+  IR_API BoolAttribute bool_attr(bool value);
+  IR_API FloatAttribute float_attr(float value);
+  IR_API DoubleAttribute double_attr(double value);
+  IR_API Int32Attribute int32_attr(int32_t value);
+  IR_API Int64Attribute int64_attr(int64_t value);
+  IR_API ArrayAttribute array_attr(const std::vector<Attribute> &value);
+  IR_API PointerAttribute pointer_attr(void *value);
+
  private:
+  Operation *Insert(Operation *op);
+
   IrContext *context_;
-  Block *block_ = nullptr;
+  Block *block_;
   // The insertion point within the list that this builder is inserting before.
   Block::iterator insert_point_;
 };
+
 }  // namespace ir

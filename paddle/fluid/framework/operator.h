@@ -65,6 +65,8 @@ PHI_DECLARE_int32(inner_op_parallelism);
 namespace paddle {
 namespace framework {
 
+constexpr char kFakeVarName[] = "Fake_var";
+
 /// If a variable is a empty variable, that name will be used.
 constexpr char kEmptyVarName[] = "@EMPTY@";
 
@@ -371,6 +373,11 @@ class OperatorBase {
 
   void SetId(uint64_t id) { id_ = id; }
 
+  using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+  void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
+    hookfuncs_ = hookfuncs;
+  }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -398,6 +405,8 @@ class OperatorBase {
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
+
+  std::vector<HookFunc> hookfuncs_;
 
  private:
   void GenerateTemporaryNames();

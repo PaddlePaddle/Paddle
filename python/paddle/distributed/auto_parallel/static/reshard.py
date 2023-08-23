@@ -337,7 +337,7 @@ class Inserter:
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
         # use pair comm group
-        process_group = new_process_group([src, dst])
+        process_group = new_process_group([src, dst], group_type='p2p')
         send_op = block._insert_op(
             idx,
             type=op_type,
@@ -357,7 +357,7 @@ class Inserter:
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
         # use pair group
-        process_group = new_process_group([src, dst])
+        process_group = new_process_group([src, dst], group_type='p2p')
         recv_op = block._insert_op(
             idx,
             type=op_type,
@@ -568,7 +568,7 @@ class Inserter:
         return outs
 
     @staticmethod
-    def insert_fill_constant_op(block, idx, op_role):
+    def insert_fill_constant_op(block, idx, op_role, shape):
         """Insert fill constant op into block at the given index."""
         # to avoid name conflict with framework
         helper = LayerHelper('fill_constant@RESHARD', **locals())
@@ -591,7 +591,7 @@ class Inserter:
         attrs['dtype'] = out.dtype
         attrs['op_role'] = op_role
         paddle.utils.get_shape_tensor_inputs(
-            inputs=inputs, attrs=attrs, shape=[0], op_type='fill_constant'
+            inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
         )
         fillconstant_op = block._insert_op(
             idx,
@@ -610,38 +610,6 @@ class Inserter:
         tensor_list = []
         group = new_process_group(ranks)
         idx_offset = 0
-
-        # instant process group before insert allgather op.
-        if not group.is_instantiate():
-            # insert fill_constant op
-            fill_constant_out = Inserter.insert_fill_constant_op(
-                block, idx, op_role
-            )
-            fill_constant_out.stop_gradient = True
-
-            # insert c_allreduce_sum op
-            allreduce_op = block._insert_op(
-                idx + 1,
-                type="c_allreduce_sum",
-                inputs={'X': [fill_constant_out]},
-                outputs={'Out': [fill_constant_out]},
-                attrs={
-                    'ring_id': 0,
-                    'use_calc_stream': True,
-                    'op_role': op_role,
-                },
-            )
-            allreduce_op._set_attr('op_namescope', "/auto_parallel/reshard")
-            # insert c_sync_calc_stream op
-            sync_calc_op = block._insert_op(
-                idx + 2,
-                type="c_sync_calc_stream",
-                inputs={'X': [fill_constant_out]},
-                outputs={'Out': [fill_constant_out]},
-                attrs={'op_role': op_role},
-            )
-            sync_calc_op._set_attr('op_namescope', "/auto_parallel/reshard")
-            idx_offset = 3
 
         # insert c_allgather op
         op_type = 'c_allgather'
@@ -1794,9 +1762,13 @@ class Resharder:
                 elif isinstance(op_desc, AllGatherConcatOpDesc):
                     new_process_group(op_desc.group)
                 elif isinstance(op_desc, SendOpDesc):
-                    new_process_group([op_desc.src, op_desc.dst])
+                    new_process_group(
+                        [op_desc.src, op_desc.dst], group_type='p2p'
+                    )
                 elif isinstance(op_desc, RecvOpDesc):
-                    new_process_group([op_desc.src, op_desc.dst])
+                    new_process_group(
+                        [op_desc.src, op_desc.dst], group_type='p2p'
+                    )
 
         tensor_list = []
         partition_tensor_list = []
@@ -2721,7 +2693,10 @@ class Resharder:
                                             # Ensure every rank has a global view of communicator groups for entire cluters.
                                             # When initialize communicators for pipeline parallel, every rank could
                                             # conduct a correct global synchronization.
-                                            new_process_group([item, recv_rank])
+                                            new_process_group(
+                                                [item, recv_rank],
+                                                group_type='p2p',
+                                            )
                             else:
                                 for index, tensor_process in enumerate(
                                     tensor_processes
@@ -2748,7 +2723,9 @@ class Resharder:
                                         # Ensure every rank has a global view of communicator groups for entire cluters.
                                         # When initialize communicators for pipeline parallel, every rank could
                                         # conduct a correct global synchronization.
-                                        new_process_group([item, recv_rank])
+                                        new_process_group(
+                                            [item, recv_rank], group_type='p2p'
+                                        )
 
                             cur_op_count = len(block.ops)
                             idx_offset = (

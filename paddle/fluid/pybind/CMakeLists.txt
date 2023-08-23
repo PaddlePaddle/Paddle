@@ -38,12 +38,17 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
+    phi_kernel_adaptor
+    pd_dialect
+    program_translator
+    ir
     new_profiler
     jit_layer
     jit_property
     prim_utils
     static_tensor_operants
-    type_info)
+    type_info
+    auto_parallel)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -82,6 +87,10 @@ if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
 
+if(WITH_XPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
+endif()
+
 if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
@@ -115,7 +124,10 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
+    ops_api.cc
+    static_op_function.cc
     ir.cc
+    graph.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
@@ -330,12 +342,20 @@ if(WITH_PYTHON)
       ")\n"
       "exit /b 0")
 
-    if(WITH_PHI_SHARED)
+    if(WITH_SHARED_PHI)
       add_custom_command(
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
-      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
+    endif()
+
+    if(WITH_SHARED_IR)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/ir.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${op_impl_path}
+        DEPENDS ir)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)

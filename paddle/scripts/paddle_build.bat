@@ -105,10 +105,12 @@ if %ERRORLEVEL% NEQ 0 (
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel
-    pip install pyyaml
-    pip install wget
-    pip install -r %work_dir%\python\requirements.txt
+    python -m pip install --upgrade pip
+    python -m pip install setuptools==57.4.0
+    python -m pip install wheel
+    python -m pip install pyyaml
+    python -m pip install wget
+    python -m pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -187,7 +189,7 @@ if "%WITH_SCCACHE%"=="ON" (
     :: Localy storage on windows
     if not exist %SCCACHE_ROOT% mkdir %SCCACHE_ROOT%
     set SCCACHE_DIR=%SCCACHE_ROOT%\.cache
-    
+
     :: Sccache will shut down if a source file takes more than 10 mins to compile
     set SCCACHE_IDLE_TIMEOUT=0
     set SCCACHE_CACHE_SIZE=100G
@@ -419,8 +421,8 @@ set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 echo %task_name%|findstr build >nul && (
     echo %task_name% is a whl-build task, will only reuse local third_party cache.
     goto :cmake_impl
-) || ( 
-    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
+) || (
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both.
 )
 
 if not exist %THIRD_PARTY_PATH% (
@@ -433,7 +435,7 @@ if not exist %THIRD_PARTY_PATH% (
     if !ERRORLEVEL! EQU 0 (
         echo Getting third party: extracting ...
         tar -xf %md5%.tar.gz
-        if !ERRORLEVEL! EQU 0 ( 
+        if !ERRORLEVEL! EQU 0 (
             echo Get third party from bos successfully.
         ) else (
             echo Get third party failed, reason: extract failed, will build locally.
@@ -510,7 +512,7 @@ if %GENERATOR% == "Ninja" (
 )
 
 if %ERRORLEVEL% NEQ 0 (
-    set /a build_times=%build_times%+1  
+    set /a build_times=%build_times%+1
     if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
@@ -580,7 +582,7 @@ if "%UPLOAD_TP_FILE%"=="ON" (
         echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
         python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
         python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-        python -m pip install bce-python-sdk
+        python -m pip install bce-python-sdk==0.8.74
     )
     if !errorlevel! EQU 0 (
         cd /d %THIRD_PARTY_HOME%
@@ -650,6 +652,10 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
+%PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle
+%PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle-gpu
+%PYTHON_ROOT%\python.exe -m pip install %PADDLE_WHL_FILE_WIN%
+
 if %ERRORLEVEL% NEQ 0 (
     echo pip install whl package failed!
     exit /b 1
@@ -672,7 +678,6 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-pip install requests
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
@@ -696,7 +701,7 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
@@ -719,8 +724,8 @@ call :timestamp "%start%" "%end%" "TestCases Total"
 
 if %error_code% NEQ 0 (
     exit /b 8
-) else ( 
-    goto:eof 
+) else (
+    goto:eof
 )
 
 :parallel_test_base_gpu
@@ -807,7 +812,7 @@ echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
-cd /d %work_dir%\paddle\fluid\inference\tests\infer_ut
+cd /d %work_dir%\test\cpp\inference\infer_ut
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
 goto:eof
 

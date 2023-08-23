@@ -65,7 +65,7 @@ void UniformKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed
-    using MT = typename kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);

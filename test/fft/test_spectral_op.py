@@ -28,7 +28,6 @@ TEST_CASE_NAME = 'test_case'
 
 
 def parameterize(attrs, input_values=None):
-
     if isinstance(attrs, str):
         attrs = [attrs]
     input_dicts = (

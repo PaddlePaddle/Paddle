@@ -21,9 +21,9 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -37,7 +37,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
 
 enum class RegularizationType {
   kNONE = 0,

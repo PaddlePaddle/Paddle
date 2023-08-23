@@ -37,10 +37,10 @@ from .function_overload import FunctionType, overload
 def _set_multi_precision(optimizer, multi_precision):
     if not isinstance(
         optimizer,
-        (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+        (paddle.optimizer.Optimizer),
     ):
         raise RuntimeError(
-            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".format(
+            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {}.".format(
                 type(optimizer)
             )
         )
@@ -483,7 +483,7 @@ class OptimizerWithMixedPrecision:
             real_optimizer = real_optimizer.inner_opt
         if isinstance(
             real_optimizer,
-            (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW),
+            (paddle.optimizer.Adam, paddle.optimizer.AdamW),
         ):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we
             # copy it in advance to avoid multiple time copies.
@@ -804,18 +804,18 @@ def decorate(
 
 
 @overload(key=FunctionType.COMMON)
-def decorate(
+def decorate(  # noqa: F811
     optimizer,
     amp_lists=None,
     level='O1',
     dtype='float16',
     master_weight=None,
     master_grad=False,
-    init_loss_scaling=2**15,
-    incr_every_n_steps=1000,
-    decr_every_n_nan_or_inf=2,
+    init_loss_scaling=2**16,
+    incr_every_n_steps=2000,
+    decr_every_n_nan_or_inf=1,
     incr_ratio=2.0,
-    decr_ratio=0.8,
+    decr_ratio=0.5,
     use_dynamic_loss_scaling=None,
     use_amp_guard=False,
     use_promote=False,
@@ -841,15 +841,15 @@ def decorate(
             during weight updating. If master_grad is False, in O2 level optimizer
             will not use master grad. Default is False.
         init_loss_scaling(float, optional): The initial loss scaling factor.
-            Default is 32768.
+            Default is 65536.
         incr_every_n_steps(int, optional): Increases loss scaling every n
-            consecutive steps with finite gradients. Default is 1000.
+            consecutive steps with finite gradients. Default is 2000.
         decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
-            accumulated steps with nan or inf gradients. Default is 2.
+            accumulated steps with nan or inf gradients. Default is 1.
         incr_ratio(float, optional): The multiplier to use when increasing the
             loss scaling. Default is 2.
         decr_ratio(float, optional): The less-than-one-multiplier to use when
-            decreasing the loss scaling. Default is 0.8.
+            decreasing the loss scaling. Default is 0.5.
         use_dynamic_loss_scaling(bool, None): Whether to use dynamic loss
             scaling. Default is None, which means True for float16, and False
             for bfloat16.

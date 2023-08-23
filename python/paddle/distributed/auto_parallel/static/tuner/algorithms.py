@@ -106,7 +106,6 @@ def new_algorithm(name, config):
 
 @register_algor("sharding")
 class ShardingStageAlgorithm(AlgorithmBase):
-
     # TODO import trial class & copy strategy
     def __init__(self, config):
         super().__init__(config)
@@ -131,9 +130,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
         self._total_num_trial = len(self._stage_range)
 
     def next_trial(self):
-
         if self._trial_idx < self._total_num_trial:
-
             stage = self._stage_range[self._trial_idx]
 
             new_strategy = copy.deepcopy(self._config.dist_strategy)
@@ -148,7 +145,6 @@ class ShardingStageAlgorithm(AlgorithmBase):
             return Trial(None, None, None, status=TrialStatus.STOPPED)
 
     def update(self, results):
-
         et = results.get("ErrorType", None)
         if et and et == "ResourceExhaustedError":
             self._trial_idx = self._total_num_trial
@@ -211,7 +207,6 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
             return Trial(None, None, None, status=TrialStatus.STOPPED)
 
     def update(self, results):
-
         et = results.get("ErrorType", None)
         if self._recompute_mode == "all":
             if et and et == "ResourceExhaustedError":

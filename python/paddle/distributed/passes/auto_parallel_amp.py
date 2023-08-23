@@ -231,7 +231,6 @@ class AMPState:
         return is_train
 
     def _mark_black_white_ops(self, op, ops, block):
-
         # ernie inference trick
         if op.type == "assign" and "array_" in op.input_arg_names[0]:
             self._op_fp16_dict[op.desc.original_id()] = False
@@ -814,7 +813,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _check_and_update_gradient(self):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 
@@ -916,7 +914,6 @@ class AMPPass(PassBase):
             )
 
     def _cast_loss(self):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 
@@ -928,7 +925,6 @@ class AMPPass(PassBase):
         )
 
         if loss.dtype != core.VarDesc.VarType.FP32:
-
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
             cast_loss = main_block.create_var(
                 name=tmp_name, dtype=core.VarDesc.VarType.FP32
@@ -1010,7 +1006,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _scale_loss(self):
-
         main_block = paddle.static.default_main_program().global_block()
         loss = self.get_attr("loss")
         assert loss is not None
@@ -1023,7 +1018,6 @@ class AMPPass(PassBase):
             self.get_attr("use_dynamic_loss_scaling")
             or self.get_attr("init_loss_scaling") != 1.0
         ):
-
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
 
             # forward
@@ -1059,11 +1053,16 @@ class AMPPass(PassBase):
             )
 
             # backward
-            first_backward_op = main_block.ops[loss_op_idx + 2]
-            assert (
-                first_backward_op.type == "fill_constant"
-                and int(first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
-            )
+            first_backward_op = None
+            for op in main_block.ops[loss_op_idx:]:
+                if op.type == "fill_constant" and is_loss_grad_op(op):
+                    first_backward_op = op
+                    break
+                if is_backward_op(op):
+                    break
+
+            assert first_backward_op is not None, "There is not loss_grad op."
+
             scaled_loss_grad = main_block.create_var(
                 name=unique_name.generate("scaled_loss") + "@GRAD",
                 shape=loss.shape,
@@ -1123,7 +1122,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _update_loss_scaling(self, grads, found_inf):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 

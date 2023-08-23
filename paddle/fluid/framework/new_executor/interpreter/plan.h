@@ -13,33 +13,38 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/framework/new_executor/interpreter/job.h"
+
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
-
-class ProgramDesc;
-class Job;
+namespace interpreter {
 
 class Plan final {
  public:
-  Plan(const std::vector<Job*>& job_list,
-       const std::unordered_map<std::string, ProgramDesc*>& type_to_program)
-      : job_list_(job_list), type_to_program_(type_to_program) {}
+  Plan(const std::vector<std::shared_ptr<Job>>& job_list,
+       const std::unordered_map<std::string, ProgramDesc*>& type_to_program);
   ~Plan() = default;
 
-  const std::vector<Job*>& GetJobList() const;
-  const std::unordered_map<std::string, ProgramDesc*>& GetTypeToProgram() const;
+  const std::vector<std::shared_ptr<Job>>& JobList() const;
+
+  const ProgramDesc* Program(const std::string& job_type) const;
+
+  int64_t MicroBatchNum() const;
 
  private:
-  DISABLE_COPY_AND_ASSIGN(Plan);
-
-  std::vector<Job*> job_list_;
-  std::unordered_map<std::string, ProgramDesc*> type_to_program_;
+  const std::vector<std::shared_ptr<Job>> job_list_;
+  const std::unordered_map<std::string, ProgramDesc*> type_to_program_;
+  int64_t micro_batch_num_;
 };
 
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

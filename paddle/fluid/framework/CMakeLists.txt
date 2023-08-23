@@ -211,6 +211,9 @@ cc_library(
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
+if(WITH_XPU)
+  target_link_libraries(var_type_traits dynload_xpti)
+endif()
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn
@@ -347,7 +350,8 @@ cc_library(
        selected_rows_utils
        data_device_transform
        data_type_transform
-       data_layout_transform)
+       data_layout_transform
+       phi)
 
 cc_library(
   attribute
@@ -661,36 +665,30 @@ cc_library(
   SRCS variable_helper.cc
   DEPS lod_tensor)
 
+set(NAIVE_EXECUTOR_DEPS
+    op_registry
+    denormal
+    device_context
+    scope
+    framework_proto
+    glog
+    lod_rank_table
+    feed_fetch_method
+    graph_to_program_pass
+    variable_helper)
+
 if(TENSORRT_FOUND)
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper
-         tensorrt_engine_op)
-else()
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
 endif()
+
+if(WITH_NVTX AND NOT WIN32)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} cuda_profiler)
+endif()
+
+cc_library(
+  naive_executor
+  SRCS naive_executor.cc
+  DEPS ${NAIVE_EXECUTOR_DEPS})
 
 cc_library(
   executor_gc_helper
@@ -729,8 +727,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS fleet_executor
-           fleet_wrapper
+      DEPS fleet_wrapper
            recurrent_op_helper
            op_registry
            device_context
@@ -837,7 +834,6 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -907,8 +903,7 @@ if(WITH_DISTRIBUTE)
            graph_to_program_pass
            variable_helper
            timer
-           monitor
-           fleet_executor)
+           monitor)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "")
@@ -969,7 +964,6 @@ elseif(WITH_PSLIB)
          variable_helper
          timer
          monitor
-         fleet_executor
          ${BRPC_DEP})
 else()
   cc_library(
@@ -1017,8 +1011,7 @@ else()
          graph_to_program_pass
          variable_helper
          timer
-         monitor
-         fleet_executor)
+         monitor)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper
@@ -1041,7 +1034,8 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor)
+  DEPS parallel_executor standalone_executor phi_kernel_adaptor
+       pd_op_to_kernel_pass ir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)

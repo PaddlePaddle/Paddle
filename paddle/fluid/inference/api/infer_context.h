@@ -52,13 +52,15 @@ class InferGPUContext : public phi::GPUContext {
 #ifdef PADDLE_WITH_XPU
 class InferXPUContext : public phi::XPUContext {
  public:
-  explicit InferXPUContext(const phi::Place& place);
+  explicit InferXPUContext(const phi::Place& place, int context_gm_size = -1);
 
   void* Alloc(phi::TensorBase* tensor,
               phi::DataType dtype,
               size_t requested_size = 0,
               bool pinned = false,
               bool fake_alloc = false) const override;
+
+  void SetXContext(xpu::Context* x_context);
 
   void SetL3Info(size_t l3_size,
                  void* l3_ptr,

@@ -66,7 +66,6 @@ class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
 
     # test scaling with fillconstant
     def get_model(self, place, batch_size, sequence_len, vocab_size):
-
         (
             dist_main_prog,
             dist_startup_prog,
@@ -89,10 +88,8 @@ class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
 
 
 class TestDataParallelPassWithScale2(TestDataParallelPassWithScale1):
-
     # test scaling with optimizer rescale_grad
     def get_model(self, place, batch_size, sequence_len, vocab_size):
-
         (
             dist_main_prog,
             dist_startup_prog,
@@ -136,7 +133,6 @@ class TestDataParallelPassWithStandaloneEXE(TestDataParallelPassWithScale1):
 
     # test scaling with optimizer rescale_grad
     def get_model(self, place, batch_size, sequence_len, vocab_size):
-
         (
             dist_main_prog,
             dist_startup_prog,

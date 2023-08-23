@@ -23,7 +23,6 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 class TestOneDNNFCLstmFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
-
         batch_size = draw(st.integers(min_value=1, max_value=16))
         fc_input_shape = [batch_size, 64]
         fc_weight_shape = [64, 256]

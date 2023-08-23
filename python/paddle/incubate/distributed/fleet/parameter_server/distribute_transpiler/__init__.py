@@ -28,7 +28,6 @@ from paddle.static import (
     Executor,
 )
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.optimizer import Optimizer
 
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
@@ -157,7 +156,7 @@ class FleetTranspiler(Fleet):
 
                 if len(dist_varnames) != 0:
                     raise ValueError(
-                        "GeoStrategy can not support large scale embeding now, please use fluid.layers.embedding"
+                        "GeoStrategy can not support large scale embeding now, please use paddle.static.nn.embedding"
                     )
 
                 init_attrs = []
@@ -367,7 +366,7 @@ class FleetTranspiler(Fleet):
             TranspilerOptimizer: subclass of DistributedOptimizer.
         """
 
-        if not isinstance(optimizer, Optimizer):
+        if not isinstance(optimizer, paddle.optimizer.Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
         if not self._is_initialized:
             raise ValueError(
@@ -946,7 +945,6 @@ class ParameterServerOptimizer(DistributedOptimizer):
         parameter_list=None,
         no_grad_set=None,
     ):
-
         if isinstance(losses, list):
             raise ValueError("need implement later")
 

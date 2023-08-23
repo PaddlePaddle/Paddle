@@ -30,7 +30,7 @@ class TestFlattenOp(OpTest):
         self.prim_op_type = "comp"
         self.start_axis = 0
         self.stop_axis = -1
-        self.skip_cinn()
+        self.if_enable_cinn()
         self.init_test_case()
         self.init_test_dtype()
         self.init_input_data()
@@ -40,8 +40,8 @@ class TestFlattenOp(OpTest):
             "XShape": np.random.random(self.in_shape).astype("float32"),
         }
 
-    def skip_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         if str(self.dtype) in {"float16", "uint16"}:
@@ -104,6 +104,9 @@ class TestFlattenFP16Op(TestFlattenOp):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op(TestFlattenOp):
+    def if_enable_cinn(self):
+        pass
+
     def init_test_dtype(self):
         self.dtype = "uint16"
 
@@ -142,6 +145,9 @@ class TestFlattenFP16Op_1(TestFlattenOp_1):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_1(TestFlattenOp_1):
+    def if_enable_cinn(self):
+        pass
+
     def init_test_dtype(self):
         self.dtype = "uint16"
 
@@ -180,6 +186,9 @@ class TestFlattenFP16Op_2(TestFlattenOp_2):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_2(TestFlattenOp_2):
+    def if_enable_cinn(self):
+        pass
+
     def init_test_dtype(self):
         self.dtype = "uint16"
 
@@ -218,6 +227,9 @@ class TestFlattenFP16Op_3(TestFlattenOp_3):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_3(TestFlattenOp_3):
+    def if_enable_cinn(self):
+        pass
+
     def init_test_dtype(self):
         self.dtype = "uint16"
 
@@ -256,6 +268,9 @@ class TestFlattenFP16Op_4(TestFlattenOp_4):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_4(TestFlattenOp_4):
+    def if_enable_cinn(self):
+        pass
+
     def init_test_dtype(self):
         self.dtype = "uint16"
 
@@ -294,6 +309,9 @@ class TestFlattenFP16Op_5(TestFlattenOp_5):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_5(TestFlattenOp_5):
+    def if_enable_cinn(self):
+        pass
+
     def init_test_dtype(self):
         self.dtype = "uint16"
 
@@ -305,7 +323,7 @@ class TestFlattenOp_ZeroDim(TestFlattenOp):
         self.stop_axis = -1
         self.new_shape = (1,)
 
-    def skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def init_attrs(self):
@@ -363,6 +381,9 @@ class TestFlattenFP16OpSixDims(TestFlattenOpSixDims):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16OpSixDims(TestFlattenOpSixDims):
+    def if_enable_cinn(self):
+        pass
+
     def init_test_dtype(self):
         self.dtype = "uint16"
 

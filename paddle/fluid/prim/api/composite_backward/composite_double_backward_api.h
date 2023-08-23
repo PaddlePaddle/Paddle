@@ -54,6 +54,76 @@ void tanh_double_grad(const Tensor& out,
 }
 
 template <typename T>
+void tanh_triple_grad(const Tensor& out,
+                      const Tensor& grad_out_forward,
+                      const Tensor& grad_x_grad_forward,
+                      const paddle::optional<Tensor>& grad_out_new_grad,
+                      const paddle::optional<Tensor>& grad_out_grad_grad,
+                      Tensor* out_grad,
+                      Tensor* grad_out_forward_grad,
+                      Tensor* grad_x_grad_forward_grad) {
+  if (out_grad) {
+    if (grad_out_grad_grad) {
+      if (grad_out_new_grad) {
+        auto out_grad_tmp =
+            (-2 * out * grad_x_grad_forward * grad_out_grad_grad.get()) -
+            (2 * grad_out_forward * grad_x_grad_forward *
+             grad_out_new_grad.get());
+        set_output<T>(out_grad_tmp, out_grad);
+      } else {
+        auto out_grad_tmp =
+            -2 * out * grad_x_grad_forward * grad_out_grad_grad.get();
+        set_output<T>(out_grad_tmp, out_grad);
+      }
+    } else {
+      if (grad_out_new_grad) {
+        auto out_grad_tmp = -(2 * grad_out_forward * grad_x_grad_forward *
+                              grad_out_new_grad.get());
+        set_output<T>(out_grad_tmp, out_grad);
+      } else {
+        auto out_grad_tmp = 0 * out;
+        set_output<T>(out_grad_tmp, out_grad);
+      }
+    }
+  }
+
+  if (grad_out_forward_grad) {
+    if (grad_out_new_grad) {
+      auto grad_out_forward_grad_tmp =
+          -2 * out * grad_x_grad_forward * grad_out_new_grad.get();
+      set_output<T>(grad_out_forward_grad_tmp, grad_out_forward_grad);
+    } else {
+      auto grad_out_forward_grad_tmp = 0 * out;
+      set_output<T>(grad_out_forward_grad_tmp, grad_out_forward_grad);
+    }
+  }
+
+  if (grad_x_grad_forward_grad) {
+    if (grad_out_grad_grad) {
+      if (grad_out_new_grad) {
+        auto grad_x_grad_forward_grad_tmp =
+            (1 - (out * out)) * grad_out_grad_grad.get() -
+            2 * out * grad_out_forward * grad_out_new_grad.get();
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      } else {
+        auto grad_x_grad_forward_grad_tmp =
+            (1 - (out * out)) * grad_out_grad_grad.get();
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      }
+    } else {
+      if (grad_out_new_grad) {
+        auto grad_x_grad_forward_grad_tmp =
+            -(2 * out * grad_out_forward * grad_out_new_grad.get());
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      } else {
+        auto grad_x_grad_forward_grad_tmp = 0 * grad_x_grad_forward;
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      }
+    }
+  }
+}
+
+template <typename T>
 void matmul_double_grad(const Tensor& x,
                         const Tensor& y,
                         const Tensor& grad_out,
@@ -369,7 +439,7 @@ void silu_double_grad(const Tensor& x,
                       const Tensor& grad_x_grad,
                       Tensor* grad_x,
                       Tensor* grad_out_grad) {
-  auto sigmoid = out / x;
+  auto sigmoid = 1 / (1 + exp<T>(-x));
   auto tmp1 = 1 - sigmoid;
   auto tmp2 = 1 + tmp1 * x;
   if (grad_out_grad) {
@@ -377,8 +447,7 @@ void silu_double_grad(const Tensor& x,
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto dx =
-        sigmoid * grad_x_grad * out_grad * (1 + (tmp2 - x * sigmoid)) * tmp1;
+    auto dx = sigmoid * grad_x_grad * out_grad * (1 + (tmp2 - out)) * tmp1;
     set_output<T>(dx, grad_x);
   }
 }
@@ -412,7 +481,8 @@ void multiply_double_grad(const Tensor& x,
       }
 
     } else {
-      x_grad = nullptr;
+      auto dx = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+      set_output<T>(dx, x_grad);
     }
   }
   if (y_grad) {
@@ -433,22 +503,22 @@ void multiply_double_grad(const Tensor& x,
         set_output<T>(dy, y_grad);
       }
     } else {
-      y_grad = nullptr;
+      auto dy = full<T>(phi::vectorize(y.dims()), 0.0, y.dtype());
+      set_output<T>(dy, y_grad);
     }
   }
   if (grad_out_grad) {
+    Tensor ddout;
     if (grad_x_grad && grad_y_grad) {
-      auto ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
+      ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
     } else if (grad_x_grad) {
-      auto ddout = grad_x_grad.get() * y;
-      set_output<T>(ddout, grad_out_grad);
+      ddout = grad_x_grad.get() * y;
     } else if (grad_y_grad) {
-      auto ddout = grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
+      ddout = grad_y_grad.get() * x;
     } else {
-      grad_out_grad = nullptr;
+      ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, grad_out.dtype());
     }
+    set_output<T>(ddout, grad_out_grad);
   }
 }
 
@@ -461,10 +531,10 @@ void add_double_grad(const Tensor& y,
                      Tensor* grad_out_grad) {
   if (grad_out_grad) {
     // ddout = ddx + ddy
+    Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
     if (!grad_x_grad && !grad_y_grad) {
-      grad_out_grad = nullptr;
+      set_output<T>(ddout, grad_out_grad);
     } else {
-      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
       if (grad_x_grad) {
         ddout = ddout + grad_x_grad.get();
       }

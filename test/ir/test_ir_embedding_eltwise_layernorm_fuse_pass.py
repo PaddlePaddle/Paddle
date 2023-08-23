@@ -27,26 +27,26 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             word_id = paddle.static.data(
                 name="word_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             pos_id = paddle.static.data(
                 name="pos_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             sent_id = paddle.static.data(
                 name="sent_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
-            word_emb = fluid.layers.embedding(
+            word_emb = paddle.static.nn.embedding(
                 input=word_id, size=(128, 768), dtype='float32'
             )
-            pos_emb = fluid.layers.embedding(
+            pos_emb = paddle.static.nn.embedding(
                 input=pos_id, size=(128, 768), dtype='float32'
             )
-            sent_emb = fluid.layers.embedding(
+            sent_emb = paddle.static.nn.embedding(
                 input=sent_id, size=(128, 768), dtype='float32'
             )
             add1 = paddle.add(word_emb, pos_emb)
@@ -55,34 +55,34 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
 
             id1 = paddle.static.data(
                 name="id1",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             id2 = paddle.static.data(
                 name="id2",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             id3 = paddle.static.data(
                 name="id3",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
             id4 = paddle.static.data(
                 name="id4",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
             )
-            emb1 = fluid.layers.embedding(
+            emb1 = paddle.static.nn.embedding(
                 input=id1, size=(128, 768), dtype='float32'
             )
-            emb2 = fluid.layers.embedding(
+            emb2 = paddle.static.nn.embedding(
                 input=id2, size=(128, 768), dtype='float32'
             )
-            emb3 = fluid.layers.embedding(
+            emb3 = paddle.static.nn.embedding(
                 input=id3, size=(128, 768), dtype='float32'
             )
-            emb4 = fluid.layers.embedding(
+            emb4 = paddle.static.nn.embedding(
                 input=id4, size=(128, 768), dtype='float32'
             )
             add_1 = paddle.add(emb1, emb2)
@@ -93,25 +93,25 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
             )
 
         self.feeds = {
-            "word_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "pos_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "sent_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "id1": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "word_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id2": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "pos_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id3": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "sent_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id4": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "id1": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id2": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id3": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id4": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
         }

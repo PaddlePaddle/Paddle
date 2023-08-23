@@ -92,9 +92,9 @@ def create_test_class(
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:
-                self.check_grad(['X', 'Y'], ['Out'])
+                self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
             else:
-                self.check_grad(['X', 'Y'], ['Out'])
+                self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
 
         def test_check_grad_ingore_x(self):
             if not grad_chek:
@@ -105,6 +105,7 @@ def create_test_class(
                     ['Out'],
                     max_relative_error=0.005,
                     no_grad_set=set("X"),
+                    check_dygraph=False,
                 )
             else:
                 self.check_grad(
@@ -112,6 +113,7 @@ def create_test_class(
                     ['Out'],
                     max_relative_error=0.005,
                     no_grad_set=set("X"),
+                    check_dygraph=False,
                 )
 
         def test_check_grad_ingore_y(self):
@@ -123,6 +125,7 @@ def create_test_class(
                     ['Out'],
                     max_relative_error=0.005,
                     no_grad_set=set("Y"),
+                    check_dygraph=False,
                 )
             else:
                 self.check_grad(
@@ -130,6 +133,7 @@ def create_test_class(
                     ['Out'],
                     max_relative_error=0.005,
                     no_grad_set=set("Y"),
+                    check_dygraph=False,
                 )
 
     class TestFusedElementwiseActivationOp_scalar(

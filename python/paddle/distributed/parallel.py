@@ -38,7 +38,11 @@ from paddle.distributed.collective import (
     _set_group_map_by_name,
     _valid_backend_list,
 )
-from paddle.distributed.communication.group import _add_new_group
+from paddle.distributed.communication.group import (
+    _add_new_group,
+    _get_global_group,
+    is_initialized,
+)
 from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
     wait_server_ready,
 )
@@ -52,6 +56,7 @@ from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
 from . import parallel_helper
+from .backup_env import getenv_or_backup
 
 __all__ = []
 
@@ -140,7 +145,11 @@ def build_groups(vars, group_size):
 @imperative_base.no_grad
 @framework.dygraph_only
 def sync_params_buffers(
-    model, comm_group=None, src_rank=0, is_model_parallel=False
+    model,
+    comm_group=None,
+    src_rank=0,
+    is_model_parallel=False,
+    fuse_params=True,
 ):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
@@ -165,22 +174,28 @@ def sync_params_buffers(
     if len(model_vars) == 0:
         return
 
-    # group size is 128M
-    coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
+    if fuse_params:
+        # group size is 128M
+        coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
 
-    for coalesced_var, _, _ in coalesced_vars:
-        paddle.distributed.broadcast(
-            coalesced_var, src=src_rank, group=comm_group, sync_op=True
-        )
+        for coalesced_var, _, _ in coalesced_vars:
+            paddle.distributed.broadcast(
+                coalesced_var, src=src_rank, group=comm_group, sync_op=True
+            )
 
-    for coalesced_var, origin_vars, var_shapes in coalesced_vars:
-        var_len = [np.prod(v_shape) for v_shape in var_shapes]
-        paddle.fluid.framework._dygraph_tracer().trace_op(
-            type='split',
-            inputs={'X': coalesced_var},
-            outputs={'Out': origin_vars},
-            attrs={'sections': var_len, 'axis': 0},
-        )
+        for coalesced_var, origin_vars, var_shapes in coalesced_vars:
+            var_len = [np.prod(v_shape) for v_shape in var_shapes]
+            paddle.fluid.framework._dygraph_tracer().trace_op(
+                type='split',
+                inputs={'X': coalesced_var},
+                outputs={'Out': origin_vars},
+                attrs={'sections': var_len, 'axis': 0},
+            )
+    else:
+        for var in model_vars:
+            paddle.distributed.broadcast(
+                var, src=src_rank, group=comm_group, sync_op=True
+            )
 
 
 class DataParallel(layers.Layer):
@@ -393,10 +408,7 @@ class DataParallel(layers.Layer):
                 ), "ProcessGroup must be an instance of Group in DataParallel."
 
             # sync buffer and params
-            # TODO(liuyuhui) Currently not support xpu. xpu is
-            # still broadcasting parameters when calling layer
-            if not paddle.is_compiled_with_xpu():
-                sync_params_buffers(self._layers)
+            sync_params_buffers(self._layers, fuse_params=False)
 
             self.comm_buffer_size = int(comm_buffer_size * 1024 * 1024)
             # NOTE(shenliang03): We can set environment variables to control
@@ -425,8 +437,7 @@ class DataParallel(layers.Layer):
                 params_set.add(param)
                 if not isinstance(param, self.var_dtype):
                     raise TypeError(
-                        "The data type of '%s' must be '%s'"
-                        % (param.name, self.var_dtype)
+                        f"The data type of '{param.name}' must be '{self.var_dtype}'"
                     )
                 if param.trainable:
                     layers_param.append((sublayer, param))
@@ -704,7 +715,7 @@ class ParallelEnv:
                 selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
                 self._device_id = int(selected_xpus[0])
 
-        self._trainer_endpoints = os.getenv(
+        self._trainer_endpoints = getenv_or_backup(
             "PADDLE_TRAINER_ENDPOINTS", ""
         ).split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
@@ -871,7 +882,6 @@ def _is_cpuonly(backend):
         backend in ['auto', 'nccl', 'bkcl', 'heter']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
-
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:
@@ -879,7 +889,7 @@ def _is_cpuonly(backend):
 
 
 def _check_var_exists(var_name):
-    var = os.environ.get(var_name, None)
+    var = getenv_or_backup(var_name, None)
     if var is None:
         raise ValueError(
             "paddle.distributed initialize error, "
@@ -1019,7 +1029,6 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
-    _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode,
@@ -1062,7 +1071,9 @@ def init_parallel_env():
         if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
-            endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+            endpoints = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS").split(',')[
+                0
+            ]
         assert endpoints, (
             "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
             "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
@@ -1244,6 +1255,10 @@ def get_world_size(group=None):
             print("The world_size is %d" % dist.get_world_size())
             # The world_size is 1
     """
+    if in_dynamic_mode() and (group is None):
+        if is_initialized():
+            group = _get_global_group()
+
     if in_dynamic_mode() and group:
         return group.world_size
 

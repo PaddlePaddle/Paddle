@@ -92,7 +92,7 @@ def make_jacobian(x, y_size, np_dtype):
         )
         return jacobians
     else:
-        None
+        pass
 
 
 def _compute_numerical_jacobian(program, x, y, place, scope, delta):
@@ -269,7 +269,7 @@ def grad_check(
     if program is None:
         program = fluid.default_main_program()
 
-    # init variable in strtup program
+    # init variable in startup program
     scope = fluid.executor.global_scope()
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
@@ -321,10 +321,11 @@ def grad_check(
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
             msg = (
-                'Jacobian mismatch for output %s '
-                'with respect to input %s on %s,\n'
-                'numerical:%s\nanalytical:%s\n'
-                % (y[y_idx].name, x[x_idx].name, str(place), n, a)
+                'Jacobian mismatch for output {} '
+                'with respect to input {} on {},\n'
+                'numerical:{}\nanalytical:{}\n'.format(
+                    y[y_idx].name, x[x_idx].name, str(place), n, a
+                )
             )
             return fail_test(msg)
     return True
@@ -594,7 +595,7 @@ def get_static_double_grad(
     if program is None:
         program = fluid.default_main_program()
 
-    # init variable in strtup program
+    # init variable in startup program
     scope = fluid.executor.global_scope()
     exe = fluid.Executor(place)
     exe.run(fluid.default_startup_program())
@@ -656,7 +657,7 @@ def get_eager_double_grad(
         the second order derivative and the inputs of second order derivative's calculation
         will be returned for higher order derivative's calculation.
         If 'return_mid_result' set False.
-        A list of numpy array that stores second derivative result calulated by dygraph.
+        A list of numpy array that stores second derivative result calculated by dygraph.
     """
     if isinstance(place, fluid.CPUPlace):
         paddle.set_device("cpu")
@@ -683,7 +684,7 @@ def get_eager_double_grad(
     )
     d_inputs = [d_input for d_input in d_inputs if d_input is not None]
 
-    # calcluate second derivative
+    # calculate second derivative
     inputs = inputs + dys
     ddys = []
     if return_mid_result:
@@ -807,7 +808,7 @@ def get_static_triple_grad(
         program (Program|None): a Program with forward pass.
             If None, use fluid.default_main_program().
     Returns:
-        A list of numpy array that stores third derivative result calulated by static graph.
+        A list of numpy array that stores third derivative result calculated by static graph.
     """
     if program is None:
         program = fluid.default_main_program()
@@ -857,13 +858,13 @@ def get_eager_triple_grad(
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
         return_mid_result (list[Tensor], list[Tensor]): If set True, the
     Returns:
-        A list of numpy array that stores second derivative result calulated by dygraph
+        A list of numpy array that stores second derivative result calculated by dygraph
     """
     dd_y, dd_x = get_eager_double_grad(
         func, x_init, dy_init, place, return_mid_result=True
     )
 
-    # calcluate third derivative
+    # calculate third derivative
     dddys = []
     for dd_yi in dd_y:
         dd_yi.stop_gradient = False

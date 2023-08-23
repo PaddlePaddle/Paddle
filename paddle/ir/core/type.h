@@ -17,20 +17,24 @@
 #include <ostream>
 
 #include "paddle/ir/core/cast_utils.h"
-#include "paddle/ir/core/type_base.h"
+#include "paddle/ir/core/type_id.h"
 
 namespace ir {
+class TypeStorage;
+class AbstractType;
+class IrContext;
+class Dialect;
 ///
 /// \brief Unified interface of the Type class. Derivation of all Type classes
 /// only derives interfaces, not members. For example, DenseTensorType,
 /// Float32Type, etc. are all derived classes of Type, but no new member
 /// variables will be added.
 ///
-class Type {
+class IR_API Type {
  public:
   using Storage = TypeStorage;
 
-  constexpr Type() = default;
+  Type() = default;
 
   Type(const Storage *storage)  // NOLINT
       : storage_(const_cast<Storage *>(storage)) {}
@@ -53,13 +57,13 @@ class Type {
   ///
   /// \brief Some type attribute acquisition interfaces.
   ///
-  TypeId type_id() { return storage_->abstract_type().type_id(); }
+  TypeId type_id();
 
-  const AbstractType &abstract_type() { return storage_->abstract_type(); }
+  const AbstractType &abstract_type();
 
   const Storage *storage() const { return storage_; }
 
-  Dialect &dialect() const { return storage_->abstract_type().dialect(); }
+  Dialect &dialect() const;
 
   IrContext *ir_context() const;
 
@@ -89,9 +93,30 @@ class Type {
   const Storage *storage_{nullptr};
 };
 
-std::ostream &operator<<(std::ostream &os, Type type);
+IR_API std::ostream &operator<<(std::ostream &os, Type type);
 
 }  // namespace ir
+
+///
+/// \brief This class represents the base of a type interface.
+///
+
+// template <typename ConcreteType>
+// class TypeInterface : public ir::DialectInterface<ConcreteType, Type> {
+//  public:
+//   using Base = TypeInterface<ConcreteType>;
+//   using DialectInterfaceBase = ir::DialectInterface<ConcreteType, Type>;
+//   using DialectInterfaceBase::Base;
+
+//  private:
+//   /// Returns the impl interface instance for the given type.
+//   static typename InterfaceBase::Concept *getInterfaceFor(Type type) {
+//     return type.getAbstractType().getInterface<ConcreteType>();
+//   }
+
+//   /// Allow access to 'getInterfaceFor'.
+//   friend InterfaceBase;
+// };
 
 namespace std {
 ///

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/core/operation_utils.h"
+#include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/region.h"
 
 namespace ir {

@@ -58,7 +58,6 @@ class TestMVAPI(unittest.TestCase):
     def test_static_graph(self):
         for x_stop_gradient in [False, True]:
             for vec_stop_gradient in [False, True]:
-
                 paddle.enable_static()
 
                 train_program = Program()

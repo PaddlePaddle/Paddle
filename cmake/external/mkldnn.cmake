@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2017-2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,8 +20,7 @@ set(MKLDNN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/mkldnn)
 set(MKLDNN_INC_DIR
     "${MKLDNN_INSTALL_DIR}/include"
     CACHE PATH "mkldnn include directory." FORCE)
-set(MKLDNN_REPOSITORY ${GIT_URL}/oneapi-src/oneDNN.git)
-set(MKLDNN_TAG 2089770c4818be8933c5e9d1dd3cbaeba1457667)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/mkldnn)
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
@@ -69,9 +68,8 @@ endif()
 
 ExternalProject_Add(
   ${MKLDNN_PROJECT}
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${MKLDNN_REPOSITORY}
-  GIT_TAG ${MKLDNN_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   DEPENDS ${MKLDNN_DEPENDS}
   PREFIX ${MKLDNN_PREFIX_DIR}
   UPDATE_COMMAND ""
@@ -93,7 +91,7 @@ ExternalProject_Add(
   BUILD_BYPRODUCTS ${BUILD_BYPRODUCTS_ARGS})
 
 message(STATUS "MKLDNN library: ${MKLDNN_LIB}")
-add_definitions(-DPADDLE_WITH_MKLDNN)
+add_definitions(-DPADDLE_WITH_DNNL)
 # copy the real so.0 lib to install dir
 # it can be directly contained in wheel or capi
 if(WIN32)
@@ -129,16 +127,12 @@ if(WIN32)
     VERBATIM)
   add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_LIB})
 else()
-  set(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
-  set(MKLDNN_SHARED_LIB_1 ${MKLDNN_INSTALL_DIR}/libdnnl.so.1)
-  set(MKLDNN_SHARED_LIB_2 ${MKLDNN_INSTALL_DIR}/libdnnl.so.2)
+  set(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libdnnl.so.3)
   add_custom_command(
-    OUTPUT ${MKLDNN_SHARED_LIB_2}
+    OUTPUT ${MKLDNN_SHARED_LIB}
     COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
-    COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB_1}
-    COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB_2}
     DEPENDS ${MKLDNN_PROJECT})
-  add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_SHARED_LIB_2})
+  add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_SHARED_LIB})
 endif()
 
 # generate a static dummy target to track mkldnn dependencies

@@ -39,7 +39,6 @@ class TestCheckFetchList(unittest.TestCase):
         self.fetch_list = output
 
     def test_with_tuple(self):
-
         res = self.exe.run(
             self.main_program,
             feed=self.feed,

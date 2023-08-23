@@ -362,7 +362,6 @@ namespace strings {
 
 
 def generate_api(api_yaml_path, header_file_path, source_file_path):
-
     with open(api_yaml_path, 'r') as f:
         apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')

@@ -78,7 +78,6 @@ class TestGumbel(unittest.TestCase):
         )
 
     def test_sample(self):
-
         sample_shape = [10000]
         samples = self._dist.sample(sample_shape)
         sample_values = samples.numpy()
@@ -98,7 +97,6 @@ class TestGumbel(unittest.TestCase):
         )
 
     def test_rsample(self):
-
         sample_shape = [10000]
         samples = self._dist.rsample(sample_shape)
         sample_values = samples.numpy()

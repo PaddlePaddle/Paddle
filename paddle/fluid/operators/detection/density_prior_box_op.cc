@@ -83,8 +83,8 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
             fixed_sizes.size(),
             densities.size()));
     size_t num_priors = 0;
-    for (size_t i = 0; i < densities.size(); ++i) {
-      num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
+    for (auto densitie : densities) {
+      num_priors += (fixed_ratios.size()) * (pow(densitie, 2));
     }
     if (!flatten) {
       std::vector<int64_t> dim_vec(4);
@@ -268,3 +268,11 @@ PD_REGISTER_STRUCT_KERNEL(density_prior_box,
                           ops::DensityPriorBoxOpKernel,
                           float,
                           double) {}
+
+REGISTER_OP_KERNEL(prior_box,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::PriorBoxOpKernel<float>,
+                   ops::PriorBoxOpKernel<double>,
+                   ops::PriorBoxOpKernel<uint8_t>,
+                   ops::PriorBoxOpKernel<int8_t>);

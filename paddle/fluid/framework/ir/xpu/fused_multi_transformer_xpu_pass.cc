@@ -367,8 +367,10 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
                                                  with_time_step,
                                                  with_seq_lengths,
                                                  with_src_mask);
-  int quant_weight_bits =
-      Has("quant_weight_bits") ? Get<int>("quant_weight_bits") : -1;
+  int quant_post_dynamic_weight_precision =
+      Has("quant_post_dynamic_weight_precision ")
+          ? Get<int>("quant_post_dynamic_weight_precision ")
+          : -1;
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -421,7 +423,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
             w_node,
             nullptr,
             platform::errors::Fatal("w node should not be nullptr"));
-        if (quant_weight_bits == 8) {
+        if (quant_post_dynamic_weight_precision == 0) {
           PrepareWeight<int8_t>(
               graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
         } else {

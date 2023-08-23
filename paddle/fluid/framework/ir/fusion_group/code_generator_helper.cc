@@ -34,12 +34,12 @@ static T StringTo(const std::string& str) {
 
 static std::string ExpandMultivariateTemplate(const std::string& rhs,
                                               const size_t input_size) {
-  int start_pos = rhs.find("[", 0);
-  int end_pos = rhs.find("]", 0);
+  int start_pos = rhs.find('[', 0);
+  int end_pos = rhs.find(']', 0);
   std::string sum_rhs = rhs.substr(0, start_pos);
   std::string repeated_component =
       rhs.substr(start_pos + 1, (end_pos - start_pos - 1));
-  int replace_pos = repeated_component.find("?", 0);
+  int replace_pos = repeated_component.find('?', 0);
 
   for (size_t i = 1; i < input_size; i++) {
     std::string append_str = repeated_component;
@@ -64,9 +64,9 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
     // Get attr with different type, Now we only support the simple attr
     // condition
     std::string attr_name, default_value;
-    if (exp_definition.find("=") != std::string::npos) {
-      attr_name = exp_definition.substr(0, exp_definition.find("="));
-      default_value = exp_definition.substr(exp_definition.rfind("=") + 1,
+    if (exp_definition.find('=') != std::string::npos) {
+      attr_name = exp_definition.substr(0, exp_definition.find('='));
+      default_value = exp_definition.substr(exp_definition.rfind('=') + 1,
                                             exp_definition.length() - 1);
       ret = default_value;
     } else {

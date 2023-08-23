@@ -71,6 +71,54 @@ class TestNumelOp2FP16(TestNumelOp):
         self.shape = (0,)
 
 
+class TestNumelOpComplex(TestNumelOp):
+    def setUp(self):
+        self.op_type = "size"
+        self.python_api = paddle.numel
+        self.init()
+        x = np.random.random(self.shape).astype(
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
+        self.inputs = {
+            'Input': x,
+        }
+        self.outputs = {'Out': np.array(np.size(x))}
+
+    def init(self):
+        self.dtype = np.complex64
+        self.shape = (6, 56, 8, 55)
+
+
+class Test1NumelOpComplex64(TestNumelOpComplex):
+    def init(self):
+        self.dtype = np.complex64
+        self.shape = (11, 66)
+
+
+class Test2NumelOpComplex64(TestNumelOpComplex):
+    def init(self):
+        self.dtype = np.complex64
+        self.shape = (0,)
+
+
+class Test0NumelOpComplex128(TestNumelOpComplex):
+    def init(self):
+        self.dtype = np.complex128
+        self.shape = (6, 56, 8, 55)
+
+
+class Test1NumelOpComplex128(TestNumelOpComplex):
+    def init(self):
+        self.dtype = np.complex128
+        self.shape = (11, 66)
+
+
+class Test2NumelOpComple128(TestNumelOpComplex):
+    def init(self):
+        self.dtype = np.complex128
+        self.shape = (0,)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -120,10 +168,10 @@ class TestNumelAPI(unittest.TestCase):
                 },
                 fetch_list=[out_1, out_2],
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res_1, np.array(np.size(input_1)).astype("int64")
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res_2, np.array(np.size(input_2)).astype("int64")
             )
 
@@ -135,8 +183,8 @@ class TestNumelAPI(unittest.TestCase):
         x_2 = paddle.to_tensor(input_2)
         out_1 = paddle.numel(x_1)
         out_2 = paddle.numel(x_2)
-        assert np.array_equal(out_1.numpy().item(0), np.size(input_1))
-        assert np.array_equal(out_2.numpy().item(0), np.size(input_2))
+        np.testing.assert_array_equal(out_1.numpy().item(0), np.size(input_1))
+        np.testing.assert_array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
     def test_error(self):
@@ -153,4 +201,5 @@ class TestNumelAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

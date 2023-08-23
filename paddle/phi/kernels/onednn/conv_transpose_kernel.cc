@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -252,7 +253,7 @@ class ConvTransposeOneDNNHandlerT
         dnnl::reorder::primitive_desc reorder_pdesc;
         if (funcs::is_int8<T>()) {
           dnnl::primitive_attr attr;
-          attr.set_output_scales(mask, scale_data);
+          attr.set_scales_mask(DNNL_ARG_DST, mask);
           reorder_pdesc = dnnl::reorder::primitive_desc(
               *user_memory_p, *target_memory_p, attr);
         } else {
@@ -263,9 +264,22 @@ class ConvTransposeOneDNNHandlerT
         dev_ctx.SetBlob(key_reorder_p, reorder_p);
 
         auto& astream = OneDNNContext::tls().get_stream();
-        reorder_p->execute(
-            astream,
-            {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
+
+        std::unordered_map<int, dnnl::memory> reorder_args;
+        reorder_args.insert({DNNL_ARG_SRC, *user_memory_p});
+        reorder_args.insert({DNNL_ARG_DST, *target_memory_p});
+        if (funcs::is_int8<T>()) {
+          auto scale_md =
+              dnnl::memory::desc({static_cast<int64_t>(scale_data.size())},
+                                 dnnl::memory::data_type::f32,
+                                 dnnl::memory::format_tag::x);
+          auto scale_data_mem = dnnl::memory(scale_md, this->engine_);
+          scale_data_mem.set_data_handle(
+              phi::funcs::to_void_cast(scale_data.data()));
+          reorder_args.insert(
+              {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_data_mem});
+        }
+        reorder_p->execute(astream, reorder_args);
         astream.wait();
       } else {
         target_memory_p = user_memory_p;
@@ -419,6 +433,30 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
   }
 }
 
+KernelKey ConvTransposeGetKernelTypeForVar(
+    const GetKernelTypeForVarContext* ctx) {
+  const std::string& var_name = ctx->GetVarName();
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap& attrs = ctx->GetAttrs();
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((var_name == "Input") &&
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto it = attrs.find("data_format");
+    const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
+    auto dl = phi::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_transpose,
@@ -426,4 +464,6 @@ PD_REGISTER_KERNEL(conv2d_transpose,
                    ONEDNN,
                    phi::Conv2dTransposeKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvTransposeGetKernelTypeForVar;
+}

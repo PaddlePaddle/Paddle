@@ -80,7 +80,6 @@ class TestDistCtrTrainInfer(TestFleetBase):
     def check_with_place(
         self, model_file, delta=1e-3, check_error_log=False, need_envs={}
     ):
-
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),

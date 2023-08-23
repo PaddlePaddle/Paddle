@@ -89,7 +89,10 @@ class GroupShardedStage3(nn.Layer):
         super().__init__()
 
         # Default configs
-        assert core.is_compiled_with_cuda(), "Only support CUDA."
+        assert core.is_compiled_with_cuda() or (
+            device in core.get_all_custom_device_type()
+        ), "Only support CUDA / CustomDevice."
+
         self._layer = layer
         self._default_device = device
         self.__sync_buffers = sync_buffers
@@ -243,7 +246,15 @@ class GroupShardedStage3(nn.Layer):
         else:
             for param in list(self._unslice_params):
                 param.clear_gradient(False)
-                tmp_var = param.cuda(DEV_ID)
+                if (
+                    self._default_device
+                    in paddle.device.get_all_custom_device_type()
+                ):
+                    tmp_var = param._copy_to(
+                        paddle.CustomPlace(self._default_device, DEV_ID), True
+                    )
+                else:
+                    tmp_var = param.cuda(DEV_ID)
 
                 if (
                     tmp_var.dtype == Type.fp32.value
@@ -640,6 +651,11 @@ class GroupShardedStage3(nn.Layer):
             for param in trainable_params:
                 t_flow.full_param[param.name][0]._share_buffer_to(param)
 
+        #  a _allgather_buffer call should be matched with a _release_param call later,
+        #  but the _allgather_buffer call here has no match.
+        #  TODO(liuzhenhai):  set a flag here and release full param before forward pass of the first layer,
+        #  when _allgather_buffer is called for get_all_parameters and convert2cpu is false
+
         self._optim._parameter_list = self._ori_parameter_list
         self._optim._param_groups = self._ori_param_groups
 
@@ -718,10 +734,14 @@ class GroupShardedStage3(nn.Layer):
     def _param2align(self, param):
         # CUDA alignment 256 bytes
         size = param._numel() * align[param.dtype]
-        remaining = size % alignment[self._default_device]
-        ali = (
-            0 if remaining == 0 else alignment[self._default_device] - remaining
-        )
+        if self._default_device in core.get_all_custom_device_type():
+            device_alignment = core.libpaddle._get_device_min_chunk_size(
+                self._default_device
+            )
+        else:
+            device_alignment = alignment[self._default_device]
+        remaining = size % device_alignment
+        ali = 0 if remaining == 0 else device_alignment - remaining
         align_ = ali // align[param.dtype]
         return align_
 
@@ -765,7 +785,6 @@ def ForwardPreHooks(
     offload,
     task_flow,
 ):
-
     # Record layer's id
     layer_id = id(layer)
     use_calc, sync_wait = False, False
@@ -822,7 +841,6 @@ class ForwardPostHooks(PyLayer):
         offload,
         task_flow,
     ):
-
         layer_id = id(layer)
         # release current layer full params
         _release_param(
@@ -911,14 +929,11 @@ class TaskFlow:
 
     def __init__(
         self,
-        full_param={},
-        full_grad={},
-        use_calc={},
         callback=None,
     ):
-        self.full_param = full_param
-        self.full_grad = full_grad
-        self.use_calc = use_calc
+        self.full_param = {}
+        self.full_grad = {}
+        self.use_calc = {}
         self.callback = callback
 
 
@@ -955,7 +970,6 @@ def _wait_layer(
     use_calc_stream,
     offload=False,
 ):
-
     for param in trainable_params:
         if param.status == "all":
             param.use_count += 1
@@ -992,6 +1006,8 @@ def _allgather_buffer(
     offload=False,
     convert2cpu=False,
 ):
+    if convert2cpu:
+        assert sync_wait
 
     for param in trainable_params:
         if param.status == "all":
@@ -1009,20 +1025,22 @@ def _allgather_buffer(
         if sync_wait:
             with paddle.amp.auto_cast(enable=False):
                 task.wait()
-            full_param._slice(0, param._numel())._share_buffer_to(param)
-            param.fw_storage._clear()
-            param.fw_storage = None
-            param.status = "all"
-            param.use_count += 1
+            if convert2cpu:
+                # status is not changed
+                cpu_full_param = _device2cpu(
+                    full_param._slice(0, param._numel())
+                )
+                full_param._clear_data()
+                del full_param
+                full_param = cpu_full_param
+                task = None
+            else:
+                full_param._slice(0, param._numel())._share_buffer_to(param)
+                param.fw_storage._clear()
+                param.fw_storage = None
+                param.status = "all"
+                param.use_count += 1
         task_flow.full_param[param.name] = (full_param, task)
-
-        # parameter converts to cpu
-        if convert2cpu:
-            p_name = param.name
-            param = _device2cpu(param)
-            del task_flow.full_param[p_name]
-            task_flow.full_param[p_name] = (param, None)
-
     return task_flow
 
 
@@ -1095,7 +1113,10 @@ def _device2cpu(trans_param, convert_dtype=False):
 
 
 def _cpu2device(param):
-    tmp_p = param.fw_storage.cuda(DEV_ID)
+    if DEV in paddle.device.get_all_custom_device_type():
+        tmp_p = param.fw_storage._copy_to(paddle.CustomPlace(DEV, DEV_ID), True)
+    else:
+        tmp_p = param.fw_storage.cuda(DEV_ID)
     if (
         tmp_p.dtype == Type.fp32.value
         and param2dtype[param.name] == Type.fp16.value

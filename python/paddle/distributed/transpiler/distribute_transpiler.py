@@ -295,7 +295,7 @@ class DistributeTranspiler:
             cost =paddle.nn.functional.square_error_cost(input=y_predict, label=y)
             avg_loss = paddle.mean(cost)
 
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_loss)
 
             # for pserver mode
@@ -490,7 +490,6 @@ class DistributeTranspiler:
     def _update_remote_sparse_update_op(
         self, program, need_sparse_update_params
     ):
-
         for param_varname, attrs in need_sparse_update_params.items():
             height_sections = self.sparse_param_to_height_sections[
                 param_varname

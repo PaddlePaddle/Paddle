@@ -257,10 +257,6 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[2] == expected[2]).all())
         self.assertTrue((result[3] == expected[3]).all())
 
-        with self.assertRaises(IndexError):
-            one = paddle.ones(shape=[1])
-            res = x[one, [0, 0]]
-
     def _test_slice_index_list(self, place):
         data = np.random.rand(2, 3).astype("float32")
         prog = paddle.static.Program()
@@ -323,9 +319,6 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[5] == expected[5]).all())
         self.assertTrue((result[6] == expected[6]).all())
 
-        with self.assertRaises(IndexError):
-            res = x[[1.2, 0]]
-
     def _test_slice_index_list_bool(self, place):
         data = np.random.rand(2, 3, 4).astype("float32")
         np_idx = np.array([[True, False, False], [True, False, True]])
@@ -375,9 +368,6 @@ class TestVariable(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             res = x[[True, False, False]]
-        with self.assertRaises(ValueError):
-            with paddle.static.program_guard(prog):
-                res = x[[False, False]]
 
     def _test_slice_index_scalar_bool(self, place):
         data = np.random.rand(1, 3, 4).astype("float32")
@@ -667,7 +657,6 @@ class TestListIndex(unittest.TestCase):
         index_shape = [2, 3, 4, 5, 6]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
         for _ in range(len(inps_shape) - 1):
-
             pt = paddle.to_tensor(array)
             index_mod = (index % (array.shape[-1])).tolist()
             try:
@@ -709,7 +698,6 @@ class TestListIndex(unittest.TestCase):
 
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
-
             x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 
             value = paddle.static.data(
@@ -846,8 +834,7 @@ class TestListIndex(unittest.TestCase):
             name='value', shape=value_np.shape, dtype='float32'
         )
 
-        x[index] = value
-        y = x
+        y = paddle.static.setitem(x, index, value)
         place = paddle.fluid.CPUPlace()
 
         prog = paddle.static.default_main_program()
@@ -1017,7 +1004,6 @@ class TestListIndex(unittest.TestCase):
             + 100
         )
         for _ in range(3):
-
             index_mod1 = index1 % (min(array.shape))
             index_mod2 = index2 % (min(array.shape))
 
@@ -1028,7 +1014,6 @@ class TestListIndex(unittest.TestCase):
 
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
-
                 x1 = paddle.static.data(
                     name='x1', shape=array.shape, dtype='float32'
                 )
@@ -1046,9 +1031,8 @@ class TestListIndex(unittest.TestCase):
                     name='index_2', shape=index2.shape, dtype='int32'
                 )
 
-                x1[index_1, index_2] = value
-                x2[index_1] = value
-
+                x1_out = paddle.static.setitem(x1, (index_1, index_2), value)
+                x2_out = paddle.static.setitem(x2, index_1, value)
                 place = (
                     paddle.fluid.CPUPlace()
                     if not paddle.fluid.core.is_compiled_with_cuda()
@@ -1059,7 +1043,7 @@ class TestListIndex(unittest.TestCase):
                 exe = paddle.static.Executor(place)
 
                 exe.run(paddle.static.default_startup_program())
-                fetch_list = [x1.name, x2.name]
+                fetch_list = [x1_out.name, x2_out.name]
 
                 setitem_pp = exe.run(
                     prog,
@@ -1121,7 +1105,6 @@ class TestListIndex(unittest.TestCase):
 
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
-
                 x1 = paddle.static.data(
                     name='x1', shape=array.shape, dtype='float32'
                 )
@@ -1129,10 +1112,10 @@ class TestListIndex(unittest.TestCase):
                     name='x2', shape=array.shape, dtype='float32'
                 )
 
-                x1[index_mod1, index_mod2] = 1
-                x2[index_mod1] = 2.5
-                y1 = x1[index_mod2, index_mod1]
-                y2 = x2[index_mod2]
+                x1_out = paddle.static.setitem(x1, (index_mod1, index_mod2), 1)
+                x2_out = paddle.static.setitem(x2, index_mod1, 2.5)
+                y1 = x1_out[index_mod2, index_mod1]
+                y2 = x2_out[index_mod2]
                 place = (
                     paddle.fluid.CPUPlace()
                     if not paddle.fluid.core.is_compiled_with_cuda()
@@ -1142,7 +1125,7 @@ class TestListIndex(unittest.TestCase):
                 prog = paddle.static.default_main_program()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
-                fetch_list = [x1.name, x2.name, y1.name, y2.name]
+                fetch_list = [x1_out.name, x2_out.name, y1.name, y2.name]
 
                 setitem_pp = exe.run(
                     prog,
@@ -1200,7 +1183,6 @@ class TestListIndex(unittest.TestCase):
         )
 
         for _ in range(3):
-
             index_mod1 = index1 % (min(array.shape))
             index_mod2 = index2 % (min(array.shape))
             index_mod_t1 = paddle.to_tensor(index_mod1)

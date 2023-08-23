@@ -25,7 +25,7 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import fluid
 from paddle.fluid import core, framework
-from paddle.fluid.optimizer import Adam
+from paddle.optimizer import Adam
 
 paddle.enable_static()
 
@@ -879,7 +879,6 @@ class TestVariableInit(unittest.TestCase):
         )
 
     def test_variable_init(self):
-
         x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
         y = paddle.static.nn.fc(x, 10)
         z = paddle.static.nn.fc(y, 10)

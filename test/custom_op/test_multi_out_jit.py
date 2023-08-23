@@ -160,7 +160,11 @@ class TestMultiOutputDtypes(unittest.TestCase):
     def test_discrete_out_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                (pd_out, pd_w_grad, pd_y_grad,) = discrete_out_static(
+                (
+                    pd_out,
+                    pd_w_grad,
+                    pd_y_grad,
+                ) = discrete_out_static(
                     False,
                     device,
                     dtype,
@@ -190,7 +194,11 @@ class TestMultiOutputDtypes(unittest.TestCase):
     def test_discrete_out_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                (pd_out, pd_w_grad, pd_y_grad,) = discrete_out_dynamic(
+                (
+                    pd_out,
+                    pd_w_grad,
+                    pd_y_grad,
+                ) = discrete_out_dynamic(
                     False,
                     device,
                     dtype,
