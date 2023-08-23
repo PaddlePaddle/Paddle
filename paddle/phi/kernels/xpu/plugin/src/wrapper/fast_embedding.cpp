@@ -114,17 +114,17 @@ static int xpu2_wrapper(Context* ctx,
 }
 
 template <typename T, typename TID>
-int embedding_tiny_dict(Context* ctx,
-                        const T* x,
-                        const TID* indices,
-                        T* y,
-                        int64_t xm,
-                        int64_t n,
-                        int64_t ym,
-                        int64_t padding_idx,
-                        TID start_index) {
+int fast_embedding(Context* ctx,
+                   const T* x,
+                   const TID* indices,
+                   T* y,
+                   int64_t xm,
+                   int64_t n,
+                   int64_t ym,
+                   int64_t padding_idx,
+                   TID start_index) {
   WRAPPER_CHECK_CTX(ctx);
-  WRAPPER_DUMP_FUNCTION_T2(ctx, "embedding_tiny_dict", T, TID);
+  WRAPPER_DUMP_FUNCTION_T2(ctx, "fast_embedding", T, TID);
   WRAPPER_DUMP_PARAM6(ctx, x, indices, y, xm, n, ym);
   WRAPPER_DUMP_PARAM3(ctx, padding_idx, start_index, ctx->_l3_mgr.get_size());
   WRAPPER_DUMP(ctx);
@@ -146,42 +146,42 @@ int embedding_tiny_dict(Context* ctx,
   WRAPPER_UNIMPLEMENTED(ctx);
 }
 
-template int embedding_tiny_dict(Context*,
-                                 const float*,
-                                 const int*,
-                                 float*,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int);
-template int embedding_tiny_dict(Context*,
-                                 const float*,
-                                 const int64_t*,
-                                 float*,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t);
-template int embedding_tiny_dict(Context*,
-                                 const float16*,
-                                 const int*,
-                                 float16*,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int);
-template int embedding_tiny_dict(Context*,
-                                 const float16*,
-                                 const int64_t*,
-                                 float16*,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t,
-                                 int64_t);
+template int fast_embedding(Context*,
+                            const float*,
+                            const int*,
+                            float*,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int);
+template int fast_embedding(Context*,
+                            const float*,
+                            const int64_t*,
+                            float*,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t);
+template int fast_embedding(Context*,
+                            const float16*,
+                            const int*,
+                            float16*,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int);
+template int fast_embedding(Context*,
+                            const float16*,
+                            const int64_t*,
+                            float16*,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t,
+                            int64_t);
 
 }  // namespace plugin
 }  // namespace api

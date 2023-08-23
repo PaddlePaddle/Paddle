@@ -70,7 +70,7 @@ void EmbeddingKernel(const Context &ctx,
         ym,
         padding_idx);
 #else
-    r = xpu::plugin::embedding_tiny_dict<XPUType, int64_t>(
+    r = xpu::plugin::fast_embedding<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(table),
         ids_t->data<int64_t>(),
@@ -96,7 +96,7 @@ void EmbeddingKernel(const Context &ctx,
                                 ym,
                                 padding_idx);
 #else
-    r = xpu::plugin::embedding_tiny_dict<XPUType, int>(
+    r = xpu::plugin::fast_embedding<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(table),
         ids_t->data<int>(),
