@@ -94,6 +94,7 @@ frontend::Program CreateReduceProgram() {
 }
 
 TEST(ScheduleBlockGraph, elementwise) {
+  Context::Global().ResetNameId();
   frontend::Program program = CreateElementwiseProgram();
   IRSchedule ir_sch = MakeIRSchedule(&program);
   ScheduleBlockGraph sbg(ir_sch);
@@ -135,6 +136,7 @@ TEST(ScheduleBlockGraph, elementwise) {
 
 #ifdef CINN_WITH_CUDA
 TEST(ScheduleBlockGraph, reduce) {
+  Context::Global().ResetNameId();
   frontend::Program program = CreateReduceProgram();
   IRSchedule ir_sch = MakeIRSchedule(&program);
   ScheduleBlockGraph sbg(ir_sch);
@@ -143,12 +145,12 @@ TEST(ScheduleBlockGraph, reduce) {
   CHECK_EQ(sbg.BlockIdsInOrder().size(), 8);
   CHECK_EQ(sbg.nodes().size(), 8);
 
-  ScheduleBlockNode* v_reduce_init = sbg.RetrieveNode("var_48__reduce_init");
+  ScheduleBlockNode* v_reduce_init = sbg.RetrieveNode("var_2__reduce_init");
   CHECK(v_reduce_init);
   CHECK_EQ(v_reduce_init->UpstreamNodes().size(), 0);
   CHECK_EQ(v_reduce_init->DownstreamNodes().size(), 3);
 
-  ScheduleBlockNode* v = sbg.RetrieveNode("var_48");
+  ScheduleBlockNode* v = sbg.RetrieveNode("var_2");
   CHECK(v);
   CHECK_EQ(v->UpstreamNodes().size(), 5);
   CHECK_EQ(v->DownstreamNodes().size(), 2);
@@ -175,6 +177,7 @@ TEST(ScheduleBlockGraph, reduce) {
 }
 
 TEST(ScheduleBlockGraph, arg_max) {
+  Context::Global().ResetNameId();
   frontend::NetBuilder builder("net_builder");
   auto x = builder.CreateInput(Float(32), {8, 16}, "X");
   auto y = builder.Argmax(x, 0);
