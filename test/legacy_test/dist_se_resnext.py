@@ -248,7 +248,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         else:
             optimizer = (
                 paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
-                    learning_rate=fluid.layers.piecewise_decay(
+                    learning_rate=paddle.optimizer.lr.piecewise_decay(
                         boundaries=bd, values=lr
                     ),
                     momentum=0.9,
