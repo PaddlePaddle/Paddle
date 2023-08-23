@@ -79,12 +79,9 @@ using mublasHandle_t = struct _mublasHandle_t *;
 namespace musa {
 namespace dnn {
 struct Handle;
-}
+}  // namespace dnn
 }  // namespace musa
 using mudnnHandle_t = musa::dnn::Handle *;
-// TODO(@caizhi): using correct type
-using musolverDnHandle_t = bool **;
-using mublasLtHandle_t = struct _mublasHandle_t *;
 using musparseHandle_t = struct _musparse_handle *;
 
 /// Forward declaration of ROCM types.

@@ -654,7 +654,6 @@ void BatchNormGradRawKernel(const Context &ctx,
     backends::gpu::TensorDescriptor data_desc_;
     backends::gpu::TensorDescriptor output_grad_desc_;
     backends::gpu::TensorDescriptor data_grad_desc_;
-    /* backends::gpu::TensorDescriptor bias_desc_; */
     dynload::BatchNorm batch_norm_desc_;
     dynload::BatchNorm::Mode mode_;
 #else
@@ -803,8 +802,8 @@ void BatchNormGradRawKernel(const Context &ctx,
       backends::gpu::TensorDescriptor saved_mean_desc_;
       backends::gpu::TensorDescriptor saved_variance_desc_;
 
-      backends::gpu::TensorDescriptor mean_grad_desc_;      // not use
-      backends::gpu::TensorDescriptor variance_grad_desc_;  // not use
+      backends::gpu::TensorDescriptor mean_grad_desc_;      // unused
+      backends::gpu::TensorDescriptor variance_grad_desc_;  // unused
       backends::gpu::TensorDescriptor scale_grad_desc_;
       backends::gpu::TensorDescriptor bias_grad_desc_;
 

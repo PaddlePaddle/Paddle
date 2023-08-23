@@ -688,7 +688,6 @@ void BatchNormKernel(const Context &ctx,
 #endif
 
   auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
 
   // Now, depending on whether we are running test or not, we have two paths.
   // It is training mode when it's not reference AND not using pre-trained

@@ -53,16 +53,6 @@ enum class PoolingMode {
   kAverageInclusive,
 };
 
-// enum class ActivationMode {
-//   kNone,  // activation identity
-//   kSigmoid,
-//   kRelu,
-//   kRelu6,
-//   kReluX,
-//   kTanh,
-//   kBandPass,
-// };
-
 inline dynload::Pooling::Mode GetPoolingMode(const PoolingMode& mode) {
   switch (mode) {
     // case PoolingMode::kMaximumDeterministic:
@@ -78,27 +68,6 @@ inline dynload::Pooling::Mode GetPoolingMode(const PoolingMode& mode) {
           phi::errors::Unimplemented("Unexpected MUDNN pooling mode."));
   }
 }
-
-// inline ActivationMode StringToActivationMode(const std::string& str) {
-//   if (str == "identity") {
-//     return ActivationMode::kNone;
-//   } else if (str == "sigmoid") {
-//     return ActivationMode::kSigmoid;
-//   } else if (str == "relu") {
-//     return ActivationMode::kRelu;
-//   } else if (str == "relu6") {
-//     return ActivationMode::kRelu6;
-//   } else if (str == "relux") {
-//     return ActivationMode::kReluX;
-//   } else if (str == "tanh") {
-//     return ActivationMode::kTanh;
-//   } else if (str == "bandpass") {
-//     return ActivationMode::kBandPass;
-//   } else {
-//     PADDLE_THROW(phi::errors::Unimplemented(
-//         "Unknown CUDNN activation string: %s.", str));
-//   }
-// }
 
 template <typename T>
 class CudnnDataType;
@@ -348,80 +317,6 @@ static dynload::MemoryHandler InternalMemAlloc(size_t s) {
   }
   return dynload::MemoryHandler(data, InternalMemFree);
 }
-
-#if 0
-class ScopedBatchNormDescriptor {
- public:
-  ScopedBatchNormDescriptor() {}
-  ~ScopedBatchNormDescriptor() PADDLE_MAY_THROW {}
-
-  inline dynload::BatchNorm& descriptor(const double& eps) {
-    desc_.SetEpsilon(eps);
-    return desc_;
-  }
-
-  dynload::BatchNorm& desc() { return desc_; }
-
- private:
-  dynload::BatchNorm desc_;
-  DISABLE_COPY_AND_ASSIGN(ScopedBatchNormDescriptor);
-};
-
-class ScopedActivationDescriptor {
- public:
-  ScopedActivationDescriptor() {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnCreateActivationDescriptor(&desc_));
-  }
-  ~ScopedActivationDescriptor() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnDestroyActivationDescriptor(desc_));
-  }
-
-  template <typename T>
-  inline cudnnActivationDescriptor_t descriptor(
-      const std::string& act, double value_max = static_cast<double>(0.)) {
-    double relu_ceiling = 0.0;
-    ActivationMode activation_mode = StringToActivationMode(act);
-    cudnnActivationMode_t mode;
-    switch (activation_mode) {
-#if CUDNN_VERSION >= 7100
-      case ActivationMode::kNone:
-        mode = CUDNN_ACTIVATION_IDENTITY;
-        break;
-#endif
-      case ActivationMode::kRelu6:
-        relu_ceiling = 6.0;
-        mode = CUDNN_ACTIVATION_CLIPPED_RELU;
-        break;
-      case ActivationMode::kReluX:
-        relu_ceiling = value_max;
-        mode = CUDNN_ACTIVATION_CLIPPED_RELU;
-        break;
-      case ActivationMode::kRelu:
-        mode = CUDNN_ACTIVATION_RELU;
-        break;
-      case ActivationMode::kSigmoid:
-        mode = CUDNN_ACTIVATION_SIGMOID;
-        break;
-      case ActivationMode::kTanh:
-        mode = CUDNN_ACTIVATION_TANH;
-        break;
-      default:
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Unrecognized CUDNN activation mode: %d.",
-            static_cast<int>(activation_mode)));
-    }
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetActivationDescriptor(
-        desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
-    return desc_;
-  }
-
- private:
-  cudnnActivationDescriptor_t desc_;
-  DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
-};
-#endif  // 0
 
 }  // namespace gpu
 }  // namespace backends

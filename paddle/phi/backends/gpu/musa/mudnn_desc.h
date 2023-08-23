@@ -221,7 +221,7 @@ class ConvolutionDescriptor {
     allow_tf32_ = allow_tf32;
     desc_->SetNdInfo(
         pads.size(), pads.data(), strides.data(), dilations.data());
-    desc_->SetComputeMode(dynload::Convolution::ComputeMode::ALL);
+    desc_->SetComputeMode(dynload::Convolution::ComputeMode::TENSOR);
     desc_->SetGroups(groups);
   }
 
