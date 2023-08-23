@@ -20,6 +20,10 @@
 namespace paddle {
 namespace pybind {
 
+static PyObject *add_n(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_add_n(self, args, kwargs);
+}
+
 static PyObject *mean(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_mean(self, args, kwargs);
 }
@@ -36,7 +40,15 @@ static PyObject *divide(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_divide(self, args, kwargs);
 }
 
-static PyMethodDef OpsAPI[] = {{"mean",
+static PyObject *concat(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_concat(self, args, kwargs);
+}
+
+static PyMethodDef OpsAPI[] = {{"add_n",
+                                (PyCFunction)(void (*)(void))add_n,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for add_n."},
+                               {"mean",
                                 (PyCFunction)(void (*)(void))mean,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for mean."},
@@ -48,6 +60,10 @@ static PyMethodDef OpsAPI[] = {{"mean",
                                 (PyCFunction)(void (*)(void))divide,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for divide."},
+                               {"concat",
+                                (PyCFunction)(void (*)(void))concat,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for concat."},
                                {"full",
                                 (PyCFunction)(void (*)(void))full,
                                 METH_VARARGS | METH_KEYWORDS,

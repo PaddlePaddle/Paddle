@@ -173,6 +173,36 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   }
 };
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+/* ------------------ for auto parallel ----------------------- */
+
+struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
+  bool result = true;
+
+  void operator()(const Tensor& x) { result &= x.is_dist_tensor(); }
+
+  void operator()(const paddle::optional<Tensor>& x) {
+    if (x) {
+      result &= x.get_ptr()->is_dist_tensor();
+    }
+  }
+
+  void operator()(const std::vector<Tensor>& x) {
+    if (!x.empty()) {
+      for (auto& t : x) {
+        result &= t.is_dist_tensor();
+      }
+    }
+  }
+
+  // skip other type args, these args don't used in kernel selection
+  template <typename T>
+  void operator()(const T& x) {
+    // do nothing
+  }
+};
+#endif
+
 }  // namespace detail
 
 template <typename... Args>
@@ -204,6 +234,13 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);
 DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+template <typename... Args>
+bool AllInputsAreDistTensor(const Args&... args) {
+  return detail::DistTensorTypeParser().apply(args...).result;
+}
+#endif
 
 }  // namespace experimental
 }  // namespace paddle

@@ -103,7 +103,7 @@
   - {typename: bool, name: load_as_fp16}
   - {typename: bool, name: model_from_memory}
   outputs:
-    - {typename: 'Tensor[]', name: out, optional: true, intermediate: false}
+    - {typename: 'Tensor[]', name: Out, optional: true, intermediate: false}
   no_need_buffer: null
   data_transform: null
   kernel:
@@ -151,8 +151,20 @@
   outputs: []
   no_need_buffer: null
   data_transform: null
+  kernel:
+    func: [assert]
+    param: [cond, data, summarize]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [cond]
+      to_complex_flag: [false]
+    dispatch: {assert: null}
+    force_backend: null
   inplace: null
   backward: null
+
 
 - name: print
   inputs:
