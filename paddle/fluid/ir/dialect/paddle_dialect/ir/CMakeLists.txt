@@ -72,13 +72,9 @@ add_custom_command(
   VERBATIM)
 
 cc_library(
-  pd_type
-  SRCS pd_type.cc
-  DEPS ddim)
-cc_library(
   pd_dialect_core
-  SRCS pd_attribute.cc
-  DEPS pd_type phi pd_interface pd_trait type_info)
+  SRCS pd_attribute.cc pd_type.cc
+  DEPS phi pd_interface pd_trait type_info)
 cc_library(
   pd_dialect_op
   SRCS ${op_source_file} pd_manual_op.cc
