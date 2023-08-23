@@ -12,13 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/primitive/backend/eager_backend.h"
-#include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/primitive/primitive/primitive.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace paddle {
-namespace primitive {
-namespace backend {}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+namespace phi {
+
+KernelSignature CSplitOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature(
+      "c_split",
+      {"X"},
+      {"rank", "nranks", "ring_id", "use_calc_stream", "use_model_parallel"},
+      {"Out"});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(c_split, phi::CSplitOpArgumentMapping);

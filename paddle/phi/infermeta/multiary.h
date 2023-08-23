@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
+
 namespace phi {
 
 // Common InferMeta Functions for multiary operators, The format like:
@@ -818,5 +819,9 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* out,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
+
+void FullWithTensorInferMeta(const MetaTensor& shape,
+                             DataType dtype,
+                             MetaTensor* out);
 
 }  // namespace phi
