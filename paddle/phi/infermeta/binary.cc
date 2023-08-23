@@ -271,27 +271,27 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
                         "but received Y's shape: [%s].",
                         y_ndims));
-  PADDLE_ENFORCE_EQ(
+  std::vector<int64_t> dim_out;
+  auto cal_shape_fn = [](int64_t x, int64_t y, const std::string& error_str) {
+    if (x == -1) {
+      return y;
+    } else if (y == -1) {
+      return x;
+    }
+    PADDLE_ENFORCE_EQ(x, y, phi::errors::InvalidArgument(error_str, x, y));
+    return x;
+  };
+  cal_shape_fn(x_dims[2],
+               y_dims[1],
+               "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+               "but receive X's width: [%s],"
+               "Y's height: [%s].");
+  dim_out.push_back(cal_shape_fn(
       x_dims[0],
       y_dims[0],
-      phi::errors::InvalidArgument(
-          "Input(X) and Input(Y) must have the same batch size in BmmOp, "
-          "but received X's batch size: [%s],"
-          "Y's batch size [%s]",
-          x_dims[0],
-          y_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[2],
-      y_dims[1],
-      phi::errors::InvalidArgument(
-          "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
-          "but receive X's width: [%s],"
-          "Y's height: [%s].",
-          x_dims[2],
-          y_dims[1]));
-
-  std::vector<int64_t> dim_out;
-  dim_out.push_back(x_dims[0]);
+      "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+      "but received X's batch size: [%s],"
+      "Y's batch size [%s]"));
   dim_out.push_back(x_dims[1]);
   dim_out.push_back(y_dims[2]);
   out->set_dims(phi::make_ddim(dim_out));
@@ -3237,38 +3237,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
-}
-
-void RmsNormInferMeta(const MetaTensor& x,
-                      const MetaTensor& weight,
-                      const MetaTensor& bias,
-                      const float epsilon,
-                      const int begin_norm_axis,
-                      MetaTensor* out) {
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
-  auto x_dims_size = x_dims_vec.size();
-
-  size_t normalized_dims = 1;
-  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
-    normalized_dims *= x_dims_vec[i];
-  }
-
-  PADDLE_ENFORCE_EQ(normalized_dims,
-                    weight.dims()[0],
-                    phi::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be"
-                        "the size of Weight, but received"
-                        "normalized size of Input(X) is [%d], received size"
-                        "of Weight is [%d]",
-                        normalized_dims,
-                        weight.dims()[0]));
-
-  auto out_dims = phi::make_ddim(x_dims_vec);
-
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  out->share_lod(x);
 }
 
 }  // namespace phi

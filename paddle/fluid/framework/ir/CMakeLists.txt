@@ -267,6 +267,8 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_xpu_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(duplicated_transpose_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
@@ -284,6 +286,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(gather_squeeze_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(fast_layernorm_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

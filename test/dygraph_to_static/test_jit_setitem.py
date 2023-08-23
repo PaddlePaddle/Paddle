@@ -179,22 +179,56 @@ class TestCase11(TestSetItemBase):
 
 
 class TestCase12(TestSetItemBase):
-    # Test combind-indexing
+    # Test gradient of value tensor
     def init_func(self):
-        def foo(x, value):
-            y = x + 1
-            y[[0, 1], 1, :2] = value
-            return y
+        def foo():
+            res = paddle.zeros([4, 3, 2])
+            b = paddle.zeros([4, 3, 2])
+            v = paddle.to_tensor(1.0)
+            for i in range(paddle.shape(b)[0]):
+                res[i] = v
+            return res
 
         return foo
 
     def run_dygraph(self, func):
-        x = self.init_data()
-        value = paddle.ones((32,))
-        value.stop_gradient = False
-        y = func(x, value)
-        x_grad, value_grad = paddle.grad(y, [x, value])
-        return y, x_grad, value_grad
+        y = func()
+        return (y,)
+
+
+class TestCase13(TestSetItemBase):
+    # Test gradient of value tensor
+    def init_func(self):
+        def foo():
+            res = paddle.zeros([4, 3, 2])
+            v = paddle.to_tensor(1.0)
+            for i in range(4):
+                res[i] = v
+            return res
+
+        return foo
+
+    def run_dygraph(self, func):
+        y = func()
+        return (y,)
+
+
+class TestCase14(TestSetItemBase):
+    # Test gradient of value tensor
+    def init_func(self):
+        def foo():
+            data = np.arange(8).reshape((2, 4)).astype('float32')
+            x = paddle.to_tensor(data)
+            x[:, 1:] = x[:, :-1].clone()
+            x[:, 0] = 1
+            res = x.flatten()
+            return res
+
+        return foo
+
+    def run_dygraph(self, func):
+        y = func()
+        return (y,)
 
 
 if __name__ == '__main__':

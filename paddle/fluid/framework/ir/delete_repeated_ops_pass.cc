@@ -122,6 +122,10 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
                      Graph* graph) {
     VLOG(4) << "handle DeleteRepeatedOps";
     GET_IR_NODE_FROM_SUBGRAPH(in_var, in_var, pattern);
+    // in_var node may be deleted by the previous detected subgraph
+    if (graph->Nodes().count(in_var) == 0) {
+      return;
+    }
 
     std::vector<std::string> invalid_out_ops{
         "while", "conditional_block", "fetch"};
