@@ -91,8 +91,6 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dtype(dtype);
 }
 
-void FeedWithPlaceInferMeta(phi::DataType data_type, MetaTensor* out) {}
-
 void GaussianInferMeta(const IntArray& shape,
                        float mean,
                        float std,

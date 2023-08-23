@@ -57,8 +57,6 @@ void EyeInferMeta(const Scalar& num_rows,
                   MetaTensor* out,
                   MetaConfig config = MetaConfig());
 
-void FeedWithPlaceInferMeta(phi::DataType data_type, MetaTensor* out);
-
 void GaussianInferMeta(const IntArray& shape,
                        float mean,
                        float std,

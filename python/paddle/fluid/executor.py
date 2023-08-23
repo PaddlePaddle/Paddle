@@ -1891,7 +1891,7 @@ class Executor:
             raise RuntimeError("Attempted to use a closed Executor")
 
         use_default_main_program = program is None
-        if program is None:
+        if use_default_main_program:
             program = default_main_program()
 
         fetch_list = self._check_fetch_list(fetch_list)
