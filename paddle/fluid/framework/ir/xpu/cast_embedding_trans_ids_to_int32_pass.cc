@@ -99,14 +99,10 @@ void CastEmbeddingTransIdsToInt32Pass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE(cast);
     GET_IR_NODE(embedding);
     GET_IR_NODE(embedding_ids);
-    auto* block = cast->Op()->Block();
-    auto cast_node_attr_in_dtype = cast->Op()->GetAttrIfExists<int>("in_dtype");
     auto cast_node_attr_out_dtype =
         cast->Op()->GetAttrIfExists<int>("out_dtype");
-    if (cast_node_attr_in_dtype !=
-            static_cast<int>(paddle::framework::proto::VarType::FP32) &&
-        cast_node_attr_out_dtype !=
-            static_cast<int>(paddle::framework::proto::VarType::INT64)) {
+    if (cast_node_attr_out_dtype !=
+        static_cast<int>(paddle::framework::proto::VarType::INT64)) {
       return;
     }
     cast->Op()->SetAttr(
@@ -118,6 +114,14 @@ void CastEmbeddingTransIdsToInt32Pass::ApplyImpl(ir::Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_subgraph_count);
+  if (found_subgraph_count) {
+    VLOG(4) << "There is a risk of overflow when converting the data type of "
+               "embedded ids from int64 to int32."
+               "Please ensure that the numerical range of ids is within the "
+               "maximum value of int32."
+               "If it exceeds this range, it may result in incorrect results. "
+               "You can try removing this pass.";
+  }
 }
 
 }  // namespace ir
