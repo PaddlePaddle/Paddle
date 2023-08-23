@@ -24,7 +24,7 @@ from paddle.framework import core
 class DistAttr(core.TensorDistAttr):
     """
     DistAttr specifies how tensors are distributed or sliced on ProcessMesh.
-
+        
     Args:
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         sharding_specs(list[str|None]): The specification describing how to shard the Tensor.
@@ -124,3 +124,40 @@ def shard_tensor(
         raise NotImplementedError(
             "The `paddle.distributed.shard_tensor` for static mode will be implemented later."
         )
+
+def dtensor_from_fn(
+        fn, dist_attr, *args, **kwargs
+):
+    """
+    Construct a Distributed Tensor from a function of arguments.
+
+    Args:
+        fn (callable): A callable function that takes arguments of Distributed Tensor and returns tensor.
+        dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
+        *args: A list of arguments to be passed to the ``fn`` function.
+        **kwargs: A list of arguments to be passed to the ``fn`` function.
+
+    Retruns:
+        Tensor: A Tensor constructed from ``fn`` with distributed attributes.       
+
+    Examples:
+
+    .. code-block:: python     
+
+        import paddle
+        import paddle.distribute as dist
+
+        def generate_tensor():
+            return paddle.ones(shape=[2, 3])
+
+        # Create a distributed attribute
+        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+
+        # Call the function dtensor_from_fn with dist_attr parameter
+        d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[2, 3])
+
+        print(d_tensor)
+    """ 
+    tensor = fn(*args, **kwargs)
+    return shard_tensor(tensor, dist_attr=dist_attr)

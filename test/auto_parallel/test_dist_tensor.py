@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 
-
 class TestDistTensor(unittest.TestCase):
     def test_dist_tensor_creation(self):
         shape = [10, 5]
@@ -51,6 +50,44 @@ class TestDistTensor(unittest.TestCase):
         self.assertEqual(dist_tensor_with_numpy.dist_attr, dist_attr)
         self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
 
+        
+class TestDistributedTensor(unittest.TestCase):
+    def test_dtensor_from_fn(self):
+        # Define a function for generating a tensor
+        def generate_tensor_ones():
+            return paddle.ones(shape=[2, 3])
+        
+        def generate_tensor_zeros():
+             return paddle.zeros(shape=[2, 3])
+
+        def generate_tensor_random():
+              return paddle.rand(shape=[2, 3])
+        
+
+        # Create a distributed attribute
+        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+        
+        # Test with generate_tensor_ones()
+        # Call the function dtensor_from_fn with dist_attr parameter
+        result = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[2, 3])
+
+        # Verify the result
+        self.assertIsInstance(result, paddle.Tensor)
+        self.assertEqual(result.shape, [2, 3])
+        self.assertEqual(result.dist_attr, dist_attr)
+
+        # Test with generate_tensor_zeros()
+        result_zeros = dist.dtensor_from_fn(paddle.zeros, dist_attr=dist_attr, shape=[2, 3])
+        self.assertIsInstance(result_zeros, paddle.Tensor)
+        self.assertEqual(result_zeros.shape, [2, 3])
+        self.assertEqual(result_zeros.dist_attr, dist_attr)
+
+        # Test with generate_tensor_random()
+        result_random = dist.dtensor_from_fn(paddle.rand, dist_attr=dist_attr, shape=[2, 3])
+        self.assertIsInstance(result_random, paddle.Tensor)
+        self.assertEqual(result_random.shape, [2, 3])
+        self.assertEqual(result_random.dist_attr, dist_attr)
 
 if __name__ == "__main__":
     unittest.main()
