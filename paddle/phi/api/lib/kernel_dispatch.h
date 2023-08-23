@@ -195,6 +195,16 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
     }
   }
 
+  void operator()(const paddle::optional<std::vector<Tensor>>& x) {
+    if (x) {
+      if (!(x.get_ptr()->empty())) {
+        for (auto& t : *(x.get_ptr())) {
+          result &= t.is_dist_tensor();
+        }
+      }
+    }
+  }
+
   // skip other type args, these args don't used in kernel selection
   template <typename T>
   void operator()(const T& x) {

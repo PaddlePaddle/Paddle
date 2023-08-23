@@ -141,6 +141,7 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
 /* ------------------ for auto parallel ----------------------- */
 
 phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(std::vector<Tensor*> out);
 #endif
 
 }  // namespace experimental

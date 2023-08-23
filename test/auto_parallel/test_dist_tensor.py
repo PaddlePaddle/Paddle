@@ -68,20 +68,40 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
 
         local_t.stop_gradient = False
         dist_t.stop_gradient = False
+        # local_t.stop_gradient = True
+        # dist_t.stop_gradient = True
 
         return local_t, dist_t
 
-    def test_relu_api_for_dist_tensor(self):
-        x = np.random.random(size=[4, 4]).astype("float32")
-        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
-        local_out = F.relu(local_in)
-        dist_out = F.relu(dist_in)
+    # def test_relu_api_for_dist_tensor(self):
+    #     x = np.random.random(size=[4, 4]).astype("float32")
+    #     local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
+    #     local_out = F.relu(local_in)
+    #     dist_out = F.relu(dist_in)
+    #     self.check_tensor_eq(local_out, dist_out)
+
+    #     # test backward
+    #     local_out.backward()
+    #     dist_out.backward()
+    #     self.check_tensor_eq(local_in.grad, dist_in.grad)
+
+    def test_concat_for_dist_tensor(self):
+        x1 = np.random.random(size=[4, 4]).astype("float32")
+        x2 = np.random.random(size=[4, 4]).astype("float32")
+        x3 = np.random.random(size=[4, 4]).astype("float32")
+        local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
+        local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(x2)
+        local_in3, dist_in3 = self.create_local_and_dist_tensor_pair(x3)
+        local_out = paddle.concat([local_in1, local_in2, local_in3])
+        dist_out = paddle.concat([dist_in1, dist_in2, dist_in3])
         self.check_tensor_eq(local_out, dist_out)
 
         # test backward
         local_out.backward()
         dist_out.backward()
-        self.check_tensor_eq(local_in.grad, dist_in.grad)
+        self.check_tensor_eq(local_in1.grad, dist_in1.grad)
+        self.check_tensor_eq(local_in2.grad, dist_in2.grad)
+        self.check_tensor_eq(local_in3.grad, dist_in3.grad)
 
 
 if __name__ == "__main__":

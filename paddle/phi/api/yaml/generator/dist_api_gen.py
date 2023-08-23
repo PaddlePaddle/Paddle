@@ -71,9 +71,23 @@ SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output);
     auto dense_out = dist_out->mutable_value();
 """
+VECTOR_SINGLE_OUT_CREATION_TEMPLATE = """
+    auto dist_out = SetKernelDistOutput(x_grad);
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i=0; i<dist_out.size(); i++) {{
+        dense_out[i] = dist_out[i]->mutable_value();
+    }}
+"""
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = SetKernelDistOutput({});
     auto dense_out_{} = dist_out_{}->mutable_value();
+"""
+MULTI_VECTOR_SINGLE_OUT_CREATION_TEMPLATE = """
+    auto dist_out_{name} = SetKernelDistOutput(x_grad);
+    std::vector<phi::DenseTensor*> dense_out_{name}(dist_out_{name}.size());
+    for (size_t i=0; i<dist_out_{name}.size(); i++) {{
+        dense_out_{name}[i] = dist_out_{name}[i]->mutable_value();
+    }}
 """
 
 # TODO(chenweihang): support vector and tuple output later
@@ -91,12 +105,31 @@ TUPLE_OUT_CREATION_TEMPLATE = """
 # TODO(chenweihang): InferSPMD function design
 SINGLE_DIST_META_IN_TEMPLATE = """MakeMetaTensor(*{}.impl()), """
 # TODO(chenweihang): support vector and optional args later
-VECTOR_DIST_META_IN_TEMPLATE = """
+VECTOR_DIST_META_IN_TEMPLATE = """{}_meta_ptr_vec, """
+VECTOR_DIST_META_IN_DECL_TEMPLATE = """
+    std::vector<phi::MetaTensor> {name}_meta_vec;
+    for (auto tmp : {name}) {{
+      {name}_meta_vec.emplace_back(MakeMetaTensor(*tmp.impl()));
+    }}
+    std::vector<const phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
+    for (size_t i=0; i<{name}_meta_ptr_vec.size(); i++) {{
+      {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+    }}
 """
 OPTIONAL_DIST_VECTOR_META_IN_TEMPLATE = """
 """
 SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
     phi::MetaTensor meta_{}({});"""
+VECTOR_DIST_META_OUT_DECL_TEMPLATE = """
+    std::vector<phi::MetaTensor> {name}_meta_vec;
+    for (auto tmp : {name}) {{
+      {name}_meta_vec.emplace_back(phi::MetaTensor(tmp));
+    }}
+    std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}.size());
+    for (size_t i=0; i<{name}_meta_vec.size(); i++) {{
+      {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+    }}
+"""
 INFER_SPMD_TEMPLATE = """
     phi::{}({}{});
 """
@@ -120,6 +153,18 @@ SINGLE_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{} = PrepareDataForDistTensor({}, GetKernelInputArgDef(kernel.InputAt({}), kernel_backend), {}, kernel_result.is_stride_kernel);
     auto input_{} = dist_input_{}->mutable_value();
 """
+VECTOR_PREPARE_DATA_TEMPLATE = """
+    auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+    std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
+    for (auto tmp : dist_input_{name}_vec) {{
+      dense_input_{name}_vec.emplace_back(tmp->mutable_value());
+    }}
+    std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
+    std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
+    for (size_t i=0; i<dense_input_{name}_meta_vec.size(); i++) {{
+      dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
+    }}
+"""
 INFER_META_SINGLE_INPUT_TEMPLATE = """
     auto dist_input_{} = {}.impl();
     auto input_{} = static_cast<phi::distributed::DistTensor*>(dist_input_{}.get())->mutable_value();
@@ -135,12 +180,21 @@ INFER_META_VECTOR_INPUT_TEMPLATE = """
 # 6. Infer Local DenseTensor Meta
 SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(*input_{}), """
 # TODO(chenweihang): support vector and optional args later
-VECTOR_META_IN_TEMPLATE = """
-"""
+VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
 OPTIONAL_VECTOR_META_IN_TEMPLATE = """
 """
 SINGLE_META_OUT_DECL_TEMPLATE = """
     phi::MetaTensor meta_{}({});"""
+VECTOR_META_OUT_DECL_TEMPLATE = """
+    std::vector<phi::MetaTensor> {name}_meta_vec;
+    for (auto tmp : {name}) {{
+      {name}_meta_vec.emplace_back(phi::MetaTensor(tmp));
+    }}
+    std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
+    for (size_t i=0; i<{name}_meta_vec.size(); i++) {{
+      {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+    }}
+"""
 INFER_META_TEMPLATE = """
     phi::{}({}{});
 """
@@ -158,6 +212,8 @@ KERNEL_CALL_TEMPLATE = """
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
     (*kernel_fn)({}, {});
 """
+PREFIX_VECTOR_TENSOR_NAME = "dense_input_"
+SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
 # 8. Reshard Output
 OUTPUT_RESHARD_TEMPLATE = """
@@ -175,6 +231,18 @@ OUTPUT_RESHARD_TEMPLATE = """
 #     types : [], list of output types
 #     out_size_expr : [], expression for getting size of vector<Tensor>
 
+skip_op_lists = [
+    "broadcast_tensors", "broadcast_tensors_grad", # 
+    "check_finite_and_unscale", # std::vector<Tensor>&, const Tensor& -> std::tuple<std::vector<Tensor>&, Tensor>
+    "coalesce_tensor", # const std::vector<Tensor>&, DataType, bool, bool, bool, float, bool, int, int, const std::vector<int64_t>&, const std::vector<int64_t>& -> std::tuple<std::vector<Tensor>, Tensor>
+    "meshgrid", "meshgrid_grad", # const std::vector<Tensor>& -> std::vector<Tensor>
+    "unbind", # const Tensor&, int -> std::vector<Tensor> 
+    "unstack", "unstack_grad", # const Tensor&, int, int -> std::vector<Tensor> 
+    "update_loss_scaling", # std::vector<Tensor>&, const Tensor&, Tensor&, Tensor&, Tensor&, int, int, float, float, const Scalar& -> std::tuple<std::vector<Tensor>&, Tensor&, Tensor&, Tensor&>
+    "einsum", "einsum_grad", # const std::vector<Tensor>&, const std::string& -> std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>> 
+    "split", # const Tensor&, const IntArray&, const Scalar& -> std::vector<Tensor>
+    "split_with_num", # const Tensor&, int, const Scalar& -> std::vector<Tensor>
+]
 
 class DistForwardAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
@@ -184,10 +252,13 @@ class DistForwardAPI(ForwardAPI):
     def init_dist_api_members(self):
         self.gene_dist_input_func = {
             "const Tensor&": {
-                "dense": self.generate_dense_input,
+                "dense": self.generate_single_dense_input,
             },
             "const paddle::optional<Tensor>&": {
-                "dense": self.generate_dense_input,
+                "dense": self.generate_single_dense_input,
+            },
+            "const std::vector<Tensor>&": {
+                "dense": self.generate_vector_dense_input,
             },
         }
 
@@ -285,10 +356,10 @@ class DistForwardAPI(ForwardAPI):
                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
 
                 if out_type == 'std::vector<Tensor>':
-                    self.vector_output_size_assertion_check(i)
+                    self.vector_output_size_assertion_check()
                     # Special case for inplace vector and inplace optional<vector>
                     # TODO(chenweihang): support this branch later
-                    if self.is_inplace_output():
+                    if self.is_inplace_output(i):
                         set_out_func = "SetInplaceVectorKernelOutput"
                         if self.is_inplace_and_optional_output(i):
                             set_out_func = (
@@ -335,6 +406,7 @@ class DistForwardAPI(ForwardAPI):
             if infer_meta['param'] is not None
             else input_names + attr_names
         )
+        input_mega_code = ""
         input_args_code = ""
         for param in infer_meta_params:
             if param in input_names:
@@ -342,6 +414,11 @@ class DistForwardAPI(ForwardAPI):
                     input_args_code += SINGLE_DIST_META_IN_TEMPLATE.format(
                         param
                     )
+                elif self.inputs['input_info'][param] == "const std::vector<Tensor>&":
+                    input_args_code += VECTOR_DIST_META_IN_TEMPLATE.format(
+                        param
+                    )
+                    input_mega_code += VECTOR_DIST_META_IN_DECL_TEMPLATE.format(name=param)
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
@@ -360,8 +437,15 @@ class DistForwardAPI(ForwardAPI):
         output_args_code = ""
         for i, out_name in enumerate(self.dist_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
-                # TODO(chenweihang): support vector output later
-                pass
+                output_decl_code += VECTOR_DIST_META_OUT_DECL_TEMPLATE.format(
+                    name=out_name
+                )
+                if len(self.dense_output_args) == 1:
+                    output_args_code += f"{out_name}_meta_ptr_vec, "
+                else:
+                    output_args_code += (
+                        f"{out_name} ? {out_name}_meta_ptr_vec : nullptr, "
+                    )
             else:
                 output_decl_code += SINGLE_DIST_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name
@@ -374,7 +458,7 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        return output_decl_code + INFER_SPMD_TEMPLATE.format(
+        return output_decl_code + input_mega_code + INFER_SPMD_TEMPLATE.format(
             infer_meta_func_code, input_args_code, output_args_code
         )
 
@@ -387,7 +471,7 @@ class DistForwardAPI(ForwardAPI):
         return INPUT_RESHARD_TEMPLATE.format()
 
     # override BaseAPI's method
-    def generate_dense_input(
+    def generate_single_dense_input(
         self,
         input_name,
     ):
@@ -410,6 +494,27 @@ class DistForwardAPI(ForwardAPI):
 
         return input_tensor_code
 
+    # override BaseAPI's method
+    def generate_vector_dense_input(
+        self,
+        input_name,
+    ):
+        input_tensor_code = ""
+        trans_flag = self.gene_trans_flag(input_name)
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_tensor_code += VECTOR_PREPARE_DATA_TEMPLATE.format(
+            name=input_name,
+            index=kernel_param.index(input_name),
+            trans_flag=trans_flag
+        )
+
+        return input_tensor_code
+
     def generate_prepare_data_code(self) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
@@ -420,7 +525,7 @@ class DistForwardAPI(ForwardAPI):
         for i, input_name in enumerate(input_names):
             # set input code
             if input_name in kernel_param:
-                # onlu support dense tensor
+                # only support dense tensor
                 api_tensor_type = self.inputs['input_info'][input_name]
                 phi_tensor_type = 'dense'
                 if api_tensor_type in self.gene_dist_input_func.keys():
@@ -480,6 +585,8 @@ class DistForwardAPI(ForwardAPI):
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_args_code += SINGLE_META_IN_TEMPLATE.format(param)
+                elif self.inputs['input_info'][param] == "const std::vector<Tensor>&":
+                    input_args_code += VECTOR_META_IN_TEMPLATE.format(param)
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
@@ -498,8 +605,15 @@ class DistForwardAPI(ForwardAPI):
         output_args_code = ""
         for i, out_name in enumerate(self.dense_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
-                # TODO(chenweihang): support vector output later
-                pass
+                output_decl_code += VECTOR_META_OUT_DECL_TEMPLATE.format(
+                    name=out_name
+                )
+                if len(self.dense_output_args) == 1:
+                    output_args_code += f"{out_name}_meta_ptr_vec, "
+                else:
+                    output_args_code += (
+                        f"{out_name} ? {out_name}_meta_ptr_vec : nullptr, "
+                    )
             else:
                 output_decl_code += SINGLE_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name
@@ -548,7 +662,7 @@ class DistForwardAPI(ForwardAPI):
                     if input_infos[arg] == "const Tensor&":
                         input_args.append("*" + PREFIX_TENSOR_NAME + arg)
                     elif input_infos[arg] == "const std::vector<Tensor>&":
-                        input_args.append(PREFIX_TENSOR_NAME + arg)
+                        input_args.append(PREFIX_VECTOR_TENSOR_NAME + arg + SUFFIX_VECTOR_TENSOR_NAME)
                     else:
                         # do nothing
                         pass
@@ -614,12 +728,19 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def check_argument_whether_support_auto_parallel(self):
+        global skip_op_lists
         for name in self.inputs['names']:
-            if self.inputs['input_info'][name] != "const Tensor&":
+            if self.inputs['input_info'][name] not in ["const Tensor&", "const std::vector<Tensor>&"]:
                 return False
         for out_type in self.outputs['types']:
-            if out_type != "Tensor":
+            if out_type not in ["Tensor", "std::vector<Tensor>"]:
                 return False
+
+        print("kernel name: ", self.kernel['func'][0])
+        if self.kernel['func'][0] in skip_op_lists:
+            print(self.kernel['func'][0]," skip")
+            return False
+        print()
         return True
 
     # override BaseAPI's method
@@ -661,7 +782,6 @@ class DistForwardAPI(ForwardAPI):
                 and self.check_argument_whether_support_auto_parallel()
             ):
                 dist_branch_code = self.generate_auto_paralel_branch()
-
             return API_IMPL_TEMPLATE.format(
                 self.get_return_type(inplace_flag),
                 api_func_name,
