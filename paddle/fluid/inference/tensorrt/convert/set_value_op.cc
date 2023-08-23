@@ -83,7 +83,14 @@ class SetValueConverter : public OpConverter {
     if (decrease_axes.size() > 0 && value_rank != input_rank) {
       updates = Unsqueeze(updates, decr_axes);
     }
-    
+
+    PADDLE_ENFORCE_EQ(updates->getDimensions().nbDims, input_rank,
+    platform::errors::InvalidArgument(
+        "ValueTensor‘s rank not equal to Input's rank, "
+        "you should try use C++ API config.exp_disable_tensorrt_ops({\"%s\"}) to forbind this op enter into TRT, " 
+        "please find the %s's real name from .pdmodel or shape.txt", 
+        output_name, output_name));
+
     // if still < input_rank, means we need broadcast!
     // value_rank = updates->getDimensions().nbDims;
     // if (value_rank < input_rank) {
