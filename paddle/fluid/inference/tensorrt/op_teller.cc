@@ -796,7 +796,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       // plugin are not constient with those of multiclass_nms3
       if (desc.HasAttr("nms_eta") == false) return false;
       auto nms_eta = PADDLE_GET_CONST(float, desc.GetAttr("nms_eta"));
-      if (nms_eta <= 1.0) return false;
+      if (nms_eta < 1.0) return false;
 
       auto nms_top_k = PADDLE_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
