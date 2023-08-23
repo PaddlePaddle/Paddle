@@ -416,6 +416,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         phi::funcs::CreateKey(dev_ctx,
                               ctx.InputName("Input"),
                               ctx.InputName("W"),
+                              x->mem_desc(),
                               phi::vectorize(x->dims()),
                               phi::vectorize(weights->dims())));
 
