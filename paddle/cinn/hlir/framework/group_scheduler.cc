@@ -27,6 +27,47 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
+static const std::unordered_set<std::string>
+    kProhibitScheduleExternalFuncNames = {
+#define CINN_NVGPU_FUNC2STRING(str) #str
+#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
+  CINN_NVGPU_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE)
+
+#define GEN_FUNC_NAME(_, impl) \
+  _(impl, gt_num)              \
+  _(impl, lt_num)              \
+  _(impl, index_add)           \
+  _(impl, next_smallest)
+
+#define GEN_FUNC_NAME_WITH_TYPE(_, ...)                                     \
+  _(__VA_ARGS__, _bool), _(__VA_ARGS__, _fp16), _(__VA_ARGS__, _fp32),      \
+      _(__VA_ARGS__, _fp64), _(__VA_ARGS__, _uint8), _(__VA_ARGS__, _int8), \
+      _(__VA_ARGS__, _int16), _(__VA_ARGS__, _int32), _(__VA_ARGS__, _int64),
+
+        GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
+#undef GEN_FUNC_NAME
+};
+
+bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
+  ir::ScheduleBlockRealize* sch_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(sch_block_realize);
+  ir::ScheduleBlock* sch_block =
+      sch_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(sch_block);
+
+  auto find_call = ir::CollectIRNodesWithoutTensor(
+      sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
+  for (ir::Expr call : find_call) {
+    ir::Call* call_node = call.As<ir::Call>();
+    if (call.As<ir::Call>() && kProhibitScheduleExternalFuncNames.count(
+                                   call.As<ir::Call>()->name) != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Find loops with same extents of 2 ScheduleBlock
 std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
     ir::ScheduleBlockNode* source_node, ir::ScheduleBlockNode* target_node) {
@@ -46,19 +87,6 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
   }
 
   return same_loops;
-}
-
-bool IsExternCallBlock(ir::Expr block) {
-  ir::ScheduleBlockRealize* sch_block_realize =
-      block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(sch_block_realize);
-  ir::ScheduleBlock* sch_block =
-      sch_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(sch_block);
-
-  auto find_call = ir::CollectIRNodesWithoutTensor(
-      sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
-  return !find_call.empty();
 }
 
 GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
@@ -223,7 +251,7 @@ void GroupScheduler::DoComputeInline() {
   auto_schedule::AutoInline inliner(target_, no_inline_output_names);
 
   auto InlineFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsExternCallBlock(node->Block())) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
       return;
     }
     VLOG(6) << "try ComputeInline on: " << node->id()
@@ -252,7 +280,7 @@ void GroupScheduler::DoHorizontalLoopFusion() {
   ir::ScheduleBlockNode* master_node = end_nodes.front();
   CHECK_NOTNULL(master_node);
   for (int i = 1; i < end_nodes.size(); ++i) {
-    if (IsExternCallBlock(end_nodes[i]->Block())) {
+    if (IsProhibitScheduleExternCallBlock(end_nodes[i]->Block())) {
       continue;
     }
     VLOG(6) << "try to fuse loop of " << end_nodes[i]->id() << " to "
@@ -291,7 +319,7 @@ void GroupScheduler::DoVerticalLoopFusion() {
   };
 
   auto ComputeAtFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsExternCallBlock(node->Block())) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
       return;
     }
     std::vector<ir::ScheduleBlockNode*> masters = FindMaster(node);
@@ -553,6 +581,8 @@ void GroupScheduler::AllocateStorage() {
         }
       }
     }
+    VLOG(6) << "lower_bound before simplify of " << indice_value << " = "
+            << copy_for_lower_bound;
     copy_for_lower_bound = common::AutoSimplify(copy_for_lower_bound);
     VLOG(6) << "upper_bound before simplify of " << indice_value << " = "
             << copy_for_upper_bound;
@@ -701,7 +731,7 @@ void GroupScheduler::AllocateStorage() {
 
   // function to set storage of each tensor
   auto SetStorage = [&](ir::ScheduleBlockNode* node) {
-    if (IsExternCallBlock(node->Block())) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
       return;
     }
     ir::MemoryType memory_type = ir::MemoryType::GPULocal;
