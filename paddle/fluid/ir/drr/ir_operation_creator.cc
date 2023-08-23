@@ -39,7 +39,14 @@ ir::AttributeMap CreateAttributeMap(const OpCall& op_call,
                                     const MatchContextImpl& src_match_ctx) {
   ir::AttributeMap attr_map;
   for (const auto& kv : op_call.attributes()) {
-    attr_map[kv.first] = src_match_ctx.GetIrAttr(kv.second.name());
+    std::visit(
+        [&](auto&& arg) {
+          if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
+                                       NormalAttribute>) {
+            attr_map[kv.first] = src_match_ctx.GetIrAttr(arg.name());
+          }
+        },
+        kv.second);
   }
   return attr_map;
 }
@@ -48,7 +55,16 @@ template <typename T>
 T GetAttr(const std::string& attr_name,
           const OpCall& op_call,
           const MatchContextImpl& src_match_ctx) {
-  return src_match_ctx.Attr<T>(op_call.attributes().at(attr_name).name());
+  const auto& attr = op_call.attributes().at(attr_name);
+  if (std::holds_alternative<NormalAttribute>(attr)) {
+    return src_match_ctx.Attr<T>(std::get<NormalAttribute>(attr).name());
+  } else if (std::holds_alternative<ComputeAttribute>(attr)) {
+    MatchContext ctx(std::make_shared<MatchContextImpl>(src_match_ctx));
+    return std::any_cast<T>(
+        std::get<ComputeAttribute>(attr).attr_compute_func()(ctx));
+  } else {
+    IR_THROW("Unknown attrbute type for : %s.", attr_name);
+  }
 }
 
 Operation* CreateOperation(const OpCall& op_call,
