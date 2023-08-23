@@ -1104,7 +1104,9 @@ def init_parallel_env():
 
         # barrier will call CreateNCCLEnvCache which will call CreateNCCLCommContext.
         # Set device_id to prevent creating null dev_ctx.
-        core.CommContextManager.set_device_id(parallel_env.device_id)
+        # TODO(mine): support XPU and other backends.
+        if backend in ["nccl", 'xccl', 'bkcl']:
+            core.CommContextManager.set_device_id(parallel_env.device_id)
         paddle.distributed.barrier(group=group)
         return group
 
