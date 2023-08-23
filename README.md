@@ -68,13 +68,14 @@ python setup.py install
 
 #### Docker Image for Developer
 ```bash
-docker run -it --privileged --name=paddle_musa_dev --env MTHREADS_VISIBLE_DEVICES=all --shm-size=80g sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:v0.1.0 /bin/bash
+docker run -it --privileged --name=paddle_musa_dev --env MTHREADS_VISIBLE_DEVICES=all --network=host --shm-size=80g sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:latest /bin/bash
 ```
 <details>
 <summary>Docker Image List</summary>
 
 | Docker Tag | Description |
 | ---- | --- |
+| [**v0.1.4/latest**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.2 (driver2.2.0 develop or newer)<br> mcc-20230823-daily <br> mudnn 20230823-daily <br> mccl_20230823-daily <br> muAlg_dev-20230823-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
 | [**v0.1.3**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mcc-20230814-daily <br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-20230814-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
 | [**v0.1.2**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mcc-20230814-daily <br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-20230814-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
 | [**v0.1.1**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-0.1.1 <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
@@ -100,8 +101,8 @@ docker run -it --privileged --name=paddle_musa_dev --env MTHREADS_VISIBLE_DEVICE
 
 ```python
 import paddle
-cpu_tensor1 = paddle.to_tensor([2.0, 3.0, 4.0])
-cpu_tensor2 = paddle.to_tensor([2.0, 3.0, 4.0])
+cpu_tensor1 = paddle.to_tensor([2.0, 3.0, 4.0], place=paddle.CPUPlace())
+cpu_tensor2 = paddle.to_tensor([2.0, 3.0, 4.0], place=paddle.CPUPlace())
 cpu_result = cpu_tensor1 + cpu_tensor2
 print("cpu_result: ", cpu_result)
 
