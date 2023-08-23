@@ -120,15 +120,15 @@ template <typename T, typename Context>
 void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   const auto* grad_var = ctx.InputVar("Grad");
 
-  auto* lr_in = ctx.Input<phi::DenseTensor>("LearningRate");
+  auto lr_in = EigenVector<T>::Flatten("LearningRate");
 
-  auto* param_in = ctx.Input<phi::DenseTensor>("Param");
-  auto* sq_accum_in = ctx.Input<phi::DenseTensor>("SquaredAccumulator");
-  auto* lin_accum_in = ctx.Input<phi::DenseTensor>("LinearAccumulator");
+  auto param_in = EigenVector<T>::Flatten("Param");
+  auto sq_accum_in = EigenVector<T>::Flatten("SquaredAccumulator");
+  auto lin_accum_in = EigenVector<T>::Flatten("LinearAccumulator");
 
-  auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
-  auto* sq_accum_out = ctx.Output<phi::DenseTensor>("SquaredAccumOut");
-  auto* lin_accum_out = ctx.Output<phi::DenseTensor>("LinearAccumOut");
+  ctx.template Alloc<T>("ParamOut");
+  ctx.template Alloc<T>("SquaredAccumOut");
+  ctx.template Alloc<T>("LinearAccumOut");
 
   param_out->mutable_data<T>(ctx.GetPlace());
   sq_accum_out->mutable_data<T>(ctx.GetPlace());
@@ -139,7 +139,7 @@ void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto lr_power = static_cast<T>(ctx.Attr<float>("lr_power"));
 
   if (grad_var->IsType<phi::DenseTensor>()) {
-    auto grad = ctx.Input<phi::DenseTensor>("Grad");
+    auto grad = EigenVector<T>::Flatten("Grad");
     auto g = EigenVector<T>::Flatten(*grad);
 
     auto p = EigenVector<T>::Flatten(*param_in);
@@ -150,7 +150,7 @@ void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto s_acc_out = EigenVector<T>::Flatten(*sq_accum_out);
     auto l_acc_out = EigenVector<T>::Flatten(*lin_accum_out);
-    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
+    auto& place = *ctx.eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
@@ -191,9 +191,8 @@ void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 
     phi::SelectedRows tmp_merged_grad;
     phi::SelectedRows* merged_grad = &tmp_merged_grad;
-    phi::funcs::scatter::MergeAdd<DeviceContext, T> merge_func;
-    merge_func(
-        ctx.template device_context<DeviceContext>(), *grad, merged_grad);
+    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+    merge_func(ctx, *grad, merged_grad);
 
     auto* merged_rows = merged_grad->mutable_rows();
     phi::MixVector<int64_t> mixv_merged_rows(merged_rows);
@@ -201,8 +200,8 @@ void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
     auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
     auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
-    platform::ForRange<DeviceContext> for_range(
-        static_cast<const DeviceContext&>(ctx.device_context()),
+    platform::ForRange<Context> for_range(
+        static_cast<const Context&>(ctx.device_context()),
         row_numel * row_height);
 
     SparseFTRLFunctor<T> functor(
