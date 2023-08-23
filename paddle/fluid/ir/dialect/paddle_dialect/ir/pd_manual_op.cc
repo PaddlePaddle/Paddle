@@ -41,7 +41,7 @@ OpInfoTuple AddNOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info =
       OpRunTimeInfo("", {""}, {""}, {""}, {""}, {}, {}, {});
 
-  return std::make_tuple(inputs, attributes, outputs, run_time_info);
+  return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }
 
 void AddNOp::Verify() {

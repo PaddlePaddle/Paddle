@@ -14,25 +14,18 @@
 
 #pragma once
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
-namespace sr {
-
-template <typename T, typename Context>
-void FullKernel(const Context& dev_ctx,
-                const IntArray& shape,
-                const Scalar& val,
-                DataType dtype,
-                SelectedRows* out);
 
 template <typename T, typename Context>
 void FullWithTensorKernel(const Context& dev_ctx,
                           const DenseTensor& shape,
                           const DenseTensor& value,
                           DataType dtype,
-                          SelectedRows* out);
-}  // namespace sr
+                          DenseTensor* out) {
+  auto shape_tmp = IntArray(shape);
+  out->Resize(phi::make_ddim(shape_tmp.GetData()));
+  FullKernel<T, Context>(dev_ctx, shape_tmp, Scalar(value), dtype, out);
+}
 }  // namespace phi
