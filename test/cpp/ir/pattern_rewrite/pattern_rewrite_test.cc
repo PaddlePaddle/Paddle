@@ -1085,7 +1085,6 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 // TODO(wilber): Add a normal test.
 // TODO(wanghao107) fix this test on
 // mac_py3 CI
-#if !defined(__APPLE__)
 TEST(pattern_rewrite, Patterns) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   auto *test_dialect = ctx->GetOrRegisterDialect<Conv2dFusionTestDialect>();
@@ -1115,4 +1114,3 @@ TEST(pattern_rewrite, Patterns) {
 
   CHECK_EQ(pm.Run(&program), true);
 }
-#endif
