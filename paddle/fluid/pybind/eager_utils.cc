@@ -651,6 +651,10 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
                                             const std::string& op_type,
                                             ssize_t arg_pos) {
+  if (obj == Py_None) {
+    return phi::DataType::UNDEFINED;
+  }
+
   paddle::DataType dtype;
   if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
     dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
