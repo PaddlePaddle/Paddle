@@ -18,8 +18,8 @@
 namespace ir {
 
 bool compareSymbolicDimNames(const std::string& lhs, const std::string& rhs) {
-  if (lhs.size() < 1 || lhs[0] != 'S' && lhs[0] != 'C') return lhs < rhs;
-  if (rhs.size() < 1 || rhs[0] != 'S' && rhs[0] != 'C') return lhs < rhs;
+  if (lhs.size() < 1 || (lhs[0] != 'S' && lhs[0] != 'C')) return lhs < rhs;
+  if (rhs.size() < 1 || (rhs[0] != 'S' && rhs[0] != 'C')) return lhs < rhs;
   int64_t lhsIdx = 0, rhsIdx = 0;
   try {
     lhsIdx = stol(lhs.substr(1));
@@ -30,18 +30,19 @@ bool compareSymbolicDimNames(const std::string& lhs, const std::string& rhs) {
   return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhsIdx < rhsIdx);
 }
 
-ir::Operation* SymbolTable::lookup(const std::string& name) const {
-  auto it = symbolTableMap_.find(name);
-  return it != symbolTableMap_.end() ? it->second : nullptr;
-}
-
 const std::string SymbolTable::insert(ir::Operation* symbol) {
   std::string name;
-  if (symbol->HasAttribute("sym_name")) {
+  if (symbol->name() == "shape.SymbolicDim") {
     name = symbol->dyn_cast<SymbolicDim>().getSymName();
+    symbolTableMap_.insert({name, symbol});
   }
-  // TODO(liujinnan): add constraint_func name branch.
-  symbolTableMap_.insert({name, symbol});
+
+  // TODO(liujinnan): add more constraint_func name branch.
+  if (symbol->name() == "shape.tie_product_equal") {
+    name = "tie_product_equal";
+    symbolFuncMap_[name].emplace_back(symbol);
+  }
+
   return name;
 }
 
