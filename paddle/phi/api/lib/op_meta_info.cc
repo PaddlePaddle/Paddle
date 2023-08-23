@@ -39,7 +39,7 @@ std::string trim_spaces(const std::string& str) {
 }
 
 std::vector<std::string> ParseAttrStr(const std::string& attr) {
-  auto split_pos = attr.find_first_of(":");
+  auto split_pos = attr.find_first_of(':');
   PADDLE_ENFORCE_NE(split_pos,
                     std::string::npos,
                     phi::errors::InvalidArgument(
@@ -506,13 +506,6 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferShapeFn(InferShapeFunc func) {
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
-  PADDLE_ENFORCE_EQ(
-      index_,
-      0UL,
-      phi::errors::Unimplemented(
-          "Currently, the InferDtypeFn setting of Grad Op is not supported, "
-          "And backward Tensor `X@GRAD` will use the dtype of forward Tensor "
-          "`X` by default."));
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
 }
