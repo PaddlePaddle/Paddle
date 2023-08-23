@@ -87,6 +87,7 @@ void GatherNdKernel(const Context &ctx,
       x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
 
   int ret = XPU_SUCCESS;
+#ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_type == DataType::INT32) {
     ret = xpu::gather_nd<XPUType, int>(
         ctx.x_context(),
@@ -105,6 +106,26 @@ void GatherNdKernel(const Context &ctx,
         index_shape);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather_nd");
+#else
+  if (index_type == DataType::INT32) {
+    ret = xpu::plugin::fast_gather_nd<XPUType, int>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUType *>(x.data<T>()),
+        index.data<int>(),
+        reinterpret_cast<XPUType *>(out->data<T>()),
+        x_vec,
+        index_shape);
+  } else {
+    ret = xpu::plugin::fast_gather_nd<XPUType, int64_t>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUType *>(x.data<T>()),
+        index.data<int64_t>(),
+        reinterpret_cast<XPUType *>(out->data<T>()),
+        x_vec,
+        index_shape);
+  }
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "fast_gather_nd");
+#endif
 }
 
 }  // namespace phi

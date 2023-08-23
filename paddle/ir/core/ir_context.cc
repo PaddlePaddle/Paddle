@@ -156,6 +156,7 @@ class IrContextImpl {
   Float16Type fp16_type;
   Float32Type fp32_type;
   Float64Type fp64_type;
+  IndexType index_type;
   UInt8Type uint8_type;
   Int8Type int8_type;
   Int16Type int16_type;
@@ -203,6 +204,7 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   impl_->int16_type = TypeManager::get<Int16Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
   impl_->int64_type = TypeManager::get<Int64Type>(this);
+  impl_->index_type = TypeManager::get<IndexType>(this);
   impl_->bool_type = TypeManager::get<BoolType>(this);
   impl_->complex64_type = TypeManager::get<Complex64Type>(this);
   impl_->complex128_type = TypeManager::get<Complex128Type>(this);
@@ -342,6 +344,8 @@ Int16Type Int16Type::get(IrContext *ctx) { return ctx->impl().int16_type; }
 Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
 
 Int64Type Int64Type::get(IrContext *ctx) { return ctx->impl().int64_type; }
+
+IndexType IndexType::get(IrContext *ctx) { return ctx->impl().index_type; }
 
 Int8Type Int8Type::get(IrContext *ctx) { return ctx->impl().int8_type; }
 

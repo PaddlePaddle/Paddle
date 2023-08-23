@@ -110,8 +110,8 @@ def train(
                 print("cost=" + str(cost_val) + " acc=" + str(acc_val))
                 if cost_val < 0.4 and acc_val > 0.8:
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(
-                            save_dirname, ["words"], prediction, exe
+                        paddle.static.io.save_inference_model(
+                            save_dirname, data, prediction, exe
                         )
                     return
                 if math.isnan(float(cost_val)):
@@ -153,7 +153,7 @@ def infer(word_dict, use_cuda, save_dirname=None):
 
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -161,7 +161,7 @@ def infer(word_dict, use_cuda, save_dirname=None):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         word_dict_len = len(word_dict)
 

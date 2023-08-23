@@ -43,7 +43,6 @@ class TestBuildOp(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             out = paddle.mean(tanh_out)
-        print(newir_program)
         self.assertEqual(out.get_defining_op().name(), "pd.mean")
         self.assertEqual(
             out.get_defining_op()
@@ -65,7 +64,6 @@ class TestBuildOp2(unittest.TestCase):
             out1 = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
             out = paddle.add_n([out1, out2])
-        print(newir_program)
         self.assertEqual(out.get_defining_op().name(), "pd.add_n")
         self.assertEqual(
             out.get_defining_op()
@@ -100,6 +98,25 @@ class TestBuildOp3(unittest.TestCase):
         print(newir_program)
         self.assertEqual(
             tanh_operand.source().get_defining_op().name(), "pd.mean"
+        )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
+
+class TestBuildOp4(unittest.TestCase):
+    def test_build_concat_op(self):
+        newir_program = get_ir_program()
+        tanh_out = newir_program.block().ops[-1].result(0)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            out = paddle.concat([tanh_out, tanh_out], 0)
+        self.assertEqual(out.get_defining_op().name(), "pd.concat")
+        self.assertEqual(
+            out.get_defining_op()
+            .operands()[0]
+            .source()
+            .get_defining_op()
+            .name(),
+            "builtin.combine",
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
