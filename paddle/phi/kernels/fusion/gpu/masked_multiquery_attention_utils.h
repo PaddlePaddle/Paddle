@@ -641,8 +641,10 @@ __global__ void masked_multiquery_attention_kernel(
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
       auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
       // T mask = params.attn_mask[mask_bhi * (params.timestep + 1) + ti];
-      T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
-      qk += static_cast<float>(mask);
+      if (params.attn_mask) {
+        T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
+        qk += static_cast<float>(mask);
+      }
       qk_max = fmaxf(qk_max, qk);
 
       qk_smem[ti] = qk;

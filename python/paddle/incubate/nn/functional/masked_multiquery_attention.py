@@ -87,13 +87,14 @@ def masked_multiquery_attention(
             src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
 
             # cache_kv: [2, batch_size, num_head, max_seq_len, dim_head]
-            cache_kv = paddle.rand(shape=(2, 2, 1, 64, 128), dtype="float32")
+            cache_kv1 = paddle.rand(shape=(2, 2, 1, 64, 128), dtype="float32")
+            cache_kv2 = paddle.rand(shape=(2, 2, 2, 64, 128), dtype="float32")
 
             output1 = F.masked_multiquery_attention(
-                q, k1, v1, src_mask=src_mask, cache_kv=cache_kv)
+                q, k1, v1, src_mask=src_mask, cache_kv=cache_kv1)
 
             output2 = F.masked_multiquery_attention(
-                q, k2, v2, src_mask=src_mask, cache_kv=cache_kv)
+                q, k2, v2, src_mask=src_mask, cache_kv=cache_kv2)
 
     """
     if in_dynamic_mode():

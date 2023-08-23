@@ -35,7 +35,7 @@ class TestMMHAOp(unittest.TestCase):
         self.dim_head = 128
         self.beam_size = 1
         self.max_seq_len = 33
-        self.sequence_length = 32
+        self.seq_len = 32
         self.q = np.random.uniform(
             -0.05, 0.05, [self.bsz, self.num_head, self.dim_head]
         )
@@ -45,9 +45,9 @@ class TestMMHAOp(unittest.TestCase):
         self.v = np.random.uniform(
             -0.05, 0.05, [self.bsz, self.num_head_kv, self.dim_head]
         )
-        self.src_mask = np.zeros([self.bsz, 1, 1, self.sequence_length + 1])
+        self.src_mask = np.zeros([self.bsz, 1, 1, self.seq_len + 1])
         self.cum_offsets = None
-        self.sequence_lengths = None
+        self.seq_lens = None
         self.rotary_tensor = None
         self.beam_cache_offset = None
         self.cache_kv_out = np.random.uniform(
@@ -57,7 +57,7 @@ class TestMMHAOp(unittest.TestCase):
                 2,
                 self.cache_bsz,
                 self.num_head_kv,
-                self.sequence_length,
+                self.seq_len,
                 self.dim_head,
             ],
         )
@@ -70,7 +70,6 @@ class TestMMHAOp(unittest.TestCase):
         self.out_shift = None
         self.out_smooth = None
 
-        self.seq_len = 1
         self.rotary_emb_dims = 0
         self.use_neox_rotary_style = False
 
@@ -217,7 +216,7 @@ class TestMMHAOp(unittest.TestCase):
                 )
                 src_mask_static = paddle.static.data(
                     name="src_mask_static",
-                    shape=[self.bsz, 1, 1, self.sequence_length + 1],
+                    shape=[self.bsz, 1, 1, self.seq_len + 1],
                     dtype=dtype,
                 )
                 cache_kv_mmha_out_static = paddle.static.data(
@@ -226,7 +225,7 @@ class TestMMHAOp(unittest.TestCase):
                         2,
                         self.cache_bsz,
                         self.num_head_kv,
-                        self.sequence_length + 1,
+                        self.seq_len + 1,
                         self.dim_head,
                     ],
                     dtype=dtype,

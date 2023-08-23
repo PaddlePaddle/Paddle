@@ -50,7 +50,7 @@ void MMQAKernel(const Context& dev_ctx,
   int cache_bsz = cache_kv.dims()[1];
   int max_seq_len = cache_kv.dims()[3];
 
-  int timestep = max_seq_len;
+  int timestep = seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
   bool mask_broadcast_num_heads = true;
 
@@ -75,7 +75,6 @@ void MMQAKernel(const Context& dev_ctx,
     }
     params.attn_mask = src_mask->data<T>();
     params.mask_length = src_mask->dims()[3];
-    timestep = src_mask->dims()[3] - 1;
   }
 
   if (out_scale > 0) {
