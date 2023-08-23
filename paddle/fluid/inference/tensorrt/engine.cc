@@ -204,6 +204,12 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_config_->setMaxWorkspaceSize(params_.max_workspace_size);
 #endif
 
+#if IS_TRT_VERSION_GE(8500)
+  infer_builder_config_->setPreviewFeature(
+      nvinfer1::PreviewFeature::kDISABLE_EXTERNAL_TACTIC_SOURCES_FOR_CORE_0805,
+      true);
+#endif
+
   bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
