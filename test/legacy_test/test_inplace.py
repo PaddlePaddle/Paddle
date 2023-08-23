@@ -1435,5 +1435,18 @@ class TestDygrapInplaceRenorm(TestDygraphInplaceWithContinuous):
         self.assertRaises(ValueError, paddle.renorm_, var, 1.0, -5, 2.05)
 
 
+class TestDygrapInplaceMultiply(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+        self.y = paddle.randn([10, 20, 1])
+
+    def inplace_api_processing(self, var):
+        return paddle.multiply_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.multiply(var, self.y)
+
+
 if __name__ == '__main__':
     unittest.main()
