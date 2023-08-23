@@ -126,6 +126,9 @@ void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
       phi::CastKernel<phi::dtype::float16>(
           *cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
       break;
+    case phi::DataType::INT16:
+      phi::CastKernel<int16_t>(*cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
+      break;
     case phi::DataType::FLOAT32:
       if (out == nullptr) {
         return;

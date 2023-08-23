@@ -612,7 +612,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     IR_NODE_LINK_TO(conv2d_xpu, conv2d_xpu_out_max);
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {conv, conv_filter};
+    std::unordered_set<const Node*> delete_nodes = {conv};
     if (act != nullptr) {
       delete_nodes.insert(act);
     }
@@ -646,9 +646,10 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(conv2d_xpu_fuse_pass, paddle::framework::ir::Conv2dXPUFusePass);
+REGISTER_PASS(conv2d_pooling_xpu_fuse_pass,
+              paddle::framework::ir::Conv2dXPUFusePass);
 
-REGISTER_PASS_CAPABILITY(conv2d_xpu_fuse_pass)
+REGISTER_PASS_CAPABILITY(conv2d_pooling_xpu_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "conv2d_xpu", 0));
+            "conv2d_pooling_xpu", 0));

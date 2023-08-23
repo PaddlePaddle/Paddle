@@ -74,7 +74,7 @@ void DeleteIsolatedNodePass::ApplyImpl(Graph* graph) const {
     CollectReservedPersistableNodeNames(graph->GetSubGraph(i),
                                         &reserved_persistable_node_names);
   }
-
+  VLOG(1) << "-------CollectReservedPersistableNodeNames done";
   int delete_counts = 0;
   std::unordered_set<std::string> delete_node_names;
   for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
@@ -104,6 +104,7 @@ void DeleteIsolatedNodePass::CollectReservedPersistableNodeNames(
     for (auto* out_node : node->outputs) {
       auto op_type = out_node->Op()->Type();
       if (control_flow_op_input_map_.count(op_type) == 0) {
+        VLOG(1) << "reserved_persistable_node: " << node->Var()->Name();
         reserved_persistable_node_names->insert(node->Var()->Name());
         break;
       }
@@ -119,6 +120,8 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       block = node->Op()->Block();
+      // VLOG(1) << "block is : " << (block == nullptr? "null" : "not null");
+      // if (block != nullptr)
       break;
     }
   }
@@ -132,10 +135,15 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
   std::unordered_set<const Node*> delete_nodes;
   const std::unordered_set<ir::Node*> nodes = graph->Nodes();
   for (auto* node : nodes) {
+    VLOG(1) << "-------start collect deleted nodes";
     if (!node || node->Name() == "fetch" || node->Name() == "feed") continue;
     if (!node->IsVar() || !node->Var()->Persistable()) continue;
+    VLOG(1) << "-------get nodes likely";
     auto name = node->Var()->Name();
     if (reserved_persistable_node_names.count(name) > 0) continue;
+    VLOG(1) << "-------get nodes yes";
+    VLOG(1) << "delete node var name is: " << name << " from graph";
+    VLOG(1) << "delete node name is :" << node->Name() << " from graph";
     delete_nodes.insert(node);
     delete_node_names->insert(node->Name());
     block->RemoveVar(name);
@@ -144,6 +152,7 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
       var->Clear();
       scope.EraseVars({name});
     }
+    VLOG(1) << "delete node done";
     delete_node_counts++;
   }
 

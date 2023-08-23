@@ -135,11 +135,18 @@ bool VarDescIsConsistency(const Graph &graph) {
                                         return node->Var()->Persistable();
                                       });
     if (is_persistable) {
+      VLOG(1) << "first node name is: " << first_node->Var()->Name()
+              << " persistable";
       bool is_consistency =
           std::all_of(iter.second.begin(),
                       iter.second.end(),
                       [&first_node](const ir::Node *node) {
-                        return *node->Var() == *first_node->Var();
+                        bool is_cons = *node->Var() == *first_node->Var();
+                        if (!is_cons)
+                          VLOG(1) << "node var name is: " << node->Var()->Name()
+                                  << " node name is:" << node->Name();
+                        return is_cons;
+                        // return *node->Var() == *first_node->Var();
                       });
       if (!is_consistency) return false;
     }
