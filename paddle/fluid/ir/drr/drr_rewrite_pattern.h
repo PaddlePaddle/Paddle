@@ -32,10 +32,10 @@
 namespace ir {
 namespace drr {
 
+template <typename DrrPattern>
 class DrrRewritePattern : public ir::RewritePattern {
  public:
-  explicit DrrRewritePattern(const std::string& drr_pattern_name,
-                             const DrrPatternContext& drr_context,
+  explicit DrrRewritePattern(const DrrPatternContext& drr_context,
                              ir::IrContext* context,
                              ir::PatternBenefit benefit = 1)
       : ir::RewritePattern(
@@ -43,7 +43,6 @@ class DrrRewritePattern : public ir::RewritePattern {
             benefit,
             context,
             {}),
-        drr_pattern_name_(drr_pattern_name),
         source_pattern_graph_(drr_context.source_pattern_graph()),
         constraints_(drr_context.constraints()),
         result_pattern_graph_(drr_context.result_pattern_graph()) {
@@ -56,7 +55,7 @@ class DrrRewritePattern : public ir::RewritePattern {
     std::shared_ptr<MatchContextImpl> src_match_ctx =
         std::make_shared<MatchContextImpl>();
     if (PatternGraphMatch(op, src_match_ctx)) {
-      VLOG(6) << "DRR pattern (" << drr_pattern_name_
+      VLOG(6) << "DRR pattern (" << ir::get_type_name<DrrPattern>()
               << ") is matched in program.";
       PatternGraphRewrite(*src_match_ctx, rewriter);
       return true;
@@ -331,7 +330,6 @@ class DrrRewritePattern : public ir::RewritePattern {
         });
   }
 
-  const std::string drr_pattern_name_;
   const std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   const std::vector<Constraint> constraints_;
   const std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
