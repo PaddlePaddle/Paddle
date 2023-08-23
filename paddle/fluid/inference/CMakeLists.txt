@@ -33,6 +33,7 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
 set(utils_modules pretty_log string_helper benchmark utf8proc)
 
@@ -59,28 +60,17 @@ set(KERNEL_LIST
 
 # shared inference library deps
 list(REMOVE_DUPLICATES fluid_modules)
-# NOTE(Aurelius84): For inference library, some DEPS is usless
-# such as non-infer operator related targets et.al.
-list(REMOVE_ITEM fluid_modules cinn_dialect)
-# NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
-# shared library to prune library size.
-list(REMOVE_ITEM fluid_modules ${not_infer_modules})
-
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  # message("${fluid_modules}")
-  # message("${STATIC_INFERENCE_API}")
-  # message("${utils_modules}")
-  # message("${phi_modules}")
   if(WIN32)
     create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${STATIC_INFERENCE_API} ${utils_modules})
+                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
   else()
     create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${STATIC_INFERENCE_API} ${utils_modules})
+                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
   endif()
 endif()
 
@@ -107,8 +97,18 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
 
+# NOTE(Aurelius84): For inference library, some DEPS is usless
+# such as non-infer operator related targets et.al.
+list(REMOVE_ITEM fluid_modules cinn_dialect)
+# NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
+# shared library to prune library size.
+list(REMOVE_ITEM fluid_modules ${not_infer_modules})
+
 set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
                           ${utils_modules})
+if(NOT WIN32)
+  list(APPEND SHARED_INFERENCE_DEPS ${ir_targets})
+endif()
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
