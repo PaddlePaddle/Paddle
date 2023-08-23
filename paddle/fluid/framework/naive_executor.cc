@@ -40,6 +40,14 @@ PADDLE_DEFINE_EXPORTED_bool(
     naive_executor_sync_op,
     false,
     "Enable sync after each op run, used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    naive_executor_print_dims_after_op,
+    false,
+    "used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    naive_executor_print_value_after_op,
+    false,
+    "used for debug.");
 
 namespace paddle {
 namespace framework {
@@ -149,66 +157,67 @@ if (FLAGS_naive_executor_sync_op)
     auto success = cudaStreamSynchronize(dev_ctx->stream());
       std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
       PADDLE_ENFORCE_GPU_SUCCESS(success);
+
+
+    if (FLAGS_naive_executor_print_dims_after_op) {
+      for (auto name : op->OutputVars(true)) {
+        std::cout << name << ": ";
+        auto var = scope_->FindVar(name);
+        if (!var->IsType<phi::DenseTensor>()) continue;
+        auto tensor = FindTensor(name);
+        if (tensor->numel() <= 0) continue;
+        auto dims = tensor->dims();
+        std::cout << "[";
+        for (int64_t i = 0; i < dims.size(); i++) {
+          std::cout << dims[i] << " ";
+        }
+        std::cout << "]";
+        std::cout << std::endl;
+        // 是否打印值
+        if (FLAGS_naive_executor_print_value_after_op) {
+          int want_num = std::min(1000000000, (int)(tensor->numel()));
+          if (tensor->dtype() == paddle::DataType::FLOAT32) {
+            float *cpu_data = new float[tensor->numel()];
+            float *tensor_data = tensor->data<float>();
+            if (tensor->place() == platform::CPUPlace()) {
+              memcpy(cpu_data, tensor_data, sizeof(float) * want_num);
+            } else {
+              cudaMemcpy(cpu_data, tensor_data, sizeof(float) * want_num,
+                        cudaMemcpyDeviceToHost);
+            }
+            
+            for(int i = 0; i < want_num; i++) {
+              if(cpu_data[i] > 10000 || cpu_data[i] < -10000)
+              std::cout << "异常数字" << cpu_data[i] << std::endl;
+            }
+            delete[] cpu_data;
+          }
+          
+          want_num = 1;
+          if (tensor->dtype() == paddle::DataType::INT32) {
+            int *cpu_data = new int[want_num];
+            int *tensor_data = tensor->data<int>();
+            if (tensor->place() == platform::CPUPlace()) {
+              memcpy(cpu_data, tensor_data, sizeof(int) * want_num);
+            } else {
+              cudaMemcpy(cpu_data, tensor_data, sizeof(int) * want_num,
+                        cudaMemcpyDeviceToHost);
+            }
+            
+            for(int i = 0; i < want_num; i++) {
+              std::cout << "异常数字" << cpu_data[i] << std::endl;
+            }
+            delete[] cpu_data;
+          }
+        }
+      }
+    }
   }
 
 #ifdef PADDLE_WITH_NVTX
 if(nvtx)
     platform::CudaNvtxRangePop();
 #endif
-
-    if ("tensorrt_engine" == op->Type() && 0) {
-      for (auto name : op->OutputVars(true)) {
-        std::cout << name << ": " << std::endl;
-        auto var = scope_->FindVar(name);
-        if (!var->IsType<phi::DenseTensor>()) continue;
-        auto tensor = FindTensor(name);
-        if (tensor->numel() <= 0) continue;
-        auto dims = tensor->dims();
-        
-        int want_num = std::min(1000000000, (int)(tensor->numel()));
-
-        for (int64_t i = 0; i < dims.size(); i++) {
-          std::cout << dims[i] << " ";
-        }
-
-        std::cout << std::endl;
-
-        if (tensor->dtype() == paddle::DataType::FLOAT32) {
-          float *cpu_data = new float[tensor->numel()];
-          float *tensor_data = tensor->data<float>();
-          if (tensor->place() == platform::CPUPlace()) {
-            memcpy(cpu_data, tensor_data, sizeof(float) * want_num);
-          } else {
-            cudaMemcpy(cpu_data, tensor_data, sizeof(float) * want_num,
-                       cudaMemcpyDeviceToHost);
-          }
-          
-          for(int i = 0; i < want_num; i++) {
-            if(cpu_data[i] > 10000 || cpu_data[i] < -10000)
-            std::cout << "异常数字" << cpu_data[i] << std::endl;
-          }
-          delete[] cpu_data;
-        }
-        
-        want_num = 1;
-        if (tensor->dtype() == paddle::DataType::INT32) {
-          int *cpu_data = new int[want_num];
-          int *tensor_data = tensor->data<int>();
-          if (tensor->place() == platform::CPUPlace()) {
-            memcpy(cpu_data, tensor_data, sizeof(int) * want_num);
-          } else {
-            cudaMemcpy(cpu_data, tensor_data, sizeof(int) * want_num,
-                       cudaMemcpyDeviceToHost);
-          }
-          
-          for(int i = 0; i < want_num; i++) {
-            std::cout << "异常数字" << cpu_data[i] << std::endl;
-          }
-          delete[] cpu_data;
-        }
-
-      }
-    }
 
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {

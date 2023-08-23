@@ -38,6 +38,12 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/utils/string/split.h"
+
+PADDLE_DEFINE_EXPORTED_string(parameter_names_run_fp16,
+                              "",
+                              "parameter names seperated by comma");
 
 namespace paddle {
 namespace inference {
@@ -397,6 +403,21 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
   auto precision_mode =
       static_cast<phi::DataType>(Get<int>("trt_precision_mode"));
+
+
+
+auto parameter_names_fp16 = paddle::string::Split(FLAGS_parameter_names_run_fp16, ',');
+
+for (auto para : parameters) {
+  for (auto fp16_names : parameter_names_fp16)
+  {
+    if (para == fp16_names)
+    {
+      precision_mode = phi::DataType::FLOAT16;
+    }
+  }
+}
+
   bool enable_fp16 = false;
   if (precision_mode == phi::DataType::FLOAT16) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
