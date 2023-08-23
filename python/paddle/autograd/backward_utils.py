@@ -7,7 +7,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,tes
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
@@ -37,6 +37,10 @@ class State:
         self.opgrad_to_op = collections.defaultdict(list)
 
     def turn_map(self) -> None:
+        self.valuegrad_to_value = collections.defaultdict(list)
+        self.sumvaluegrad_to_value = collections.defaultdict(list)
+        self.opgrad_to_op = collections.defaultdict(list)
+
         for k, v in self.value_to_valuegrad.items():
             if v != []:
                 for value in v[0]:

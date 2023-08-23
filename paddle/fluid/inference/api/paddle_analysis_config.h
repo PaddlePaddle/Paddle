@@ -690,6 +690,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
   ///
+  /// \brief Whether to get the intermediate output of TensorRT Engine.
+  ///
+  /// \param output_tensor_names The name of the Tensor that needs to be marked
+  ///
+  void MarkTrtEngineOutputs(
+      const std::vector<std::string>& output_tensor_names = {});
+  ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
   /// \param engine_memory_sharing Whether to enable TensorRT memory
@@ -836,9 +843,25 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
 
+  ///
+  /// \brief A boolean state telling whether to show TensorRT inspector
+  /// information.
+  ///
+  /// \return bool Whether to show TensorRT inspector information.
+  ///
   void EnableTensorRtInspector();
-
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
+
+  ///
+  /// \brief A boolean state telling whether to use TensorRT explicit
+  /// quantization.
+  ///
+  /// \return bool Whether to use TensorRT explicit quantization.
+  ///
+  void EnableTensorRtExplicitQuantization();
+  bool tensorrt_explicit_quantization_enabled() {
+    return trt_use_explicit_quantization_;
+  }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1204,6 +1227,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_cuda_graph_{false};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
+  bool trt_mark_output_{false};
+  std::vector<std::string> trt_output_tensor_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1217,6 +1242,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  bool trt_use_explicit_quantization_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the

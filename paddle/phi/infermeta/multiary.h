@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
+
 namespace phi {
 
 // Common InferMeta Functions for multiary operators, The format like:
@@ -280,6 +281,25 @@ void DeformableConvInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config = MetaConfig());
 
+void DGCMomentumInferMeta(const MetaTensor& param,
+                          const MetaTensor& grad,
+                          const MetaTensor& velocity,
+                          const MetaTensor& learning_rate,
+                          const MetaTensor& master_param,
+                          const MetaTensor& current_step_tensor,
+                          const MetaTensor& nranks_tensor,
+                          float mu,
+                          bool use_nesterov,
+                          const std::string& regularization_method,
+                          float regularization_coeff,
+                          bool multi_precision,
+                          float rescale_grad,
+                          float rampup_begin_step,
+                          MetaTensor* param_out,
+                          MetaTensor* velocity_out,
+                          MetaTensor* master_param_out,
+                          MetaTensor* grad_out);
+
 void EditDistanceInferMeta(const MetaTensor& hyps,
                            const MetaTensor& refs,
                            const MetaTensor& hypslength,
@@ -299,7 +319,25 @@ void FusedBiasActInferMeta(const MetaTensor& x,
                            int quant_round_type,
                            float quant_max_bound,
                            float quant_min_bound,
-                           MetaTensor* out);
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
+
+void FusedLayerNormInferMeta(const MetaTensor& x,
+                             const MetaTensor& bias,
+                             const MetaTensor& residual,
+                             const MetaTensor& norm_weight,
+                             const MetaTensor& norm_bias,
+                             const float epsilon,
+                             const float residual_alpha,
+                             const int begin_norm_axis,
+                             const float quant_scale,
+                             const int quant_round_type,
+                             const float quant_max_bound,
+                             const float quant_min_bound,
+                             MetaTensor* out,
+                             MetaTensor* residual_out,
+                             MetaTensor* mean,
+                             MetaTensor* variance);
 
 void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       const MetaTensor& dout,
@@ -409,6 +447,13 @@ void LambInferMeta(const MetaTensor& param,
                    MetaTensor* beta2_pow_out,
                    MetaTensor* master_param_outs);
 
+void LLMInt8LinearInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            const MetaTensor& bias,
+                            const MetaTensor& weight_scale,
+                            const float threshold,
+                            MetaTensor* out);
+
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
@@ -515,6 +560,20 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         int output_channels,
                         float spatial_scale,
                         MetaTensor* out);
+
+void RmsNormInferMeta(const MetaTensor& x,
+                      const MetaTensor& bias,
+                      const MetaTensor& residual,
+                      const MetaTensor& norm_weight,
+                      const MetaTensor& norm_bias,
+                      const float epsilon,
+                      const int begin_norm_axis,
+                      const float quant_scale,
+                      const int quant_round_type,
+                      const float quant_max_bound,
+                      const float quant_min_bound,
+                      MetaTensor* out,
+                      MetaTensor* residual_out);
 
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
@@ -625,6 +684,13 @@ void WarprnntInferMeta(const MetaTensor& input,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad);
 
+void WeightOnlyLinearInferMeta(const MetaTensor& x,
+                               const MetaTensor& weight,
+                               const MetaTensor& bias,
+                               const MetaTensor& weight_scale,
+                               const std::string& weight_dtype,
+                               MetaTensor* out);
+
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                       const MetaTensor& col_ptr,
                                       const MetaTensor& edge_weight,
@@ -724,15 +790,6 @@ void FusedMultiHeadAttentionVariableInferMeta(const MetaTensor& query,
                                               bool causal,
                                               MetaTensor* out);
 
-void LLMInt8MatmulInferMeta(const MetaTensor& x,
-                            const MetaTensor& weight,
-                            MetaTensor* out);
-
-void WeightOnlyMatmulInferMeta(const MetaTensor& x,
-                               const MetaTensor& weight,
-                               const MetaTensor& weight_scale,
-                               MetaTensor* out);
-
 void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
@@ -741,5 +798,30 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
+
+void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
+                                       const MetaTensor& cache_kv,
+                                       const MetaTensor& src_mask,
+                                       const MetaTensor& cum_offsets,
+                                       const MetaTensor& sequence_lengths,
+                                       const MetaTensor& rotary_tensor,
+                                       const MetaTensor& beam_cache_offset,
+                                       const MetaTensor& qkv_out_scale,
+                                       const MetaTensor& out_shift,
+                                       const MetaTensor& out_smooth,
+                                       int seq_len,
+                                       int rotary_emb_dims,
+                                       const bool use_neox_rotary_style,
+                                       const float out_scale,
+                                       const int quant_round_type,
+                                       const float quant_max_bound,
+                                       const float quant_min_bound,
+                                       MetaTensor* out,
+                                       MetaTensor* cache_kv_out,
+                                       MetaTensor* beam_cache_offset_out);
+
+void FullWithTensorInferMeta(const MetaTensor& shape,
+                             DataType dtype,
+                             MetaTensor* out);
 
 }  // namespace phi
