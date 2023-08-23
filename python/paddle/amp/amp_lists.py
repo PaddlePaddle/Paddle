@@ -12,21 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The set of ops that support fp16 calculation and are considered numerically-
-# safe and performance-critical. These ops are always converted to fp16.
-FP16_WHITE_LIST = {
+# The set of ops that support fp16 and bf16 calculation and are considered numerically-
+# safe and performance-critical. These ops are always converted to fp16 or bf16.
+WHITE_LIST = {
     'conv2d',
     'einsum',
     'matmul',
     'matmul_v2',
     'max_pool2d_with_index',
     'mul',
+    'fused_gemm_epilogue',
+}
+
+# The set of ops that support fp16, and bf16 was unsupported.
+ONLY_FP16_WHITE_LIST = {
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
-    'fused_gemm_epilogue',
     'fused_attention',
     'fused_feedforward',
 }
+
+FP16_WHITE_LIST = WHITE_LIST | ONLY_FP16_WHITE_LIST
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
@@ -90,7 +96,7 @@ EXTRA_BLACK_LIST = {
     'scatter',
 }
 
-BF16_WHITE_LIST = {'conv2d', 'matmul', 'matmul_v2', 'mul'}
+BF16_WHITE_LIST = WHITE_LIST
 BF16_BLACK_LIST = FP16_BLACK_LIST
 
 
