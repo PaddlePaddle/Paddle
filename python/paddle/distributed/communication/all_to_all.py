@@ -54,8 +54,8 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
             ...     data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
             >>> dist.alltoall([data1, data2], out_tensor_list)
             >>> print(out_tensor_list)
-            [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
-            [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
+            >>> # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
+            >>> # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     return stream.alltoall(
         out_tensor_list, in_tensor_list, group, sync_op, False
@@ -130,8 +130,8 @@ def alltoall_single(
             ...                             group=group)
             >>> task.wait()
             >>> print(output)
-            output for rank 0: [[0., 0.], [1., 1.]]
-            output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
+            >>> # output for rank 0: [[0., 0.], [1., 1.]]
+            >>> # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
 
     """
     return stream.alltoall_single(

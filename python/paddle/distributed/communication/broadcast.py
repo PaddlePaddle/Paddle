@@ -59,7 +59,7 @@ def broadcast(tensor, src, group=None, sync_op=True):
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> dist.broadcast(data, src=1)
             >>> print(data)
-            [[1, 2, 3], [1, 2, 3]] (2 GPUs)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
     return stream.broadcast(
         tensor,
@@ -99,7 +99,7 @@ def broadcast_object_list(object_list, src, group=None):
             ...     object_list = [{"bar": [4, 5, 6]}]
             >>> dist.broadcast_object_list(object_list, src=1)
             >>> print(object_list)
-            [{"bar": [4, 5, 6]}] (2 GPUs)
+            >>> # [{"bar": [4, 5, 6]}] (2 GPUs)
     """
     assert (
         framework.in_dynamic_mode()

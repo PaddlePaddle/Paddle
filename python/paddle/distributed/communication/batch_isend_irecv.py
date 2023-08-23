@@ -151,8 +151,8 @@ def batch_isend_irecv(p2p_op_list):
             ...     task.wait()
 
             >>> print(recv_t)
-            paddle.tensor([1, 2])     # Rank-0
-            paddle.tensor([0, 1])     # Rank-1
+            >>> # paddle.tensor([1, 2])     # Rank-0
+            >>> # paddle.tensor([0, 1])     # Rank-1
     """
     _check_p2p_op_list(p2p_op_list)
     group = p2p_op_list[0].group
