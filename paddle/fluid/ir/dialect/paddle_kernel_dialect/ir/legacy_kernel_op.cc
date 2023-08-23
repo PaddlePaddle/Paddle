@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_dialect/legacy_kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/phi/core/enforce.h"
