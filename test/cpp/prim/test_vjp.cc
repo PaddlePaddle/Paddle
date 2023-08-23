@@ -210,7 +210,7 @@ TEST(VJP, ConcatBackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
-
+  VLOG(0) << "001";
   std::shared_ptr<ir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
@@ -225,11 +225,12 @@ TEST(VJP, ConcatBackwardTest) {
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
   std::vector<std::vector<ir::OpResult>> out_grads{{op4.out()}};
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd.concat");
+  VLOG(0) << "002";
   auto concat_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   concat_vjp_interface_impl->vjp_(op3.operation(), out_grads, stop_gradients);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
+  VLOG(0) << "003";
   auto place = platform::CPUPlace();
   Scope scope;
 
@@ -239,28 +240,33 @@ TEST(VJP, ConcatBackwardTest) {
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
+  VLOG(0) << "004";
   test_core.SetSkipGcVars({prefix_str + "_inner_var_3",
                            prefix_str + "_inner_var_7",
                            prefix_str + "_inner_var_8"});
   test_core.Run({});
+  VLOG(0) << "005";
   auto out_tensor =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_3")->Get<phi::DenseTensor>()
           : test_core.local_scope()
                 ->FindVar(prefix_str + "_inner_var_3")
                 ->Get<phi::DenseTensor>();
+  VLOG(0) << "006";
   auto grad_out_tensor_0 =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_7")->Get<phi::DenseTensor>()
           : test_core.local_scope()
                 ->FindVar(prefix_str + "_inner_var_7")
                 ->Get<phi::DenseTensor>();
+  VLOG(0) << "007";
   auto grad_out_tensor_1 =
       test_core.local_scope() == nullptr
           ? scope.FindVar(prefix_str + "_inner_var_8")->Get<phi::DenseTensor>()
           : test_core.local_scope()
                 ->FindVar(prefix_str + "_inner_var_8")
                 ->Get<phi::DenseTensor>();
+  VLOG(0) << "008";
   ASSERT_EQ(out_tensor.data<float>()[0], 2.0);
   ASSERT_EQ(grad_out_tensor_0.data<float>()[0], 1.0);
   ASSERT_EQ(grad_out_tensor_0.data<float>()[1], 1.0);

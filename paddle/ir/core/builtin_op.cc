@@ -162,6 +162,17 @@ void CombineOp::Verify() const {
 }
 
 const char *SliceOp::attributes_name[attributes_num] = {"index"};  // NOLINT
+
+void SliceOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    const ir::OpResult &input,
+                    int index) {
+  argument.inputs = {input};
+  argument.output_types.emplace_back(input.type()
+                                         .dyn_cast<ir::VectorType>()
+                                         .data()[static_cast<size_t>(index)]);
+}
+
 void SliceOp::Verify() const {
   // inputs.size() == 1
   auto input_size = num_operands();
@@ -207,6 +218,17 @@ void SliceOp::Verify() const {
       output_type);
 }
 
+void SplitOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    const ir::OpResult &input) {
+  argument.inputs = {input};
+  for (size_t idx = 0; idx < input.type().dyn_cast<ir::VectorType>().size();
+       ++idx) {
+    argument.output_types.emplace_back(
+        input.type().dyn_cast<ir::VectorType>().data()[idx]);
+  }
+}
+
 void SplitOp::Verify() const {
   // inputs.size() == 1
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must be equal to 1.");
@@ -232,18 +254,6 @@ void SplitOp::Verify() const {
                i,
                type,
                i);
-  }
-}
-
-void SplitOp::Build(Builder &builder,
-                    OperationArgument &argument,
-                    const ir::OpResult &input) {
-  argument.inputs = {input};
-  std::vector<ir::Type> outputs_types;
-  for (size_t idx = 0; idx < input.type().dyn_cast<ir::VectorType>().size();
-       ++idx) {
-    argument.output_types.emplace_back(
-        input.type().dyn_cast<ir::VectorType>()[idx]);
   }
 }
 

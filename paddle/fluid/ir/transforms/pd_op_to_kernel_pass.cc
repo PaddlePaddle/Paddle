@@ -570,7 +570,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     if (op_item->name() == "builtin.split") {
-      std::vector<phi::Place> out_places;
+      std::vector<phi::Place> out_places(op_item->num_results());
       // Copy op inputs
       std::vector<ir::OpResult> vec_inputs;
       if (op_item->num_operands() > 0) {
