@@ -746,6 +746,9 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
         VLOG(1) << "type not support " << ss.str() << std::endl;
         PADDLE_THROW("Type[%s] in attribute map not support yet", ss.str());
       }
+    } else if (val.isa<paddle::dialect::DataTypeAttribute>()) {
+      attr_map[name] = paddle::framework::TransToProtoVarType(
+          val.dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else {
       std::stringstream ss;
       val.Print(ss);
