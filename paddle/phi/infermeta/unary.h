@@ -438,6 +438,11 @@ void QrInferMeta(const MetaTensor& x,
                  MetaTensor* q,
                  MetaTensor* r);
 
+void WeightQuantizeInferMeta(const MetaTensor& x,
+                             const std::string& algo,
+                             MetaTensor* out,
+                             MetaTensor* scale);
+
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,
@@ -729,12 +734,6 @@ void UnStackInferMeta(const MetaTensor& x,
                       int axis,
                       int num,
                       std::vector<MetaTensor*> outs);
-
-void QuantForCompressInferMeta(const MetaTensor& x,
-                               int bits,
-                               const std::string& layout,
-                               MetaTensor* out,
-                               MetaTensor* scale);
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 

@@ -52,18 +52,18 @@ def _stride_column(param):
     Examples:
        .. code-block:: python
 
-            import paddle
-            paddle.seed(100)
+            >>> import paddle
+            >>> paddle.seed(100)
 
-            linear = paddle.nn.Linear(2, 3)
-            print(linear.weight)
-            # [[-0.31485492, -1.02896988,  0.45741916],
-            #  [-0.65525872, -1.04643178,  1.07262802]]
+            >>> linear = paddle.nn.Linear(2, 3)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [[ 0.11732829, -0.64161885, -1.06996548],
+                    [ 0.03456247, -0.29862350, -0.52380574]])
 
-            paddle.nn.utils.stride_column(linear.weight)
-            print(linear.weight)
-            # [[-0.31485492,  0.45741916, -1.04643178],
-            #  [-1.02896988, -0.65525872,  1.07262802]]
+            >>> paddle.nn.utils._stride_column(linear.weight)
+            >>> print(linear.weight)
 
     """
     assert len(param.shape) == 2
@@ -91,11 +91,13 @@ def parameters_to_vector(parameters, name=None):
     Examples:
        .. code-block:: python
 
-            import paddle
-            linear = paddle.nn.Linear(10, 15)
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> linear = paddle.nn.Linear(10, 15)
 
-            paddle.nn.utils.parameters_to_vector(linear.parameters())
-            # 1-D Tensor: [165]
+            >>> t = paddle.nn.utils.parameters_to_vector(linear.parameters())
+            >>> print(t.shape)
+            [165]
 
     """
     dtype = parameters[0].dtype
@@ -136,19 +138,18 @@ def vector_to_parameters(vec, parameters, name=None):
     Examples:
        .. code-block:: python
 
-            import paddle
-            weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(3.))
-            linear1 = paddle.nn.Linear(10, 15, weight_attr)
+            >>> import paddle
+            >>> weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(3.))
+            >>> linear1 = paddle.nn.Linear(10, 15, weight_attr)
 
-            vec = paddle.nn.utils.parameters_to_vector(linear1.parameters())
+            >>> vec = paddle.nn.utils.parameters_to_vector(linear1.parameters())
 
-            linear2 = paddle.nn.Linear(10, 15)
-            # copy weight of linear1 to linear2
-            paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
-            # weight: Tensor(shape=[10, 15], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-            #                 [[3. , ..., 3. ],
-            #                  [..., ..., ...],
-            #                  [3. , ..., 3. ]])
+            >>> linear2 = paddle.nn.Linear(10, 15)
+            >>> # copy weight of linear1 to linear2
+            >>> paddle.nn.utils.vector_to_parameters(vec, linear2.parameters())
+            >>> print((linear1.weight == linear2.weight).all())
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
     """
     origin_shapes = []
     sections = []
