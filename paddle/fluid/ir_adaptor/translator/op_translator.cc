@@ -1190,7 +1190,7 @@ struct MulOpTranscriber : public OpTranscriber {
 
 struct MulGradOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    const std::string& target_op_name = "pd.matmul";
+    const std::string& target_op_name = "pd.matmul_grad";
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
     auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
@@ -1502,7 +1502,9 @@ OpTranslator::OpTranslator() {
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
-
+  special_handlers["mul"] = MulOpTranscriber();
+  special_handlers["mul_grad"] = MulGradOpTranscriber();
+  
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
   special_handlers["elementwise_add"] = ElementwiseTranscriber();
