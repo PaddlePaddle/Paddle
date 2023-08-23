@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_dialect/legacy_kernel_dialect.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_dialect/legacy_kernel_op.h"
-#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_dialect/legacy_kernel_op.h"
 #include "paddle/fluid/platform/init_phi.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
