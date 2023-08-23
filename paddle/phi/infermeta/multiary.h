@@ -820,7 +820,6 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* cache_kv_out,
                                        MetaTensor* beam_cache_offset_out);
 
-
 void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
                                         const MetaTensor& key,
                                         const MetaTensor& value,
@@ -846,6 +845,5 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
 void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
-
 
 }  // namespace phi

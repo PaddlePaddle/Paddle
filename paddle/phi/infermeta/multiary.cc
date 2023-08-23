@@ -4156,7 +4156,6 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
-
 void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
                                         const MetaTensor& key,
                                         const MetaTensor& value,
@@ -4261,7 +4260,7 @@ void MaskedMultiqueryAttentionInferMeta(const MetaTensor& query,
     beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
   }
 }
-  
+
 void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out) {
