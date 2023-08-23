@@ -911,6 +911,16 @@ class TestTanhshrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestTanhshrink_Complex64(TestTanhshrink):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestTanhshrink_Complex128(TestTanhshrink):
+    def init_dtype(self):
+        self.shape = 'complex128'
+
+
 class TestTanhshrink_ZeroDim(TestTanhshrink):
     def init_shape(self):
         self.shape = []
@@ -974,11 +984,6 @@ class TestTanhshrinkComplex(unittest.TestCase):
         self.x_np = np.random.uniform(10, 20, [10, 17]).astype(
             np.float64
         ) + 1j * np.random.uniform(10, 20, [10, 17]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
 
     def test_complex64(self):
         with dynamic_guad():
