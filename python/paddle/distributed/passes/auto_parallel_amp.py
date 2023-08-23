@@ -1053,11 +1053,16 @@ class AMPPass(PassBase):
             )
 
             # backward
-            first_backward_op = main_block.ops[loss_op_idx + 2]
-            assert (
-                first_backward_op.type == "fill_constant"
-                and int(first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
-            )
+            first_backward_op = None
+            for op in main_block.ops[loss_op_idx:]:
+                if op.type == "fill_constant" and is_loss_grad_op(op):
+                    first_backward_op = op
+                    break
+                if is_backward_op(op):
+                    break
+
+            assert first_backward_op is not None, "There is not loss_grad op."
+
             scaled_loss_grad = main_block.create_var(
                 name=unique_name.generate("scaled_loss") + "@GRAD",
                 shape=loss.shape,
