@@ -169,8 +169,8 @@ def alltoall(
             >>> task = dist.stream.alltoall(out_tensor_list, [data1, data2], sync_op=False)
             >>> task.wait()
             >>> print(out_tensor_list)
-            [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]    (2 GPUs, out for rank 0)
-            [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
+            >>> # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]    (2 GPUs, out for rank 0)
+            >>> # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return
@@ -306,8 +306,8 @@ def alltoall_single(
             >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)
-            [0, 2] (2 GPUs, out for rank 0)
-            [1, 3] (2 GPUs, out for rank 1)
+            >>> # [0, 2] (2 GPUs, out for rank 0)
+            >>> # [1, 3] (2 GPUs, out for rank 1)
 
             >>> # case 2
             >>> size = dist.get_world_size()
@@ -326,8 +326,8 @@ def alltoall_single(
             >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)
-            [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
-            [[0., 0.], [0., 0.], [1., 1.], [1., 1.]] (2 GPUs, out for rank 1)
+            >>> # [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
+            >>> # [[0., 0.], [0., 0.], [1., 1.], [1., 1.]] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return
