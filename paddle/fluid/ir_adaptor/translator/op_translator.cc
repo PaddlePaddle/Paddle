@@ -245,66 +245,6 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
 
 }  // namespace
 
-/// @brief This class is used to translate a OpDesc, it's a functor class and
-/// should have no non-static data member, since we expected it's stateless.
-struct OpTranscriber {
- public:
-  virtual ~OpTranscriber() = default;
-
- public:
-  virtual ir::Operation* operator()(ir::IrContext* ctx,
-                                    TranslationContext* param_map,
-                                    const OpDesc& op_desc,
-                                    ir::Program* program);
-
- public:
-  virtual ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc);
-  virtual std::vector<ir::OpResult> GenerateOperationInput(
-      ir::IrContext* ctx,
-      TranslationContext* param_map,
-      const OpDesc& op_desc,
-      const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos,
-      ir::Program* program);
-  virtual std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
-      ir::IrContext* ctx,
-      const OpDesc& op_desc,
-      const OpOutputInfoList& output_infos);
-  virtual void HandleNonexistentAttribute(ir::IrContext*,
-                                          ir::AttributeMap* attribute_map,
-                                          const OpAttributeInfo& info) {
-    auto& attribute_translator = AttributeTranslator::instance();
-    (*attribute_map)[info.name] =
-        attribute_translator(info.type_name, paddle::framework::Attribute());
-  }
-  virtual ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext* ctx,
-      const std::string& normalized_op_name,
-      const OpAttributeInfoList& op_attr_infos,
-      const OpDesc& op_desc);
-
-  virtual void RecordOpResultMapping(ir::IrContext* ctx,
-                                     TranslationContext* param_map,
-                                     const OpDesc& op_desc,
-                                     ir::Operation* operation,
-                                     const OpOutputMapping& arg_to_idx);
-
- public:
-  virtual InputHandlerFn GetSpecialInputHandlers(
-      const std::string& input_name) {
-    return nullptr;
-  }
-  virtual AttributeHandlerFn GetSpecialAttributeHandlers(
-      const std::string& input_name) {
-    return nullptr;
-  }
-  virtual void InsertSliceOperationForInput(ir::IrContext* ctx,
-                                            TranslationContext* param_map,
-                                            const OpDesc& op_desc,
-                                            const OpInputInfoList& input_infos,
-                                            ir::Program* program);
-};
-
 ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
                                         const OpDesc& op_desc) {
   std::string target_op_name =
@@ -622,6 +562,14 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   }
 
   return attribute_map;
+}
+
+void OpTranscriber::HandleNonexistentAttribute(ir::IrContext*,
+                                               ir::AttributeMap* attribute_map,
+                                               const OpAttributeInfo& info) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  (*attribute_map)[info.name] =
+      attribute_translator(info.type_name, paddle::framework::Attribute());
 }
 
 void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
