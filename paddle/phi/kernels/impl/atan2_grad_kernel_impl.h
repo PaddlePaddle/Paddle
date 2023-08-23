@@ -78,21 +78,18 @@ struct Atan2GradFunctor<double> {
   int64_t numel_;
 };
 
-template <typename T>
-using ComplexType = phi::dtype::complex<T>;
-
-template <typename T>
-struct Atan2GradFunctor<ComplexType<T>> {
-  Atan2GradFunctor(const ComplexType<T>* x1,
-                   const ComplexType<T>* x2,
-                   const ComplexType<T>* dout,
-                   ComplexType<T>* dx1,
-                   ComplexType<T>* dx2,
+template <>
+struct Atan2GradFunctor<phi::dtype::complex<float>> {
+  Atan2GradFunctor(const phi::dtype::complex<float>* x1,
+                   const phi::dtype::complex<float>* x2,
+                   const phi::dtype::complex<float>* dout,
+                   phi::dtype::complex<float>* dx1,
+                   phi::dtype::complex<float>* dx2,
                    int64_t numel)
       : x1_(x1), x2_(x2), dout_(dout), dx1_(dx1), dx2_(dx2), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    ComplexType<T> x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
+    phi::dtype::complex<float> x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
     if (dx1_) {
       dx1_[idx] = dout_[idx] * x2_[idx] / x;
     }
@@ -101,11 +98,39 @@ struct Atan2GradFunctor<ComplexType<T>> {
     }
   }
 
-  const ComplexType<T>* x1_;
-  const ComplexType<T>* x2_;
-  const ComplexType<T>* dout_;
-  ComplexType<T>* dx1_;
-  ComplexType<T>* dx2_;
+  const phi::dtype::complex<float>* x1_;
+  const phi::dtype::complex<float>* x2_;
+  const phi::dtype::complex<float>* dout_;
+  phi::dtype::complex<float>* dx1_;
+  phi::dtype::complex<float>* dx2_;
+  int64_t numel_;
+};
+
+template <>
+struct Atan2GradFunctor<phi::dtype::complex<double>> {
+  Atan2GradFunctor(const phi::dtype::complex<double>* x1,
+                   const phi::dtype::complex<double>* x2,
+                   const phi::dtype::complex<double>* dout,
+                   phi::dtype::complex<double>* dx1,
+                   phi::dtype::complex<double>* dx2,
+                   int64_t numel)
+      : x1_(x1), x2_(x2), dout_(dout), dx1_(dx1), dx2_(dx2), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    phi::dtype::complex<double> x = x1_[idx] * x1_[idx] + x2_[idx] * x2_[idx];
+    if (dx1_) {
+      dx1_[idx] = dout_[idx] * x2_[idx] / x;
+    }
+    if (dx2_) {
+      dx2_[idx] = -dout_[idx] * x1_[idx] / x;
+    }
+  }
+
+  const phi::dtype::complex<double>* x1_;
+  const phi::dtype::complex<double>* x2_;
+  const phi::dtype::complex<double>* dout_;
+  phi::dtype::complex<double>* dx1_;
+  phi::dtype::complex<double>* dx2_;
   int64_t numel_;
 };
 
