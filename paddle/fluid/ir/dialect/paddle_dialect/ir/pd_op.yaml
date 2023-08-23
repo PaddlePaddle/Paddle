@@ -365,7 +365,7 @@
     - {typename: 'int64_t[]', name: axes}
     - {typename: 'int64_t[]', name: decrease_axes}
     - {typename: 'int64_t[]', name: none_axes}
-    - {typename: 'int64_t[]', name: shapes}
+    - {typename: 'int64_t[]', name: shape}
     - {typename: 'Scalar[]', name: values}
   outputs:
     - {typename: Tensor, name: out, optional: false, intermediate: false}
@@ -374,7 +374,7 @@
     param: [x]
   kernel:
     func: [set_value]
-    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shapes, values]
+    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shape, values]
   inplace: null
   backward: null
 
