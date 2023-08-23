@@ -187,7 +187,6 @@ class TestBackward_3(unittest.TestCase):
         newir_program = get_ir_program_2()
         x = newir_program.block().ops[-1].operand(0).source()
         sum_x = newir_program.block().ops[-1].result(0)
-        print(newir_program)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
             norm = paddle.tensor.fill_constant(
@@ -198,7 +197,6 @@ class TestBackward_3(unittest.TestCase):
             res = paddle.divide(sum_x, norm)
             input_grad = grad(res, x)
 
-        print(newir_program)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
