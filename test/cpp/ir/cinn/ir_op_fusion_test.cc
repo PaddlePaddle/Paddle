@@ -125,7 +125,7 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
 
   auto e =
       builder.Build<paddle::dialect::AddOp>(inputs[0], inputs[1]).result(0);
-  auto f = builder.Build<paddle::dialect::AddOp>(inputs[2], e).result(0);
+  builder.Build<paddle::dialect::AddOp>(inputs[2], e).result(0);
   std::vector<int64_t> axes{1};
   std::vector<int64_t> out_shape{h, w};
   auto e1 = builder.Build<paddle::dialect::CinnBroadcastOp>(e, axes, out_shape)
