@@ -43,18 +43,9 @@ DistTensor::DistTensor(const phi::DenseTensor& global_value,
     // 2. reshard from replicated to other state
     auto* func = ChooseProperReshardFunction(*this, dist_attr);
     auto* dev_ctx = DeviceContextPool::Instance().Get(global_value.place());
-    auto out = func->Eval(dev_ctx, *this, dist_attr);
-
-    // 3. reset dist attr and value
-    dist_attr_.set_dims_mapping(dist_attr.dims_mapping());
-    value_ = out->value();
+    func->Eval(dev_ctx, *this, dist_attr, this);
   }
 }
-
-DistTensor::DistTensor(const phi::DenseTensor& value,
-                       const DDim& dims,
-                       const TensorDistAttr& dist_attr)
-    : dims_(dims), dist_attr_(dist_attr), value_(value) {}
 
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
     : dims_(dims), dist_attr_(dist_attr) {}

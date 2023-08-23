@@ -57,19 +57,19 @@ class TestReshardRToS:
         assert reshard_func.is_suitable(input_tensor, out_dist_attr)
 
         out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
-        out_local_shape = list(self._shape)
+        out_shape = list(self._shape)
 
-        if out_local_shape[self._shard] % 2 == 0:
-            out_local_shape[self._shard] = out_local_shape[self._shard] // 2
+        if out_shape[self._shard] % 2 == 0:
+            out_shape[self._shard] = out_shape[self._shard] // 2
         else:
-            out_local_shape[self._shard] = (
-                out_local_shape[self._shard] // 2
+            out_shape[self._shard] = (
+                out_shape[self._shard] // 2
                 if dist.get_rank() == 1
-                else out_local_shape[self._shard] // 2 + 1
+                else out_shape[self._shard] // 2 + 1
             )
 
-        assert np.equal(out._local_shape, out_local_shape).all()
         assert np.equal(out.shape, input_tensor.shape).all()
+        assert np.equal(out._local_shape, out_shape).all()
 
 
 if __name__ == '__main__':

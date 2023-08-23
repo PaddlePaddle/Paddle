@@ -56,10 +56,10 @@ bool SToRReshardFunction::IsSuitable(const DistTensor& in,
   return flag;
 }
 
-std::shared_ptr<DistTensor> SToRReshardFunction::Eval(
-    DeviceContext* dev_ctx,
-    const DistTensor& in,
-    const TensorDistAttr& out_dist_attr) {
+void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
+                               const DistTensor& in,
+                               const TensorDistAttr& out_dist_attr,
+                               DistTensor* out) {
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
@@ -79,8 +79,7 @@ std::shared_ptr<DistTensor> SToRReshardFunction::Eval(
   if (split_axis == 0) {
     // If the input dist tensor is shard(0), the subsequent split
     // and concat is unnecessary.
-    return std::make_shared<DistTensor>(
-        out_all_gather, out_all_gather.dims(), out_dist_attr);
+    set_dist_props(out, out_all_gather, out_all_gather.dims(), out_dist_attr);
   } else {
     // Since the result of all_gather always concat the tensor on axis 0,
     // first we need to split the result on axis 0,
@@ -102,8 +101,8 @@ std::shared_ptr<DistTensor> SToRReshardFunction::Eval(
     DenseTensor concat_out_tensor =
         ReshardConcatFunctor(*dev_ctx, concat_input_vec, split_axis);
 
-    return std::make_shared<DistTensor>(
-        concat_out_tensor, concat_out_tensor.dims(), out_dist_attr);
+    set_dist_props(
+        out, concat_out_tensor, concat_out_tensor.dims(), out_dist_attr);
   }
 }
 

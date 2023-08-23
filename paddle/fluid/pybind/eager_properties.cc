@@ -396,7 +396,11 @@ PyObject* tensor_properties_get_local_shape(TensorObject* self, void* closure) {
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
     return ToPyObject(phi::vectorize<int64_t>(dist_tensor->local_dims()));
 #else
-    RETURN_PY_NONE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `_local_shape` property of (Dist)Tensor is not supported "
+        "in the current PaddlePaddle, please recompile and install "
+        "PaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
     RETURN_PY_NONE

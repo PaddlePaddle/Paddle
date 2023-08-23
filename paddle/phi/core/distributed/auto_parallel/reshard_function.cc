@@ -20,6 +20,29 @@
 namespace phi {
 namespace distributed {
 
+std::shared_ptr<DistTensor> ReshardFunction::Eval(
+    DeviceContext* dev_ctx,
+    const DistTensor& in,
+    const TensorDistAttr& out_dist_attr) {
+  std::shared_ptr<DistTensor> out = std::make_shared<DistTensor>();
+  Eval(dev_ctx, in, out_dist_attr, out.get());
+  return out;
+}
+
+void ReshardFunction::set_dist_props(DistTensor* tensor,
+                                     const DenseTensor& value,
+                                     const DDim& dims,
+                                     const TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(dims)),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The input dist_attr and dims are improper."));
+
+  tensor->value_ = value;
+  tensor->dims_ = dims;
+  tensor->dist_attr_ = dist_attr;
+}
+
 ReshardFunction* ChooseProperReshardFunction(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   for (const auto& func : GetReshardFunctionList()) {
