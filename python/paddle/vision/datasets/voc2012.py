@@ -58,6 +58,7 @@ class VOC2012(Dataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(15)
             >>> import itertools
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import VOC2012
