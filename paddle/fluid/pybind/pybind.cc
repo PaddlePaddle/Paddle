@@ -144,8 +144,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)|| \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifdef PADDLE_WITH_CUDA

@@ -65,8 +65,10 @@ class SparseCsrTensor;
 namespace paddle {
 
 namespace platform {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)|| \
+    defined(PADDLE_WITH_MCCL)
 class Communicator;
 class NCCLCommunicator;
 #endif
