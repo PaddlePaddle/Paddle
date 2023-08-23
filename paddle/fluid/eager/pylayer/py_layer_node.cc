@@ -30,6 +30,7 @@ namespace egr {
 GradNodePyLayer::~GradNodePyLayer() {
   pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ctx_);
+  Py_XDECREF(backward_function_);
 }
 
 paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
@@ -46,6 +47,7 @@ GradNodePyLayer::operator()(
 
   paddle::pybind::PyLayerObject* ctx =
       reinterpret_cast<paddle::pybind::PyLayerObject*>(ctx_);
+  PyObject* backward_function = backward_function_;
 
   PADDLE_ENFORCE_EQ(ctx->forward_output_tensor_is_duplicable.size(),
                     grads.size(),
@@ -101,8 +103,8 @@ GradNodePyLayer::operator()(
   VLOG(6) << "PyLayer backward args is ready, begin call user's backward "
              "function...";
 
-  auto backward_fn =
-      PyObject_GetAttrString(reinterpret_cast<PyObject*>(ctx), "backward");
+  auto backward_fn = PyObject_GetAttrString(
+      reinterpret_cast<PyObject*>(backward_function), "backward");
   if (!backward_fn) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Get backward function faild."));
@@ -192,6 +194,8 @@ GradNodePyLayer::operator()(
   Py_XDECREF(outputs);
   Py_XDECREF(ctx_);
   ctx_ = nullptr;
+  Py_XDECREF(backward_function_);
+  backward_function_ = nullptr;
 
   return grad_out;
 }

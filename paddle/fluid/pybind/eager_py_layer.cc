@@ -133,19 +133,34 @@ PyObject* pylayer_method_apply(PyObject* cls,
                                PyObject* kwargs) {
   EAGER_TRY
   VLOG(6) << "Begin run PyLayer apply...";
-  PyObject* backward_function =
+  PyObject* backward_function_cls =
       PyObject_GetAttrString(cls, "_backward_function");
-  if (!backward_function) {
+  if (!backward_function_cls) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Get _backward_function failed."));
   }
+  PyObject* backward_function = reinterpret_cast<PyObject*>(
+      PyObject_CallFunctionObjArgs(backward_function_cls, nullptr));
+  if (!backward_function) {
+    PADDLE_THROW(paddle::platform::errors::External(
+        pybind11::detail::error_string().c_str()));
+    return nullptr;
+  }
+
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
-      PyObject_CallFunctionObjArgs(backward_function, nullptr));
+      p_pylayer_type->tp_alloc(p_pylayer_type, 0));
   if (!ctx) {
     PADDLE_THROW(paddle::platform::errors::External(
         pybind11::detail::error_string().c_str()));
     return nullptr;
   }
+
+  ctx->materialize_grads = true;
+  ctx->container_be_packed = false;
+  new (&ctx->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
+  new (&ctx->forward_input_tensor_is_duplicable) std::vector<bool>();
+  new (&ctx->forward_output_tensor_is_duplicable) std::vector<bool>();
+
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
 
   bool require_any_grad = false;
@@ -264,7 +279,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   if (!outputs) {
     Py_XDECREF(forward_args);
     Py_XDECREF(kwargs_value_list);
-    Py_XDECREF(backward_function);
+    Py_XDECREF(backward_function_cls);
     Py_XDECREF(forward_fn);
     return nullptr;
   }
@@ -408,10 +423,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
               << ") uses Inplace Strategy.";
     }
 
-    auto grad_node =
-        std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
-                                               outputs_autograd_meta.size(),
-                                               inputs_autograd_meta.size());
+    auto grad_node = std::make_shared<egr::GradNodePyLayer>(
+        reinterpret_cast<PyObject*>(ctx),
+        reinterpret_cast<PyObject*>(backward_function),
+        outputs_autograd_meta.size(),
+        inputs_autograd_meta.size());
     ctx->grad_node = grad_node;
 
     if (ctx->materialize_grads) {
@@ -455,9 +471,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
 
   Py_XDECREF(forward_args);
   Py_XDECREF(kwargs_value_list);
-  Py_XDECREF(backward_function);
+  Py_XDECREF(backward_function_cls);
   Py_XDECREF(forward_fn);
   Py_XDECREF(ctx);
+  Py_XDECREF(backward_function);
 
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL

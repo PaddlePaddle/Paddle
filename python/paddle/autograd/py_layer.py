@@ -253,7 +253,7 @@ class PyLayerContext:
         self.materialize_grads = value
 
 
-class PyLayerBackward(core.eager.PyLayer, PyLayerContext):
+class PyLayerBackward(PyLayerContext):
     def backward(self, *args):
         return self._forward_cls.backward(self, *args)
 

@@ -31,17 +31,22 @@ namespace egr {
 class GradNodePyLayer : public GradNodeBase {
  public:
   GradNodePyLayer(PyObject* ctx,
+                  PyObject* backward_function,
                   size_t bwd_in_slot_num,
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
+    backward_function_ = backward_function;
     name_ = "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
     Py_INCREF(ctx_);
+    Py_INCREF(backward_function_);
   }
 
   GradNodePyLayer(const GradNodePyLayer& other) : GradNodeBase(other) {
     this->ctx_ = other.ctx_;
     Py_INCREF(this->ctx_);
+    this->backward_function_ = other.backward_function_;
+    Py_INCREF(this->backward_function_);
     this->forward_outputs_meta_ = other.forward_outputs_meta_;
     this->forward_outputs_place_ = other.forward_outputs_place_;
   }
@@ -86,6 +91,7 @@ class GradNodePyLayer : public GradNodeBase {
 
  private:
   PyObject* ctx_{nullptr};
+  PyObject* backward_function_{nullptr};
   std::string name_{""};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
   std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
