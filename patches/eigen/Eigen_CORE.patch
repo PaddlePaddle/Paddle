@@ -1,0 +1,13 @@
+diff --git a/Eigen/Core b/Eigen/Core
+index 5921e15f9..772870d88 100644
+--- a/Eigen/Core
++++ b/Eigen/Core
+@@ -25,6 +25,8 @@
+ // the EIGEN_USING_STD macro works properly on the device side
+ #if defined(EIGEN_CUDACC)
+   #include <cuda_runtime.h>
++#elif defined(EIGEN_MUSACC)
++  #include <musa_runtime.h>
+ #elif defined(EIGEN_HIPCC)
+   #include <hip/hip_runtime.h>
+ #endif
