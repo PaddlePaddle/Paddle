@@ -156,6 +156,6 @@ def shard_tensor(
         return paddle.Tensor(data, dist_attr=dist_attr)
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
-        shard_tensor_static(
+        return shard_tensor_static(
             data, dist_attr.process_mesh, dist_attr.sharding_specs
         )
