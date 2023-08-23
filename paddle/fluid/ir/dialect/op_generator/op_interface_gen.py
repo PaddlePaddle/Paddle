@@ -58,16 +58,16 @@ std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(ir::Operation* op, c
     {op_class_name} op_obj = op->dyn_cast<{op_class_name}>();
 
 VLOG(6) << "Prepare inputs of {op_grad_name}";
-{forward_input_code}
+{forward_input_output_code}
 {forward_output_grad_code}
 
 VLOG(6) << "Vjp prepare Prepare attributes of {op_grad_name}";
 {attribute_code}
 
-VLOG(4) << "Vjp prepare call {op_phi_name}'s vjp inteface";
+VLOG(6) << "Vjp prepare call {op_phi_name}'s vjp inteface";
 {call_vjp_code}
 
-VLOG(4) << "Vjp prepare stop gradient of {op_grad_name}";
+VLOG(6) << "Vjp prepare stop gradient of {op_grad_name}";
 {stop_gradient_input_grad_code}
     return res;
 }}
@@ -87,7 +87,7 @@ def gen_op_vjp_str(
     op_grad_info,
 ):
     bw_input_list = op_grad_info.input_name_list
-    forward_input_code = ''
+    forward_input_output_code = ''
     forward_output_grad_code = ''
     build_args_str = ''
     grad_idx = -1
@@ -97,7 +97,7 @@ def gen_op_vjp_str(
             bw_input_list[idx] in op_info.input_name_list
             or bw_input_list[idx] in op_info.output_name_list
         ):
-            forward_input_code += (
+            forward_input_output_code += (
                 OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE.format(
                     input_type=input_types_map[
                         op_grad_info.input_type_list[idx]
@@ -129,9 +129,9 @@ def gen_op_vjp_str(
                 default_value=op_grad_info.attribute_default_value_list[idx],
             )
     if op_phi_name[-1] == '_':
-        op_phi_name = op_phi_name[:-1]
+        op_phi_name_format = op_phi_name[:-1]
     call_vjp_code = OP_VJP_CALL_VJP_TEMPLATE.format(
-        op_phi_name=op_phi_name,
+        op_phi_name=op_phi_name_format,
         inputs_list=build_args_str,
     )
     stop_gradient_input_grad_code = OP_VJP_STOPGRADIENT_TEMPLATE
@@ -141,7 +141,7 @@ def gen_op_vjp_str(
         op_grad_name=op_grad_name,
         op_phi_name=op_phi_name,
         res_size=len(op_info.input_name_list),
-        forward_input_code=forward_input_code,
+        forward_input_output_code=forward_input_output_code,
         forward_output_grad_code=forward_output_grad_code,
         attribute_code=attribute_code,
         call_vjp_code=call_vjp_code,

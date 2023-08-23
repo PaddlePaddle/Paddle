@@ -1050,8 +1050,6 @@ def OpGenerator(
 
             # generate op vjp function str
             op_vjp_str = ''
-
-            # TODO(chenzhiyang) add vjp gen code
             if (
                 op_info.backward_name
                 and op_info.op_phi_name[0]
