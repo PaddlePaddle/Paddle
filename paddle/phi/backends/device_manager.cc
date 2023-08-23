@@ -465,21 +465,24 @@ std::vector<size_t> DeviceManager::GetDeviceList(
 
 std::vector<size_t> DeviceManager::GetSelectedDeviceList(
     const std::string& device_type) {
-  std::vector<size_t> devices;
-  std::string FLAGS = "FLAGS_selected_" + device_type + "s";
-  auto FLAGS_selected_devices = getenv(FLAGS.c_str());
-  if (FLAGS_selected_devices) {
-    auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
-    for (auto id : devices_str) {
-      devices.push_back(atoi(id.c_str()));
-    }
-  } else {
-    int count = static_cast<int>(DeviceManager::GetDeviceCount(device_type));
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
+  static std::unordered_map<std::string, std::vector<size_t>> device_list_map;
+  if (device_list_map.find(device_type) == device_list_map.end()) {
+    std::vector<size_t>& device_list = device_list_map[device_type];
+    std::string FLAGS = "FLAGS_selected_" + device_type + "s";
+    auto FLAGS_selected_devices = getenv(FLAGS.c_str());
+    if (FLAGS_selected_devices) {
+      auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
+      for (auto id : devices_str) {
+        device_list.push_back(atoi(id.c_str()));
+      }
+    } else {
+      int count = static_cast<int>(DeviceManager::GetDeviceCount(device_type));
+      for (int i = 0; i < count; ++i) {
+        device_list.push_back(i);
+      }
     }
   }
-  return devices;
+  return device_list_map[device_type];
 }
 
 void DeviceManager::CCLDestroyComm(const std::string& device_type,
