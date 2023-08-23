@@ -653,7 +653,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
-  std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+  std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
       op_info_concept->get_op_info_();
 
   this->InsertSliceOperationForInput(
@@ -769,7 +769,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     OpInputInfoList input_infos;
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
-    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+    std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
         op_info_concept->get_op_info_();
     std::unordered_map<std::string, OpAttributeInfo> attr_info_maps;
     for (auto info : attr_infos) {
@@ -1092,7 +1092,7 @@ struct FetchOpTranscriber : public OpTranscriber {
     OpInputInfoList input_infos;
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
-    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+    std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
         op_info_concept->get_op_info_();
 
     this->InsertSliceOperationForInput(

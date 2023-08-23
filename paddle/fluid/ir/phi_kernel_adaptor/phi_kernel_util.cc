@@ -80,6 +80,12 @@ void RenameData(ir::Value value,
                 std::map<std::string, int>* var_name_2_id) {
   (*value_2_var_name)[value] = new_name;
 
+  for (auto kv : (*value_2_var_name)) {
+    if (kv.second == orig_name) {
+      (*value_2_var_name)[kv.first] = new_name;
+    }
+  }
+
   for (auto kv : (*variable_2_var_name)) {
     if (kv.second == orig_name) {
       (*variable_2_var_name)[kv.first] = new_name;
@@ -588,9 +594,7 @@ void BuildRuntimeContext(
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  auto pd_op_name =
-      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
+  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -621,7 +625,7 @@ void BuildRuntimeContext(
     ir::Value ptr = op->result(i);
 
     auto in_var_name = name_map.at(ptr);
-    VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
+    VLOG(6) << "ctx->EmplaceBackOutput: " << name << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
@@ -664,9 +668,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  auto pd_op_name =
-      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
+  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
