@@ -963,7 +963,7 @@ class FusionPassMap {
         << fuse_mode;
     std::set<std::shared_ptr<LightwareFusePass>, LightwareFusePassComparator>
         candidate_passes;
-    for (const auto iter : map_) {
+    for (const auto& iter : map_) {
       if (fuse_mode == iter.second->FuseMode()) {
         candidate_passes.insert(
             std::dynamic_pointer_cast<LightwareFusePass>(iter.second));
@@ -976,7 +976,7 @@ class FusionPassMap {
   std::vector<std::shared_ptr<InputFusePass>> GetInputFusePasses() const {
     std::set<std::shared_ptr<InputFusePass>, InputFusePassComparator>
         candidate_passes;
-    for (const auto iter : map_) {
+    for (const auto& iter : map_) {
       if (iter.second->FuseMode() == "InputFuse") {
         candidate_passes.insert(
             std::dynamic_pointer_cast<InputFusePass>(iter.second));
@@ -2115,15 +2115,6 @@ GroupList GeneralFusionMergePassInternal(const ::ir::Program* graph,
 
   GeneralFusionMergePassHelper fusion_merge_pass_helper(graph, group_list);
   auto res = fusion_merge_pass_helper();
-
-  for (size_t i = 0; i < res.size(); ++i) {
-    auto group = res[i];
-
-    for (auto& sub_group : group->fused_sub_groups) {
-      for (auto& n : sub_group->nodes) {
-      }
-    }
-  }
 
   return res;
 }
