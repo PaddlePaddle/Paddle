@@ -145,6 +145,44 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
   }
 }
 
+inline DataType VarTypeToDataType(
+    ::paddle::framework::proto::VarType_Type var_type) {
+  switch (var_type) {
+    case paddle::framework::proto::VarType_Type::VarType_Type_BOOL:
+      return DataType::BOOL;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT16:
+      return DataType::INT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT32:
+      return DataType::INT32;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT64:
+      return DataType::INT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP16:
+      return DataType::FLOAT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP32:
+      return DataType::FLOAT32;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP64:
+      return DataType::FLOAT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_SIZE_T:
+      return DataType::UINT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_UINT8:
+      return DataType::UINT8;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT8:
+      return DataType::INT8;
+    case paddle::framework::proto::VarType_Type::VarType_Type_BF16:
+      return DataType::BFLOAT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX64:
+      return DataType::COMPLEX64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX128:
+      return DataType::COMPLEX128;
+    case paddle::framework::proto::VarType_Type::VarType_Type_PSTRING:
+      return DataType::PSTRING;
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported proto::VarType_Type `%s` when casting it into DataType.",
+          var_type));
+  }
+}
+
 VariantType GetAttributeData(const ir::Attribute& attr);
 
 bool IsLegacyOp(const std::string& name);

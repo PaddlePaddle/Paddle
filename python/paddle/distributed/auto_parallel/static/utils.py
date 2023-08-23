@@ -1406,6 +1406,10 @@ def is_prim_op(op):
     return op.type.endswith("_p")
 
 
+def is_comm_op(op):
+    return op.has_attr("ring_id")
+
+
 def get_loss_op(block):
     loss_ops = []
     for op in block.ops:

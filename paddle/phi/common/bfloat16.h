@@ -157,7 +157,9 @@ struct PADDLE_ALIGN(2) bfloat16 {
     uint16_t temp = x;
     uint16_t* temp_ptr = reinterpret_cast<uint16_t*>(&temp);
     res = *temp_ptr;
-    return res;
+    // return res;
+    res = res << 16;
+    return *reinterpret_cast<float*>(&res);
 #else
 #ifdef PADDLE_CUDA_BF16
     return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
