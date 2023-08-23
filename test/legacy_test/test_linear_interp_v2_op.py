@@ -336,6 +336,22 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
             np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
 
+    def test_default_3d(self):
+        # dygraph
+        x_data = np.random.random((1, 3, 128)).astype("float32")
+        us_1 = paddle.nn.Upsample(
+            size=[64], mode='linear', align_mode=1, align_corners=False
+        )
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(x_data)
+            interp = us_1(x)
+
+            expect = linear_interp_np(
+                x_data, out_w=64, align_mode=1, align_corners=False
+            )
+
+            np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
+
 
 class TestLinearInterpOpFP16(TestLinearInterpOp):
     def test_check_output(self):
