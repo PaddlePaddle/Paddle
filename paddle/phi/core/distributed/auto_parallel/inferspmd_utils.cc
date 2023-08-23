@@ -52,28 +52,26 @@ SpmdRuleFactory& SpmdRuleFactory::Instance() {
   return g_spmd_rule_map;
 }
 
-bool SpmdRuleFactory::ContainsInferSpmdFn(
-    const std::string& kernel_name) const {
-  return infer_spmd_fn_map_.count(kernel_name) > 0;
+bool SpmdRuleFactory::ContainsSpmdRule(const std::string& kernel_name) const {
+  return spmd_rule_map_.count(kernel_name) > 0;
 }
 
-void SpmdRuleFactory::InsertInferSpmdFn(std::string kernel_name,
-                                        InferSpmdFn fn) {
+void SpmdRuleFactory::InsertSpmdRule(std::string kernel_name, SpmdRule rule) {
   PADDLE_ENFORCE_NE(
-      ContainsInferSpmdFn(kernel_name),
+      ContainsSpmdRule(kernel_name),
       true,
       phi::errors::AlreadyExists(
-          "`%s` Kernel's InferSpmdFn has been registered.", kernel_name));
-  infer_spmd_fn_map_.insert({std::move(kernel_name), std::move(fn)});
+          "`%s` Kernel's Spmd rules has been registered.", kernel_name));
+  spmd_rule_map_.insert({std::move(kernel_name), std::move(rule)});
 }
 
-const InferSpmdFn& SpmdRuleFactory::GetInferSpmdFn(
+const SpmdRule& SpmdRuleFactory::GetSpmdRule(
     const std::string& kernel_name) const {
-  auto it = infer_spmd_fn_map_.find(kernel_name);
+  auto it = spmd_rule_map_.find(kernel_name);
   PADDLE_ENFORCE_NE(
       it,
-      infer_spmd_fn_map_.end(),
-      phi::errors::NotFound("`%s` Kernel's InferSpmdFn is not registered.",
+      spmd_rule_map_.end(),
+      phi::errors::NotFound("`%s` Kernel's Spmd rules is not registered.",
                             kernel_name));
   return it->second;
 }

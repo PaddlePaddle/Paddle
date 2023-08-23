@@ -117,39 +117,80 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   };
 };
 
+// TODO(chenweihang): Maybe SpmdRule only contains backward function?
+class SpmdRule {
+ public:
+  explicit SpmdRule(InferSpmdFn forward_fn)
+      : forward_fn_(forward_fn), backward_fn_(nullptr) {}
+
+  SpmdRule(InferSpmdFn forward_fn, InferSpmdFn backward_fn)
+      : forward_fn_(forward_fn), backward_fn_(backward_fn) {}
+
+  SpmdInfo InferForward(const InferSpmdContext& ctx) const {
+    return forward_fn_(ctx);
+  }
+
+  SpmdInfo InferBackward(const InferSpmdContext& ctx) const {
+    return backward_fn_(ctx);
+  }
+
+ private:
+  InferSpmdFn forward_fn_;
+  InferSpmdFn backward_fn_;
+};
+
 // SpmdRuleFactory manage the spmd rules and cache the propagate results
 // TODO(chenweihang): Add spmd caching impl later
 class SpmdRuleFactory {
  public:
   static SpmdRuleFactory& Instance();
 
-  bool ContainsInferSpmdFn(const std::string& kernel_name) const;
+  bool ContainsSpmdRule(const std::string& kernel_name) const;
 
-  void InsertInferSpmdFn(std::string kernel_name, InferSpmdFn fn);
+  void InsertSpmdRule(std::string kernel_name, SpmdRule rule);
 
-  const InferSpmdFn& GetInferSpmdFn(const std::string& kernel_name) const;
+  const SpmdRule& GetSpmdRule(const std::string& kernel_name) const;
 
  private:
   SpmdRuleFactory() = default;
 
-  paddle::flat_hash_map<std::string, InferSpmdFn> infer_spmd_fn_map_;
+  paddle::flat_hash_map<std::string, SpmdRule> spmd_rule_map_;
 
   DISABLE_COPY_AND_ASSIGN(SpmdRuleFactory);
 };
 
 struct InferSpmdFnRegistrar {
-  InferSpmdFnRegistrar(const char* kernel_name, InferSpmdFn fn) {
-    SpmdRuleFactory::Instance().InsertInferSpmdFn(kernel_name, fn);
+  InferSpmdFnRegistrar(const char* kernel_name, InferSpmdFn forward_fn) {
+    SpmdRuleFactory::Instance().InsertSpmdRule(kernel_name,
+                                               SpmdRule(forward_fn));
+  }
+
+  InferSpmdFnRegistrar(const char* kernel_name,
+                       InferSpmdFn forward_fn,
+                       InferSpmdFn backward_fn) {
+    SpmdRuleFactory::Instance().InsertSpmdRule(
+        kernel_name, SpmdRule(forward_fn, backward_fn));
   }
 };
 
-#define PD_REGISTER_INFER_SPMD_FN(kernel_name, variadic_infer_spmd_fn)  \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
-      PD_REGISTER_infer_spmd_fn_ns_check_##kernel_name,                 \
-      "PD_REGISTER_INFER_SPMD_FN must be called in global namespace."); \
-  static const ::phi::distributed::InferSpmdFnRegistrar                 \
-      __registrar_infer_spmd_fn_for_##kernel_name(                      \
-          #kernel_name, PD_INFER_SPMD(variadic_infer_spmd_fn))
+#define PD_REGISTER_SPMD_FORWARD_RULE(kernel_name,                          \
+                                      variadic_infer_spmd_forward_fn)       \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
+      PD_REGISTER_infer_spmd_fn_ns_check_##kernel_name,                     \
+      "PD_REGISTER_SPMD_FORWARD_RULE must be called in global namespace."); \
+  static const ::phi::distributed::InferSpmdFnRegistrar                     \
+      __registrar_infer_spmd_fn_for_##kernel_name(                          \
+          #kernel_name, PD_INFER_SPMD(variadic_infer_spmd_forward_fn))
+
+#define PD_REGISTER_SPMD_RULE(kernel_name,                          \
+                              variadic_infer_spmd_forward_fn,       \
+                              variadic_infer_spmd_backward_fn)      \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
+      PD_REGISTER_infer_spmd_fn_ns_check_##kernel_name,             \
+      "PD_REGISTER_SPMD_RULE must be called in global namespace."); \
+  static const ::phi::distributed::InferSpmdFnRegistrar             \
+      __registrar_infer_spmd_fn_for_##kernel_name(                  \
+          #kernel_name, PD_INFER_SPMD(variadic_infer_spmd_forward_fn))
 
 }  // namespace distributed
 }  // namespace phi

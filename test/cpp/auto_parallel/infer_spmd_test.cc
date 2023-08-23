@@ -81,9 +81,9 @@ TEST(MatmulSPMDRule, Ctor) {
   ctx.EmplaceBackInput(y);
   ctx.EmplaceBackAttr(/*trans_x=*/false);
   ctx.EmplaceBackAttr(/*trans_x=*/false);
-  auto matmul_infer_spmd_fn =
-      phi::distributed::SpmdRuleFactory::Instance().GetInferSpmdFn("matmul");
-  auto infered_dist_attrs_st = matmul_infer_spmd_fn(ctx);
+  auto matmul_spmd_rule =
+      phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule("matmul");
+  auto infered_dist_attrs_st = matmul_spmd_rule.InferForward(ctx);
 
   EXPECT_EQ(infered_dist_attrs_st.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs_st.second.size(), output_size);

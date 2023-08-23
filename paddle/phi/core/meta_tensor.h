@@ -101,7 +101,7 @@ class MetaTensor {
  protected:
   static void unspecified_bool_true() {}
 
- protected:
+ private:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;

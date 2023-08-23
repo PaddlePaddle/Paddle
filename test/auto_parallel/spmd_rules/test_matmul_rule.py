@@ -14,17 +14,18 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
+from paddle.framework import core
 
 
 class TestMatmulSPMDRule(unittest.TestCase):
     def setUp(self):
-        self.rule = get_spmd_rule("matmul")
+        # self.rule = get_spmd_rule("matmul")
+        self.rule = core.get_phi_spmd_rule("matmul")
 
         x_shape = [64, 32]
         y_shape = [32, 48]

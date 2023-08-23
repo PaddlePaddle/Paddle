@@ -219,4 +219,4 @@ SpmdInfo MatmulInferSpmd(const MetaTensor& x,
 }  // namespace distributed
 }  // namespace phi
 
-PD_REGISTER_INFER_SPMD_FN(matmul, phi::distributed::MatmulInferSpmd);
+PD_REGISTER_SPMD_FORWARD_RULE(matmul, phi::distributed::MatmulInferSpmd);
