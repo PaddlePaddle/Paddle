@@ -251,6 +251,8 @@ void BindValue(py::module *m) {
            &Value::GetDefiningOp,
            return_value_policy::reference)
       .def("first_use", &Value::first_use, return_value_policy::reference)
+      .def("has_one_use", &Value::HasOneUse)
+      .def("use_empty", &Value::use_empty)
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -336,6 +338,7 @@ void BindOpResult(py::module *m) {
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
       .def("first_use", &OpResult::first_use, return_value_policy::reference)
+      .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
       .def_property(

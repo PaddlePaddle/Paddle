@@ -168,5 +168,39 @@ class TesBackward_2(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
+def get_ir_program_2():
+    x = paddle.randn([2, 2])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        k_s = paddle.sum(x_s, axis=(-1,), keepdim=False)
+    newir_program = ir.translate_to_new_ir(main_program.desc)
+    return newir_program
+
+
+class TestBackward_3(unittest.TestCase):
+    def test_basic_network(self):
+        newir_program = get_ir_program_2()
+        x = newir_program.block().ops[-1].operand(0).source()
+        sum_x = newir_program.block().ops[-1].result(0)
+        print(newir_program)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            norm = paddle.tensor.fill_constant(
+                shape=[],
+                value=1.0,
+                dtype=sum_x.dtype,
+            )
+            res = paddle.divide(sum_x, norm)
+            input_grad = grad(res, x)
+
+        print(newir_program)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
+
 if __name__ == "__main__":
     unittest.main()
