@@ -144,15 +144,15 @@ def is_initialized():
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
 
-            print(paddle.distributed.is_initialized())
-            # False
+            >>> print(paddle.distributed.is_initialized())
+            False
 
-            paddle.distributed.init_parallel_env()
-            print(paddle.distributed.is_initialized())
-            # True
+            >>> paddle.distributed.init_parallel_env()
+            >>> print(paddle.distributed.is_initialized())
+            True
 
     """
     return _GroupManager.global_group_id in _GroupManager.group_map_by_id
@@ -175,19 +175,19 @@ def destroy_process_group(group=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            group = dist.new_group([0, 1])
+            >>> dist.init_parallel_env()
+            >>> group = dist.new_group([0, 1])
 
-            dist.destroy_process_group(group)
-            print(dist.is_initialized())
-            # True
-            dist.destroy_process_group()
-            print(dist.is_initialized())
-            # False
+            >>> dist.destroy_process_group(group)
+            >>> print(dist.is_initialized())
+            True
+            >>> dist.destroy_process_group()
+            >>> print(dist.is_initialized())
+            False
 
     """
     group = _get_global_group() if group is None else group
@@ -214,13 +214,13 @@ def get_group(id=0):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            gid = paddle.distributed.new_group([2,4,6])
-            paddle.distributed.get_group(gid.id)
+            >>> dist.init_parallel_env()
+            >>> gid = paddle.distributed.new_group([2,4,6])
+            >>> paddle.distributed.get_group(gid.id)
 
     """
 
@@ -276,12 +276,13 @@ def wait(tensor, group=None, use_calc_stream=True):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
 
-            paddle.distributed.init_parallel_env()
-            tindata = paddle.randn(shape=[2, 3])
-            paddle.distributed.all_reduce(tindata, sync_op=True)
-            paddle.distributed.wait(tindata)
+            >>> paddle.distributed.init_parallel_env()
+            >>> tindata = paddle.randn(shape=[2, 3])
+            >>> paddle.distributed.all_reduce(tindata, sync_op=True)
+            >>> paddle.distributed.wait(tindata)
 
     """
     if group is not None and not group.is_member():
@@ -308,12 +309,13 @@ def barrier(group=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed import init_parallel_env
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> from paddle.distributed import init_parallel_env
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            paddle.distributed.barrier()
+            >>> paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            >>> init_parallel_env()
+            >>> paddle.distributed.barrier()
     """
     if group is not None and not group.is_member():
         return
@@ -362,11 +364,12 @@ def get_backend(group=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
 
-            paddle.distributed.init_parallel_env()
-            paddle.distributed.get_backend() # NCCL
+            >>> paddle.distributed.init_parallel_env()
+            >>> paddle.distributed.get_backend()
+            NCCL
     """
     if _warn_cur_rank_not_in_group(group):
         raise RuntimeError("Invalid group specified")
