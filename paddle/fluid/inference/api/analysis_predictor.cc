@@ -226,6 +226,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     input_ptr = t->mutable_data<int32_t>(ddim, place);
   } else if (pt.dtype == PaddleDType::FLOAT16) {
     input_ptr = t->mutable_data<float16>(ddim, place);
+  } else if (pt.dtype == PaddleDType::BFLOAT16) {
+    input_ptr = t->mutable_data<bfloat16>(ddim, place);
   } else {
     LOG(ERROR) << "unsupported feed type " << pt.dtype;
     return false;
@@ -1318,9 +1320,13 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     } else if (type == framework::proto::VarType::FP16) {
       GetFetchOne<float16>(fetch, output);
       output->dtype = PaddleDType::FLOAT16;
+    } else if (type == framework::proto::VarType::BF16) {
+      GetFetchOne<bfloat16>(fetch, output);
+      output->dtype = PaddleDType::BFLOAT16;
     } else {
-      LOG(ERROR) << "unknown type, only support float32, float16, int64 and "
-                    "int32 now.";
+      LOG(ERROR)
+          << "unknown type, only support float32, float16, bfloat16, int64 and "
+             "int32 now.";
     }
   }
   return true;
@@ -1399,6 +1405,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_->SetTensorRtUseInspector(config_.trt_use_inspector_);
+    argument_->SetTensorRtUseExplicitQuantization(
+        config_.trt_use_explicit_quantization_);
     argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
   }
 
@@ -1881,6 +1889,8 @@ AnalysisPredictor::GetInputTypes() {
       input_type[name] = paddle_infer::DataType::FLOAT32;
     } else if (dtype == paddle::framework::proto::VarType::FP16) {
       input_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::BF16) {
+      input_type[name] = paddle_infer::DataType::BFLOAT16;
     } else if (dtype == paddle::framework::proto::VarType::INT64) {
       input_type[name] = paddle_infer::DataType::INT64;
     } else if (dtype == paddle::framework::proto::VarType::INT32) {
@@ -1938,6 +1948,8 @@ AnalysisPredictor::GetOutputTypes() {
       output_type[name] = paddle_infer::DataType::FLOAT32;
     } else if (dtype == paddle::framework::proto::VarType::FP16) {
       output_type[name] = paddle_infer::DataType::FLOAT16;
+    } else if (dtype == paddle::framework::proto::VarType::BF16) {
+      output_type[name] = paddle_infer::DataType::BFLOAT16;
     } else if (dtype == paddle::framework::proto::VarType::INT64) {
       output_type[name] = paddle_infer::DataType::INT64;
     } else if (dtype == paddle::framework::proto::VarType::INT32) {
@@ -2939,6 +2951,10 @@ USE_TRT_CONVERTER(temporal_shift)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
+#endif
+#if IS_TRT_VERSION_GE(8000)
+USE_TRT_CONVERTER(quantize_linear)
+USE_TRT_CONVERTER(dequantize_linear)
 #endif
 #endif
 
