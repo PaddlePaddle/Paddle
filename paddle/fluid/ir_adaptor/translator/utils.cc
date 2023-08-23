@@ -18,6 +18,7 @@
 
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/utils.h"
 
 namespace paddle {
 namespace translator {
@@ -44,6 +45,16 @@ ir::Operation* InsertSliceOperationForTarget(
   ir::OpResult target_op_result = operation->result(0);
   (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
   return operation;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const std::vector<std::string>& vec_str) {
+  ir::PrintInterleave(
+      vec_str.begin(),
+      vec_str.end(),
+      [&os](std::string s) { os << s; },
+      [&os]() { os << ", "; });
+  return os;
 }
 
 }  // namespace translator

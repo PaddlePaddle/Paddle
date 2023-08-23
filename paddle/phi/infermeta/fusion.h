@@ -36,10 +36,7 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& bias,
                               int begin_norm_axis,
                               float epsilon,
-                              MetaTensor* out,
-                              MetaTensor* mean,
-                              MetaTensor* variance,
-                              MetaTensor* z_add);
+                              MetaTensor* out);
 
 void Conv1dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
@@ -196,5 +193,12 @@ void FastWhereXPUInferMeta(const MetaTensor& condition,
                            const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out);
+
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out);
 
 }  // namespace phi

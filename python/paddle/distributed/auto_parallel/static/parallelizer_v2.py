@@ -46,15 +46,15 @@ class Parallelizer:
     def is_test(self):
         return self._mode in ["eval", "predict"]
 
-    def parallel_all(self):
+    def parallel_all(self, parameter_list=None):
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
         for rank in all_ranks:
             # self._dist_context._backup(serial=True, dist=True)
-            self.parallel(rank)
+            self.parallel(rank, parameter_list)
             # self._dist_context._restore(serial=True, dist=True)
 
-    def parallel(self, rank):
+    def parallel(self, rank, parameter_list=None):
         serial_main_program = self._dist_context.serial_main_program
         serial_startup_program = self._dist_context.serial_startup_program
         serial_optimizer = self._dist_context.serial_optimizer
@@ -62,7 +62,10 @@ class Parallelizer:
             # Generate backward
             serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
-                serial_main_program, serial_startup_program, serial_loss
+                serial_main_program,
+                serial_startup_program,
+                serial_loss,
+                parameter_list,
             )
             # Apply pre optimization passes
             time0 = time.time()
@@ -211,10 +214,20 @@ class Parallelizer:
         self._dist_context.dist_main_programs[rank] = dist_main_prog
         self._dist_context.dist_startup_programs[rank] = dist_startup_prog
 
-    def _generate_backward(self, main_program, startup_program, loss):
+    def _generate_backward(
+        self, main_program, startup_program, loss, parameter_list=None
+    ):
+        # NOTE(zhaoyinglia):
+        # Guarantee the order of params_grads is same between dynamic mode and static mode
+        # by making parameter_list equal to model.parameters(),
+        # because the order affact the result of ClipGradByGLobalNorm.
+        # If parameter_list is not None, the order of params_grads is same with parameter_list.
+        # If parameter_list is None, params_grads will be as prog.global_block().all_parameters().
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
-                loss, distop_context=self._dist_context.dist_op_context
+                loss,
+                parameter_list=parameter_list,
+                distop_context=self._dist_context.dist_op_context,
             )
         self._completer.complete_backward_annotation(main_program)
         self._dist_context.block_state.parse_backward_blocks(main_program)
@@ -231,6 +244,7 @@ class Parallelizer:
         optimizer = copy.deepcopy(optimizer)
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
+        optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):
