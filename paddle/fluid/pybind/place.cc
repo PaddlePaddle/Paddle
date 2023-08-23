@@ -320,7 +320,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   cudaplace
       .def("__init__",
            [](platform::CUDAPlace &self, int dev_id) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
              if (UNLIKELY(dev_id < 0)) {
                LOG(ERROR) << string::Sprintf(
                    "Invalid CUDAPlace(%d), device id must be 0 or "
@@ -359,7 +360,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
              std::exit(-1);
 #endif
            })
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       .def("get_device_id",
            [](const platform::CUDAPlace &self) { return self.GetDeviceId(); })
       .def("_type", &PlaceIndex<platform::CUDAPlace>)
@@ -374,7 +376,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #endif
       .def("__repr__", string::to_string<const platform::CUDAPlace &>)
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
   // Only GPUs with Compute Capability >= 53 support float16
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
@@ -542,7 +545,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   cudapinnedplace
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(PADDLE_WITH_MUSA)
              PADDLE_THROW(platform::errors::PermissionDenied(
                  "Cannot use CUDAPinnedPlace in CPU only version, "
                  "Please recompile or reinstall Paddle with CUDA support."));

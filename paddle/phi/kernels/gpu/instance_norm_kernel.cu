@@ -200,7 +200,7 @@ void InstanceNormKernel(const Context &dev_ctx,
       phi::dynload::miopenDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::miopenDestroyTensorDescriptor(in_param_desc_));
-#elif defined(PADDLE_WITH_CUDA) 
+#elif defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnBatchNormalizationForwardTraining(
           handle,
@@ -255,7 +255,7 @@ PD_REGISTER_KERNEL(instance_norm,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else // CUDA
+#else  // CUDA
 PD_REGISTER_KERNEL(instance_norm,
                    GPU,
                    ALL_LAYOUT,

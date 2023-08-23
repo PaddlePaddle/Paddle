@@ -17,7 +17,8 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #elif defined(PADDLE_WITH_MUSA)
@@ -32,7 +33,8 @@ namespace paddle {
 PD_REGISTER_API(from_blob)
 
 phi::Place GetPlaceFromPtr(void* data) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
   cudaPointerAttributes attr;

@@ -1,0 +1,22 @@
+diff --git a/unsupported/Eigen/CXX11/src/Tensor/TensorContractionGpu.h b/unsupported/Eigen/CXX11/src/Tensor/TensorContractionGpu.h
+index bb990b378..07f93ab18 100644
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorContractionGpu.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorContractionGpu.h
+@@ -621,7 +621,7 @@ EigenFloatContractionKernelInternal16x16(const LhsMapper lhs, const RhsMapper rh
+       x1 = rhs_pf0.x;
+       x2 = rhs_pf0.z;
+     }
+-    #if defined(EIGEN_HIPCC) || (defined(EIGEN_CUDA_SDK_VER) && EIGEN_CUDA_SDK_VER < 90000)
++    #if !defined(EIGEN_MUSACC) && (defined(EIGEN_HIPCC) || (defined(EIGEN_CUDA_SDK_VER) && EIGEN_CUDA_SDK_VER < 90000))
+     x1 = __shfl_xor(x1, 4);
+     x2 = __shfl_xor(x2, 4);
+     #else
+@@ -1399,6 +1399,8 @@ struct TensorEvaluator<const TensorContractionOp<Indices, LeftArgType, RightArgT
+ 
+ #if defined(EIGEN_USE_HIP)
+     setGpuSharedMemConfig(hipSharedMemBankSizeEightByte);
++#elif defined(EIGEN_USE_MUSA)
++    setGpuSharedMemConfig(musaSharedMemBankSizeEightByte);
+ #else
+     setGpuSharedMemConfig(cudaSharedMemBankSizeEightByte);
+ #endif

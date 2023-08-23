@@ -17,7 +17,8 @@ limitations under the License. */
 #include <sstream>
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__) || \
+    defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
 namespace kps = phi::kps;
@@ -27,7 +28,8 @@ namespace kps = phi::kps;
 namespace phi {
 namespace funcs {
 
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__MUSACC__) || \
+    defined(__xpu__)
 
 enum BroadcastLoadType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 

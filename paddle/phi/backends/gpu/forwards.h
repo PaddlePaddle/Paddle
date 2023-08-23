@@ -75,9 +75,9 @@ using ncclComm_t = struct ncclComm *;
 // Forward declaration of MUSA runtime types.
 using musaStream_t = struct MUstream_st *;
 using musaEvent_t = struct MUevent_st *;
-using mublasHandle_t = struct _mublasHandle_t*;
-using mudnnHandle_t = class Handle*;
-using musparseHandle_t = struct _musparse_handle*;
+using mublasHandle_t = struct _mublasHandle_t *;
+using mudnnHandle_t = class Handle *;
+using musparseHandle_t = struct _musparse_handle *;
 
 /// Forward declaration of ROCM types.
 #include <cstddef>

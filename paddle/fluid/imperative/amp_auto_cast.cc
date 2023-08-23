@@ -138,7 +138,8 @@ AmpOperators::AmpOperators()
       block_ops_(new std::unordered_set<std::string>()),
       unsupported_fp16_ops_(new std::unordered_set<std::string>()),
       unsupported_bf16_ops_(new std::unordered_set<std::string>()) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   auto unsupported_ops_gpu_fp16 = std::get<2>(
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::FP16));
   unsupported_fp16_ops_->insert(unsupported_ops_gpu_fp16.begin(),

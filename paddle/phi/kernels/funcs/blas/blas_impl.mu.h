@@ -30,7 +30,6 @@ PHI_DECLARE_bool(gemm_use_half_precision_compute_type);
 namespace phi {
 namespace funcs {
 
-
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
@@ -42,8 +41,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 T *C) const {
-}
+                                 T *C) const {}
 
 template <>
 template <>
@@ -56,8 +54,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::float16 *A,
                                         const phi::dtype::float16 *B,
                                         phi::dtype::float16 beta,
-                                        phi::dtype::float16 *C) const {
-}
+                                        phi::dtype::float16 *C) const {}
 
 template <>
 template <>
@@ -70,8 +67,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::bfloat16 *A,
                                         const phi::dtype::bfloat16 *B,
                                         phi::dtype::bfloat16 beta,
-                                        phi::dtype::bfloat16 *C) const {
-}
+                                        phi::dtype::bfloat16 *C) const {}
 
 template <>
 template <>
@@ -84,8 +80,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::complex<float> *A,
                                         const phi::dtype::complex<float> *B,
                                         phi::dtype::complex<float> beta,
-                                        phi::dtype::complex<float> *C) const {
-}
+                                        phi::dtype::complex<float> *C) const {}
 
 template <>
 template <>
@@ -98,8 +93,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         const phi::dtype::complex<double> *A,
                                         const phi::dtype::complex<double> *B,
                                         phi::dtype::complex<double> beta,
-                                        phi::dtype::complex<double> *C) const {
-}
+                                        phi::dtype::complex<double> *C) const {}
 
 template <>
 template <typename T>
@@ -115,8 +109,7 @@ void Blas<phi::GPUContext>::GEMM(bool transA,
                                  int ldb,
                                  T beta,
                                  T *C,
-                                 int ldc) const {
-}
+                                 int ldc) const {}
 
 template <>
 template <>
@@ -132,8 +125,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                         int ldb,
                                         phi::dtype::float16 beta,
                                         phi::dtype::float16 *C,
-                                        int ldc) const {
-}
+                                        int ldc) const {}
 
 template <>
 template <>
@@ -149,23 +141,19 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
                                         int ldb,
                                         phi::dtype::bfloat16 beta,
                                         phi::dtype::bfloat16 *C,
-                                        int ldc) const {
-}
+                                        int ldc) const {}
 
 template <>
 template <typename T>
-void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
-}
+void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {}
 
 template <>
 template <typename T>
-void Blas<phi::GPUContext>::SCAL(int n, const T alpha, T *x) const {
-}
+void Blas<phi::GPUContext>::SCAL(int n, const T alpha, T *x) const {}
 
 template <>
 template <typename T>
-void Blas<phi::GPUContext>::VCOPY(int n, const T *x, T *y) const {
-}
+void Blas<phi::GPUContext>::VCOPY(int n, const T *x, T *y) const {}
 
 template <>
 template <typename T>
@@ -176,8 +164,7 @@ void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 T *C) const {
-}
+                                 T *C) const {}
 
 template <>
 template <>
@@ -188,8 +175,7 @@ inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                         const phi::dtype::float16 *A,
                                         const phi::dtype::float16 *B,
                                         phi::dtype::float16 beta,
-                                        phi::dtype::float16 *C) const {
-}
+                                        phi::dtype::float16 *C) const {}
 
 template <>
 template <>
@@ -200,8 +186,7 @@ inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                         const phi::dtype::bfloat16 *A,
                                         const phi::dtype::bfloat16 *B,
                                         phi::dtype::bfloat16 beta,
-                                        phi::dtype::bfloat16 *C) const {
-}
+                                        phi::dtype::bfloat16 *C) const {}
 
 template <>
 template <typename T>
@@ -217,8 +202,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         T *C,
                                         int batchCount,
                                         int64_t strideA,
-                                        int64_t strideB) const {
-}
+                                        int64_t strideB) const {}
 
 template <>
 template <>
@@ -234,8 +218,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                phi::dtype::bfloat16 *C,
                                                int batchCount,
                                                int64_t strideA,
-                                               int64_t strideB) const {
-}
+                                               int64_t strideB) const {}
 
 template <>
 template <typename T>
@@ -249,8 +232,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T **B,
                                         T beta,
                                         T **C,
-                                        int batchCount) const {
-}
+                                        int batchCount) const {}
 
 #if defined(__MUSACC__)
 template <>
@@ -265,8 +247,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const double **B,
                                                double beta,
                                                double **C,
-                                               int batchCount) const {
-}
+                                               int batchCount) const {}
 
 template <>
 template <>
@@ -280,8 +261,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const float **B,
                                                float beta,
                                                float **C,
-                                               int batchCount) const {
-}
+                                               int batchCount) const {}
 
 template <>
 template <>
@@ -295,8 +275,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const phi::dtype::float16 **B,
                                                phi::dtype::float16 beta,
                                                phi::dtype::float16 **C,
-                                               int batchCount) const {
-}
+                                               int batchCount) const {}
 
 template <>
 template <>
@@ -310,8 +289,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                const phi::dtype::bfloat16 **B,
                                                phi::dtype::bfloat16 beta,
                                                phi::dtype::bfloat16 **C,
-                                               int batchCount) const {
-}
+                                               int batchCount) const {}
 #endif
 
 template <>
@@ -326,14 +304,12 @@ void Blas<phi::GPUContext>::TRSM(CBLAS_SIDE side,
                                  const T *A,
                                  int lda,
                                  T *B,
-                                 int ldb) const {
-}
+                                 int ldb) const {}
 
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedGETRF(
-    int n, T **a, int *ipiv, int *info, int batch_size) const {
-}
+    int n, T **a, int *ipiv, int *info, int batch_size) const {}
 
 template <>
 template <typename T>
@@ -342,14 +318,12 @@ void Blas<phi::GPUContext>::BatchedGETRI(int n,
                                          const int *ipiv,
                                          T **a_inv,
                                          int *info,
-                                         int batch_size) const {
-}
+                                         int batch_size) const {}
 
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedMatInv(
-    int n, const T **a, T **a_inv, int *info, int batch_size) const {
-}
+    int n, const T **a, T **a_inv, int *info, int batch_size) const {}
 
 template <>
 template <typename T>
@@ -362,8 +336,7 @@ void Blas<phi::GPUContext>::BatchedGETRS(CBLAS_TRANSPOSE trans,
                                          T **b,
                                          int ldb,
                                          int *info,
-                                         int batch_size) const {
-}
+                                         int batch_size) const {}
 
 template <>
 template <typename T>
@@ -378,8 +351,7 @@ void Blas<phi::GPUContext>::BatchedTRSM(CBLAS_SIDE side,
                                         int lda,
                                         T **B,
                                         int ldb,
-                                        int batch_size) const {
-}
+                                        int batch_size) const {}
 
 }  // namespace funcs
 }  // namespace phi

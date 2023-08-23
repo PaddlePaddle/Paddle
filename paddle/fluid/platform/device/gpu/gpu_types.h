@@ -15,7 +15,8 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
@@ -53,11 +54,20 @@ namespace paddle {
 DECLARE_TYPE_FOR_GPU(gpuStream_t, cudaStream_t, hipStream_t, musaStream_t);
 DECLARE_TYPE_FOR_GPU(gpuError_t, cudaError_t, hipError_t, musaError_t);
 DECLARE_TYPE_FOR_GPU(gpuEvent_t, cudaEvent_t, hipEvent_t, musaEvent_t);
-DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind, musaMemcpyKind);
-DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t, musaDeviceProp);
+DECLARE_TYPE_FOR_GPU(gpuMemcpyKind,
+                     cudaMemcpyKind,
+                     hipMemcpyKind,
+                     musaMemcpyKind);
+DECLARE_TYPE_FOR_GPU(gpuDeviceProp,
+                     cudaDeviceProp,
+                     hipDeviceProp_t,
+                     musaDeviceProp);
 
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t, mudnnHandle_t);
-DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle, mublasHandle_t);
+DECLARE_TYPE_FOR_GPU(blasHandle_t,
+                     cublasHandle_t,
+                     rocblas_handle,
+                     mublasHandle_t);
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 
@@ -127,7 +137,10 @@ DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
                          cudaErrorMemoryAllocation,
                          hipErrorOutOfMemory,
                          musaErrorMemoryAllocation);
-DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady, musaErrorNotReady);
+DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady,
+                         cudaErrorNotReady,
+                         hipErrorNotReady,
+                         musaErrorNotReady);
 DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess, musaSuccess);
 
 #undef DECLARE_CONSTANT_FOR_GPU

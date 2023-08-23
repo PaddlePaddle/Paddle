@@ -28,18 +28,18 @@ extern std::once_flag musartc_dso_flag;
 extern void* musartc_dso_handle;
 extern bool HasNVRTC();
 
-#define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name)                        \
-  struct DynLoad__##__name {                                           \
-    template <typename... Args>                                        \
-    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {   \
-      using musartc_func = decltype(&::__name);                        \
-      std::call_once(musartc_dso_flag, []() {                          \
-        musartc_dso_handle = phi::dynload::GetNVRTCDsoHandle();        \
-      });                                                              \
-      static void* p_##__name = dlsym(musartc_dso_handle, #__name);    \
-      return reinterpret_cast<musartc_func>(p_##__name)(args...);      \
-    }                                                                  \
-  };                                                                   \
+#define DECLARE_DYNAMIC_LOAD_NVRTC_WRAP(__name)                      \
+  struct DynLoad__##__name {                                         \
+    template <typename... Args>                                      \
+    auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
+      using musartc_func = decltype(&::__name);                      \
+      std::call_once(musartc_dso_flag, []() {                        \
+        musartc_dso_handle = phi::dynload::GetNVRTCDsoHandle();      \
+      });                                                            \
+      static void* p_##__name = dlsym(musartc_dso_handle, #__name);  \
+      return reinterpret_cast<musartc_func>(p_##__name)(args...);    \
+    }                                                                \
+  };                                                                 \
   extern struct DynLoad__##__name __name
 
 /**

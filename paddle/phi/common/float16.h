@@ -91,8 +91,10 @@ struct PADDLE_ALIGN(2) float16 {
 // Constructors
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline explicit float16(const half& h) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
+    CUDA_VERSION >= 9000
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
 #else
     x = h.x;
@@ -110,8 +112,9 @@ struct PADDLE_ALIGN(2) float16 {
 #endif
 
   HOSTDEVICE inline explicit float16(float val) {
-#if defined(PADDLE_CUDA_FP16) && \
-    (defined(__HIPCC__) || defined(__MUSACC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
+#if defined(PADDLE_CUDA_FP16) &&                  \
+    (defined(__HIPCC__) || defined(__MUSACC__) || \
+     (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
     half tmp = __float2half(val);
     x = *reinterpret_cast<uint16_t*>(&tmp);
 
@@ -153,7 +156,8 @@ struct PADDLE_ALIGN(2) float16 {
 // Assignment operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline float16& operator=(const half& rhs) {
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
+    CUDA_VERSION >= 9000
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&rhs))->x;
 #else
     x = rhs.x;
@@ -227,7 +231,8 @@ struct PADDLE_ALIGN(2) float16 {
 // Conversion operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline half to_half() const {
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
+    CUDA_VERSION >= 9000
     __half_raw h;
     h.x = x;
     return half(h);
@@ -246,8 +251,9 @@ struct PADDLE_ALIGN(2) float16 {
 #endif
 
   HOSTDEVICE inline operator float() const {
-#if defined(PADDLE_CUDA_FP16) && \
-    (defined(__HIPCC__) || defined(__MUSACC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
+#if defined(PADDLE_CUDA_FP16) &&                  \
+    (defined(__HIPCC__) || defined(__MUSACC__) || \
+     (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
     half tmp = *reinterpret_cast<const half*>(this);
     return __half2float(tmp);
 

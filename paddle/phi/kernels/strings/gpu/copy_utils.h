@@ -23,7 +23,8 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 __global__ void SerializeStringsData(const phi::dtype::pstring* src_str,
                                      uint8_t* strings_data,
                                      int32_t* strings_offset,
@@ -149,7 +150,8 @@ void DeserializeOnCPU(const Context& dev_ctx,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void SerializeOnGPU(const phi::GPUContext& dev_ctx,
                     const StringTensor& src,
                     DenseTensor* dst) {

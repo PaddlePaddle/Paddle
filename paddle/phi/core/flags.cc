@@ -14,7 +14,8 @@
 // limitations under the License.
 
 #include "paddle/phi/core/flags.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #endif
 
@@ -120,7 +121,8 @@ PHI_DEFINE_EXPORTED_bool(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 /**
  * CUDA related related FLAG
@@ -215,7 +217,8 @@ PHI_DEFINE_EXPORTED_bool(
     true,
     "Whether enable api kernel fallback to CPU one when not found");
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 /**
  * CUDNN related FLAG
  * Name: FLAGS_cudnn_deterministic
@@ -322,7 +325,8 @@ PHI_DEFINE_EXPORTED_bool(
     "batch_norm, default is False.");
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 /**
  * NCCL related FLAG
@@ -541,8 +545,9 @@ PHI_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||           \
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_CUSTOM_DEVICE) || \
+    defined(PADDLE_WITH_XPU)
 
 /**
  * Memory related FLAG
@@ -785,7 +790,8 @@ PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,
  * Example:
  * Note: Check kernel launch status after every kernel compute.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DEFINE_EXPORTED_bool(
     check_kernel_launch,
     false,
@@ -800,7 +806,8 @@ PHI_DEFINE_EXPORTED_bool(
  * Example:
  * Note: Disable cudnn in conv2d.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DEFINE_EXPORTED_bool(conv2d_disable_cudnn,
                          false,
                          "Disable cudnn in conv2d");
@@ -1128,7 +1135,8 @@ PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
  * Example:
  * Note: nccl blocking wait.
  */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
 

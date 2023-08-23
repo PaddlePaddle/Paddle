@@ -15,8 +15,8 @@
 #include <array>
 #include <mutex>
 
-#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 #include "paddle/phi/core/enforce.h"
 
@@ -92,10 +92,10 @@ int GetGPUComputeCapability(int id) {
                                    id,
                                    GetGPUDeviceCount()));
   int major, minor;
-  auto major_error_code = musaDeviceGetAttribute(
-      &major, musaDevAttrComputeCapabilityMajor, id);
-  auto minor_error_code = musaDeviceGetAttribute(
-      &minor, musaDevAttrComputeCapabilityMinor, id);
+  auto major_error_code =
+      musaDeviceGetAttribute(&major, musaDevAttrComputeCapabilityMajor, id);
+  auto minor_error_code =
+      musaDeviceGetAttribute(&minor, musaDevAttrComputeCapabilityMinor, id);
 
   PADDLE_ENFORCE_GPU_SUCCESS(major_error_code);
   PADDLE_ENFORCE_GPU_SUCCESS(minor_error_code);
@@ -140,7 +140,6 @@ int GetGPUMultiProcessors(int id) {
                                    GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(
-                                     
       musaDeviceGetAttribute(&count, musaDevAttrMultiProcessorCount, id));
   return count;
 }
@@ -190,18 +189,15 @@ std::array<int, 3> GetGpuMaxGridDimSize(int id) {
                                    GetGPUDeviceCount()));
   std::array<int, 3> ret;
   int size;
-  auto error_code_x =
-      musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimX, id);
+  auto error_code_x = musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimX, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_x);
   ret[0] = size;
 
-  auto error_code_y =
-      musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimY, id);
+  auto error_code_y = musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimY, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_y);
   ret[1] = size;
 
-  auto error_code_z =
-      musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimZ, id);
+  auto error_code_z = musaDeviceGetAttribute(&size, musaDevAttrMaxGridDimZ, id);
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_z);
   ret[2] = size;
   return ret;
@@ -241,7 +237,8 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
   }
 
   std::call_once(*(g_device_props_init_flags[id]), [&] {
-    PADDLE_ENFORCE_GPU_SUCCESS(musaGetDeviceProperties(&g_device_props[id], id));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        musaGetDeviceProperties(&g_device_props[id], id));
   });
 
   return g_device_props[id];

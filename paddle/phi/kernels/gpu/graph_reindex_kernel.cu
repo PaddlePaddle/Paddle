@@ -64,7 +64,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024; // CUDA & MUSA
+  int block = 1024;  // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
@@ -141,7 +141,7 @@ void FillBufferHashTable(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024; // CUDA & MUSA
+  int block = 1024;  // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
@@ -180,7 +180,7 @@ void ResetBufferHashTable(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024; // CUDA & MUSA
+  int block = 1024;  // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (unique_items->size() + block - 1) / block;
@@ -203,7 +203,7 @@ void ReindexSrc(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024; // CUDA & MUSA
+  int block = 1024;  // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
@@ -303,7 +303,7 @@ void BufferReindex(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   int block = 256;
 #else
-  int block = 1024; // CUDA & MUSA
+  int block = 1024;  // CUDA & MUSA
 #endif
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;

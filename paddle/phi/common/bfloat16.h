@@ -34,7 +34,6 @@
 #include <musa_bf16.h>
 #endif
 
-
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define PADDLE_CUDA_BF16
 #include <cuda_bf16.h>

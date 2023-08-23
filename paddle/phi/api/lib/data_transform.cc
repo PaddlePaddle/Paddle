@@ -93,7 +93,8 @@ phi::DenseTensor CastDataType(const Context& dev_ctx,
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
                               const phi::DenseTensor& tensor,
                               DataType dtype) {
@@ -135,7 +136,8 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   if (tensor.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
@@ -153,7 +155,8 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
           << " dst_place: " << dst_place;
 
   auto& pool = phi::DeviceContextPool::Instance();
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // NOTE(yy): TransDataPlace should wait for computation of input.
   if (tensor.place().GetType() != phi::AllocationType::GPUPINNED) {
     pool.Get(tensor.place())->Wait();

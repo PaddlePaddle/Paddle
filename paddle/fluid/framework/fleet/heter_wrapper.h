@@ -92,7 +92,8 @@ class HeterWrapper {
 
   framework::proto::VarType::Type ToVarType(VariableMessage::Type type);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   void DeSerializeToTensor(Scope* scope,
                            const VariableMessage& req_var,
                            platform::Place place,

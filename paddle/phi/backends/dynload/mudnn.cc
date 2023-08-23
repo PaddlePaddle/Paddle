@@ -14,28 +14,13 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/mudnn.h"
 
-#include "paddle/phi/core/enforce.h"
-
 namespace phi {
 namespace dynload {
 
-std::once_flag mudnn_dso_flag;
-void* mudnn_dso_handle = nullptr;
-
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
-
 bool HasCUDNN() {
-  std::call_once(mudnn_dso_flag,
-                 []() { mudnn_dso_handle = GetCUDNNDsoHandle(); });
-  return mudnn_dso_handle != nullptr;
-}
-
-void EnforceCUDNNLoaded(const char* fn_name) {
-  PADDLE_ENFORCE_NOT_NULL(
-      mudnn_dso_handle,
-      phi::errors::PreconditionNotMet(
-          "Cannot load mudnn shared library. Cannot invoke method %s.",
-          fn_name));
+  // note: mudnn.so is not imported by dlopen, which will be linked
+  // in cmakelist.txt.
+  return true;
 }
 
 }  // namespace dynload

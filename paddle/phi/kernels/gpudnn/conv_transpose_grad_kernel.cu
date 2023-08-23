@@ -228,7 +228,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     workspace_size = std::max(workspace_size, search1::GetWorkspaceSize(args1));
     fwd_result.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
-#else // MUSA & CUDA
+#else  // MUSA & CUDA
     using search1 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = std::max(
@@ -253,7 +253,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
     filter_result.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
     using search2 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
@@ -349,7 +349,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
-#else   // CUDA & MUSA
+#else  // CUDA & MUSA
     ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
                                                     args2,
                                                     filter_result,
@@ -700,7 +700,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = search1::GetWorkspaceSize(args1);
     bwd_result1.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
     using search1 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
@@ -722,7 +722,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
     bwd_result2.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
     using search2 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
@@ -747,7 +747,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = std::max(workspace_size, search3::GetWorkspaceSize(args3));
     filter_result.algo =
         search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
     using search3 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
     workspace_size = std::max(
@@ -773,7 +773,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = std::max(workspace_size, search4::GetWorkspaceSize(args4));
     fwd_result.algo =
         search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
     using search4 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
     workspace_size = std::max(
@@ -833,7 +833,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
     }
-#else   // CUDA & MUSA
+#else  // CUDA & MUSA
     ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                   args1,
                                                   bwd_result1,
@@ -886,7 +886,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           args2.idesc.desc(),
           transformed_ddout_channel_ + i * group_offset_out));
     }
-#else   // CUDA & MUSA
+#else  // CUDA & MUSA
     ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                   args2,
                                                   bwd_result2,
@@ -956,7 +956,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
     }
-#else // MUSA & CUDA
+#else  // MUSA & CUDA
     ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
                                                     args3,
                                                     filter_result,
@@ -996,7 +996,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
     }
-#else   // MUSA & CUDA
+#else  // MUSA & CUDA
     ConvRunner<T, ConvKind::kForward>::Apply(ctx,
                                              args4,
                                              fwd_result,
@@ -1097,7 +1097,7 @@ PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    double,
                    float16,
                    phi::dtype::bfloat16) {}
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    GPUDNN,
                    ALL_LAYOUT,

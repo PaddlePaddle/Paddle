@@ -188,7 +188,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
     paddle::memory::allocation::AllocationPtr tmp_ious_data;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (platform::is_gpu_place(dev_ctx.GetPlace())) {
       tmp_ious_data = memory::Alloc(
           dev_ctx.GetPlace(),

@@ -33,8 +33,8 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
 #elif defined(PADDLE_WITH_MUSA)
-#include <musa_runtime.h>
 #include <murand_kernel.h>
+#include <musa_runtime.h>
 #else
 #include <cuda_runtime.h>
 #include <curand_kernel.h>

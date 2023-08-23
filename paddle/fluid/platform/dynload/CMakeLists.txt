@@ -73,10 +73,7 @@ if(WITH_ROCM)
     SRCS warpctc.cc
     DEPS dynamic_loader warpctc phi)
 elseif(WITH_MUSA)
-  musa_library(
-    dynload_cuda
-    SRCS ${MUSA_SRCS}
-    DEPS dynamic_loader phi)
+  musa_library(dynload_cuda SRCS ${MUSA_SRCS} DEPS dynamic_loader phi)
   cc_library(
     dynload_warpctc
     SRCS warpctc.cc

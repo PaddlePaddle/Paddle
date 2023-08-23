@@ -32,7 +32,8 @@ typedef std::vector<
     std::vector<std::pair<std::string, const phi::DenseTensor *>>>
     GradientAndLoDTensor;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
@@ -61,7 +62,8 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
 #endif
 
 FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;
 #ifdef PADDLE_WITH_HIP
@@ -194,7 +196,8 @@ void FusedAllReduceOpHandle::RunImpl() {
     FusedAllReduceFunc(in_var_handles, out_var_handles);
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   if (FLAGS_allreduce_record_one_event) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(end_event_, nccl_stream));

@@ -127,7 +127,8 @@ void MemoryCopyAsync(const platform::Place& dst_place,
   if (platform::is_cpu_place(dst_place) && platform::is_cpu_place(src_place)) {
     memory::Copy(cpu_place, dst_data, cpu_place, src_data, size);
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (platform::is_cpu_place(dst_place) &&
         platform::is_gpu_place(src_place)) {
       PADDLE_THROW(platform::errors::Unimplemented(

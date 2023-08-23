@@ -129,7 +129,8 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   // restore NodeTrees object
   std::unique_ptr<NodeTrees> tree(new NodeTrees(thread_event_trees_map));
 // restore gpuDeviceProp
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   for (auto indx = 0; indx < node_trees_proto_->device_property_size();
        indx++) {
@@ -155,7 +156,8 @@ DeserializationReader::~DeserializationReader() {
   input_file_stream_.close();
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
     const DevicePropertyProto& device_property_proto) {
   gpuDeviceProp device_property;

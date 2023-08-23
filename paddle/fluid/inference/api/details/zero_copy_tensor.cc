@@ -108,7 +108,8 @@ T *Tensor::mutable_data(PlaceType place) {
       return tensor->mutable_data<T>(paddle::platform::CPUPlace());
     }
     case static_cast<int>(PlaceType::kGPU): {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       paddle::platform::CUDAPlace gpu_place(device_);
       auto *dev_ctxs = reinterpret_cast<const std::map<
           phi::Place,
@@ -204,7 +205,8 @@ void Tensor::CopyFromCpu(const T *data) {
     auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
   } else if (place_ == PlaceType::kGPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
     paddle::platform::CUDAPlace gpu_place(device_);
     auto *dev_ctxs = reinterpret_cast<const std::map<
@@ -406,7 +408,8 @@ void Tensor::CopyToCpuImpl(T *data,
         "with IPU."));
 #endif
   } else if (place_ == PlaceType::kGPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     auto gpu_place = t_place;
     auto *dev_ctxs = reinterpret_cast<const std::map<
         phi::Place,
@@ -823,7 +826,8 @@ void InternalUtils::CopyFromCpuWithIoStream(paddle_infer::Tensor *t,
     auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
   } else if (t->place_ == PlaceType::kGPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     paddle::platform::CUDAPlace gpu_place(t->device_);
     auto *t_data = tensor->mutable_data<T>(gpu_place);
     paddle::memory::Copy(gpu_place,
@@ -893,7 +897,8 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
     std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
 #endif
   } else if (t->place_ == PlaceType::kGPU) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     paddle::memory::Copy(paddle::platform::CPUPlace(),
                          static_cast<void *>(data),
                          t_place,

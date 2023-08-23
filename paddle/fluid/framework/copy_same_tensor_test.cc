@@ -32,7 +32,8 @@ namespace framework {
 static std::vector<platform::Place> CreatePlaceList() {
   std::vector<platform::Place> places;
   places.emplace_back(platform::CPUPlace());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   places.emplace_back(platform::CUDAPlace(0));
 #endif
   return places;

@@ -69,7 +69,8 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
                                                               dev_id);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void GpuMemoryUsage(size_t* available, size_t* total) {
   return MemoryUtils::Instance().GpuMemoryUsage(available, total);
 }

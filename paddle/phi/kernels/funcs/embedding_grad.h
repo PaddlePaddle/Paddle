@@ -96,9 +96,9 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
         unsigned long long int matchmask =      // NOLINT
             __ballot(match_found_this_thread);  // NOLINT
         int first_remaining_peer = __ffsll(matchmask) - 1;
-#else // MUSA and CUDA
-        // If and only if match_found_this_thread of the Nth thread is non-zero,
-        // set the Nth bit of matchmask to 1.
+#else  // MUSA and CUDA
+       // If and only if match_found_this_thread of the Nth thread is non-zero,
+       // set the Nth bit of matchmask to 1.
         unsigned int matchmask =
             __ballot_sync(0xffffffff, match_found_this_thread);
         // Find the position of the first bit set to 1 in matchmask.
@@ -112,7 +112,7 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
           while (matchmask) {
 #ifdef PADDLE_WITH_HIP
             first_remaining_peer = __ffsll(matchmask) - 1;
-#else // CUDA and MUSA
+#else  // CUDA and MUSA
             first_remaining_peer = __ffs(matchmask) - 1;
 #endif
             my_s[threadIdx.x] +=
@@ -142,7 +142,7 @@ void LaunchEmbeddingGradDeterministicKernel(const GPUContext& ctx,
 #ifdef PADDLE_WITH_HIP
   constexpr int kWarpSize = 64;
   constexpr int kBlockDimY = 16;
-#else // CUDA and MUSA
+#else  // CUDA and MUSA
   constexpr int kWarpSize = 32;
   constexpr int kBlockDimY = 32;
 #endif

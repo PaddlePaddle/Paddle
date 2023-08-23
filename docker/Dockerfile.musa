@@ -1,0 +1,153 @@
+# An image for building paddle binaries
+# Use ubuntu20.04 base image for musa environment
+# When you modify it, please be aware of musa version
+# 
+# Build: 
+# cd Paddle/tools/dockerfile
+# docker build -f Dockerfile.musa \
+#        -t paddlepaddle/paddle-ubuntu-musa-dev:latest .
+#
+# docker run -it --env MTHREADS_VISIBLE_DEVICES=all \
+# paddlepaddle/paddle-ubuntu-musa-dev:latest /bin/bash
+FROM ubuntu:20.04
+
+SHELL ["/bin/bash", "-c"]
+
+ENV LANG=C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN mv /etc/apt/sources.list /etc/apt/sources_backup.list && \
+    echo "deb http://mirrors.ustc.edu.cn/ubuntu/ focal main restricted universe multiverse " >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.ustc.edu.cn/ubuntu/ focal-updates main restricted universe multiverse " >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.ustc.edu.cn/ubuntu/ focal-backports main restricted universe multiverse " >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.ustc.edu.cn/ubuntu/ focal-security main restricted universe multiverse " >> /etc/apt/sources.list
+
+# basic depends
+RUN apt-get update --allow-unauthenticated && \
+    apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get install -y software-properties-common && \
+    apt-get install -y sudo curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \
+    automake locales swig libtool bison make build-essential patchelf \
+    libnuma-dev libomp-11-dev
+
+# cmake 3.16.0
+WORKDIR /opt
+RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && \
+    tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz && \
+    mv cmake-3.16.0-Linux-x86_64 cmake-3.16
+ENV PATH=/opt/cmake-3.16/bin:${PATH}
+
+# Install Go and glide
+#
+
+RUN apt-get update --allow-unauthenticated && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    sed -i "s/http:\/\/ppa.launchpad.net/https:\/\/launchpad.proxy.ustclug.org/g" /etc/apt/sources.list.d/*.list && \
+    apt-get update && \
+    apt-get install -y python3.7 python3.7-dev python3.7-distutils \
+    python3.8 python3.8-dev python3.8-distutils \
+    python3.9 python3.9-dev python3.9-distutils && \
+    apt-get install python-is-python3 && \
+    rm /usr/bin/python && ln -s /usr/bin/python3.7 /usr/bin/python && \
+    rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
+
+WORKDIR /home
+RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && \
+    apt-get -y install unzip && unzip setuptools-50.3.2.zip
+WORKDIR /home/setuptools-50.3.2
+RUN python3.7 setup.py build && python3.7 setup.py install && \
+    python3.8 setup.py build && python3.8 setup.py install && \
+    python3.9 setup.py build && python3.9 setup.py install
+
+WORKDIR /home
+RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
+WORKDIR pip-20.0.1
+RUN python3.9 setup.py install && \
+    python3.8 setup.py install && \
+    python3.7 setup.py install
+
+WORKDIR /home
+RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
+    rm -r setuptools-50.3.2 pip-20.0.1
+RUN rm /usr/local/bin/pip && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip && \
+    rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
+
+# For docstring checker
+RUN pip3.7 --no-cache-dir install wheel pytest astroid isort && \
+    pip3.8 --no-cache-dir install wheel pytest astroid isort && \
+    pip3.9 --no-cache-dir install wheel pytest astroid isort
+
+# For pre-commit
+RUN pip3.7 --no-cache-dir install --upgrade pip && \
+    pip3.8 --no-cache-dir install --upgrade pip && \
+    pip3.9 --no-cache-dir install --upgrade pip
+
+RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 clang-format==13.0.0 && \
+    pip3.8 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 clang-format==13.0.0  && \
+    pip3.9 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 cpplint==1.6.0 clang-format==13.0.0 
+
+# install Paddle requirements
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
+RUN pip3.7 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip3.8 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip3.9 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    rm -rf /root/requirements.txt
+
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O /root/requirements.txt
+RUN pip3.7 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip3.8 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip3.9 --no-cache-dir install -r /root/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    rm -rf /root/requirements.txt
+
+# ccache 3.7.9
+RUN cd /opt && wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
+    ./configure -prefix=/usr/local/ccache-3.7.9 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
+    cd .. && rm -rf ccache-3.7.9.tar.gz && rm -rf ccache-3.7.9
+
+ARG MUSA_TOOLKITS_URL
+ARG MUDNN_URL
+
+# MUSA deps (accessible internal only)
+RUN wget --no-check-certificate ${MUSA_TOOLKITS_URL} -O /root/musa_toolkits_install.tar.gz && \
+    cd /root && \
+    tar -zxf ./musa_toolkits_install.tar.gz && \
+    cd ./musa_toolkits_install && \
+    bash ./install.sh && \
+    rm -f ../musa_toolkits_install.tar.gz && \
+    rm -rf ../musa_toolkit*
+
+RUN wget --no-check-certificate ${MUDNN_URL} -O /root/mudnn.tar && \
+    tar -xvf /root/mudnn.tar -C /root && \
+    cd /root/mudnn && \
+    bash install_mudnn.sh && \
+    rm -f /root/mudnn.tar && \
+    rm -rf /root/*mudnn*
+
+# install MUSA math libs
+COPY ./common/install_math.sh install_math.sh
+RUN bash install_math.sh && \
+    rm -f install_math.sh
+
+# install mccl
+COPY ./common/install_mccl.sh install_mccl.sh
+RUN bash install_mccl.sh && \
+    rm -f install_mccl.sh
+
+# export MUSA env
+ENV MUSA_HOME=/usr/local/musa
+ENV PATH=$MUSA_HOME/bin:$PATH
+ENV LD_LIBRARY_PATH=$MUSA_HOME/lib:$LD_LIBRARY_PATH
+
+# only used for CI(init pre-commit only once), otherwise we should remove this
+WORKDIR /home
+COPY ./paddle_musa paddle_musa
+RUN cd paddle_musa && \
+    pre-commit install && \
+    pre-commit run
+
+EXPOSE 22

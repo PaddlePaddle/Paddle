@@ -424,7 +424,7 @@ PD_REGISTER_KERNEL(pool3d_grad,
                    phi::Pool3dGradGPUDNNKernel,
                    float,
                    float16) {}
-#else // CUDA & MUSA
+#else  // CUDA & MUSA
 PD_REGISTER_KERNEL(pool2d_grad,
                    GPUDNN,
                    ALL_LAYOUT,

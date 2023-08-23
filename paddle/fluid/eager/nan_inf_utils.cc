@@ -98,7 +98,8 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
 
     auto& place = dense_tensor->place();
     if (paddle::platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       paddle::framework::details::tensor_check<phi::GPUContext>(
           api_name, tensor_name, *dense_tensor, place);
 #else

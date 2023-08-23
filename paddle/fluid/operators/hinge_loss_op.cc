@@ -156,7 +156,8 @@ PD_REGISTER_STRUCT_KERNEL(
 PD_REGISTER_STRUCT_KERNEL(
     hinge_loss_grad, CPU, ALL_LAYOUT, ops::HingeLossGradKernel, float) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_STRUCT_KERNEL(
     hinge_loss, GPU, ALL_LAYOUT, ops::HingeLossKernel, float) {}
 PD_REGISTER_STRUCT_KERNEL(

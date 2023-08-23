@@ -35,7 +35,8 @@ PD_Stream PD_DeviceContextGetStream(const PD_DeviceContext* ctx,
         reinterpret_cast<const phi::CustomContext*>(ctx)->stream());
   } else if (dev_ctx_type == phi::AllocationType::CPU) {
     return nullptr;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   } else if (dev_ctx_type == phi::AllocationType::GPU) {
     return reinterpret_cast<PD_Stream>(
         reinterpret_cast<const phi::GPUContext*>(ctx)->stream());

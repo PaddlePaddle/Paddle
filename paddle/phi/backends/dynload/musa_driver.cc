@@ -31,4 +31,3 @@ bool HasCUDADriver() {
 
 }  // namespace dynload
 }  // namespace phi
-

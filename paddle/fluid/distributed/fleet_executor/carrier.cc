@@ -272,7 +272,8 @@ static std::shared_ptr<framework::GarbageCollector> GetGC(
   int64_t max_memory_size = framework::GetEagerDeletionThreshold();
   std::shared_ptr<framework::GarbageCollector> gc;
   if (max_memory_size >= 0) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (platform::is_gpu_place(place)) {
       if (framework::IsFastEagerDeletionModeEnabled()) {
         gc.reset(new framework::UnsafeFastGPUGarbageCollector(place,

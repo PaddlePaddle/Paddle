@@ -76,7 +76,8 @@ class AllocatorFacade {
 
   bool IsStreamSafeCUDAAllocatorUsed();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
   uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
   void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);

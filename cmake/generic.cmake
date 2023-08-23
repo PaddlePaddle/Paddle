@@ -425,6 +425,9 @@ function(cc_binary TARGET_NAME)
   if(WITH_ROCM)
     target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
   endif()
+  if(WITH_MUSA)
+    target_link_libraries(${TARGET_NAME} ${MUSARTC_LIB})
+  endif()
 
   check_coverage_opt(${TARGET_NAME} ${cc_binary_SRCS})
 
@@ -451,6 +454,9 @@ function(cc_test_build TARGET_NAME)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
+    endif()
+    if(WITH_MUSA)
+      target_link_libraries(${TARGET_NAME} ${MUSARTC_LIB})
     endif()
     check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
   endif()
@@ -840,17 +846,43 @@ function(musa_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(musa_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    add_executable(${TARGET_NAME} ${musa_test_SRCS})
+    musa_add_executable(${TARGET_NAME} ${musa_test_SRCS})
+    # "-pthread -ldl -lrt" is defined in CMAKE_CXX_LINK_EXECUTABLE
+    target_link_options(${TARGET_NAME} PRIVATE -pthread -ldl -lrt)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(${TARGET_NAME} ${musa_test_DEPS}
-                          ${os_dependency_modules} paddle_gtest_main phi)
-    add_dependencies(${TARGET_NAME} ${musa_test_DEPS} paddle_gtest_main)
+    target_link_libraries(
+      ${TARGET_NAME}
+      ${musa_test_DEPS}
+      paddle_gtest_main
+      lod_tensor
+      memory
+      gtest
+      glog
+      phi
+      ${os_dependency_modules})
+    add_dependencies(
+      ${TARGET_NAME}
+      ${musa_test_DEPS}
+      paddle_gtest_main
+      lod_tensor
+      memory
+      gtest
+      phi
+      glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_init_allocated_mem=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
+                                              FLAGS_cudnn_deterministic=true)
+    set_property(
+      TEST ${TARGET_NAME}
+      PROPERTY
+        ENVIRONMENT
+        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/python/paddle/libs:$LD_LIBRARY_PATH"
+    )
   endif()
 endfunction()
 
@@ -1356,8 +1388,12 @@ function(math_library TARGET)
   elseif(WITH_MUSA)
     musa_library(
       ${TARGET}
-      SRCS ${cc_srcs} ${cu_srcs}
-      DEPS ${math_library_DEPS} ${math_common_deps})
+      SRCS
+      ${cc_srcs}
+      ${cu_srcs}
+      DEPS
+      ${math_library_DEPS}
+      ${math_common_deps})
   elseif(${cc_srcs_len} GREATER 0)
     cc_library(
       ${TARGET}

@@ -21,7 +21,8 @@
 
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
@@ -80,7 +81,8 @@ class BufferedReader : public framework::DecoratedReader {
   std::vector<TensorVec> xpu_buffer_;
   std::vector<TensorVec> custom_device_buffer_;
   size_t prev_pos_{-1UL};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   gpuStream_t compute_stream_;
   std::shared_ptr<platform::CudaStreamObject> stream_;
   std::vector<std::shared_ptr<platform::CudaEventObject>> events_;

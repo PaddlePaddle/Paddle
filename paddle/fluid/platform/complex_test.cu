@@ -27,7 +27,8 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 namespace paddle {
 namespace platform {
 

@@ -46,7 +46,8 @@ const uint16_t* GetCharcasesMap() {
   return reinterpret_cast<const uint16_t*>(utils_map[0]);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 
 const uint8_t* GetGPUUniflagMap() {
   if (utils_map[3] == nullptr) {

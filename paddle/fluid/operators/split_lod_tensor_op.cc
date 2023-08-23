@@ -69,7 +69,8 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
     } else if (platform::is_gpu_place(mask.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       framework::TensorCopy(
           mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else

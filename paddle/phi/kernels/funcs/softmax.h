@@ -37,7 +37,8 @@ class SoftmaxGradFunctor {
                   phi::DenseTensor* x_grad);
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 template <typename T, typename DeviceContext>
 class SoftmaxCUDNNFunctor {
  public:

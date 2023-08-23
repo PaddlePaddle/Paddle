@@ -40,7 +40,8 @@ TEST(stat_allocator_test, host_memory_stat_test) {
   EXPECT_EQ(HostMemoryStatPeakValue("Allocated", 0), max_alloc_size);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 TEST(stat_allocator_test, device_memory_stat_test) {
   std::vector<int64_t> alloc_sizes{
       5278, 9593, 8492, 5041, 3351, 4232, 3706, 5963, 5896, 5057, 7527,

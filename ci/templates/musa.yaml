@@ -1,0 +1,80 @@
+kind: Pod
+apiVersion: v1
+spec:
+  # The shared volume named "artifacts".
+  # NOTE: `emptyDir: { }` declares an empty temporary volume, and
+  #       will be removed after all jobs are finished.
+  volumes:
+  - name: artifacts
+    emptyDir: { }
+  - name: inference-demo-data
+    hostPath:
+      path: /data/paddle_musa/inference_demo
+      type: DirectoryOrCreate
+  - name: shm-volume
+    emptyDir:
+      medium: Memory
+      sizeLimit: 2G
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: gputype
+            operator: In
+            values:
+            - mthreads-train
+  containers:
+  - name: main
+    tty: true
+    image: sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:latest
+    imagePullPolicy: Always
+    env:
+    - name: PADDLE_MUSA_REPO_PATH
+      value: /home/paddle_musa
+    - name: WITH_MUSA
+      value: ON
+    - name: MUSA_VISIBLE_DEVICES
+      value: 1,2,3
+    - name: MTHREADS_VISIBLE_DEVICES
+      value: all
+    command:
+    - sleep
+    securityContext:
+       privileged: true
+    args:
+    - infinity
+    resources:
+      limits:
+        cpu: "16"
+        memory: "64Gi"
+    # Mount the volume named "artifacts" to path "/artifacts", readwrite
+    volumeMounts:
+    - mountPath: /artifacts
+      name: artifacts
+      readOnly: false
+    - mountPath: /dev/shm
+      name: shm-volume
+    - mountPath: /home/data/paddle_musa/.cache/build
+      name: inference-demo-data
+      readOnly: true
+
+  # Container named "release".
+  - name: release
+    image: sh-harbor.mthreads.com/mt-ai/ops/torch_musa_oss_release:latest
+    imagePullPolicy: IfNotPresent
+    tty: true
+    ttyEnabled: true
+    command:
+    - sleep
+    args:
+    - infinity
+    resources:
+      limits:
+        cpu: 300m
+        memory: 300Mi
+    # Mount the volume named "artifacts" to path "/artifacts", readwrite
+    volumeMounts:
+    - mountPath: /artifacts
+      name: artifacts
+      readOnly: false

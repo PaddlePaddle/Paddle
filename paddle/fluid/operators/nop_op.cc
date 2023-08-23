@@ -60,6 +60,7 @@ REGISTER_OP_WITHOUT_GRADIENT(nop, ops::NopOp, ops::NopOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(nop, CPU, ALL_LAYOUT, ops::NopKernel, float) {}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 PD_REGISTER_STRUCT_KERNEL(nop, GPU, ALL_LAYOUT, ops::NopKernel, float) {}
 #endif

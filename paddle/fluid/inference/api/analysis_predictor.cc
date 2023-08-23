@@ -99,7 +99,8 @@
 
 namespace paddle {
 namespace {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
                                 GPUContextResource *gpu_resource,
                                 Place place_) {
@@ -272,7 +273,8 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                       false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx = static_cast<const phi::GPUContext *>(pool.Get(place));
     auto dst_gpu_place = place;
@@ -372,7 +374,8 @@ bool AnalysisPredictor::Init(
     return true;
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // TODO(inference): Now only gpu with external stream support private
   // device_context.
   if (config_.use_gpu_ && config_.use_external_stream_) {
@@ -420,7 +423,8 @@ void AnalysisPredictor::InitPlace() {
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
     if (config_.thread_local_stream_enabled()) {
       LOG_FIRST_N(WARNING, 1) << "We will remove this interface in the future. "
                                  "Please use config.SetExecStream instead.";
@@ -491,14 +495,16 @@ void AnalysisPredictor::InitPlace() {
 }
 
 void AnalysisPredictor::InitResourceManager(void *stream) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   predictor_stream_ =
       ResourceManager::Instance().InitGPUResource(place_, stream);
 #endif
 }
 
 void AnalysisPredictor::InitDeviceContexts() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   // Init GPUContext.
   if (place_.GetType() == phi::AllocationType::GPU) {
     device_contexts_.emplace(
@@ -536,7 +542,8 @@ void AnalysisPredictor::InitDeviceContexts() {
 }
 
 void *AnalysisPredictor::GetExecStream() const {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (place_.GetType() == phi::AllocationType::GPU) {
     if (private_context_) {
       return predictor_stream_;
@@ -2153,7 +2160,8 @@ bool AnalysisPredictor::ZeroCopyRun() {
   return true;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
   if (!private_context_) {
     PADDLE_THROW(platform::errors::Fatal(
@@ -2203,7 +2211,8 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     if (config_.use_gpu()) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       auto *dev_ctx = pool.Get(place_);
       auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
 #ifdef PADDLE_WITH_HIP
@@ -2601,7 +2610,8 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (config_.shape_range_info_collected()) {
     StatisticShapeRangeInfo();
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (predictor_stream_ != nullptr) {
     ResourceManager::Instance().DestroyGPUResource(predictor_stream_);
   }

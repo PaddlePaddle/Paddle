@@ -189,6 +189,9 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_ROCM)
         target_link_libraries(${test_name} ${ROCM_HIPRTC_LIB})
       endif()
+      if(WITH_MUSA)
+        target_link_libraries(${test_name} ${MUSARTC_LIB})
+      endif()
       if(APPLE)
         target_link_libraries(
           ${test_name}

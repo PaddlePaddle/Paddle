@@ -124,7 +124,8 @@ void TensorCopyImpl(const TENSOR& src,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cuda_pinned_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
@@ -377,7 +378,8 @@ void TensorCopySync(const phi::DenseTensor& src,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_cuda_pinned_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
@@ -479,7 +481,8 @@ void TensorToStream(std::ostream& os,
                       platform::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
     if (platform::is_gpu_place(tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
       auto& gpu_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
@@ -613,8 +616,9 @@ void TensorFromStream(std::istream& is,
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
-    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_XPU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
       cpu_tensor.Resize(phi::make_ddim(shape));
       framework::VisitDataType(
@@ -686,8 +690,9 @@ void TensorFromStream(std::istream& is,
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA) || \
-    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA) || defined(PADDLE_WITH_XPU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
       cpu_tensor.Resize(phi::make_ddim(dims));
       framework::VisitDataType(
@@ -809,7 +814,8 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   if (dl_tensor.device.device_type == kDLCPU) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (dl_tensor.device.device_type == kDLGPU) {
     platform::CUDAPlace dst_place =
         platform::CUDAPlace(dl_tensor.device.device_id);
@@ -849,7 +855,8 @@ void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
     void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
   if (src->dl_tensor.device.device_type == kDLGPU) {
     platform::CUDAPlace dst_place =
         platform::CUDAPlace(src->dl_tensor.device.device_id);

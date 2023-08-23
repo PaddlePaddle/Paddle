@@ -56,4 +56,3 @@ PLATFORM_MUSA_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_MUSA_WRAP);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
-

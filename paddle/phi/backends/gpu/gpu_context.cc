@@ -52,7 +52,6 @@ limitations under the License. */
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
 #endif  // PADDLE_WITH_MUSA
 
-
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
@@ -161,16 +160,17 @@ static void StreamCallbackFunc(gpuStream_t stream,
 #if MUSA_VERSION >= 10000
     static void StreamCallbackFunc(void* user_data)
 #else
-    static void
-    StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void* user_data)
+    static void StreamCallbackFunc(cudaStream_t stream,
+                                   cudaError_t status,
+                                   void* user_data)
 #endif
 #endif
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
-    static void CUDART_CB StreamCallbackFunc(void* user_data)
+        static void CUDART_CB StreamCallbackFunc(void* user_data)
 #else
-    static void CUDART_CB
+        static void CUDART_CB
     StreamCallbackFunc(cudaStream_t stream, cudaError_t status, void* user_data)
 #endif
 #endif
@@ -576,7 +576,7 @@ struct GPUContext::Impl {
     }
 #endif  // !defined(_WIN32)
 
-#else   // PADDLE_WITH_MUSA
+#else  // PADDLE_WITH_MUSA
     cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
     e_sync = cudaStreamSynchronize(stream());
@@ -768,7 +768,8 @@ struct GPUContext::Impl {
   }
 
   void WaitStreamCallback() const {
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_MUSA)
     phi::backends::gpu::GpuStreamSync(stream());
 #endif
     {
@@ -1112,7 +1113,8 @@ void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
 
 void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 GPUPinnedContext::GPUPinnedContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }

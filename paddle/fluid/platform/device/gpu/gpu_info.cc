@@ -36,7 +36,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #elif defined(PADDLE_WITH_MUSA)
-//TODO(Xiaokang Shang)
+// TODO(Xiaokang Shang)
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"

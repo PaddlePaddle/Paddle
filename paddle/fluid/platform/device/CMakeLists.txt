@@ -1,7 +1,9 @@
 set(DEV_LIBS custom_device)
 
 # GPU
-if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   add_subdirectory(gpu)
 endif()
 

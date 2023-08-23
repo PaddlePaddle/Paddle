@@ -51,7 +51,8 @@ struct CUDATypeTraits<float> {
   typedef float TYPE;
 };
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MUSA)
 // This functor involves a fusion calculation in Ernie or Bert.
 //  The fusion mode is as follows:
 //

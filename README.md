@@ -4,93 +4,113 @@
 
 --------------------------------------------------------------------------------
 
-English | [简体中文](./README_cn.md) | [日本語](./README_ja.md)
+[Official README.md](./README_official.md)
 
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](https://paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
-[![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
-[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
-[![Twitter](https://img.shields.io/badge/Twitter-1ca0f1.svg?logo=twitter&logoColor=white)](https://twitter.com/PaddlePaddle)
+[![Build Status](https://jenkins-aidev.mthreads.com/buildStatus/icon?job=paddle_musa%2Fmain)](https://jenkins-aidev.mthreads.com/job/paddle_musa/job/develop/)
 
-Welcome to the PaddlePaddle GitHub.
+--------------------------------------------------------------------------------
 
-PaddlePaddle, as the first independent R&D deep learning platform in China, has been officially open-sourced to professional communities since 2016. It is an industrial platform with advanced technologies and rich features that cover core deep learning frameworks, basic model libraries, end-to-end development kits, tools & components as well as service platforms.
-PaddlePaddle is originated from industrial practices with dedication and commitments to industrialization. It has been widely adopted by a wide range of sectors including manufacturing, agriculture, enterprise service, and so on while serving more than 5.35 million developers, 200,000 companies and generating 670,000 models. With such advantages, PaddlePaddle has helped an increasing number of partners commercialize AI.
+<!-- toc -->
 
+- [Installation](#installation)
+  - [From Python Package](#from-python-package)
+  - [From Source](#from-source)
+  - [Prerequisites](#prerequisites)
+  - [Install Dependencies](#install-dependencies)
+  - [Set Important Environment Variables](#set-important-environment-variables)
+  - [Building With Script](#building-with-script-recommended)
+  - [Docker Image](#docker-image)
+    - [Docker Image for Developer](#docker-image-for-developer)
+    - [Docker Image for User](#docker-image-for-user)
+- [Useful Environment Variables](#useful-environment-variables)
+- [Getting Started](#getting-started)
+  - [Demo](#demo)
+
+<!-- tocstop -->
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v2.4](https://github.com/PaddlePaddle/Paddle/tree/release/2.4)
+### From Python Package
+- Not ready now.
 
-Our vision is to enable deep learning for everyone via PaddlePaddle.
-Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.
-### Install Latest Stable Release:
+### From Source
+
+#### Prerequisites
+- [MUSA ToolKit](https://github.mthreads.com/mthreads/musa_toolkit)
+- [MUDNN](https://github.mthreads.com/mthreads/muDNN)
+- Other Libs (including muThrust, muSparse, muAlg, muRand)
+- [Docker Container Toolkits](https://mcconline.mthreads.com/software)
+
+**NOTE:** Since some of the dependent libraries are in beta and have not yet been officially released, we recommend using the [development docker](#docker-image-for-developer) provided below to compile **paddle_musa**. If you really want to compile **paddle_musa** in your own environment, then please contact us for additional dependencies.
+
+#### Install Dependencies
+
+```bash
+apt-get install ccache
+pip install -r requirements.txt
 ```
-# CPU
-pip install paddlepaddle
-# GPU
-pip install paddlepaddle-gpu
 
+#### Set Important Environment Variables
+```bash
+export MUSA_HOME=path/to/musa_libraries(including mudnn and musa_toolkits) # defalut value is /usr/local/musa/
+export LD_LIBRARY_PATH=$MUSA_HOME/lib:$LD_LIBRARY_PATH
+export WITH_MUSA=ON
 ```
-For more information about installation, please view [Quick Install](https://www.paddlepaddle.org.cn/install/quick)
 
-Now our developers can acquire Tesla V100 online computing resources for free. If you create a program by AI Studio, you will obtain 8 hours to train models online per day. [Click here to start](https://aistudio.baidu.com/aistudio/index).
+#### Building With Script (Recommended)
+```bash
+python setup.py install
+```
 
-## FOUR LEADING TECHNOLOGIES
+### Docker Image
 
-- **Agile Framework for Industrial Development of Deep Neural Networks**
+**NOTE:** If you want to use **paddle_musa** in docker container, please install [mt-container-toolkit](https://mcconline.mthreads.com/software/1?id=1) first and use '--env MTHREADS_VISIBLE_DEVICES=all' when starting a container.
 
-    The PaddlePaddle deep learning framework facilitates the development while lowering the technical burden, through leveraging a programmable scheme to architect the neural networks. It supports both declarative programming and imperative programming with both development flexibility and high runtime performance preserved.  The neural architectures could be automatically designed by algorithms with better performance than the ones designed by human experts.
+#### Docker Image for Developer
+```bash
+docker run -it --privileged --name=paddle_musa_dev --env MTHREADS_VISIBLE_DEVICES=all --network=host --shm-size=80g sh-harbor.mthreads.com/mt-ai/musa-paddle-dev:latest /bin/bash
+```
+<details>
+<summary>Docker Image List</summary>
 
+| Docker Tag | Description |
+| ---- | --- |
+| [**v0.1.4/latest**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.2 (driver2.2.0 develop or newer)<br> mcc-20230823-daily <br> mudnn 20230823-daily <br> mccl_20230823-daily <br> muAlg_dev-20230823-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
+| [**v0.1.3**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mcc-20230814-daily <br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-20230814-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
+| [**v0.1.2**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mcc-20230814-daily <br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-20230814-daily <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
+| [**v0.1.1**](https://sh-harbor.mthreads.com/harbor/projects/20/repositories/musa-paddle-dev/artifacts-tab) | musatoolkits-v1.4.0 (ddk_1.4.0 develop or newer)<br> mudnn v1.4.0 <br> mccl_rc1.1.0 <br> muAlg_dev-0.1.1 <br> muRAND_dev1.0.0 <br> muSPARSE_dev0.1.0 <br> muThrust_dev-0.1.1 |
 
--  **Support Ultra-Large-Scale Training of Deep Neural Networks**
+</details>
 
-    PaddlePaddle has made breakthroughs in ultra-large-scale deep neural networks training. It launched the world's first large-scale open-source training platform that supports the training of deep networks with 100 billion features and trillions of parameters using data sources distributed over hundreds of nodes. PaddlePaddle overcomes the online deep learning challenges for ultra-large-scale deep learning models, and further achieved real-time model updating with more than 1 trillion parameters.
-     [Click here to learn more](https://github.com/PaddlePaddle/Fleet)
+#### Docker Image for User
+- Not ready now.
 
+## Useful Environment Variables
 
-- **High-Performance Inference Engines for Comprehensive Deployment Environments**
+| Docker Tag | Module | Description |
+| ---- | --- | --- |
+| export GLOG_v=0~9 | Paddle | Control the log level |
+| export MUSA_VISIBLE_DEVICES=0,1,2,3 | Driver | Control the visible devices |
+| export MUSA_LAUNCH_BLOCKING=1 | Driver | Set the synchronization mode |
 
-   PaddlePaddle is not only compatible with models trained in 3rd party open-source frameworks , but also offers complete inference products for various production scenarios. Our inference product line includes [Paddle Inference](https://paddle-inference.readthedocs.io/en/master/guides/introduction/index_intro.html): Native inference library for high-performance server and cloud inference; [Paddle Serving](https://github.com/PaddlePaddle/Serving): A service-oriented framework suitable for distributed and pipeline productions; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite): Ultra-Lightweight inference engine for mobile and IoT environments; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs): A frontend inference engine for browser and mini-apps. Furthermore, by great amounts of optimization with leading hardware in each scenario, Paddle inference engines outperform most of the other mainstream frameworks.
+## Getting Started
+### Demo
 
+<details>
+<summary>code</summary>
 
-- **Industry-Oriented Models and Libraries with Open Source Repositories**
+```python
+import paddle
+cpu_tensor1 = paddle.to_tensor([2.0, 3.0, 4.0], place=paddle.CPUPlace())
+cpu_tensor2 = paddle.to_tensor([2.0, 3.0, 4.0], place=paddle.CPUPlace())
+cpu_result = cpu_tensor1 + cpu_tensor2
+print("cpu_result: ", cpu_result)
 
-     PaddlePaddle includes and maintains more than 100 mainstream models that have been practiced and polished for a long time in the industry. Some of these models have won major prizes from key international competitions. In the meanwhile, PaddlePaddle has further more than 200 pre-training models (some of them with source codes) to facilitate the rapid development of industrial applications.
-     [Click here to learn more](https://github.com/PaddlePaddle/models)
-
-
-## Documentation
-
-We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html) and
-[Chinese](https://www.paddlepaddle.org.cn/documentation/docs/zh/guide/index_cn.html) documentation.
-
-- [Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
-
-  You might want to start from how to implement deep learning basics with PaddlePaddle.
-
-- [Practice](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)
-
-  So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator.
-
-- [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/en/api/index_en.html)
-
-   Our new API enables much shorter programs.
-
-- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/08_contribution/index_en.html)
-
-   We appreciate your contributions!
-
-## Communication
-
-- [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
-- QQ discussion group: 441226485 (PaddlePaddle).
-- [Forums](https://aistudio.baidu.com/paddle/forum): discuss implementations, research, etc.
-
-## Courses
-
-- [Server Deployments](https://aistudio.baidu.com/aistudio/course/introduce/19084): Courses introducing high performance server deployments via local and remote services.
-- [Edge Deployments](https://aistudio.baidu.com/aistudio/course/introduce/22690): Courses introducing edge deployments from mobile, IoT to web and applets.
-
-## Copyright and License
-PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
+#paddle.device.set_device("gpu")
+gpu_tensor1 = paddle.to_tensor([6, 2], dtype="int32", place=paddle.CUDAPlace(0))
+gpu_tensor2 = paddle.to_tensor([5, 3], dtype="int32", place=paddle.CUDAPlace(0))
+print(gpu_tensor1.place)
+gpu_result = gpu_tensor1 + gpu_tensor2
+print("gpu_result: ", gpu_result)
+```
+</details>
