@@ -12,6 +12,6 @@ set(static_backend_files
     ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/backend/manual/manual_static_backend.cc
 )
 cc_library(
-  primitive_backend_static_experimental NOT_FOR_INFER
+  primitive_backend_static_experimental
   SRCS ${static_backend_files}
   DEPS pd_dialect_api)

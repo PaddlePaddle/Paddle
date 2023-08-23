@@ -61,12 +61,10 @@ set(KERNEL_LIST
 list(REMOVE_DUPLICATES fluid_modules)
 # NOTE(Aurelius84): For inference library, some DEPS is usless
 # such as non-infer operator related targets et.al.
-list(REMOVE_ITEM fluid_modules run_program_op cinn_dialect)
-
+list(REMOVE_ITEM fluid_modules cinn_dialect)
 # NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
 # shared library to prune library size.
 list(REMOVE_ITEM fluid_modules ${not_infer_modules})
-list(REMOVE_ITEM phi_modules ${not_infer_modules})
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
