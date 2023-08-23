@@ -126,6 +126,10 @@ def np_data_generator(np_shape, dtype, *args, **kwargs):
     elif dtype == np.uint16:
         x = np.random.uniform(0.0, 1.0, np_shape).astype(np.float32)
         return convert_float_to_uint16(x)
+    elif dtype == np.complex64 or dtype == np.complex128:
+        return np.random.normal(0, 1, np_shape) + 1.0j * np.random.normal(
+            0, 1, np_shape
+        )
     else:
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
