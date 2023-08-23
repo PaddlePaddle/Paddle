@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -500,6 +501,16 @@ void Unpack_Pivot(const Context& dev_ctx,
     arange<Context>(dev_ctx, &idt, h);
     auto idlst = idt.data<int32_t>();
     for (int j = 0; j < Pnum; j++) {
+      PADDLE_ENFORCE_EQ(
+          (pdataptr[i * Pnum + j] > 0) && (pdataptr[i * Pnum + j] <= h),
+          true,
+          phi::errors::InvalidArgument(
+              "The data in Pivot must be between (1, x.shape[-2]],"
+              "but got %d in Pivot while the x.shape[-2] is %d."
+              "Please make sure that the inputs(x and Pivot) is the output of "
+              "paddle.linalg.lu.",
+              pdataptr[i * Pnum + j],
+              h));
       if (idlst[pdataptr[i * Pnum + j] - 1] == idlst[j]) continue;
       auto temp = idlst[j];
       idlst[j] = idlst[pdataptr[i * Pnum + j] - 1];

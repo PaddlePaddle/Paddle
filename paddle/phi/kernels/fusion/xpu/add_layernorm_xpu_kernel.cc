@@ -73,19 +73,13 @@ void AddLayernormXPUKernel(const Context& ctx,
                            const DenseTensor& bias,
                            int begin_norm_axis,
                            float epsilon,
-                           DenseTensor* out,
-                           DenseTensor* mean,
-                           DenseTensor* variance,
-                           DenseTensor* z_add) {
+                           DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   const float* scale_data = scale.data<float>();
   const float* bias_data = bias.data<float>();
-  float* mean_data = ctx.template Alloc<float>(mean);
-  float* variance_data = ctx.template Alloc<float>(variance);
-  auto* z_add_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(z_add));
 
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -106,10 +100,10 @@ void AddLayernormXPUKernel(const Context& ctx,
       /* float epsilon */ epsilon,
       /* const float* scale */ scale_data,
       /* const float* bias */ bias_data,
-      /* float* mean */ mean_data,
-      /* float* variance */ variance_data,
-      /* T* z_add */ z_add_data);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layernorm_xpu");
+      /* float* mean */ nullptr,
+      /* float* variance */ nullptr,
+      /* T* z_add */ nullptr);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layer_norm_fusion");
 }
 
 }  // namespace fusion
@@ -119,4 +113,5 @@ PD_REGISTER_KERNEL(add_layernorm_xpu,
                    XPU,
                    ALL_LAYOUT,
                    phi::fusion::AddLayernormXPUKernel,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {}
