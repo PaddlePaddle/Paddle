@@ -2721,6 +2721,15 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #endif
     }
+    if (op_type == "quantize_linear" || op_type == "dequantize_linear") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "quantize / dequantize linear is not supported when TensorRT "
+                 "< 8.0";
+      return false;
+#else
+      return true;
+#endif
+    }
 
     if (op_type == "flip") {
       if (!with_dynamic_shape) {
@@ -2905,7 +2914,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "cumsum",
       "unbind",
       "assign",
-      "flip"};
+      "flip",
+      "quantize_linear",
+      "dequantize_linear"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3070,7 +3081,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "cumsum",
       "unbind",
       "assign",
-      "flip"};
+      "flip",
+      "quantize_linear",
+      "dequantize_linear"};
 };
 
 struct GenericPluginTeller : public Teller {
