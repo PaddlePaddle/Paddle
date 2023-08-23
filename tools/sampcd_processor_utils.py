@@ -611,11 +611,6 @@ def parse_args():
     global arguments
     parser = argparse.ArgumentParser(description='run Sample Code Test')
     parser.add_argument('--debug', dest='debug', action="store_true")
-
-    # if use `legacy`, `sampcd_processor.py` will not exit with legacy sample code.
-    # default is `False`, means forbid legacy sample code.
-    parser.add_argument('--legacy', dest='legacy', action="store_true")
-
     parser.add_argument('--full-test', dest='full_test', action="store_true")
     parser.add_argument('mode', type=str, help='run on device', default='cpu')
     parser.add_argument(
