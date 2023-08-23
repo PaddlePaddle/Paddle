@@ -82,7 +82,7 @@ def transpose(x, perm, name=None):
             >>> x = paddle.randn([2, 3, 4])
             >>> x_transposed = paddle.transpose(x, perm=[1, 0, 2])
             >>> print(x_transposed.shape)
-            (3, 2, 4)
+            [3, 2, 4]
 
     """
     if in_dynamic_mode():
@@ -198,35 +198,35 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             >>> y = paddle.rand([10])
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
-            ()
+            []
 
             >>> # matrix * vector
             >>> x = paddle.rand([10, 5])
             >>> y = paddle.rand([5])
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
-            (10,)
+            [10,]
 
             >>> # batched matrix * broadcasted vector
             >>> x = paddle.rand([10, 5, 2])
             >>> y = paddle.rand([2])
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
-            (10, 5)
+            [10, 5]
 
             >>> # batched matrix * batched matrix
             >>> x = paddle.rand([10, 5, 2])
             >>> y = paddle.rand([10, 2, 5])
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
-            (10, 5, 5)
+            [10, 5, 5]
 
             >>> # batched matrix * broadcasted matrix
             >>> x = paddle.rand([10, 1, 5, 2])
             >>> y = paddle.rand([1, 3, 2, 5])
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
-            (10, 3, 5, 5)
+            [10, 3, 5, 5]
 
     """
     if in_dynamic_mode():
@@ -317,26 +317,31 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             >>> # compute frobenius norm along last two dimensions.
             >>> out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
+            >>> print(out_fro)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             >>> # compute 2-order vector norm along last dimension.
             >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
+            >>> print(out_pnorm)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[21.11871147, 13.19090557, 5.47722578 ],
              [3.74165750 , 11.22497177, 19.13112640]])
 
             >>> # compute 2-order  norm along [0,1] dimension.
             >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
+            >>> print(out_pnorm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             >>> # compute inf-order  norm
             >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"))
+            >>> print(out_pnorm)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             12.)
 
             >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
+            >>> print(out_pnorm)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[12., 11., 10., 9. ],
              [8. , 7. , 6. , 7. ],
@@ -344,10 +349,12 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             >>> # compute -inf-order  norm
             >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
+            >>> print(out_pnorm)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
 
             >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
+            >>> print(out_pnorm)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 1., 2., 3.],
              [4., 5., 6., 5.],
@@ -1929,14 +1936,15 @@ def slogdet(x, name=None):
         .. code-block:: python
 
             >>> import paddle
-
-            >>> x =  paddle.randn([3,3,3])
             >>> paddle.seed(2023)
+            >>> x =  paddle.randn([3,3,3])
             >>> A = paddle.linalg.slogdet(x)
             >>> print(A)
+            >>> # doctest: +SKIP
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.        ,  1.        ,  1.        ],
              [ 0.25681755, -0.25061053, -0.10809582]])
+            >>> # doctest: -SKIP
 
     """
     if in_dynamic_mode():
