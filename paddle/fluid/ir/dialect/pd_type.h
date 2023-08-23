@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
+#include "paddle/ir/core/builtin_type_interfaces.h"
 #include "paddle/ir/core/type.h"
 
 namespace paddle {
@@ -22,7 +23,10 @@ namespace dialect {
 ///
 /// \brief Define built-in parametric types.
 ///
-class DenseTensorType : public ir::Type {
+class DenseTensorType : public ir::Type,  // Not inherite any more
+                        public ir::Type::TypeBase<DenseTensorType,
+                                                  DenseTensorTypeStorage,
+                                                  ir::ShapedTypeInterface> {
  public:
   using Type::Type;
 
@@ -39,7 +43,10 @@ class DenseTensorType : public ir::Type {
   const size_t &offset() const;
 };
 
-class SelectedRowsType : public ir::Type {
+class SelectedRowsType : public ir::Type,  // Not inherite any more
+                         public ir::Type::TypeBase<SelectedRowsType,
+                                                   SelectedRowsTypeStorage,
+                                                   ir::ShapedTypeInterface> {
  public:
   using Type::Type;
 

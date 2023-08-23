@@ -17,8 +17,8 @@
 #include <ostream>
 
 #include "paddle/ir/core/cast_utils.h"
+#include "paddle/ir/core/storage_manager_support.h"
 #include "paddle/ir/core/type_id.h"
-
 namespace ir {
 class TypeStorage;
 class AbstractType;
@@ -32,7 +32,13 @@ class Dialect;
 ///
 class IR_API Type {
  public:
+  template <typename ConcreteType, typename StorageType, typename TypeManager>
+  using TypeBase =
+      detail::StorageHelperBase<ConcreteType, StorageType, TypeManager>;
+
   using Storage = TypeStorage;
+
+  using AbstractT = AbstractType;
 
   Type() = default;
 
@@ -102,12 +108,11 @@ IR_API std::ostream &operator<<(std::ostream &os, Type type);
 /// \brief This class represents the base of a type interface.
 ///
 
-using TypeBase = Type;
 template <typename ConcreteType>
-class TypeInterfaceBase : public TypeBase {
+class TypeInterfaceBase : public Type {
  public:
-  TypeInterfaceBase() : TypeBase() {}
-  explicit TypeInterfaceBase(Type type) : TypeBase() {}
+  TypeInterfaceBase() : Type() {}
+  explicit TypeInterfaceBase(Type type) : Type() {}
   static ConcreteType dyn_cast(Type *type);
 };
 

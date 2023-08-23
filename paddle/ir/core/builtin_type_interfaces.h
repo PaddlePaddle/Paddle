@@ -88,7 +88,7 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
       return static_cast<ConcreteType>(type).dtype();
     }
 
-    static inline phi::DDim getShape(ir::Type type) {
+    static inline DDim getShape(ir::Type type) {
       return static_cast<ConcreteType>(type).dims();
     }
 
@@ -98,19 +98,16 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   ShapedTypeInterface(ir::Type type, Concept *impl)
       : ir::TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
 
+  /// Get the element type.
   DataType getElementType(ir::Type type) const {
     return impl_->get_element_type_(type);
   }
 
+  /// Get the shape of this type.
   DDim getShape(ir::Type type) const { return impl_->get_shape_(type); }
+  DDim getShape() const;
 
   static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
-
-  /// Get the element type.
-  ir::Type getElementType();
-
-  /// Get the shape of this type.
-  std::vector<int64_t> getShape() const;  // get DDim
 
   /// Check whether this type is ranked, currently return true.
   bool hasRank() const { return true; }
@@ -140,7 +137,7 @@ class ShapedTypeInterface : public ir::TypeInterfaceBase<ShapedTypeInterface> {
   /// Get the number of dimensions with dynamic size for a ranked type.
   /// Aborts for unranked types.
   int64_t getNumDynamicDims() const {
-    return details::count_if((*this).getShape(),
+    return details::count_if(vectorize((*this).getShape()),
                              ir::ShapedTypeInterface::isDynamic);
   }
 

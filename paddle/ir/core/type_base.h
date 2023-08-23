@@ -100,9 +100,10 @@ struct TypeManager;
 /// be included. So that, non-parametric type can be constructed by TypeStorage
 /// directly but parametric type should be constructed by Derived TypeStorage.
 ///
-class IR_API TypeStorage : public StorageManager::StorageBase {
-  friend StorageManager;
-  friend TypeManager;
+class IR_API TypeStorage
+    : public StorageManager::StorageBase {  // StorageUniquer::BaseStorage
+  friend StorageManager;                    // StorageUniquer
+  friend TypeManager;                       // TypeUniquer
 
  public:
   ///
