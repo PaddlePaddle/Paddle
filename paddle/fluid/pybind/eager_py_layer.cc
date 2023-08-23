@@ -150,8 +150,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       p_pylayer_type->tp_alloc(p_pylayer_type, 0));
   if (!ctx) {
-    PADDLE_THROW(paddle::platform::errors::External(
-        pybind11::detail::error_string().c_str()));
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
     return nullptr;
   }
 
