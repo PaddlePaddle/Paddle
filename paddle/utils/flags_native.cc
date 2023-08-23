@@ -342,6 +342,14 @@ void PrintAllFlagHelp(bool to_file, const std::string& file_path) {
   }
 }
 
+bool SetFlagValue(const std::string& name, const std::string& value) {
+  return FlagRegistry::Instance()->SetFlagValue(name, value);
+}
+
+bool FindFlag(const std::string& name) {
+  return FlagRegistry::Instance()->HasFlag(name);
+}
+
 bool GetValueFromEnv(const std::string& name, std::string* value) {
   const char* env_var = std::getenv(name.c_str());
   if (env_var == nullptr) {
@@ -349,14 +357,6 @@ bool GetValueFromEnv(const std::string& name, std::string* value) {
   }
   *value = std::string(env_var);
   return true;
-}
-
-bool SetFlagValue(const std::string& name, const std::string& value) {
-  return FlagRegistry::Instance()->SetFlagValue(name, value);
-}
-
-bool FindFlag(const std::string& name) {
-  return FlagRegistry::Instance()->HasFlag(name);
 }
 
 void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal) {
