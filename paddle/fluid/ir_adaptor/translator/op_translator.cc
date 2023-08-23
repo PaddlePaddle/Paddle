@@ -1536,6 +1536,20 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
   }
 };
 
+struct SetValueGradOpTranscriber : public SetValueWithTensorOpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SetValueGradOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op set_value_grad should have corresponding OpInfo "
+          "pd.set_value_grad");
+    }
+
+    return op_info;
+  }
+};
+
 struct LegacySetValueDispatcher : public OpTranscriber {
   ir::Operation* operator()(ir::IrContext* ctx,
                             TranslationContext* param_map,
@@ -1576,6 +1590,7 @@ OpTranslator::OpTranslator() {
   special_handlers["rnn"] = RnnOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["set_value"] = LegacySetValueDispatcher();
+  special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
 

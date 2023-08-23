@@ -393,6 +393,7 @@
 - name : set_value_grad
   inputs:
     - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false, data_transform: {} }
+    - {typename: Tensor, name: values, optional: false, no_need_buffer: false, data_transform: {} }
   attrs:
     - {typename: 'int64_t[]', name: starts}
     - {typename: 'int64_t[]', name: ends}
@@ -402,12 +403,12 @@
     - {typename: 'int64_t[]', name: none_axes}
   outputs:
     - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
-    - {typename: Tensor, name: value_grad, optional: false, intermediate: false}
+    - {typename: Tensor, name: values_grad, optional: false, intermediate: false}
   infer_meta:
-    func: SetValueInferMeta
-    param: [x]
+    func: SetValueGradInferMeta
+    param: [out_grad, values]
   kernel:
-    func: [set_value]
-    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shapes, values]
+    func: [set_value_grad]
+    param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
   inplace: null
   backward: null
