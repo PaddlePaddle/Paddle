@@ -860,11 +860,18 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
   auto compute_body = block.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
+  std::string block_name = block.As<ir::ScheduleBlockRealize>()
+                               ->schedule_block.As<ir::ScheduleBlock>()
+                               ->name;
   ir::CollectIRNodesWithoutTensor(
-      compute_body, [&producer_tensor_names](const Expr* x) {
+      compute_body, [&producer_tensor_names, &block_name](const Expr* x) {
         auto* load = x->As<ir::Load>();
         if (load) {
           producer_tensor_names.insert(load->tensor.as_tensor()->name);
+          if (load->tensor.as_tensor()->name == block_name) {
+            producer_tensor_names.insert(
+                GenReduceInitTensorNameOf(load->tensor.as_tensor()->name));
+          }
           return true;
         }
         return false;
@@ -896,6 +903,18 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
   CHECK(root.As<ir::ScheduleBlockRealize>());
   std::vector<Expr> consumers;
   std::string block_tensor = GetTensor(block)->name;
+  if (IsReduceInitTensorName(block_tensor)) {
+    std::string consumer_name = GetOriginalReduceTensorName(block_tensor);
+    auto consumer = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+      return x->As<ir::ScheduleBlockRealize>() &&
+             x->As<ir::ScheduleBlockRealize>()
+                     ->schedule_block.As<ir::ScheduleBlock>()
+                     ->name == consumer_name;
+    });
+    CHECK_EQ(consumer.size(), 1);
+    return {*consumer.begin()};
+  }
+
   auto find_block = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
     return x->As<ir::ScheduleBlockRealize>() && *x != block && *x != root;
   });
@@ -997,10 +1016,12 @@ std::vector<IterRange> CalculateRequiredRegions(
   // deduce accessed regions of the provided tensor in block by itering each
   // required block
   for (const Expr& pro_node : provided_nodes) {
-    const std::string& provided_tensor_name =
+    std::string provided_tensor_name =
         is_store_provided ? pro_node.As<ir::Store>()->tensor.as_tensor()->name
                           : pro_node.As<ir::Load>()->tensor.as_tensor()->name;
-
+    if (IsReduceInitTensorName(provided_tensor_name)) {
+      provided_tensor_name = GetOriginalReduceTensorName(provided_tensor_name);
+    }
     for (const Expr& req_block : required_blocks) {
       CHECK(req_block.As<ir::ScheduleBlockRealize>());
       Expr block_body =

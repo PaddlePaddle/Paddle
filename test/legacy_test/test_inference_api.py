@@ -21,6 +21,7 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid.core import PaddleDType, PaddleTensor
+from paddle.framework import core
 from paddle.inference import (
     Config,
     create_predictor,
@@ -101,6 +102,36 @@ def get_sample_model():
     return serialized_program, serialized_params
 
 
+def get_sample_model_cuda(data_type):
+    place = fluid.CUDAPlace(0)
+    exe = fluid.Executor(place)
+
+    main_program = fluid.Program()
+    startup_program = fluid.Program()
+    with fluid.program_guard(main_program, startup_program):
+        data = paddle.static.data(
+            name="data", shape=[-1, 6, 64, 64], dtype=data_type
+        )
+        data_float = paddle.cast(data, "bfloat16")
+        res = paddle.static.nn.conv2d(
+            input=data_float,
+            num_filters=3,
+            filter_size=3,
+            groups=1,
+            padding=0,
+            bias_attr=False,
+            act=None,
+        )
+    exe.run(startup_program)
+    serialized_program = paddle.static.serialize_program(
+        data, res, program=main_program
+    )
+    serialized_params = paddle.static.serialize_persistables(
+        data, res, executor=exe, program=main_program
+    )
+    return serialized_program, serialized_params
+
+
 class TestInferenceBaseAPI(unittest.TestCase):
     def get_config(self, model, params):
         config = Config()
@@ -169,6 +200,52 @@ class TestInferenceBaseAPI(unittest.TestCase):
 
         test_lod_tensor()
         test_paddle_tensor()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.get_cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "share_external_data_bf16 requires cudnn >= 8.1 and CUDA_ARCH >= 8",
+)
+class TestInferenceShareExternalDataAPI(unittest.TestCase):
+    def get_config(self, model, params):
+        config = Config()
+        config.set_model_buffer(model, len(model), params, len(params))
+        config.enable_use_gpu(100, 0)
+        return config
+
+    def test_share_external_data_cuda(self):
+        def test_paddle_tensor_bf16():
+            paddle.set_default_dtype("bfloat16")
+            program, params = get_sample_model_cuda("bfloat16")
+            paddle.disable_static()
+            config = self.get_config(program, params)
+            predictor = create_predictor(config)
+            in_names = predictor.get_input_names()
+            in_handle = predictor.get_input_handle(in_names[0])
+            in_data = paddle.to_tensor(np.ones((1, 6, 32, 32)), "bfloat16")
+            in_handle.share_external_data(in_data)
+            predictor.run()
+            paddle.set_default_dtype("float32")
+            paddle.enable_static()
+
+        def test_paddle_tensor_bool():
+            paddle.set_default_dtype("bfloat16")
+            program, params = get_sample_model_cuda("bool")
+            paddle.disable_static()
+            config = self.get_config(program, params)
+            predictor = create_predictor(config)
+            in_names = predictor.get_input_names()
+            in_handle = predictor.get_input_handle(in_names[0])
+            in_data = paddle.to_tensor(np.ones((1, 6, 32, 32)), "bool")
+            in_handle.share_external_data(in_data)
+            predictor.run()
+            paddle.set_default_dtype("float32")
+            paddle.enable_static()
+
+        test_paddle_tensor_bf16()
+        test_paddle_tensor_bool()
 
 
 if __name__ == '__main__':
