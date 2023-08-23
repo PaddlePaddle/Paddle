@@ -18,7 +18,9 @@ import inspect
 import numpy as np
 
 import paddle
+import paddle.ir.core as ir_static
 from paddle.fluid import core
+from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
@@ -160,6 +162,34 @@ class FunctionSpec:
         )
 
         return args_with_spec, kwargs_with_spec
+
+    @switch_to_static_graph
+    def newir_to_static_inputs_with_spec(self, input_with_spec, main_program):
+        """
+        Constructs feed layer by inputs with InputSpec information for main program.
+
+        Args:
+            input_with_spec(tuple): input arguments by replacing argument with InputSpec.
+            main_program(Program): main program for inserting feed layer.
+        """
+        flat_input_spec = paddle.utils.flatten(input_with_spec)
+
+        inputs = []
+        with ir_static.program_guard(main_program):
+            for i, var_spec in enumerate(flat_input_spec):
+                if isinstance(var_spec, paddle.static.InputSpec):
+                    stop_gradient = getattr(var_spec, 'stop_gradient', False)
+                    feed_value = paddle.static.input.data(
+                        name=var_spec.name or "feed_%s" % i,
+                        shape=var_spec.shape,
+                        dtype=convert_dtype(var_spec.dtype),
+                    )
+                    feed_value.stop_gradient = stop_gradient
+                else:
+                    feed_value = var_spec
+                inputs.append(feed_value)
+
+        return paddle.utils.pack_sequence_as(input_with_spec, inputs)
 
     @switch_to_static_graph
     def to_static_inputs_with_spec(self, input_with_spec, main_program):
