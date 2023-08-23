@@ -142,6 +142,26 @@
   kernel :
     func : c_concat
 
+- op : c_sync_calc_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : c_sync_calc_stream
+  inplace : (x -> out)
+
+- op : c_sync_comm_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : c_sync_comm_stream
+  inplace : (x -> out)
+
 - op : cast
   args : (Tensor x, DataType dtype)
   output : Tensor
