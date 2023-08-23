@@ -451,6 +451,7 @@ if is_compiled_with_cinn():
 disable_static()
 
 if paddle.ir.core._use_new_ir_api():
+    paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
     paddle.static.Program = paddle.ir.Program
     paddle.fluid.Program = paddle.ir.Program
     paddle.fluid.program_guard = paddle.ir.core.program_guard

@@ -25,10 +25,11 @@
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
@@ -255,6 +256,7 @@ void BindValue(py::module *m) {
       .def("get_defining_op",
            &Value::GetDefiningOp,
            return_value_policy::reference)
+      .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -278,9 +280,11 @@ void BindOpOperand(py::module *m) {
   op_operand
       .def("source",
            [](OpOperand &self) { return self.source().dyn_cast<OpResult>(); })
-      .def("set_source", [](OpOperand &self, const OpResult &result) {
-        self.set_source(result);
-      });
+      .def("set_source",
+           [](OpOperand &self, const OpResult &result) {
+             self.set_source(result);
+           })
+      .def("owner", &OpOperand::owner, return_value_policy::reference);
 }
 
 bool GetStopGradient(const OpResult &self) {
@@ -337,6 +341,7 @@ void BindOpResult(py::module *m) {
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
+      .def("first_use", &OpResult::first_use, return_value_policy::reference)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
       .def_property(

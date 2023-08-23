@@ -1427,15 +1427,15 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
-- op : llm_int8_matmul
-  args : (Tensor x, Tensor weight, Tensor weight_scale, float threshold=6.0)
+- op : llm_int8_linear
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, float threshold=6.0)
   output : Tensor(out)
   infer_meta :
-    func : LLMInt8MatmulInferMeta
-    param : [x, weight]
+    func : LLMInt8LinearInferMeta
   kernel :
-    func : llm_int8_matmul
+    func : llm_int8_linear
     data_type : x
+  optional: bias
 
 - op : log
   args : (Tensor x)
@@ -2002,15 +2002,6 @@
   kernel :
     func : qr
   backward : qr_grad
-
-- op : quant_for_compress
-  args : (Tensor x, int bits = 8, str layout = "weight_only")
-  output : Tensor(out), Tensor(scale)
-  infer_meta :
-    func : QuantForCompressInferMeta
-  kernel :
-    func : quant_for_compress
-    data_type: x
 
 - op : real
   args : (Tensor x)
@@ -2758,14 +2749,24 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
-- op : weight_only_matmul
-  args : (Tensor x, Tensor weight, Tensor weight_scale)
+- op : weight_only_linear
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype)
   output : Tensor(out)
   infer_meta :
-    func : WeightOnlyMatmulInferMeta
+    func : WeightOnlyLinearInferMeta
   kernel :
-    func : weight_only_matmul
+    func : weight_only_linear
     data_type : x
+  optional: bias
+
+- op : weight_quantize
+  args : (Tensor x, str algo = "weight_only_int8")
+  output : Tensor(out), Tensor(scale)
+  infer_meta :
+    func : WeightQuantizeInferMeta
+  kernel :
+    func : weight_quantize
+    data_type: x
 
 - op : weighted_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)

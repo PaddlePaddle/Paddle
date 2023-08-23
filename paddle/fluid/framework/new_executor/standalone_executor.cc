@@ -68,15 +68,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.skip_gc_vars = job->SkipGcVars();
 
     // TODO(phlrain) we only support cpu for now
-    if (FLAGS_enable_new_ir_in_executor || FLAGS_enable_new_ir_api) {
+    if (FLAGS_enable_new_ir_in_executor) {
       std::shared_ptr<::ir::Program> base_program = ir_program;
-      if (FLAGS_enable_new_ir_in_executor) {
+      if (!FLAGS_enable_new_ir_api) {
         VLOG(6) << "begin to translate" << std::endl;
         base_program = paddle::TranslateLegacyProgramToProgram(*program);
-      } else {
-        // When FLAGS_enable_new_ir_api is True, we need also open
-        // FLAGS_enable_new_ir_in_executor in executor
-        FLAGS_enable_new_ir_in_executor = true;
       }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {

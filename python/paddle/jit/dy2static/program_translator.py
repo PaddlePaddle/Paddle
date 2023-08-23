@@ -28,6 +28,8 @@ from paddle.fluid.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
+from paddle.fluid.unique_name import UniqueNameGenerator
+from paddle.fluid.unique_name import guard as UniqueNameGuard
 from paddle.framework import core, in_dynamic_mode
 from paddle.ir.core import _use_new_ir_api
 from paddle.nn.layer import layers
@@ -952,72 +954,68 @@ class ASTStaticFunction(StaticFunction):
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
         # NOTE(jiabin): is_prim_infer indicates this method called by paddle.jit.save and it is worked in prim mode
 
-        if cached_program_len == 0:
-            desired_input_spec = input_spec
-            if self._function_spec.input_spec is not None:
-                if input_spec is not None and not input_specs_compatible(
-                    flatten(input_spec), flatten(self._function_spec.input_spec)
-                ):
-                    raise ValueError(
-                        "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".format(
-                            input_spec, self._function_spec.input_spec
-                        )
+        desired_input_spec = input_spec
+        if self._function_spec.input_spec is not None:
+            if input_spec is not None and not input_specs_compatible(
+                flatten(input_spec), flatten(self._function_spec.input_spec)
+            ):
+                raise ValueError(
+                    "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".format(
+                        input_spec, self._function_spec.input_spec
                     )
-                # NOTE(chenweihang): we should always translated program based on the `input_spec`
-                # decorated on forward if it is valid
-                desired_input_spec = self._function_spec.input_spec
-                if input_spec is not None:
+                )
+            # NOTE(chenweihang): we should always translated program based on the `input_spec`
+            # decorated on forward if it is valid
+            desired_input_spec = self._function_spec.input_spec
+            if input_spec is not None:
+                logging_utils.warn(
+                    "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".format(
+                        desired_input_spec, input_spec
+                    )
+                )
+
+        has_input_spec = desired_input_spec is not None
+        if has_input_spec:
+            concrete_program, _ = self.get_concrete_program(
+                *desired_input_spec,
+                with_hook=with_hook,
+                is_train=self._is_train_mode(),
+                is_prim_infer=is_prim_infer,
+            )
+            return concrete_program
+        else:
+            if cached_program_len != 0:
+                logging_utils.warn(
+                    "No input_spec is found, save cached program instead"
+                )
+                if cached_program_len > 1:
                     logging_utils.warn(
-                        "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".format(
-                            desired_input_spec, input_spec
+                        "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
+                            self._function_spec, cached_program_len
                         )
                     )
 
-            has_input_spec = desired_input_spec is not None
-            if has_input_spec:
-                concrete_program, _ = self.get_concrete_program(
-                    *desired_input_spec,
-                    with_hook=with_hook,
-                    is_train=self._is_train_mode(),
-                    is_prim_infer=is_prim_infer,
-                )
-                return concrete_program
+                cache_key = self._program_cache._recent_cache_key
+
+                if with_hook:
+                    cache_key.kwargs["with_hook"] = True
+
+                if is_prim_infer:
+                    (
+                        concrete_program,
+                        _,
+                    ) = self.get_concrete_program_with_cache_key(cache_key)
+                    return concrete_program
+                else:
+                    concrete_program, _ = self._program_cache[cache_key]
+                    return concrete_program
+
             else:
                 raise ValueError(
                     "No valid transformed program for {}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n".format(
                         self._function_spec
                     )
                 )
-        elif with_hook:
-            cache_key = self._program_cache._recent_cache_key
-            cache_key.kwargs["with_hook"] = True
-            if not is_prim_infer:
-                concrete_program, _ = self._program_cache[cache_key]
-                return concrete_program
-            else:
-                concrete_program, _ = self.get_concrete_program_with_cache_key(
-                    cache_key
-                )
-                return concrete_program
-        # If more than one programs have been cached, return the recent converted program by default.
-        elif cached_program_len > 1:
-            logging_utils.warn(
-                "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
-                    self._function_spec, cached_program_len
-                )
-            )
-        if not is_prim_infer:
-            cache_key, (
-                concrete_program,
-                partial_layer,
-            ) = self._program_cache.last()
-            return concrete_program
-        else:
-            cache_key = self._program_cache._recent_cache_key
-            concrete_program, _ = self.get_concrete_program_with_cache_key(
-                cache_key
-            )
-            return concrete_program
 
     @property
     def inputs(self):
@@ -1144,6 +1142,7 @@ class ConcreteProgram:
         "startup_program",
         "parameters",
         "function",
+        "name_generator",
         'kwargs',
     ]
 
@@ -1153,6 +1152,7 @@ class ConcreteProgram:
         outputs,
         parameters,
         function,
+        name_generator,
         main_program,
         startup_program=None,
         **kwargs,
@@ -1163,6 +1163,7 @@ class ConcreteProgram:
         self.startup_program = startup_program
         self.parameters = parameters
         self.function = function
+        self.name_generator = name_generator
         self.kwargs = kwargs
 
     @staticmethod
@@ -1297,8 +1298,12 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
+        new_name_generator = UniqueNameGenerator()
+
         with framework.program_guard(main_program, startup_program):
-            with _switch_declarative_mode_guard_(is_declarative=True):
+            with _switch_declarative_mode_guard_(
+                is_declarative=True
+            ), UniqueNameGuard(new_name_generator):
                 # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
@@ -1353,6 +1358,7 @@ class ConcreteProgram:
             outputs=outputs,
             parameters=all_parameters_and_buffers,
             function=dygraph_function,
+            name_generator=new_name_generator,
             main_program=main_program,
             startup_program=startup_program,
             **kwargs,
