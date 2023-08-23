@@ -527,6 +527,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
             GetOpOriginalType(op_type) != "tensorrt_engine" &&
+            white_list_.count(GetOpOriginalType(op_type)) == 0 &&
             !KernelSupportPrecision(
                 GetOpOriginalType(op_type), backend_, phi::DataType::FLOAT32)) {
           for (auto* out_var_node : op_node->outputs) {
