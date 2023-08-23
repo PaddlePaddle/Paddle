@@ -463,7 +463,21 @@ if __name__ == '__main__':
         os.mkdir(SAMPLECODE_TEMPDIR)
 
     filenames = get_filenames(args.full_test)
-    if len(filenames) == 0 and len(whl_error) == 0:
+
+    if len(whl_error) != 0:
+        logger.info("%s is not in whl.", whl_error)
+        logger.info("")
+        logger.info("Please check the whl package and API_PR.spec!")
+        logger.info("You can follow these steps in order to generate API.spec:")
+        logger.info("1. cd ${paddle_path}, compile paddle;")
+        logger.info("2. pip install build/python/dist/(build whl package);")
+        logger.info(
+            "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
+        )
+        logger.info("----------------------------------------------------")
+        sys.exit(1)
+
+    if len(filenames) == 0:
         logger.info("-----API_PR.spec is the same as API_DEV.spec-----")
         # not exit if no filenames, we should do xdoctest later.
         # sys.exit(0)
@@ -473,6 +487,12 @@ if __name__ == '__main__':
             shutil.rmtree(SAMPLECODE_TEMPDIR)
 
     else:
+        if not args.legacy:
+            logger.info("Please do NOT use legacy sample code style!!!")
+            logger.inf('\n'.join(str(v) for v in filenames.values()))
+            logger.info("----------------End of the Check--------------------")
+            sys.exit(1)
+
         logger.info("API_PR is diff from API_DEV: %s", filenames)
 
         threads = multiprocessing.cpu_count()
@@ -492,78 +512,58 @@ if __name__ == '__main__':
         stdout_handler = logging.StreamHandler(stream=sys.stdout)
         logger.addHandler(stdout_handler)
         logger.info("----------------End of the Check--------------------")
-        if len(whl_error) != 0:
-            logger.info("%s is not in whl.", whl_error)
-            logger.info("")
-            logger.info("Please check the whl package and API_PR.spec!")
-            logger.info(
-                "You can follow these steps in order to generate API.spec:"
-            )
-            logger.info("1. cd ${paddle_path}, compile paddle;")
-            logger.info("2. pip install build/python/dist/(build whl package);")
-            logger.info(
-                "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
-            )
-            for temp in result:
-                if not temp[0]:
-                    logger.info(
-                        "In addition, mistakes found in sample codes: %s",
-                        temp[1],
-                    )
-            logger.info("----------------------------------------------------")
-            sys.exit(1)
-        else:
-            timeovered_test = {}
-            for temp in result:
-                if not temp[0]:
-                    logger.info(
-                        "In addition, mistakes found in sample codes: %s",
-                        temp[1],
-                    )
-                    SUMMARY_INFO['failed'].append(temp[1])
-                else:
-                    SUMMARY_INFO['success'].append(temp[1])
-                if temp[3] > 10:
-                    timeovered_test[temp[1]] = temp[3]
 
-            if len(timeovered_test):
+        timeovered_test = {}
+        for temp in result:
+            if not temp[0]:
                 logger.info(
-                    "%d sample codes ran time over 10s", len(timeovered_test)
+                    "In addition, mistakes found in sample codes: %s",
+                    temp[1],
                 )
-                if args.debug:
-                    for k, v in timeovered_test.items():
-                        logger.info(f'{k} - {v}s')
-            if len(SUMMARY_INFO['success']):
+                SUMMARY_INFO['failed'].append(temp[1])
+            else:
+                SUMMARY_INFO['success'].append(temp[1])
+            if temp[3] > 10:
+                timeovered_test[temp[1]] = temp[3]
+
+        if len(timeovered_test):
+            logger.info(
+                "%d sample codes ran time over 10s", len(timeovered_test)
+            )
+            if args.debug:
+                for k, v in timeovered_test.items():
+                    logger.info(f'{k} - {v}s')
+        if len(SUMMARY_INFO['success']):
+            logger.info(
+                "%d sample codes ran success", len(SUMMARY_INFO['success'])
+            )
+        for k, v in SUMMARY_INFO.items():
+            if k not in ['success', 'failed', 'skiptest', 'nocodes']:
                 logger.info(
-                    "%d sample codes ran success", len(SUMMARY_INFO['success'])
+                    "%d sample codes required not match for %s", len(v), k
                 )
-            for k, v in SUMMARY_INFO.items():
-                if k not in ['success', 'failed', 'skiptest', 'nocodes']:
-                    logger.info(
-                        "%d sample codes required not match for %s", len(v), k
-                    )
-            if len(SUMMARY_INFO['skiptest']):
-                logger.info(
-                    "%d sample codes skipped", len(SUMMARY_INFO['skiptest'])
-                )
-                if args.debug:
-                    logger.info('\n'.join(SUMMARY_INFO['skiptest']))
-            if len(SUMMARY_INFO['nocodes']):
-                logger.info(
-                    "%d apis don't have sample codes",
-                    len(SUMMARY_INFO['nocodes']),
-                )
-                if args.debug:
-                    logger.info('\n'.join(SUMMARY_INFO['nocodes']))
-            if len(SUMMARY_INFO['failed']):
-                logger.info(
-                    "%d sample codes ran failed", len(SUMMARY_INFO['failed'])
-                )
-                logger.info('\n'.join(SUMMARY_INFO['failed']))
-                logger.info(
-                    "Mistakes found in sample codes. Please recheck the sample codes."
-                )
-                sys.exit(1)
+        if len(SUMMARY_INFO['skiptest']):
+            logger.info(
+                "%d sample codes skipped", len(SUMMARY_INFO['skiptest'])
+            )
+            if args.debug:
+                logger.info('\n'.join(SUMMARY_INFO['skiptest']))
+        if len(SUMMARY_INFO['nocodes']):
+            logger.info(
+                "%d apis don't have sample codes",
+                len(SUMMARY_INFO['nocodes']),
+            )
+            if args.debug:
+                logger.info('\n'.join(SUMMARY_INFO['nocodes']))
+        if len(SUMMARY_INFO['failed']):
+            logger.info(
+                "%d sample codes ran failed", len(SUMMARY_INFO['failed'])
+            )
+            logger.info('\n'.join(SUMMARY_INFO['failed']))
+            logger.info(
+                "Mistakes found in sample codes. Please recheck the sample codes."
+            )
+            sys.exit(1)
 
         logger.info("Sample code check is successful!")
 

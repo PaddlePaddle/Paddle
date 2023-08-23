@@ -3139,12 +3139,24 @@ function exec_samplecode_test() {
     python -c "import paddle;print(paddle.__version__);paddle.version.show()"
 
     cd ${PADDLE_ROOT}/tools
-    if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py --debug cpu; example_error=$?
-    elif [ "$1" = "gpu" ] ; then
-        SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
-        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug gpu; example_error=$?
+
+    USE_LEGACY=`git log --pretty=oneline | grep $AGILE_REVISION | grep -w "test=document_legacy" && true`
+    if [[ ${USE_LEGACY} ]] ; then
+        if [ "$1" = "cpu" ] ; then
+            python sampcd_processor.py --debug --legacy cpu; example_error=$?
+        elif [ "$1" = "gpu" ] ; then
+            SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
+            python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug --legacy gpu; example_error=$?
+        fi
+    else
+        if [ "$1" = "cpu" ] ; then
+            python sampcd_processor.py --debug cpu; example_error=$?
+        elif [ "$1" = "gpu" ] ; then
+            SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
+            python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug gpu; example_error=$?
+        fi
     fi
+
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
       exit 5

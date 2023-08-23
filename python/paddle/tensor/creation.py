@@ -14,6 +14,8 @@
 
 # TODO: define functions to get create a tensor
 
+# TODO: just for test
+
 import math
 import re
 import warnings
@@ -1199,6 +1201,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
 
 def full(shape, fill_value, dtype=None, name=None):
     """
+    TODO(megemini): just for test
 
     Return a Tensor with the ``fill_value`` which size is same as ``shape``.
 
@@ -1248,6 +1251,7 @@ def full(shape, fill_value, dtype=None, name=None):
             #  [2. 2.]
             #  [2. 2.]]
     """
+    # TODO: just for test
 
     if dtype is None:
         dtype = 'float32'
