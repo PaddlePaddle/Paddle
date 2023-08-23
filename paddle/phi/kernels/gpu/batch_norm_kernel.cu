@@ -603,7 +603,6 @@ void BatchNormKernel(const Context &ctx,
   backends::gpu::TensorDescriptor variance_desc_;
   backends::gpu::TensorDescriptor scale_desc_;
   backends::gpu::TensorDescriptor bias_desc_;
-  /* backends::gpu::TensorDescriptor bn_param_desc_; */
   dynload::BatchNorm batch_norm_desc_;
   dynload::BatchNorm::Mode mode_;
 #else
@@ -801,10 +800,6 @@ void BatchNormKernel(const Context &ctx,
         *est_mean, mean.template data<BatchNormParamType<T>>());
     variance_desc_.set<BatchNormParamType<T>>(
         *est_var, est_var->template data<BatchNormParamType<T>>());
-    /* mean_desc_.set(*est_mean); */
-    /* variance_desc_.set(*est_var); */
-    /* scale_desc_.set(scale); */
-    /* bias_desc_.set(bias); */
     batch_norm_desc_.SetEpsilon(epsilon);
     batch_norm_desc_.SetMode(mode_);
     batch_norm_desc_.RunPure(*handle,
@@ -1003,11 +998,6 @@ void BatchNormKernel(const Context &ctx,
           mean, mean.template data<BatchNormParamType<T>>());
       variance_desc_.set<BatchNormParamType<T>>(
           variance, variance.template data<BatchNormParamType<T>>());
-      /* mean_out_desc_.set<BatchNormParamType<T>>( */
-      /*   *mean_out, mean_out->template data<BatchNormParamType<T>>()); */
-      /* variance_out_desc_.set<BatchNormParamType<T>>( */
-      /*   *variance_out, variance_out->template data<BatchNormParamType<T>>());
-       */
       saved_mean_desc_.set<BatchNormParamType<T>>(
           *saved_mean, saved_mean->template data<BatchNormParamType<T>>());
       saved_variance_desc_.set<BatchNormParamType<T>>(
