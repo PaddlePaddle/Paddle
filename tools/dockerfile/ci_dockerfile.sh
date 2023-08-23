@@ -50,14 +50,6 @@ function make_ubuntu_trt7_dockerfile(){
     RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y --allow-unauthenticated libsndfile1 libnccl2=2.8.4-1+cuda10.2 libnccl-dev=2.8.4-1+cuda10.2 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
-function make_ubuntu_trt7_dockerfile_temp_ues(){
-  dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
-  echo "FROM registry.baidubce.com/paddlepaddle/paddleqa:coverage-ci-temp-use" >> ${dockerfile_name}
-  echo "RUN wget https://www.openssl.org/source/openssl-1.1.1v.tar.gz && tar -xvf openssl-1.1.1v.tar.gz && cd openssl-1.1.1v && ./config -fPIC --prefix=/usr/local/ssl > /dev/null && make > /dev/null && make install > /dev/null && cd ../ && rm -rf openssl-1.1.1v*" >> ${dockerfile_name}
-  echo "ENV OPENSSL_ROOT_DIR=/usr/local/ssl" >> ${dockerfile_name}
-  echo "ENV LD_LIBRARY_PATH=/usr/local/ssl/lib:\g$LD_LIBRARY_PATH" >> ${dockerfile_name}
-}
-
 function make_cpu_dockerfile(){
   dockerfile_name="Dockerfile.cuda9_cudnn7_gcc48_py35_centos6"
   sed "s#<baseimg>#ubuntu:20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
@@ -145,7 +137,7 @@ function make_ubuntu20_cu112_dockerfile(){
 }
 
 function main() {
-  make_ubuntu_trt7_dockerfile_temp_ues
+  make_ubuntu_trt7_dockerfile
   make_cpu_dockerfile
   make_ce_framework_dockcerfile
   make_unbuntu20_cu12_dockerfile
