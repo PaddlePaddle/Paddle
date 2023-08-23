@@ -160,6 +160,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
+      pass->Set("mark_output", new bool(argument->trt_mark_output()));
+      pass->Set(
+          "output_tensor_names",
+          new std::vector<std::string>(argument->trt_output_tensor_names()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
@@ -328,10 +332,10 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->nnadapter_model_cache_token()));
     } else if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
-      bool fc_mkldnn_pass = 0;
+      bool fc_mkldnn_pass = false;
       for (const std::string &pass_n : passes) {
         if (pass_n == "fc_mkldnn_pass") {
-          fc_mkldnn_pass = 1;
+          fc_mkldnn_pass = true;
         }
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
