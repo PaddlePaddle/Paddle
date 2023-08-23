@@ -126,13 +126,9 @@ void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto sq_accum_in = EigenVector<T>::Flatten("SquaredAccumulator");
   auto lin_accum_in = EigenVector<T>::Flatten("LinearAccumulator");
 
-  ctx.template Alloc<T>("ParamOut");
-  ctx.template Alloc<T>("SquaredAccumOut");
-  ctx.template Alloc<T>("LinearAccumOut");
-
-  param_out->mutable_data<T>(ctx.GetPlace());
-  sq_accum_out->mutable_data<T>(ctx.GetPlace());
-  lin_accum_out->mutable_data<T>(ctx.GetPlace());
+  T* param_out = ctx.template Alloc<T>("ParamOut");
+  T* sq_accum_out = ctx.template Alloc<T>("SquaredAccumOut");
+  T* lin_accum_out = ctx.template Alloc<T>("LinearAccumOut");
 
   auto l1 = static_cast<T>(ctx.Attr<float>("l1")) + static_cast<T>(1e-10);
   auto l2 = static_cast<T>(ctx.Attr<float>("l2")) + static_cast<T>(1e-10);
@@ -200,9 +196,7 @@ void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
     auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
     auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
-    platform::ForRange<Context> for_range(
-        static_cast<const Context&>(ctx.device_context()),
-        row_numel * row_height);
+    phi::funcs::ForRange<Context> for_range(ctx, row_numel * row_height);
 
     SparseFTRLFunctor<T> functor(
         merged_grad->value().data<T>(),
