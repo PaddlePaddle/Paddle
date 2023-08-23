@@ -713,8 +713,9 @@ def decorate(
         An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
-    Examples 1:
+    Examples:
         .. code-block:: python
+            :name: example-1
 
             # black&white list based strategy example
             >>> import paddle
@@ -733,8 +734,9 @@ def decorate(
             >>> ops, param_grads = mp_optimizer.minimize(loss)
             >>> scaled_loss = mp_optimizer.get_scaled_loss()
 
-    Examples 2:
+
         .. code-block:: python
+            :name: example-2
 
             # pure fp16 training example
             >>> import numpy as np

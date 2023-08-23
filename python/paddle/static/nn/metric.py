@@ -362,8 +362,9 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         local_prob(Tensor): Local sum of predicted ctr
         local_q(Tensor): Local sum of q value
 
-    Examples 1:
+    Examples:
         .. code-block:: python
+            :name: example-1
 
             >>> import paddle
             >>> paddle.enable_static()
@@ -371,8 +372,9 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
             >>> label = paddle.static.data(name="label", shape=[-1, 1], dtype="int32")
             >>> predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(x=data, size=1))
             >>> auc_out = paddle.static.ctr_metric_bundle(input=predict, label=label)
-    Examples 2:
+
         .. code-block:: python
+            :name: example-2
 
             >>> import paddle
             >>> paddle.enable_static()

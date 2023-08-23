@@ -947,19 +947,19 @@ def save_vars(
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.fluid as fluid
+            >>> import paddle.static as static
 
             >>> paddle.enable_static()
-            >>> main_prog = fluid.Program()
-            >>> startup_prog = fluid.Program()
-            >>> with fluid.program_guard(main_prog, startup_prog):
+            >>> main_prog = static.Program()
+            >>> startup_prog = static.Program()
+            >>> with static.program_guard(main_prog, startup_prog):
             ...     data = paddle.static.data(name="img", shape=[64, 784])
             ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             ...     b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             ...     hidden_w = paddle.matmul(x=data, y=w)
             ...     hidden_b = paddle.add(hidden_w, b)
-            >>> place = fluid.CPUPlace()
-            >>> exe = fluid.Executor(place)
+            >>> place = static.CPUPlace()
+            >>> exe = static.Executor(place)
             >>> exe.run(startup_prog)
 
             # The first usage: use `vars` to set the saved variables.
@@ -1104,19 +1104,19 @@ def load_vars(
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.fluid as fluid
+            >>> import paddle.static as static
 
             >>> paddle.enable_static()
-            >>> main_prog = fluid.Program()
-            >>> startup_prog = fluid.Program()
-            >>> with fluid.program_guard(main_prog, startup_prog):
+            >>> main_prog = static.Program()
+            >>> startup_prog = static.Program()
+            >>> with static.program_guard(main_prog, startup_prog):
             ...     data = paddle.static.data(name="img", shape=[64, 784])
             ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             ...     b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             ...     hidden_w = paddle.matmul(x=data, y=w)
             ...     hidden_b = paddle.add(hidden_w, b)
-            >>> place = fluid.CPUPlace()
-            >>> exe = fluid.Executor(place)
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
             >>> exe.run(startup_prog)
 
             # The first usage: using `vars` to specify the variables.
@@ -1746,12 +1746,11 @@ def get_program_persistable_vars(program):
 
             >>> import paddle
             >>> import paddle.static.io as io
-            >>> import paddle.fluid as fluid
             >>> paddle.enable_static()
             >>> data = paddle.static.data(name="img", shape=[64, 784])
             >>> w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             >>> b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
-            >>> list_para  = io.get_program_persistable_vars(  fluid.default_main_program() )
+            >>> list_para  = io.get_program_persistable_vars(  paddle.static.default_main_program() )
     """
     return list(filter(is_persistable, program.list_vars()))
 

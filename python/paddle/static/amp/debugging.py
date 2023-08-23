@@ -235,33 +235,32 @@ def collect_operator_stats(program=None, print_subblocks=False):
             ...         optimizer = paddle.static.amp.decorate(optimizer)
             ...         optimizer.minimize(loss)
             >>> paddle.static.amp.debugging.collect_operator_stats(main_program)
-
-        <------------------------------------------------ op list of all blocks ------------------------------------------------->
-        <------------------------------------------------------- op list -------------------------------------------------------->
-        <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-          adamw                                   |  0                |  0                |  4                |  0
-          cast                                    |  5                |  0                |  6                |  0
-          check_finite_and_unscale                |  0                |  0                |  1                |  0
-          conv2d                                  |  1                |  0                |  0                |  0
-          conv2d_grad                             |  1                |  0                |  0                |  0
-          elementwise_add                         |  2                |  0                |  0                |  0
-          elementwise_add_grad                    |  2                |  0                |  0                |  0
-          elementwise_mul                         |  0                |  0                |  1                |  0
-          elementwise_mul_grad                    |  0                |  0                |  1                |  0
-          fill_constant                           |  0                |  0                |  1                |  0
-          matmul_v2                               |  1                |  0                |  0                |  0
-          matmul_v2_grad                          |  1                |  0                |  0                |  0
-          memcpy                                  |  0                |  0                |  0                |  1
-          reduce_mean                             |  0                |  0                |  1                |  0
-          reduce_mean_grad                        |  0                |  0                |  1                |  0
-          relu                                    |  1                |  0                |  0                |  0
-          relu_grad                               |  1                |  0                |  0                |  0
-          reshape2                                |  0                |  0                |  1                |  0
-          reshape2_grad                           |  0                |  0                |  1                |  0
-          softmax                                 |  0                |  0                |  1                |  0
-          softmax_grad                            |  0                |  0                |  1                |  0
-          update_loss_scaling                     |  0                |  0                |  1                |  0
-        <----------------------------------------------------- op count: 22 ----------------------------------------------------->
+            <------------------------------------------------ op list of all blocks ------------------------------------------------->
+            <------------------------------------------------------- op list -------------------------------------------------------->
+            <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            adamw                                   |  0                |  0                |  4                |  0
+            cast                                    |  5                |  0                |  6                |  0
+            check_finite_and_unscale                |  0                |  0                |  1                |  0
+            conv2d                                  |  1                |  0                |  0                |  0
+            conv2d_grad                             |  1                |  0                |  0                |  0
+            elementwise_add                         |  2                |  0                |  0                |  0
+            elementwise_add_grad                    |  2                |  0                |  0                |  0
+            elementwise_mul                         |  0                |  0                |  1                |  0
+            elementwise_mul_grad                    |  0                |  0                |  1                |  0
+            fill_constant                           |  0                |  0                |  1                |  0
+            matmul_v2                               |  1                |  0                |  0                |  0
+            matmul_v2_grad                          |  1                |  0                |  0                |  0
+            memcpy                                  |  0                |  0                |  0                |  1
+            reduce_mean                             |  0                |  0                |  1                |  0
+            reduce_mean_grad                        |  0                |  0                |  1                |  0
+            relu                                    |  1                |  0                |  0                |  0
+            relu_grad                               |  1                |  0                |  0                |  0
+            reshape2                                |  0                |  0                |  1                |  0
+            reshape2_grad                           |  0                |  0                |  1                |  0
+            softmax                                 |  0                |  0                |  1                |  0
+            softmax_grad                            |  0                |  0                |  1                |  0
+            update_loss_scaling                     |  0                |  0                |  1                |  0
+            <----------------------------------------------------- op count: 22 ----------------------------------------------------->
     """
 
     def _convert_to_list(op_stats_unit_dict):
