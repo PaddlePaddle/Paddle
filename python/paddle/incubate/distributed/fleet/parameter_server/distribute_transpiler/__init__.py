@@ -28,7 +28,6 @@ from paddle.static import (
     Executor,
 )
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.optimizer import Optimizer
 
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,

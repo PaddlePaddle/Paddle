@@ -32,6 +32,7 @@ DLL_EXPORT int fast_where(Context* ctx,
                           T* out,
                           int64_t len);
 template <typename T, typename TID>
+
 DLL_EXPORT int fast_gather_nd(Context* ctx,
                               const T* x,
                               const TID* index,
@@ -55,6 +56,53 @@ static inline int fast_gather_nd(Context* ctx,
       vpi32_to_vpi64(xshape, xshape_i64.get()),
       std::vector<int64_t>(index_shape.begin(), index_shape.end()));
 }
+
+template <typename T, typename TID>
+DLL_EXPORT int take_along_axis(Context* ctx,
+                               const T* x,
+                               const TID* index,
+                               T* y,
+                               const std::vector<int64_t>& xshape,
+                               const std::vector<int64_t>& idxshape,
+                               int64_t axis);
+
+template <typename T>
+DLL_EXPORT int fast_layer_norm(Context* ctx,
+                               const T* x,
+                               T* y,
+                               int64_t m,
+                               int64_t n,
+                               float eps,
+                               const float* scale,
+                               const float* bias);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_sum(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_mean(Context* ctx,
+                                const T* x,
+                                T* y,
+                                const std::vector<int>& xshape,
+                                const std::vector<int>& rdims);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_max(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_min(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims);
 
 }  // namespace plugin
 }  // namespace api

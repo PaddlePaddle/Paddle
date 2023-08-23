@@ -70,39 +70,39 @@ class Adadelta(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
-            linear = paddle.nn.Linear(10, 10)
-            out = linear(inp)
-            loss = paddle.mean(out)
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
-            adadelta = paddle.optimizer.Adadelta(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
-            back = out.backward()
-            adadelta.step()
-            adadelta.clear_grad()
+            >>> inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
+            >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
+            >>> adadelta = paddle.optimizer.Adadelta(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+            >>> back = out.backward()
+            >>> adadelta.step()
+            >>> adadelta.clear_grad()
 
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            adadelta = paddle.optimizer.Adadelta(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1,
-                }],
-                weight_decay=0.01)
-            out.backward()
-            adadelta.step()
-            adadelta.clear_grad()
+            >>> # Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> adadelta = paddle.optimizer.Adadelta(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1,
+            ...     }],
+            ...     weight_decay=0.01)
+            >>> out.backward()
+            >>> adadelta.step()
+            >>> adadelta.clear_grad()
 
     """
 

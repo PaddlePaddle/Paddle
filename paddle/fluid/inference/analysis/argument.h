@@ -240,6 +240,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int64_t);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(trt_mark_output, TRTMarkOutput, bool);
+  DECL_ARGUMENT_FIELD(trt_output_tensor_names,
+                      TRTOutputTensorNames,
+                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
                       std::vector<std::string>);
@@ -267,6 +271,9 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_explicit_quantization,
+                      TensorRtUseExplicitQuantization,
+                      bool);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
