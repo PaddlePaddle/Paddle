@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle.fluid import Variable, core
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
 
-from ..fluid.variable_index import _setitem_impl_
+from ..fluid.variable_index import _setitem_impl_, _setitem_static
 
 __all__ = []
+
+
+def evaluate_flag(val) -> bool:
+    return str(val).lower() not in ('false', 'off', '0', 'none')
 
 
 @static_only
@@ -96,7 +102,7 @@ def data(name, shape, dtype=None, lod_level=0):
             shape[i] = -1
 
     if dtype:
-        return helper.create_global_variable(
+        out = helper.create_global_variable(
             name=name,
             shape=shape,
             dtype=dtype,
@@ -107,7 +113,7 @@ def data(name, shape, dtype=None, lod_level=0):
             need_check_feed=True,
         )
     else:
-        return helper.create_global_variable(
+        out = helper.create_global_variable(
             name=name,
             shape=shape,
             dtype=paddle.get_default_dtype(),
@@ -117,6 +123,22 @@ def data(name, shape, dtype=None, lod_level=0):
             is_data=True,
             need_check_feed=True,
         )
+
+    is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
+    if evaluate_flag(is_new_ir_mode):
+        helper = LayerHelper('data', **locals())
+        helper.append_op(
+            type='data',
+            inputs={},
+            outputs={'out': out},
+            attrs={
+                'index': 0,
+                'dtype': 0,
+                'place': 0,
+                'name': name,
+            },
+        )
+    return out
 
 
 class InputSpec:
@@ -367,5 +389,8 @@ def setitem(x, index, value):
        (1) a[Tensor([10,10])]=v -> setitem(a, (Tensor([10,10]),), v)
        (2) a[1] = v -> setitem(a, (1,), v)
     """
-
-    return _setitem_impl_(x, index, value)
+    if core.is_compiled_with_xpu():
+        # (NOTE): Currently, there is no index_put_xpu kernel.
+        return _setitem_impl_(x, index, value)
+    else:
+        return _setitem_static(x, index, value)

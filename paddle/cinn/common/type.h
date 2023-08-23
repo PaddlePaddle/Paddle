@@ -149,6 +149,8 @@ struct Type {
   //! Check if a dtype is supported in CINN yet.
   bool is_supported() const;
 
+  std::string to_string() const;
+
   friend std::ostream& operator<<(std::ostream& os, const Type& t);
 
   ~Type();

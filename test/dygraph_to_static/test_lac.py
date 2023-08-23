@@ -545,9 +545,9 @@ class TestLACModel(unittest.TestCase):
             train_loader = create_dataloader(reader, place)
 
             model = LexNet(args)
-            optimizer = fluid.optimizer.AdamOptimizer(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=args.base_learning_rate,
-                parameter_list=model.parameters(),
+                parameters=model.parameters(),
             )
             chunk_eval = ChunkEval(
                 int(math.ceil((args.num_labels - 1) / 2.0)), "IOB"
@@ -603,8 +603,12 @@ class TestLACModel(unittest.TestCase):
                 paddle.jit.save(
                     layer=model,
                     path=self.model_save_prefix,
-                    input_spec=[input_specs[0], input_specs[-1]],
+                    input_spec=input_specs,
                     output_spec=[crf_decode],
+                    input_names_after_prune=[
+                        input_specs[0].name,
+                        input_specs[-1].name,
+                    ],
                 )
             else:
                 paddle.save(
@@ -667,7 +671,7 @@ class TestLACModel(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,

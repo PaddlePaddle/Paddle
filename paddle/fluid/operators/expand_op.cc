@@ -29,7 +29,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto expand_times = ctx->Attrs().Get<std::vector<int>>("expand_times");
 
-    if (expand_times.size() == 0) {
+    if (expand_times.empty()) {
       expand_times = std::vector<int>(x_dims.size(), -1);
     }
 

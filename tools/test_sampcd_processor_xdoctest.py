@@ -144,6 +144,209 @@ class TestXdoctester(unittest.TestCase):
 
 
 class TestGetTestResults(unittest.TestCase):
+    def test_global_exec(self):
+        _clear_environ()
+
+        # test set_default_dtype
+        docstrings_to_test = {
+            'before_set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.set_default_dtype('float64')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'after_set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+            global_exec=r"\n".join(
+                [
+                    "import paddle",
+                    "paddle.device.set_device('cpu')",
+                ]
+            ),
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_set_default', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('set_default', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        # tr_2 is passed, because of multiprocessing
+        self.assertIn('after_set_default', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        # test new default global_exec
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_set_default', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('set_default', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_set_default', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        # test disable static
+        docstrings_to_test = {
+            'before_enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> print(paddle.in_dynamic_mode())
+                    True
+            """,
+            'enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> print(paddle.in_dynamic_mode())
+                    False
+            """,
+            'after_enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> print(paddle.in_dynamic_mode())
+                    True
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+            global_exec=r"\n".join(
+                [
+                    "import paddle",
+                    "paddle.device.set_device('cpu')",
+                ]
+            ),
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_enable_static', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('enable_static', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        # tr_2 is passed, because of multiprocessing
+        self.assertIn('after_enable_static', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        # test new default global_exec
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_enable_static', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('enable_static', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_enable_static', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
     def test_patch_xdoctest(self):
         # test patch tensor place
         _clear_environ()
@@ -579,7 +782,7 @@ class TestGetTestResults(unittest.TestCase):
 
         test_capacity = {'cpu'}
         doctester = Xdoctester(
-            style='freeform', target='codeblock', patch_float_precision=False
+            style='freeform', target='codeblock', patch_float_precision=None
         )
         doctester.prepare(test_capacity)
 
@@ -1614,6 +1817,256 @@ class TestGetTestResults(unittest.TestCase):
         self.assertFalse(tr_0.passed)
         self.assertTrue(tr_0.skipped)
         self.assertFalse(tr_0.failed)
+
+    def test_multiprocessing_xdoctester(self):
+        docstrings_to_test = {
+            'static_0': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import numpy as np
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> data = paddle.static.data(name='X', shape=[None, 2, 28, 28], dtype='float32')
+            """,
+            'static_1': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import numpy as np
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        tr_0, tr_1 = test_results
+
+        self.assertIn('static_0', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('static_1', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(use_multiprocessing=False)
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        tr_0, tr_1 = test_results
+
+        self.assertIn('static_0', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('static_1', tr_1.name)
+        self.assertFalse(tr_1.passed)
+        self.assertTrue(tr_1.failed)
+
+    def test_timeout(self):
+        docstrings_to_test = {
+            'timeout_false': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(0.1)
+            """,
+            'timeout_true': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(3)
+            """,
+            'timeout_false_with_skip_0': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +SKIP
+                    >>> import time
+                    >>> time.sleep(0.1)
+            """,
+            'timeout_false_with_skip_1': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(0.1)
+            """,
+            'timeout_true_with_skip_0': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +SKIP
+                    >>> import time
+                    >>> time.sleep(3)
+            """,
+            'timeout_true_with_skip_1': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(3)
+            """,
+            'timeout_more_codes': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(0.1)
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(3)
+
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 8)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7 = test_results
+
+        self.assertIn('timeout_false', tr_0.name)
+        self.assertTrue(tr_0.passed)
+        self.assertFalse(tr_0.timeout)
+
+        self.assertIn('timeout_true', tr_1.name)
+        self.assertFalse(tr_1.passed)
+        self.assertTrue(tr_1.timeout)
+
+        self.assertIn('timeout_false_with_skip_0', tr_2.name)
+        self.assertFalse(tr_2.passed)
+        self.assertFalse(tr_2.timeout)
+        self.assertTrue(tr_2.skipped)
+
+        self.assertIn('timeout_false_with_skip_1', tr_3.name)
+        self.assertFalse(tr_3.passed)
+        self.assertFalse(tr_3.timeout)
+        self.assertTrue(tr_3.skipped)
+
+        self.assertIn('timeout_true_with_skip_0', tr_4.name)
+        self.assertFalse(tr_4.passed)
+        self.assertFalse(tr_4.timeout)
+        self.assertTrue(tr_4.skipped)
+
+        self.assertIn('timeout_true_with_skip_1', tr_5.name)
+        self.assertFalse(tr_5.passed)
+        self.assertFalse(tr_5.timeout)
+        self.assertTrue(tr_5.skipped)
+
+        self.assertIn('timeout_more_codes', tr_6.name)
+        self.assertTrue(tr_6.passed)
+        self.assertFalse(tr_6.timeout)
+
+        self.assertIn('timeout_more_codes', tr_7.name)
+        self.assertFalse(tr_7.passed)
+        self.assertTrue(tr_7.timeout)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(use_multiprocessing=False)
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 8)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7 = test_results
+
+        self.assertIn('timeout_false', tr_0.name)
+        self.assertTrue(tr_0.passed)
+        self.assertFalse(tr_0.timeout)
+
+        self.assertIn('timeout_true', tr_1.name)
+        self.assertFalse(tr_1.passed)
+        self.assertTrue(tr_1.timeout)
+
+        self.assertIn('timeout_false_with_skip_0', tr_2.name)
+        self.assertFalse(tr_2.passed)
+        self.assertFalse(tr_2.timeout)
+        self.assertTrue(tr_2.skipped)
+
+        self.assertIn('timeout_false_with_skip_1', tr_3.name)
+        self.assertFalse(tr_3.passed)
+        self.assertFalse(tr_3.timeout)
+        self.assertTrue(tr_3.skipped)
+
+        self.assertIn('timeout_true_with_skip_0', tr_4.name)
+        self.assertFalse(tr_4.passed)
+        self.assertFalse(tr_4.timeout)
+        self.assertTrue(tr_4.skipped)
+
+        self.assertIn('timeout_true_with_skip_1', tr_5.name)
+        self.assertFalse(tr_5.passed)
+        self.assertFalse(tr_5.timeout)
+        self.assertTrue(tr_5.skipped)
+
+        self.assertIn('timeout_more_codes', tr_6.name)
+        self.assertTrue(tr_6.passed)
+        self.assertFalse(tr_6.timeout)
+
+        self.assertIn('timeout_more_codes', tr_7.name)
+        self.assertFalse(tr_7.passed)
+        self.assertTrue(tr_7.timeout)
 
 
 if __name__ == '__main__':

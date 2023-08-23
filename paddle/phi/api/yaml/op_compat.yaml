@@ -44,13 +44,19 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : adagrad_
+- op : adadelta_ (adadelta)
+  inputs :
+    {param : Param, grad: Grad, avg_squared_grad : AvgSquaredGrad, avg_squared_update : AvgSquaredUpdate, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    {param_out : ParamOut, moment_out : AvgSquaredGradOut, inf_norm_out : AvgSquaredUpdateOut, master_param_out : MasterParamOut}
+
+- op : adagrad_ (adagrad)
   inputs :
     { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
-- op : adam_
+- op : adam_ (adam)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -67,13 +73,13 @@
       tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
-- op : adamax_
+- op : adamax_ (adamax)
   inputs :
     {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
 
-- op : adamw_
+- op : adamw_ (adamw)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -423,6 +429,12 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : c_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -445,7 +457,7 @@
   outputs :
     out : Out
 
-- op : check_finite_and_unscale_
+- op : check_finite_and_unscale_(check_finite_and_unscale)
   inputs :
     {x : X, scale: Scale}
   outputs :
@@ -1224,6 +1236,10 @@
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
 - op : grad_add
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -1454,7 +1470,7 @@
   outputs :
     out : Out
 
-- op : lamb_
+- op : lamb_ (lamb)
   inputs :
     {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
   outputs :
@@ -1859,7 +1875,7 @@
   outputs :
     {out : Out, indices : Indices}
 
-- op : momentum_
+- op : momentum_ (momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -2149,6 +2165,11 @@
   attrs :
     {axis : Axis, reduce : Reduce}
 
+- op : pylayer
+  backward : pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : qr
   backward : qr_grad
   inputs :
@@ -2264,7 +2285,7 @@
       support_tensor : true
   manual_signature : [reverse]
 
-- op : rmsprop_
+- op : rmsprop_ (rmsprop)
   inputs :
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
   outputs :
@@ -2402,7 +2423,7 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
-- op : sgd_
+- op : sgd_ (sgd)
   inputs :
     {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
   outputs :
@@ -2522,7 +2543,7 @@
     softmax : GetSoftmaxExpectedKernelType
     softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
@@ -2708,7 +2729,7 @@
   inputs :
     {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
   outputs :
-    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
+    {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
@@ -2885,6 +2906,8 @@
     {x : X, indices: Indices}
   outputs :
     out : Out
+  attrs :
+   padding : paddings
   int_array :
     output_size:
       data_type : int
@@ -2919,7 +2942,7 @@
   outputs :
     out : Y
 
-- op : update_loss_scaling_
+- op : update_loss_scaling_(update_loss_scaling)
   inputs :
     {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
   outputs :
@@ -2972,6 +2995,12 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
+- op: c_broadcast
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: channel_shuffle
   inputs:
     {x: X}
@@ -3002,6 +3031,12 @@
     {out: Out, pivots : Pivots, infos : Infos}
   attrs:
     pivot : pivots
+
+- op: memcpy_d2h
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op: reindex_graph (graph_reindex)
   inputs :

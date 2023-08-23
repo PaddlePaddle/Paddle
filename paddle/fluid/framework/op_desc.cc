@@ -350,9 +350,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
         names.begin(),
         names.end(),
         retv.begin(),
-        std::bind(std::mem_fn(&CompileTimeInferShapeContext::GetVarType),
-                  this,
-                  std::placeholders::_1));
+        std::bind(
+            std::mem_fn(&CompileTimeInferShapeContext::GetVarType),  // NOLINT
+            this,
+            std::placeholders::_1));
     return retv;
   }
 
