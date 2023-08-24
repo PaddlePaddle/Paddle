@@ -46,11 +46,7 @@ class CommContextManager {
 
   bool Has(const std::string& unique_comm_key) const;
 
-  static void SetDeviceId(int dev_id) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    SetCUDADeviceId(dev_id);
-#endif
-  }
+  static void SetDeviceId(int dev_id);
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
