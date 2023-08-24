@@ -68,7 +68,7 @@ class TestReshardRToS:
                 else out_shape[self._shard] // 2 + 1
             )
 
-        assert np.equal(out.shape, out_shape).all()
+        assert np.equal(out.numpy().shape, out_shape).all()
 
 
 if __name__ == '__main__':

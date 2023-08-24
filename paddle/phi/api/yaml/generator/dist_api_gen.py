@@ -69,7 +69,7 @@ INPLACE_API_OUT_CREATION_TEMPLATE = """
 """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output);
-    auto dense_out = dist_out->mutable_value();
+    auto dense_out = const_cast<phi::DenseTensor*>(&dist_out->value());
 """
 VECTOR_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(x_grad);
@@ -80,7 +80,7 @@ VECTOR_SINGLE_OUT_CREATION_TEMPLATE = """
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = SetKernelDistOutput({});
-    auto dense_out_{} = dist_out_{}->mutable_value();
+    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
 """
 MULTI_VECTOR_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{name} = SetKernelDistOutput(x_grad);
@@ -95,7 +95,7 @@ VECTOR_OUT_CREATION_TEMPLATE = """
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{} = {}({}, {});
-    auto dense_out_{} = dist_out_{}->mutable_value();
+    auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
 """
 TUPLE_OUT_CREATION_TEMPLATE = """
 """
@@ -151,7 +151,7 @@ INPUT_RESHARD_TEMPLATE = """
 # 5. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{} = PrepareDataForDistTensor({}, GetKernelInputArgDef(kernel.InputAt({}), kernel_backend), {}, kernel_result.is_stride_kernel);
-    auto input_{} = dist_input_{}->mutable_value();
+    auto input_{} = &dist_input_{}->value();
 """
 VECTOR_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
@@ -167,7 +167,7 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
 """
 INFER_META_SINGLE_INPUT_TEMPLATE = """
     auto dist_input_{} = {}.impl();
-    auto input_{} = static_cast<phi::distributed::DistTensor*>(dist_input_{}.get())->mutable_value();
+    auto input_{} = &(static_cast<phi::distributed::DistTensor*>(dist_input_{}.get())->value());
 """
 INFER_META_OPTIONAL_INPUT_TEMPLATE = """
     paddle::optional<phi::TensorBase> input_{} = {} ? paddle::optional<phi::TensorBase>(*{}->impl()) : paddle::none;
