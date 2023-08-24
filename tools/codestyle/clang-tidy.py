@@ -127,14 +127,17 @@ def skip_check_file(database, build_path):
     skip_file_list.append(".cu")
     skip_file_list.append(os.path.join(os.getcwd(), build_path))
     skip_file_list += analysis_gitignore(os.getcwd())
+    res_list = []
     for entry in database:
+        write_in = True
         for ignore_file in skip_file_list:
             if ignore_file in entry["file"]:
-                try:
-                    database.remove(entry)
-                except ValueError:
-                    pass
-    return database
+                write_in = False
+                break
+        if write_in:
+            res_list.append(entry)
+
+    return res_list
 
 
 def get_tidy_invocation(
