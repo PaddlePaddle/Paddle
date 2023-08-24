@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/phi/infermeta/distributed/binary.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 
 namespace phi {
 namespace distributed {

@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/infermeta/distributed/binary.h"
+#include "paddle/phi/infermeta/spmd_rules/binary.h"
 
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
-#include "paddle/phi/infermeta/distributed/utils.h"
+#include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi {
 namespace distributed {
@@ -218,5 +218,3 @@ SpmdInfo MatmulInferSpmd(const MetaTensor& x,
 
 }  // namespace distributed
 }  // namespace phi
-
-PD_REGISTER_SPMD_FORWARD_RULE(matmul, phi::distributed::MatmulInferSpmd);

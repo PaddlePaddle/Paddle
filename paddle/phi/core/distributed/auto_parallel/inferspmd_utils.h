@@ -45,7 +45,7 @@ class InferSpmdContext {
   const MetaTensor& InputAt(size_t idx) const;
 
   template <typename AttrType>
-  const AttrType& AttrAt(size_t idx) const;
+  AttrType AttrAt(size_t idx) const;
 
   const Attribute& AttrAt(size_t idx) const;
 
@@ -147,7 +147,7 @@ class SpmdRuleFactory {
 
   bool ContainsSpmdRule(const std::string& kernel_name) const;
 
-  void InsertSpmdRule(std::string kernel_name, SpmdRule rule);
+  int InsertSpmdRule(std::string kernel_name, SpmdRule rule);
 
   const SpmdRule& GetSpmdRule(const std::string& kernel_name) const;
 
@@ -159,38 +159,10 @@ class SpmdRuleFactory {
   DISABLE_COPY_AND_ASSIGN(SpmdRuleFactory);
 };
 
-struct InferSpmdFnRegistrar {
-  InferSpmdFnRegistrar(const char* kernel_name, InferSpmdFn forward_fn) {
-    SpmdRuleFactory::Instance().InsertSpmdRule(kernel_name,
-                                               SpmdRule(forward_fn));
-  }
-
-  InferSpmdFnRegistrar(const char* kernel_name,
-                       InferSpmdFn forward_fn,
-                       InferSpmdFn backward_fn) {
-    SpmdRuleFactory::Instance().InsertSpmdRule(
-        kernel_name, SpmdRule(forward_fn, backward_fn));
-  }
-};
-
-#define PD_REGISTER_SPMD_FORWARD_RULE(kernel_name,                          \
-                                      variadic_infer_spmd_forward_fn)       \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
-      PD_REGISTER_infer_spmd_fn_ns_check_##kernel_name,                     \
-      "PD_REGISTER_SPMD_FORWARD_RULE must be called in global namespace."); \
-  static const ::phi::distributed::InferSpmdFnRegistrar                     \
-      __registrar_infer_spmd_fn_for_##kernel_name(                          \
-          #kernel_name, PD_INFER_SPMD(variadic_infer_spmd_forward_fn))
-
-#define PD_REGISTER_SPMD_RULE(kernel_name,                          \
-                              variadic_infer_spmd_forward_fn,       \
-                              variadic_infer_spmd_backward_fn)      \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
-      PD_REGISTER_infer_spmd_fn_ns_check_##kernel_name,             \
-      "PD_REGISTER_SPMD_RULE must be called in global namespace."); \
-  static const ::phi::distributed::InferSpmdFnRegistrar             \
-      __registrar_infer_spmd_fn_for_##kernel_name(                  \
-          #kernel_name, PD_INFER_SPMD(variadic_infer_spmd_forward_fn))
+#define PD_REGISTER_SPMD_RULE(kernel_name, ...)                       \
+  UNUSED static int ___registrar_spmd_rule_for_##kernel_name =        \
+      ::phi::distributed::SpmdRuleFactory::Instance().InsertSpmdRule( \
+          #kernel_name, ::phi::distributed::SpmdRule(__VA_ARGS__));
 
 }  // namespace distributed
 }  // namespace phi

@@ -16,6 +16,7 @@
 #include <pybind11/stl.h>
 
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/phi/core/device_context.h"
@@ -24,6 +25,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/pybind.h"
 
@@ -345,34 +347,43 @@ void BindAutoParallel(py::module *m) {
       .def("infer_forward",
            [](const phi::distributed::SpmdRule &self,
               const std::vector<DistTensorSpec> &input_specs,
-              const phi::AttributeMap &attrs) {
+              const paddle::framework::AttributeMap &attrs) {
              phi::distributed::InferSpmdContext ctx;
+             std::vector<phi::distributed::DistTensor> input_tensors;
              for (auto &spec : input_specs) {
-               auto input = phi::distributed::DistTensor(
-                   phi::make_ddim(spec.shape()), spec.dist_attr());
-               ctx.EmplaceBackInput(phi::MetaTensor(input));
+               input_tensors.emplace_back(phi::distributed::DistTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             for (auto &tensor : input_tensors) {
+               ctx.EmplaceBackInput(phi::MetaTensor(tensor));
              }
              // TODO(chenweihang): ensure element order is same as function's
-             // argument order
+             // argument order later, if `paddle::framework::AttributeMap`
+             // is unnecessary, recommend to use vector directly
              for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(attr.second);
+               ctx.EmplaceBackAttr(
+                   paddle::framework::TransFluidAttributeToPhiAttribute(
+                       attr.second, attr.first));
              }
              return self.InferForward(ctx);
            })
       .def("infer_backward",
            [](const phi::distributed::SpmdRule &self,
               const std::vector<DistTensorSpec> &input_specs,
-              const phi::AttributeMap &attrs) {
+              const paddle::framework::AttributeMap &attrs) {
              phi::distributed::InferSpmdContext ctx;
+             std::vector<phi::distributed::DistTensor> input_tensors;
              for (auto &spec : input_specs) {
-               auto input = phi::distributed::DistTensor(
-                   phi::make_ddim(spec.shape()), spec.dist_attr());
-               ctx.EmplaceBackInput(phi::MetaTensor(input));
+               input_tensors.emplace_back(phi::distributed::DistTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
              }
-             // TODO(chenweihang): ensure element order is same as function's
-             // argument order
+             for (auto &tensor : input_tensors) {
+               ctx.EmplaceBackInput(phi::MetaTensor(tensor));
+             }
              for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(attr.second);
+               ctx.EmplaceBackAttr(
+                   paddle::framework::TransFluidAttributeToPhiAttribute(
+                       attr.second, attr.first));
              }
              return self.InferBackward(ctx);
            });

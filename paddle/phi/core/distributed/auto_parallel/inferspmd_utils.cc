@@ -30,22 +30,38 @@ const MetaTensor& InferSpmdContext::InputAt(size_t idx) const {
 }
 
 template <typename AttrType>
-const AttrType& InferSpmdContext::AttrAt(size_t idx) const {
+AttrType InferSpmdContext::AttrAt(size_t idx) const {
   try {
     return paddle::get<AttrType>(attrs_.at(idx));
   } catch (paddle::bad_variant_access const& e) {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Attribute cast error in InferSpmd Context, the expected attribute "
-        "type is `%s`.",
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `%s`.",
+        attrs_.at(idx).type().name(),
         std::type_index(typeid(AttrType)).name()));
+  }
+}
+
+template <>
+bool InferSpmdContext::AttrAt<bool>(size_t idx) const {
+  try {
+    auto attr = attrs_.at(idx);
+    if (attr.type() == typeid(int)) {
+      return static_cast<bool>(paddle::get<int>(attr));
+    } else {
+      return paddle::get<bool>(attr);
+    }
+  } catch (paddle::bad_variant_access const& e) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Attribute cast error in InferSpmd Context, the input attr type is "
+        "`%s`, but the expected attribute type is `bool`.",
+        attrs_.at(idx).type().name()));
   }
 }
 
 const Attribute& InferSpmdContext::AttrAt(size_t idx) const {
   return attrs_.at(idx);
 }
-
-template const bool& InferSpmdContext::AttrAt(size_t idx) const;
 
 SpmdRuleFactory& SpmdRuleFactory::Instance() {
   static SpmdRuleFactory g_spmd_rule_map;
@@ -56,13 +72,14 @@ bool SpmdRuleFactory::ContainsSpmdRule(const std::string& kernel_name) const {
   return spmd_rule_map_.count(kernel_name) > 0;
 }
 
-void SpmdRuleFactory::InsertSpmdRule(std::string kernel_name, SpmdRule rule) {
+int SpmdRuleFactory::InsertSpmdRule(std::string kernel_name, SpmdRule rule) {
   PADDLE_ENFORCE_NE(
       ContainsSpmdRule(kernel_name),
       true,
       phi::errors::AlreadyExists(
           "`%s` Kernel's Spmd rules has been registered.", kernel_name));
   spmd_rule_map_.insert({std::move(kernel_name), std::move(rule)});
+  return 0;
 }
 
 const SpmdRule& SpmdRuleFactory::GetSpmdRule(

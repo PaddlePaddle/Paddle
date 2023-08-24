@@ -2,7 +2,7 @@ add_subdirectory(strings)
 add_subdirectory(sparse)
 
 if(WITH_DISTRIBUTE)
-  add_subdirectory(distributed)
+  add_subdirectory(spmd_rules)
 endif()
 
 collect_srcs(
