@@ -46,9 +46,9 @@ void FTRLOpKernel(const Context& ctx,
                   DenseTensor* squared_accumulator_out,
                   DenseTensor* linear_accumulator_out,
                   DenseTensor* grad_out) {
-  static_cast<T> l1 = static_cast<T>(l1) + static_cast<T>(1e-10);
-  static_cast<T> l2 = static_cast<T>(l2) + static_cast<T>(1e-10);
-  lr_power = static_cast<T>(lr_power);
+  T l1_t = static_cast<T>(l1) + static_cast<T>(1e-10);
+  T l2_t = static_cast<T>(l2) + static_cast<T>(1e-10);
+  T lr_power_t = static_cast<T>(lr_power);
   auto g = EigenVector<T>::Flatten(grad);
   auto p = EigenVector<T>::Flatten(param);
   auto sq_accum = EigenVector<T>::Flatten(squared_accumulator);
@@ -63,33 +63,33 @@ void FTRLOpKernel(const Context& ctx,
   Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
   auto new_accum = sq_accum + g * g;
-  // Special case for lr_power = -0.5
-  if (lr_power == static_cast<T>(-0.5)) {
+  // Special case for lr_power_t = -0.5
+  if (lr_power_t == static_cast<T>(-0.5)) {
     l_acc_out.device(place) =
         lin_accum + g -
         ((new_accum.sqrt() - sq_accum.sqrt()) / lr.broadcast(grad_dsize)) * p;
   } else {
     l_acc_out.device(place) =
         lin_accum + g -
-        ((new_accum.pow(-lr_power) - sq_accum.pow(-lr_power)) /
+        ((new_accum.pow(-lr_power_t) - sq_accum.pow(-lr_power_t)) /
          lr.broadcast(grad_dsize)) *
             p;
   }
 
-  x = (l_acc_out.constant(l1) * l_acc_out.sign() - l_acc_out);
-  if (lr_power == static_cast<T>(-0.5)) {
+  x = (l_acc_out.constant(l1_t) * l_acc_out.sign() - l_acc_out);
+  if (lr_power_t == static_cast<T>(-0.5)) {
     auto y = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
-             l_acc_out.constant(static_cast<T>(2) * l2);
+             l_acc_out.constant(static_cast<T>(2) * l2_t);
     auto pre_shrink = x / y;
     p_out.device(place) =
-        (l_acc_out.abs() > l_acc_out.constant(l1))
+        (l_acc_out.abs() > l_acc_out.constant(l1_t))
             .select(pre_shrink, p.constant(static_cast<T>(0)));
   } else {
-    auto y = (new_accum.pow(-lr_power) / lr.broadcast(grad_dsize)) +
-             l_acc_out.constant(static_cast<T>(2) * l2);
+    auto y = (new_accum.pow(-lr_power_t) / lr.broadcast(grad_dsize)) +
+             l_acc_out.constant(static_cast<T>(2) * l2_t);
     auto pre_shrink = x / y;
     p_out.device(place) =
-        (l_acc_out.abs() > l_acc_out.constant(l1))
+        (l_acc_out.abs() > l_acc_out.constant(l1_t))
             .select(pre_shrink, p.constant(static_cast<T>(0)));
   }
   s_acc_out.device(place) = sq_accum + g * g;
