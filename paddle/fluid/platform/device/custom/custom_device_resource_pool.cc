@@ -27,9 +27,10 @@ CustomDeviceStreamResourcePool::CustomDeviceStreamResourcePool(
       platform::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
 
-  int dev_cnt = phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
-  pool_.reserve(dev_cnt);
-  for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
+  auto selected_devices =
+      phi::DeviceManager::GetSelectedDeviceList(place.GetDeviceType());
+  pool_.reserve(selected_devices.size());
+  for (auto& dev_idx : selected_devices) {
     auto creator = [place, dev_idx, this] {
       auto place_ = phi::CustomPlace(place.GetDeviceType(), dev_idx);
       phi::DeviceManager::SetDevice(place_);
@@ -82,12 +83,11 @@ CustomDeviceStreamResourcePool& CustomDeviceStreamResourcePool::Instance(
   if (pool.find(place.GetDeviceType()) == pool.end()) {
     pool.insert({place.GetDeviceType(),
                  std::vector<CustomDeviceStreamResourcePool*>()});
-    for (size_t i = 0;
-         i < phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
-         ++i) {
+    for (auto& dev_id :
+         phi::DeviceManager::GetSelectedDeviceList(place.GetDeviceType())) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceStreamResourcePool(
-              paddle::platform::CustomPlace(place.GetDeviceType(), i)));
+              paddle::platform::CustomPlace(place.GetDeviceType(), dev_id)));
     }
   }
   PADDLE_ENFORCE_LT(
@@ -125,9 +125,10 @@ CustomDeviceEventResourcePool::CustomDeviceEventResourcePool(
       platform::errors::PreconditionNotMet(
           "Required device shall be CustomPlace, but received %d. ", place));
 
-  int dev_cnt = phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
-  pool_.reserve(dev_cnt);
-  for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
+  auto selected_devices =
+      phi::DeviceManager::GetSelectedDeviceList(place.GetDeviceType());
+  pool_.reserve(selected_devices.size());
+  for (auto& dev_idx : selected_devices) {
     auto creator = [place, dev_idx, this] {
       auto place_ = phi::CustomPlace(place.GetDeviceType(), dev_idx);
       phi::DeviceManager::SetDevice(place_);
@@ -180,12 +181,11 @@ CustomDeviceEventResourcePool& CustomDeviceEventResourcePool::Instance(
   if (pool.find(place.GetDeviceType()) == pool.end()) {
     pool.insert(
         {place.GetDeviceType(), std::vector<CustomDeviceEventResourcePool*>()});
-    for (size_t i = 0;
-         i < phi::DeviceManager::GetDeviceCount(place.GetDeviceType());
-         ++i) {
+    for (auto& dev_id :
+         phi::DeviceManager::GetSelectedDeviceList(place.GetDeviceType())) {
       pool[place.GetDeviceType()].emplace_back(
           new CustomDeviceEventResourcePool(
-              paddle::platform::CustomPlace(place.GetDeviceType(), i)));
+              paddle::platform::CustomPlace(place.GetDeviceType(), dev_id)));
     }
   }
   PADDLE_ENFORCE_LT(

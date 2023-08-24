@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
@@ -58,7 +59,7 @@ PyTypeObject *g_ir_opresult_pytype = nullptr;
 void BindOpsAPI(pybind11::module *module);
 
 void BindProgram(py::module *m) {
-  py::class_<Program> program(*m, "Program", R"DOC(
+  py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
     computational graphs and weights. The Program has a main block that stores the computational
     graphs.
@@ -103,18 +104,23 @@ void BindProgram(py::module *m) {
           "__init__",
           [](Program &self) { new (&self) Program(ir::IrContext::Instance()); })
       .def("__str__",
-           [](Program &self) {
+           [](const std::shared_ptr<Program> &self) {
              std::ostringstream print_stream;
-             self.Print(print_stream);
+             self->Print(print_stream);
              return print_stream.str();
            })
-      .def("parameters_num", &Program::parameters_num)
-      .def("block",
-           py::overload_cast<>(&Program::block),
-           return_value_policy::reference)
-      .def("block",
-           py::overload_cast<>(&Program::block, py::const_),
-           return_value_policy::reference);
+      .def("parameters_num",
+           [](const std::shared_ptr<Program> &self) {
+             return self->parameters_num();
+           })
+      .def(
+          "block",
+          [](std::shared_ptr<Program> self) { return self->block(); },
+          return_value_policy::reference)
+      .def(
+          "block",
+          [](const std::shared_ptr<Program> &self) { return self->block(); },
+          return_value_policy::reference);
 }
 
 void BindBlock(py::module *m) {
@@ -395,7 +401,14 @@ void BindUtils(pybind11::module *m) {
          []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
-  m->def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram, R"DOC(
+  m->def(
+      "translate_to_new_ir",
+      [](const ::paddle::framework::ProgramDesc &legacy_program) {
+        std::shared_ptr<Program> ret =
+            std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
+        return ret;
+      },
+      R"DOC(
         Convert Fluid Program to New IR Program.
 
         Args:
