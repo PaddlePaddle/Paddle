@@ -31,11 +31,7 @@ from paddle.fluid.libpaddle.ir import OpResult
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import (
-    RETURN_NO_VALUE_MAGIC_NUM,
-    backend_guard,
-    construct_grad_names,
-)
+from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
 __all__ = []
 
@@ -68,7 +64,7 @@ class NestSequence:
     def _get_var_ids(self):
         var_ids = []
         for idx, var in enumerate(self.__input_list):
-            if isinstance(var, (framework.Variable, core.eager.Tensor)):
+            if isinstance(var, (OpResult, core.eager.Tensor)):
                 var_ids.append(idx)
 
         return var_ids
@@ -190,7 +186,7 @@ class PartialProgramLayer:
         # Set default mode to train
         self.training = True
         self._infer_info = ProgramInfo()
-        self._forward_end_index_map = {}
+        self._program_extra_info = {}
 
         amp_dtype, custom_white_list, custom_black_list = None, None, None
         tracer = framework._dygraph_tracer()
@@ -221,7 +217,7 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
 
-        self._sync_lr_value_with_scheduler()
+        # self._sync_lr_value_with_scheduler()
 
         _legacy_C_ops.run_program(
             self._valid_vars(in_vars),
@@ -232,7 +228,7 @@ class PartialProgramLayer:
             ),
             self._double_grads,
             self._cuda_graph_vec,
-            *attrs
+            *attrs,
         )
         self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
@@ -337,7 +333,6 @@ class PartialProgramLayer:
         whole_program = self._train_program
         forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
-
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
         )
@@ -449,7 +444,19 @@ class PartialProgramLayer:
         return paddle.utils._hash_with_id(self._infer_pure_fp16_program, self)
 
     def get_forward_end_op_idx(self, program):
-        return self._forward_end_index_map[
+        return self._program_extra_info[
+            paddle.utils._hash_with_id(program, self)
+        ]['forward_end_op_idx']
+
+    def get_program_extra(self, program):
+        if (
+            paddle.utils._hash_with_id(program, self)
+            not in self._program_extra_info
+        ):
+            self._program_extra_info[
+                paddle.utils._hash_with_id(program, self)
+            ] = {}
+        return self._program_extra_info[
             paddle.utils._hash_with_id(program, self)
         ]
 
@@ -628,7 +635,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
-        # program = main_program.clone(for_test=False)
+        program = main_program
         # if self._hooker:
         # program = self._hooker.before_append_backward(program)
         targets = list(
@@ -637,6 +644,7 @@ class PartialProgramLayer:
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
+        forward_end_idx = len(program.block().ops)
         if targets:
             with backend_guard(self._backend):
                 check_type(
@@ -645,40 +653,35 @@ class PartialProgramLayer:
                     (OpResult, list, tuple),
                     'paddle.static.gradients',
                 )
-                with ir_static.program_guard(main_program, None):
-                    grad_info_map = grad(
-                        inputs=inputs, outputs=targets, grad_outputs=targets[0]
+                with ir_static.program_guard(program, None):
+                    grad_info_map = grad(inputs=inputs, outputs=targets)
+
+                forward_outputs_grads = []
+                for i in range(len(self._outputs.tolist())):
+                    opres = (
+                        program.block().ops[forward_end_idx + i].results()[0]
                     )
-                breakpoint()
-                x_vars = [
-                    program.block(0).var(var.name)
-                    for var in self._inputs
-                    if isinstance(var, framework.Variable)
-                ]
-                param_vars = [
-                    program.block(0).var(param.name) for param in self._params
-                ]
-                out_vars = [
-                    program.block(0).var(var.name)
-                    for var in self._outputs
-                    if isinstance(var, framework.Variable)
-                ]
+                    forward_outputs_grads.append(opres)
 
-                self._grad_var_names = construct_grad_names(
-                    grad_info_map, x_vars, param_vars, out_vars
-                )
+            # TODO: add later.
+            # if self._hooker:
+            # program, start_idx = self._hooker.after_append_backward(
+            # program, start_idx
+            # )
 
-            if self._hooker:
-                program, start_idx = self._hooker.after_append_backward(
-                    program, start_idx
-                )
-            self.prepare_gradient_aggregation(
-                start_idx + 1, main_program, program
-            )
+            # TODO: add later
+            # self.prepare_gradient_aggregation(
+            # start_idx + 1, main_program, program
+            # )
 
-        self._forward_end_index_map[
-            paddle.utils._hash_with_id(program, self)
-        ] = start_idx - len(self._outputs.tolist())
+        print("MainProgram after append backward: ", program)
+        hash_id = paddle.utils._hash_with_id(program, self)
+        extra_info = self._program_extra_info.get(hash_id, {})
+        extra_info['forward_end_op_idx'] = forward_end_idx
+        extra_info['forward_inputs_grads'] = grad_info_map
+        extra_info['forward_outputs_grads'] = forward_outputs_grads
+        self._program_extra_info[hash_id] = extra_info
+
         return program
 
     def _prune_unused_params(self, program):
@@ -721,14 +724,20 @@ class PartialProgramLayer:
     def _prepare_attributes(self):
         attrs = [
             'forward_global_block',
-            self.forward_program.desc.block(0),
+            self.forward_program.block(),
             'backward_global_block',
-            self.backward_program.desc.block(0),
+            self.backward_program.block(),
             'is_test',
             not self.training,
             'program_id',
             self.program_id,
         ]
+
+        for key, val in self.get_program_extra(self.forward_program)[
+            'program_attr'
+        ].items():
+            attrs.append(key)
+            attrs.append(val)
 
         if self.training:
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
@@ -772,40 +781,67 @@ class PartialProgramLayer:
     def _get_forward_backward_program_form(
         self, whole_program, forward_end_op_index
     ):
+        print("WholeProgram:", whole_program)
+        print("forward_end_op_index:", forward_end_op_index)
         # NOTE(dev): We apply build_strategy for backward firstly to
         # avoid skipping more gc variables.
+        forward_inputs_grads = self.get_program_extra(whole_program)[
+            'forward_inputs_grads'
+        ]
+        forward_inputs = self._inputs.tolist()
+        forward_outputs = self._outputs.tolist()
+        forward_outputs_grads = self.get_program_extra(whole_program)[
+            'forward_outputs_grads'
+        ]
         backward_start_op_index = forward_end_op_index + len(
             self._outputs.var_ids
         )
-        backward_end_op_index = whole_program.desc.block(0).op_size()
+        backward_end_op_index = len(whole_program.block().ops)
         # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
         # they will be shared in scope and used by optimizer.
-        backward_skip_vars = self._parse_skip_gc_vars(
-            whole_program
-        ) + self._grad_var_names.get('param', [])
-        backward_builded_program = add_build_strategy_for(
-            whole_program,
-            backward_start_op_index,
-            backward_end_op_index,
-            self._build_strategy,
-            backward_skip_vars,
+
+        # TODO(xiongkun): consider cinn later.
+        # backward_skip_vars = self._parse_skip_gc_vars(
+        # whole_program
+        # ) + self._grad_var_names.get('param', [])
+
+        print(whole_program)
+        print("=============")
+        print(forward_inputs)
+        print(forward_outputs)
+        print(forward_inputs_grads)
+        print(forward_outputs_grads)
+        print("=============")
+        for op in whole_program.block().ops:
+            print(f"results: {op.name()}", op.results())
+
+        print("start assert ...")
+        assert whole_program.block().ops[0].results()[0] == forward_inputs[0]
+        assert whole_program.block().ops[1].results()[0] == forward_outputs[0]
+        assert (
+            whole_program.block().ops[2].results()[0]
+            == forward_outputs_grads[0]
+        )
+        assert (
+            whole_program.block().ops[3].results()[0] == forward_inputs_grads[0]
         )
 
-        forward_skip_vars = self._parse_skip_gc_vars(
-            whole_program, backward_builded_program
-        )
-        forward_builded_program = add_build_strategy_for(
-            whole_program,
-            0,
-            forward_end_op_index,
-            self._build_strategy,
-            forward_skip_vars,
-        )
+        print("inputs is ok ...")
 
-        self._apply_inplace_pass(
-            forward_builded_program, backward_builded_program
+        (
+            forward_program,
+            backward_program,
+        ), program_attr = paddle.fluid.libpaddle.ir.program_split(
+            whole_program,
+            forward_inputs,
+            forward_outputs,
+            forward_inputs_grads,
+            forward_outputs_grads,
+            [0, forward_end_op_index],
+            [backward_start_op_index, backward_end_op_index],
         )
-        return [forward_builded_program, backward_builded_program]
+        self.get_program_extra(forward_program)["program_attr"] = program_attr
+        return [forward_program, backward_program]
 
     def _apply_inplace_pass(self, forward_program, backward_program):
         attr_types = {
@@ -896,7 +932,6 @@ class PartialProgramLayer:
                 var = None
                 var = core.eager.Tensor(
                     value=value,
-                    name=self._inputs[i].desc.name(),
                     persistable=False,
                     place=expected_place,
                     zero_copy=True,
@@ -912,7 +947,6 @@ class PartialProgramLayer:
                     var.stop_gradient = True
                 else:
                     var = value
-                var.name = self._inputs[i].desc.name()
             else:
                 continue
             input_vars.append(var)
@@ -922,26 +956,33 @@ class PartialProgramLayer:
 
         def create_out(var_id):
             var = self._outputs[var_id]
-            assert isinstance(var, framework.Variable)
-            var_desc = var.desc
+            assert isinstance(var, OpResult)
 
-            if var_desc.name() in out_tensor_map:
-                return out_tensor_map[var_desc.name()]
+            if id(var) in out_tensor_map:
+                return out_tensor_map[id(var)]
 
+            if var.is_dense_tensor_type():
+                tensor_type = paddle.dtype(7)  # LOD TENSOR
+            else:
+                tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
+
+            # TODO(xiongkun): more elegent way to do it.
+            ir_dtype_2_tensor_dtype = {
+                10: paddle.dtype(5),
+            }
             out = core.eager.Tensor(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
+                ir_dtype_2_tensor_dtype[int(var.dtype)],
+                var.shape,
+                "",
+                tensor_type,
                 False,
             )
             out.stop_gradient = var.stop_gradient
-            out_tensor_map[var_desc.name()] = out
+            out_tensor_map[id(var)] = out
             return out
 
         # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))
-
         return input_vars, out_vars
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
@@ -1096,7 +1137,7 @@ def partial_program_from(concrete_program, from_method=False):
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
-        **concrete_program.kwargs
+        **concrete_program.kwargs,
     )
 
 
@@ -1104,26 +1145,15 @@ def partial_program_from(concrete_program, from_method=False):
 def add_build_strategy_for(
     program, start_op_index, end_op_index, build_strategy=None, skip_vars=None
 ):
+    print("Cloneing Program: ")
+    print(paddle.fluid.libpaddle.ir.program_clone(program))
+
+    paddle.fluid.libpaddle.ir.program_split(
+        program,
+    )
     if start_op_index < end_op_index:
-        compiled_program = paddle.static.CompiledProgram(
-            core.Graph(program.desc, start_op_index, end_op_index),
-            build_strategy=build_strategy,
-        )
-        if skip_vars:
-            # TODO(Aurelius84): Need to unify name with C++, such as kSkipVarNames.
-            compiled_program._graph.set("skip_gc_vars", set(skip_vars))
-        compiled_program._compile(
-            core.Scope(), framework._current_expected_place()
-        )
-        ir_graph = framework.IrGraph(compiled_program._graph)
-        builded_program = ir_graph.to_program()
-        if hasattr(compiled_program._program, 'lr_scheduler'):
-            builded_program.lr_scheduler = (
-                compiled_program._program.lr_scheduler
-            )
+        pass
     else:
         # can't just create a new program, we need copy the vardesc.
-        builded_program = paddle.static.Program()
-        for var in program.block(0).vars.values():
-            builded_program.block(0)._clone_variable(var, False)
+        builded_program = ir_static.Program()
     return builded_program

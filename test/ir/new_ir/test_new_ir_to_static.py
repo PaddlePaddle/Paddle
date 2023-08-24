@@ -25,8 +25,8 @@ os.environ['FLAGS_enable_new_ir_api'] = 'true'  # don't work, we should
 class TestDy2staticNewIR(unittest.TestCase):
     def test_basic_network(self):
         def func(x):
-            paddle.mean(x)
-            return x
+            out = paddle.mean(x)
+            return out
 
         static_func = paddle.jit.to_static(func)
         x = paddle.randn((3, 3))

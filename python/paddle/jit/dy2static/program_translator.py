@@ -21,7 +21,7 @@ import warnings
 import weakref
 
 import paddle.ir.core as ir_static
-from paddle import framework
+from paddle.fluid import framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import (
     _switch_declarative_mode_guard_,
@@ -1201,7 +1201,6 @@ class ConcreteProgram:
         # startup_program.random_seed = (
         # framework.default_startup_program().random_seed
         # ) }}}
-
         with ir_static.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
@@ -1254,10 +1253,12 @@ class ConcreteProgram:
         # TODO(@xiongkun): support op call stack in new ir?
         # main_program = update_op_callstack_with_origin_info(main_program)
 
+        new_name_generator = UniqueNameGenerator()
         return ConcreteProgram(
             inputs=static_inputs,
             outputs=outputs,
             parameters=all_parameters_and_buffers,
+            name_generator=new_name_generator,
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program,
