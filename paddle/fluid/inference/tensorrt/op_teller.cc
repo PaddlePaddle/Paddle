@@ -23,6 +23,12 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 
+#include "paddle/fluid/platform/flags.h"
+PADDLE_DEFINE_EXPORTED_bool(
+    forbid_dynamic_op_enter_into_trt,
+    false,
+    "Enable sync after each op run, used for debug.");
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -119,6 +125,42 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
       return false;
     }
+
+
+  if(FLAGS_forbid_dynamic_op_enter_into_trt) {
+    std::cout << "FLAGS_forbid_dynamic_op_enter_into_trt is open!" << std::endl;
+      auto* block = desc.Block();
+      auto inputs = desc.Inputs();
+      for (auto iter : inputs) {
+        for (auto var_name : iter.second) {
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            const auto shape = var_desc->GetShape();
+            for (auto ele : shape) {
+              if (ele < 0) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+
+      auto outputs = desc.Outputs();
+      for (auto iter : outputs) {
+        for (auto var_name : iter.second) {
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            const auto shape = var_desc->GetShape();
+            for (auto ele : shape) {
+              if (ele < 0) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+    }
+
 
     // do not support the op which is labeled the `skip_quant`
     if ((desc.HasAttr("namescope") &&
