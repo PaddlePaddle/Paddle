@@ -69,6 +69,8 @@ def create_global_var(
     shape, value, dtype, persistable=False, force_cpu=False, name=None
 ):
     """
+    # TODO: just for test
+
     This function creates a new tensor variable with value in the global block(block 0).
 
     Args:
@@ -94,6 +96,8 @@ def create_global_var(
             var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
                                            persistable=True, force_cpu=True, name='new_var')
     """
+    # TODO: just for test
+
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
         check_type(
@@ -150,6 +154,8 @@ def create_parameter(
     shape, dtype, name=None, attr=None, is_bias=False, default_initializer=None
 ):
     """
+    # TODO: just for test
+
     This function creates a parameter. The parameter is a learnable variable, which can have
     gradient, and can be optimized.
 
@@ -178,6 +184,8 @@ def create_parameter(
             paddle.enable_static()
             W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
+    # TODO: just for test
+
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
     for item in shape:
         check_type(
@@ -229,6 +237,8 @@ def create_parameter(
 
 def create_tensor(dtype, name=None, persistable=False):
     """
+    # TODO: just for test
+
     Create a variable, which will hold a Tensor with data type dtype.
 
     Args:
@@ -245,9 +255,11 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
-          import paddle
-          tensor = paddle.tensor.create_tensor(dtype='float32')
+            >>> import paddle
+            >>> tensor = paddle.tensor.create_tensor(dtype='float32')
     """
+    # TODO: just for test
+
     check_dtype(
         dtype,
         'dtype',
@@ -1261,6 +1273,8 @@ def full(shape, fill_value, dtype=None, name=None):
 
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
+    # TODO: just for test
+
     Returns a 1-D Tensor with spaced values within a given interval.
 
     Values are generated into the half-open interval [``start``, ``end``) with
@@ -1313,6 +1327,8 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             # [3, 4, 5, 6]
 
     """
+    # TODO: just for test
+
     if end is None:
         end = start
         start = 0

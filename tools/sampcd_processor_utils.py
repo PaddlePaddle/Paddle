@@ -479,6 +479,43 @@ def get_docstring(full_test=False):
     return docstrings_to_test, whl_error
 
 
+def check_old_style(docstrings_to_test: typing.Dict[str, str]):
+    old_style_apis = []
+    for api_name, raw_docstring in docstrings_to_test.items():
+        for codeblock in extract_code_blocks_from_docstr(
+            raw_docstring, google_style=False
+        ):
+            old_style = True
+
+            for line in codeblock['codes'].splitlines():
+                if line.strip().startswith('>>>'):
+                    old_style = False
+                    break
+
+            if old_style:
+                codeblock_name = codeblock['name']
+                codeblock_id = codeblock['id']
+
+                docstring_name = '{}:{}'.format(
+                    api_name, codeblock_name or codeblock_id
+                )
+
+                old_style_apis.append(docstring_name)
+
+    if old_style_apis:
+        logger.info(
+            "%d apis use plain sample code style.",
+            len(old_style_apis),
+        )
+        logger.info('\n'.join(old_style_apis))
+        logger.info("DEPRECATION: Please do not use plain sample code style.")
+        logger.info(
+            "For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
+        )
+        logger.info("----------------End of the Check--------------------")
+        sys.exit(1)
+
+
 def exec_gen_doc():
     result = True
     cmd = ["bash", "document_preview.sh"]
@@ -581,6 +618,9 @@ def run_doctest(args, doctester: DocTester):
 
     logger.info("Get docstring from api ...")
     docstrings_to_test, whl_error = get_docstring(full_test=args.full_test)
+
+    logger.info("Checking plain sample code style before Paddle 2.5 ...")
+    check_old_style(docstrings_to_test)
 
     logger.info("Prepare doctester ...")
     doctester.prepare(sample_code_test_capacity)
