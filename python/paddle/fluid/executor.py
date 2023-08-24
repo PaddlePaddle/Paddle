@@ -1009,7 +1009,7 @@ class _ExecutorCache:
             plan = core.Plan([default_job], type_to_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
-        return program, new_exe
+        return new_program, new_exe
 
     def get_new_ir_program_and_executor(
         self,
