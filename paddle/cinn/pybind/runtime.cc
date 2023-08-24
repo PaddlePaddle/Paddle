@@ -105,8 +105,12 @@ void BufferCopyTo(const cinn_buffer_t &buffer, py::array array) {
   if (buffer.device == cinn_x86_device) {
     std::memcpy(array_data, buffer.memory, array.nbytes());
   } else if (buffer.device == cinn_nvgpu_device) {
+#ifdef CINN_WITH_CUDA
     CUDA_CALL(cudaMemcpy(
         array_data, buffer.memory, array.nbytes(), cudaMemcpyDeviceToHost));
+#else
+    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+#endif
 
   } else {
     CINN_NOT_IMPLEMENTED
