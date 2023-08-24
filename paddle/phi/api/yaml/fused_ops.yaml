@@ -53,6 +53,15 @@
     data_type : x
   optional : bias, branch, branch_max ,x_max
 
+- op : elementwise_madd
+  args : (Tensor x, Tensor y, Tensor w)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseMaddXPUInferMeta
+  kernel :
+    func : elementwise_madd
+    data_type : x
+
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, Tensor mask, int64_t padding_idx)
   output: Tensor(out), Tensor(seq_lod), Tensor(max_seq_len)
