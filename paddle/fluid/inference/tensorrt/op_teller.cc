@@ -3197,6 +3197,55 @@ struct GenericPluginTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false) override {
     const std::string op_type = desc.Type();
+
+
+
+    std::unordered_set<std::string> control_set = {"conditional_block",
+                                                   "while"};
+    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
+    if (control_set.find(op_type) != control_set.end()) {
+      return false;
+    }
+
+    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
+      return false;
+    }
+
+
+  if(FLAGS_forbid_dynamic_op_enter_into_trt) {
+    std::cout << "FLAGS_forbid_dynamic_op_enter_into_trt_plugin is open!" << std::endl;
+      auto* block = desc.Block();
+      auto inputs = desc.Inputs();
+      for (auto iter : inputs) {
+        for (auto var_name : iter.second) {
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            const auto shape = var_desc->GetShape();
+            for (auto ele : shape) {
+              if (ele < 0) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+
+      auto outputs = desc.Outputs();
+      for (auto iter : outputs) {
+        for (auto var_name : iter.second) {
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            const auto shape = var_desc->GetShape();
+            for (auto ele : shape) {
+              if (ele < 0) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+    }
+    
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
       return false;
