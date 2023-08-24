@@ -31,6 +31,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/program.h"
@@ -444,6 +445,21 @@ void BindUtils(pybind11::module *m) {
                 print(newir_program)
 
       )DOC");
+  m->def(
+      "check_unregistered_ops",
+      [](const framework::ProgramDesc &legacy_program) {
+        ir::IrContext *ctx = ir::IrContext::Instance();
+        return paddle::translator::CheckUnregisteredOperation(ctx,
+                                                              legacy_program);
+      },
+      R"DOC(
+      Check unregistered operators in paddle dialect.
+
+      Args:
+        legacy_program (ProgramDesc): The Fluid Program that need checked.
+      Returns:
+        list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
+    )DOC");
 }
 
 void BindNewIR(pybind11::module *module) {
