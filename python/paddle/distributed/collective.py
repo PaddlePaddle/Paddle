@@ -189,12 +189,13 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
 
-            paddle.distributed.init_parallel_env()
-            tindata = paddle.randn(shape=[2, 3])
-            gp = paddle.distributed.new_group([2,4,6])
-            paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
+            >>> paddle.distributed.init_parallel_env()
+            >>> tindata = paddle.randn(shape=[2, 3])
+            >>> gp = paddle.distributed.new_group([2, 4, 6])
+            >>> paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
 
     """
     global _custom_gid
@@ -311,9 +312,8 @@ def is_available():
     Examples:
         .. code-block:: python
 
-            import paddle
-
-            print(paddle.distributed.is_available())
+            >>> import paddle
+            >>> print(paddle.distributed.is_available())
 
     """
     return core.is_compiled_with_dist()

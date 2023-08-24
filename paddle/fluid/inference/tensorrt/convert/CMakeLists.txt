@@ -109,7 +109,9 @@ list(
   einsum_op.cc
   unbind_op.cc
   assign_op.cc
-  flip_op.cc)
+  flip_op.cc
+  quantize_linear_op.cc
+  dequantize_linear_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc

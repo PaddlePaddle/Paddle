@@ -76,14 +76,8 @@ from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401
 from .nn.metric import ctr_metric_bundle  # noqa: F401
 
-import paddle
-
-if paddle.ir.core._use_new_ir_api():
-    from ..ir import Program  # noqa: F401
-    from ..ir.core import program_guard  # noqa: F401
-else:
-    from ..fluid.framework import program_guard  # noqa: F401
-    from ..fluid.framework import Program  # noqa: F401
+from ..fluid.framework import program_guard  # noqa: F401
+from ..fluid.framework import Program  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
