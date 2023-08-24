@@ -99,27 +99,20 @@ def paddle_fused_rotary_position_embedding(
     # to [batch_size, num_heads, seq_len, head_dim]
     q, k, v = deal_qkv(init_q, init_k, init_v)
 
+    sign = -1 if use_neox_rotary_style else 1
+    sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], sign)
+
+    # permute sin, cos from [1, seq_len, 1, head_dim]
+    # to [1, 1, seq_len, head_dim]
+    perm = [0, 2, 1, 3]
+    sin_tensor = paddle.transpose(x=sin_tensor, perm=perm)
+    cos_tensor = paddle.transpose(x=cos_tensor, perm=perm)
+
     if use_neox_rotary_style:
-        sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], -1)
-
-        # permute sin, cos from [1, seq_len, 1, head_dim]
-        # to [1, 1, seq_len, head_dim]
-        perm = [0, 2, 1, 3]
-        sin_tensor = paddle.transpose(x=sin_tensor, perm=perm)
-        cos_tensor = paddle.transpose(x=cos_tensor, perm=perm)
-
         query = mult_qkv(q, cos_tensor, sin_tensor)
         value = mult_qkv(v, cos_tensor, sin_tensor)
         key = mult_qkv(k, cos_tensor, sin_tensor)
     else:
-        sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], 1)
-
-        # permute sin, cos from [1, seq_len, 1, head_dim]
-        # to [1, 1, seq_len, head_dim]
-        perm = [0, 2, 1, 3]
-        sin_tensor = paddle.transpose(x=sin_tensor, perm=perm)
-        cos_tensor = paddle.transpose(x=cos_tensor, perm=perm)
-
         query = mult_qkv_rotate_half(q, cos_tensor, sin_tensor)
         value = mult_qkv_rotate_half(v, cos_tensor, sin_tensor)
         key = mult_qkv_rotate_half(k, cos_tensor, sin_tensor)

@@ -20,6 +20,49 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename MPType, int VecSize = 2>
+__device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
+                                    bool flag_sin_cos,
+                                    int64_t index,
+                                    int64_t seq_len,
+                                    int64_t num_heads,
+                                    int64_t head_dim,
+                                    MPType* out_sin,
+                                    MPType* out_cos,
+                                    MPType div_c) {
+  MPType* sin_value = out_sin;
+  MPType* cos_value = out_cos;
+
+  if (flag_sin_cos) {
+#pragma unroll
+    for (int64_t nx = 0; nx < VecSize; ++nx) {
+      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+      int64_t pos_seq = index_wc / (num_heads * head_dim);
+      int64_t pos_head = index_wc % head_dim;
+      int64_t index_sc = pos_seq * head_dim + pos_head;
+      const T* sin_input = sin_cos_data[0] + index_sc;
+      const T* cos_input = sin_cos_data[1] + index_sc;
+
+      sin_value[nx] = static_cast<MPType>(sin_input[0]);
+      cos_value[nx] = static_cast<MPType>(cos_input[0]);
+    }
+  } else {
+#pragma unroll
+    for (int nx = 0; nx < VecSize; ++nx) {
+      // get sin_index and cos_index
+      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
+      int64_t pos_seq = index_wc / (num_heads * head_dim);
+      MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
+      MPType indicses =
+          static_cast<MPType>(1) /
+          pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
+      MPType value = pos_seq * indicses;
+      sin_value[nx] = sin(value);
+      cos_value[nx] = cos(value);
+    }
+  }
+}
+
+template <typename T, typename MPType, int VecSize = 2>
 __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     phi::Array<const T*, 3> ins_data,
     phi::Array<const T*, 2> sin_cos_data,
@@ -47,34 +90,15 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
   constexpr int kVectorsPerThread = VecSize / 2;
 
   for (; index < size; index += stride) {
-    if (flag_sin_cos) {
-#pragma unroll
-      for (int64_t nx = 0; nx < VecSize; ++nx) {
-        int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-        int64_t pos_seq = index_wc / (num_heads * head_dim);
-        int64_t pos_head = index_wc % head_dim;
-        int64_t index_sc = pos_seq * head_dim + pos_head;
-        const T* sin_input = sin_cos_data[0] + index_sc;
-        const T* cos_input = sin_cos_data[1] + index_sc;
-
-        sin_value[nx] = static_cast<MPType>(sin_input[0]);
-        cos_value[nx] = static_cast<MPType>(cos_input[0]);
-      }
-    } else {
-#pragma unroll
-      for (int nx = 0; nx < VecSize; ++nx) {
-        // get sin_index and cos_index
-        int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-        int64_t pos_seq = index_wc / (num_heads * head_dim);
-        MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
-        MPType indicses =
-            static_cast<MPType>(1) /
-            pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
-        MPType value = pos_seq * indicses;
-        sin_value[nx] = sin(value);
-        cos_value[nx] = cos(value);
-      }
-    }
+    VectorizedGetSinCos(sin_cos_data,
+                        flag_sin_cos,
+                        index,
+                        seq_len,
+                        num_heads,
+                        head_dim,
+                        sin_value,
+                        cos_value,
+                        div_c);
 
 #pragma unroll
     for (int iter = 0; iter < 3; iter++) {
@@ -131,34 +155,15 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
   constexpr int kVectorsPerThread = VecSize / 2;
 
   for (; index < size; index += stride) {
-    if (flag_sin_cos) {
-#pragma unroll
-      for (int64_t nx = 0; nx < VecSize; ++nx) {
-        int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-        int64_t pos_seq = index_wc / (num_heads * head_dim);
-        int64_t pos_head = index_wc % head_dim;
-        int64_t index_sc = pos_seq * head_dim + pos_head;
-        const T* sin_input = sin_cos_data[0] + index_sc;
-        const T* cos_input = sin_cos_data[1] + index_sc;
-
-        sin_value[nx] = static_cast<MPType>(sin_input[0]);
-        cos_value[nx] = static_cast<MPType>(cos_input[0]);
-      }
-    } else {
-#pragma unroll
-      for (int nx = 0; nx < VecSize; ++nx) {
-        // get sin_index and cos_index
-        int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-        int64_t pos_seq = index_wc / (num_heads * head_dim);
-        MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
-        MPType indicses =
-            static_cast<MPType>(1) /
-            pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
-        MPType value = pos_seq * indicses;
-        sin_value[nx] = sin(value);
-        cos_value[nx] = cos(value);
-      }
-    }
+    VectorizedGetSinCos(sin_cos_data,
+                        flag_sin_cos,
+                        index,
+                        seq_len,
+                        num_heads,
+                        head_dim,
+                        sin_value,
+                        cos_value,
+                        div_c);
 
     // use rotate_half mode
     int stride_r = head_dim / 2;

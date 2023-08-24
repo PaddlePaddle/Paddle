@@ -29,7 +29,7 @@ def fused_rotary_position_embedding(
         v (optional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if v must be [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 2.
         sin (optional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if sin must be [seq_len, head_dim] or [1, 1, seq_len, head_dim] and head_dim must be a multiple of 2.
         cos (optional|Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64. The shape if cos must be [seq_len, head_dim] or [1, 1, seq_len, head_dim] and head_dim must be a multiple of 2.
-        use_neox_rotary_style(optional|bool): Use "rotate_every_two" when use_neox_rotary_style is True, use "ratate_half" when use_neox_rotary_style is False. Default True.
+        use_neox_rotary_style(optional|bool): When the use_neox_rotary_style is True, every two adjacent numbers are calculated. When the use_neox_rotary_style is False, the numbers corresponding to the positions of the front half and back half segments are calculated. Default True.
 
     Returns:
         out_q/out_k/out_v Tensor representing the fused rotary position embedding, has same shape and data type as `q` .
