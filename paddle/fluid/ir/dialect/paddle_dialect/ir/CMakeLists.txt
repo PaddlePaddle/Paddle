@@ -36,18 +36,25 @@ set(op_source_file ${PD_DIALECT_BINARY_DIR}/pd_op.cc)
 set(op_header_file_tmp ${op_header_file}.tmp)
 set(op_source_file_tmp ${op_source_file}.tmp)
 
+set(op_vjp_source_file ${PD_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
+set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
+
 add_custom_command(
-  OUTPUT ${op_header_file} ${op_source_file}
+  OUTPUT ${op_header_file} ${op_source_file} ${op_vjp_source_file}
   COMMAND
     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
-    --op_def_cc_file ${op_source_file_tmp}
+    --op_def_cc_file ${op_source_file_tmp} --op_vjp_cc_file
+    ${op_vjp_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_header_file_tmp}
           ${op_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_source_file_tmp}
           ${op_source_file}
-  COMMENT "copy_if_different ${op_header_file} ${op_source_file}"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_vjp_source_file_tmp}
+          ${op_vjp_source_file}
+  COMMENT
+    "copy_if_different ${op_header_file} ${op_source_file} ${op_vjp_source_file}"
   DEPENDS ${op_gen_file} ${op_forward_yaml_file1} ${op_forward_yaml_file2}
           ${op_backward_yaml_file1} ${op_backward_yaml_file2}
           ${op_compat_yaml_file}
@@ -98,6 +105,6 @@ target_include_directories(pd_dialect_api PRIVATE ${PD_DIALECT_BINARY_DIR})
 
 cc_library(
   pd_dialect
-  SRCS pd_dialect.cc pd_op_vjp_manual.cc
+  SRCS pd_dialect.cc pd_op_vjp_manual.cc ${op_vjp_source_file}
   DEPS pd_dialect_api param_to_variable primitive_vjp_experimental
        pd_dialect_utils op_yaml_info_parser)
