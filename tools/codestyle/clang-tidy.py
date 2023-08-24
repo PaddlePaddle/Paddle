@@ -95,30 +95,29 @@ def make_absolute(f, directory):
 
 def analysis_gitignore(path, filename=".gitignore"):
     """Analysis gitignore file and return ignore file list"""
-    f = open(path + "/" + filename, "r")
-    lines = f.readlines()
-    ignore_file_list = []
-    for line in lines:
-        # Blank row
-        if line == "\n":
-            continue
+    with open(path + "/" + filename, "r") as f:
+        lines = f.readlines()
+        ignore_file_list = []
+        for line in lines:
+            # Blank row
+            if line == "\n" or line == "\r\n":
+                continue
 
-        # explanatory note
-        line = line.replace("\n", "")
-        if "#" in line:
-            if line[0] != "#":
-                ignore_file_list.append(
-                    line[: line.index("#")].replace(" ", "")
-                )
-            continue
+            # explanatory note
+            line = line.replace("\n", "").strip()
+            if "#" in line:
+                if not line.startswith("#"):
+                    ignore_file_list.append(
+                        line[: line.index("#")].replace(" ", "")
+                    )
+                continue
 
-        # TODO(gouzil): support more gitignore rules
-        if "*" in line:
-            continue
+            # TODO(gouzil): support more gitignore rules
+            if "*" in line:
+                continue
 
-        ignore_file_list.append(line.replace(" ", ""))
+            ignore_file_list.append(line.replace(" ", ""))
 
-    f.close()
     return ignore_file_list
 
 
