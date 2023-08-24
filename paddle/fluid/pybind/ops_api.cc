@@ -73,7 +73,7 @@ static PyMethodDef OpsAPI[] = {{"add_n",
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for full."},
                                {"split",
-                                (PyCFunction)(void (*)(void))full,
+                                (PyCFunction)(void (*)(void))split,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for full."},
                                {nullptr, nullptr, 0, nullptr}};
