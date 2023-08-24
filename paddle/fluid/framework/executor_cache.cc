@@ -20,8 +20,6 @@
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/value.h"
 
-#include <iostream>  // NOLINT
-
 namespace paddle {
 namespace framework {
 class ProgramDesc;
@@ -439,12 +437,8 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
                                                            program.get());
 
   program_translator.Translate();
-  program->Print(std::cout);
-  std::cout << std::endl;
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get());
-  ir_res->Print(std::cout);
-  std::cout << std::endl;
 
   return ir_res;
 }
@@ -517,12 +511,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
                                                            program.get());
   program_translator.Translate();
 
-  program->Print(std::cout);
-  std::cout << std::endl;
-
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
-  res->Print(std::cout);
-  std::cout << std::endl;
 
   return res;
 }

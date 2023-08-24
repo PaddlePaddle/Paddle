@@ -29,8 +29,6 @@
 #include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "glog/logging.h"
-
 namespace phi {
 
 // PD_KERNEL has been used by custom op api
@@ -259,7 +257,6 @@ namespace phi {
     static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {     \
       static_assert(out_idx == 0,                                         \
                     "Kernel's Attributes should appear before Outputs."); \
-      VLOG(0) << "[kernel] intarray" << attr_idx;                         \
       const Attribute& t = ctx->AttrAt(attr_idx);                         \
       static Attribute cmp_t = phi::TensorRef(nullptr);                   \
       static Attribute vec_ref =                                          \

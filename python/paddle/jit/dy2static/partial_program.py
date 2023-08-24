@@ -815,25 +815,6 @@ class PartialProgramLayer:
         self._apply_inplace_pass(
             forward_builded_program, backward_builded_program
         )
-
-        print(
-            '-------------[debug][forward_builded_program start]------------------'
-        )
-        print(forward_builded_program)
-        print(
-            '-------------[debug][forward_builded_program end]------------------',
-            flush=True,
-        )
-
-        print(
-            '-------------[debug][backward_builded_program start]------------------'
-        )
-        print(backward_builded_program)
-        print(
-            '-------------[debug][backward_builded_program end]------------------',
-            flush=True,
-        )
-
         return [forward_builded_program, backward_builded_program]
 
     def _apply_inplace_pass(self, forward_program, backward_program):
