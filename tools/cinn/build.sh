@@ -24,7 +24,10 @@ cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 
 #export LLVM11_DIR=${workspace}/THIRDS/usr
 
-JOBS=8
+if [[ "" == ${JOBS} ]]; then
+  JOBS=`python3 -c 'import multiprocessing; print(str(multiprocessing.cpu_count()))'`
+fi
+
 cuda_config=OFF
 cudnn_config=OFF
 
