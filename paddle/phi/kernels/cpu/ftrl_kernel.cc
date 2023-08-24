@@ -17,4 +17,24 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/ftrl_kernel_impl.h"
 
+namespace phi {
+
+template <typename T, typename Context>
+void FTRLOpKernel(const Context& ctx,
+                  const DenseTensor& grad,
+                  const DenseTensor& learningRate,
+                  const DenseTensor& param,
+                  const DenseTensor& squared_accumulator,
+                  const DenseTensor& linear_accumulator,
+                  const DenseTensor& x,
+                  float l1,
+                  float l2,
+                  float lr_power,
+                  DenseTensor* param_out,
+                  DenseTensor* squared_accumulator_out,
+                  DenseTensor* linear_accumulator_out,
+                  DenseTensor* grad_out) {}
+PADDLE_THROW(phi::errors::InvalidArgument("Unsupported Variable Type of Grad"));
+}  // namespace phi
+
 PD_REGISTER_KERNEL(ftrl, CPU, ALL_LAYOUT, phi::FTRLOpKernel, float) {}

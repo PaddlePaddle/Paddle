@@ -137,105 +137,66 @@ class SparseFTRLFunctor {
 };
 
 template <typename T, typename Context>
-void FTRLOpKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  const auto* grad_var = ctx.InputVar("Grad");
+void FTRLOpKernel(const Context& ctx,
+                  const DenseTensor& grad,
+                  const DenseTensor& learningrate,
+                  const DenseTensor& param,
+                  const DenseTensor& squared_accumulator,
+                  const DenseTensor& linear_accumulator,
+                  const DenseTensor& x,
+                  float l1,
+                  float l2,
+                  float lr_power,
+                  DenseTensor* param_out,
+                  DenseTensor* squared_accumulator_out,
+                  DenseTensor* linear_accumulator_out,
+                  DenseTensor* grad_out) {
+  auto l1 += static_cast<T>(1e-10);
+  auto l2 += static_cast<T>(1e-10);
+  auto g = EigenVector<T>::Flatten(grad);
+  auto p = EigenVector<T>::Flatten(param);
+  auto sq_accum = EigenVector<T>::Flatten(squared_accumulator);
+  auto lin_accum = EigenVector<T>::Flatten(linear_accumulator);
+  auto lr = EigenVector<T>::Flatten(learningrate);
 
-  auto lr_in = EigenVector<T>::Flatten("LearningRate");
+  auto p_out = EigenVector<T>::Flatten(*param_out);
+  auto s_acc_out = EigenVector<T>::Flatten(*squared_accumulator_out);
+  auto l_acc_out = EigenVector<T>::Flatten(*linear_accumulator_out);
+  auto& place = *ctx.eigen_device();
 
-  auto param_in = EigenVector<T>::Flatten("Param");
-  auto sq_accum_in = EigenVector<T>::Flatten("SquaredAccumulator");
-  auto lin_accum_in = EigenVector<T>::Flatten("LinearAccumulator");
+  Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
-  T* param_out = ctx.template Alloc<T>("ParamOut");
-  T* sq_accum_out = ctx.template Alloc<T>("SquaredAccumOut");
-  T* lin_accum_out = ctx.template Alloc<T>("LinearAccumOut");
-
-  auto l1 = static_cast<T>(ctx.Attr<float>("l1")) + static_cast<T>(1e-10);
-  auto l2 = static_cast<T>(ctx.Attr<float>("l2")) + static_cast<T>(1e-10);
-  auto lr_power = static_cast<T>(ctx.Attr<float>("lr_power"));
-
-  if (grad_var->IsType<phi::DenseTensor>()) {
-    auto grad = EigenVector<T>::Flatten("Grad");
-    auto g = EigenVector<T>::Flatten(*grad);
-
-    auto p = EigenVector<T>::Flatten(*param_in);
-    auto sq_accum = EigenVector<T>::Flatten(*sq_accum_in);
-    auto lin_accum = EigenVector<T>::Flatten(*lin_accum_in);
-    auto lr = EigenVector<T>::Flatten(*lr_in);
-
-    auto p_out = EigenVector<T>::Flatten(*param_out);
-    auto s_acc_out = EigenVector<T>::Flatten(*sq_accum_out);
-    auto l_acc_out = EigenVector<T>::Flatten(*lin_accum_out);
-    auto& place = *ctx.eigen_device();
-
-    Eigen::DSizes<int, 1> grad_dsize(grad->numel());
-
-    auto new_accum = sq_accum + g * g;
-    // Special case for lr_power = -0.5
-    if (lr_power == static_cast<T>(-0.5)) {
-      l_acc_out.device(place) =
-          lin_accum + g -
-          ((new_accum.sqrt() - sq_accum.sqrt()) / lr.broadcast(grad_dsize)) * p;
-    } else {
-      l_acc_out.device(place) =
-          lin_accum + g -
-          ((new_accum.pow(-lr_power) - sq_accum.pow(-lr_power)) /
-           lr.broadcast(grad_dsize)) *
-              p;
-    }
-
-    auto x = (l_acc_out.constant(l1) * l_acc_out.sign() - l_acc_out);
-    if (lr_power == static_cast<T>(-0.5)) {
-      auto y = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
-               l_acc_out.constant(static_cast<T>(2) * l2);
-      auto pre_shrink = x / y;
-      p_out.device(place) =
-          (l_acc_out.abs() > l_acc_out.constant(l1))
-              .select(pre_shrink, p.constant(static_cast<T>(0)));
-    } else {
-      auto y = (new_accum.pow(-lr_power) / lr.broadcast(grad_dsize)) +
-               l_acc_out.constant(static_cast<T>(2) * l2);
-      auto pre_shrink = x / y;
-      p_out.device(place) =
-          (l_acc_out.abs() > l_acc_out.constant(l1))
-              .select(pre_shrink, p.constant(static_cast<T>(0)));
-    }
-
-    s_acc_out.device(place) = sq_accum + g * g;
-  } else if (grad_var->IsType<phi::SelectedRows>()) {
-    auto grad = ctx.Input<phi::SelectedRows>("Grad");
-
-    phi::SelectedRows tmp_merged_grad;
-    phi::SelectedRows* merged_grad = &tmp_merged_grad;
-    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
-    merge_func(ctx, *grad, merged_grad);
-
-    auto* merged_rows = merged_grad->mutable_rows();
-    phi::MixVector<int64_t> mixv_merged_rows(merged_rows);
-    const int64_t* rows = mixv_merged_rows.Data(ctx.GetPlace());
-    auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
-    auto row_height = static_cast<int64_t>(merged_grad->rows().size());
-
-    phi::funcs::ForRange<Context> for_range(ctx, row_numel * row_height);
-
-    SparseFTRLFunctor<T> functor(
-        merged_grad->value().data<T>(),
-        param_in->data<T>(),
-        sq_accum_in->data<T>(),
-        lr_in->data<T>(),
-        l1,
-        l2,
-        lr_power,
-        rows,
-        row_numel,
-        param_out->mutable_data<T>(ctx.GetPlace()),
-        sq_accum_out->mutable_data<T>(ctx.GetPlace()),
-        lin_accum_out->mutable_data<T>(ctx.GetPlace()));
-    for_range(functor);
+  auto new_accum = sq_accum + g * g;
+  // Special case for lr_power = -0.5
+  if (lr_power == static_cast<T>(-0.5)) {
+    l_acc_out.device(place) =
+        lin_accum + g -
+        ((new_accum.sqrt() - sq_accum.sqrt()) / lr.broadcast(grad_dsize)) * p;
   } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Unsupported Variable Type of Grad"));
+    l_acc_out.device(place) =
+        lin_accum + g -
+        ((new_accum.pow(-lr_power) - sq_accum.pow(-lr_power)) /
+         lr.broadcast(grad_dsize)) *
+            p;
   }
+
+  auto x = (l_acc_out.constant(l1) * l_acc_out.sign() - l_acc_out);
+  if (lr_power == static_cast<T>(-0.5)) {
+    auto y = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
+             l_acc_out.constant(static_cast<T>(2) * l2);
+    auto pre_shrink = x / y;
+    p_out.device(place) =
+        (l_acc_out.abs() > l_acc_out.constant(l1))
+            .select(pre_shrink, p.constant(static_cast<T>(0)));
+  } else {
+    auto y = (new_accum.pow(-lr_power) / lr.broadcast(grad_dsize)) +
+             l_acc_out.constant(static_cast<T>(2) * l2);
+    auto pre_shrink = x / y;
+    p_out.device(place) =
+        (l_acc_out.abs() > l_acc_out.constant(l1))
+            .select(pre_shrink, p.constant(static_cast<T>(0)));
+  }
+  s_acc_out.device(place) = sq_accum + g * g;
 }
 
 }  // namespace detail
