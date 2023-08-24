@@ -484,6 +484,7 @@ void BindIrPass(pybind11::module *m) {
            [](const Pass &self) { return self.pass_info().dependents; });
 }
 
+// TODO(zhiqiu): refine pass registry
 std::unique_ptr<Pass> CreatePassByName(std::string name) {
   if (name == "DeadCodeEliminationPass") {
     return ir::CreateDeadCodeEliminationPass();
