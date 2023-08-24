@@ -47,6 +47,7 @@ class Imdb(Dataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(75)
             >>> import paddle
             >>> from paddle.text.datasets import Imdb
 
