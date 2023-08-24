@@ -125,6 +125,8 @@ def decompose(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    if not core._is_fwd_prim_enabled():
+        return src_vars
     if not isinstance(program, Program):
         raise TypeError(f"Expect type Program, but got type {type(program)}.")
     block = program.block()
