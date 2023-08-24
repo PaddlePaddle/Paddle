@@ -455,6 +455,7 @@ void InitMemoryMethod() {
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+    // TODO(GhostScreaming): Use phi methods later.
     memory_method->get_allocator =
         [](int device_id, phi::gpuStream_t stream) -> phi::Allocator * {
       return paddle::memory::allocation::AllocatorFacade::Instance()

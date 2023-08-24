@@ -161,7 +161,7 @@ class ProcessGroup:
                     "FLAGS_dynamic_static_unified_comm", "0"
                 )
                 if use_new_comm in ["1", "True", "true"]:
-                    store = paddle.distributed.collective.StaticTCPStore()
+                    store = core.create_or_get_global_tcp_store()
                     core.CommContextManager.set_device_id(genv.device_id)
                     core.CommContextManager.create_nccl_comm_context(
                         store,

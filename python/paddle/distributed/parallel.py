@@ -1084,7 +1084,7 @@ def init_parallel_env():
         master_port = int(master_port)
         is_master = rank == 0
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
-        default_store = paddle.distributed.collective.StaticTCPStore()
+        default_store = core.create_or_get_global_tcp_store()
         _set_default_store(default_store)
         pg = _new_process_group_impl(
             backend,
