@@ -53,17 +53,11 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
 
   // op dependences
-  const interpreter::DependencyBuilder& GetDependencyBuilder() const override;
+  const interpreter::DependencyBuilder& GetDependencyBuilder() const;
 
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
-  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const override;
-
-  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
-      const override;
-
-  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
-      const override;
+  const interpreter::StreamAnalyzer& GetStreamAnalyzer() const;
 
   bool IsSharedResultsBuild() const override;
 
@@ -86,6 +80,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     hookfuncs_ = hookfuncs;
   }
+
+  bool IsStaticBuild() const { return static_build_; }
 
  private:
   // build graph

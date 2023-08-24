@@ -312,7 +312,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
     not core.is_compiled_with_cuda()
     or get_cuda_version() < 11040
     or not is_sm_supported,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 7.5 or 8.x",
 )
 class TestFlashAttentionWithMaskAPI(unittest.TestCase):
