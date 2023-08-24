@@ -21,8 +21,10 @@
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/ir/core/program.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_new_ir_api);
 
 namespace paddle {
 namespace framework {
@@ -34,7 +36,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   for (int64_t i = 0; i < micro_batch_num; ++i) {
     micro_batch_scopes_.emplace_back(&scope->NewScope());
   }
-
   std::stringstream ss;
   ss << "Create " << micro_batch_num << " micro_batch_scopes for scope "
      << scope_ << " : ";
@@ -46,9 +47,14 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   const auto& jobs = plan_.JobList();
   for (const auto& job : jobs) {
     const std::string& job_type = job->Type();
-    std::shared_ptr<ProgramDesc> program =
-        std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
-    SetColAttrForFetchOps(*job, program);
+    std::shared_ptr<ProgramDesc> program = nullptr;
+    std::shared_ptr<::ir::Program> ir_program = nullptr;
+    if (FLAGS_enable_new_ir_api) {
+      ir_program = plan_.IrProgram(job_type);
+    } else {
+      program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
+      SetColAttrForFetchOps(*job, program);
+    }
 
     int64_t micro_batch_id = job->MicroBatchId();
     PADDLE_ENFORCE(
@@ -64,9 +70,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor) {
-      VLOG(6) << "begin to translate" << std::endl;
-      auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
-
+      std::shared_ptr<::ir::Program> base_program = ir_program;
+      if (!FLAGS_enable_new_ir_api) {
+        VLOG(6) << "begin to translate" << std::endl;
+        base_program = paddle::TranslateLegacyProgramToProgram(*program);
+      }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
         if ((*it)->name() == "pd.fetch") {
@@ -88,7 +96,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                     "@fetch";
         }
       }
-
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       interpretercores_.emplace_back(
