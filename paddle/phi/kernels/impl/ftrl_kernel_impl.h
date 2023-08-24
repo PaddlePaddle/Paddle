@@ -36,7 +36,10 @@ void FTRLOpKernel(const Context& ctx,
                   float lr_power,
                   DenseTensor* param_out,
                   DenseTensor* squared_accumulator_out,
-                  DenseTensor* linear_accumulator_out) {
+                  DenseTensor* linear_accumulator_out,
+                  DenseTensor* grad_out) {
+  ctx.template Alloc<T>(grad);
+  ctx.template Alloc<T>(grad_out);
   T l1_t = static_cast<T>(l1) + static_cast<T>(1e-10);
   T l2_t = static_cast<T>(l2) + static_cast<T>(1e-10);
   T lr_power_t = static_cast<T>(lr_power);
@@ -49,9 +52,10 @@ void FTRLOpKernel(const Context& ctx,
   auto p_out = phi::EigenVector<T>::Flatten(*param_out);
   auto s_acc_out = phi::EigenVector<T>::Flatten(*squared_accumulator_out);
   auto l_acc_out = phi::EigenVector<T>::Flatten(*linear_accumulator_out);
+  auto grad_out = phi::EigenVector<T>::Flatten(*grad_out);
   auto& place = *ctx.eigen_device();
 
-  Eigen::DSizes<int, 1> grad_dsize(g->numel());
+  Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
   auto new_accum = sq_accum + g * g;
   // Special case for lr_power_t = -0.5
@@ -67,18 +71,18 @@ void FTRLOpKernel(const Context& ctx,
             p;
   }
 
-  T x = (l_acc_out.constant(l1_t) * l_acc_out.sign() - l_acc_out);
+  T x_t = (l_acc_out.constant(l1_t) * l_acc_out.sign() - l_acc_out);
   if (lr_power_t == static_cast<T>(-0.5)) {
     auto y = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
              l_acc_out.constant(static_cast<T>(2) * l2_t);
-    auto pre_shrink = x / y;
+    auto pre_shrink = x_t / y;
     p_out.device(place) =
         (l_acc_out.abs() > l_acc_out.constant(l1_t))
             .select(pre_shrink, p.constant(static_cast<T>(0)));
   } else {
     auto y = (new_accum.pow(-lr_power_t) / lr.broadcast(grad_dsize)) +
              l_acc_out.constant(static_cast<T>(2) * l2_t);
-    auto pre_shrink = x / y;
+    auto pre_shrink = x_t / y;
     p_out.device(place) =
         (l_acc_out.abs() > l_acc_out.constant(l1_t))
             .select(pre_shrink, p.constant(static_cast<T>(0)));
