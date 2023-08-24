@@ -44,6 +44,10 @@ static PyObject *concat(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_concat(self, args, kwargs);
 }
 
+static PyObject *split(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_split(self, args, kwargs);
+}
+
 static PyMethodDef OpsAPI[] = {{"add_n",
                                 (PyCFunction)(void (*)(void))add_n,
                                 METH_VARARGS | METH_KEYWORDS,
@@ -65,6 +69,10 @@ static PyMethodDef OpsAPI[] = {{"add_n",
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for concat."},
                                {"full",
+                                (PyCFunction)(void (*)(void))full,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for full."},
+                               {"split",
                                 (PyCFunction)(void (*)(void))full,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for full."},

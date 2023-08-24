@@ -1976,6 +1976,9 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.split(input, num_or_sections, dim)
+
         check_variable_and_dtype(
             input,
             'input',

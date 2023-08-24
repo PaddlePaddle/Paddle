@@ -30,5 +30,10 @@ std::vector<std::vector<paddle::Tensor>> concat_vjp(
     const Tensor& axis,
     const std::vector<std::vector<bool>>& stop_gradients);
 
+std::vector<std::vector<paddle::Tensor>> split_vjp(
+    const std::vector<Tensor>& out_grads,
+    const Tensor& axis,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 }  // namespace primitive
 }  // namespace paddle

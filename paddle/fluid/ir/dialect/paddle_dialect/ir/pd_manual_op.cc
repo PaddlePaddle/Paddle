@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -145,7 +146,104 @@ void AddNOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+const char *SplitGradOp::attributes_name[1] = {"axis"};
+
+OpInfoTuple SplitGradOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      OpInputInfo("out_grad",
+                  "ir::VectorType<paddle::dialect::DenseTensorType>",
+                  false,
+                  false,
+                  false),
+      OpInputInfo(
+          "axis", "paddle::dialect::ScalarAttribute", false, false, true)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      OpOutputInfo("x_grad", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("ConcatInferMeta",
+                    {"out_grad", "axis"},
+                    {"concat"},
+                    {"out_grad", "axis"},
+                    {"out_grad"},
+                    {},
+                    {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "split_grad");
+}
+
+void SplitGradOp::Build(ir::Builder &builder,
+                        ir::OperationArgument &argument,
+                        ir::OpResult out_grad_,
+                        ir::OpResult axis_) {
+  VLOG(4) << "Builder construction inputs";
+  std::vector<ir::OpResult> argument_inputs = {out_grad_, axis_};
+  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+
+  VLOG(4) << "Builder construction attributes";
+
+  VLOG(4) << "Builder construction outputs";
+  ir::VectorType out_grad = out_grad_.type().dyn_cast<ir::VectorType>();
+  (void)out_grad;
+  int axis = axis_.owner()
+                 ->dyn_cast<paddle::dialect::FullOp>()
+                 .attributes()
+                 .at("value")
+                 .dyn_cast<paddle::dialect::ScalarAttribute>()
+                 .data()
+                 .to<int>();
+  (void)axis;
+
+  std::vector<phi::DenseTensor> vec_dense_out_grad;
+  for (size_t i = 0; i < static_cast<size_t>(out_grad.size()); i++) {
+    vec_dense_out_grad.push_back(phi::DenseTensor(
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
+        phi::DenseTensorMeta(
+            TransToPhiDataType(out_grad[i]
+                                   .dyn_cast<paddle::dialect::DenseTensorType>()
+                                   .dtype()),
+            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+            out_grad[i]
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .data_layout(),
+            out_grad[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+            out_grad[i]
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .offset())));
+  }
+  std::vector<phi::MetaTensor> vec_meta_out_grad;
+  for (size_t i = 0; i < vec_dense_out_grad.size(); i++) {
+    vec_meta_out_grad.push_back(phi::MetaTensor(&vec_dense_out_grad[i]));
+  }
+
+  std::vector<const phi::MetaTensor *> meta_out_grad;
+  for (size_t i = 0; i < static_cast<size_t>(vec_meta_out_grad.size()); i++) {
+    meta_out_grad.push_back(&vec_meta_out_grad[i]);
+  }
+  phi::DenseTensor dense_x_grad;
+  phi::MetaTensor meta_x_grad(&dense_x_grad);
+
+  phi::ConcatInferMeta(meta_out_grad, axis, &meta_x_grad);
+
+  std::vector<ir::Type> argument_outputs;
+  ir::Type x_grad_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      ir::IrContext::Instance(),
+      TransToIrDataType(dense_x_grad.dtype()),
+      dense_x_grad.dims(),
+      dense_x_grad.layout(),
+      dense_x_grad.lod(),
+      dense_x_grad.offset());
+  argument_outputs.push_back(x_grad_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void SplitGradOp::Verify() {}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)

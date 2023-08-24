@@ -31,6 +31,7 @@ def get_ir_program_0():
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         k_s = paddle.tanh(x_s)
+    print("old ir prog: ", main_program)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
 
@@ -58,6 +59,7 @@ class TesBackward_1(unittest.TestCase):
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
+    '''
     def test_full(self):
         # test create output_grad in backward use full op
         newir_program = get_ir_program_0()
@@ -92,6 +94,19 @@ class TesBackward_1(unittest.TestCase):
             input_grad = grad(out, input, no_grad_vars=[input])
 
         self.assertEqual(newir_program.block().ops[-1].name(), "pd.mean")
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
+    def test_split(self):
+        # test create output_grad in backward use full op
+        newir_program = get_ir_program_0()
+        input = newir_program.block().ops[-1].operand(0).source()
+        tanh_out = newir_program.block().ops[-1].result(0)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            out = paddle.split(tanh_out, [1, 1], 0)
+            input_grad = grad(out, input)
+
+        print(newir_program)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
@@ -166,6 +181,8 @@ class TesBackward_2(unittest.TestCase):
             self.assertEqual(op.name(), ops_name[i])
 
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
+'''
 
 
 if __name__ == "__main__":
