@@ -97,6 +97,7 @@ TEST(assist_struct_test, symbolic_dim_mgr) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Program program(ctx);
   ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   ir::SymbolicDimMgr symDimMgr(program.module_op());
   ir::dialect::SymbolicDim symDimS0 = symDimMgr.newSymbolicDim();
