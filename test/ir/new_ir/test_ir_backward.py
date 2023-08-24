@@ -31,7 +31,6 @@ def get_ir_program_0():
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
         k_s = paddle.tanh(x_s)
-    print("old ir prog: ", main_program)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
 
@@ -102,10 +101,23 @@ class TesBackward_1(unittest.TestCase):
         tanh_out = newir_program.block().ops[-1].result(0)
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
         with paddle.ir.core.program_guard(newir_program):
-            out = paddle.split(tanh_out, [1, 1], 0)
+            out = paddle.split(tanh_out, [2, 2], 0)
             input_grad = grad(out, input)
 
-        print(newir_program)
+        ops_name = [
+            "pd.data",
+            "pd.tanh",
+            "pd.full_int_array",
+            "pd.full",
+            "pd.split",
+            "builtin.split",
+            "pd.full",
+            "builtin.combine",
+            "pd.split_grad",
+            "pd.tanh_grad",
+        ]
+        for i, op in enumerate(newir_program.block().ops):
+            self.assertEqual(op.name(), ops_name[i])
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
