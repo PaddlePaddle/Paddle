@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -965,11 +966,14 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::Attribute shape = attribute_translator(
+        "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("shape"));
     ir::AttributeMap attribute_map = {
         {"name",
          ir::StrAttribute::get(ctx,
                                op_desc.GetAttrIfExists<std::string>("name"))},
-        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"shape", shape},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
         {"place",
@@ -1631,6 +1635,9 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
 };
 
 OpTranslator::OpTranslator() {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();

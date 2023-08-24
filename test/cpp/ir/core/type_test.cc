@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <unordered_map>
 
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
@@ -209,6 +210,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {
   ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   // Test 1: Test the function of IrContext to register Dialect.
   ctx->GetOrRegisterDialect<IntegerDialect>();
@@ -240,6 +242,7 @@ TEST(type_test, custom_type_dialect) {
 
 TEST(type_test, pd_dialect) {
   ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
   phi::DDim dims = {2, 2};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;

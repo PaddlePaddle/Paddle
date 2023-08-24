@@ -44,6 +44,7 @@ namespace framework {
 
 TEST(VJP, TanhBackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -98,6 +99,7 @@ TEST(VJP, TanhBackwardTest) {
 
 TEST(VJP, Tanh_BackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -152,6 +154,7 @@ TEST(VJP, Tanh_BackwardTest) {
 
 TEST(VJP, MeanBackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -208,6 +211,7 @@ TEST(VJP, MeanBackwardTest) {
 
 TEST(VJP, ConcatBackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -270,6 +274,7 @@ TEST(VJP, ConcatBackwardTest) {
 
 TEST(VJP, AddBackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
@@ -334,6 +339,7 @@ TEST(VJP, AddBackwardTest) {
 
 TEST(VJP, Add_BackwardTest) {
   ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
 
