@@ -36,13 +36,13 @@ Origin subgraph:
             |
          reshape2
             |
-         matmul_v2(trans_x=fasle, trans_y=true)
+         matmul_v2(trans_x=false, trans_y=true)
             |
 Fused subgraph:
             x
          reshape2
             |
-         matmul_v2(trans_x=fasle, trans_y=false)
+         matmul_v2(trans_x=false, trans_y=false)
             |
 */
 class MatmulWeightTransPass : public FusePassBase {
