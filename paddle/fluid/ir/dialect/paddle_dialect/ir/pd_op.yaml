@@ -376,7 +376,7 @@
     func: [set_value]
     param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shape, values]
   inplace: null
-  backward: null
+  backward: set_value_grad
 
 - name : set_value_with_tensor
   inputs:
@@ -398,7 +398,7 @@
     func: [set_value_with_tensor]
     param: [x, values, starts, ends, steps, axes, decrease_axes, none_axes]
   inplace: null
-  backward: null
+  backward: set_value_grad
 
 
 - name : set_value_grad
