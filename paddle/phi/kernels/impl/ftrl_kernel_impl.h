@@ -55,7 +55,7 @@ void FTRLOpKernel(const Context& ctx,
   auto grad_out = phi::EigenVector<T>::Flatten(*grad_out);
   auto& place = *ctx.eigen_device();
 
-  Eigen::DSizes<int, 1> grad_dsize(grad->numel());
+  Eigen::DSizes<int, 1> grad_dsize(grad.numel());
 
   auto new_accum = sq_accum + g * g;
   // Special case for lr_power_t = -0.5
