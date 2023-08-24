@@ -52,6 +52,7 @@ PaddleBuf::PaddleBuf(PaddleBuf &&other)
 PaddleBuf::PaddleBuf(const PaddleBuf &other) { *this = other; }
 
 PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
+  if (this == &other) return *this;
   if (!other.memory_owned_) {
     data_ = other.data_;
     length_ = other.length_;
