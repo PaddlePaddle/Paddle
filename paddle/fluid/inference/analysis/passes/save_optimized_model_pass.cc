@@ -15,7 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/passes/save_optimized_model_pass.h"
 
 #include <unordered_set>
+#include <vector>
+
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -51,6 +54,24 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   optimized_program_desc.CopyFrom(*argument->main_program().Proto());
 
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
+
+  if (graph->Has(framework::ir::kRepetitiveParamAttr)) {
+    auto repetitive_params = graph->Get<std::vector<std::string>>(
+        framework::ir::kRepetitiveParamAttr);
+
+    // This is to avoid situations where the weight file is empty and retain a
+    // weight as a placeholder.
+    repetitive_params.pop_back();
+
+    auto* global_block = optimized_program_desc.MutableBlock(0);
+    for (framework::VarDesc* var : global_block->AllVars()) {
+      if (std::count(repetitive_params.begin(),
+                     repetitive_params.end(),
+                     var->Name())) {
+        global_block->RemoveVar(var->Name());
+      }
+    }
+  }
 
   auto IsPersistable = [](const framework::VarDesc* var) {
     if (var->Persistable() &&
