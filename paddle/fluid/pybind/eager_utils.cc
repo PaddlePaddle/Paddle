@@ -661,7 +661,7 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s: argument (position %d) must be "
-        "one of core.VarDesc.VarType, "
+        "one of paddle::DataType, "
         "but got %s",
         op_type,
         arg_pos + 1,
