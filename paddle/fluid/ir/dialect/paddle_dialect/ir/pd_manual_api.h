@@ -21,10 +21,5 @@
 #include "paddle/phi/common/place.h"
 
 namespace paddle {
-namespace dialect {
-
-std::vector<ir::OpResult> concat_grad(std::vector<ir::OpResult> x,
-                                      ir::OpResult out_grad,
-                                      ir::OpResult axis);
-}  // namespace dialect
+namespace dialect {}  // namespace dialect
 }  // namespace paddle
