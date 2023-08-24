@@ -380,7 +380,7 @@ void CompareRawInferMeta(const MetaTensor& x,
     out->set_dims(make_ddim(out_dims_array));
     out->share_lod(x);
   }
-  if (!out || !out->is_same_tensor(x)) {
+  if (!out->is_same_tensor(x)) {
     out->set_dtype(DataType::BOOL);
   }
 }

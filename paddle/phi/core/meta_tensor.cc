@@ -202,7 +202,7 @@ bool MetaTensor::is_selected_rows() const {
 bool MetaTensor::is_tensor_array() const { return false; }
 
 bool MetaTensor::is_same_tensor(const MetaTensor& meta_tensor) const {
-  return tensor_ == meta_tensor.tensor();
+  return tensor_ != nullptr && tensor_ == meta_tensor.tensor();
 }
 
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
