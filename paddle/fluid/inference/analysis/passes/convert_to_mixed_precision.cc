@@ -109,7 +109,7 @@ void ConvertToMixedPrecisionPass::Run() {
   auto_mixed_precision_pass.Set("enable_low_precision_io",
                                 new bool{!keep_io_types_});
   auto_mixed_precision_pass.Apply(main_graph_.get());
-  
+
   framework::ir::IdentityOpCleanPass identity_op_clean_pass;
   identity_op_clean_pass.Apply(main_graph_.get());
 

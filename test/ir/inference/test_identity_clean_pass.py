@@ -154,6 +154,7 @@ class TestIdentityScaleCleanPass_V2(PassAutoScanTest):
     def test(self):
         self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
 
+
 class TestIdentityCastCleanPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=True)
@@ -207,6 +208,7 @@ class TestIdentityCastCleanPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
+
 
 if __name__ == "__main__":
     unittest.main()
