@@ -24,7 +24,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void DataKernel(const Context& ctx,
-                int64_t index,
+                const std::string& name,
+                const phi::IntArray& shape,
                 phi::DataType data_type,
                 DenseTensor* out) {}
 

@@ -37,7 +37,7 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
       bool knownNegativeOne = false,
       bool knownNonSizeOne = false,
       bool knownNonSizeZero = false);
-  std::string getSymName();
+  const std::string getSymName();
   int64_t getValue();
   bool getKnownNonNegative();
   bool getKnownNegativeOne();
@@ -46,11 +46,14 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
 
   void updateSymName(std::string attrValue);
   void updateValue(int64_t attrValue);
-
   void updateKnownNonNegative(bool attrValue);
   void updateKnownNegativeOne(bool attrValue);
   void updateKnownNonSizeOne(bool attrValue);
   void updateKnownNonSizeZero(bool attrValue);
+
+  bool isDynamic();
+  bool merge(SymbolicDim other);
+
   void Verify() {}
 };
 

@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -244,66 +245,6 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
 }
 
 }  // namespace
-
-/// @brief This class is used to translate a OpDesc, it's a functor class and
-/// should have no non-static data member, since we expected it's stateless.
-struct OpTranscriber {
- public:
-  virtual ~OpTranscriber() = default;
-
- public:
-  virtual ir::Operation* operator()(ir::IrContext* ctx,
-                                    TranslationContext* param_map,
-                                    const OpDesc& op_desc,
-                                    ir::Program* program);
-
- public:
-  virtual ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc);
-  virtual std::vector<ir::OpResult> GenerateOperationInput(
-      ir::IrContext* ctx,
-      TranslationContext* param_map,
-      const OpDesc& op_desc,
-      const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos,
-      ir::Program* program);
-  virtual std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
-      ir::IrContext* ctx,
-      const OpDesc& op_desc,
-      const OpOutputInfoList& output_infos);
-  virtual void HandleNonexistentAttribute(ir::IrContext*,
-                                          ir::AttributeMap* attribute_map,
-                                          const OpAttributeInfo& info) {
-    auto& attribute_translator = AttributeTranslator::instance();
-    (*attribute_map)[info.name] =
-        attribute_translator(info.type_name, paddle::framework::Attribute());
-  }
-  virtual ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext* ctx,
-      const std::string& normalized_op_name,
-      const OpAttributeInfoList& op_attr_infos,
-      const OpDesc& op_desc);
-
-  virtual void RecordOpResultMapping(ir::IrContext* ctx,
-                                     TranslationContext* param_map,
-                                     const OpDesc& op_desc,
-                                     ir::Operation* operation,
-                                     const OpOutputMapping& arg_to_idx);
-
- public:
-  virtual InputHandlerFn GetSpecialInputHandlers(
-      const std::string& input_name) {
-    return nullptr;
-  }
-  virtual AttributeHandlerFn GetSpecialAttributeHandlers(
-      const std::string& input_name) {
-    return nullptr;
-  }
-  virtual void InsertSliceOperationForInput(ir::IrContext* ctx,
-                                            TranslationContext* param_map,
-                                            const OpDesc& op_desc,
-                                            const OpInputInfoList& input_infos,
-                                            ir::Program* program);
-};
 
 ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
                                         const OpDesc& op_desc) {
@@ -624,6 +565,14 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   return attribute_map;
 }
 
+void OpTranscriber::HandleNonexistentAttribute(ir::IrContext*,
+                                               ir::AttributeMap* attribute_map,
+                                               const OpAttributeInfo& info) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  (*attribute_map)[info.name] =
+      attribute_translator(info.type_name, paddle::framework::Attribute());
+}
+
 void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
                                           TranslationContext* param_map,
                                           const OpDesc& op_desc,
@@ -653,7 +602,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
-  std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+  std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
       op_info_concept->get_op_info_();
 
   this->InsertSliceOperationForInput(
@@ -769,7 +718,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     OpInputInfoList input_infos;
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
-    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+    std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
         op_info_concept->get_op_info_();
     std::unordered_map<std::string, OpAttributeInfo> attr_info_maps;
     for (auto info : attr_infos) {
@@ -965,11 +914,14 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::Attribute shape = attribute_translator(
+        "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("shape"));
     ir::AttributeMap attribute_map = {
         {"name",
          ir::StrAttribute::get(ctx,
                                op_desc.GetAttrIfExists<std::string>("name"))},
-        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"shape", shape},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
         {"place",
@@ -1092,7 +1044,7 @@ struct FetchOpTranscriber : public OpTranscriber {
     OpInputInfoList input_infos;
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
-    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+    std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
         op_info_concept->get_op_info_();
 
     this->InsertSliceOperationForInput(
@@ -1214,8 +1166,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
-    std::vector<int64_t> shape =
-        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
     float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
@@ -1223,7 +1175,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
 
     ir::AttributeMap attribute_map = {
         {"shape",
-         paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape))},
+         attribute_translator("paddle::dialect::IntArrayAttribute",
+                              shape_attr)},
         {"value", attr_value.dyn_cast<paddle::dialect::ScalarAttribute>()},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(
@@ -1289,10 +1242,10 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
           ctx, param_map, program, shape_tensor_list_vars);
       op_inputs.push_back(defining_op->result(0));
     } else {
-      std::vector<int64_t> shape =
-          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-      ir::Attribute new_attr =
-          paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape));
+      auto& attribute_translator = AttributeTranslator::instance();
+      paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
+      ir::Attribute new_attr = attribute_translator(
+          "paddle::dialect::IntArrayAttribute", shape_attr);
       auto defining_op =
           InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
       op_inputs.push_back(defining_op->result(0));
@@ -1631,6 +1584,9 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
 };
 
 OpTranslator::OpTranslator() {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
