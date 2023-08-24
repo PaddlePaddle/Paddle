@@ -136,7 +136,7 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
         pattern->NewNode(ew_bias_add_repr())->assert_is_op("elementwise_add");
     ew_bias_add_out = pattern->NewNode(ew_bias_add_out_repr())
                           ->assert_is_op_output("elementwise_add", "Out");
-    if (with_bn_ || with_branch_ || !act_type_.empty()) {
+    if (with_bn_ || with_scale_ || with_branch_ || !act_type_.empty()) {
       ew_bias_add_out->assert_has_n_outputs(1);
     }
     ew_bias_add->LinksFrom({conv_out, ew_bias_add_y})
@@ -187,7 +187,7 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
     bn = pattern->NewNode(bn_repr())->assert_is_op("batch_norm");
     bn_out =
         pattern->NewNode(bn_out_repr())->assert_is_op_output("batch_norm", "Y");
-    if (with_branch_ || !act_type_.empty()) {
+    if (with_scale_ || with_branch_ || !act_type_.empty()) {
       bn_out->assert_has_n_outputs(1);
     }
     bn_mean_out = pattern->NewNode(bn_mean_out_repr())
@@ -205,11 +205,22 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
     bn_out = ew_bias_add_out;
   }
   // scale op
-
+  if (with_scale_) {
+    bn_out->assert_is_op_input("scale", "X");
+    scale = pattern->NewNode(scale_repr())->assert_is_op("scale");
+    scale_out =
+        pattern->NewNode(scale_out_repr())->assert_is_op_output("scale", "Out");
+    if (with_bn_ || !act_type_.empty()) {
+      scale_out->assert_has_n_outputs(1);
+    }
+    scale->LinksFrom({bn_out}).LinksTo({scale_out});
+  } else {
+    scale_out = bn_out;
+  }
   // ew_branch_add op
   if (with_branch_) {
     if (with_branch_x_) {
-      bn_out->assert_is_op_input("elementwise_add", "Y");
+      scale_out->assert_is_op_input("elementwise_add", "Y");
       ew_branch_add_in = pattern->NewNode(ew_branch_add_in_repr())
                              ->assert_is_op_input("elementwise_add", "X")
                              ->AsInput();
@@ -236,7 +247,7 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
     ew_branch_add->LinksFrom({bn_out, ew_branch_add_in})
         .LinksTo({ew_branch_add_out});
   } else {
-    ew_branch_add_out = bn_out;
+    ew_branch_add_out = scale_out;
   }
   // act op
   if (!act_type_.empty()) {
@@ -447,6 +458,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
     // conv_filter fp16 --> fp32
+    auto filter_len = filter_t->numel();
     auto filter_dtype = filter_t->dtype();
     int out_dtype = proto::VarType::Type::VarType_Type_FP32;
     if (filter_dtype == phi::DataType::FLOAT16) {
@@ -499,7 +511,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         float* bn_var_ptr =
             bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
         auto mean_len = bn_mean_t->numel();
-        auto filter_len = filter_t->numel();
         auto filter_stride = filter_len / mean_len;
         float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
         if (!with_conv_bias) {  // prev node is conv
@@ -531,6 +542,32 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         }
       }
     }
+    // get attrs of scale
+    auto bias_len = filter_dims[1];
+    float scale_val_ = 1.f;
+    float bias_val_ = 0.f;
+    scale_val_ = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
+    bias_val_ = PADDLE_GET_CONST(float, scale->Op()->GetAttr("bias"));
+    bool bias_after_scale_ =
+        PADDLE_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
+    // recompute bias as scale op
+    auto fusion_bias_t =
+        scope->Var(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
+    float* fusion_bias_ptr =
+        fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+    for (int i = 0; i < bias_len; ++i) {
+      if (bias_after_scale_) {
+        fusion_bias_ptr[i] = fusion_bias_ptr[i] * scale_val_ + bias_val_;
+      } else {
+        fusion_bias_ptr[i] = (fusion_bias_ptr[i] + bias_val_) * scale_val_;
+      }
+    }
+    // recompute weight as scale op
+    float* filter_ptr =
+        filter_t->mutable_data<float>(paddle::platform::CPUPlace());
+    for (int i = 0; i < filter_len; ++i) {
+      filter_ptr[i] *= scale_val_;
+    }
     // filter max
     Node* filter_int16 = nullptr;
     Node* filter_max = nullptr;
@@ -542,6 +579,8 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
       conv2d_xpu_out_name = act_out->Name();
     } else if (ew_branch_add) {
       conv2d_xpu_out_name = ew_branch_add_out->Name();
+    } else if (scale) {
+      conv2d_xpu_out_name = scale_out->Name();
     } else if (bn) {
       conv2d_xpu_out_name = bn_out->Name();
     } else if (ew_bias_add) {
@@ -549,9 +588,9 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     } else {
       conv2d_xpu_out_name = conv_out->Name();
     }
-    std::string conv_out_max_name = conv2d_xpu_out_name + "_max";
-    VarDesc conv_out_max_desc(conv_out_max_name);
-    Node* conv2d_xpu_out_max = graph->CreateVarNode(&conv_out_max_desc);
+    std::string conv2d_xpu_out_max_name = conv2d_xpu_out_name + "_max";
+    VarDesc conv2d_xpu_out_max_desc(conv2d_xpu_out_max_name);
+    Node* conv2d_xpu_out_max = graph->CreateVarNode(&conv2d_xpu_out_max_desc);
     // Generate conv2d_xpu op
     framework::OpDesc conv2d_xpu_op_desc(block);
     // set input&output var
@@ -560,7 +599,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv2d_xpu_op_desc.SetInput("filter", {filter_int16->Name()});
     conv2d_xpu_op_desc.SetInput("filter_max", {filter_max->Name()});
     conv2d_xpu_op_desc.SetOutput("out", {conv2d_xpu_out_name});
-    conv2d_xpu_op_desc.SetOutput("out_max", {conv_out_max_name});
+    conv2d_xpu_op_desc.SetOutput("out_max", {conv2d_xpu_out_max_name});
     // set fusion_bias input node
     if (has_bias) {
       conv2d_xpu_op_desc.SetInput("bias", {fusion_bias_node->Name()});
@@ -630,12 +669,15 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     IR_NODE_LINK_TO(conv2d_xpu, conv2d_xpu_out_max);
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {conv};
+    std::unordered_set<const Node*> delete_nodes = {conv, conv_filter};
     if (act != nullptr) {
       delete_nodes.insert(act);
     }
     if (ew_branch_add != nullptr) {
       delete_nodes.insert(ew_branch_add);
+    }
+    if (scale != nullptr) {
+      delete_nodes.insert(scale);
     }
     if (bn != nullptr) {
       delete_nodes.insert(bn);
