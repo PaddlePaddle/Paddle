@@ -51,14 +51,6 @@ std::set<std::string> StaticBuildBlackList = {
     "shuffle_batch_grad",
     "distributed_fused_lamb_init"};
 
-// TODO(lizhiyu): This operator list is only for pipeline strategy temporarily.
-std::set<std::string> SkipCheckForPipelineTempList = {"c_broadcast",
-                                                      "c_allreduce_sum",
-                                                      "c_allgather",
-                                                      "layer_norm",
-                                                      "recv_v2",
-                                                      "reshape2_grad",
-                                                      "c_identity"};
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -74,10 +66,6 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    if (SkipCheckForPipelineTempList.find(op_type) !=
-        SkipCheckForPipelineTempList.end()) {
-      continue;
-    }
     const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());

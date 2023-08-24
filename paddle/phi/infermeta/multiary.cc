@@ -19,12 +19,14 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -4156,6 +4158,13 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
     beam_cache_offset_out->set_dims(beam_cache_offset.dims());
     beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
   }
+}
+
+void FullWithTensorInferMeta(const MetaTensor& shape,
+                             DataType dtype,
+                             MetaTensor* out) {
+  out->set_dims(make_ddim({-1}));
+  out->set_dtype(dtype);
 }
 
 }  // namespace phi
