@@ -742,7 +742,8 @@ def decorate(
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn.functional as F
-
+            >>> paddle.enable_static()
+            
             >>> # doctest: +REQUIRES(env:GPU)
             >>> def run_example_code():
             ...     place = paddle.CUDAPlace(0)

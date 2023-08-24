@@ -141,12 +141,12 @@ class OptimizerWithMixedPrecision:
                 >>> paddle.enable_static()
 
                 >>> def run_example_code():
-                ...     place = paddle.CPUPlace(0)
+                ...     place = paddle.CPUPlace()
                 ...     exe = paddle.static.Executor(place)
                 ...     data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
                 ...     conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
                 ...     # 1) Use bf16_guard to control the range of bf16 kernels used.
-                ...     with paddle.static.amp.bf16_guard():
+                ...     with paddle.static.amp.bf16.bf16_guard():
                 ...         bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
                 ...         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
                 ...         hidden = paddle.static.nn.fc(pool, size=10)
@@ -155,9 +155,9 @@ class OptimizerWithMixedPrecision:
                 ...     # Setting `multi_precision` to True can avoid the poor accuracy
                 ...     # or the slow convergence in a way.
                 ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
-                ...     # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
+                ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                 ...     amp_list = paddle.static.amp.CustomOpLists(
-                ...         custom_fp32_list=['pool2d'])
+                ...         custom_black_list=['pool2d'])
                 ...     # 4) The entry of Paddle AMP.
                 ...     # Enable pure bf16 training by setting `use_pure_bf16` to True.
                 ...     optimizer = paddle.static.amp.bf16.decorate_bf16(
@@ -171,6 +171,8 @@ class OptimizerWithMixedPrecision:
                 ...     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                 ...     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                 ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
+
+                >>> run_example_code()
 
         """
         assert (
@@ -294,12 +296,12 @@ def decorate_bf16(
             >>> import paddle.nn.functional as F
 
             >>> def run_example_code():
-            ...     place = paddle.CPUPlace(0)
+            ...     place = paddle.CPUPlace()
             ...     exe = paddle.static.Executor(place)
             ...     data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
             ...     conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
             ...     # 1) Use bf16_guard to control the range of bf16 kernels used.
-            ...     with paddle.static.amp.bf16_guard():
+            ...     with paddle.static.amp.bf16.bf16_guard():
             ...         bn = paddle.static.nn.batch_norm(input=conv2d, act="relu")
             ...         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
             ...         hidden = paddle.static.nn.fc(pool, size=10)
@@ -308,12 +310,12 @@ def decorate_bf16(
             ...     # Setting `multi_precision` to True can avoid the poor accuracy
             ...     # or the slow convergence in a way.
             ...     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
-            ...     # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
+            ...     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
             ...     amp_list = paddle.static.amp.CustomOpLists(
-            ...         custom_fp32_list=['pool2d'])
+            ...         custom_black_list=['pool2d'])
             ...     # 4) The entry of Paddle AMP.
             ...     # Enable pure bf16 training by setting `use_pure_bf16` to True.
-            ...     optimizer = paddle.static.amp.decorate_bf16(
+            ...     optimizer = paddle.static.amp.bf16.decorate_bf16(
             ...         optimizer,
             ...         amp_list,
             ...         use_pure_bf16=True)
@@ -324,6 +326,7 @@ def decorate_bf16(
             ...     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
             ...     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
             ...     optimizer.amp_init(place, scope=paddle.static.global_scope())
+            >>> run_example_code()
 
     """
     if amp_lists is None:
