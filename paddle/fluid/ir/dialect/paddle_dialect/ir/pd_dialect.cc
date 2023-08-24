@@ -76,9 +76,12 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) const {
 }
 
 void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
+  os << "(" << attr.dialect().name();
+  os << '.';
   if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
     phi::IntArray data = int_array_attr.data();
-    os << "IntArray[";
+    os << "IntArray)"
+       << "[";
     const auto &inner_data = data.GetData();
     ir::PrintInterleave(
         inner_data.begin(),
@@ -87,15 +90,61 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
         [&os]() { os << ","; });
     os << "]";
   } else if (auto data_type_attr = attr.dyn_cast<DataTypeAttribute>()) {
-    os << data_type_attr.data();
+    os << "DataType)" << data_type_attr.data();
   } else if (auto place_type_attr = attr.dyn_cast<PlaceAttribute>()) {
-    os << place_type_attr.data();
+    os << "Place)" << place_type_attr.data();
   } else if (auto data_layout_attr = attr.dyn_cast<DataLayoutAttribute>()) {
-    os << data_layout_attr.data();
+    os << "DataLayout)" << data_layout_attr.data();
   } else {
     os << "<#AttrNotImplemented>";
   }
 }
+
+ir::Type PaddleDialect::ParseType(ir::IrParser &parser) {  // NOLINT
+  parser.ConsumeAToken("pd.tensor");
+  parser.ConsumeAToken("<");
+  std::vector<int> dim{};
+  Token dim_token = parser.PeekToken();
+  while (dim_token.token_type_ == DIGIT) {
+    dim_token = parser.GetToken();
+    dim.push_back(atoi(dim_token.val_.c_str()));
+    if (parser.PeekToken().val_ != "x") {
+      break;
+    }
+    parser.GetToken();
+    if (parser.PeekToken().token_type_ != DIGIT) {
+      break;
+    }
+  }
+  phi::DDim ddim = phi::make_ddim(dim);
+  ir::Type dtype = parser.ParseType();
+  std::vector<std::vector<size_t>> lod;
+  std::vector<size_t> lodv;
+  lodv.push_back(0);
+  lod.push_back(lodv);
+  parser.ConsumeAToken(">");
+  return DenseTensorType::get(
+      parser.ctx, dtype, ddim, phi::DataLayout::UNDEFINED, lod, 0);
+}
+
+ir::Attribute PaddleDialect::ParseAttribute(ir::IrParser &parser) {  // NOLINT
+  std::string type_name = parser.GetToken().val_;
+  std::string attribute_name =
+      type_name.substr(type_name.find('.') + 1, std::string::npos);
+  parser.ConsumeAToken(")");
+  if (attribute_name == "IntArray") {
+    return IntArrayAttribute::Parse(parser);
+  } else if (attribute_name == "DataType") {
+    return DataTypeAttribute::Parse(parser);
+  } else if (attribute_name == "Place") {
+    return PlaceAttribute::Parse(parser);
+  } else if (attribute_name == "DataLayout") {
+    return DataLayoutAttribute::Parse(parser);
+  } else {
+    IR_THROW("No function to parse " + attribute_name + " exists!");
+  }
+}
+
 
 }  // namespace dialect
 }  // namespace paddle

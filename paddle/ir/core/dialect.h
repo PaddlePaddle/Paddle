@@ -29,7 +29,7 @@ namespace ir {
 
 class Operation;
 class IrPrinter;
-
+class IrParser;
 class DialectInterface;
 ///
 /// \brief Dialect can basically be understood as a namespace. In Dialect, we
@@ -143,6 +143,14 @@ class IR_API Dialect {
 
   virtual void PrintAttribute(Attribute attr, std::ostream &os) const {
     IR_THROW("dialect has no registered attribute printing hook");
+  }
+
+  virtual Type ParseType(ir::IrParser &parser) {  // NOLINT
+    IR_THROW("dialect has no registered type parsing hook");
+  }
+
+  virtual Attribute ParseAttribute(ir::IrParser &parser) {  // NOLINT
+    IR_THROW("dialect has no registered attribute parsing hook");
   }
 
   virtual void PrintOperation(const Operation *op,

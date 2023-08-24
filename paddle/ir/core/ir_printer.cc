@@ -87,22 +87,27 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << s.AsString();
+    os << "(String)" << s.AsString();
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
-    os << b.data();
+    if (b.data()) {
+      os << "true";
+    } else {
+      os << "false";
+    }
   } else if (auto f = attr.dyn_cast<FloatAttribute>()) {
-    os << f.data();
+    os << "(Float)" << f.data();
   } else if (auto d = attr.dyn_cast<DoubleAttribute>()) {
-    os << d.data();
+    os << "(Double)" << d.data();
   } else if (auto i = attr.dyn_cast<Int32Attribute>()) {
-    os << i.data();
+    os << "(Int32)" << i.data();
   } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
-    os << i.data();
+    os << "(Int64)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
-    os << p.data();
+    os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "array[";
+    os << "(Array)"
+       << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
