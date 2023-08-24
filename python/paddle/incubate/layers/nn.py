@@ -139,7 +139,6 @@ def fused_seqpool_cvm(
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.fluid as fluid
             >>> paddle.enable_static()
 
             >>> data = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
@@ -148,7 +147,7 @@ def fused_seqpool_cvm(
             >>> embs = paddle.incubate.layers.nn._pull_box_sparse(input=inputs, size=11, is_distributed=True, is_sparse=True)
 
             >>> label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64", lod_level=1)
-            >>> ones = fluid.layers.fill_constant_batch_size_like(input=label, shape=[-1, 1], dtype="int64", value=1)
+            >>> ones = paddle.static.data(name="ones", shape=[-1, 1], dtype="int64", lod_level=1)
             >>> show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
             >>> show_clk.stop_gradient = True
 
@@ -1622,8 +1621,9 @@ def _pull_box_sparse(
             >>> import paddle
             >>> paddle.enable_static()
 
-            >>> data = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
-            >>> emb = incubate.layers.pull_box_sparse(input=data, size=[11])
+            >>> x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=1)
+            >>> emb_x, emb_y = incubate.layers._pull_box_sparse([x, y], size=1)
     """
     helper = LayerHelper('pull_box_sparse', **locals())
     if dtype != 'float32':

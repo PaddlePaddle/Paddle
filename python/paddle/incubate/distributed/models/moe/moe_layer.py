@@ -282,6 +282,7 @@ class MoELayer(nn.Layer):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Until Distributed move successfully, just skip it')
             >>> from paddle.nn import layer, LayerList
             >>> from paddle.distributed.moe import MoElayer
             >>> from paddle.distributed.collective import Group

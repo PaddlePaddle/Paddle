@@ -45,7 +45,7 @@ def fused_matmul_bias(
             >>> import paddle
             >>> from paddle.incubate.nn.functional import fused_matmul_bias
 
-            >>> x = paddle.randn([3, 4])
+            >>> x = paddle.randn([3, 5])
             >>> y = paddle.randn([4, 5])
             >>> bias = paddle.randn([5])
             >>> out = fused_matmul_bias(x, y, bias)
