@@ -13,13 +13,33 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <map>
+#include <set>
+#include <vector>
 #include "glog/logging.h"
 
+#include "paddle/phi/api/lib/api_custom_impl.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/tensor_copy.h"
+#include "paddle/phi/common/type_traits.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/gru_compute.h"
-
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 namespace phi {
 namespace funcs {
 namespace detail {
