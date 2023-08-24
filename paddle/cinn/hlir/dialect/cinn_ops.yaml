@@ -6,4 +6,3 @@
   kernel :
     func : add
   inplace : (x -> out)
-  backward : add_grad

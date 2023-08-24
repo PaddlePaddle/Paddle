@@ -18,7 +18,8 @@ if(NOT CINN_ONLY)
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/cinn_ops.yaml)
 
   set(cinn_op_parsed_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/cinn_ops.parsed.yaml)
+      ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generator/cinn_ops.parsed.yaml
+  )
 
   set(cinn_op_parsed_yaml_files ${cinn_op_parsed_yaml_file})
 
