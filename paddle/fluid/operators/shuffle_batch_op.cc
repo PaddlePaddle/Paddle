@@ -12,12 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/shuffle_batch_op.h"
-
+#include <atomic>
+#include <cstring>
+#include <ctime>
 #include <memory>
+#include <random>
+#include <string>
+#include <utility>
+#include <vector>
 
+#include "glog/logging.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
