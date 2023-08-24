@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 #include <map>
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builder.h"
