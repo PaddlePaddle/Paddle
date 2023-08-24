@@ -73,9 +73,9 @@ static PyMethodDef OpsAPI[] = {{"add_n",
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for full."},
                                {"split",
-                                (PyCFunction)(void (*)(void))full,
+                                (PyCFunction)(void (*)(void))split,
                                 METH_VARARGS | METH_KEYWORDS,
-                                "C++ interface function for full."},
+                                "C++ interface function for split."},
                                {nullptr, nullptr, 0, nullptr}};
 
 void BindOpsAPI(pybind11::module *module) {

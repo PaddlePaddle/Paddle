@@ -59,7 +59,6 @@ class TesBackward_1(unittest.TestCase):
         )
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
-    '''
     def test_full(self):
         # test create output_grad in backward use full op
         newir_program = get_ir_program_0()
@@ -181,8 +180,6 @@ class TesBackward_2(unittest.TestCase):
             self.assertEqual(op.name(), ops_name[i])
 
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
-
-'''
 
 
 if __name__ == "__main__":
