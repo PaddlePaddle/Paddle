@@ -265,7 +265,7 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
     Return:
         code_blocks: A list of code-blocks, indent removed.
                      element {'name': the code-block's name, 'id': sequence id.
-                              'codes': codes, 'required': 'gpu', 'in_examples': bool, code block in `Examples` or not,}
+                              'codes': codes, 'in_examples': bool, code block in `Examples` or not,}
     """
     code_blocks = []
 
@@ -290,7 +290,6 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
 
     cb_start_pat = re.compile(r"code-block::\s*python")
     cb_param_pat = re.compile(r"^\s*:(\w+):\s*(\S*)\s*$")
-    cb_required_pat = re.compile(r"^\s*#\s*require[s|d]\s*:\s*(\S+)\s*$")
 
     cb_info = {}
     cb_info['cb_started'] = False
@@ -298,23 +297,20 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
     cb_info['cb_cur_indent'] = -1
     cb_info['cb_cur_name'] = None
     cb_info['cb_cur_seq_id'] = 0
-    cb_info['cb_required'] = None
 
     def _cb_started():
-        # nonlocal cb_started, cb_cur_name, cb_required, cb_cur_seq_id
+        # nonlocal cb_started, cb_cur_name, cb_cur_seq_id
         cb_info['cb_started'] = True
         cb_info['cb_cur_seq_id'] += 1
         cb_info['cb_cur_name'] = None
-        cb_info['cb_required'] = None
 
     def _append_code_block(in_examples):
-        # nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
+        # nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id
         code_blocks.append(
             {
                 'codes': inspect.cleandoc("\n" + "\n".join(cb_info['cb_cur'])),
                 'name': cb_info['cb_cur_name'],
                 'id': cb_info['cb_cur_seq_id'],
-                'required': cb_info['cb_required'],
                 'in_examples': in_examples,
             }
         )
@@ -339,10 +335,6 @@ def extract_code_blocks_from_docstr(docstr, google_style=True):
                     if mo_p.group(1) == 'name':
                         cb_info['cb_cur_name'] = mo_p.group(2)
                     continue
-                # read the required directive
-                mo_r = cb_required_pat.match(linecont)
-                if mo_r:
-                    cb_info['cb_required'] = mo_r.group(1)
                 # docstring end
                 if lineno == lastlineindex:
                     mo = re.search(r"\S", linecont)
