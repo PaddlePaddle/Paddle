@@ -1915,7 +1915,7 @@ class Executor:
             else:
                 error_info = (
                     "There are no operators in the program to be executed. "
-                    "If you pass Program manually, please use fluid.program_guard "
+                    "If you pass Program manually, please use base.program_guard "
                     "to ensure the current Program is being used."
                 )
             warnings.warn(error_info)

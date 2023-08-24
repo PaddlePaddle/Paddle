@@ -3285,6 +3285,8 @@ function build_pr_and_develop() {
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
+    # may be remove it later
+    rm -rf ${PADDLE_ROOT}/build/third_party
     generate_api_spec "$1" "DEV"
 
 }

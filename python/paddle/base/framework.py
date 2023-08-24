@@ -445,10 +445,10 @@ def require_version(min_version, max_version=None):
             )
 
     version_installed = [
-        base_version.major,
-        base_version.minor,
-        base_version.patch,
-        base_version.rc,
+        fluid_version.major,
+        fluid_version.minor,
+        fluid_version.patch,
+        fluid_version.rc,
     ]
     zero_version = ['0', '0', '0', '0']
 
@@ -466,14 +466,14 @@ def require_version(min_version, max_version=None):
                 "PaddlePaddle version in [%s, %s] required, but %s installed. "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code."
-                % (min_version, max_version, base_version.full_version)
+                % (min_version, max_version, fluid_version.full_version)
             )
         else:
             warnings.warn(
                 "PaddlePaddle version %s or higher is required, but %s installed, "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code."
-                % (min_version, base_version.full_version)
+                % (min_version, fluid_version.full_version)
             )
         return
 
@@ -494,14 +494,14 @@ def require_version(min_version, max_version=None):
         ):
             raise Exception(
                 "VersionError: PaddlePaddle version in [%s, %s] required, but %s installed."
-                % (min_version, max_version, base_version.full_version)
+                % (min_version, max_version, fluid_version.full_version)
             )
     else:
         if version_cmp(version_installed, min_version_to_check) < 0:
             raise Exception(
                 "VersionError: PaddlePaddle version %s or higher is required, but %s installed, "
                 "please upgrade your PaddlePaddle to %s or other higher version."
-                % (min_version, base_version.full_version, min_version)
+                % (min_version, fluid_version.full_version, min_version)
             )
 
 
