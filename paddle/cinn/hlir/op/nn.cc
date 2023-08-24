@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "paddle/cinn/adt/equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -76,6 +77,13 @@ std::vector<framework::shape_t> InferShapeForRelu(
   CHECK(!inputs_shape.empty()) << "The inputs is empty! Please check again.";
   std::vector<framework::shape_t> res{inputs_shape[0]};
   return res;
+}
+
+void GenerateEquationsForRelu(cinn::adt::equation::config::Context *ctx,
+                              const framework::AttrMapType &attrs) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
 }
 
 std::vector<Type> InferDtypeForRelu(const std::vector<Type> &inputs_type,
@@ -2327,6 +2335,8 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRelu)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",

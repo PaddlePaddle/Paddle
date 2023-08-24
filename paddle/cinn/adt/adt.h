@@ -20,6 +20,8 @@
 #include <variant>
 #include <vector>
 
+#include "glog/logging.h"
+
 namespace cinn {
 namespace adt {
 
@@ -81,23 +83,24 @@ class Tagged {
   T value_;
 };
 
-#define DEFINE_ADT_TAG(name)            \
-  template <typename T>                 \
-  class name final : public Tagged<T> { \
-    using Tagged<T>::Tagged;            \
+#define DEFINE_ADT_TAG(name)       \
+  template <typename T>            \
+  struct name : public Tagged<T> { \
+    using Tagged<T>::Tagged;       \
   };
 
-DEFINE_ADT_TAG(In);
-DEFINE_ADT_TAG(Out);
-DEFINE_ADT_TAG(Optional);
-DEFINE_ADT_TAG(tVar);
-DEFINE_ADT_TAG(tSSAShadow);
-DEFINE_ADT_TAG(tAnchor);
-DEFINE_ADT_TAG(tScheduleIterVar);
-DEFINE_ADT_TAG(tAssertMsg);
-DEFINE_ADT_TAG(tIndexVar);
-DEFINE_ADT_TAG(tTensorSize);
+#define DEFINE_ADT_UNION(class_name, ...)                            \
+  struct class_name final : public ::cinn::adt::Union<__VA_ARGS__> { \
+    using ::cinn::adt::Union<__VA_ARGS__>::Union;                    \
+  };
+
 using Name = std::string;
+
+#define ADT_TODO() LOG(FATAL) << "TODO"
+
+inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+  return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+}
 
 }  // namespace adt
 }  // namespace cinn
