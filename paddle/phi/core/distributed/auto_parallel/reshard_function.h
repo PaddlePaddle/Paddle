@@ -28,14 +28,13 @@ class ReshardFunction {
   ReshardFunction() = default;
   virtual ~ReshardFunction() = default;
 
-  virtual bool IsSuitable(
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
+  virtual bool IsSuitable(const DistTensor& in,
+                          const TensorDistAttr& out_dist_attr) = 0;
 
   virtual std::shared_ptr<DistTensor> Eval(
       DeviceContext* dev_ctx,
       const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) = 0;
+      const TensorDistAttr& out_dist_attr) = 0;
 };
 
 }  // namespace distributed

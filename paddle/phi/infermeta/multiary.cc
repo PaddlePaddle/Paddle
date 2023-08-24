@@ -19,12 +19,14 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -2534,6 +2536,53 @@ void LambInferMeta(const MetaTensor& param,
   }
 }
 
+void LLMInt8LinearInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            const MetaTensor& bias,
+                            const MetaTensor& weight_scale,
+                            const float threshold,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[1],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+          x_dims[x_dims.size() - 1],
+          w_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 16, but got[%d]",
+          w_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The second dimension of input must be divisible by 16, but got[%d]",
+          w_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      weight_scale.dims()[0],
+      w_dims[0],
+      errors::InvalidArgument(
+          "Input(weight_scale) dim[0] and Input(Weight) dim[0] should be euqal."
+          "But received Input(weight_scale) dim[0](%s) != Input(Weight) "
+          "dim[0](%s)",
+          weight_scale.dims()[0],
+          w_dims[0]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = w_dims[0];
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
@@ -3664,6 +3713,52 @@ void WarprnntInferMeta(const MetaTensor& input,
   loss->set_dtype(input.dtype());
 }
 
+void WeightOnlyLinearInferMeta(const MetaTensor& x,
+                               const MetaTensor& weight,
+                               const MetaTensor& bias,
+                               const MetaTensor& weight_scale,
+                               const std::string& weight_dtype,
+                               MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  auto n = weight_scale.dims()[0];
+  PADDLE_ENFORCE(
+      weight_dtype == "int8" || weight_dtype == "int4",
+      errors::InvalidArgument("quant_method must be 'int8' or 'int4'."));
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      weight_scale.dims().size(),
+      1UL,
+      errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      w_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 16, but got[%d]",
+          w_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The second dimension of input must be divisible by 16, but got[%d]",
+          w_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[1],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+          x_dims[x_dims.size() - 1],
+          w_dims[1]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = n;
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
@@ -3997,58 +4092,6 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dtype(DataType::INT32);
 }
 
-void LLMInt8MatmulInferMeta(const MetaTensor& x,
-                            const MetaTensor& weight,
-                            MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto w_dims = weight.dims();
-  PADDLE_ENFORCE_EQ(
-      w_dims.size(),
-      2UL,
-      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      x_dims[x_dims.size() - 1],
-      w_dims[1],
-      errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
-          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
-          x_dims[x_dims.size() - 1],
-          w_dims[1]));
-  auto out_dims = x_dims;
-  out_dims[out_dims.size() - 1] = w_dims[0];
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-}
-
-void WeightOnlyMatmulInferMeta(const MetaTensor& x,
-                               const MetaTensor& weight,
-                               const MetaTensor& weight_scale,
-                               MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto w_dims = weight.dims();
-  auto n = weight_scale.dims()[0];
-  PADDLE_ENFORCE_EQ(
-      w_dims.size(),
-      2UL,
-      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      weight_scale.dims().size(),
-      1UL,
-      errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      x_dims[x_dims.size() - 1],
-      w_dims[1],
-      errors::InvalidArgument(
-          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
-          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
-          x_dims[x_dims.size() - 1],
-          w_dims[1]));
-  auto out_dims = x_dims;
-  out_dims[out_dims.size() - 1] = n;
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-}
-
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
                                        const MetaTensor& src_mask,
@@ -4111,6 +4154,13 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
     beam_cache_offset_out->set_dims(beam_cache_offset.dims());
     beam_cache_offset_out->set_dtype(beam_cache_offset.dtype());
   }
+}
+
+void FullWithTensorInferMeta(const MetaTensor& shape,
+                             DataType dtype,
+                             MetaTensor* out) {
+  out->set_dims(make_ddim({-1}));
+  out->set_dtype(dtype);
 }
 
 }  // namespace phi
