@@ -57,6 +57,8 @@ class OpYamlInfoParser {
 
   const std::string& ViewName(const std::string& out_name) const;
 
+  const std::string& GetOriginOpName() const;
+
  private:
   void parse();
   inline const std::vector<OpInputInfo>& InputInfo() const {

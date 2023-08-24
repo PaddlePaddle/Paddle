@@ -51,15 +51,25 @@ class CompilationInfoDumper {
     DumpInstruction();
   }
 
+  static void DumpLoweredFuncByGroupIndex(const ir::LoweredFunc& lowered_func,
+                                          const int gidx);
+  static void DumpSourceCodeByGroupIndex(const std::string& source_code,
+                                         const int gidx);
+  static void DumpPtxCodeByGroupIndex(const std::string& source_ptx,
+                                      const int gidx);
+  static void DumpInstructionByGroupIndex(
+      const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
+      const int gidx);
+
  private:
   void DumpLoweredFunc();
   void DumpSourceCode();
   void DumpPtxCode();
   void DumpInstruction();
-  void Dump(const std::string& base_path,
-            const int idx,
-            const std::string& file_name,
-            const std::string& content);
+  static void Dump(const std::string& base_path,
+                   const int idx,
+                   const std::string& file_name,
+                   const std::string& content);
 
   const hlir::framework::CompilationResult& info_;
 };
