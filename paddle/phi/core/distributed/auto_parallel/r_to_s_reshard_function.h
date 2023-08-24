@@ -24,14 +24,13 @@ class RToSReshardFunction final : public ReshardFunction {
   RToSReshardFunction() = default;
   ~RToSReshardFunction() = default;
 
-  bool IsSuitable(
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
   std::shared_ptr<DistTensor> Eval(
       DeviceContext* dev_ctx,
       const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
+      const TensorDistAttr& out_dist_attr) override;
 };
 
 }  // namespace distributed

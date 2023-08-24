@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
-#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
@@ -33,10 +33,10 @@
 
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
-#include "paddle/fluid/ir/dialect/kernel_attribute.h"
-#include "paddle/fluid/ir/dialect/kernel_type.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -79,6 +79,12 @@ void RenameData(ir::Value value,
                                    std::string>* variable_2_var_name,
                 std::map<std::string, int>* var_name_2_id) {
   (*value_2_var_name)[value] = new_name;
+
+  for (auto kv : (*value_2_var_name)) {
+    if (kv.second == orig_name) {
+      (*value_2_var_name)[kv.first] = new_name;
+    }
+  }
 
   for (auto kv : (*variable_2_var_name)) {
     if (kv.second == orig_name) {
@@ -588,9 +594,7 @@ void BuildRuntimeContext(
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  auto pd_op_name =
-      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
+  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -621,7 +625,7 @@ void BuildRuntimeContext(
     ir::Value ptr = op->result(i);
 
     auto in_var_name = name_map.at(ptr);
-    VLOG(6) << "ctx->EmplaceBackInput: " << name << "\t" << in_var_name;
+    VLOG(6) << "ctx->EmplaceBackOutput: " << name << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
                             phi::errors::PreconditionNotMet(
@@ -664,9 +668,7 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  auto pd_op_name =
-      op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().AsString();
-  auto fluid_op_name = pd_op_name.substr(3);  // pd_op_name start with "pd.xxx"
+  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 

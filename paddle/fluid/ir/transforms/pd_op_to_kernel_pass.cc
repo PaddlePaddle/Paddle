@@ -16,18 +16,18 @@
 
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
-#include "paddle/fluid/ir/dialect/kernel_attribute.h"
-#include "paddle/fluid/ir/dialect/kernel_dialect.h"
-#include "paddle/fluid/ir/dialect/kernel_op.h"
-#include "paddle/fluid/ir/dialect/kernel_type.h"
-#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
-#include "paddle/fluid/ir/trait/inplace.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
@@ -226,10 +226,10 @@ phi::KernelKey GetKernelKey(
   if (op->name() == "pd.data") {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
-    auto t =
+    auto data_place =
         op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
 
-    auto backend = paddle::experimental::ParseBackend(t);
+    auto backend = paddle::experimental::ParseBackend(data_place);
 
     return {backend,
             phi::DataLayout::ANY,
@@ -240,6 +240,7 @@ phi::KernelKey GetKernelKey(
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
+
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
@@ -354,6 +355,27 @@ phi::KernelKey GetKernelKey(
       auto fake_tensors = GetFakeTensorList(new_input_tmp);
       for (auto& fake_tensor : fake_tensors) {
         kernel_key_parser.AssignKernelKeySet(fake_tensor);
+      }
+
+      // Because we can't make sure the place when build data op
+      // and the output place of data op is undefined. It means we
+      // don't know how to select the kernel in the next of op that
+      // uses data op outout as inputs. So, we need set kernel backend
+      // manually.
+      if (op->operand_source(i).GetDefiningOp()->name() == "pd.data") {
+        auto data_op = op->operand_source(i).GetDefiningOp();
+        auto data_place = data_op->attributes()
+                              .at("place")
+                              .dyn_cast<dialect::PlaceAttribute>()
+                              .data();
+
+        auto data_op_backend = paddle::experimental::ParseBackend(data_place);
+        if (data_op_backend == phi::Backend::UNDEFINED) {
+          data_op_backend = paddle::experimental::ParseBackend(place);
+        }
+        kernel_key_parser.key_set.backend_set =
+            kernel_key_parser.key_set.backend_set |
+            paddle::experimental::BackendSet(data_op_backend);
       }
     }
 
@@ -570,7 +592,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     if (op_item->name() == "builtin.split") {
-      phi::Place out_place = place;
+      std::vector<phi::Place> out_places(op_item->num_results());
       // Copy op inputs
       std::vector<ir::OpResult> vec_inputs;
       if (op_item->num_operands() > 0) {
@@ -591,10 +613,12 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
           if (new_in.type().isa<ir::VectorType>()) {
             auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
-            out_place =
-                vec_types[0]
-                    .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                    .place();
+            for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
+              out_places[idx] =
+                  vec_types[idx]
+                      .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+                      .place();
+            }
           } else {
             PADDLE_THROW(
                 phi::errors::Unimplemented("only support vector type for now"));
@@ -612,7 +636,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             auto allocated_dense_tensor_dtype =
                 paddle::dialect::AllocatedDenseTensorType::get(
                     ctx,
-                    out_place,
+                    out_places[i],
                     result_type.dyn_cast<dialect::DenseTensorType>());
             op_output_types.push_back(allocated_dense_tensor_dtype);
           } else {
@@ -652,7 +676,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
     }
-
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
