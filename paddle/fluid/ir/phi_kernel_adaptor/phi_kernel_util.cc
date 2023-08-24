@@ -670,10 +670,6 @@ std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
 
   std::string fluid_op_name = op_yaml_info.GetOriginOpName();
 
-  if (fluid_op_name == "fused_bn_add_activation_") {
-    fluid_op_name = "fused_bn_add_activation";
-  }
-
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
   for (auto& name : vec_kernel_fn_tensor_params) {
