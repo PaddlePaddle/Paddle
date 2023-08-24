@@ -20,8 +20,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -38,20 +36,8 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto place = ctx.GetPlace();
     int ring_id = ctx.Attr<int>("ring_id");
-
-    gpuStream_t stream = nullptr;
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(std::to_string(ring_id))) {
-      auto comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
-      stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has rid " << ring_id;
-    } else {
-      stream =
-          platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
-      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
-    }
+    auto stream =
+        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 
     platform::GpuStreamSync(stream);
 

@@ -21,9 +21,7 @@ class Scope;
 }  // namespace paddle
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace paddle {
 namespace operators {
@@ -48,31 +46,15 @@ class CWaitCommOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
 
-    gpuStream_t compute_stream =
+    auto compute_stream =
         static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
-    gpuStream_t comm_stream = nullptr;
-    gpuEvent_t event = nullptr;
+    auto comm_stream =
+        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(std::to_string(ring_id))) {
-      phi::distributed::NCCLCommContext* comm_ctx =
-          static_cast<phi::distributed::NCCLCommContext*>(
-              comm_context_manager.Get(std::to_string(ring_id)));
-      comm_stream = comm_ctx->GetStream();
-      event = comm_ctx->GetComputeEvent();
-      VLOG(3) << "new comm_context_manager has rid " << ring_id;
-    } else {
-      comm_stream =
-          platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
-
-      event = platform::NCCLCommContext::Instance()
-                  .Get(ring_id, place)
-                  ->comm_event();
-      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
-    }
+    auto event =
+        platform::NCCLCommContext::Instance().Get(ring_id, place)->comm_event();
 
 // comm_stream-->event-->compute_stream
 #ifdef PADDLE_WITH_HIP

@@ -13,13 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_allgather_op.h"
-#include "paddle/fluid/distributed/collective/utils.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -53,54 +50,32 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       return;
     }
     auto place = ctx.GetPlace();
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
+    PADDLE_ENFORCE_EQ(
+        nranks,
+        comm->nranks(),
+        platform::errors::InvalidArgument(
+            "nranks: %s should equal to %s", nranks, comm->nranks()));
 
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
     T* recv_buff = out->mutable_data<T>(place);
 
     gpuStream_t stream = nullptr;
-    platform::NCCLComm* comm = nullptr;
-    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(std::to_string(rid))) {
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(rid)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        platform::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
-      stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has rid " << rid;
-    } else {  // old comm_context
-      comm = platform::NCCLCommContext::Instance().Get(rid, place);
-      PADDLE_ENFORCE_EQ(
-          nranks,
-          comm->nranks(),
-          platform::errors::InvalidArgument(
-              "nranks: %s should equal to %s", nranks, comm->nranks()));
-      if (ctx.Attr<bool>("use_calc_stream")) {
-        // should ExecutionContext for calc stream.
-        stream = ctx.cuda_device_context().stream();
-      } else {
-        stream = comm->stream();
-      }
-      VLOG(3) << "old NCCLCommContext has rid " << rid;
-    }
-
-    if (comm_ctx) {
-      comm_ctx->AllGather(out, *in, stream);
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllGather(send_buff,
-                                           recv_buff,
-                                           send_numel,
-                                           static_cast<ncclDataType_t>(dtype),
-                                           comm->comm(),
-                                           stream));
+      stream = comm->stream();
     }
 
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::ncclAllGather(send_buff,
+                                         recv_buff,
+                                         send_numel,
+                                         static_cast<ncclDataType_t>(dtype),
+                                         comm->comm(),
+                                         stream));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

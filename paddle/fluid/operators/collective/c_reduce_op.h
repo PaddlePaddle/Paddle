@@ -19,13 +19,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
@@ -34,7 +32,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -223,32 +220,14 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     int root = ctx.Attr<int>("root_id");
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     gpuStream_t stream = nullptr;
-    platform::NCCLComm* comm = nullptr;
-    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(std::to_string(rid))) {
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(rid)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        platform::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
-      stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has rid " << rid;
-    } else {  // old comm_context
-      comm = platform::NCCLCommContext::Instance().Get(rid, place);
-      if (ctx.Attr<bool>("use_calc_stream")) {
-        // should ExecutionContext for calc stream.
-        stream = ctx.cuda_device_context().stream();
-      } else {
-        stream = comm->stream();
-      }
-      VLOG(3) << "old NCCLCommContext has rid " << rid;
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
+    } else {
+      stream = comm->stream();
     }
 
     ncclRedOp_t nccl_red_type = ncclSum;
@@ -277,18 +256,14 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
                               "kRedMax, kRedMin, kRedProd."));
     }
 
-    if (comm_ctx) {
-      comm_ctx->Reduce(out, *in, nccl_red_type, root, stream);
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
-                                                               recvbuff,
-                                                               numel,
-                                                               dtype,
-                                                               nccl_red_type,
-                                                               root,
-                                                               comm->comm(),
-                                                               stream));
-    }
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
+                                                             recvbuff,
+                                                             numel,
+                                                             dtype,
+                                                             nccl_red_type,
+                                                             root,
+                                                             comm->comm(),
+                                                             stream));
 #else
     PADDLE_ENFORCE_EQ(true,
                       false,
