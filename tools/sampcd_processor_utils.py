@@ -503,11 +503,16 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
                 old_style_apis.append(docstring_name)
 
     if old_style_apis:
+        stdout_handler = logging.StreamHandler(stream=sys.stdout)
+        logger.addHandler(stdout_handler)
+
         logger.info(
             "%d apis use plain sample code style.",
             len(old_style_apis),
         )
+        logger.info('=======================')
         logger.info('\n'.join(old_style_apis))
+        logger.info('=======================')
         logger.info("DEPRECATION: Please do not use plain sample code style.")
         logger.info(
             "For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
@@ -605,10 +610,10 @@ def get_test_results(
 
 
 def run_doctest(args, doctester: DocTester):
-    logger.info("----------------Codeblock Check Start--------------------")
-
     # init logger
     init_logger(debug=args.debug, log_file=args.logf)
+
+    logger.info("----------------Codeblock Check Start--------------------")
 
     logger.info("Check test mode ...")
     run_on_device = check_test_mode(mode=args.mode, gpu_id=args.gpu_id)
