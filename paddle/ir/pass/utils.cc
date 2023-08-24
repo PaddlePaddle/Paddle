@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/ir/pass/utils.h"
-#include "paddle/ir/core/enforce.h"
 
 namespace ir {
 namespace detail {
