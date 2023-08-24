@@ -702,7 +702,8 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
       std::string filename(ptr->d_name);
       if (std::regex_match(
               filename.begin(), filename.end(), results, express)) {
-        libraries.push_back(library_dir + '/' + filename);
+        libraries.push_back(
+            std::string(library_dir).append("/").append(filename));
         VLOG(4) << "Found lib: " << libraries.back();
       }
     }

@@ -157,7 +157,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
     while (start < end) {
       std::wstring sub = text.substr(start, end - start);
       if (start > 0) {
-        sub = L"##" + sub;
+        sub.insert(0, L"##");
       }
       auto it = vocab_->find(sub);
       if (it != vocab_->end()) {
