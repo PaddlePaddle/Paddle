@@ -29,6 +29,11 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#include <musa_runtime.h>
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -125,6 +130,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
   gpuStream_t stream;
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
 #endif
@@ -133,6 +140,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
 #endif
@@ -153,6 +162,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
   gpuStream_t new_stream;
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&new_stream));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&new_stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&new_stream));
 #endif
@@ -165,6 +176,8 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetStreamInterfaceTest) {
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(new_stream));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(new_stream));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(new_stream));
 #endif
@@ -181,6 +194,9 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream1));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream2));
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&stream1));
+  PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&stream2));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream1));
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream2));
@@ -207,6 +223,8 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
@@ -230,6 +248,8 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
       gpuStream_t stream;
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreate(&stream));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream));
 #endif
@@ -250,6 +270,11 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
           workspace_allocation->ptr(), 0, workspace_allocation->size()));
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemset(result_allocation->ptr(), 0, result_allocation->size()));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaMemset(
+          workspace_allocation->ptr(), 0, workspace_allocation->size()));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          musaMemset(result_allocation->ptr(), 0, result_allocation->size()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(hipMemset(
           workspace_allocation->ptr(), 0, workspace_allocation->size()));
@@ -379,6 +404,8 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
     for (size_t i = 0; i < stream_num_; ++i) {
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(streams_[i]));
+#elif defined(PADDLE_WITH_MUSA)
+      PADDLE_ENFORCE_GPU_SUCCESS(musaStreamDestroy(streams_[i]));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(streams_[i]));
 #endif

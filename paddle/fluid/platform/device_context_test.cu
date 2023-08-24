@@ -85,14 +85,18 @@ TEST(Device, GPUContext) {
     device_context->PartialInitWithAllocator();
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
+#ifndef PADDLE_WITH_MUSA
 #ifdef PADDLE_WITH_HIP
     miopenHandle_t cudnn_handle = device_context->cudnn_handle();
 #else
     cudnnHandle_t cudnn_handle = device_context->cudnn_handle();
 #endif
     ASSERT_NE(nullptr, cudnn_handle);
+#endif
 #ifdef PADDLE_WITH_HIP
     rocblas_handle cublas_handle = device_context->cublas_handle();
+#elif defined(PADDLE_WITH_MUSA)
+    mublasHandle_t cublas_handle = device_context->cublas_handle();
 #else
     cublasHandle_t cublas_handle = device_context->cublas_handle();
 #endif

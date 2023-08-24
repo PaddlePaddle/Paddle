@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/init.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_MUSA)
 constexpr auto saxpy_code = R"(
 extern "C" __global__
 void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {

@@ -42,6 +42,9 @@ TEST(LoD, data) {
                      mix_vector_v.CUDAMutableData(gpu),
                      v.size());
   hipDeviceSynchronize();
+#elif defined(PADDLE_WITH_MUSA)
+  test<<<1, 1>>>(mix_vector_v.CUDAMutableData(gpu), v.size());
+  musaDeviceSynchronize();
 #else
   test<<<1, 1>>>(mix_vector_v.CUDAMutableData(gpu), v.size());
   cudaDeviceSynchronize();
@@ -80,6 +83,9 @@ TEST(DenseTensor, LoDInGPU) {
                      mix_vector.CUDAMutableData(place),
                      lod[0].size());
   hipDeviceSynchronize();
+#elif defined(PADDLE_WITH_MUSA)
+  test<<<1, 8>>>(mix_vector.CUDAMutableData(place), lod[0].size());
+  musaDeviceSynchronize();
 #else
   test<<<1, 8>>>(mix_vector.CUDAMutableData(place), lod[0].size());
   cudaDeviceSynchronize();

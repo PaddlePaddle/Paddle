@@ -70,7 +70,9 @@ if(WITH_RPC)
       phi
       glog)
 endif()
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
@@ -296,6 +298,11 @@ if(WITH_PYTHON)
   if(WITH_ROCM)
     target_link_libraries(eager_legacy_op_function_generator ${ROCM_HIPRTC_LIB})
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_MUSA)
+    target_link_libraries(eager_legacy_op_function_generator ${MUSARTC_LIB})
+    target_link_libraries(kernel_signature_generator ${MUSARTC_LIB})
   endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
@@ -545,6 +552,10 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(${SHARD_LIB_NAME} ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_MUSA)
+    target_link_libraries(${SHARD_LIB_NAME} ${MUSARTC_LIB})
   endif()
 
   if(WITH_MPI)

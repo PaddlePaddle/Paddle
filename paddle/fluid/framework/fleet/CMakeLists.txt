@@ -77,6 +77,17 @@ if(WITH_BOX_PS)
       SRCS box_wrapper.cc box_wrapper.cu
       DEPS framework_proto lod_tensor box_ps)
   endif()
+  if(WITH_MUSA)
+    musa_library(
+      box_wrapper
+      SRCS
+      box_wrapper.cc
+      box_wrapper.cu
+      DEPS
+      framework_proto
+      lod_tensor
+      box_ps)
+  endif()
 else()
   cc_library(
     box_wrapper

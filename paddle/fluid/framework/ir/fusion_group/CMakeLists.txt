@@ -2,7 +2,9 @@ cc_library(
   code_generator
   SRCS operation.cc code_generator.cc code_generator_helper.cc
   DEPS graph subgraph_detector)
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   cc_test(
     test_code_generator
     SRCS code_generator_tester.cc

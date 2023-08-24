@@ -176,7 +176,9 @@ __global__ void EmbEltwiseLayernormKernel(int hidden,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: EmbEltwiseLayernormKernel
+// MUSA defined __MUSA_NO_HALF_CONVERSIONS__ in musa.cmake
+#if !defined(__HIPCC__) && \
+    !defined(__MUSACC__)  // @{ Half kernel: EmbEltwiseLayernormKernel
 template <>
 __global__ void EmbEltwiseLayernormKernel<half, 256>(int hidden,
                                                      const int64_t *ids,
@@ -279,7 +281,9 @@ __global__ void SoftmaxKernelWithEltadd(T *qk_buf_,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__
-#ifndef __HIPCC__  // @{ Half kernel: SoftmaxKernelWithEltadd
+// MUSA defined __MUSA_NO_HALF_CONVERSIONS__
+#if !defined(__HIPCC__) && \
+    !defined(__MUSACC__)  // @{ Half kernel: SoftmaxKernelWithEltadd
 template <>
 __global__ void SoftmaxKernelWithEltadd<half>(
     half *qk_buf_,
@@ -407,7 +411,9 @@ __global__ void SoftmaxKernelWithEltaddForLarge(
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__
-#ifndef __HIPCC__  // @{ Half kernel: SoftmaxKernelWithEltadd
+// MUSA defined __MUSA_NO_HALF_CONVERSIONS__
+#if !defined(__HIPCC__) && \
+    !defined(__MUSACC__)  // @{ Half kernel: SoftmaxKernelWithEltaddForLarge
 template <>
 __global__ void SoftmaxKernelWithEltaddForLarge(
     half *qk_buf,
@@ -781,7 +787,8 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
             FINAL_MASK);
       } else {
         if (bias_is_mask) {
-#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
+#if defined(__HIPCC__) || defined(__MUSACC__) || \
+    (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
           PADDLE_ENFORCE_EQ(bias_is_mask,
                             false,
                             platform::errors::InvalidArgument(
@@ -823,7 +830,8 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
             FINAL_MASK);
       } else {
         if (bias_is_mask) {
-#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
+#if defined(__HIPCC__) || defined(__MUSACC__) || \
+    (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
           PADDLE_ENFORCE_EQ(bias_is_mask,
                             false,
                             platform::errors::InvalidArgument(
@@ -979,7 +987,9 @@ __global__ void SkipLayerNormSmallKernel(int num,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormSmallKernel
+// MUSA defined __MUSA_NO_HALF_CONVERSIONS__ in musa.cmake
+#if !defined(__HIPCC__) && \
+    !defined(__MUSACC_)  // @{ Half kernel: SkipLayerNormSmallKernel
 template <>
 __global__ void SkipLayerNormSmallKernel<half, 32>(int num,
                                                    int hidden,
@@ -1088,7 +1098,9 @@ __global__ void SkipLayerNormKernel(int num,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormKernel
+// MUSA defined __MUSA_NO_HALF_CONVERSIONS__ in musa.cmake
+#if !defined(__HIPCC__) && \
+    !defined(__MUSACC__)  // @{ Half kernel: SkipLayerNormKernel
 template <>
 __global__ void SkipLayerNormKernel<half, 256>(int num,
                                                int hidden,
@@ -1144,7 +1156,9 @@ __global__ void SkipLayerNormKernel2(int num,
 }
 
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormKernel2
+// MUSA defined __MUSA_NO_HALF_CONVERSIONS__ in musa.cmake
+#if !defined(__HIPCC__) && \
+    !defined(__MUSACC__)  // @{ Half kernel: SkipLayerNormKernel2
 template <>
 __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
                                                        int hidden,
@@ -1214,7 +1228,8 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
                 reinterpret_cast<const float2 *>(bias),
                 eps);
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
-#ifndef __HIPCC__
+// MUSA defined __MUSA_NO_HALF_CONVERSIONS__ in musa.cmake
+#if !defined(__HIPCC__) && !defined(__MUSACC__)
       } else if (std::is_same<T, __half>::value) {
         SkipLayerNormKernel2<__half, __half2, threads>
             <<<block, threads, 0, stream>>>(

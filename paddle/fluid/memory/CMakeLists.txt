@@ -62,6 +62,18 @@ if(WITH_ROCM)
     DEPS malloc gpu_info place)
 endif()
 
+if(WITH_MUSA)
+  musa_test(malloc_test SRCS malloc_test.cu DEPS device_context malloc)
+  musa_test(
+    cuda_managed_memory_test
+    SRCS
+    cuda_managed_memory_test.cu
+    DEPS
+    malloc
+    gpu_info
+    place)
+endif()
+
 if(WITH_TESTING AND TEST cuda_managed_memory_test)
   set_tests_properties(
     cuda_managed_memory_test

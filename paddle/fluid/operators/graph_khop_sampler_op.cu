@@ -99,7 +99,7 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
                0,
                &rng);
 #elif defined(PADDLE_WITH_MUSA)
-  murandState rng;
+  murand_state_xorwow rng;
   murand_init(rand_seed * gridDim.x + blockIdx.x,
               threadIdx.y * WARP_SIZE + threadIdx.x,
               0,

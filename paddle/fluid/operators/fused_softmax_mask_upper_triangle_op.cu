@@ -117,7 +117,7 @@ __device__ __forceinline__ T warp_shfl_xor_upper_tri(T value,
                                                      int laneMask,
                                                      int width,
                                                      unsigned int mask = MASK) {
-#if CUDA_VERSION >= 9000
+#if defined(PADDLE_WITH_MUSA) || CUDA_VERSION >= 9000
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else
   return __shfl_xor(value, laneMask, width);

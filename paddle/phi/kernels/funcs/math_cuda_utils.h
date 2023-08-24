@@ -189,7 +189,9 @@ typedef unsigned warp_mask_t;
 template <typename T>
 __inline__ __device__ T WarpReduceSum(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_MUSA) ||  \
+    (defined(PADDLE_WITH_CUDA) && \
+     (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000))
     val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
 #else
     val += __shfl_xor(val, mask, warpSize);
@@ -262,7 +264,9 @@ __inline__ __device__ T BlockReduceSumV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMax(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_MUSA) ||  \
+    (defined(PADDLE_WITH_CUDA) && \
+     (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000))
     val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
 #else
     val = max(val, __shfl_xor(val, mask, warpSize));
@@ -285,7 +289,9 @@ __inline__ __device__ T WarpReduceMaxV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMin(T val, warp_mask_t lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+#if defined(PADDLE_WITH_MUSA) ||  \
+    (defined(PADDLE_WITH_CUDA) && \
+     (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000))
     val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
 #else
     val = min(val, __shfl_xor(val, mask, warpSize));

@@ -2050,7 +2050,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
-#if defined(PADDLE_WITH_CUDA) || defined(PADLDE_WITH_ROCM)
+#if defined(PADDLE_WITH_CUDA) || defined(PADLDE_WITH_ROCM) || \
+    defined(PADLDE_WITH_MUSA)
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
 #endif
     VLOG(4) << "Operator(" << Type() << "): context wait and get last error";

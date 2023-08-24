@@ -15,6 +15,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa_runtime.h>
+#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -59,6 +62,8 @@ TEST(ManagedMemoryTest, H2DTest) {
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
@@ -86,6 +91,8 @@ TEST(ManagedMemoryTest, D2HTest) {
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
@@ -120,6 +127,8 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
 
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+  PADDLE_ENFORCE_GPU_SUCCESS(musaDeviceSynchronize());
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif

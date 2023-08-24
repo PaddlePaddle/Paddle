@@ -146,6 +146,16 @@ elseif(WITH_ROCM)
     tensor_util_test
     SRCS tensor_util_test.cc tensor_util_test.cu
     DEPS tensor dlpack_tensor isfinite_op)
+elseif(WITH_MUSA)
+  musa_test(
+    tensor_util_test
+    SRCS
+    tensor_util_test.cc
+    tensor_util_test.cu
+    DEPS
+    tensor
+    dlpack_tensor
+    isfinite_op)
 else()
   cc_test(
     tensor_util_test
@@ -183,6 +193,8 @@ elseif(WITH_ROCM)
     lod_tensor_gpu_test
     SRCS lod_tensor_test.cu
     DEPS lod_tensor)
+elseif(WITH_MUSA)
+  musa_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 endif()
 
 cc_library(
@@ -312,6 +324,10 @@ elseif(WITH_ROCM)
     data_type_transform_test
     SRCS data_type_transform_test.cc data_type_transform_test.cu
     DEPS data_type_transform)
+elseif(WITH_MUSA)
+  musa_library(data_type_transform SRCS data_type_transform.cu DEPS tensor)
+  musa_test(data_type_transform_test SRCS data_type_transform_test.cc
+            data_type_transform_test.cu DEPS data_type_transform)
 elseif(WITH_XPU)
   cc_library(
     data_type_transform
@@ -566,6 +582,8 @@ elseif(WITH_ROCM)
     op_registry_test
     SRCS op_registry_test.cc
     DEPS op_registry)
+elseif(WITH_MUSA)
+  musa_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 endif()
 
 if(WITH_PYTHON)

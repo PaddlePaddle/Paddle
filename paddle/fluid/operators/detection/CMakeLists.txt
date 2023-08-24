@@ -9,9 +9,11 @@ function(detection_library TARGET_NAME)
   cmake_parse_arguments(detection_library "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
   set(srcs)
-  # filter cuda source file when not build with cuda/rocm
+  # filter cuda source file when not build with cuda/rocm/musa
   foreach(src ${detection_library_SRCS})
-    if(NOT WITH_GPU AND NOT WITH_ROCM)
+    if(NOT WITH_GPU
+       AND NOT WITH_ROCM
+       AND NOT WITH_MUSA)
       if(${src} MATCHES ".*\\.cc$")
         list(APPEND srcs ${src})
       endif()
@@ -59,7 +61,9 @@ detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
 detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   set(TMPDEPS memory)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)

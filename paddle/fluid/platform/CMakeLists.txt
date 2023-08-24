@@ -250,6 +250,14 @@ if(WITH_MUSA)
   set(DEVICE_EVENT_LIBS
       device_event_gpu
       CACHE INTERNAL "device event libs")
+  if(WITH_CUSTOM_DEVICE)
+    musa_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu
+              device_event_custom_device)
+  else()
+    musa_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu)
+  endif()
+  musa_test(device_context_test SRCS device_context_test.cu DEPS device_context
+            gpu_info)
 endif()
 
 cc_library(timer SRCS timer.cc)
@@ -371,6 +379,9 @@ if(WITH_GPU)
 endif()
 
 if(WITH_MUSA)
+  musa_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
+  musa_test(test_limit_gpu_memory SRCS test_limit_gpu_memory.cu DEPS gpu_info
+            phi)
   musa_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 endif()
 
@@ -390,7 +401,9 @@ if(WITH_ROCM)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-  if(WITH_GPU OR WITH_ROCM)
+  if(WITH_GPU
+     OR WITH_ROCM
+     OR WITH_MUSA)
     cc_test(
       device_code_test
       SRCS device_code_test.cc

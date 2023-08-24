@@ -20,6 +20,9 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -75,6 +78,11 @@ TEST(ProfilerTest, TestCudaTracer) {
   cudaStream_t stream;
   cudaStreamCreate(&stream);
   cudaStreamSynchronize(stream);
+#endif
+#ifdef PADDLE_WITH_MUSA
+  musaStream_t stream;
+  musaStreamCreate(&stream);
+  musaStreamSynchronize(stream);
 #endif
 #ifdef PADDLE_WITH_HIP
   hipStream_t stream;

@@ -148,6 +148,16 @@ TEST(TMP, stream_wait) {
 }
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+TEST(TMP, stream_wait) {
+  musaStream_t stream;
+  musaStreamCreate(&stream);
+  musaStreamSynchronize(stream);
+  musaStreamSynchronize(stream);
+  musaStreamSynchronize(stream);
+}
+#endif
+
 #ifdef PADDLE_WITH_HIP
 TEST(TMP, stream_wait) {
   hipStream_t stream;

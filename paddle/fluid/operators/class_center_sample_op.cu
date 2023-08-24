@@ -68,7 +68,12 @@ __global__ void RandomSampleClassCenter(const int64_t n,
                                         const int64_t max_val,
                                         T* buffer) {
   const int id = blockIdx.x * blockDim.x + threadIdx.x;
+#ifdef PADDLE_WITH_MUSA
+  murand_state_xorwow localState;
+#else
   curandState localState;
+#endif
+
   size_t local_seed =
       (static_cast<size_t>(seed) + 0x9E3779B9U +
        (static_cast<size_t>(id) << 6U) + (static_cast<size_t>(id) >> 2U));

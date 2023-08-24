@@ -16,7 +16,13 @@ if(WITH_ROCM AND NOT WIN32)
     DEPS device_context operator)
 endif()
 
-if(WITH_GPU OR WITH_ROCM)
+if(WITH_MUSA AND NOT WIN32)
+  musa_library(nccl_common SRCS nccl_gpu_common.cc DEPS device_context operator)
+endif()
+
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   op_library(nccl_op DEPS nccl_common)
   set(OPERATOR_DEPS
       ${OPERATOR_DEPS} nccl_common

@@ -6,13 +6,13 @@ index af4e69623..6944be650 100644
    #include <hip/hip_fp16.h>
  #endif
  
-+#if defined EIGEN_MUSACC
++#ifdef EIGEN_MUSACC
 +  #define EIGEN_VECTORIZE_GPU
 +  #include <vector_types.h>
 +  #define EIGEN_HAS_MUSA_FP16
 +#endif
 +
-+#if defined(EIGEN_HAS_MUSA_FP16)
++#ifdef EIGEN_HAS_MUSA_FP16
 +  #include <musa_runtime_api.h>
 +  #include <musa_fp16.h>
 +#endif

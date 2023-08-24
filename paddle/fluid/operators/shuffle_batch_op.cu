@@ -124,6 +124,9 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_CUDA
     CacheAllocator allocator(ctx.GetPlace());
     const auto &exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+#elif defined(PADDLE_WITH_MUSA)
+    CacheAllocator allocator(ctx.GetPlace());
+    const auto &exec_policy = thrust::musa::par(allocator).on(dev_ctx.stream());
 #else
     const auto &exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif

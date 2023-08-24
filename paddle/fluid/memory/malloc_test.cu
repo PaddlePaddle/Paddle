@@ -26,6 +26,11 @@
 #include <cuda_runtime.h>
 #endif
 
+#ifdef PADDLE_WITH_MUSA
+#include <musa.h>
+#include <musa_runtime.h>
+#endif
+
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
@@ -53,6 +58,10 @@ void CheckKernelOutput(float *x, int n) {
     EXPECT_TRUE(
         hipSuccess ==
         hipMemcpy(host_x.get(), x, n * sizeof(float), hipMemcpyDeviceToHost));
+#elif defined(PADDLE_WITH_MUSA)
+    EXPECT_TRUE(
+        musaSuccess ==
+        musaMemcpy(host_x.get(), x, n * sizeof(float), musaMemcpyDeviceToHost));
 #else
     EXPECT_TRUE(
         cudaSuccess ==
@@ -75,6 +84,8 @@ void MultiStreamCompute(float **data,
   *data = reinterpret_cast<float *>(allocation_ptr->ptr());
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, ctx.stream(), *data, N);
+#elif defined(PADDLE_WITH_MUSA)
+  kernel<<<1, 64, 0, ctx.stream()>>>(*data, N);
 #else
   kernel<<<1, 64, 0, ctx.stream()>>>(*data, N);
 #endif
@@ -89,6 +100,8 @@ void MultiStreamCompute(float **data,
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL(
       (kernel), dim3(1), dim3(64), 0, ctx.stream(), *second_data, N);
+#elif defined(PADDLE_WITH_MUSA)
+  kernel<<<1, 64, 0, ctx.stream()>>>(*second_data, N);
 #else
   kernel<<<1, 64, 0, ctx.stream()>>>(*second_data, N);
 #endif
@@ -110,6 +123,8 @@ TEST(Malloc, GPUContextMultiStream) {
 // default stream
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, 0, main_stream_data, N);
+#elif defined(PADDLE_WITH_MUSA)
+  kernel<<<1, 64>>>(main_stream_data, N);
 #else
   kernel<<<1, 64>>>(main_stream_data, N);
 #endif
@@ -139,6 +154,8 @@ TEST(Malloc, GPUContextMultiStream) {
 
 #ifdef PADDLE_WITH_HIP
   EXPECT_TRUE(hipSuccess == hipDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+  EXPECT_TRUE(musaSuccess == musaDeviceSynchronize());
 #else
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
 #endif
@@ -165,6 +182,8 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
 // default stream
 #ifdef PADDLE_WITH_HIP
   hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, 0, main_stream_data, N);
+#elif defined(PADDLE_WITH_MUSA)
+  kernel<<<1, 64>>>(main_stream_data, N);
 #else
   kernel<<<1, 64>>>(main_stream_data, N);
 #endif
@@ -202,6 +221,8 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
   }
 #ifdef PADDLE_WITH_HIP
   EXPECT_TRUE(hipSuccess == hipDeviceSynchronize());
+#elif defined(PADDLE_WITH_MUSA)
+  EXPECT_TRUE(musaSuccess == musaDeviceSynchronize());
 #else
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
 #endif

@@ -21,7 +21,7 @@ TEST(InitDevices, CPU) {
   using paddle::platform::DeviceContextPool;
 
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_XPU) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MUSA)
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
   ASSERT_EQ(pool.Size(), 1U);

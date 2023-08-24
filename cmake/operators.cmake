@@ -79,6 +79,9 @@ function(register_cu_kernel TARGET)
       ${TARGET}
       SRCS ${cu_srcs}
       DEPS ${op_library_DEPS} ${op_common_deps})
+  elseif(WITH_MUSA)
+    musa_library(${TARGET} SRCS ${cu_srcs} DEPS ${op_library_DEPS}
+                 ${op_common_deps})
   elseif(WITH_ROCM)
     hip_library(
       ${TARGET}
@@ -208,6 +211,28 @@ function(op_library TARGET)
         list(APPEND cudnn_cu_srcs ${CUDNN_FILE}.cu)
       endif()
     endif()
+    if(WITH_MUSA)
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu.cc)
+        list(APPEND cu_cc_srcs ${TARGET}.cu.cc)
+      endif()
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
+        list(APPEND cu_srcs ${TARGET}.cu)
+      endif()
+      # rename in KP: .kps -> .cu
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
+        file(COPY ${TARGET}.kps DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+        file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps
+             ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
+        list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
+      endif()
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
+        set(PART_CUDA_KERNEL_FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu
+            ${PART_CUDA_KERNEL_FILES}
+            PARENT_SCOPE)
+        list(APPEND cu_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
+      endif()
+    endif()
     if(WITH_ROCM)
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu.cc)
         list(APPEND hip_cc_srcs ${TARGET}.cu.cc)
@@ -275,6 +300,10 @@ function(op_library TARGET)
         list(APPEND cudnn_cu_cc_srcs ${src})
       elseif(WITH_GPU AND ${src} MATCHES ".*\\.cu.cc$")
         list(APPEND cu_cc_srcs ${src})
+      elseif(WITH_MUSA AND ${src} MATCHES ".*\\.cu$")
+        list(APPEND cu_srcs ${src})
+      elseif(WITH_MUSA AND ${src} MATCHES ".*\\.cu.cc$")
+        list(APPEND cu_cc_srcs ${src})
       elseif(WITH_MKLDNN AND ${src} MATCHES ".*_mkldnn_op.cc$")
         list(APPEND mkldnn_cc_srcs ${src})
       elseif(WITH_XPU AND ${src} MATCHES ".*_op_xpu.cc$")
@@ -285,7 +314,11 @@ function(op_library TARGET)
         list(APPEND xpu_kp_cc_srcs ${src})
       elseif(${src} MATCHES ".*\\.cc$")
         list(APPEND cc_srcs ${src})
-      elseif((WITH_ROCM OR WITH_GPU) AND ${src} MATCHES ".*\\.kps$")
+      elseif(
+        (WITH_ROCM
+         OR WITH_GPU
+         OR WITH_MUSA)
+        AND ${src} MATCHES ".*\\.kps$")
         string(REPLACE ".kps" ".cu" src_cu ${src})
         file(COPY ${src} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
         file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${src}
@@ -391,6 +424,17 @@ function(op_library TARGET)
       SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs}
            ${mkldnn_cc_srcs} ${hip_srcs}
       DEPS ${op_library_DEPS} ${op_common_deps})
+  elseif(WITH_MUSA)
+    musa_library(
+      ${TARGET}
+      SRCS
+      ${cc_srcs}
+      ${cu_cc_srcs}
+      ${cu_srcs}
+      ${mkldnn_cc_srcs}
+      DEPS
+      ${op_library_DEPS}
+      ${op_common_deps})
   elseif(WITH_XPU_KP AND ${xpu_kp_cc_srcs_len} GREATER 0)
     xpu_library(
       ${TARGET}

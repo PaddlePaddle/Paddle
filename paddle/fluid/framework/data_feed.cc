@@ -269,12 +269,14 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
     cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_HIP)
     hipMemcpy(dst, src, size, hipMemcpyHostToDevice);
+#elif defined(PADDLE_WITH_MUSA)
+    musaMemcpy(dst, src, size, musaMemcpyHostToDevice);
 #elif defined(PADDLE_WITH_XPU_KP)
     xpu_memcpy(dst, src, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 #else
     PADDLE_THROW(platform::errors::Unimplemented(
         "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
-        "WITH_ROCM=ON."));
+        "WITH_ROCM=ON or WITH_MUSA=ON."));
 #endif
   }
 }

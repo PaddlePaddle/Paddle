@@ -97,7 +97,8 @@ class InterpreterBaseImpl {
 inline void SetDeviceId(const platform::Place& place) {
   // TODO(zhiqiu): reduce the cost
   if (platform::is_gpu_place(place)) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(PADDLE_WITH_MUSA)
     PADDLE_THROW(platform::errors::Unavailable(
         "Cannot run operator on place %s, please recompile paddle or "
         "reinstall Paddle with CUDA support.",

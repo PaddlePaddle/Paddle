@@ -95,3 +95,18 @@ if(WITH_ROCM)
     SRCS heter_ps.cu
     DEPS heter_comm)
 endif()
+if(WITH_MUSA)
+  musa_library(
+    heter_comm
+    SRCS
+    heter_comm.h
+    feature_value.h
+    heter_resource.cc
+    heter_resource.h
+    hashtable.h
+    DEPS
+    cub
+    device_context)
+  musa_test(test_heter_comm SRCS feature_value.h DEPS heter_comm)
+  musa_library(heter_ps SRCS heter_ps.cu DEPS heter_comm)
+endif()
