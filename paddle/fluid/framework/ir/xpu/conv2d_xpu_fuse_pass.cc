@@ -46,12 +46,14 @@ struct Conv2dXPUPattern : public PatternBase {
                    const std::string& act_type,
                    bool with_conv_bias,
                    bool with_bn,
+                   bool with_scale,
                    bool with_branch_x,
                    bool with_branch_y);
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(ew_bias_add);
   PATTERN_DECL_NODE(bn);
+  PATTERN_DECL_NODE(scale);
   PATTERN_DECL_NODE(ew_branch_add);
   PATTERN_DECL_NODE(act);
   // declare variable node's name
@@ -69,6 +71,7 @@ struct Conv2dXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(bn_mean_out);
   PATTERN_DECL_NODE(bn_saved_var);
   PATTERN_DECL_NODE(bn_saved_mean);
+  PATTERN_DECL_NODE(scale_out);
   PATTERN_DECL_NODE(ew_branch_add_in);
   PATTERN_DECL_NODE(ew_branch_add_out);
   PATTERN_DECL_NODE(act_out);
@@ -78,6 +81,7 @@ struct Conv2dXPUPattern : public PatternBase {
   std::string act_type_;
   bool with_conv_bias_{false};
   bool with_bn_{false};
+  bool with_scale_{false};
   bool with_branch_{false};
   bool with_branch_x_{false};
   bool with_branch_y_{false};
@@ -89,6 +93,7 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
                                    const std::string& act_type,
                                    bool with_conv_bias,
                                    bool with_bn,
+                                   bool with_scale,
                                    bool with_branch_x,
                                    bool with_branch_y)
     : PatternBase(pattern, name_scope, name_scope),
@@ -96,6 +101,7 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
       act_type_(act_type),
       with_conv_bias_(with_conv_bias),
       with_bn_(with_bn),
+      with_scale_(with_scale),
       with_branch_(with_branch_x || with_branch_y),
       with_branch_x_(with_branch_x),
       with_branch_y_(with_branch_y) {
@@ -151,6 +157,8 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   PDNode* ew_branch_add = nullptr;
   PDNode* ew_branch_add_in = nullptr;
   PDNode* ew_branch_add_out = nullptr;
+  PDNode* scale = nullptr;
+  PDNode* scale_out = nullptr;
   PDNode* act = nullptr;
   PDNode* act_out = nullptr;
   // batch_norm op
@@ -196,6 +204,8 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   } else {
     bn_out = ew_bias_add_out;
   }
+  // scale op
+
   // ew_branch_add op
   if (with_branch_) {
     if (with_branch_x_) {
@@ -330,6 +340,7 @@ class Conv2dXPUFusePass : public FusePassBase {
                 const std::string& act_type,
                 bool with_conv_bias,
                 bool with_bn,
+                bool with_scale,
                 bool with_branch_x,
                 bool with_branch_y) const;
 
@@ -345,28 +356,31 @@ void Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   for (auto conv_type : {"conv2d", "depthwise_conv2d"}) {
     for (auto with_conv_bias : {true, false}) {
       for (auto with_bn : {true, false}) {
-        for (auto with_branch_x : {true, false}) {
-          for (auto with_branch_y : {true, false}) {
-            for (auto act_type : {
-                     "relu",
-                     "sigmoid",
-                     "tanh",
-                     "gelu",
-                     "leaky_relu",
-                     "hard_swish",
-                     "hard_sigmoid",
-                     "relu6",
-                     "swish",
-                     "",
-                 }) {
-              if (with_branch_x && with_branch_y) continue;
-              found_subgraph_count += ApplyImpl(graph,
-                                                conv_type,
-                                                act_type,
-                                                with_conv_bias,
-                                                with_bn,
-                                                with_branch_x,
-                                                with_branch_y);
+        for (auto with_scale : {true, false}) {
+          for (auto with_branch_x : {true, false}) {
+            for (auto with_branch_y : {true, false}) {
+              for (auto act_type : {
+                       "relu",
+                       "sigmoid",
+                       "tanh",
+                       "gelu",
+                       "leaky_relu",
+                       "hard_swish",
+                       "hard_sigmoid",
+                       "relu6",
+                       "swish",
+                       "",
+                   }) {
+                if (with_branch_x && with_branch_y) continue;
+                found_subgraph_count += ApplyImpl(graph,
+                                                  conv_type,
+                                                  act_type,
+                                                  with_conv_bias,
+                                                  with_bn,
+                                                  with_scale,
+                                                  with_branch_x,
+                                                  with_branch_y);
+              }
             }
           }
         }
@@ -381,6 +395,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                                  const std::string& act_type,
                                  bool with_conv_bias,
                                  bool with_bn,
+                                 bool with_scale,
                                  bool with_branch_x,
                                  bool with_branch_y) const {
   GraphPatternDetector gpd;
@@ -390,6 +405,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                                      act_type,
                                      with_conv_bias,
                                      with_bn,
+                                     with_scale,
                                      with_branch_x,
                                      with_branch_y);
   int found_subgraph_count = 0;
@@ -400,6 +416,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(conv);
     GET_IR_NODE(ew_bias_add);
     GET_IR_NODE(bn);
+    GET_IR_NODE(scale);
     GET_IR_NODE(ew_branch_add);
     GET_IR_NODE(act);
     /* declare variable node's name*/
@@ -417,6 +434,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(bn_mean_out);
     GET_IR_NODE(bn_saved_var);
     GET_IR_NODE(bn_saved_mean);
+    GET_IR_NODE(scale_out);
     GET_IR_NODE(ew_branch_add_in);
     GET_IR_NODE(ew_branch_add_out);
     GET_IR_NODE(act_out);
