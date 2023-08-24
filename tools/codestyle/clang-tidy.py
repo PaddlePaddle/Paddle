@@ -93,6 +93,51 @@ def make_absolute(f, directory):
     return os.path.normpath(os.path.join(directory, f))
 
 
+def analysis_gitignore(path, filename=".gitignore"):
+    """Analysis gitignore file and return ignore file list"""
+    f = open(path + "/" + filename, "r")
+    lines = f.readlines()
+    ignore_file_list = []
+    for line in lines:
+        # Blank row
+        if line == "\n":
+            continue
+
+        # explanatory note
+        line = line.replace("\n", "")
+        if "#" in line:
+            if line[0] != "#":
+                ignore_file_list.append(
+                    line[: line.index("#")].replace(" ", "")
+                )
+            continue
+
+        # TODO(gouzil): support more gitignore rules
+        if "*" in line:
+            continue
+
+        ignore_file_list.append(line.replace(" ", ""))
+
+    f.close()
+    return ignore_file_list
+
+
+def skip_check_file(database, build_path):
+    """Skip checking some files"""
+    skip_file_list = []
+    skip_file_list.append(".cu")
+    skip_file_list.append(os.path.join(os.getcwd(), build_path))
+    skip_file_list += analysis_gitignore(os.getcwd())
+    for entry in database:
+        for ignore_file in skip_file_list:
+            if ignore_file in entry["file"]:
+                try:
+                    database.remove(entry)
+                except ValueError:
+                    pass
+    return database
+
+
 def get_tidy_invocation(
     f,
     clang_tidy_binary,
@@ -348,6 +393,7 @@ def main():
 
     # Load the database and extract all files.
     database = json.load(open(os.path.join(build_path, db_path)))
+    database = skip_check_file(database, build_path)
     files = [
         make_absolute(entry['file'], entry['directory']) for entry in database
     ]
