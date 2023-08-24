@@ -54,7 +54,8 @@ class NCCLInfo {
   int local_rank_;
   int global_ranks_;
   int my_global_rank_;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   ncclUniqueId nccl_id_;
   ncclComm_t comm_;
   gpuStream_t stream_;

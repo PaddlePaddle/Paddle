@@ -516,20 +516,20 @@ endif()
 
 if(NOT WITH_MUSA AND WITH_MCCL)
   message(
-    WARNING "Disable MCCL when compiling without MUSA. Force WITH_MCCL=OFF.")
+    WARNING "Disable MCCL when compiling without MUSA. Force WITH_MCCL =OFF.")
   set(WITH_MCCL
       OFF
       CACHE STRING "Disable MCCL when compiling without MUSA" FORCE)
 endif()
 
 if(WITH_MCCL)
-  add_definitions("-DPADDLE_WITH_MCCL")
+  add_definitions("-DPADDLE_WITH_MCCL ")
   include(mccl)
 else()
   if(WITH_MUSA)
     message(
       WARNING
-        "If the environment is multi-card, the WITH_MCCL option needs to be turned on, otherwise only a single card can be used."
+        "If the environment is multi-card, the WITH_MCCL  option needs to be turned on, otherwise only a single card can be used."
     )
   endif()
 endif()

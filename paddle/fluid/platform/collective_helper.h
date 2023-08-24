@@ -28,7 +28,8 @@
 namespace paddle {
 namespace platform {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 // In order to apply hierarchical communication with NCCL, we need
 // a communication ring contains NCCL communicators associated to a global
 // ncclUniqueId. E.g. for a hierarchical case,

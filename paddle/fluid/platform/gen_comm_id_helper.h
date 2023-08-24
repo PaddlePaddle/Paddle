@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
     defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_XPU_BKCL) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include <functional>

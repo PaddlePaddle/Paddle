@@ -20,7 +20,8 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
@@ -28,7 +29,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
@@ -207,7 +209,8 @@ void AllReduceOpHandle::AllReduceFunc(
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &out_var_names) {
   if (platform::is_gpu_place(places[0])) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_,
                             platform::errors::InvalidArgument(
                                 "The nccl context should not be NULL."));
@@ -300,7 +303,8 @@ void AllReduceOpHandle::SyncBKCLAllReduce() {
 }
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 void AllReduceOpHandle::NCCLAllReduceFunc(
     const std::vector<std::function<void()>> &all_reduce_calls) {
   this->RunAndRecordEvent([&] {

@@ -185,7 +185,8 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
       return dev_ctx;
     }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     // NOTE(Ruibiao): Here supports multi-stream overlap for c_allreduce_sum
     // with use_cal_stream==false by returning a device context getting from the
     // global NCCLCommContext instance. Because when use_calc_stream==false, in

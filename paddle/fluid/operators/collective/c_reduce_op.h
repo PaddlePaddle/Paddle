@@ -30,7 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
@@ -206,7 +207,8 @@ template <ReduceType red_type, typename T>
 class CReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 

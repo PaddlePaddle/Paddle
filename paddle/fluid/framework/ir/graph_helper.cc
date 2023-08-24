@@ -24,7 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
@@ -509,7 +510,8 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
 void ReplaceAllReduceOp(const Node &node,
                         proto::BlockDesc *block,
                         std::vector<OpDesc> *ops) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   bool is_fused = (node.Name() == "fused_all_reduce");
 
   details::OpHandleBase &op_handle =
@@ -677,7 +679,8 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
                dynamic_cast<details::NCCLOpHandleBase *>(
                    &(n->Wrapper<details::OpHandleBase>())) != nullptr) {

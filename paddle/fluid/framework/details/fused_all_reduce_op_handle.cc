@@ -84,7 +84,8 @@ void FusedAllReduceOpHandle::RunImpl() {
       Name(), platform::TracerEventType::Communication, 1);
   VLOG(4) << this->DebugString();
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   if (FLAGS_allreduce_record_one_event && start_event_ == nullptr) {
     VLOG(10) << "FLAGS_allreduce_record_one_event=true";
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,

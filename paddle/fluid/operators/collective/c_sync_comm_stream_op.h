@@ -18,7 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
@@ -33,7 +34,8 @@ template <typename T, typename DeviceContext>
 class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     auto place = ctx.GetPlace();
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =

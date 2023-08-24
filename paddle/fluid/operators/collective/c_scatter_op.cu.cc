@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_scatter_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -26,7 +27,8 @@ template <typename T, typename DeviceContext>
 class CScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();

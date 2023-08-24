@@ -15,7 +15,9 @@ if(WITH_DISTRIBUTE)
     DEPS phi eager_api gloo_wrapper)
 endif()
 
-if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+if(WITH_NCCL
+   OR WITH_RCCL
+   OR WITH_MCCL)
   cc_library(
     process_group_nccl
     SRCS process_group_nccl.cc nccl_tools.cc common.cc
@@ -50,7 +52,9 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 set(COMM_UTILS_DEPS process_group)
-if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+if(WITH_NCCL
+   OR WITH_RCCL
+   OR WITH_MCCL)
   set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
 endif()
 if(WITH_CUSTOM_DEVICE)

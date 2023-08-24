@@ -371,7 +371,8 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
       paddle::experimental::empty(IntArray({all_length_}), dtype_, place);
 
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     auto *default_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     ConcatTensorsWithType(
@@ -418,7 +419,8 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
 void EagerGroup::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     auto &gpu_context = static_cast<const phi::GPUContext &>(context);
     SplitTensorsWithType(
         gpu_context, &dense_contents_, &dense_tensors_, dtype_);
@@ -1090,7 +1092,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
   auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
   if (platform::is_gpu_place(inner_place_)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     dev_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(inner_place_));
 #else

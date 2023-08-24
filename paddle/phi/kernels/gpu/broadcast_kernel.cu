@@ -17,7 +17,8 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -28,7 +29,8 @@ void BroadcastKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int root,
                      DenseTensor* out) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   dev_ctx.template Alloc<T>(out);
   gpuStream_t stream = dev_ctx.stream();
   auto comm_context =

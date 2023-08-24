@@ -82,7 +82,9 @@ if(WITH_IPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} ipu_info)
 endif()
 
-if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+if(WITH_NCCL
+   OR WITH_RCCL
+   OR WITH_MCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif()
@@ -111,7 +113,9 @@ endif()
 
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
-  if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+  if(WITH_NCCL
+     OR WITH_RCCL
+     OR WITH_MCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
     set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
   endif()
@@ -161,7 +165,9 @@ endif()
 
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
-  if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+  if(WITH_NCCL
+     OR WITH_RCCL
+     OR WITH_MCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
   endif()
   if(WITH_XPU_BKCL)
@@ -245,7 +251,9 @@ if(WITH_RPC)
   set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
 endif()
 
-if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+if(WITH_NCCL
+   OR WITH_RCCL
+   OR WITH_MCCL)
   list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
 endif()
 
@@ -264,7 +272,9 @@ if(WITH_PYTHON)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
-  if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+  if(WITH_NCCL
+     OR WITH_RCCL
+     OR WITH_MCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
   endif()
 

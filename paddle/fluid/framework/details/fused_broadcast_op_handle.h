@@ -36,7 +36,8 @@ struct NCCLContextMap;
 }  // namespace platform
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
@@ -46,7 +47,8 @@ namespace details {
 
 struct FusedBroadcastOpHandle : public BroadcastOpHandle {
  public:
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   FusedBroadcastOpHandle(ir::Node *node,
                          const std::vector<Scope *> local_scopes,
                          const std::vector<platform::Place> &places,

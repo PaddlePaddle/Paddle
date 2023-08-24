@@ -30,7 +30,8 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -573,7 +574,8 @@ void SyncBatchNormGradFunctor(
     }
   }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   int global_gid = 0;
   ncclComm_t comm = nullptr;
 

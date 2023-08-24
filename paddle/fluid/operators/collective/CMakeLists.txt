@@ -30,7 +30,9 @@ register_operators(
   DEPS
   ${COLLECTIVE_DEPS})
 
-if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+if(WITH_NCCL
+   OR WITH_RCCL
+   OR WITH_MCCL)
   set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper phi)
   op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
   op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})

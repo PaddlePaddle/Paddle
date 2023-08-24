@@ -49,7 +49,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/musparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/backends/dynload/mccl.h"
-#endif  // !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
+#endif  // !defined(__APPLE__) && defined(PADDLE_WITH_MCCL )
 #endif  // PADDLE_WITH_MUSA
 
 #ifdef PADDLE_WITH_HIP
@@ -279,7 +279,8 @@ struct GPUContext::Impl {
       phi::DestroySolverHandle(solver_handle_);
 #endif
       phi::DestroyDnnHandle(dnn_handle_);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
       if (nccl_comm_) {
         // NOTE(liyurui): It is not recommend calling CUDA runtime API
         // in destructor. Since we can not ensure the release order of
@@ -602,7 +603,8 @@ struct GPUContext::Impl {
   }
 
   ncclComm_t GetNcclComm() const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     // PD_CHECK(nccl_comm_ != nullptr, "the gpu nccl_comm is nullptr.");
     return nccl_comm_;
 #endif
@@ -610,7 +612,8 @@ struct GPUContext::Impl {
   }
 
   void SetNcclComm(ncclComm_t comm) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     nccl_comm_ = comm;
 #endif
   }
@@ -844,7 +847,8 @@ struct GPUContext::Impl {
   std::once_flag flag_tensorcore_cublas_;
   std::once_flag flag_eigen_device_;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
   // NCCL collective operations provides fast collectives over multiple GPUs
   // both within and across nodes.

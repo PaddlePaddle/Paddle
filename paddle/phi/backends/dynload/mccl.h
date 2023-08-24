@@ -30,7 +30,7 @@ extern void* mccl_dso_handle;
   struct DynLoad__##__name {                                     \
     template <typename... Args>                                  \
     auto operator()(Args... args) -> decltype(__name(args...)) { \
-      using mccl_func = decltype(&__name);                     \
+      using mccl_func = decltype(&::__name);                     \
       std::call_once(mccl_dso_flag, []() {                       \
         mccl_dso_handle = phi::dynload::GetNCCLDsoHandle();      \
       });                                                        \

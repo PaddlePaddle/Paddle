@@ -34,7 +34,8 @@ class Scope;
 namespace paddle {
 namespace operators {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
   for (size_t i = 0; i < nccl_ids->size(); ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(

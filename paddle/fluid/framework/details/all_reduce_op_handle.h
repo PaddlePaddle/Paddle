@@ -31,7 +31,8 @@ namespace platform {
 class NCCLCommunicator;
 }  // namespace platform
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
@@ -43,7 +44,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 class AllReduceOpHandle : public NCCLOpHandleBase {
  public:
   AllReduceOpHandle(ir::Node *node,
@@ -84,7 +86,8 @@ class AllReduceOpHandle : public OpHandleBase {
   std::vector<platform::Place> places_;
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   void NCCLAllReduceFunc(
       const std::vector<std::function<void()>> &all_reduce_calls);
 

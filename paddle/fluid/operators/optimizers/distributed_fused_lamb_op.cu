@@ -892,7 +892,8 @@ static void MultiTensorUpdateLambParamAndBetaPows(
 #undef PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 static bool CreatePreMulScaleOpIfSupported(ncclDataType_t dtype,
                                            ncclComm_t comm,
                                            const void *scale,
@@ -1371,7 +1372,8 @@ void DistributedFusedLambKernel(
     DenseTensor *acc_step,
     DenseTensor *stop_update,
     DenseTensor *step) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   auto stream = dev_ctx.stream();
   auto place = dev_ctx.GetPlace();
   found_inf->Resize({1});

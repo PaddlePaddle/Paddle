@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/imperative/nccl_context.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
@@ -41,7 +42,8 @@ class Variable;
 
 namespace paddle {
 namespace imperative {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 
 void NCCLParallelContext::BcastNCCLId(
     std::vector<ncclUniqueId> &nccl_ids,  // NOLINT

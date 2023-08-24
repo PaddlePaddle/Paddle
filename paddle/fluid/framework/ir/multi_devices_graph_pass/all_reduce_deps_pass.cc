@@ -30,7 +30,8 @@ class AllReduceDepsPass : public ir::Pass {
     std::vector<details::OpHandleBase*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     auto use_hierarchical_allreduce =
         Get<bool>(details::kUseHierarchicalAllReduce);
     for (size_t i = 0; i < all_reduce_op_handles.size(); ++i) {

@@ -29,7 +29,8 @@
 namespace phi {
 
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_MCCL)) && NCCL_VERSION_CODE >= 2703
+     defined(PADDLE_WITH_MCCL)) &&                             \
+    NCCL_VERSION_CODE >= 2703
 template <typename Context>
 DDim recv_shape_info(const Context& dev_ctx,
                      phi::DenseTensor* out,

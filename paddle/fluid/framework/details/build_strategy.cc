@@ -349,7 +349,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
                                 DeviceType use_device,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
@@ -381,7 +382,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -401,7 +403,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
@@ -429,7 +432,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
       platform::NCCLCommunicator *nctx =
           (use_device == p::kCUDA) ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);

@@ -88,7 +88,8 @@ void BroadcastOpHandle::BroadcastOneVar(
       });
     }
   } else if (platform::is_gpu_place(in_tensor.place())) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     VarHandle *out_handle = nullptr;
     int root_id = in_tensor.place().device;
     std::vector<std::function<void()>> broadcast_calls;

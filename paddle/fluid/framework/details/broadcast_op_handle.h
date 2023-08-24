@@ -34,7 +34,8 @@ class Node;
 }  // namespace ir
 }  // namespace framework
 namespace platform {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 struct NCCLContextMap;
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -43,7 +44,8 @@ struct BKCLContextMap;
 }  // namespace platform
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
@@ -55,7 +57,8 @@ namespace details {
 
 struct BroadcastOpHandle : public OpHandleBase {
  public:
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   BroadcastOpHandle(ir::Node *node,
                     const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
@@ -109,7 +112,8 @@ struct BroadcastOpHandle : public OpHandleBase {
 
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
 #elif defined(PADDLE_WITH_XPU_BKCL)
   const platform::BKCLContextMap *bkcl_ctxs_;

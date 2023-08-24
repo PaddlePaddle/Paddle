@@ -16,7 +16,8 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
@@ -24,7 +25,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,
@@ -77,7 +79,8 @@ std::string GradMergeAllReduceOpHandle::Name() const {
   return "grad_merge_all_reduce";
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 FusedGradMergeAllReduceOpHandle::FusedGradMergeAllReduceOpHandle(
     ir::Node *node,
     const std::vector<Scope *> &local_scopes,

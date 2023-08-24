@@ -33,7 +33,8 @@ namespace platform {
 class NCCLCommunicator;
 }  // namespace platform
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
@@ -44,7 +45,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
@@ -75,7 +77,8 @@ struct FusedAllReduceOpHandle : public AllReduceOpHandle {
  private:
   size_t num_of_all_reduce_;
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   gpuEvent_t start_event_{nullptr};
   gpuEvent_t end_event_{nullptr};
 #endif

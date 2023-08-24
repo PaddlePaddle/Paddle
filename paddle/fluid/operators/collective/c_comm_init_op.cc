@@ -27,7 +27,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
     defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_XPU_BKCL) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -76,7 +76,8 @@ class CCommInitOp : public framework::OperatorBase {
 #endif
     } else {
 // TODO(wangxi): Put this in the unified header file
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
       using UniqueId = ncclUniqueId;
       using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)

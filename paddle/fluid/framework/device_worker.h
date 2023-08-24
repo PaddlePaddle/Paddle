@@ -53,7 +53,8 @@ class Scope;
 }  // namespace framework
 }  // namespace paddle
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
@@ -548,8 +549,8 @@ class HeterCpuWorker : public HogwildWorker {
 };
 #endif
 
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
-     defined PADDLE_WITH_MCCL ||defined PADDLE_WITH_XPU_BKCL) && \
+#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL ||      \
+     defined PADDLE_WITH_MCCL || defined PADDLE_WITH_XPU_BKCL) && \
     (defined PADDLE_WITH_PSLIB)
 class PSGPUWorker : public HogwildWorker {
  public:
@@ -680,7 +681,8 @@ class PSGPUWorker : public HogwildWorker {
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}

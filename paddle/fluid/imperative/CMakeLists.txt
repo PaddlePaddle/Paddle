@@ -88,7 +88,9 @@ cc_library(
   SRCS profiler.cc
   DEPS phi)
 if(NOT WIN32)
-  if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+  if(WITH_NCCL
+     OR WITH_RCCL
+     OR WITH_MCCL)
     cc_library(
       imperative_all_reduce
       SRCS all_reduce.cc
@@ -113,9 +115,13 @@ if(NOT WIN32)
     if(WITH_MCCL)
       musa_library(
         reducer
-        SRCS reducer.cc reducer.cu
-        DEPS layer imperative_all_reduce)
-  endif()
+        SRCS
+        reducer.cc
+        reducer.cu
+        DEPS
+        layer
+        imperative_all_reduce)
+    endif()
   endif()
   if(WITH_XPU_BKCL)
     cc_library(

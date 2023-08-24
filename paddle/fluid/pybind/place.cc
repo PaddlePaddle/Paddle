@@ -117,7 +117,8 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
@@ -128,7 +129,7 @@ limitations under the License. */
 #include "paddle/fluid/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_MUSA)
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)|| \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif

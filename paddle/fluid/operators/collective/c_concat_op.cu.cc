@@ -19,7 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/api/include/tensor.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -61,7 +62,8 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
                           rank,
                           nranks));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     phi::DenseTensor temp_out;
     framework::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;

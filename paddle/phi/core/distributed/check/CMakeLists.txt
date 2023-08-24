@@ -1,6 +1,8 @@
 set(CHECK_COMMON_SRCS static_check.cc)
 
-if(WITH_NCCL OR WITH_RCCL OR WITH_MCCL)
+if(WITH_NCCL
+   OR WITH_RCCL
+   OR WITH_MCCL)
   list(APPEND CHECK_COMMON_SRCS nccl_dynamic_check.cc)
 endif()
 

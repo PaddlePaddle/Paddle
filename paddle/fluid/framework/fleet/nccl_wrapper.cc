@@ -21,7 +21,8 @@ std::shared_ptr<NCCLWrapper> NCCLWrapper::s_instance_ = NULL;
 bool NCCLWrapper::is_initialized_ = false;
 
 void NCCLWrapper::InitNCCL() {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::ncclCommInitRank(&(nccl_info_.comm_),
                                           nccl_info_.global_ranks_,
@@ -32,14 +33,16 @@ void NCCLWrapper::InitNCCL() {
 }
 
 void NCCLWrapper::SetNCCLId(const NCCLInfo& nccl_info) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   nccl_info_.nccl_id_ = nccl_info.nccl_id_;
 #endif
   return;
 }
 
 NCCLInfo NCCLWrapper::GetNCCLId() {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   PADDLE_ENFORCE_GPU_SUCCESS(
       platform::dynload::ncclGetUniqueId(&(nccl_info_.nccl_id_)));
 #endif
@@ -49,7 +52,8 @@ NCCLInfo NCCLWrapper::GetNCCLId() {
 void NCCLWrapper::SetRankInfo(const int local_rank,
                               const int global_rank,
                               const int ranks) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   nccl_info_.local_rank_ = local_rank;
   nccl_info_.my_global_rank_ = global_rank;
   nccl_info_.global_ranks_ = ranks;
@@ -68,7 +72,8 @@ void NCCLWrapper::SetRankInfo(const int local_rank,
 void NCCLWrapper::SyncVar(const int root_rank,
                           const Scope& scope,
                           const std::vector<std::string>& var_names) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   for (auto& name : var_names) {
     auto var = scope.FindVar(name);
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();

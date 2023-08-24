@@ -38,7 +38,8 @@ namespace cub = hipcub;
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -358,7 +359,8 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   T* num_classes_per_device_ptr = num_classes_per_device.data<T>();
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   if (nranks > 1) {
     auto map = paddle::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(ring_id)) {

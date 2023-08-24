@@ -29,7 +29,7 @@
 namespace paddle {
 namespace imperative {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
     defined(PADDLE_WITH_MCCL) || defined(PADDLE_WITH_XPU_BKCL) || \
     defined(PADDLE_WITH_GLOO) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 // div the nranks
@@ -40,7 +40,8 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
           : dense_contents_.GetMutable<phi::DenseTensor>();
 
   if (platform::is_gpu_place(tensor->place())) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     DivNRanks(tensor, nranks, context);
 #endif
   } else if (platform::is_cpu_place(tensor->place())) {
@@ -228,7 +229,8 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     ConcatTensorsWithType(static_cast<const phi::GPUContext &>(context),
                           dense_tensors_,
                           &dense_contents_,
@@ -264,7 +266,8 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     SplitTensorsWithType(static_cast<const phi::GPUContext &>(context),
                          &dense_contents_,
                          &dense_tensors_,

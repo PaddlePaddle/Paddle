@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/platform/collective_helper.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
@@ -56,7 +57,8 @@ class CCommInitAllOp : public framework::OperatorBase {
     //                   platform::errors::PreconditionNotMet(
     //                       "CCommInitAllOp can run on gpu place only"));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
     std::vector<int> devices = Attr<std::vector<int>>("devices");
     if (devices.empty()) {
       devices = platform::GetSelectedDevices();

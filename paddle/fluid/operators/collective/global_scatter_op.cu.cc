@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -26,7 +27,8 @@ namespace operators {
 template <typename T>
 struct GlobalScatterFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto local_count = ctx.Input<phi::DenseTensor>("local_count");
@@ -147,7 +149,8 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
 template <typename T>
 struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #if NCCL_VERSION_CODE >= 2703
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto local_count = ctx.Input<phi::DenseTensor>("local_count");

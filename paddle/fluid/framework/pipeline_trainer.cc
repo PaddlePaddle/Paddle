@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -34,7 +35,8 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   ParseDumpConfig(trainer_desc);
   const auto& section_config = section_params.section_config();
   int place_id = section_config.place_id();
-#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_RCCL) || (defined PADDLE_WITH_MCCL)
+#if (defined PADDLE_WITH_NCCL) || (defined PADDLE_WITH_RCCL) || \
+    (defined PADDLE_WITH_MCCL)
   place_ = platform::CUDAPlace(place_id);
 #endif
   worker_ = DeviceWorkerFactory::CreateDeviceWorker(

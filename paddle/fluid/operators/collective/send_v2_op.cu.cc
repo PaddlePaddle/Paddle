@@ -14,7 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/send_v2_op.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -25,7 +26,8 @@ namespace paddle {
 namespace operators {
 
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_MCCL)) && NCCL_VERSION_CODE >= 2703
+     defined(PADDLE_WITH_MCCL)) &&                             \
+    NCCL_VERSION_CODE >= 2703
 void send_shape_info(const phi::DenseTensor& x,
                      const platform::Place& place,
                      const gpuStream_t& stream,
@@ -109,7 +111,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
-    defined(PADDLE_WITH_MCCL)) && NCCL_VERSION_CODE >= 2703
+     defined(PADDLE_WITH_MCCL)) &&                             \
+    NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
     bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(

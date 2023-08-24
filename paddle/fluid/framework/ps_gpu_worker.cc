@@ -286,7 +286,8 @@ void PSGPUWorker::TrainFiles() {
   timeline.Start();
 
   int total_ins_num = 0;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   platform::SetDeviceId(thread_id_);
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);
@@ -511,7 +512,8 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   int total_ins_num = 0;
   int cur_batch;
   timeline.Start();
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   platform::SetDeviceId(thread_id_);
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);

@@ -170,7 +170,8 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   places_ = Get<const std::vector<platform::Place>>(details::kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(details::kLocalScopes);
   strategy_ = Get<const details::BuildStrategy>(kStrategy);
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   multi_nccl_ctxs_ = &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
   nccl_ctxs_ = nullptr;
   if (multi_nccl_ctxs_) {
@@ -338,7 +339,8 @@ std::vector<ir::Node *> MultiDevSSAGraphBuilderBase::SortOperations(
 
 bool MultiDevSSAGraphBuilderBase::UseGPU() const {
   bool use_gpu = false;
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   use_gpu = nccl_ctxs_ != nullptr;
 #endif
   return use_gpu;
@@ -389,7 +391,8 @@ void MultiDevSSAGraphBuilderBase::CreateOpHandleIOs(ir::Graph *result,
 
 void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
     details::OpHandleBase *op_handle, const platform::Place &p) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   if (nccl_ctxs_ == nullptr) {
     op_handle->SetDeviceContext(p,
                                 platform::DeviceContextPool::Instance().Get(p));
@@ -408,7 +411,8 @@ void MultiDevSSAGraphBuilderBase::SetCommunicationContext(
 void MultiDevSSAGraphBuilderBase::CreateBroadcastOp(ir::Graph *result,
                                                     const std::string &p_name,
                                                     size_t src_dev_id) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   auto *op_handle = new details::BroadcastOpHandle(
       result->CreateEmptyNode("broadcast", ir::Node::Type::kOperation),
       local_scopes_,
@@ -453,7 +457,8 @@ void MultiDevSSAGraphBuilderBase::CreateBroadcastOp(ir::Graph *result,
 void MultiDevSSAGraphBuilderBase::CreateFusedBroadcastOp(
     ir::Graph *result,
     const std::vector<std::unordered_set<std::string>> &bcast_varnames) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   auto *op_handle = new details::FusedBroadcastOpHandle(
       result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
       local_scopes_,
@@ -534,8 +539,9 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
                                  const std::vector<platform::Place> &places)
       -> details::OpHandleBase * {
     if (is_encoded) {
-#if defined(PADDLE_WITH_DGC) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL))
+#if defined(PADDLE_WITH_DGC) &&                                \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+     defined(PADDLE_WITH_MCCL))
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::SparseAllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -554,7 +560,8 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
       grad_merge_cond_name = PADDLE_GET_CONST(
           std::string, node->Op()->GetAttr(GRAD_MERGE_COND_NAME));
       VLOG(10) << "og=" << og << " use grad_merge_allreduce";
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::GradMergeAllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -579,7 +586,8 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
               grad_merge_cond_name));
 #endif
     } else {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::AllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
@@ -719,7 +727,8 @@ void MultiDevSSAGraphBuilderBase::CreateComputationalOps(
 
 details::VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(
     ir::Graph *result, const std::string &og, size_t dst_dev_id) const {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
   result->Get<GraphOps>(kGraphOps).emplace_back(new details::ReduceOpHandle(
       result->CreateEmptyNode("reduce", ir::Node::Type::kOperation),
       local_scopes_,

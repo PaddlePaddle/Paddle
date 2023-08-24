@@ -22,7 +22,8 @@
 
 namespace paddle {
 namespace platform {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_MCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
 class NCCLCommImpl : public NCCLComm {
  public:
   void set_ring_id(int ring_id) { ring_id_ = ring_id; }
