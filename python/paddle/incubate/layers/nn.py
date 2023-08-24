@@ -74,7 +74,6 @@ def fused_embedding_seq_pool(
         .. code-block:: python
 
             >>> import numpy as np
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -282,7 +281,6 @@ def multiclass_nms2(
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
             >>> boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
@@ -357,24 +355,24 @@ def search_pyramid_hash(
         drop_out_percent (float): The probability of dropping out the input token randomly.
             It should satisfy: [0., 1.].
         is_training (bool): Whether in training or testing phrase.
-        use_filter(bool): If set True, the white filter and black filter should be given by
+        use_filter (bool): If set True, the white filter and black filter should be given by
             :attr:`param_attr_wl` and :attr:`param_attr_bl` .
-        white_list_len(int): If set :math:`white_list_len>0` , white filter with shape [white_list_len, 1]
+        white_list_len (int): If set :math:`white_list_len>0` , white filter with shape [white_list_len, 1]
             should be provided by param_attr_wl.
-        black_list_len(int): If set :math:`black_list_len>0` , black filter with shape [black_list_len, 1]
+        black_list_len (int): If set :math:`black_list_len>0` , black filter with shape [black_list_len, 1]
             should be provided by param_attr_bl.
-        seed(int): The number of random seed.
-        lr(float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
+        seed (int): The number of random seed.
+        lr (float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
             in this layer.
-        param_attr(ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+        param_attr (ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        param_attr_wl(ParamAttr, optional): Specified parameters of white filter. Default: None.
-        param_attr_bl(ParamAttr, optional): Specified parameters of black filter. Default: None.
+        param_attr_wl (ParamAttr, optional): Specified parameters of white filter. Default: None.
+        param_attr_bl (ParamAttr, optional): Specified parameters of black filter. Default: None.
         distribute_update_vars(list[ParamAttr.name], optional): Decided which params should be updated in distribute training.
             Used in Distribute Transpiler to create a trainer/server program. Default: None.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` . Default: None.
-        dtype(str, optional): The data type of output Tensor, float32. Default: float32.
+        dtype (str, optional): The data type of output Tensor, float32. Default: float32.
 
     Returns:
         Tensor: LoDTensor of pyramid hash embedding.
@@ -481,7 +479,6 @@ def shuffle_batch(x, seed=None):
 
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
             >>> x = paddle.static.data(name="x", shape=[-1, 4])
@@ -548,7 +545,6 @@ def partial_concat(input, start_index=0, length=-1):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> x = paddle.randn(name="x", shape=[1,3], dtype="float32")
             >>> y = paddle.randn(name="y", shape=[1,3], dtype="float32")
@@ -616,19 +612,12 @@ def partial_sum(input, start_index=0, length=-1):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
-            >>> import numpy as np
             >>> import paddle
             >>> paddle.enable_static()
 
             >>> x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             >>> y = paddle.static.data(name="y", shape=[2, 3], dtype="float32")
             >>> sum = paddle.incubate.layers.partial_sum([x,y], start_index=0, length=2)
-            >>> place = fluid.CPUPlace()
-            >>> exe = fluid.Executor(place)
-            >>> xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
-            >>> yy = np.array([6,5,4,4,5,6]).reshape((2,3)).astype("float32")
-            >>> out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
     """
     for id, x in enumerate(input):
         check_variable_and_dtype(
@@ -693,9 +682,9 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.fluid as fluid
             >>> import numpy as np
             >>> paddle.enable_static()
+
             >>> x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
             >>> tree_info = [[0,0,0,1,2],
             ...             [0,1,0,3,4],[0,1,0,5,6],
@@ -705,14 +694,9 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
             >>> node_nums = 7
             >>> child_nums = 2
             >>> child, leaf_mask  = paddle.incubate.layers.tdm_child(x, node_nums, child_nums,
-            ...                         param_attr=fluid.ParamAttr(
-            ...                             initializer=paddle.nn.initializer.Assign(
-            ...                                                                     tree_info_np)))
-            >>> place = fluid.CPUPlace()
-            >>> exe = fluid.Executor(place)
-            >>> exe.run(fluid.default_startup_program())
-            >>> xx = np.array([[2],[3]]).reshape((2,1)).astype("int32")
-            >>> child_res, leaf_mask_res = exe.run(feed={"x":xx}, fetch_list=[child, leaf_mask])
+            ...                     param_attr=paddle.ParamAttr(
+            ...                     initializer=paddle.nn.initializer.Assign(tree_info_np)))
+
     """
     helper = LayerHelper("tdm_child", **locals())
     check_dtype(
@@ -789,8 +773,8 @@ def tdm_sampler(
         output_positive (bool, optional): Whether to output positive samples (include label and mask )at the same time. Default: True.
         output_list (bool, optional): Whether to divide the output into layers and organize it into list format. Default: True.
         seed (int, optional): The number of random seed. Default: 0.
-        tree_dtype(np.dtype|core.VarDesc.VarType|str, optional): The dtype of tdm-travel and tdm-layer, support int32/int64. Default: int32.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The dtype of output(sampling results, labels and masks). Default: int32.
+        tree_dtype (np.dtype|core.VarDesc.VarType|str, optional): The dtype of tdm-travel and tdm-layer, support int32/int64. Default: int32.
+        dtype (np.dtype|core.VarDesc.VarType|str, optional): The dtype of output(sampling results, labels and masks). Default: int32.
 
     Returns:
         tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
@@ -804,9 +788,9 @@ def tdm_sampler(
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.fluid as fluid
             >>> import numpy as np
             >>> paddle.enable_static()
+
             >>> x = paddle.static.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
             >>> travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
             >>> layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
@@ -823,23 +807,16 @@ def tdm_sampler(
             ...     neg_samples_num_list,
             ...     layer_node_num_list,
             ...     leaf_node_num,
-            ...     tree_travel_attr=fluid.ParamAttr(
+            ...     tree_travel_attr=paddle.ParamAttr(
             ...         initializer=paddle.nn.initializer.Assign(
             ...            travel_array)),
-            ...     tree_layer_attr=fluid.ParamAttr(
+            ...     tree_layer_attr=paddle.ParamAttr(
             ...         initializer=paddle.nn.initializer.Assign(
             ...             layer_array)),
             ...     output_positive=True,
             ...     output_list=True,
             ...     seed=0,
             ...     tree_dtype='int32')
-
-            >>> place = fluid.CPUPlace()
-            >>> exe = fluid.Executor(place)
-            >>> exe.run(fluid.default_startup_program())
-            >>> xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
-
-            >>> exe.run(feed={"x":xx})
 
     """
     helper = LayerHelper("tdm_sampler", **locals())
@@ -990,7 +967,7 @@ def rank_attention(
     Args:
         input (Tensor): Tensor with data type float32, float64.
         rank_offset (Tensor): Tensor with data type int32.
-        rank_para_shape (list(int)): The shape of rank_param.
+        rank_para_shape (list[int]): The shape of rank_param.
         rank_param_attr (ParamAttr): Attribute initializer of rank_param.
         max_rank (int, optional): The max rank of input's ranks. Default is 3.
         max_size (int, optional): The max size of input's ranks. Default is 0.
@@ -1000,7 +977,6 @@ def rank_attention(
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -1052,9 +1028,9 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
 
     Args:
         input (Tensor): Tensor with data type float32, float64.
-        param_size (list(int)): The size of w.
+        param_size (list[int]): The size of w.
         param_attr (ParamAttr): Attribute initializer of w.
-        bias_size (list(int)): The size of bias.
+        bias_size (list[int]): The size of bias.
         bias_attr (ParamAttr): Attribute initializer of bias.
         act (str, optional): Activation to be applied to the output of this layer. Default is None.
 
@@ -1064,7 +1040,6 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -1115,12 +1090,12 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     :attr:`input`.
 
     Args:
-        input(Tensor): Input is a Tensor<int64>, which contains the IDs information.
-        size(int): The embedding size parameter, which indicates the size of
+        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
+        size (int): The embedding size parameter, which indicates the size of
             each embedding vector respectively.
-        extend_size(int, optional): The embedding size parameter in extended dim,
+        extend_size (int, optional): The embedding size parameter in extended dim,
             which indicates the size of each embedding vector respectively. Default is 64.
-        dtype(str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
+        dtype (str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
 
     Returns:
         Tensor: The tensor storing the embeddings of the supplied inputs.
@@ -1128,7 +1103,6 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -1167,16 +1141,16 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
     For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
 
     Args:
-        x(Tensor): The input tensor, which is a 4-D tensor with shape
+        x (Tensor): The input tensor, which is a 4-D tensor with shape
                      [N, C, H, W], N is the batch size, C is the channel
                      number, H and W is the feature height and width.
                      The data type is float32 and float64.
-        guide(Tensor): Input grid tensor of shape [N, H, W]. The
+        guide (Tensor): Input grid tensor of shape [N, H, W]. The
                         data type is float32 and float64.
-        grid(Tensor): Input grid tensor of shape [N, C, D, H, W]. The
+        grid (Tensor): Input grid tensor of shape [N, C, D, H, W]. The
                         data type is float32 and float64.
-        has_offset(bool): Whether to slice with affine offset.
-        name(str, optional): For detailed information, please refer
+        has_offset (bool): Whether to slice with affine offset.
+        name (str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -1187,7 +1161,6 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -1258,14 +1231,13 @@ def correlation(
 
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
             >>> paddle.enable_static()
             >>> x1 = paddle.static.data(name='x1',
-            ...                         shape=[2,3,4,5],
+            ...                         shape=[2, 3, 4, 5],
             ...                         dtype="float32")
             >>> x2 = paddle.static.data(name='x2',
-            ...                         shape=[2,3,4,5],
+            ...                         shape=[2, 3, 4, 5],
             ...                         dtype="float32")
 
 
@@ -1333,36 +1305,36 @@ def fused_bn_add_act(
     `[batch, in_height, in_width, in_channels]`.
 
     Args:
-        x(Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
+        x (Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
             is float16.
-        y(Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
+        y (Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
             is float16.
-        momentum(float|Tensor, optional): The value used for the moving_mean and
+        momentum (float|Tensor, optional): The value used for the moving_mean and
             moving_var computation. This should be a float number or a tensor with
             shape [1] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
-        epsilon(float, optional): A value added to the denominator for
+        epsilon (float, optional): A value added to the denominator for
             numerical stability. Default is 1e-05.
-        param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
+        param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-                will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-                If the Initializer of the param_attr is not set, the parameter is initialized
-                with Xavier. Default: None.
-        bias_attr(ParamAttr, optional): The parameter attribute for the bias of batch_norm.
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            with Xavier. Default: None.
+        bias_attr (ParamAttr, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
-                will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-                If the Initializer of the bias_attr is not set, the bias is initialized zero.
-                Default: None.
-        moving_mean_name(str, optional): The name of moving_mean which store the global Mean. If it
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            Default: None.
+        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. If it
             is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
             will save global mean with the string. Default: None.
-        moving_variance_name(str, optional): The name of the moving_variance which store the global Variance.
+        moving_variance_name (str, optional): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
             will save global variance with the string. Default: None.
-        act(string, optional): Activation type, linear|relu|prelu|... Default: None.
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        act (string, optional): Activation type, linear|relu|prelu|... Default: None.
+        name (str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default. Default: None.
 
     Examples:
@@ -1370,11 +1342,10 @@ def fused_bn_add_act(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> import paddle.fluid as fluid
             >>> paddle.enable_static()
 
             >>> def build_program(main_program, startup_program):
-            ...     with fluid.program_guard(main_program, startup_program):
+            ...     with paddle.program_guard(main_program, startup_program):
             ...         x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
             ...         y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             ...         conv1_1 = paddle.static.nn.conv2d(
@@ -1406,7 +1377,7 @@ def fused_bn_add_act(
             ...             reduction='none', use_softmax=False
             ...         )
             ...         loss = paddle.mean(loss)
-            ...         sgd = fluid.optimizer.SGD(learning_rate=0.001)
+            ...         sgd = paddle.optimizer.SGD(learning_rate=0.001)
             ...         sgd = paddle.static.amp.decorate(
             ...             sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
             ...         sgd.minimize(loss)
@@ -1415,23 +1386,16 @@ def fused_bn_add_act(
 
             >>> iters = 5
             >>> batch_size = 16
-            >>> support_gpu = fluid.is_compiled_with_cuda()
+            >>> support_gpu = paddle.is_compiled_with_cuda()
             >>> if support_gpu:
-            ...     main_program = fluid.Program()
-            ...     startup_program = fluid.Program()
-            ...     place = fluid.CUDAPlace(0)
+            ...     main_program = paddle.Program()
+            ...     startup_program = paddle.Program()
+            ...     place = paddle.CUDAPlace(0)
             ...     x, y, loss = build_program(main_program, startup_program)
             ...
-            ...     feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
+            ...     feeder = paddle.DataFeeder(feed_list=[x, y], place=place)
             ...     train_reader = paddle.batch(
             ...         paddle.dataset.mnist.train(), batch_size=batch_size)
-            ...     exe = fluid.Executor(place)
-            ...     scope = fluid.Scope()
-            ...     with fluid.scope_guard(scope):
-            ...         exe.run(startup_program)
-            ...         for _ in range(iters):
-            ...             data = next(train_reader())
-            ...             loss_v = exe.run(main_program, feed=feeder.feed(data), fetch_list=[loss])
     """
     helper = LayerHelper('fused_bn_add_act', **locals())
 
@@ -1576,12 +1540,12 @@ def _pull_gpups_sparse(
     :attr:`input`.
 
     Args:
-        input(Tensor): Input is a Tensor<int64>, which contains the IDs information.
-        size(int|list of int): The embedding size parameter of each input, which indicates the size of
+        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
+        size (int|list of int): The embedding size parameter of each input, which indicates the size of
             each embedding vector respectively.
-        dtype(str, optional): The dtype refers to the data type of output tensor. Only supportsfloat32 now. Default is float32.
-        is_distributed(bool, optional): Whether to use distributed mode. Default is False.
-        is_sparse(bool, optional): Whether to use sparse mode. Default is False.
+        dtype (str, optional): The dtype refers to the data type of output tensor. Only supportsfloat32 now. Default is float32.
+        is_distributed (bool, optional): Whether to use distributed mode. Default is False.
+        is_sparse (bool, optional): Whether to use sparse mode. Default is False.
 
     Returns:
         Tensor: The tensor storing the embeddings of the supplied inputs, whose size are indicated by size respectively.
@@ -1641,12 +1605,12 @@ def _pull_box_sparse(
     :attr:`input`.
 
     Args:
-        input(Tensor): Input is a Tensor<int64>, which contains the IDs information.
-        size(int): The embedding size parameter, which indicates the size of
+        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
+        size (int): The embedding size parameter, which indicates the size of
             each embedding vector respectively.
-        dtype(str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
-        is_distributed(bool, optional): Whether to use distributed mode. Default is False.
-        is_sparse(bool, optional): Whether to use sparse mode. Default is False.
+        dtype (str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
+        is_distributed (bool, optional): Whether to use distributed mode. Default is False.
+        is_sparse (bool, optional): Whether to use sparse mode. Default is False.
 
     Returns:
         Tensor: The tensor storing the embeddings of the supplied inputs.

@@ -374,7 +374,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         y (Tensor): The input tensor, it's data type should be float16, float32, float64.
         rtol (rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol (atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
-        equal_nan (equalnantype, optional): ${equal_nan_comment}.
+        equal_nan (equalnantype, optional): ${equal_nan_comment}. Default: False.
         name (str, optional): Name for the operation. For more information, please
             refer to :ref:`api_guide_Name`. Default: None.
 

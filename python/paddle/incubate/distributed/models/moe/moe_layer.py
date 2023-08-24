@@ -267,11 +267,11 @@ class MoELayer(nn.Layer):
         experts (nn.LayerList): Expert networks list.
         gate (dict|NaiveGate|SwitchGate|NaiveGate):
 
-                If gate is a dict:
-                    gate is a gate network config, containing 2 keys:
-                      `type`(str) value can be: "naive", "gshard", "switch" or None, default is "gshard".
-                      `top_k`(int) Default value is 2.
-                else gate is an instance of NaiveGate|SwitchGate|NaiveGate:
+            - If gate is a dict:
+              gate is a gate network config, containing 2 keys:
+              `type` (str) value can be: "naive", "gshard", "switch" or None, default is "gshard".
+              `top_k` (int) Default value is 2.
+            else gate is an instance of NaiveGate|SwitchGate|NaiveGate:
 
         moe_group: moe group for experts communication.
         mp_group: mp group for mp communication.

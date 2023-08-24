@@ -366,7 +366,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
         Args:
           input (Variable): Tensor, data type float32, float64.
-          dim (list, optional): None for last two dimensions.
+          dim (list, optional): None for last two dimensions. Default None.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
           name (str, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -1112,7 +1112,7 @@ def dot(x, y, name=None):
 
     Parameters:
         x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
-        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
+        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
@@ -1630,7 +1630,7 @@ def bmm(x, y, name=None):
     Args:
         x (Tensor): The input Tensor.
         y (Tensor): The input Tensor.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
 
     Returns:
@@ -1741,7 +1741,7 @@ def bincount(x, weights=None, minlength=0, name=None):
         x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
         weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
         minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
-        name(str, optional): Normally there is no need for user to set this property.
+        name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -1802,7 +1802,7 @@ def mv(x, vec, name=None):
             should be one of float32, float64.
         vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
             should be one of float32, float64.
-        name(str, optional): Normally there is no need for user to set this property.
+        name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -1867,7 +1867,7 @@ def det(x, name=None):
         x (Tensor): the input matrix of size `(n, n)` or the
             batch of matrices of size `(*, n, n)` where `*` is one or more
             batch dimensions.
-        name(str, optional): Name of the output.It's used to print debug info for
+        name (str, optional): Name of the output.It's used to print debug info for
             developers. Details: :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -1925,7 +1925,7 @@ def slogdet(x, name=None):
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
-        name(str, optional): Name of the output.It's used to print debug info for
+        name (str, optional): Name of the output.It's used to print debug info for
             developers. Details: :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -2581,8 +2581,6 @@ def eig(x, name=None):
 
             >>> import paddle
 
-            paddle.device.set_device("cpu")
-
             >>> x = paddle.to_tensor([[1.6707249, 7.2249975, 6.5045543],
             ...                       [9.956216,  8.749598,  6.066444 ],
             ...                       [4.4251957, 1.7983172, 0.370647 ]])
@@ -2776,9 +2774,9 @@ def eigh(x, UPLO='L', name=None):
     Args:
         x (Tensor): A tensor with shape :math:`[*, N, N]` , The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
-        UPLO(str, optional): (string, default 'L'), 'L' represents the lower triangular matrix,
+        UPLO (str, optional): (string, default 'L'), 'L' represents the lower triangular matrix,
             "'U' represents the upper triangular matrix.". Default: 'L'.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
+        name (str, optional): The default value is None. Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2875,7 +2873,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
         hermitian (bool, optional): indicates whether x is Hermitian
             if complex or symmetric if real. Default: False.
         name (str, optional): The default value is None. Normally there is no need for user to set this
-            property.  For more information, please refer to :ref:`api_guide_Name`.
+            property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The tensor with same data type with x. it represents
@@ -3105,7 +3103,7 @@ def solve(x, y, name=None):
             more batch dimensions. Its data type should be float32 or float64.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
-        name(str, optional): Name for the operation (optional, default is None).
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3175,7 +3173,7 @@ def triangular_solve(
         transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
         unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed
             to be 1 and not referenced from `x` . Default: False.
-        name(str, optional): Name for the operation (optional, default is None).
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3241,7 +3239,7 @@ def cholesky_solve(x, y, upper=False, name=None):
         y (Tensor): The input matrix which is upper or lower triangular Cholesky factor of square matrix A. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
-        name(str, optional): Name for the operation (optional, default is None).
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

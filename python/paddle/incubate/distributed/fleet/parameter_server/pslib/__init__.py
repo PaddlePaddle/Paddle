@@ -172,10 +172,13 @@ class PSLib(Fleet):
         Args:
             model_dir(str, optional): Load model path, can be local or hdfs/afs path. Default is None.
             kwargs: User-defined attributes, currently support following:
-                model(int): Load model mode.
-                            0 is for load whole model,
-                            1 is for load delta model (load diff).
-                            Default is 0.
+
+                - model(int): Load model mode.
+
+                  0 is for load whole model,
+                  1 is for load delta model (load diff).
+                  Default is 0.
+
         Examples:
 
             .. code-block:: text
@@ -418,13 +421,16 @@ class PSLib(Fleet):
         Args:
 
             executor (Executor): Fluid executor.
-            dirname (str): save path. It can be hdfs/afs path or local path.
+            dirname (str): Save path. It can be hdfs/afs path or local path.
             main_program (Program, optional): Fluid program, default None.
-            kwargs: use define property, current support following
-                mode (int): 0 means save all pserver model,
+            kwargs: Use define property, current support following
+
+                - mode (int):
+                  0 means save all pserver model,
                   1 means save delta pserver model (save diff),
                   2 means save xbox base,
                   3 means save batch model.
+
         Examples:
 
             .. code-block:: test
@@ -453,10 +459,12 @@ class PSLib(Fleet):
             whitelist_path (str): whitelist path. It can be hdfs/afs path or local path.
             main_program (Program, optional): fluid program, default None.
             kwargs: Use define property, current support following
-                mode (int): 0 means save all pserver model,
-                    1 means save delta pserver model (save diff),
-                    2 means save xbox base,
-                    3 means save batch model.
+
+                - mode (int):
+                  0 means save all pserver model,
+                  1 means save delta pserver model (save diff),
+                  2 means save xbox base,
+                  3 means save batch model.
 
         Examples:
 
@@ -484,9 +492,9 @@ class PSLib(Fleet):
             table_ids (list): Table ids.
             model_dir (str): If you use hdfs, model_dir should starts with 'hdfs:', otherwise means local dir.
             kwargs (dict): User-defined properties.
-                mode (int): The modes illustrated above, default 0.
-                prefix (str): the parts to save can have prefix,
-                  for example, part-prefix-000-00000.
+
+                - mode (int): The modes illustrated above, default 0.
+                - prefix (str): the parts to save can have prefix, for example, part-prefix-000-00000.
 
         Examples:
 
@@ -514,9 +522,10 @@ class PSLib(Fleet):
             dirname (str): Save path. It can be hdfs/afs path or local path.
             main_program (Program, optional): Fluid program, default None.
             kwargs: Use define property, current support following
-                mode (int): Define for feature extension in the future,
+
+                - mode (int): Define for feature extension in the future,
                   currently no use, will pass a default value 0.
-                table_id (int): Which table to save cache, default is 0.
+                - table_id (int): Which table to save cache, default is 0.
 
         Returns:
 
@@ -585,8 +594,8 @@ class PSLib(Fleet):
             emb_dim (int, optional): One element's length in datanorm layer. Default is 11.
             scope (Scope, optional): Scope object, default is fluid.global_scope(). Default is None.
             table_id (int, optional): Table id of shrinking dense table. None means shrink all,
-                           you should specify it when using multiple scopes,
-                           default is None.
+                you should specify it when using multiple scopes, default is None.
+
         Examples:
 
             .. code-block:: text
@@ -658,9 +667,10 @@ class PSLib(Fleet):
             table_id (int): Load table id.
             model_path (str): Load model path, can be local or hdfs/afs path.
             kwargs (dict): User defined params, currently support following:
-                only for load pslib model for one table:
+
+                - only for load pslib model for one table:
                   mode (int): load model mode. 0 is for load whole model, 1 is for load delta model (load diff), default is 0.
-                only for load params from paddle model:
+                - only for load params from paddle model:
                   scope (Scope): Scope object.
                   model_proto_file (str): Path of program desc proto binary file, can be local or hdfs/afs file.
                   var_names (list): Var name list.
@@ -703,33 +713,31 @@ class PSLib(Fleet):
             table_id (int): Load table id.
             model_path (str): Load model path, can be local or hdfs/afs path.
             kwargs (dict): user defined params, currently support following:
-                only for load pslib model for one table:
-                  mode(int): load model mode. 0 is for load whole model, 1 is
-                    for load delta model (load diff), default is 0.
-                only for load params from paddle model:
-                  scope(Scope): Scope object
-                  model_proto_file(str): path of program desc proto binary
-                    file, can be local or hdfs/afs file
-                  var_names(list): var name list
-                  load_combine(bool): load from a file or split param files
-                    default False.
+
+                - only for load pslib model for one table:
+                  mode(int): load model mode. 0 is for load whole model, 1 is for load delta model (load diff), default is 0.
+                - only for load params from paddle model:
+                  scope(Scope): Scope object.
+                  model_proto_file(str): Path of program desc proto binary file, can be local or hdfs/afs file.
+                  var_names(list): var name list.
+                  load_combine(bool): load from a file or split param files, default False.
 
         Examples:
 
             .. code-block:: text
 
-              # load pslib model for one table
-              fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
-              fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
-              # load params from paddle model
-              fleet.load_one_table(2, "hdfs:/my_paddle_model/",
-                                   scope = my_scope,
-                                   model_proto_file = "./my_program.bin",
-                                   load_combine = False)
-              # below is how to save proto binary file
-              with open("my_program.bin", "wb") as fout:
-                  my_program = fluid.default_main_program()
-                  fout.write(my_program.desc.serialize_to_string())
+                # load pslib model for one table
+                fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
+                fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
+                # load params from paddle model
+                fleet.load_one_table(2, "hdfs:/my_paddle_model/",
+                                    scope = my_scope,
+                                    model_proto_file = "./my_program.bin",
+                                    load_combine = False)
+                # below is how to save proto binary file
+                with open("my_program.bin", "wb") as fout:
+                    my_program = fluid.default_main_program()
+                    fout.write(my_program.desc.serialize_to_string())
 
         """
         self._role_maker._barrier_worker()
@@ -763,12 +771,12 @@ class PSLib(Fleet):
     ):
         """
         Load params from paddle model, and push params to pserver.
+
         Args:
             scope (Scope): Scope object.
             table_id (int): The id of table to load.
-            model_path (str): path of paddle model, can be local or hdfs/afs file.
-            model_proto_file (str): path of program desc proto binary file,
-                can be local or hdfs/afs file.
+            model_path (str): Path of paddle model, can be local or hdfs/afs file.
+            model_proto_file (str): Path of program desc proto binary file, can be local or hdfs/afs file.
             var_names (list, optional): Load var names. Default is None.
             load_combine (bool, optional): Load from a file or split param files. Default is False.
 
@@ -877,7 +885,8 @@ class PSLib(Fleet):
             model_dir (str, optional): If you use hdfs, model_dir should starts with
                 'hdfs:', otherwise means local dir. Default is None.
             kwargs (dict): user-defined properties.
-                mode (int): The modes illustrated above, default 0.
+
+                - mode (int): The modes illustrated above, default 0.
 
         Examples:
             .. code-block:: text
@@ -898,7 +907,8 @@ class PSLib(Fleet):
             model_dir (str, optional): If you use hdfs, model_dir should starts with
                 'hdfs:', otherwise means local dir. Default is None.
             kwargs (dict): user-defined properties.
-                mode (int): The modes illustrated above, default 0.
+
+                - mode (int): The modes illustrated above, default 0.
 
         Examples:
             .. code-block:: text
@@ -922,9 +932,9 @@ class PSLib(Fleet):
             model_dir (str): if you use hdfs, model_dir should starts with
                 'hdfs:', otherwise means local dir.
             kwargs (dict): user-defined properties.
-                          mode (int): the modes illustrated above, default 0.
-                          prefix (str): the parts to save can have prefix,
-                            for example, part-prefix-000-00000.
+
+                - mode (int): the modes illustrated above, default 0.
+                - prefix (str): the parts to save can have prefix, for example, part-prefix-000-00000.
 
         Examples:
             .. code-block:: text
@@ -1041,7 +1051,7 @@ def _fleet_embedding(
 
     Args:
         input (Variable|list of Variable): Input is a Tensor<int64> Variable.
-        size (list(int)): The embedding dim.
+        size (list[int]): The embedding dim.
         is_sparse (bool, optional): Whether input is sparse ids. Default is False.
         is_distributed (bool, optional): Whether in distributed mode. Default is False.
         padding_idx (int, optional): Padding idx of input. Default is None.
@@ -1130,7 +1140,7 @@ def _fleet_embedding_v2(
 
     Args:
         input (Variable|list of Variable): Input is a Tensor<int64> Variable.
-        size (list(int)): The embedding dim.
+        size (list[int]): The embedding dim.
         is_sparse (bool, optional): Whether input is sparse ids. Default is False.
         is_distributed (bool, optional): Whether in distributed mode. Default is False.
         padding_idx (int, optional): Padding idx of input. Default is None.
@@ -1212,13 +1222,13 @@ class fleet_embedding:
 
         .. code-block:: text
 
-          with fleet_embedding(click_name=label.name):
-              emb = paddle.static.nn.embedding(
-                  input=var,
-                  size=[-1, 11],
-                  is_sparse=True,
-                  is_distributed=True,
-                  param_attr=fluid.ParamAttr(name="embedding"))
+            with fleet_embedding(click_name=label.name):
+                emb = paddle.static.nn.embedding(
+                    input=var,
+                    size=[-1, 11],
+                    is_sparse=True,
+                    is_distributed=True,
+                    param_attr=fluid.ParamAttr(name="embedding"))
     """
 
     def __init__(self, click_name, scale_sparse_grad=True):

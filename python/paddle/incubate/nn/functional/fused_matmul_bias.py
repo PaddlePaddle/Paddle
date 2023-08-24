@@ -32,7 +32,7 @@ def fused_matmul_bias(
             be performed. Otherwise, the bias is added to the matrix multiplication result. Default: None.
         transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default: False.
         transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default: False.
-        name(str, optional): For detailed information, please refer to
+        name (str, optional): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
@@ -80,7 +80,7 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
         bias (Tensor, optional): the input bias Tensor. If it is None, no bias addition would
             be performed. Otherwise, the bias is added to the matrix multiplication result. Default: None.
         transpose_weight (bool, optional): Whether to transpose :math:`weight` before multiplication. Default: False.
-        name(str, optional: For detailed information, please refer to
+        name (str, optional): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
@@ -115,7 +115,7 @@ def fused_linear_activation(
         bias (Tensor): the input bias Tensor, the bias is added to the matrix multiplication result.
         trans_x (bool, optional): Whether to transpose :math:`x` before multiplication.
         trans_y (bool, optional): Whether to transpose :math:`y` before multiplication.
-        activation(str, optional): Activation function, Currently, the available activation functions are
+        activation (str, optional): Activation function, Currently, the available activation functions are
             limited to "gelu" (Gaussian Error Linear Unit) and "relu" (Rectified Linear Unit).
             These activation functions are applied to the output of the bias add. Default: None.
 
