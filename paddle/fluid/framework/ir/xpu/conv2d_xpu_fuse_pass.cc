@@ -690,7 +690,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
       delete_nodes.insert(bn_saved_var);
       delete_nodes.insert(bn_saved_mean);
     }
-    if (ew_bias_add) {
+    if (ew_bias_add != nullptr) {
       delete_nodes.insert(ew_bias_add);
       delete_nodes.insert(ew_bias_add_y);
     }

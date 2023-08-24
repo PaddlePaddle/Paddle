@@ -357,27 +357,29 @@ inline int MaxPoolOutputSize(int input_size,
       0,
       phi::errors::InvalidArgument(
           "The stride of MaxPool shall not be 0, but received %d.", stride));
-  int output_size = (input_size - k_size + padding_left + padding_right) / stride + 1;
+  int output_size =
+      (input_size - k_size + padding_left + padding_right) / stride + 1;
   return output_size;
 }
 
 void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
-                        const MetaTensor& x_max,
-                        const MetaTensor& filter,
-                        const MetaTensor& filter_max,
-                        const MetaTensor& bias,
-                        const std::vector<int>& paddings,
-                        const std::vector<int>& dilations,
-                        const std::vector<int>& strides,
-                        const std::string& padding_algorithm,
-                        int act_type,
-                        float act_param,
-                        DataType out_dtype,
-                        const std::vector<int>& pool2d_paddings,
-                        const std::vector<int>& pool2d_strides,
-                        const std::vector<int>& pool2d_ksize,
-                        MetaTensor* out,
-                        MetaTensor* out_max) {
+                               const MetaTensor& x_max,
+                               const MetaTensor& filter,
+                               const MetaTensor& filter_max,
+                               const MetaTensor& bias,
+                               const std::vector<int>& paddings,
+                               const std::vector<int>& dilations,
+                               const std::vector<int>& strides,
+                               const std::string& padding_algorithm,
+                               int groups,
+                               int act_type,
+                               float act_param,
+                               DataType out_dtype,
+                               const std::vector<int>& pool2d_paddings,
+                               const std::vector<int>& pool2d_strides,
+                               const std::vector<int>& pool2d_ksize,
+                               MetaTensor* out,
+                               MetaTensor* out_max) {
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
   // do some checks
@@ -395,7 +397,8 @@ void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
       filter_dims.size(),
       phi::errors::InvalidArgument(
           "The input's dimension and filter's dimension of "
-          "Op(conv_pooling_xpu) should be equal. But received: the input's shape is "
+          "Op(conv_pooling_xpu) should be equal. But received: the input's "
+          "shape is "
           "[%s], "
           "the input's dimension is %d; the filter's shape is [%s],  "
           "the filter's dimension is %d.",
@@ -427,10 +430,10 @@ void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_GT(
         dilations[i],
         0,
-        phi::errors::InvalidArgument(
-            "The dilation of Op(conv_pooling_xpu) should be larget than 0, but received "
-            "dilation is %d.",
-            dilations[i]));
+        phi::errors::InvalidArgument("The dilation of Op(conv_pooling_xpu) "
+                                     "should be larget than 0, but received "
+                                     "dilation is %d.",
+                                     dilations[i]));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -438,7 +441,8 @@ void Conv2dPoolingXPUInferMeta(const MetaTensor& x,
       filter_dims[1] * groups,
       phi::errors::InvalidArgument(
           "The number of input's channels should be equal to filter's channels "
-          "* groups for Op(conv_pooling_xpu). But received: the input's channels is "
+          "* groups for Op(conv_pooling_xpu). But received: the input's "
+          "channels is "
           "%d, "
           "the input's shape is [%s]; the filter's channels is %d, the "
           "filter's shape is [%s]; the groups is %d. ",

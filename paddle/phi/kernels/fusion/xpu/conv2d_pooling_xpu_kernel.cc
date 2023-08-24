@@ -25,24 +25,23 @@ template <typename T_X,
           typename T_GEMM,
           typename Context>
 void Conv2dPoolingXPUKernelImpl(const Context& ctx,
-                         const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& x_max,
-                         const DenseTensor& filter,
-                         const DenseTensor& filter_max,
-                         const paddle::optional<DenseTensor>& bias,
-                         const paddle::optional<DenseTensor>& branch,
-                         const paddle::optional<DenseTensor>& branch_max,
-                         const std::vector<int>& paddings,
-                         const std::vector<int>& dilations,
-                         const std::vector<int>& strides,
-                         const std::string& padding_algorithm,
-                         int act_type,
-                         float act_param,
-                         const std::vector<int>& pool2d_paddings,
-                         const std::vector<int>& pool2d_strides,
-                         const std::vector<int>& pool2d_ksize,
-                         DenseTensor* out,
-                         DenseTensor* out_max) {
+                                const DenseTensor& x,
+                                const paddle::optional<DenseTensor>& x_max,
+                                const DenseTensor& filter,
+                                const DenseTensor& filter_max,
+                                const paddle::optional<DenseTensor>& bias,
+                                const std::vector<int>& paddings,
+                                const std::vector<int>& dilations,
+                                const std::vector<int>& strides,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                int act_type,
+                                float act_param,
+                                const std::vector<int>& pool2d_paddings,
+                                const std::vector<int>& pool2d_strides,
+                                const std::vector<int>& pool2d_ksize,
+                                DenseTensor* out,
+                                DenseTensor* out_max) {
   using XPUTypeX = typename XPUTypeTrait<T_X>::Type;
   using XPUTypeW = typename XPUTypeTrait<T_W>::Type;
   using XPUTypeOut = typename XPUTypeTrait<T_OUT>::Type;
@@ -88,83 +87,98 @@ void Conv2dPoolingXPUKernelImpl(const Context& ctx,
   }
   // for std::vector<int64_t>
   std::vector<int64_t> conv_stride(std::begin(strides), std::end(strides));
-  std::vector<int64_t> conv_pad(std::begin(paddings_vec), std::end(paddings_vec));
-  std::vector<int64_t> conv_dilation(std::begin(dilations_vec), std::end(dilations_vec));
-  std::vector<int64_t> pool_ksize(std::begin(pool2d_ksize), std::end(pool2d_ksize));
-  std::vector<int64_t> pool_stride(std::begin(pool2d_strides), std::end(pool2d_strides));
-  std::vector<int64_t> pool_pad(std::begin(pool2d_paddings), std::end(pool2d_paddings));
-  int r = xpu::
-      conv2d_with_pooling<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
-          /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
-          /* const TX* x */ input_data,
-          /* const TW* weight */ filter_data,
-          /* TY* y */ out_data,
-          /* int64_t n */ batch,
-          /* int64_t c */ in_c,
-          /* int64_t xh */ in_h,
-          /* int64_t xw */ in_w,
-          /* int64_t f */ out_c,
-          /* const std::vector<int64_t>& conv_ksize */ std::vector<int64_t>{win_h, win_w},
-          /* const std::vector<int64_t>& conv_stride */ conv_stride,
-          /* const std::vector<int64_t>& conv_pad */ conv_pad,
-          /* const std::vector<int64_t>& conv_dilation */ conv_dilation,
-          /* const std::vector<int64_t>& pool_ksize */ pool_ksize,
-          /* const std::vector<int64_t>& pool_stride */ pool_stride,
-          /* const std::vector<int64_t>& pool_pad */ pool_pad,
-          /* bool count_include_pad */ true,
-          /* bool is_avg */ false,
-          /* bool is_nchw */ true,
-          /* const float* x_maxptr */ input_max_data,
-          /* const float* w_maxptr */ filter_max_data,
-          /* float* y_maxptr */ out_max_data,
-          /* const float* bias */ bias_data,
-          /* const baidu::xpu::api::Activation_t& act */ act);
+  std::vector<int64_t> conv_pad(std::begin(paddings_vec),
+                                std::end(paddings_vec));
+  std::vector<int64_t> conv_dilation(std::begin(dilations_vec),
+                                     std::end(dilations_vec));
+  std::vector<int64_t> pool_ksize(std::begin(pool2d_ksize),
+                                  std::end(pool2d_ksize));
+  std::vector<int64_t> pool_stride(std::begin(pool2d_strides),
+                                   std::end(pool2d_strides));
+  std::vector<int64_t> pool_pad(std::begin(pool2d_paddings),
+                                std::end(pool2d_paddings));
+  int r = xpu::conv2d_with_pooling<XPUTypeX,
+                                   XPUTypeW,
+                                   XPUTypeOut,
+                                   T_GEMM>(  // TX/TW/TY/TGEMM
+      /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+      /* const TX* x */ input_data,
+      /* const TW* weight */ filter_data,
+      /* TY* y */ out_data,
+      /* int64_t n */ batch,
+      /* int64_t c */ in_c,
+      /* int64_t xh */ in_h,
+      /* int64_t xw */ in_w,
+      /* int64_t f */ out_c,
+      /* const std::vector<int64_t>& conv_ksize */
+      std::vector<int64_t>{win_h, win_w},
+      /* const std::vector<int64_t>& conv_stride */ conv_stride,
+      /* const std::vector<int64_t>& conv_pad */ conv_pad,
+      /* const std::vector<int64_t>& conv_dilation */ conv_dilation,
+      /* const std::vector<int64_t>& pool_ksize */ pool_ksize,
+      /* const std::vector<int64_t>& pool_stride */ pool_stride,
+      /* const std::vector<int64_t>& pool_pad */ pool_pad,
+      /* bool count_include_pad */ true,
+      /* bool is_avg */ false,
+      /* bool is_nchw */ true,
+      /* const float* x_maxptr */ input_max_data,
+      /* const float* w_maxptr */ filter_max_data,
+      /* float* y_maxptr */ out_max_data,
+      /* const float* bias */ bias_data,
+      /* const baidu::xpu::api::Activation_t& act */ act);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_pooling_xpu");
 }
 
-#define CONV2D_POOLING_XPU_KERNEL_IMPL(x_dtype_, w_dtype_, out_dtype_, gemm_dtype_)  \
-  Conv2dPoolingXPUKernelImpl<x_dtype_, w_dtype_, out_dtype_, gemm_dtype_, Context>( \
-      ctx,                                                                   \
-      x,                                                                     \
-      x_max,                                                                 \
-      filter,                                                                \
-      filter_max,                                                            \
-      bias,                                                                  \
-      paddings,                                                              \
-      dilations,                                                             \
-      strides,                                                               \
-      padding_algorithm,                                                     \
-      act_type,                                                              \
-      act_param,                                                             \
-      pool2d_paddings                                                        \
-      pool2d_strides                                                         \
-      pool2d_ksize                                                           \
-      out,                                                                   \
-      out_max);
+#define CONV2D_POOLING_XPU_KERNEL_IMPL(                  \
+    x_dtype_, w_dtype_, out_dtype_, gemm_dtype_)         \
+  Conv2dPoolingXPUKernelImpl<x_dtype_,                   \
+                             w_dtype_,                   \
+                             out_dtype_,                 \
+                             gemm_dtype_,                \
+                             Context>(ctx,               \
+                                      x,                 \
+                                      x_max,             \
+                                      filter,            \
+                                      filter_max,        \
+                                      bias,              \
+                                      paddings,          \
+                                      dilations,         \
+                                      strides,           \
+                                      padding_algorithm, \
+                                      groups,            \
+                                      act_type,          \
+                                      act_param,         \
+                                      pool2d_paddings,   \
+                                      pool2d_strides,    \
+                                      pool2d_ksize,      \
+                                      out,               \
+                                      out_max);
 
 template <typename T, typename Context>
 void Conv2dPoolingXPUKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& x_max,
-                     const DenseTensor& filter,
-                     const DenseTensor& filter_max,
-                     const paddle::optional<DenseTensor>& bias,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations,
-                     const std::vector<int>& strides,
-                     const std::string& padding_algorithm,
-                     int act_type,
-                     float act_param,
-                     DataType out_dtype,
-                     const std::vector<int>& pool2d_paddings,
-                     const std::vector<int>& pool2d_strides,
-                     const std::vector<int>& pool2d_ksize,
-                     DenseTensor* out,
-                     DenseTensor* out_max) {
+                            const DenseTensor& x,
+                            const paddle::optional<DenseTensor>& x_max,
+                            const DenseTensor& filter,
+                            const DenseTensor& filter_max,
+                            const paddle::optional<DenseTensor>& bias,
+                            const std::vector<int>& paddings,
+                            const std::vector<int>& dilations,
+                            const std::vector<int>& strides,
+                            const std::string& padding_algorithm,
+                            int groups,
+                            int act_type,
+                            float act_param,
+                            DataType out_dtype,
+                            const std::vector<int>& pool2d_paddings,
+                            const std::vector<int>& pool2d_strides,
+                            const std::vector<int>& pool2d_ksize,
+                            DenseTensor* out,
+                            DenseTensor* out_max) {
   if (out_dtype == DataType::FLOAT32) {
-    CONV2D_POOLING_XPU_KERNEL_IMPL(T, int16_t, float, int16_t);
+    CONV2D_POOLING_XPU_KERNEL_IMPL(float, int16_t, float, int16_t);
   } else if (out_dtype == DataType::FLOAT16) {
-    CONV2D_POOLING_XPU_KERNEL_IMPL(T, int16_t, dtype::float16, int16_t);
+    CONV2D_POOLING_XPU_KERNEL_IMPL(
+        dtype::float16, int16_t, dtype::float16, int16_t);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("Not support out_dtype is %s.",
                                             DataTypeToString(out_dtype)));

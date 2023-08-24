@@ -41,11 +41,11 @@ namespace patterns {
 
 struct Conv2dPoolingXPUPattern : public PatternBase {
   Conv2dPoolingXPUPattern(PDPattern* pattern,
-                   const std::string& name_scope,
-                   const std::string& conv_type,
-                   const std::string& act_type,
-                   bool with_conv_bias,
-                   bool with_bn);
+                          const std::string& name_scope,
+                          const std::string& conv_type,
+                          const std::string& act_type,
+                          bool with_conv_bias,
+                          bool with_bn);
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(ew_bias_add);
@@ -78,11 +78,11 @@ struct Conv2dPoolingXPUPattern : public PatternBase {
 };
 
 Conv2dPoolingXPUPattern::Conv2dPoolingXPUPattern(PDPattern* pattern,
-                                   const std::string& name_scope,
-                                   const std::string& conv_type,
-                                   const std::string& act_type,
-                                   bool with_conv_bias,
-                                   bool with_bn)
+                                                 const std::string& name_scope,
+                                                 const std::string& conv_type,
+                                                 const std::string& act_type,
+                                                 bool with_conv_bias,
+                                                 bool with_bn)
     : PatternBase(pattern, name_scope, name_scope),
       conv_type_(conv_type),
       act_type_(act_type),
@@ -189,26 +189,27 @@ Conv2dPoolingXPUPattern::Conv2dPoolingXPUPattern(PDPattern* pattern,
     bn_out->assert_is_op_input(act_type_, "X");
     act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
     act_out = pattern->NewNode(act_out_repr())
-                     ->assert_is_op_output(act_type_, "Out")
-                     ->assert_is_op_output("pool2d", "X")
-                     ->assert_has_n_outputs(1);
-    act->LinksFrom({ew_branch_add_out}).LinksTo({act_out});
+                  ->assert_is_op_output(act_type_, "Out")
+                  ->assert_has_n_outputs(1);
+    act->LinksFrom({bn_out}).LinksTo({act_out});
   } else {
     act_out = bn_out;
   }
   // pool2d op
+  act_out->assert_is_op_output("pool2d", "X");
   pool2d = pattern->NewNode(pool2d_repr())
-                  ->assert_is_op("pool2d")
-                  ->assert_more([](Node* node) {
-                    auto* op_desc = node->Op();
-                    auto pooling_type = op_desc->GetAttrIfExists<std::string>("pooling_type");
-                    auto is_global =
-                            op_desc->GetAttrIfExists<bool>("global_pooling");
-                     return pooling_type == "max" && !is_global;
-                   });
+               ->assert_is_op("pool2d")
+               ->assert_more([](Node* node) {
+                 auto* op_desc = node->Op();
+                 auto pooling_type =
+                     op_desc->GetAttrIfExists<std::string>("pooling_type");
+                 auto is_global =
+                     op_desc->GetAttrIfExists<bool>("global_pooling");
+                 return pooling_type == "max" && !is_global;
+               });
   pool2d_out = pattern->NewNode(pool2d_out_repr())
-                     ->assert_is_op_output("pool2d", "Out")
-                     ->AsOutput();
+                   ->assert_is_op_output("pool2d", "Out")
+                   ->AsOutput();
   pool2d->LinksFrom({act_out}).LinksTo({pool2d_out});
 }
 
@@ -266,22 +267,19 @@ void Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph) const {
     for (auto with_conv_bias : {true, false}) {
       for (auto with_bn : {true, false}) {
         for (auto act_type : {
-                     "relu",
-                     "sigmoid",
-                     "tanh",
-                     "gelu",
-                     "leaky_relu",
-                     "hard_swish",
-                     "hard_sigmoid",
-                     "relu6",
-                     "swish",
-                     "",
-                 }) {
-              found_subgraph_count += ApplyImpl(graph,
-                                                conv_type,
-                                                act_type,
-                                                with_conv_bias,
-                                                with_bn);
+                 "relu",
+                 "sigmoid",
+                 "tanh",
+                 "gelu",
+                 "leaky_relu",
+                 "hard_swish",
+                 "hard_sigmoid",
+                 "relu6",
+                 "swish",
+                 "",
+             }) {
+          found_subgraph_count +=
+              ApplyImpl(graph, conv_type, act_type, with_conv_bias, with_bn);
         }
       }
     }
@@ -290,17 +288,17 @@ void Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
-                                 const std::string& conv_type,
-                                 const std::string& act_type,
-                                 bool with_conv_bias,
-                                 bool with_bn) const {
+                                        const std::string& conv_type,
+                                        const std::string& act_type,
+                                        bool with_conv_bias,
+                                        bool with_bn) const {
   GraphPatternDetector gpd;
   patterns::Conv2dPoolingXPUPattern pattern(gpd.mutable_pattern(),
-                                     name_scope_,
-                                     conv_type,
-                                     act_type,
-                                     with_conv_bias,
-                                     with_bn);
+                                            name_scope_,
+                                            conv_type,
+                                            act_type,
+                                            with_conv_bias,
+                                            with_bn);
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -428,9 +426,11 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
         graph, scope, block, conv_filter, &filter_int16, &filter_max, false);
     // output && output max
     std::string conv2d_pooling_xpu_out_name = pool2d_out->Name();
-    std::string conv2d_pooling_xpu_out_max_name = conv2d_pooling_xpu_out_name + "_max";
+    std::string conv2d_pooling_xpu_out_max_name =
+        conv2d_pooling_xpu_out_name + "_max";
     VarDesc conv2d_pooling_xpu_out_max_desc(conv2d_pooling_xpu_out_max_name);
-    Node* conv2d_pooling_xpu_out_max = graph->CreateVarNode(&conv2d_pooling_xpu_out_max_desc);
+    Node* conv2d_pooling_xpu_out_max =
+        graph->CreateVarNode(&conv2d_pooling_xpu_out_max_desc);
     // Generate conv2d_pooling_xpu op
     framework::OpDesc conv2d_pooling_xpu_op_desc(block);
     // set input&output var
@@ -439,7 +439,8 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv2d_pooling_xpu_op_desc.SetInput("filter", {filter_int16->Name()});
     conv2d_pooling_xpu_op_desc.SetInput("filter_max", {filter_max->Name()});
     conv2d_pooling_xpu_op_desc.SetOutput("out", {conv2d_pooling_xpu_out_name});
-    conv2d_pooling_xpu_op_desc.SetOutput("out_max", {conv2d_pooling_xpu_out_max_name});
+    conv2d_pooling_xpu_op_desc.SetOutput("out_max",
+                                         {conv2d_pooling_xpu_out_max_name});
     // set fusion_bias input node
     if (has_bias) {
       conv2d_pooling_xpu_op_desc.SetInput("bias", {fusion_bias_node->Name()});
@@ -453,7 +454,8 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
         act_param_ = PADDLE_GET_CONST(float, act->Op()->GetAttr("slope"));
       }
     }
-    conv2d_pooling_xpu_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
+    conv2d_pooling_xpu_op_desc.SetAttr("act_type",
+                                       ConvertActivationType(act_type));
     conv2d_pooling_xpu_op_desc.SetAttr("act_param", act_param_);
     conv2d_pooling_xpu_op_desc.SetAttr(
         "padding_algorithm",
@@ -489,8 +491,10 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
       }
     }
     conv2d_pooling_xpu_op_desc.SetAttr("pool2d_paddings", pool2d_paddings);
-    auto pool2d_strides = PADDLE_GET_CONST(std::vector<int>, pool2d->Op()->GetAttr("strides"));
-    auto pool2d_ksize = PADDLE_GET_CONST(std::vector<int>, pool2d->Op()->GetAttr("ksize"));
+    auto pool2d_strides =
+        PADDLE_GET_CONST(std::vector<int>, pool2d->Op()->GetAttr("strides"));
+    auto pool2d_ksize =
+        PADDLE_GET_CONST(std::vector<int>, pool2d->Op()->GetAttr("ksize"));
     conv2d_pooling_xpu_op_desc.SetAttr("pool2d_strides", pool2d_strides);
     conv2d_pooling_xpu_op_desc.SetAttr("pool2d_ksize", pool2d_ksize);
     // create conv2d_pooling_xpu op
@@ -504,7 +508,8 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
     IR_NODE_LINK_TO(conv2d_pooling_xpu, pool2d_out);
     IR_NODE_LINK_TO(conv2d_pooling_xpu, conv2d_pooling_xpu_out_max);
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {conv, conv_filter, conv_out};
+    std::unordered_set<const Node*> delete_nodes = {
+        conv, conv_filter, conv_out};
     if (act != nullptr) {
       delete_nodes.insert(act);
       delete_nodes.insert(act_out);
@@ -538,7 +543,8 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(conv2d_pooling_xpu_fuse_pass, paddle::framework::ir::Conv2dPoolingXPUFusePass);
+REGISTER_PASS(conv2d_pooling_xpu_fuse_pass,
+              paddle::framework::ir::Conv2dPoolingXPUFusePass);
 
 REGISTER_PASS_CAPABILITY(conv2d_pooling_xpu_fuse_pass)
     .AddCombination(
