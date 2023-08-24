@@ -25,25 +25,12 @@ limitations under the License. */
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/type_traits.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/phi/core/mixed_vector.h"
-#include "paddle/phi/infermeta/backward.h"
-#include "paddle/phi/infermeta/binary.h"
-#include "paddle/phi/infermeta/multiary.h"
-#include "paddle/phi/infermeta/nullary.h"
-#include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/detail/activation_functions.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/gru_compute.h"
-#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-namespace phi {
-namespace funcs {
-namespace detail {
+#include "paddle/phi/kernels/ftrl_kernel.h"
 
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+
+namespace phi {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -199,6 +186,4 @@ void FTRLOpKernel(const Context& ctx,
   s_acc_out.device(place) = sq_accum + g * g;
 }
 
-}  // namespace detail
-}  // namespace funcs
 }  // namespace phi
