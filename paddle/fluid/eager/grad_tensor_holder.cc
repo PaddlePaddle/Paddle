@@ -94,12 +94,9 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
         // TODO(chenweihang): replace by valid dist_attr later
         auto temp =
             paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
-        auto dense_temp =
-            std::dynamic_pointer_cast<phi::DenseTensor>(temp.impl());
+        auto dense_temp = static_cast<phi::DenseTensor*>(temp.impl().get());
         auto dist_tensor = std::make_shared<phi::distributed::DistTensor>(
-            dense_temp,
-            dense_temp->meta(),
-            std::make_shared<phi::distributed::TensorDistAttr>());
+            *dense_temp, phi::distributed::TensorDistAttr());
         temp.set_impl(dist_tensor);
         buffer_[slot_id][rank] = temp;
 #endif
