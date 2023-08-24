@@ -19,6 +19,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_new_ir_api);
 
 namespace phi {
 class DenseTensor;

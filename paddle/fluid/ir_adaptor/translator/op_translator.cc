@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -267,10 +268,6 @@ struct OpTranscriber {
                                             const OpDesc& op_desc,
                                             const OpInputInfoList& input_infos,
                                             ir::Program* program);
-  virtual ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
-                                           ir::Program* program,
-                                           const OpDesc& op_desc,
-                                           const OpInputInfo& input_info);
 };
 
 ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
@@ -626,6 +623,14 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   return attribute_map;
 }
 
+void OpTranscriber::HandleNonexistentAttribute(ir::IrContext*,
+                                               ir::AttributeMap* attribute_map,
+                                               const OpAttributeInfo& info) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  (*attribute_map)[info.name] =
+      attribute_translator(info.type_name, paddle::framework::Attribute());
+}
+
 void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
                                           TranslationContext* param_map,
                                           const OpDesc& op_desc,
@@ -967,11 +972,14 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::Attribute shape = attribute_translator(
+        "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("shape"));
     ir::AttributeMap attribute_map = {
         {"name",
          ir::StrAttribute::get(ctx,
                                op_desc.GetAttrIfExists<std::string>("name"))},
-        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"shape", shape},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
         {"place",
@@ -1741,6 +1749,9 @@ struct LegacySetValueDispatcher : public OpTranscriber {
 };
 
 OpTranslator::OpTranslator() {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();

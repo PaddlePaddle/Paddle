@@ -18,15 +18,25 @@ import multiprocessing
 import sys
 import warnings
 import numpy as np
+
+from . import set_flags, get_flags
+from .framework import Program, default_main_program
+
+from ..ir import core as ir_core
+from ..ir import OpResult
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype
-from .framework import Program, default_main_program, Variable, Operator
-from .framework import convert_np_dtype_to_dtype_, _apply_pass
+from .framework import Variable, Operator
+
+from .framework import (
+    convert_np_dtype_to_dtype_,
+    _apply_pass,
+    paddle_type_to_proto_type,
+)
 
 from . import core
 from . import unique_name
 from . import compiler
-from . import set_flags, get_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -260,6 +270,55 @@ def check_feed_shape_type(var, feed, num_places=1):
     return True
 
 
+def new_ir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
+    """
+    Returns True if the variable doesn't require feed check or it is compatible
+    with the shape and have same dtype as the fed value.
+
+    A dimension is compatible with the other if:
+    1. The length of the dimensions are same.
+    2. Each non-negative number of the two dimensions are same.
+    3. For negative number or 'None' in a dimension, it means unknown so it
+       is compatible with any number.
+
+    Args:
+        feed (LoDTensor): the fed value, which must be a LoDTensor
+        name (str): name of the variable
+        target_shape (list): the shape that will be compared with feed
+        dtype (core.VarDesc.VarType): the dtype that will be compared with feed
+        num_places: an integer value indicating the number of places.
+            ParallelExecutor will divide data into devices (CPU/GPU) evenly.
+    Returns:
+        True if the shape and dtype of variable is compatible with the feed value
+    Raises:
+        ValueError: if the shape or dtype of the variable is not compatible with
+            the feed value
+    """
+    diff_shape = core.diff_tensor_shape(feed, target_shape, num_places)
+    if diff_shape is not None:
+        raise ValueError(
+            'The fed Variable %r should have dimensions = %d, shape = '
+            '%r, but received fed shape %r on each device'
+            % (name, len(target_shape), target_shape, diff_shape)
+        )
+    if not dtype_is_compatible_with(feed._dtype(), dtype):
+        var_dtype_format = (
+            convert_dtype(dtype)
+            if isinstance(dtype, core.VarDesc.VarType)
+            else dtype
+        )
+        feed_dtype_format = (
+            convert_dtype(feed._dtype())
+            if isinstance(feed._dtype(), core.VarDesc.VarType)
+            else feed._dtype()
+        )
+        raise ValueError(
+            'The data type of fed Variable %r must be %r, but received %r'
+            % (name, var_dtype_format, feed_dtype_format)
+        )
+    return True
+
+
 def has_feed_operators(block, feed_targets, feed_holder_name):
     """Check whether the block already has feed operators.
 
@@ -349,6 +408,43 @@ def has_fetch_operators(
     return fetch_count > 0
 
 
+def has_fetch_operations(
+    block, fetch_targets, fetch_holder_name, fetch_op='pd.fetch'
+):
+    """Check whether the block already has fetch operation.
+
+    Return false if the block does not have any fetch operation.
+    If some fetch operation have been appended to the block, check that
+    the info contained in these fetch operation matches the fetch_targets.
+    Raise exception when any mismatch is found.
+    Return true when the block has fetch operation with matching info.
+
+    Args:
+        block: a block instance (typically global block of a program)
+        fetch_targets: a list of fetch_target_data
+        fetch_op: the operator name of fetch
+
+    Return:
+        A boolean value that indicates whether a block has fetch operators
+        that match the info contained in fetch_targets.
+    """
+
+    fetch_count = 0
+    for op in block.ops:
+        if op.name() == fetch_op:
+            fetch_count += 1
+            if op.operand_source() not in fetch_targets:
+                raise Exception(
+                    "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
+                )
+
+    if fetch_count > 0 and fetch_count != len(fetch_targets):
+        raise Exception(
+            "Fetch operations in program do not match 'fetch_targets'"
+        )
+    return fetch_count > 0
+
+
 def _add_feed_fetch_ops(
     program, feed, fetch_list, feed_var_name, fetch_var_name, use_fetch_v2=False
 ):
@@ -412,6 +508,21 @@ def _add_feed_fetch_ops(
             )
 
     return tmp_program
+
+
+def _add_new_ir_fetch_ops(program, fetch_list, fetch_var_name):
+    import paddle
+
+    global_block = program.block()
+    fetch_op = "pd.fetch"
+    if not has_fetch_operations(
+        global_block, fetch_list, fetch_var_name, fetch_op
+    ):
+        for i, fetch_input in enumerate(fetch_list):
+            assert isinstance(
+                fetch_input, OpResult
+            ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
+            paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
 def _set_micro_batch_fetch(plan):
@@ -634,6 +745,28 @@ def _as_lodtensor(data, place, dtype=None):
     tensor = core.LoDTensor()
     tensor.set(data, place)
     return tensor
+
+
+def _can_use_interpreter_core(program, place):
+    compiled = isinstance(program, compiler.CompiledProgram) or isinstance(
+        program._graph, compiler.CompiledProgram
+    )
+    if compiled:
+        compiled_program = (
+            program
+            if isinstance(program, compiler.CompiledProgram)
+            else program._graph
+        )
+
+        # Unsupported case 1: inference
+        if compiled_program._is_inference:
+            warnings.warn(
+                "Standalone executor is not used for inference",
+                UserWarning,
+            )
+            return False
+
+    return True
 
 
 class FetchHandler:
@@ -902,6 +1035,29 @@ class _ExecutorCache:
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
+    def get_new_ir_program_and_executor(
+        self,
+        program,
+        feed,
+        fetch_list,
+        feed_var_name,
+        fetch_var_name,
+        place,
+        scope,
+    ):
+        _add_new_ir_fetch_ops(
+            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
+        )
+
+        default_job = core.Job("default")
+        type_to_program = {"default": program}
+        plan = core.Plan([default_job], type_to_program)
+
+        _set_micro_batch_fetch(plan)
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
+        return program, new_exe
+
 
 class Executor:
     """
@@ -1081,6 +1237,25 @@ class Executor:
                     )
                 else:
                     core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+            else:
+                break
+
+    def _new_ir_feed_data(self, program, feed, scope):
+        # feed var to framework
+        global_block = program.block()
+        for op in global_block.ops:
+            if op.name() == 'pd.data':
+                feed_target_name = op.attrs()["name"]
+                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
+                var_shape = op.attrs()["shape"]
+                cur_feed = feed[feed_target_name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
+                new_ir_check_feed_shape_type(
+                    cur_feed, feed_target_name, var_shape, var_type
+                )
+                # the last arg of set_feed_variable has no effect in new ir, we pass 0 by default.
+                core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
 
@@ -1441,19 +1616,29 @@ class Executor:
                 'true',
             ]
             self._log_force_set_program_cache(use_program_cache)
-
-        res = self._run_impl(
-            program=program,
-            feed=feed,
-            fetch_list=fetch_list,
-            feed_var_name=feed_var_name,
-            fetch_var_name=fetch_var_name,
-            scope=scope,
-            return_numpy=return_numpy,
-            use_program_cache=use_program_cache,
-            use_prune=use_prune,
-        )
-        core.update_autotune_status()
+        if ir_core._use_new_ir_api():
+            res = self._run_new_ir_impl(
+                program=program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name,
+                scope=scope,
+                return_numpy=return_numpy,
+            )
+        else:
+            res = self._run_impl(
+                program=program,
+                feed=feed,
+                fetch_list=fetch_list,
+                feed_var_name=feed_var_name,
+                fetch_var_name=fetch_var_name,
+                scope=scope,
+                return_numpy=return_numpy,
+                use_program_cache=use_program_cache,
+                use_prune=use_prune,
+            )
+            core.update_autotune_status()
         return res
 
     def _run_impl(
@@ -1583,27 +1768,6 @@ class Executor:
             feed = self._update_feed(pruned_program, feed)
             program = pruned_program
 
-        def _can_use_interpreter_core(program, place):
-            compiled = isinstance(
-                program, compiler.CompiledProgram
-            ) or isinstance(program._graph, compiler.CompiledProgram)
-            if compiled:
-                compiled_program = (
-                    program
-                    if isinstance(program, compiler.CompiledProgram)
-                    else program._graph
-                )
-
-                # Unsupported case 1: inference
-                if compiled_program._is_inference:
-                    warnings.warn(
-                        "Standalone executor is not used for inference",
-                        UserWarning,
-                    )
-                    return False
-
-            return True
-
         if _can_use_interpreter_core(program, self.place):
             if feed is None:
                 feed = {}
@@ -1711,11 +1875,80 @@ class Executor:
         ), f"Program must have _is_inference = True, but get {program._is_inference}"
         return self._run_inference(program._executor, feed)
 
+    def _run_new_ir_impl(
+        self,
+        program,
+        feed,
+        fetch_list,
+        feed_var_name,
+        fetch_var_name,
+        scope,
+        return_numpy,
+    ):
+        import paddle
+
+        Program = paddle.ir.Program
+        default_main_program = paddle.ir.core.default_main_program
+
+        if self._closed:
+            raise RuntimeError("Attempted to use a closed Executor")
+
+        use_default_main_program = program is None
+        if use_default_main_program:
+            program = default_main_program()
+
+        fetch_list = self._check_fetch_list(fetch_list)
+
+        if isinstance(program, Program) and len(program.block().ops) == 0:
+            if use_default_main_program:
+                error_info = (
+                    "Now you are using default_main_program, "
+                    "but there are no operators in the program to be executed. "
+                    "Please ensure you create model correctly or you can pass "
+                    "the Program or the CompiledProgram manually."
+                )
+            else:
+                error_info = (
+                    "There are no operators in the program to be executed. "
+                    "If you pass Program manually, please use fluid.program_guard "
+                    "to ensure the current Program is being used."
+                )
+            warnings.warn(error_info)
+
+        if scope is None:
+            scope = global_scope()
+
+        if feed is None:
+            feed = {}
+        elif isinstance(feed, (list, tuple)):
+            assert len(feed) == 1, "Not compiled with data parallel"
+            feed = feed[0]
+        if not isinstance(feed, dict):
+            raise TypeError(
+                "feed requires dict as its Parameter. But you passed in %s"
+                % (type(feed))
+            )
+
+        program, new_exe = self._executor_cache.get_new_ir_program_and_executor(
+            program,
+            feed,
+            fetch_list,
+            feed_var_name,
+            fetch_var_name,
+            self.place,
+            scope,
+        )
+
+        self._new_ir_feed_data(program, feed, scope)
+
+        ret = new_exe.run(list(feed.keys()), return_numpy)
+        return ret
+
     def _run_inference(self, exe, feed):
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(var, (Variable, str))
+        is_fetch_var = lambda var: isinstance(var, (Variable, str, OpResult))
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None:

@@ -380,7 +380,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
     auto op_desc = block->PrependOp();
     op_desc->SetType("data");
-    op_desc->SetAttr("index", 0);
+    op_desc->SetAttr("shape", std::vector<int64_t>());
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(place));
@@ -395,7 +395,7 @@ std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
 
     auto op_desc = local_program.MutableBlock(0)->PrependOp();
     op_desc->SetType("data");
-    op_desc->SetAttr("index", 0);
+    op_desc->SetAttr("shape", std::vector<int64_t>());
     // TODO(phlrain) : using tensor dtype
     op_desc->SetAttr("dtype", 0);
     op_desc->SetAttr("place", static_cast<int>(place));
@@ -485,7 +485,7 @@ std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
       }
       auto op_desc = local_program.MutableBlock(0)->PrependOp();
       op_desc->SetType("data");
-      op_desc->SetAttr("index", 0);
+      op_desc->SetAttr("shape", std::vector<int64_t>());
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
       op_desc->SetAttr("place", static_cast<int>(place));
