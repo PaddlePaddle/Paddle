@@ -17,9 +17,9 @@ if(NOT CINN_ONLY)
   set(cinn_op_yaml_file
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/cinn_ops.yaml)
 
-  set(cinn_op_parsed_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated/cinn_ops.parsed.yaml
-  )
+  set(parsed_op_dir ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated)
+
+  set(cinn_op_parsed_yaml_file ${parsed_op_dir}/cinn_ops.parsed.yaml)
 
   set(cinn_op_parsed_yaml_files ${cinn_op_parsed_yaml_file})
 
@@ -30,17 +30,9 @@ if(NOT CINN_ONLY)
   set(cinn_op_header_file_tmp ${cinn_op_header_file}.tmp)
   set(cinn_op_source_file_tmp ${cinn_op_source_file}.tmp)
 
-  set(parsed_op_dir ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated/)
-
-  execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
-                          RESULTS_VARIABLE _result)
-  if(${_result})
-    message(
-      FATAL_ERROR "Failed to create folder for parsed cinn op yamls, exiting.")
-  endif()
-
   add_custom_command(
     OUTPUT ${cinn_op_parsed_yaml_file}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
     COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
             ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
     VERBATIM)
@@ -57,7 +49,7 @@ if(NOT CINN_ONLY)
             ${cinn_op_header_file}
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_source_file_tmp}
             ${cinn_op_source_file}
-    DEPENDS ${cinn_op_gen_file} ${cinn_op_forward_yaml_file1}
+    DEPENDS ${cinn_op_gen_file} ${cinn_op_parsed_yaml_file}
             ${cinn_op_compat_yaml_file}
     VERBATIM)
 
