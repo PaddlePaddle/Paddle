@@ -331,7 +331,7 @@ class TestSetValueOp(unittest.TestCase):
         place.set_place(paddle.CPUPlace())
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x = paddle.ones(shape=[2, 3, 4], dtype="float32")
             x = paddle.static.setitem(x, (0, 0), 6)
         _ = ir.translate_to_new_ir(main_program.desc)
 
@@ -340,7 +340,7 @@ class TestSetValueOp(unittest.TestCase):
         place.set_place(paddle.CPUPlace())
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x = paddle.ones(shape=[2, 3, 4], dtype="float32")
             zero = paddle.full([], 0, dtype="int32")
             x = paddle.static.setitem(x, zero, 6)
         _ = ir.translate_to_new_ir(main_program.desc)

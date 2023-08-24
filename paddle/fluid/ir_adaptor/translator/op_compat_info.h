@@ -95,12 +95,13 @@ class OpNameNormalizer {
 
     size_t first_grad_pos = arg_name.find(target);
     size_t type_pos = op_type.find(target);
-    std::optional<std::string> ret = this->GetDirectMapping(
-        op_type.substr(0, type_pos), arg_name.substr(0, first_grad_pos));
-    if (!ret) {
-      return {};
+    std::string legacy_name = arg_name.substr(0, first_grad_pos);
+    std::optional<std::string> ret =
+        this->GetDirectMapping(op_type.substr(0, type_pos), legacy_name);
+    if (ret) {
+      legacy_name = ret.value();
     }
-    auto legacy_name = ret.value() + arg_name.substr(first_grad_pos);
+    legacy_name = legacy_name + arg_name.substr(first_grad_pos);
     for (size_t pos = 0;
          legacy_name.npos != (pos = legacy_name.find(target, pos));
          pos += data.length()) {
@@ -112,6 +113,7 @@ class OpNameNormalizer {
   std::string GetLegacyArgName(const std::string& op_type,
                                const std::string& arg_name) {
     if (auto ret = GetDirectMapping(op_type, arg_name)) {
+      VLOG(10) << "[" << op_type << "] found " << ret.value();
       return ret.value();
     }
 
@@ -120,16 +122,19 @@ class OpNameNormalizer {
 
     if (is_grad_op && is_grad_arg) {
       if (auto ret = GetGradNameMapping(op_type, arg_name)) {
+        VLOG(10) << "[" << op_type << "] found " << ret.value();
         return ret.value();
       }
     } else if (is_grad_op && !is_grad_arg) {
       // backwward op using forward args: like trace_grad using forward input
       size_t type_pos = op_type.find(kPhiGradSuffix);
       if (auto ret = GetDirectMapping(op_type.substr(0, type_pos), arg_name)) {
+        VLOG(10) << "[" << op_type << "] found " << ret.value();
         return ret.value();
       }
     }
 
+    VLOG(10) << "[" << op_type << "] not found mapping for " << arg_name;
     return arg_name;
   }
 
