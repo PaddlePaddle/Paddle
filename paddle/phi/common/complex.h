@@ -31,10 +31,14 @@
 #include <thrust/complex.h>  // NOLINT
 #endif
 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
 #define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
+#else
+#define PADDLE_ALIGN(x)
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
