@@ -13,7 +13,7 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_elementwise_rule MODULES test_elementwise_rule)
   py_test_modules(test_cross_entropy_with_softmax_rule MODULES
                   test_cross_entropy_with_softmax_rule)
-  py_test_modules(test_reducion_rule MODULES test_reducion_rule)
+  py_test_modules(test_reduction_rule MODULES test_reduction_rule)
   py_test_modules(test_reshape_rule MODULES test_reshape_rule)
   # End of unittests WITH single card WITHOUT timeout
 
