@@ -16,8 +16,11 @@
 
 #include <unordered_map>
 
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/utils.h"
 
 namespace paddle {
@@ -55,6 +58,38 @@ std::ostream& operator<<(std::ostream& os,
       [&os](std::string s) { os << s; },
       [&os]() { os << ", "; });
   return os;
+}
+
+std::vector<std::string> CheckUnregisteredOperationInBlock(
+    ir::IrContext* ctx, const framework::BlockDesc& block) {
+  auto& op_translator = OpTranslator::instance();
+  std::vector<std::string> unregistered_ops;
+  for (auto op : block.AllOps()) {
+    if (op_translator.HasSpecialHandler(op->Type())) {
+      continue;
+    }
+    OpTranscriber general_handler;
+    try {
+      general_handler.LoopkUpOpInfo(ctx, *op);
+    } catch (ir::IrNotMetException& e) {
+      unregistered_ops.push_back(op->Type());
+    }
+  }
+  return unregistered_ops;
+}
+
+std::vector<std::string> CheckUnregisteredOperation(
+    ir::IrContext* ctx, const framework::ProgramDesc& legacy_program) {
+  ctx->GetOrRegisterDialect<dialect::PaddleDialect>();
+
+  std::vector<std::string> unregistered_ops;
+  for (size_t block_idx = 0; block_idx < legacy_program.Size(); block_idx++) {
+    const framework::BlockDesc& block = legacy_program.Block(block_idx);
+    auto ops = CheckUnregisteredOperationInBlock(ctx, block);
+    unregistered_ops.insert(unregistered_ops.end(), ops.begin(), ops.end());
+  }
+
+  return unregistered_ops;
 }
 
 }  // namespace translator

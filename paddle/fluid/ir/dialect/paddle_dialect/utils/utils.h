@@ -22,28 +22,12 @@
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/attribute.h"
 
 namespace paddle {
 namespace dialect {
 
-using VariantType = paddle::variant<bool,
-                                    int,
-                                    int64_t,
-                                    float,
-                                    double,
-                                    std::string,
-                                    std::vector<bool>,
-                                    std::vector<int>,
-                                    std::vector<int64_t>,
-                                    std::vector<float>,
-                                    std::vector<double>,
-                                    std::vector<std::string>,
-                                    phi::Scalar,
-                                    std::vector<phi::Scalar>,
-                                    phi::IntArray,
-                                    phi::DataType,
-                                    phi::DataLayout,
-                                    phi::Place>;
+using VariantType = phi::Attribute;
 
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.

@@ -112,6 +112,7 @@ def data(name, shape, dtype=None, lod_level=0):
             is_data=True,
             need_check_feed=True,
         )
+
     else:
         out = helper.create_global_variable(
             name=name,
@@ -123,22 +124,29 @@ def data(name, shape, dtype=None, lod_level=0):
             is_data=True,
             need_check_feed=True,
         )
+        dtype = paddle.get_default_dtype()
 
-    is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
-    if evaluate_flag(is_new_ir_mode):
-        helper = LayerHelper('data', **locals())
-        helper.append_op(
-            type='data',
-            inputs={},
-            outputs={'out': out},
-            attrs={
-                'index': 0,
-                'dtype': 0,
-                'place': 0,
-                'name': name,
-            },
-        )
-    return out
+    if paddle.ir.core._use_new_ir_api():
+        ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+        return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
+    else:
+        is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
+        if evaluate_flag(is_new_ir_mode):
+            helper = LayerHelper('data', **locals())
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+            helper.append_op(
+                type='data',
+                inputs={},
+                outputs={'out': out},
+                attrs={
+                    'shape': shape,
+                    'dtype': dtype,
+                    'place': 0,
+                    'name': name,
+                },
+            )
+        return out
 
 
 class InputSpec:
