@@ -1120,6 +1120,10 @@ def concat(x, axis=0, name=None):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            if not isinstance(input, paddle.ir.Value):
+                input = [t for t in input if t.shape.count(0) == 0]
+            return paddle._ir_ops.concat(input, axis)
         check_type(input, 'input', (list, tuple, Variable), 'concat')
         if not isinstance(input, Variable):
             for id, x in enumerate(input):

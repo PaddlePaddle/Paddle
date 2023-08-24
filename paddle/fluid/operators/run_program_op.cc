@@ -139,6 +139,10 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                                       "std::vector<std::string>"
                                       "The names of output gradients.")
         .SetDefault({});
+    AddAttr<std::vector<std::string>>("x_names",
+                                      "std::vector<std::string>"
+                                      "The names of input tensors.")
+        .SetDefault({});
     AddAttr<std::vector<std::string>>("x_grad_names",
                                       "std::vector<std::string>"
                                       "The names of input gradients.")
