@@ -325,6 +325,63 @@ class TestShadowOutputSlice(unittest.TestCase):
         l = ir.translate_to_new_ir(main_program.desc)
 
 
+class TestSetValueOp(unittest.TestCase):
+    def test_no_mutable_attribute(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            x = paddle.static.setitem(x, (0, 0), 6)
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+    def test_with_mutable_attribute(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.ones(shape=self.shape, dtype=self.dtype)
+            zero = paddle.full([], 0, dtype="int32")
+            x = paddle.static.setitem(x, zero, 6)
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+    def test_grad(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data(
+                name="x", shape=[7, 6, 5, 4, 3, 2], dtype='float32'
+            )
+            value = paddle.tensor.fill_constant([1, 3, 2], "float32", 1)
+            # test stop_gradient
+            value.stop_gradient = False
+            x.stop_gradient = False
+            attrs = {
+                'axes': [0],
+                'starts': [6],
+                'ends': [0],
+                'steps': [-4],
+                'decrease_axes': [],
+                'none_axes': [],
+                'dtype': paddle.float32,
+            }
+            inputs = {'Input': x, 'ValueTensor': value}
+
+            helper = LayerHelper("set_value")
+            y = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+            helper.append_op(
+                type="set_value", inputs=inputs, outputs={'Out': y}, attrs=attrs
+            )
+            y2 = y + 1
+            loss = paddle.sum(y2)
+            opt = paddle.optimizer.Adam()
+            opt.minimize(loss)
+
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+
 class TestCheckUnregisteredOp(unittest.TestCase):
     def test_program(self):
         main_program = paddle.static.Program()
