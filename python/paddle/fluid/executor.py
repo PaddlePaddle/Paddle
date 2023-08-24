@@ -1233,7 +1233,7 @@ class Executor:
                             _as_lodtensor(
                                 micro_cur_feed[i], self.place, var.dtype
                             )
-                            if not isinstance(micro_cur_feed[i], core.LoDTensor)
+                            if num_micro_batch > 1
                             else micro_cur_feed[i]
                         )
                         core.set_feed_variable(
