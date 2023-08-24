@@ -640,7 +640,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description='run Sample Code Test')
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument('--full-test', dest='full_test', action="store_true")
-    parser.add_argument('mode', type=str, help='run on device', default='cpu')
+    parser.add_argument(
+        '--mode', dest='mode', type=str, default='cpu', help='run on device'
+    )
     parser.add_argument(
         '--build-doc',
         dest='build_doc',
@@ -664,10 +666,6 @@ def parse_args():
         default=0,
         help='sub processes number',
     )
-
-    if len(sys.argv) == 1:
-        args = parser.parse_args(['cpu'])
-        return args
 
     args = parser.parse_args()
     return args

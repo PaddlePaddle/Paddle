@@ -13,12 +13,12 @@
 # limitations under the License.
 """
 please make sure to run in the tools path
-usage: python sampcd_processor.py {cpu or gpu}
+usage: python sampcd_processor.py --mode {cpu or gpu}
     {cpu or gpu}: running in cpu version or gpu version
 
 for example, you can run cpu version testing like this:
 
-    python sampcd_processor.py cpu
+    python sampcd_processor.py --mode cpu
 
 """
 
