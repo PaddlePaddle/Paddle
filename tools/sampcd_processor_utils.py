@@ -641,19 +641,10 @@ def run_doctest(args, doctester: DocTester):
         exec_gen_doc()
 
 
-arguments = [
-    # flags, dest, type, default, help
-    ['--gpu_id', 'gpu_id', int, 0, 'GPU device id to use [0]'],
-    ['--logf', 'logf', str, None, 'file for logging'],
-    ['--threads', 'threads', int, 0, 'sub processes number'],
-]
-
-
 def parse_args():
     """
     Parse input arguments
     """
-    global arguments
     parser = argparse.ArgumentParser(description='run Sample Code Test')
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument('--full-test', dest='full_test', action="store_true")
@@ -664,10 +655,23 @@ def parse_args():
         action='store_true',
         help='build doc if need.',
     )
-    for item in arguments:
-        parser.add_argument(
-            item[0], dest=item[1], help=item[4], type=item[2], default=item[3]
-        )
+    parser.add_argument(
+        '--gpu_id',
+        dest='gpu_id',
+        type=int,
+        default=0,
+        help='GPU device id to use [0]',
+    )
+    parser.add_argument(
+        '--logf', dest='logf', type=str, default=None, help='file for logging'
+    )
+    parser.add_argument(
+        '--threads',
+        dest='threads',
+        type=int,
+        default=0,
+        help='sub processes number',
+    )
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['cpu'])
