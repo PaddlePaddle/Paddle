@@ -40,12 +40,14 @@ namespace distributed {
 
 int CommContextManager::device_id = -1;
 
+void CommContextManager::SetDeviceId(int dev_id) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-void CommContextManager::SetCUDADeviceId(int dev_id) {
   phi::backends::gpu::SetDeviceId(dev_id);
   CommContextManager::device_id = dev_id;
+#endif
 }
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,

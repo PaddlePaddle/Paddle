@@ -57,8 +57,6 @@ class CommContextManager {
                                     const std::string& unique_comm_key,
                                     int rank,
                                     int size);
-
-  static void SetCUDADeviceId(int dev_id);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
