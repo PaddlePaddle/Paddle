@@ -13,22 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <algorithm>
-#include <map>
-#include <set>
-#include <vector>
+
 #include "glog/logging.h"
 
-#include "paddle/phi/api/lib/api_custom_impl.h"
-#include "paddle/phi/api/lib/api_gen_utils.h"
-#include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/ftrl_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -44,23 +36,22 @@ void FTRLOpKernel(const Context& ctx,
                   float lr_power,
                   DenseTensor* param_out,
                   DenseTensor* squared_accumulator_out,
-                  DenseTensor* linear_accumulator_out,
-                  DenseTensor* grad_out) {
+                  DenseTensor* linear_accumulator_out) {
   T l1_t = static_cast<T>(l1) + static_cast<T>(1e-10);
   T l2_t = static_cast<T>(l2) + static_cast<T>(1e-10);
   T lr_power_t = static_cast<T>(lr_power);
-  auto g = EigenVector<T>::Flatten(grad);
-  auto p = EigenVector<T>::Flatten(param);
-  auto sq_accum = EigenVector<T>::Flatten(squared_accumulator);
-  auto lin_accum = EigenVector<T>::Flatten(linear_accumulator);
-  auto lr = EigenVector<T>::Flatten(learningrate);
+  auto g = phi::EigenVector<T>::Flatten(grad);
+  auto p = phi::EigenVector<T>::Flatten(param);
+  auto sq_accum = phi::EigenVector<T>::Flatten(squared_accumulator);
+  auto lin_accum = phi::EigenVector<T>::Flatten(linear_accumulator);
+  auto lr = phi::EigenVector<T>::Flatten(learningrate);
 
-  auto p_out = EigenVector<T>::Flatten(*param_out);
-  auto s_acc_out = EigenVector<T>::Flatten(*squared_accumulator_out);
-  auto l_acc_out = EigenVector<T>::Flatten(*linear_accumulator_out);
+  auto p_out = phi::EigenVector<T>::Flatten(*param_out);
+  auto s_acc_out = phi::EigenVector<T>::Flatten(*squared_accumulator_out);
+  auto l_acc_out = phi::EigenVector<T>::Flatten(*linear_accumulator_out);
   auto& place = *ctx.eigen_device();
 
-  Eigen::DSizes<int, 1> grad_dsize(grad->numel());
+  Eigen::DSizes<int, 1> grad_dsize(g->numel());
 
   auto new_accum = sq_accum + g * g;
   // Special case for lr_power_t = -0.5
@@ -76,7 +67,7 @@ void FTRLOpKernel(const Context& ctx,
             p;
   }
 
-  x = (l_acc_out.constant(l1_t) * l_acc_out.sign() - l_acc_out);
+  T x = (l_acc_out.constant(l1_t) * l_acc_out.sign() - l_acc_out);
   if (lr_power_t == static_cast<T>(-0.5)) {
     auto y = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
              l_acc_out.constant(static_cast<T>(2) * l2_t);

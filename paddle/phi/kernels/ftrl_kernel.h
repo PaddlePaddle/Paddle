@@ -31,7 +31,6 @@ void FTRLOpKernel(const Context& ctx,
                   float lr_power,
                   DenseTensor* param_out,
                   DenseTensor* squared_accumulator_out,
-                  DenseTensor* linear_accumulator_out,
-                  DenseTensor* grad_out);
+                  DenseTensor* linear_accumulator_out);
 
 }  // namespace phi
