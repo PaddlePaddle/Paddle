@@ -129,7 +129,7 @@ typedef enum cinn_device_kind_t {
   cinn_x86_device = 0,     // X86 device
   cinn_opencl_device = 1,  // OpenCL device
   cinn_arm_device = 2,     // ARM device
-  cinn_nvgpu_device = 3
+  cinn_nvgpu_device = 3    // NVIDIA GPU device
 } cinn_device_kind_t;
 
 //! Help to tell where the buffer locates.
