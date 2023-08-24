@@ -17,8 +17,10 @@ limitations under the License. */
 #include <fstream>
 #include <iostream>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/place.h"
