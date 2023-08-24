@@ -510,6 +510,21 @@ def _add_feed_fetch_ops(
     return tmp_program
 
 
+def _add_new_ir_fetch_ops(program, fetch_list, fetch_var_name):
+    import paddle
+
+    global_block = program.block()
+    fetch_op = "pd.fetch"
+    if not has_fetch_operations(
+        global_block, fetch_list, fetch_var_name, fetch_op
+    ):
+        for i, fetch_input in enumerate(fetch_list):
+            assert isinstance(
+                fetch_input, OpResult
+            ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
+            paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+
+
 def _merge_tensors(tensor, micro_batch_num):
     if micro_batch_num <= 1:
         return tensor
@@ -996,6 +1011,27 @@ class _ExecutorCache:
         new_exe = _StandaloneExecutor(place, plan, scope)
         return program, new_exe
 
+    def get_new_ir_program_and_executor(
+        self,
+        program,
+        feed,
+        fetch_list,
+        feed_var_name,
+        fetch_var_name,
+        place,
+        scope,
+    ):
+        _add_new_ir_fetch_ops(
+            program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
+        )
+
+        default_job = core.Job("default")
+        type_to_program = {"default": program}
+        plan = core.Plan([default_job], type_to_program)
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
+        return program, new_exe
+
 
 class Executor:
     """
@@ -1174,7 +1210,57 @@ class Executor:
                         scope, cur_feed, feed_target_name, idx
                     )
                 else:
-                    core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
+                    micro_cur_feed = [cur_feed]
+                    num_micro_batch = 1
+                    if (
+                        program._pipeline_opt
+                        and "standalone_opt" in program._pipeline_opt
+                    ):
+                        num_micro_batch = program._pipeline_opt[
+                            "standalone_opt"
+                        ]["num_micro_batches"]
+                        batch_size = (
+                            cur_feed.shape()[0]
+                            if callable(cur_feed.shape)
+                            else cur_feed.shape[0]
+                        )
+                        assert batch_size % num_micro_batch == 0
+                        micro_cur_feed = np.split(
+                            np.array(cur_feed), num_micro_batch, 0
+                        )
+                    for i in range(num_micro_batch):
+                        micro_feed = (
+                            _as_lodtensor(
+                                micro_cur_feed[i], self.place, var.dtype
+                            )
+                            if not isinstance(micro_cur_feed[i], core.LoDTensor)
+                            else micro_cur_feed[i]
+                        )
+                        core.set_feed_variable(
+                            scope,
+                            micro_feed,
+                            feed_var_name,
+                            idx * num_micro_batch + i,
+                        )
+            else:
+                break
+
+    def _new_ir_feed_data(self, program, feed, scope):
+        # feed var to framework
+        global_block = program.block()
+        for op in global_block.ops:
+            if op.name() == 'pd.data':
+                feed_target_name = op.attrs()["name"]
+                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
+                var_shape = op.attrs()["shape"]
+                cur_feed = feed[feed_target_name]
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
+                new_ir_check_feed_shape_type(
+                    cur_feed, feed_target_name, var_shape, var_type
+                )
+                # the last arg of set_feed_variable has no effect in new ir, we pass 0 by default.
+                core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
 

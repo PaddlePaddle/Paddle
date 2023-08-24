@@ -1586,9 +1586,8 @@ class Engine:
     def _validate_feed(self, feed):
         if feed is None:
             return [None]
-        if self._strategy.pipeline.enable:
-            return feed
-        if self._acc_steps == 1:
+        # pp with schedule or navie-pp
+        if self._strategy.pipeline.enable or self._acc_steps == 1:
             return feed
 
         # split feed data with gradient_merge k_steps

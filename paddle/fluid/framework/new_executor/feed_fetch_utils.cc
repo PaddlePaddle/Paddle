@@ -26,11 +26,11 @@ namespace framework {
 void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
                                const int64_t micro_batch_num,
                                const int64_t micro_batch_id) {
-  const std::set<std::string>& valid_fetch_op_types = {
+  const std::set<std::string>& valid_feed_fetch_op_types = {
       "fetch", "fetch_v2", "feed"};
   for (const auto& op_desc : program_desc->MutableBlock(0)->AllOps()) {
-    if (valid_fetch_op_types.find(op_desc->Type()) !=
-        valid_fetch_op_types.end()) {
+    if (valid_feed_fetch_op_types.find(op_desc->Type()) !=
+        valid_feed_fetch_op_types.end()) {
       int col = op_desc->GetAttrIfExists<int>("col");
       PADDLE_ENFORCE_GE(
           col,
