@@ -98,10 +98,7 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& bias,
                               int begin_norm_axis,
                               float epsilon,
-                              MetaTensor* out,
-                              MetaTensor* mean,
-                              MetaTensor* variance,
-                              MetaTensor* z_add) {
+                              MetaTensor* out) {
   int axis = -1;
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -112,21 +109,9 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   } else {
     out->set_dims(out_dims);
   }
-  auto layer_norm_x_mat_dims = phi::flatten_to_2d(out_dims, begin_norm_axis);
-  int64_t m = layer_norm_x_mat_dims[0];
-  int64_t n = layer_norm_x_mat_dims[1];
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
-  mean->set_dims(phi::make_ddim({m}));
-  mean->set_dtype(DataType::FLOAT32);
-  mean->set_layout(x.layout());
-  variance->set_dims(phi::make_ddim({m}));
-  variance->set_dtype(DataType::FLOAT32);
-  variance->set_layout(x.layout());
-  z_add->set_dims(phi::make_ddim({m, n}));
-  z_add->set_dtype(x.dtype());
-  z_add->set_layout(x.layout());
 }
 
 inline int ConvOutSize(int input_size,
@@ -481,11 +466,11 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& ffn2_bias,
     const std::vector<const MetaTensor*>& cache_kv,
     const std::vector<const MetaTensor*>& pre_caches,
-    const std::vector<const MetaTensor*>& rotary_pos_emb,
-    const std::vector<const MetaTensor*>& time_step,
-    const std::vector<const MetaTensor*>& seq_lengths,
-    const std::vector<const MetaTensor*>& src_mask,
-    const std::vector<const MetaTensor*>& gather_index,
+    const MetaTensor& rotary_pos_emb,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const MetaTensor& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -823,6 +808,17 @@ void FastWhereXPUInferMeta(const MetaTensor& condition,
                            MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
+}
+
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 }  // namespace phi

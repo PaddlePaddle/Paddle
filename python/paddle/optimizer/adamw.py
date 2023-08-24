@@ -182,6 +182,8 @@ class AdamW(Optimizer):
             if (
                 not core.is_compiled_with_cuda()
                 and not core.is_compiled_with_xpu()
+                and paddle.device.get_device().split(":")[0]
+                not in paddle.device.get_all_custom_device_type()
             ):
                 raise NotImplementedError("'lr_ratio' is unimplemented in CPU.")
 
