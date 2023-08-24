@@ -171,11 +171,11 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = difference * rsqrt_var
 
     if scale is not None:
-        if x.shape[begin_norm_axis:] is not scale.shape:
+        if x.shape[begin_norm_axis:] != scale.shape:
             scale = reshape(scale, x.shape[begin_norm_axis:])
         out = out * scale
     if bias is not None:
-        if x.shape[begin_norm_axis:] is not bias.shape:
+        if x.shape[begin_norm_axis:] != bias.shape:
             bias = reshape(bias, x.shape[begin_norm_axis:])
         out = out + bias
 
@@ -266,8 +266,7 @@ def mean_composite(x, axis, keepdim):
         is_amp = True
         x = cast(x, "float32")
 
-    axes = axis or list(range(0, len(x.shape)))
-    axes = [axes] if isinstance(axes, int) else axes
+    axes = [axis] if isinstance(axis, int) else list(range(0, len(x.shape)))
     sum_x = sum(x, axis=axes, keepdim=keepdim)
     ele_nums_list = [x.shape[axis] for axis in axes]
     if ele_nums_list == []:
