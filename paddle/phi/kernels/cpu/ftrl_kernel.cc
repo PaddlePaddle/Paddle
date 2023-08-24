@@ -33,8 +33,10 @@ void FTRLOpKernel(const Context& ctx,
                   DenseTensor* param_out,
                   DenseTensor* squared_accumulator_out,
                   DenseTensor* linear_accumulator_out,
-                  DenseTensor* grad_out) {}
-PADDLE_THROW(phi::errors::InvalidArgument("Unsupported Variable Type of Grad"));
+                  DenseTensor* grad_out) {
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("Unsupported Variable Type of Grad"));
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(ftrl, CPU, ALL_LAYOUT, phi::FTRLOpKernel, float) {}
