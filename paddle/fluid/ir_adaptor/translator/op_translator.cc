@@ -1166,8 +1166,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
-    std::vector<int64_t> shape =
-        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
     float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
@@ -1175,7 +1175,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
 
     ir::AttributeMap attribute_map = {
         {"shape",
-         paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape))},
+         attribute_translator("paddle::dialect::IntArrayAttribute",
+                              shape_attr)},
         {"value", attr_value.dyn_cast<paddle::dialect::ScalarAttribute>()},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(
@@ -1241,10 +1242,10 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
           ctx, param_map, program, shape_tensor_list_vars);
       op_inputs.push_back(defining_op->result(0));
     } else {
-      std::vector<int64_t> shape =
-          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-      ir::Attribute new_attr =
-          paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape));
+      auto& attribute_translator = AttributeTranslator::instance();
+      paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
+      ir::Attribute new_attr = attribute_translator(
+          "paddle::dialect::IntArrayAttribute", shape_attr);
       auto defining_op =
           InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
       op_inputs.push_back(defining_op->result(0));
