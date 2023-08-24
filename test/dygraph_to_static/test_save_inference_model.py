@@ -64,8 +64,8 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
             x = fluid.dygraph.to_variable(x_data)
             layer = SimpleFcLayer(fc_size)
-            adam = fluid.optimizer.SGD(
-                learning_rate=0.1, parameter_list=layer.parameters()
+            adam = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=layer.parameters()
             )
 
             for i in range(5):
@@ -130,8 +130,8 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            dirname=model_path,
+        ] = paddle.static.io.load_inference_model(
+            path_prefix=model_path,
             executor=exe,
             model_filename=model_filename,
             params_filename=params_filename,

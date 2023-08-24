@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -213,7 +213,7 @@ phi::KernelKey BatchNormOp::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DenseTensor &tensor,
     const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
@@ -402,7 +402,7 @@ phi::KernelKey BatchNormGradOp::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DenseTensor &tensor,
     const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
@@ -443,6 +443,9 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }
+
+  op->SetInput("MeanOut", this->Output("MeanOut"));
+  op->SetInput("VarianceOut", this->Output("VarianceOut"));
 
   op->SetAttrMap(this->Attrs());
 

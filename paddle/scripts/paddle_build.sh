@@ -687,14 +687,18 @@ EOF
         fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         check_approvals_of_unittest 2
+        # serial_list: Some single tests need to reduce concurrency
+        single_list="^test_cdist$|^test_resnet$|^test_resnet_v2$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
-            ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+          ctest -E "($disable_ut_quickly|$single_list)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+          ctest -R "${single_list}" -E "($disable_ut_quickly)" --output-on-failure -j 1 | tee $tmpfile
         else
             ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "($UT_list_prec_1)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "($UT_list_prec_1)" -E "(${disable_ut_quickly}|${single_list})" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "($single_list)" -E "(${disable_ut_quickly})" --output-on-failure -j 1 | tee $tmpfile
         fi
         failed_test_lists=''
         collect_failed_tests
@@ -743,7 +747,7 @@ EOF
                             done
                         rm -f $tmp_dir/*
                         failed_test_lists=''
-                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests
                         exec_times=$[$exec_times+1]
                     done
@@ -1155,12 +1159,12 @@ function check_approvals_of_unittest() {
 EOF
         if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 7845005 26377421`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (jiweibo (Recommend), qingqing01 or Shixiaowei02) approval for this PR\n"
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR.\n"
                 echo "=========================================================================================="
                 exit 6
             fi
@@ -3149,8 +3153,17 @@ function exec_samplecode_test() {
 
 
 function collect_ccache_hits() {
-    rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
-    echo "ccache hit rate: ${rate}%"
+    ccache -s
+    ccache_version=$(ccache -V | grep "ccache version" | awk '{print $3}')
+    echo "$ccache_version"
+    if [[ $ccache_version == 4* ]] ; then
+        rate=$(ccache -s | grep "Hits" | awk 'NR==1 {print $5}' | cut -d '(' -f2 | cut -d ')' -f1)
+        echo "ccache hit rate: ${rate}%"
+    else
+        rate=$(ccache -s | grep 'cache hit rate' | awk '{print $4}')
+        echo "ccache hit rate: ${rate}"
+    fi
+
     echo "ipipe_log_param_Ccache_Hit_Rate: ${rate}%" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
@@ -3962,7 +3975,7 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_DY2ST_TEST=True
+        export FLAGS_NEW_IR_OPTEST=True
         parallel_test
         check_coverage
         ;;

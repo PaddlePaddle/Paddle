@@ -1120,6 +1120,10 @@ def concat(x, axis=0, name=None):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            if not isinstance(input, paddle.ir.Value):
+                input = [t for t in input if t.shape.count(0) == 0]
+            return paddle._ir_ops.concat(input, axis)
         check_type(input, 'input', (list, tuple, Variable), 'concat')
         if not isinstance(input, Variable):
             for id, x in enumerate(input):
@@ -1499,7 +1503,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             end_axis = 2
 
           We get:
-            Out.shape = (3, 1000 * 100, 2)
+            Out.shape = (3, 100 * 100, 4)
 
         Case 2:
 

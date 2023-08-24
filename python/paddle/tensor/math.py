@@ -877,6 +877,8 @@ def divide(x, y, name=None):
     if in_dynamic_mode():
         return _C_ops.divide(x, y)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.divide(x, y)
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
@@ -1474,6 +1476,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.sum(x, axis, dtype, keepdim)
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
 
@@ -1613,7 +1617,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-                        >>> import paddle
+            >>> import paddle
 
             >>> # x is a Tensor with following elements:
             >>> #    [[nan, 0.3, 0.5, 0.9]
@@ -1884,6 +1888,9 @@ def add_n(inputs, name=None):
             inputs = [inputs]
         return _C_ops.add_n(inputs)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            return paddle._ir_ops.add_n(inputs)
+
         helper = LayerHelper('add_n', **locals())
         check_type(inputs, 'inputs', (Variable, tuple, list), 'add_n')
         if isinstance(inputs, (list, tuple)):

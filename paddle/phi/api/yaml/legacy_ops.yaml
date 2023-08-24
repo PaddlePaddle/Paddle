@@ -123,6 +123,25 @@
   backward : batch_norm_grad
   optional : reserve_space
 
+- op : c_broadcast
+  args : (Tensor x, int ring_id=0, int root=0, bool use_calc_stream=false)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : c_broadcast
+  inplace : (x -> out)
+
+- op : c_concat
+  args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
+  output : Tensor(out)
+  infer_meta :
+    func : CConcatInferMeta
+    param : [x, nranks]
+  kernel :
+    func : c_concat
+
 - op : cast
   args : (Tensor x, DataType dtype)
   output : Tensor
@@ -189,6 +208,17 @@
     func : depthwise_conv2d_transpose
     data_type : x
   backward : depthwise_conv2d_transpose_grad
+
+- op : disable_check_model_nan_inf
+  args: (Tensor x, int flag = 0)
+  output: Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: check_model_nan_inf
+    data_type: x
+  backward: disable_check_model_nan_inf_grad
 
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
@@ -285,6 +315,17 @@
     param : [x, dtype]
     data_type : dtype > x
     backend : place > x
+
+- op : enable_check_model_nan_inf
+  args: (Tensor x, int flag = 1)
+  output: Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: check_model_nan_inf
+    data_type: x
+  backward: enable_check_model_nan_inf_grad
 
 - op : equal
   args : (Tensor x, Tensor y)
@@ -384,6 +425,16 @@
     backend : place > x
   data_transform :
     skip_transform : x
+
+- op : full_with_tensor
+  args : (Tensor shape, Tensor value, DataType dtype=DataType::FLOAT32)
+  output: Tensor(out)
+  infer_meta :
+    func : FullWithTensorInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : full_with_tensor
+    data_type : dtype
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -881,6 +932,7 @@
     data_type : x
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
+  optional : reserve_space
 
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})

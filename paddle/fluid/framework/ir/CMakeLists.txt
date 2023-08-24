@@ -103,6 +103,7 @@ pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_assign_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
 pass_library(delete_concat_op_pass inference)
+pass_library(conv2d_trans_filter_dilations_nxn_to_1x1_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
@@ -238,6 +239,8 @@ if(WITH_XPU)
   pass_library(cast_mixed_precision_op_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(cast_embedding_trans_ids_to_int32_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(conv1d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(redundant_unsqueeze_squeeze_elimination_pass inference DIR xpu
@@ -266,6 +269,8 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_xpu_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(duplicated_transpose_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
@@ -283,6 +288,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(gather_squeeze_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fast_where_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(fast_layernorm_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

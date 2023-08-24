@@ -346,7 +346,7 @@ void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
 
 void CpuPassStrategy::EnableMKLDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_) {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
@@ -391,7 +391,7 @@ void CpuPassStrategy::EnableMKLDNN() {
 }
 
 void CpuPassStrategy::EnableMkldnnQuantizer() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_quantizer_) {
     passes_.emplace_back("cpu_quantize_placement_pass");
   }
@@ -402,7 +402,7 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 }
 
 void CpuPassStrategy::EnableMkldnnBfloat16() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_bfloat16_) {
     passes_.emplace_back("fc_mkldnn_pass");
     passes_.emplace_back("fc_act_mkldnn_fuse_pass");
@@ -418,7 +418,7 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 }
 
 void CpuPassStrategy::EnableMkldnnInt8() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_int8_) {
     passes_.clear();
     passes_.emplace_back("simplify_with_basic_ops_pass");
@@ -483,7 +483,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 }
 
 void CpuPassStrategy::DisableMkldnnFcPasses() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!disable_mkldnn_fc_passes_) {
     EraseFcMkldnnPasses();
   }
@@ -516,6 +516,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "reshape_unstack_concat_fuse_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
+      "cast_embedding_trans_ids_to_int32_pass",
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
@@ -527,10 +528,12 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
       "conv1d_xpu_fuse_pass",
+      "duplicated_transpose_fuse_pass",
       "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
       "delete_cast_op_pass",
       "xpu_delete_cast_op_pass",
+      "conv2d_trans_filter_dilations_nxn_to_1x1_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
       "relu6_fuse_pass",
@@ -546,6 +549,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "conv2d_transpose_xpu_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "fast_layernorm_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
       "link_xpu_op_max_pass",
