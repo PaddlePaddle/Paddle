@@ -30,10 +30,20 @@ if(NOT CINN_ONLY)
   set(cinn_op_header_file_tmp ${cinn_op_header_file}.tmp)
   set(cinn_op_source_file_tmp ${cinn_op_source_file}.tmp)
 
+  set(parsed_op_dir ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated/)
+
+  execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
+                          RESULTS_VARIABLE _result)
+  if(${_result})
+    message(
+      FATAL_ERROR "Failed to create folder for parsed cinn op yamls, exiting.")
+  endif()
+
   add_custom_command(
     OUTPUT ${cinn_op_parsed_yaml_file}
     COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
-            ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file})
+            ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
+    VERBATIM)
 
   add_custom_command(
     OUTPUT ${cinn_op_header_file} ${cinn_op_source_file}
