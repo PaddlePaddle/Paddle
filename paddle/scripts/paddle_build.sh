@@ -3275,6 +3275,11 @@ function build_pr_and_develop() {
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
+        # may be remove it later
+        mkdir -p ${PADDLE_ROOT}/pr && cp -r ${PADDLE_ROOT}/build/pr_whl ${PADDLE_ROOT}/pr
+        rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build 
+        mv ${PADDLE_ROOT}/pr/pr_whl ${PADDLE_ROOT}/build
+        cd ${PADDLE_ROOT}/build
 
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
@@ -3285,8 +3290,7 @@ function build_pr_and_develop() {
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
-    # may be remove it later
-    rm -rf ${PADDLE_ROOT}/build/third_party
+    
     generate_api_spec "$1" "DEV"
 
 }
