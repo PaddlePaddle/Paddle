@@ -27,6 +27,7 @@ from paddle.fluid.libpaddle.ir import (
     set_insertion_point,
     reset_insertion_point_to_start,
     reset_insertion_point_to_end,
+    check_unregistered_ops,
 )  # noqa: F401
 
 from . import core

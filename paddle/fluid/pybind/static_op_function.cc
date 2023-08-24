@@ -178,5 +178,55 @@ PyObject *static_api_split(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 }
 
+PyObject *static_api_data(PyObject *self, PyObject *args, PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add data op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Parse Attributes if needed
+    PyObject *name_obj = PyTuple_GET_ITEM(args, 0);
+    std::string name = CastPyArg2String(name_obj, "data", 0);
+    PyObject *shape_obj = PyTuple_GET_ITEM(args, 1);
+    paddle::experimental::IntArray shape =
+        CastPyArg2IntArray(shape_obj, "data", 1);
+    PyObject *dtype_obj = PyTuple_GET_ITEM(args, 2);
+    phi::DataType dtype = CastPyArg2DataTypeDirectly(dtype_obj, "data", 2);
+
+    PyObject *place_obj = PyTuple_GET_ITEM(args, 3);
+    paddle::Place place = CastPyArg2Place(place_obj, "data", 3);
+
+    // Call ir static api
+    auto out = paddle::dialect::data(name, shape.GetData(), dtype, place);
+    return ToPyObject(out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+PyObject *static_api_fetch(PyObject *self, PyObject *args, PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add fetch op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get OpResult from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2OpResult("fetch", x_obj, 0);
+
+    // Parse Attributes if needed
+    PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
+    std::string name = CastPyArg2String(name_obj, "fetch", 1);
+    PyObject *col_obj = PyTuple_GET_ITEM(args, 2);
+    int col = CastPyArg2Int(col_obj, "fetch", 2);
+
+    // Call ir static api
+    auto out = paddle::dialect::fetch(x, name, col);
+    return ToPyObject(out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 }  // namespace pybind
 }  // namespace paddle
