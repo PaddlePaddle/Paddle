@@ -46,7 +46,7 @@ namespace imperative {
     defined(PADDLE_WITH_MCCL)
 
 void NCCLParallelContext::BcastNCCLId(
-    std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
+    const std::vector<ncclUniqueId> &nccl_ids,  // NOLINT
     int root,
     int server_fd) {
   if (strategy_.local_rank_ == root) {
