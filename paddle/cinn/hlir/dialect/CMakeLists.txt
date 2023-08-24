@@ -18,7 +18,7 @@ if(NOT CINN_ONLY)
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/cinn_ops.yaml)
 
   set(cinn_op_parsed_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generator/cinn_ops.parsed.yaml
+      ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated/cinn_ops.parsed.yaml
   )
 
   set(cinn_op_parsed_yaml_files ${cinn_op_parsed_yaml_file})
@@ -31,10 +31,12 @@ if(NOT CINN_ONLY)
   set(cinn_op_source_file_tmp ${cinn_op_source_file}.tmp)
 
   add_custom_command(
-    OUTPUT ${cinn_op_header_file} ${cinn_op_source_file}
-           ${cinn_op_parsed_yaml_file}
+    OUTPUT ${cinn_op_parsed_yaml_file}
     COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
-            ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
+            ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file})
+
+  add_custom_command(
+    OUTPUT ${cinn_op_header_file} ${cinn_op_source_file}
     COMMAND
       ${PYTHON_EXECUTABLE} ${cinn_op_gen_file} --op_yaml_files
       ${cinn_op_parsed_yaml_files} --op_compat_yaml_file
