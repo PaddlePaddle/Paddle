@@ -15,7 +15,6 @@
 
 import numpy as np
 
-import paddle
 from paddle.fluid.libpaddle import DataType
 from paddle.fluid.libpaddle.ir import Program, set_global_program
 
@@ -37,6 +36,30 @@ np_type_to_paddle_type = {
 }
 
 
+def convert_np_dtype_to_dtype_(np_dtype):
+    """
+    Convert the data type in numpy to the data type in Paddle.
+
+    Args:
+        np_dtype (np.dtype|str): The data type in numpy or valid data type
+            string.
+
+    Returns:
+        core.DataType : The data type in Paddle.
+
+    """
+    # Convert the data type string to numpy data type.
+    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+        dtype = np.uint16
+    else:
+        dtype = np.dtype(np_dtype)
+
+    if dtype in np_type_to_paddle_type.keys():
+        return np_type_to_paddle_type[dtype]
+    else:
+        raise ValueError("Not supported numpy dtype %s" % dtype)
+
+
 def _use_new_ir_api():
     """
     This API checks whether paddle use new ir api.
@@ -45,6 +68,9 @@ def _use_new_ir_api():
         bool: Whether paddle use new ir api.
 
     """
+    # TODO(YuanRisheng): need move import to the top of this file after break import circle
+    import paddle
+
     if paddle.framework.get_flags("FLAGS_enable_new_ir_api")[
         'FLAGS_enable_new_ir_api'
     ]:

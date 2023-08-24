@@ -226,10 +226,10 @@ phi::KernelKey GetKernelKey(
   if (op->name() == "pd.data") {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
-    auto t =
+    auto data_place =
         op->attributes().at("place").dyn_cast<dialect::PlaceAttribute>().data();
 
-    auto backend = paddle::experimental::ParseBackend(t);
+    auto backend = paddle::experimental::ParseBackend(data_place);
 
     return {backend,
             phi::DataLayout::ANY,
@@ -240,6 +240,7 @@ phi::KernelKey GetKernelKey(
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
+
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
@@ -354,6 +355,27 @@ phi::KernelKey GetKernelKey(
       auto fake_tensors = GetFakeTensorList(new_input_tmp);
       for (auto& fake_tensor : fake_tensors) {
         kernel_key_parser.AssignKernelKeySet(fake_tensor);
+      }
+
+      // Because we can't make sure the place when build data op
+      // and the output place of data op is undefined. It means we
+      // don't know how to select the kernel in the next of op that
+      // uses data op outout as inputs. So, we need set kernel backend
+      // manually.
+      if (op->operand_source(i).GetDefiningOp()->name() == "pd.data") {
+        auto data_op = op->operand_source(i).GetDefiningOp();
+        auto data_place = data_op->attributes()
+                              .at("place")
+                              .dyn_cast<dialect::PlaceAttribute>()
+                              .data();
+
+        auto data_op_backend = paddle::experimental::ParseBackend(data_place);
+        if (data_op_backend == phi::Backend::UNDEFINED) {
+          data_op_backend = paddle::experimental::ParseBackend(place);
+        }
+        kernel_key_parser.key_set.backend_set =
+            kernel_key_parser.key_set.backend_set |
+            paddle::experimental::BackendSet(data_op_backend);
       }
     }
 
@@ -652,7 +674,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
     }
-
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
