@@ -209,6 +209,46 @@ ir::OpResult AddPlaceTransferOp(ir::OpResult in,
   }
 }
 
+ir::Type BuildOutputType(ir::Type type,
+                         phi::Place place,
+                         phi::DataType data_type,
+                         ir::IrContext* ctx) {
+  if (type.isa<dialect::DenseTensorType>()) {
+    auto dense_tensor_type = type.dyn_cast<dialect::DenseTensorType>();
+    auto out_dtype = dense_tensor_type.dtype();
+    if (data_type != phi::DataType::UNDEFINED) {
+      out_dtype = TransToIrDataType(data_type, ctx);
+    }
+
+    return dialect::AllocatedDenseTensorType::get(
+        ctx,
+        place,
+        out_dtype,
+        dense_tensor_type.dims(),
+        dense_tensor_type.data_layout(),
+        dense_tensor_type.lod(),
+        dense_tensor_type.offset());
+
+  } else if (type.isa<dialect::SelectedRowsType>()) {
+    auto selected_rows_type = type.dyn_cast<dialect::SelectedRowsType>();
+    auto out_dtype = selected_rows_type.dtype();
+    if (data_type != phi::DataType::UNDEFINED) {
+      out_dtype = TransToIrDataType(data_type, ctx);
+    }
+    return dialect::AllocatedSelectedRowsType::get(
+        ctx,
+        place,
+        out_dtype,
+        selected_rows_type.dims(),
+        selected_rows_type.data_layout(),
+        selected_rows_type.lod(),
+        selected_rows_type.offset());
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "BuildOutputType only support DenseTensorType and SelectedRowsType"));
+  }
+}
+
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
     const phi::Place& place,
@@ -688,36 +728,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       }
 
       for (size_t i = 0; i < op_item->num_results(); ++i) {
-        phi::Place out_place;
+        phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
+
+        phi::DataType out_phi_dtype = phi::DataType::UNDEFINED;
         if ((!UnchangeOutputOps.count(op_item->name())) &&
             (!IsLegacyOp(op_item->name())) && phi_kernel.IsValid()) {
           out_place = phi::TransToPhiPlace(output_defs[i].backend);
-        } else {
-          out_place = phi::TransToPhiPlace(kernel_key.backend());
+          out_phi_dtype = output_defs[i].dtype;
         }
 
         auto result_type = op_item->result(i).type();
         if (!result_type) {
           op_output_types.push_back(result_type);
-        } else if (result_type.isa<dialect::DenseTensorType>()) {
-          auto allocated_dense_tensor_dtype =
-              paddle::dialect::AllocatedDenseTensorType::get(
-                  ctx,
-                  out_place,
-                  result_type.dyn_cast<dialect::DenseTensorType>());
-          op_output_types.push_back(allocated_dense_tensor_dtype);
+        } else if (result_type.isa<dialect::DenseTensorType>() ||
+                   result_type.isa<dialect::SelectedRowsType>()) {
+          op_output_types.push_back(
+              BuildOutputType(result_type, out_place, out_phi_dtype, ctx));
         } else if (result_type.isa<ir::VectorType>()) {
           std::vector<ir::Type> vec_inner_types;
           auto base_types = result_type.dyn_cast<ir::VectorType>().data();
           for (auto& base_type : base_types) {
             if (base_type) {
               if (base_type.isa<dialect::DenseTensorType>()) {
-                auto allocated_dense_tensor_dtype =
-                    paddle::dialect::AllocatedDenseTensorType::get(
-                        ctx,
-                        out_place,
-                        base_type.dyn_cast<dialect::DenseTensorType>());
-                vec_inner_types.push_back(allocated_dense_tensor_dtype);
+                vec_inner_types.push_back(
+                    BuildOutputType(base_type, out_place, out_phi_dtype, ctx));
               } else {
                 PADDLE_THROW(phi::errors::Unimplemented(
                     "only support dense tensor in vector type for now"));
@@ -740,16 +774,10 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
           ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
           op_output_types.push_back(t1);
-        } else if (result_type.isa<dialect::SelectedRowsType>()) {
-          auto allocated_selected_rows_dtype =
-              paddle::dialect::AllocatedSelectedRowsType::get(
-                  ctx,
-                  out_place,
-                  result_type.dyn_cast<dialect::SelectedRowsType>());
-          op_output_types.emplace_back(allocated_selected_rows_dtype);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented(
-              "Result type only support DenseTensorType and VectorType"));
+              "Result type only support DenseTensorType, SelectedRowType and "
+              "VectorType"));
         }
       }
     }
