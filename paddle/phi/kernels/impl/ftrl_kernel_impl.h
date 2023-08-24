@@ -138,8 +138,9 @@ void FTRLOpKernel(const Context& ctx,
                   DenseTensor* squared_accumulator_out,
                   DenseTensor* linear_accumulator_out,
                   DenseTensor* grad_out) {
-  auto l1 += static_cast<T>(1e-10);
-  auto l2 += static_cast<T>(1e-10);
+  static_cast<T> l1 = static_cast<T>(l1) + static_cast<T>(1e-10);
+  static_cast<T> l2 = static_cast<T>(l2) + static_cast<T>(1e-10);
+  lr_power = static_cast<T>(lr_power);
   auto g = EigenVector<T>::Flatten(grad);
   auto p = EigenVector<T>::Flatten(param);
   auto sq_accum = EigenVector<T>::Flatten(squared_accumulator);
@@ -167,7 +168,7 @@ void FTRLOpKernel(const Context& ctx,
             p;
   }
 
-  auto x = (l_acc_out.constant(l1) * l_acc_out.sign() - l_acc_out);
+  x = (l_acc_out.constant(l1) * l_acc_out.sign() - l_acc_out);
   if (lr_power == static_cast<T>(-0.5)) {
     auto y = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
              l_acc_out.constant(static_cast<T>(2) * l2);
