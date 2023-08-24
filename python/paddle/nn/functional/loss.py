@@ -2581,12 +2581,12 @@ def cross_entropy(
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True and label_smoothing = 0.0, the shape and data type
+            2. If soft_label=True and no label_smoothing, the shape and data type
             should be same with ``input`` , and the sum of the labels for each sample should be 1.
 
-            3. If soft_label=True and label_smoothing > 0.0, the shape and data type could be either
-            same with ``input`` or  the same with ``label`` in situations when soft_label = False.
-            In other words, the format of  label could be one-hot label or integer label.
+            3. If has label_smoothing, (i.e. label_smoothing > 0.0), no matter what ``soft_label`` is,
+            the shape and data type of ``label`` could be either the situation 1 or situation 2.
+            In other words, if label_smoothing > 0.0, the format of label could be one-hot label or integer label.
 
         weight (Tensor, optional): a manual rescaling weight given to each class.
             If given, has to be a Tensor of size C and the data type is float32, float64.
@@ -2602,7 +2602,7 @@ def cross_entropy(
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
         soft_label (bool, optional): Indicate whether label is soft. Default is ``False``.
-        label_smoothing (float, optional): A float in [0.0, 1.0], only valid when soft_label=True.
+        label_smoothing (float, optional): A float in [0.0, 1.0].
             Specifies the amount of smoothing when computing the loss, where 0.0 means no smoothing.
             The targets become  a mixture of the original ground truth and a uniform distribution as
             described in paper 'Rethinking the Inception Architecture for Computer Vision'.
@@ -2677,9 +2677,7 @@ def cross_entropy(
             # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        1.12801195)
 
-        .. code-block:: python
 
-            # soft labels
             # case2: soft labels with label_smoothing
             import paddle
             paddle.seed(99999)
@@ -2696,7 +2694,6 @@ def cross_entropy(
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
                                                                     logits,
                                                                     labels,
-                                                                    soft_label=True,
                                                                     axis=axis,
                                                                     weight=weight,
                                                                     label_smoothing=label_smoothing,
@@ -2736,11 +2733,12 @@ def cross_entropy(
             )
         )
 
-    if soft_label:
+    if label_smoothing > 0.0:
+        soft_label = True
         # converting the label to one-hot encoding
         # for 1d case, converting label's shape from [N] to [N, C]
         # for 2d case, converting label's shape from [N, d_1, ..., d_k] to [N, d_1, ..., d_k, C]
-        if input_dims != label_dims and input_dims - 1 == label_dims:
+        if input_dims - 1 == label_dims:
             label = paddle.squeeze(label, axis=axis)
             label = paddle.nn.functional.one_hot(label, input.shape[-1])
 

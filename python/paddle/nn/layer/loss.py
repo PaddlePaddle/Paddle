@@ -261,7 +261,7 @@ class CrossEntropyLoss(Layer):
         soft_label (bool, optional): Indicate whether label is soft.
             If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
             Default is ``False``.
-        label_smoothing (float, optional): A float in [0.0, 1.0], only valid when soft_label=True.
+        label_smoothing (float, optional): A float in [0.0, 1.0].
             Specifies the amount of smoothing when computing the loss, where 0.0 means no smoothing.
             The targets become  a mixture of the original ground truth and a uniform distribution as
             described in paper 'Rethinking the Inception Architecture for Computer Vision'.
@@ -292,12 +292,12 @@ class CrossEntropyLoss(Layer):
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True and label_smoothing = 0.0, the shape and data type
+            2. If soft_label=True and no label_smoothing, the shape and data type
             should be same with ``input`` , and the sum of the labels for each sample should be 1.
 
-            3. If soft_label=True and label_smoothing > 0.0, the shape and data type could be either
-            same with ``input`` or  the same with ``label`` in situations when soft_label = False.
-            In other words, the format of  label could be one-hot label or integer label.
+            3. If has label_smoothing, (i.e. label_smoothing > 0.0), no matter what ``soft_label`` is,
+            the shape and data type of ``label`` could be either the situation 1 or situation 2.
+            In other words, if label_smoothing > 0.0, the format of label could be one-hot label or integer label.
 
         - **output** (Tensor), Return the softmax cross_entropy loss of ``input`` and ``label``.
           The data type is the same as input.
@@ -311,7 +311,6 @@ class CrossEntropyLoss(Layer):
     Examples:
 
         .. code-block:: python
-            :name: code-example1
 
             # hard labels
             import paddle
@@ -331,7 +330,6 @@ class CrossEntropyLoss(Layer):
             # 5.33697682)
 
         .. code-block:: python
-            :name: code-example2
 
             # soft labels
             # case1: soft labels without label_smoothing
@@ -353,9 +351,8 @@ class CrossEntropyLoss(Layer):
             # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             # 1.14554912)
 
-        .. code-block:: python
 
-            # soft labels with label_smoothing
+
             # case2: soft labels with label_smoothing
             import paddle
             paddle.seed(2023)
@@ -370,7 +367,7 @@ class CrossEntropyLoss(Layer):
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=weight, reduction=reduction, soft_label=True, label_smoothing=label_smoothing)
+                weight=weight, reduction=reduction, label_smoothing=label_smoothing)
             dy_ret = cross_entropy_loss(logits, labels)
             print(dy_ret)
             # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
