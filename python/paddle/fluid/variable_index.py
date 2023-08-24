@@ -965,9 +965,10 @@ def _setitem_static(x, indices, values):
         ) = deal_advanced_index(sub_tensor, advanced_index, True)
         if not isinstance(values, Variable):
             values = paddle.assign(values).astype(transed_sub_tensor.dtype)
-        transed_sub_tensor = transed_sub_tensor.index_put(
-            adjusted_advanced_index, values
-        )
+
+        # NOTE(zoooo0820): consider to introduce auto-dtype-promotion here instead of using cast.
+        if values.dtype != transed_sub_tensor.dtype:
+            values = values.astype(transed_sub_tensor.dtype)
 
         # NOTE(zoooo0820): now basic indexing of __getitem__ will return a new Tensor both in dynamic and static mode
         # After strided is ready and basic indexing returns view of Tensor in dynamic mode. The code shoule be changed
