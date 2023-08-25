@@ -499,12 +499,13 @@ def check_old_style(docstrings_to_test: typing.Dict[str, str]):
         logger.addHandler(stdout_handler)
 
         logger.info(
-            "%d apis use plain sample code style.",
+            ">>> %d apis use plain sample code style.",
             len(old_style_apis),
         )
         logger.info('=======================')
         logger.info('\n'.join(old_style_apis))
         logger.info('=======================')
+        logger.info("Check Failed!")
         logger.info("DEPRECATION: Please do not use plain sample code style.")
         logger.info(
             "For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/code_example_writing_specification_cn.html "
@@ -607,25 +608,25 @@ def run_doctest(args, doctester: DocTester):
 
     logger.info("----------------Codeblock Check Start--------------------")
 
-    logger.info("Check test mode ...")
+    logger.info(">>> Check test mode ...")
     run_on_device = check_test_mode(mode=args.mode, gpu_id=args.gpu_id)
 
-    logger.info("Get test capacity ...")
+    logger.info(">>> Get test capacity ...")
     sample_code_test_capacity = get_test_capacity(run_on_device)
 
-    logger.info("Get docstring from api ...")
+    logger.info(">>> Get docstring from api ...")
     docstrings_to_test, whl_error = get_docstring(full_test=args.full_test)
 
-    logger.info("Checking plain sample code style before Paddle 2.5 ...")
+    logger.info(">>> Checking plain sample code style before Paddle 2.5 ...")
     check_old_style(docstrings_to_test)
 
-    logger.info("Prepare doctester ...")
+    logger.info(">>> Prepare doctester ...")
     doctester.prepare(sample_code_test_capacity)
 
-    logger.info("Running doctester ...")
+    logger.info(">>> Running doctester ...")
     test_results = get_test_results(doctester, docstrings_to_test)
 
-    logger.info("Print summary ...")
+    logger.info(">>> Print summary ...")
     doctester.print_summary(test_results, whl_error)
 
     if args.mode == "cpu":

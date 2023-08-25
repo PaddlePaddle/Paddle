@@ -489,29 +489,37 @@ class Xdoctester(DocTester):
                     summary_nocodes.append(test_result.name)
 
             if len(summary_success):
-                logger.info("%d sample codes ran success", len(summary_success))
+                logger.info(
+                    ">>> %d sample codes ran success", len(summary_success)
+                )
                 logger.info('\n'.join(summary_success))
 
             if len(summary_skiptest):
-                logger.info("%d sample codes skipped", len(summary_skiptest))
+                logger.info(
+                    ">>> %d sample codes skipped", len(summary_skiptest)
+                )
                 logger.info('\n'.join(summary_skiptest))
 
             if len(summary_nocodes):
                 logger.info(
-                    "%d apis could not run test or don't have sample codes",
+                    ">>> %d apis could not run test or don't have sample codes",
                     len(summary_nocodes),
                 )
                 logger.info('\n'.join(summary_nocodes))
 
             if len(summary_timeout):
-                logger.info("%d sample codes ran timeout", len(summary_timeout))
+                logger.info(
+                    ">>> %d sample codes ran timeout", len(summary_timeout)
+                )
                 for _result in summary_timeout:
                     logger.info(
                         f"{_result['api_name']} - more than {_result['run_time']}s"
                     )
 
             if len(summary_failed):
-                logger.info("%d sample codes ran failed", len(summary_failed))
+                logger.info(
+                    ">>> %d sample codes ran failed", len(summary_failed)
+                )
                 logger.info('\n'.join(summary_failed))
 
             if summary_failed or summary_timeout or summary_nocodes:
