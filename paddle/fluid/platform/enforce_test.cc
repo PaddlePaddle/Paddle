@@ -433,7 +433,7 @@ TEST(enforce, musa_success) {
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
-  EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledMusaError, "MCCL error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "MCCL error"));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "MCCL error"));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclInternalError,
                                      "An internal check failed. This is either "
