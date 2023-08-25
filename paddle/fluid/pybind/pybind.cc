@@ -275,6 +275,14 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
+bool IsCompiledWithMUSA() {
+#ifndef PADDLE_WITH_MUSA
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
@@ -1935,6 +1943,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
+  m.def("is_compiled_with_musa", IsCompiledWithMUSA);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);

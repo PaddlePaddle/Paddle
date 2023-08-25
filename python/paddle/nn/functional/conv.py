@@ -16,6 +16,7 @@ from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
+    is_compiled_with_musa,
     is_compiled_with_rocm,
 )
 from paddle.fluid.framework import _global_flags
@@ -701,7 +702,7 @@ def conv2d(
         and num_filters % num_channels == 0
     ):
         l_type = 'depthwise_conv2d'
-        if is_compiled_with_rocm():
+        if is_compiled_with_rocm() or is_compiled_with_musa():
             use_cudnn = True
         else:
             use_cudnn = False

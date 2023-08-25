@@ -358,6 +358,7 @@ void ConvCudnnKernel(const Context& ctx,
                      int groups,
                      const std::string& data_format,
                      DenseTensor* output) {
+  std::cout << "===============start conv2d==============\n";
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -578,6 +579,7 @@ void ConvCudnnKernel(const Context& ctx,
   if (channel_last && compute_format == phi::backends::gpu::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
+  std::cout << "===============end conv2d==============\n";
 }
 
 template <typename T, typename Context>
@@ -626,6 +628,29 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                      out);
 }
 
+template <typename T, typename Context>
+void DepthwiseConvGPUKernel(const Context& dev_ctx,
+                            const DenseTensor& input,
+                            const DenseTensor& filter,
+                            const std::vector<int>& strides,
+                            const std::vector<int>& paddings,
+                            const std::string& padding_algorithm,
+                            int groups,
+                            const std::vector<int>& dilations,
+                            const std::string& data_format,
+                            DenseTensor* out) {
+  ConvCudnnKernel<T>(dev_ctx,
+                     input,
+                     filter,
+                     strides,
+                     paddings,
+                     padding_algorithm,
+                     dilations,
+                     groups,
+                     data_format,
+                     out);
+}
+
 }  // namespace phi
 
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
@@ -647,6 +672,12 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::DepthwiseConvCudnnKernel,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(depthwise_conv2d,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConvGPUKernel,
                    float,
                    phi::dtype::float16) {}
 
