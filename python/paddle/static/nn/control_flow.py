@@ -62,29 +62,29 @@ def Assert(cond, data=None, summarize=20, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.static.nn.control_flow import Assert
+            >>> import paddle
+            >>> from paddle.static.nn.control_flow import Assert
 
-            paddle.enable_static()
-            x = paddle.full([2, 3], 2.0, 'float32')
-            condition = paddle.max(x) < 1.0 # False
-            Assert(condition, [x], 10, "example_assert_layer")
+            >>> paddle.enable_static()
+            >>> x = paddle.full([2, 3], 2.0, 'float32')
+            >>> condition = paddle.max(x) < 1.0 # False
+            >>> Assert(condition, [x], 10, "example_assert_layer")
 
-            exe = paddle.static.Executor()
-            try:
-                exe.run(paddle.static.default_main_program())
-                # Print x and throws ValueError
-                # Example printed message for x:
-                #
-                # Variable: fill_constant_0.tmp_0
-                #   - lod: {}
-                #   - place: CPUPlace()
-                #   - shape: [2, 3]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [2 2 2 2 2 2]
-            except ValueError as e:
-                print("Assert Exception Example")
+            >>> exe = paddle.static.Executor()
+            >>> try:
+            ...     exe.run(paddle.static.default_main_program())
+            ...     # Print x and throws ValueError
+            ...     # Example printed message for x:
+            ...     #
+            ...     # Variable: fill_constant_0.tmp_0
+            ...     #   - lod: {}
+            ...     #   - place: CPUPlace()
+            ...     #   - shape: [2, 3]
+            ...     #   - layout: NCHW
+            ...     #   - dtype: float
+            ...     #   - data: [2 2 2 2 2 2]
+            ... except ValueError as e:
+            ...     print("Assert Exception Example")
 
     '''
     check_variable_and_dtype(
@@ -165,17 +165,21 @@ class ConditionalBlock:
     Examples:
         .. code-block:: python
 
-             import paddle
-             import paddle.fluid as fluid
-             cond = paddle.less_than(x=label, y=limit)
-             true_image, false_image = layers.split_lod_tensor(
-                 input=image, mask=cond)
-             true_cond = layers.ConditionalBlock([true_image])
+            >>> import paddle
+            >>> from paddle.static.nn.control_flow import ConditionalBlock
 
-             with true_cond.block():
-                 ...
-             with false_cond.block():
-                 ...
+            >>> label = paddle.rand([1])
+            >>> limit = paddle.ones([1]) * 0.5
+            >>> cond = paddle.less_than(x=label, y=limit)
+            >>> image = paddle.ones([1])
+
+            >>> true_image = image[cond]
+            >>> true_cond = ConditionalBlock([true_image])
+
+            >>> with true_cond.block():
+            ...     pass
+            >>> with false_cond.block():
+            ...     pass
     '''
 
     def __init__(self, inputs, is_scalar_condition=False, name=None):
@@ -425,59 +429,61 @@ class While:
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Examples 1:
-          .. code-block:: python
+    Examples:
+        .. code-block:: python
+            :name: example-1
 
-            import paddle
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            i = paddle.full(shape=[1], dtype='int64', fill_value=0)           # loop counter
+            >>> i = paddle.full(shape=[1], dtype='int64', fill_value=0)           # loop counter
 
-            loop_len = paddle.full(shape=[1],dtype='int64', fill_value=10)    # loop length
+            >>> loop_len = paddle.full(shape=[1],dtype='int64', fill_value=10)    # loop length
 
-            cond = paddle.less_than(x=i, y=loop_len)
-            while_op = paddle.static.nn.control_flow.While(cond=cond)
-            with while_op.block():
-                i = paddle.increment(x=i, value=1)
-                paddle.assign(paddle.less_than(x=i, y=loop_len), output=cond)
+            >>> cond = paddle.less_than(x=i, y=loop_len)
+            >>> while_op = paddle.static.nn.control_flow.While(cond=cond)
+            >>> with while_op.block():
+            ...     i = paddle.increment(x=i, value=1)
+            ...     paddle.assign(paddle.less_than(x=i, y=loop_len), output=cond)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
 
-            res = exe.run(paddle.static.default_main_program(), feed={}, fetch_list=[i])
-            print(res) # [array([10])]
+            >>> res = exe.run(paddle.static.default_main_program(), feed={}, fetch_list=[i])
+            >>> print(res)
+            [array([10], dtype=int64)]
 
+        .. code-block:: python
+            :name: example-2
 
-    Examples 2:
-          .. code-block:: python
+            >>> import paddle
+            >>> import numpy as np
 
-            import paddle
-            import numpy as np
+            >>> paddle.enable_static()
 
-            paddle.enable_static()
+            >>> i = paddle.full(shape=[1], dtype='int64', fill_value=0)
+            >>> loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
+            >>> one = paddle.full(shape=[1], dtype='float32', fill_value=1)
+            >>> data = paddle.static.data(name='data', shape=[1], dtype='float32')
+            >>> sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained >>> ouside of While, which name should be different from the variable inside the While to be obtained
 
-            i = paddle.full(shape=[1], dtype='int64', fill_value=0)
-            loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
-            one = paddle.full(shape=[1], dtype='float32', fill_value=1)
-            data = paddle.static.data(name='data', shape=[1], dtype='float32')
-            sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
+            >>> cond = paddle.less_than(x=i, y=loop_len)
+            >>> while_op = paddle.static.nn.control_flow.While(cond=cond)
+            >>> with while_op.block():
+            ...     sums_tensor = paddle.add(x=data, y=data)
+            ...     paddle.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
+            ...     i = paddle.increment(x=i, value=1)
+            ...     data = paddle.add(x=data, y=one)
+            ...     paddle.assign(paddle.less_than(x=i, y=loop_len), output=cond)
 
-            cond = paddle.less_than(x=i, y=loop_len)
-            while_op = paddle.static.nn.control_flow.While(cond=cond)
-            with while_op.block():
-                sums_tensor = paddle.add(x=data, y=data)
-                paddle.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
-                i = paddle.increment(x=i, value=1)
-                data = paddle.add(x=data, y=one)
-                paddle.assign(paddle.less_than(x=i, y=loop_len), output=cond)
-
-            feed_data = np.ones(1).astype('float32')
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
-            res = exe.run(paddle.static.default_main_program(), feed={'data': feed_data}, fetch_list=sums)
-            print(res[0])  # [2.]    # Because the data in While does not update the value outside the While, the value of sums is [2.] after the loop
+            >>> feed_data = np.ones(1).astype('float32')
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> res = exe.run(paddle.static.default_main_program(), feed={'data': feed_data}, fetch_list=sums)
+            >>> print(res[0]) # Because the data in While does not update the value outside the While, the value of sums is [2.] after the loop
+            [2.]
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -619,26 +625,27 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            def cond(i, ten):
-                return i < ten
+            >>> def cond(i, ten):
+            ...     return i < ten
 
-            def body(i, ten):
-                i = i + 1
-                return [i, ten]
+            >>> def body(i, ten):
+            ...     i = i + 1
+            ...     return [i, ten]
 
-            main_program = paddle.static.default_main_program()
-            startup_program = paddle.static.default_startup_program()
-            with paddle.static.program_guard(main_program, startup_program):
-                i = paddle.full(shape=[1], fill_value=0, dtype='int64')     # loop counter
-                ten = paddle.full(shape=[1], fill_value=10, dtype='int64')  # loop length
-                i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
+            >>> main_program = paddle.static.default_main_program()
+            >>> startup_program = paddle.static.default_startup_program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     i = paddle.full(shape=[1], fill_value=0, dtype='int64')     # loop counter
+            ...     ten = paddle.full(shape=[1], fill_value=10, dtype='int64')  # loop length
+            ...     i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
 
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                res = exe.run(main_program, feed={}, fetch_list=[i])
-                print(res) # [array([10])]
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
+            ...     res = exe.run(main_program, feed={}, fetch_list=[i])
+            ...     print(res)
+            [array([10], dtype=int64)]
     """
     helper = LayerHelper('while_loop', **locals())
 
@@ -783,43 +790,42 @@ def case(pred_fn_pairs, default=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            paddle.enable_static()
+            >>> def fn_1():
+            ...     return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
 
-            def fn_1():
-                return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
+            >>> def fn_2():
+            ...     return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
 
-            def fn_2():
-                return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
+            >>> def fn_3():
+            ...     return paddle.full(shape=[3], dtype='int32', fill_value=3)
 
-            def fn_3():
-                return paddle.full(shape=[3], dtype='int32', fill_value=3)
+            >>> main_program = paddle.static.default_startup_program()
+            >>> startup_program = paddle.static.default_main_program()
 
-            main_program = paddle.static.default_startup_program()
-            startup_program = paddle.static.default_main_program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     x = paddle.full(shape=[1], dtype='float32', fill_value=0.3)
+            ...     y = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
+            ...     z = paddle.full(shape=[1], dtype='float32', fill_value=0.2)
 
-            with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.full(shape=[1], dtype='float32', fill_value=0.3)
-                y = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
-                z = paddle.full(shape=[1], dtype='float32', fill_value=0.2)
+            ...     pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
+            ...     pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            ...     pred_3 = paddle.equal(x, y)      # false: 0.3 == 0.1
 
-                pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
-                pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
-                pred_3 = paddle.equal(x, y)      # false: 0.3 == 0.1
+            ...     # Call fn_1 because pred_1 is True
+            ...     out_1 = paddle.static.nn.case(
+            ...         pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
 
-                # Call fn_1 because pred_1 is True
-                out_1 = paddle.static.nn.case(
-                    pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
+            ...     # Argument default is None and no pred in pred_fn_pairs is True. fn_3 will be called.
+            ...     # because fn_3 is the last callable in pred_fn_pairs.
+            ...     out_2 = paddle.static.nn.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
 
-                # Argument default is None and no pred in pred_fn_pairs is True. fn_3 will be called.
-                # because fn_3 is the last callable in pred_fn_pairs.
-                out_2 = paddle.static.nn.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
-
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                res_1, res_2 = exe.run(main_program, fetch_list=[out_1, out_2])
-                print(res_1)  # [[1. 1.]]
-                print(res_2)  # [3 3 3]
+            ...     exe = paddle.static.Executor(paddle.CPUPlace())
+            ...     res_1, res_2 = exe.run(main_program, fetch_list=[out_1, out_2])
+            ...     print(res_1, res_2)
+            [[1. 1.]] [3 3 3]
     '''
     helper = LayerHelper('case', **locals())
 
@@ -919,45 +925,45 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            def fn_1():
-                return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
+            >>> def fn_1():
+            ...    return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
 
-            def fn_2():
-                return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
+            >>> def fn_2():
+            ...    return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
 
-            def fn_3():
-                return paddle.full(shape=[3], dtype='int32', fill_value=3)
+            >>> def fn_3():
+            ...    return paddle.full(shape=[3], dtype='int32', fill_value=3)
 
-            main_program = paddle.static.default_startup_program()
-            startup_program = paddle.static.default_main_program()
-            with paddle.static.program_guard(main_program, startup_program):
-                index_1 = paddle.full(shape=[1], dtype='int32', fill_value=1)
-                index_2 = paddle.full(shape=[1], dtype='int32', fill_value=2)
+            >>> main_program = paddle.static.default_startup_program()
+            >>> startup_program = paddle.static.default_main_program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...    index_1 = paddle.full(shape=[1], dtype='int32', fill_value=1)
+            ...    index_2 = paddle.full(shape=[1], dtype='int32', fill_value=2)
 
-                out_1 = paddle.static.nn.switch_case(
-                    branch_index=index_1,
-                    branch_fns={1: fn_1, 2: fn_2},
-                    default=fn_3)
+            ...    out_1 = paddle.static.nn.switch_case(
+            ...        branch_index=index_1,
+            ...        branch_fns={1: fn_1, 2: fn_2},
+            ...        default=fn_3)
 
-                out_2 = paddle.static.nn.switch_case(
-                    branch_index=index_2,
-                    branch_fns=[(1, fn_1), (2, fn_2)],
-                    default=fn_3)
+            ...    out_2 = paddle.static.nn.switch_case(
+            ...        branch_index=index_2,
+            ...        branch_fns=[(1, fn_1), (2, fn_2)],
+            ...        default=fn_3)
 
-                # Argument default is None and no index matches. fn；,,_3 will be called because of the max index 7.
-                out_3 = paddle.static.nn.switch_case(
-                    branch_index=index_2,
-                    branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
+            ...    # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
+            ...    out_3 = paddle.static.nn.switch_case(
+            ...        branch_index=index_2,
+            ...        branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
 
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
-                print(res_1)  # [[1. 1.]]
-                print(res_2)  # [[2 2] [2 2]]
-                print(res_3)  # [3 3 3]
+            ...    exe = paddle.static.Executor(paddle.CPUPlace())
+            ...    res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
+            ...    print(res_1, res_2, res_3)
+            [[1. 1.]] [[2 2]
+             [2 2]] [3 3 3]
     '''
     helper = LayerHelper('switch_case', **locals())
 
@@ -1091,14 +1097,14 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
         Examples:
             .. code-block:: python
-                :name: code-example-1
+                :name: example-1
 
-                import paddle
+                >>> import paddle
 
-                a = paddle.zeros((1, 1))
-                b = paddle.zeros((1, 1))
-                c = a * b
-                out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
+                >>> a = paddle.zeros((1, 1))
+                >>> b = paddle.zeros((1, 1))
+                >>> c = a * b
+                >>> out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
 
         No matter whether ``a < b`` , ``c = a * b`` will be in net building and
         run. ``a + c`` and ``b * b`` will be in net building, but only one
@@ -1126,9 +1132,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-2
+            :name: example-2
 
-            import paddle
+            >>> import paddle
 
             #
             # pseudocode:
@@ -1138,28 +1144,30 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             #     return 3, 2
             #
 
-            def true_func():
-                return paddle.full(shape=[1, 2], dtype='int32',
-                                   fill_value=1), paddle.full(shape=[2, 3],
-                                                              dtype='bool',
-                                                              fill_value=True)
+            >>> def true_func():
+            ...     return paddle.full(shape=[1, 2], dtype='int32',
+            ...                         fill_value=1), paddle.full(shape=[2, 3],
+            ...                                                     dtype='bool',
+            ...                                                     fill_value=True)
 
 
-            def false_func():
-                return paddle.full(shape=[3, 4], dtype='float32',
-                                   fill_value=3), paddle.full(shape=[4, 5],
-                                                              dtype='int64',
-                                                              fill_value=2)
+            >>> def false_func():
+            ...     return paddle.full(shape=[3, 4], dtype='float32',
+            ...                         fill_value=3), paddle.full(shape=[4, 5],
+            ...                                                     dtype='int64',
+            ...                                                     fill_value=2)
 
 
-            x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
-            y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
-            pred = paddle.less_than(x=x, y=y, name=None)
-            ret = paddle.static.nn.cond(pred, true_func, false_func)
-            # ret is a tuple containing 2 tensors
-            # ret[0] = [[1 1]]
-            # ret[1] = [[ True  True  True]
-            #           [ True  True  True]]
+            >>> x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
+            >>> y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
+            >>> pred = paddle.less_than(x=x, y=y, name=None)
+            >>> ret = paddle.static.nn.cond(pred, true_func, false_func)
+            >>> # ret is a tuple containing 2 tensors
+            >>> print(ret)
+            (Tensor(shape=[1, 2], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+                [[1, 1]]), Tensor(shape=[2, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+                [[True, True, True],
+                    [True, True, True]]))
 
     """
     if in_dygraph_mode():
@@ -1665,24 +1673,24 @@ def Print(
     Examples:
         .. code-block:: python
 
-           import paddle
+            >>> import paddle
 
-           paddle.enable_static()
+            >>> paddle.enable_static()
 
-           x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
-           out = paddle.static.Print(x, message="The content of input layer:")
+            >>> x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
+            >>> out = paddle.static.Print(x, message="The content of input layer:")
 
-           main_program = paddle.static.default_main_program()
-           exe = paddle.static.Executor(place=paddle.CPUPlace())
-           res = exe.run(main_program, fetch_list=[out])
-           # Variable: fill_constant_1.tmp_0
-           #   - message: The content of input layer:
-           #   - lod: {}
-           #   - place: CPUPlace
-           #   - shape: [2, 3]
-           #   - layout: NCHW
-           #   - dtype: long
-           #   - data: [3 3 3 3 3 3]
+            >>> main_program = paddle.static.default_main_program()
+            >>> exe = paddle.static.Executor(place=paddle.CPUPlace())
+            >>> res = exe.run(main_program, fetch_list=[out])
+            Variable: fill_constant_1.tmp_0
+            - message: The content of input layer:
+            - lod: {}
+            - place: Place(cpu)
+            - shape: [2, 3]
+            - layout: NCHW
+            - dtype: long
+            - data: [3 3 3 3 3 3]
     '''
     check_variable_and_dtype(
         input,
