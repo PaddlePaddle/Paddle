@@ -30,8 +30,6 @@ void FTRLOpKernel(const Context& ctx,
                   const DenseTensor& param,
                   const DenseTensor& squared_accumulator,
                   const DenseTensor& linear_accumulator,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
                   float l1,
                   float l2,
                   float lr_power,
@@ -48,8 +46,6 @@ void FTRLOpKernel(const Context& ctx,
   auto sq_accum = phi::EigenVector<T>::Flatten(squared_accumulator);
   auto lin_accum = phi::EigenVector<T>::Flatten(linear_accumulator);
   auto lr = phi::EigenVector<T>::Flatten(learningrate);
-  auto x_t = phi::EigenVector<T>::Flatten(x);
-  auto y_t = phi::EigenVector<T>::Flatten(y);
 
   auto x_out_t = phi::EigenVector<T>::Flatten(*x_out);
   auto y_out_t = phi::EigenVector<T>::Flatten(*y_out);
