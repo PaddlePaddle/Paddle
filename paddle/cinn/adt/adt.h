@@ -61,6 +61,8 @@ class Tuple {
       : tuple_(
             std::make_shared<std::tuple<Ts...>>(std::forward<Args>(args)...)) {}
 
+  const std::tuple<Ts...>& tuple() const { return tuple_; }
+
  protected:
   std::shared_ptr<std::tuple<Ts...>> tuple_;
 };

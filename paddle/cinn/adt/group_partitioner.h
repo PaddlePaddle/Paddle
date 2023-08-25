@@ -32,9 +32,12 @@ candidate_anchor_tensors 保存候选的 tAnchor Variable
 filtered_anchor_tensor 保存过滤出来的 tAnchor Variable
 */
 
+// 1. 返回值的数据结构，需要明确，std::unordered_map<Index,
+// std::vector<FakeOpPlaceHolder>>
+
 std::unordered_map<Index, std::vector<FakeOpPlaceHolder>> PartitionGraph(
     const Graph& graph) {
-  std::unordered_set<Index> candidate_index = InitCandidateIndex(graph);
+  std::unordered_set<Variable> candidate_index = InitCandidateIndex(graph);
   std::unordered_set<Index> selected_anchor_index;
 
   IGroupList igroups;
@@ -43,9 +46,9 @@ std::unordered_map<Index, std::vector<FakeOpPlaceHolder>> PartitionGraph(
     Index candidate = Pick(candidate_index);
 
     EquationIGroupOps igroup = Walk(graph, candidate);
-    CleanIGroup(igroups, igroup);
-    SaveIGroup(igroups, igroup);
-    CleanCandidates(graph, igroup, &candidate_index);
+    CleanSelectedSet(igroups, igroup);
+    AddToSelectedSet(igroups, igroup);
+    CleanCandidateSet(graph, igroup, &candidate_index);
   }
 }
 

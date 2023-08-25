@@ -33,9 +33,9 @@ class EquationGraphTopoWalker final {
   EquationGraphTopoWalker(const F4VVisitor& NextFunctionsVisitor,
                           const V4FVisitor& InputVariablesVisitor,
                           const V4FVisitor& OutputVariablesVisitor)
-      : : NextFunctionsVisitor_(NextFunctionsVisitor),
-          InputVariablesVisitor_(InputVariablesVisitor),
-          OutputVariablesVisitor_(OutputVariablesVisitor) {}
+      : NextFunctionsVisitor_(NextFunctionsVisitor),
+        InputVariablesVisitor_(InputVariablesVisitor),
+        OutputVariablesVisitor_(OutputVariablesVisitor) {}
   ~EquationGraphTopoWalker() = default;
 
   void operator()(VT start, const VariableVisitorT& VariableVisitor) const {
