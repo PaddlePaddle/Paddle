@@ -54,6 +54,18 @@ DenseTensor ReshardAllGatherFunctor(DeviceContext* dev_ctx,
     return out;
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (phi::CustomContext::classof(dev_ctx)) {
+    PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(
+        input.dtype(), "AllGather", ([&] {
+          AllGather<data_t>(static_cast<const CustomContext&>(*dev_ctx),
+                            input,
+                            world_size,
+                            &out);
+        }));
+    return out;
+  }
+#endif
   PADDLE_THROW(phi::errors::Unimplemented(
       "The all_gather in reshard only supported on CPU and GPU for now."));
 }
