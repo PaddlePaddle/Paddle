@@ -1153,7 +1153,9 @@ def OpGenerator(
 
                 # generate op vjp function str
                 op_vjp_str = ''
-
+            if dialect_name == "cinn":
+                logging.warning("cinn is currently not support Vjp function")
+            else:
                 # TODO(chenzhiyang) add vjp gen code
                 if (
                     op_info.backward_name
@@ -1180,9 +1182,7 @@ def OpGenerator(
                 ops_defined_list.append(op_infer_meta_str)
                 # NOTE(chenxi67)skip if dialect_name==cinn
                 if dialect_name == "cinn":
-                    logging.warning(
-                        "cinn is currently not support Vjp function"
-                    )
+                    pass
                 else:
                     ops_vjp_defined_list.append(op_vjp_str)
 
