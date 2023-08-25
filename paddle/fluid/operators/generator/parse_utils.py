@@ -169,6 +169,7 @@ def parse_candidates(s: str) -> Dict[str, Any]:
     delimiter = ">" if ">" in s else ","
     ordered = delimiter == ">"
     candidates = parse_plain_list(s, delimiter)
+    candidates = list(filter(None, candidates))
     return {"ordered": ordered, "candidates": candidates}
 
 
@@ -523,14 +524,20 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
 
     if is_base_op:
         # kernel
-        kernel = parse_kernel(op_name, op_entry["kernel"])
-        if kernel["param"] is None:
-            kernel["param"] = input_names + attr_names
+        if "kernel" in op_entry:
+            kernel = parse_kernel(op_name, op_entry["kernel"])
+            if kernel["param"] is None:
+                kernel["param"] = input_names + attr_names
+            op.update({"kernel": kernel})
 
         # infer meta
-        infer_meta = parse_infer_meta(op_entry["infer_meta"])
-        if infer_meta["param"] is None:
-            infer_meta["param"] = copy(kernel["param"])
+        if "infer_meta" in op_entry:
+            infer_meta = parse_infer_meta(op_entry["infer_meta"])
+            if infer_meta["param"] is None:
+                infer_meta["param"] = copy(kernel["param"])
+            op.update({"infer_meta": infer_meta})
+        # else:
+        #     assert(outputs == []), f"No infer_meta is given in {op_name}."
 
         # inplace
         if "inplace" in op_entry:
@@ -544,8 +551,6 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
             view_pairs = None
         op.update(
             {
-                "infer_meta": infer_meta,
-                "kernel": kernel,
                 "inplace": inplace_pairs,
                 "view": view_pairs,
             }
