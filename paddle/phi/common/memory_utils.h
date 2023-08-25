@@ -24,9 +24,14 @@
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
 
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
 #include <cuda_runtime.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
 #endif
 
 namespace phi {
