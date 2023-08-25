@@ -432,7 +432,7 @@ TEST(enforce, musa_success) {
       CheckCudaStatusFailure(MUBLAS_STATUS_INVALID_VALUE, "MUBLAS error"));
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
-  EXPECT_TRUE(CheckCudaStatusSuccess(mcclSuccess));
+  EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(mcclUnhandledMusaError, "MCCL error"));
   EXPECT_TRUE(CheckCudaStatusFailure(mcclSystemError, "MCCL error"));
   EXPECT_TRUE(CheckCudaStatusFailure(mcclInternalError,
