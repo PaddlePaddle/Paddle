@@ -213,8 +213,9 @@ void ElementMulAddFusePass::FuseElementMulAdd(ir::Graph* graph) const {
     auto y_shape = mul_y->Var()->GetShape();
     auto w_shape = add_w->Var()->GetShape();
     if (x_shape.size() == y_shape.size() && x_shape.size() == w_shape.size()) {
-      for (int i = 0; i < x_shape.size(); ++i) {
-        if (x_shape[i] != y_shape[i] || x_shape[i] != w_shape[i]) {
+      for (size_t i = 0; i < x_shape.size(); ++i) {
+        if (x_shape[i] != y_shape[i] || x_shape[i] != w_shape[i] ||
+            x_shape[i] == -1) {
           flag = false;
         }
       }
@@ -278,8 +279,8 @@ void ElementMulAddFusePass::FuseElementMulAddWithOnlyXY(
     auto x_shape = mul_x->Var()->GetShape();
     auto y_shape = mul_y->Var()->GetShape();
     if (x_shape.size() == y_shape.size()) {
-      for (int i = 0; i < x_shape.size(); ++i) {
-        if (x_shape[i] != y_shape[i]) {
+      for (size_t i = 0; i < x_shape.size(); ++i) {
+        if (x_shape[i] != y_shape[i] || x_shape[i] == -1) {
           flag = false;
         }
       }
