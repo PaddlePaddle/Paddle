@@ -131,7 +131,6 @@ def gen_op_vjp_str(
             )
     op_attribute_list = op_grad_info.attribute_name_list
     attribute_code = ''
-    print(op_class_name, op_info.attribute_name_list,op_info.mutable_attribute_name_list)
     for idx in range(len(op_attribute_list)):
         build_args_str += op_attribute_list[idx] + ", "
         if op_attribute_list[idx] in op_info.attribute_name_list:
