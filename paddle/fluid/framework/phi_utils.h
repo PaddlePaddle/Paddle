@@ -97,12 +97,5 @@ phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable);
 phi::IntArray MakePhiIntArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
 
-/* Attribute translate */
-
-// TODO(chenweihang): If we need to be fluid-compatible, we also need to
-// convert some attributes input in tensor form to phi attributes
-phi::Attribute TransFluidAttributeToPhiAttribute(
-    const paddle::framework::Attribute attr, const std::string& attr_name);
-
 }  // namespace framework
 }  // namespace paddle

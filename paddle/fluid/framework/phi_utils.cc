@@ -360,27 +360,5 @@ phi::IntArray MakePhiIntArrayFromVarList(
   return result;
 }
 
-// TODO(dev): Add related translate branch by needed
-phi::Attribute TransFluidAttributeToPhiAttribute(
-    const paddle::framework::Attribute attr, const std::string& attr_name) {
-  phi::Attribute phi_attr;
-  switch (AttrTypeID(attr)) {
-    case framework::proto::AttrType::FLOAT:
-      phi_attr = PADDLE_GET_CONST(float, attr);
-      break;
-    case framework::proto::AttrType::INT:
-      phi_attr = PADDLE_GET_CONST(int, attr);
-      break;
-    case framework::proto::AttrType::BOOLEAN:
-      phi_attr = PADDLE_GET_CONST(bool, attr);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported cast fluid attribute `%s` to phi attribute.",
-          attr_name));
-  }
-  return phi_attr;
-}
-
 }  // namespace framework
 }  // namespace paddle

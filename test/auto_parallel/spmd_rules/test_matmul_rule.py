@@ -25,7 +25,8 @@ from paddle.framework import core
 
 class TestMatmulSPMDRule(unittest.TestCase):
     def setUp(self):
-        # self.rule = get_spmd_rule("matmul")
+        # After replaced all spmd rules by phi impl, we can recover the
+        # api name to `get_spmd_rule`
         self.rule = core.get_phi_spmd_rule("matmul")
 
         x_shape = [64, 32]
