@@ -61,7 +61,7 @@ Conv2dBiasPattern::Conv2dBiasPattern(PDPattern* pattern,
                               auto y_shape = node->Var()->GetShape();
                               size_t y_rank = y_shape.size();
                               return y_rank == 4 && y_shape[0] == 1 &&
-                                     y_shape[1] == 1 && y_shape[3] == 1;
+                                     y_shape[2] == 1 && y_shape[3] == 1;
                             });
   auto* ew_bias_add_out = pattern->NewNode(ew_bias_add_out_repr())
                               ->assert_is_op_output("elementwise_add", "Out");
@@ -137,11 +137,16 @@ void Conv2dBiasFusePass::TransEwBiasAdd(ir::Graph* graph) const {
     GET_IR_NODE(ew_bias_add_y);
     GET_IR_NODE(ew_bias_add_out);
 
+    auto* scope = param_scope();
     // resize 4D dims of ew_bias_add_y to 1-D dim
     auto ew_bias_add_desc = ew_bias_add->Op();
     ew_bias_add_desc->SetAttr("axis", 1);
-    auto y_shape = ew_bias_add_y->Var()->GetShape();
-    ew_bias_add_y->Var()->SetShape({y_shape[2]});
+    auto* ew_bias_add_y_desc = ew_bias_add_y->Var();
+    auto y_shape = ew_bias_add_y_desc->GetShape();
+    ew_bias_add_y_desc->SetShape({y_shape[1]});
+    auto* ew_bias_add_y_tensor =
+        scope->GetVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
+    ew_bias_add_y_tensor->Resize(phi::make_ddim({y_shape[1]}));
     ew_bias_add_desc->Flush();
 
     found_subgraph_count++;

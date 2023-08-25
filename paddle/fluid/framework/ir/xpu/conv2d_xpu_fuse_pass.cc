@@ -454,6 +454,10 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
+    VLOG(1) << "with_conv_bias : " << with_conv_bias << " with_bn : " << with_bn
+            << " with_scale : " << with_scale
+            << " with_branch_x : " << with_branch_x
+            << " with_branch_y : " << with_branch_y;
     // recompute bias and weight for conv2d_xpu op
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
@@ -542,31 +546,35 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         }
       }
     }
-    // get attrs of scale
-    auto bias_len = filter_dims[1];
-    float scale_val_ = 1.f;
-    float bias_val_ = 0.f;
-    scale_val_ = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
-    bias_val_ = PADDLE_GET_CONST(float, scale->Op()->GetAttr("bias"));
-    bool bias_after_scale_ =
-        PADDLE_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
-    // recompute bias as scale op
-    auto fusion_bias_t =
-        scope->Var(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
-    float* fusion_bias_ptr =
-        fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-    for (int i = 0; i < bias_len; ++i) {
-      if (bias_after_scale_) {
-        fusion_bias_ptr[i] = fusion_bias_ptr[i] * scale_val_ + bias_val_;
-      } else {
-        fusion_bias_ptr[i] = (fusion_bias_ptr[i] + bias_val_) * scale_val_;
+    VLOG(1) << "conv_filter name : " << conv_filter->Name()
+            << " fusion_bias name: " << fusion_bias_node->Name();
+    // deal with scale op
+    if (with_scale) {
+      auto bias_len = filter_dims[0];
+      float scale_val_ = 1.f;
+      float bias_val_ = 0.f;
+      scale_val_ = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
+      bias_val_ = PADDLE_GET_CONST(float, scale->Op()->GetAttr("bias"));
+      bool bias_after_scale_ =
+          PADDLE_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
+      // recompute bias as scale op
+      auto fusion_bias_t = scope->GetVar(fusion_bias_node->Name())
+                               ->GetMutable<phi::DenseTensor>();
+      float* fusion_bias_ptr =
+          fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+      for (int i = 0; i < bias_len; ++i) {
+        if (bias_after_scale_) {
+          fusion_bias_ptr[i] = fusion_bias_ptr[i] * scale_val_ + bias_val_;
+        } else {
+          fusion_bias_ptr[i] = (fusion_bias_ptr[i] + bias_val_) * scale_val_;
+        }
       }
-    }
-    // recompute weight as scale op
-    float* filter_ptr =
-        filter_t->mutable_data<float>(paddle::platform::CPUPlace());
-    for (int i = 0; i < filter_len; ++i) {
-      filter_ptr[i] *= scale_val_;
+      // recompute weight as scale op
+      float* filter_ptr =
+          filter_t->mutable_data<float>(paddle::platform::CPUPlace());
+      for (int i = 0; i < filter_len; ++i) {
+        filter_ptr[i] *= scale_val_;
+      }
     }
     // filter max
     Node* filter_int16 = nullptr;
@@ -660,6 +668,8 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
       IR_NODE_LINK_TO(conv2d_xpu, act_out);
     } else if (ew_branch_add_out) {
       IR_NODE_LINK_TO(conv2d_xpu, ew_branch_add_out);
+    } else if (scale_out) {
+      IR_NODE_LINK_TO(conv2d_xpu, scale_out);
     } else if (bn_out) {
       IR_NODE_LINK_TO(conv2d_xpu, bn_out);
     } else if (ew_bias_add_out) {

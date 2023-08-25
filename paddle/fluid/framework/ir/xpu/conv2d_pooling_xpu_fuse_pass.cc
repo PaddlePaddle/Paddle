@@ -196,7 +196,7 @@ Conv2dPoolingXPUPattern::Conv2dPoolingXPUPattern(PDPattern* pattern,
     act_out = bn_out;
   }
   // pool2d op
-  act_out->assert_is_op_output("pool2d", "X");
+  act_out->assert_is_op_input("pool2d", "X");
   pool2d = pattern->NewNode(pool2d_repr())
                ->assert_is_op("pool2d")
                ->assert_more([](Node* node) {
@@ -475,6 +475,8 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
                           conv_paddings.size()));
     conv2d_pooling_xpu_op_desc.SetAttr("paddings", conv_paddings);
     conv2d_pooling_xpu_op_desc.SetAttr(
+        "groups", PADDLE_GET_CONST(int, conv->Op()->GetAttr("groups")));
+    conv2d_pooling_xpu_op_desc.SetAttr(
         "dilations",
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("dilations")));
     conv2d_pooling_xpu_op_desc.SetAttr(
@@ -509,7 +511,7 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
     IR_NODE_LINK_TO(conv2d_pooling_xpu, conv2d_pooling_xpu_out_max);
     // delete useless node
     std::unordered_set<const Node*> delete_nodes = {
-        conv, conv_filter, conv_out};
+        conv, conv_filter, conv_out, pool2d};
     if (act != nullptr) {
       delete_nodes.insert(act);
       delete_nodes.insert(act_out);
