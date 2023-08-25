@@ -1328,7 +1328,6 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
      defined(PADDLE_WITH_MUSA)) &&                               \
     (!defined(PADDLE_WITH_NCCL) && !defined(PADDLE_WITH_RCCL) && \
      !defined(PADDLE_WITH_MCCL))
-
   if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
         device_count,

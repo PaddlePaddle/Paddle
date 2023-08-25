@@ -42,7 +42,6 @@ struct TestReduceOpHandle {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
-
   std::unique_ptr<platform::NCCLContextMap> nccl_ctxs_;
 #endif
 
@@ -52,7 +51,6 @@ struct TestReduceOpHandle {
     }
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
-
     if (nccl_ctxs_) {
       nccl_ctxs_->WaitAll();
     }
@@ -64,7 +62,6 @@ struct TestReduceOpHandle {
     if (use_gpu) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
-
       int count = p::GetGPUDeviceCount();
       if (count <= 1) {
         LOG(WARNING) << "Cannot test multi-gpu Broadcast, because the CUDA "
@@ -91,7 +88,6 @@ struct TestReduceOpHandle {
       }
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
-
       nccl_ctxs_.reset(nullptr);
 #endif
     }
@@ -114,7 +110,6 @@ struct TestReduceOpHandle {
     if (use_gpu_) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
-
       op_handle_.reset(new ReduceOpHandle(
           nodes.back().get(), local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
@@ -124,7 +119,6 @@ struct TestReduceOpHandle {
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
-
       op_handle_.reset(new ReduceOpHandle(
           nodes.back().get(), local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
