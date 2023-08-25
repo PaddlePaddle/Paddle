@@ -115,11 +115,11 @@ def check_layer_numerics(func):
         if args:
             # Set temp data and temp.gradient = False
             start_data = args[0]
+            if not isinstance(start_data, paddle.Tensor):
+                raise RuntimeError("First input of this layer must be tensor.")
             start_data.stop_gradient = False
             modified_args = list(args)  # Convert args to a mutable list
             # Set FLAGS_check_nan_inf = 1
-            if not isinstance(start_data, paddle.Tensor):
-                raise RuntimeError("First input of this layer must be tensor.")
             modified_args[0] = _C_ops.enable_check_model_nan_inf(start_data, 1)
             # Call the forward function
             out_data = func(self, *modified_args, **kwargs)
