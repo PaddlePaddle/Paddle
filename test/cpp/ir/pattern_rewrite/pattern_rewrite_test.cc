@@ -488,9 +488,11 @@ OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
                      "user_workspace_size"},
                     {"input"},
                     {},
+                    {},
                     {});
 
-  return std::make_tuple(inputs, attributes, outputs, run_time_info);
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "conv2d_fusion_test");
 }
 
 void Conv2dFusionOpTest::Build(ir::Builder &builder,

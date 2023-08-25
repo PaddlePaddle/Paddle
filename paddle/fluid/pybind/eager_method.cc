@@ -147,6 +147,15 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     return array;
   }
   auto tensor_dims = self->tensor.shape();
+#ifdef PADDLE_WITH_DISTRIBUTE
+  // Now the DistTensor's numpy() return the local tensor value
+  if (self->tensor.is_dist_tensor()) {
+    tensor_dims = phi::vectorize(
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->value()
+            .dims());
+  }
+#endif
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
   auto sizeof_dtype = phi::SizeOf(self->tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];     // NOLINT

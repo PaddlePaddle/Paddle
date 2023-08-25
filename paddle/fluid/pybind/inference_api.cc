@@ -544,7 +544,8 @@ void BindInferenceApi(py::module *m) {
          py::arg("mixed_precision"),
          py::arg("backend"),
          py::arg("keep_io_types") = true,
-         py::arg("black_list") = std::unordered_set<std::string>());
+         py::arg("black_list") = std::unordered_set<std::string>(),
+         py::arg("white_list") = std::unordered_set<std::string>());
 }
 
 namespace {
@@ -777,6 +778,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_enable_use_cutlass", &AnalysisConfig::Exp_EnableUseCutlass)
       .def("exp_disable_mixed_precision_ops",
            &AnalysisConfig::Exp_DisableMixedPrecisionOps)
+      .def("exp_enable_mixed_precision_ops",
+           &AnalysisConfig::Exp_EnableMixedPrecisionOps)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
@@ -918,6 +921,10 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableTensorRtInspector)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
+      .def("enable_tensorrt_explicit_quantization",
+           &AnalysisConfig::EnableTensorRtExplicitQuantization)
+      .def("tensorrt_explicit_quantization_enabled",
+           &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,

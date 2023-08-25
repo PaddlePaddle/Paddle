@@ -1,0 +1,240 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
+
+#include "xpu/kernel/cluster.h"
+#include "xpu/kernel/cluster_partition.h"
+#include "xpu/kernel/cluster_primitive.h"
+#include "xpu/kernel/xtdk_io.h"
+
+namespace xpu2 {
+namespace plugin {
+
+/*
+Kernel usage conditions: Dict is tiny, Local memory can be loaded in at once.
+Optimizer ideas:
+  - Reduce frequent memory handling, allocate fixed size buffers, accumulate
+data to buffer size and move it out together.
+
+ ********** Local Memory Addr **********
+        Part 1: dict(size = dict_idx_len * emb_dim)
+ -----------------------------------
+        Part 2: index(size = idx_len * sizeof(emb_idx_type))
+ -----------------------------------
+        Part 3: result
+ -----------------------------------
+*/
+
+template <typename emb_idx_type>
+static inline __device__ void embedding_fwd_kl2_tiny_dict_align64(
+    _global_ptr_ const emb_idx_type* idx,
+    _global_ptr_ const char* dict,
+    _global_ptr_ char* featvec,
+    int64_t emb_dim,
+    int64_t dict_idx_len,
+    int64_t idx_len,
+    int64_t padding_idx,
+    emb_idx_type start_index) {
+  int cid = core_id();
+  int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = ncores * cluster_num();
+  int64_t row_start = -1;
+  int64_t row_end = -1;
+  partition(tid, nthreads, idx_len, 1, &row_start, &row_end);
+
+  // 1. Pre allocation total Local Memory size = 6 KB
+  const int TOTAL_LM_SIZE = 6144;  // 6 KB
+  __simd__ char lm[TOTAL_LM_SIZE];
+
+  // 2. Load dict from Global Memory to Local memory only once.
+  int total_emb_dict_size = dict_idx_len * emb_dim;
+  GM2LM(dict, lm, total_emb_dict_size);
+
+  // residual_lm_space = index + result
+  int residual_lm_space = TOTAL_LM_SIZE - total_emb_dict_size -
+                          64;  // 64 to preventing memory overflow, because the
+                               // total index memory need to align to 64.
+
+  // The maximum count that can be processed in one iteration.
+  int idx_cnt = residual_lm_space / (sizeof(emb_idx_type) + emb_dim);
+  int index_lm_offset = total_emb_dict_size;
+  int result_lm_offset =
+      total_emb_dict_size +
+      (idx_cnt * sizeof(emb_idx_type) + 64) / 64 * 64;  // Align to 64 bytes
+
+  // 3. Loop Calc
+  for (int64_t i = row_start; i < row_end; i += idx_cnt) {
+    int curr_idx_len = idx_cnt;
+    if (i + idx_cnt >= row_end) {
+      curr_idx_len = row_end - i;
+    }
+    // 3.1 Load idx to Local Memory
+    GM2LM(idx + i, lm + index_lm_offset, curr_idx_len * sizeof(emb_idx_type));
+
+    // 3.2 Save result into result memory buffer.
+    for (int j = 0; j < curr_idx_len; j++) {
+      emb_idx_type real_index =
+          *((emb_idx_type*)(lm + index_lm_offset + j * sizeof(emb_idx_type))) -
+          start_index;
+      if (real_index == padding_idx) {
+        for (int koffset = 0; koffset < emb_dim; koffset += 64) {
+          float32x16_t v_src = vload_lm_float32x16_mz((void*)lm, 0);
+          vstore_lm_float32x16(
+              (void*)(lm + result_lm_offset + j * emb_dim + koffset), v_src);
+        }
+      } else {
+        if (real_index >= 0 && real_index < dict_idx_len) {
+          for (int koffset = 0; koffset < emb_dim; koffset += 64) {
+            float32x16_t v_src = vload_lm_float32x16(
+                (void*)(lm + real_index * emb_dim + koffset));
+            vstore_lm_float32x16(
+                (void*)(lm + result_lm_offset + j * emb_dim + koffset), v_src);
+          }
+        } else {
+          for (int koffset = 0; koffset < emb_dim; koffset += 64) {
+            float32x16_t v_src = vload_lm_float32x16_mz((void*)lm, 0);
+            vstore_lm_float32x16(
+                (void*)(lm + result_lm_offset + j * emb_dim + koffset), v_src);
+          }
+        }
+      }
+      mfence_lm();
+    }
+    // 3.3 Save result into global memory buffer.
+    LM2GM(lm + result_lm_offset,
+          (_global_ptr_ char*)(featvec + i * emb_dim),
+          curr_idx_len * emb_dim);
+  }
+}
+
+template <typename emb_idx_type>
+static inline __device__ void embedding_fwd_kl2_tiny_dict_not_align64(
+    _global_ptr_ const emb_idx_type* idx,
+    _global_ptr_ const char* dict,
+    _global_ptr_ char* featvec,
+    int64_t emb_dim,
+    int64_t dict_idx_len,
+    int64_t idx_len,
+    int64_t padding_idx,
+    emb_idx_type start_index) {
+  int cid = core_id();
+  int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = ncores * cluster_num();
+  int64_t row_start = -1;
+  int64_t row_end = -1;
+  partition(tid, nthreads, idx_len, 1, &row_start, &row_end);
+
+  // 1. Pre allocation total Local Memory size = 6 KB
+  const int TOTAL_LM_SIZE = 6144;  // 6 KB
+  __local__ char lm[TOTAL_LM_SIZE];
+
+  // 2. Load dict from Global Memory to Local memory only once.
+  GM2LM(dict, lm, dict_idx_len * emb_dim);
+
+  // residual_lm_space = index + result
+  int residual_lm_space = TOTAL_LM_SIZE - dict_idx_len * emb_dim;
+
+  // The maximum count that can be processed in one iteration.
+  int idx_cnt = residual_lm_space / (sizeof(emb_idx_type) + emb_dim);
+  int index_lm_offset = dict_idx_len * emb_dim;
+  int result_lm_offset = index_lm_offset + idx_cnt * sizeof(emb_idx_type);
+
+  // 3. Loop Calc
+  for (int64_t i = row_start; i < row_end; i += idx_cnt) {
+    int curr_idx_len = idx_cnt;
+    if (i + idx_cnt >= row_end) {
+      curr_idx_len = row_end - i;
+    }
+    // 3.1 Load idx to Local Memory
+    GM2LM(idx + i, lm + index_lm_offset, curr_idx_len * sizeof(emb_idx_type));
+
+    // 3.2 Save result into result memory buffer.
+    for (int j = 0; j < curr_idx_len; j++) {
+      emb_idx_type real_index =
+          *((emb_idx_type*)(lm + index_lm_offset + j * sizeof(emb_idx_type))) -
+          start_index;
+      if (real_index == padding_idx) {
+        for (int k = 0; k < emb_dim; k++) {
+          lm[result_lm_offset + j * emb_dim + k] = 0;
+        }
+      } else {
+        if (real_index >= 0 && real_index < dict_idx_len) {
+          for (int k = 0; k < emb_dim; k++) {
+            lm[result_lm_offset + j * emb_dim + k] =
+                lm[real_index * emb_dim + k];
+          }
+        } else {
+          for (int k = 0; k < emb_dim; k++) {
+            lm[result_lm_offset + j * emb_dim + k] = 0;
+          }
+        }
+      }
+      mfence_lm();
+    }
+    // 3.3 Save result into global memory buffer.
+    LM2GM(lm + result_lm_offset,
+          (_global_ptr_ char*)(featvec + i * emb_dim),
+          curr_idx_len * emb_dim);
+  }
+}
+
+template <typename emb_idx_type>
+__global__ void embedding_fwd_kl2_tiny_dict(const emb_idx_type* idx,
+                                            const char* dict,
+                                            char* featvec,
+                                            int64_t emb_dim,
+                                            int64_t dict_idx_len,
+                                            int64_t idx_len,
+                                            int64_t padding_idx,
+                                            emb_idx_type start_index) {
+  if (emb_dim % 64 == 0) {
+    embedding_fwd_kl2_tiny_dict_align64<emb_idx_type>(idx,
+                                                      dict,
+                                                      featvec,
+                                                      emb_dim,
+                                                      dict_idx_len,
+                                                      idx_len,
+                                                      padding_idx,
+                                                      start_index);
+  } else {
+    embedding_fwd_kl2_tiny_dict_not_align64<emb_idx_type>(idx,
+                                                          dict,
+                                                          featvec,
+                                                          emb_dim,
+                                                          dict_idx_len,
+                                                          idx_len,
+                                                          padding_idx,
+                                                          start_index);
+  }
+}
+
+#define _XPU_DEF__EMBEDDING_FWD_KL2_TINY_DICT_(EMB_IDX_TYPE)          \
+  template __global__ void embedding_fwd_kl2_tiny_dict<EMB_IDX_TYPE>( \
+      const EMB_IDX_TYPE* idx,                                        \
+      const char* dict,                                               \
+      char* featvec,                                                  \
+      int64_t emb_dim,                                                \
+      int64_t dict_idx_len,                                           \
+      int64_t idx_len,                                                \
+      int64_t padding_idx,                                            \
+      EMB_IDX_TYPE start_index);
+_XPU_DEF__EMBEDDING_FWD_KL2_TINY_DICT_(int);
+_XPU_DEF__EMBEDDING_FWD_KL2_TINY_DICT_(int64_t);
+
+}  // namespace plugin
+}  // namespace xpu2

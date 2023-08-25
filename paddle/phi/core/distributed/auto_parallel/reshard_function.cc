@@ -13,10 +13,53 @@
 // limitations under the License.
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/device_context.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace phi {
-namespace distributed {}  // namespace distributed
+namespace distributed {
+
+std::shared_ptr<DistTensor> ReshardFunction::Eval(
+    DeviceContext* dev_ctx,
+    const DistTensor& in,
+    const TensorDistAttr& out_dist_attr) {
+  std::shared_ptr<DistTensor> out = std::make_shared<DistTensor>();
+  Eval(dev_ctx, in, out_dist_attr, out.get());
+  return out;
+}
+
+void ReshardFunction::set_dist_props(DistTensor* tensor,
+                                     const DenseTensor& value,
+                                     const DDim& dims,
+                                     const TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(dims)),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The input dist_attr and dims are improper."));
+
+  tensor->value_ = value;
+  tensor->dims_ = dims;
+  tensor->dist_attr_ = dist_attr;
+}
+
+ReshardFunction* ChooseProperReshardFunction(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
+  for (const auto& func : GetReshardFunctionList()) {
+    if (func->IsSuitable(in, out_dist_attr)) {
+      return func.get();
+    }
+  }
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Can not reshard from in_dist_attr=%s to out_dist_attr=%s.",
+      in.dist_attr().to_string(),
+      out_dist_attr.to_string()));
+}
+
+std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList() {
+  static std::vector<std::unique_ptr<ReshardFunction>> func_list;
+  return func_list;
+}
+
+}  // namespace distributed
 }  // namespace phi

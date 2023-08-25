@@ -245,7 +245,8 @@ PD_INFER_DECL void ConvertToMixedPrecision(
     PrecisionType mixed_precision,
     PlaceType backend,
     bool keep_io_types = true,
-    std::unordered_set<std::string> black_list = {});
+    std::unordered_set<std::string> black_list = {},
+    std::unordered_set<std::string> white_list = {});
 
 namespace services {
 ///

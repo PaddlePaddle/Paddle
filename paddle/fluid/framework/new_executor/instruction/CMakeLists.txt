@@ -6,7 +6,7 @@ cc_library(
 
 if(WITH_CINN AND NOT CINN_ONLY)
   cc_library(
-    cinn_jit_instruction
+    cinn_jit_instruction NOT_FOR_INFER
     SRCS cinn_jit_instruction.cc
     DEPS phi cinnapi cinn_dialect)
 endif()
