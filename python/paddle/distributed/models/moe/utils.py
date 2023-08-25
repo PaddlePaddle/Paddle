@@ -29,8 +29,6 @@ def _number_count(numbers, upper_range):
         .. code-block:: python
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
-
-
             >>> numbers = [
             ...     [0, 2],
             ...     [0, 2]
