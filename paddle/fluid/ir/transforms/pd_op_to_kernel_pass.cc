@@ -664,6 +664,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       std::vector<phi::Place> out_places(op_item->num_results());
       // Copy op inputs
       std::vector<ir::OpResult> vec_inputs;
+      std::vector<ir::Type> op_output_types;
       if (op_item->num_operands() > 0) {
         for (size_t i = 0; i < op_item->num_operands(); ++i) {
           auto cur_in = op_item->operand_source(i);
@@ -683,10 +684,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           if (new_in.type().isa<ir::VectorType>()) {
             auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
             for (uint64_t idx = 0; idx < vec_types.size(); idx++) {
-              out_places[idx] =
-                  vec_types[idx]
-                      .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                      .place();
+              op_output_types.push_back(vec_types[idx]);
             }
           } else {
             PADDLE_THROW(
@@ -694,26 +692,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           }
         }
       }
-      // Copy op output type
-      std::vector<ir::Type> op_output_types;
-      if (op_item->num_results() > 0) {
-        for (size_t i = 0; i < op_item->num_results(); ++i) {
-          auto result_type = op_item->result(i).type();
-          if (!result_type) {
-            op_output_types.push_back(result_type);
-          } else if (result_type.isa<dialect::DenseTensorType>()) {
-            auto allocated_dense_tensor_dtype =
-                paddle::dialect::AllocatedDenseTensorType::get(
-                    ctx,
-                    out_places[i],
-                    result_type.dyn_cast<dialect::DenseTensorType>());
-            op_output_types.push_back(allocated_dense_tensor_dtype);
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "builtin.split Result type only support DenseTensorType"));
-          }
-        }
-      }
+
       // Get op info
       ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
       // Generate new op
