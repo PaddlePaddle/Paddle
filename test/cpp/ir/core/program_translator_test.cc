@@ -31,8 +31,6 @@
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/ir_parser.h"
 #include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/program.h"
@@ -43,6 +41,14 @@ using BlockDesc = paddle::framework::BlockDesc;
 using OpDesc = paddle::framework::OpDesc;
 using VarDesc = paddle::framework::VarDesc;
 using VarType = paddle::framework::proto::VarType;
+using std::ofstream;
+using std::string;
+void write_to_file(string str, string filename) {
+  ofstream os;
+  os.open(filename);
+  os << str;
+  os.close();
+}
 
 ProgramDesc load_from_file(const std::string &file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -115,32 +121,39 @@ TEST(RegisterInfoTest, MainProgram) {
 TEST(IrParserTest, MainProgram) {
   auto p = load_from_file("resnet50_main.prog");
   EXPECT_EQ(p.Size(), 1u);
-  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<PaddleDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   std::stringstream ss;
   program->Print(ss);
-  ir::IrParser* parser = new ir::IrParser(ctx, ss);
+  write_to_file(ss.str(), "mainprogram.txt");
+  ir::IrParser *parser = new ir::IrParser(ctx, ss);
   std::unique_ptr<ir::Program> parser_program = parser->ParseProgram();
   std::stringstream ssp;
   parser_program->Print(ssp);
 
   EXPECT_TRUE(ssp.str() == ss.str());
+  //    for (auto item : *program->block()) {
+  //    std::stringstream stp;
+  //    ir::IrPrinter* printer = new ir::IrPrinter{stp};
+  //   printer->PrintOperation(item);
+  //   std::cout<<stp.str()<<std::endl;
+  //}
 }
 
 TEST(IrParserTest, StartupProgram) {
   auto p = load_from_file("resnet50_startup.prog");
   EXPECT_EQ(p.Size(), 1u);
-  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<PaddleDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   std::stringstream ss;
   program->Print(ss);
-  ir::IrParser* parser = new ir::IrParser(ctx, ss);
+  ir::IrParser *parser = new ir::IrParser(ctx, ss);
   std::unique_ptr<ir::Program> parser_program = parser->ParseProgram();
   std::stringstream ssp;
   parser_program->Print(ssp);

@@ -17,9 +17,9 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute_storage.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/ir_parser.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/ir/core/ir_parser.h"
 
 namespace paddle {
 namespace dialect {

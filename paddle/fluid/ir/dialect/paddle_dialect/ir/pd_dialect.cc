@@ -145,7 +145,6 @@ ir::Attribute PaddleDialect::ParseAttribute(ir::IrParser &parser) {  // NOLINT
   }
 }
 
-
 }  // namespace dialect
 }  // namespace paddle
 
