@@ -2643,7 +2643,7 @@ set +x
                         retry_unittests_record="$retry_unittests_record$failed_test_lists"
                         failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
                         set -e
-                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "3" ]];then
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "5" ]];then
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
