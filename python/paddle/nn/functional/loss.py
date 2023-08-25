@@ -2386,8 +2386,8 @@ def softmax_with_cross_entropy(
 
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   1.15328646)
+            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [1.15328646])
     """
     return fluid_softmax_with_cross_entropy(
         logits,
