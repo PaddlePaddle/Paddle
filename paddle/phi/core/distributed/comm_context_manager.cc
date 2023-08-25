@@ -18,7 +18,6 @@
 #include <string>
 #include "glog/logging.h"
 
-// #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/enforce.h"
