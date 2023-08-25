@@ -118,7 +118,8 @@ class IR_API SliceOp : public ir::Op<SliceOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const ir::OpResult &input);
+                    const ir::OpResult &input,
+                    int index);
 
   void Verify() const;
   ir::Value input() { return operand_source(0); }
