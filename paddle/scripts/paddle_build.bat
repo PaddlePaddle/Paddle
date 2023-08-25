@@ -96,7 +96,7 @@ rem ------initialize the python environment------
 set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
 %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
-call !PYTHON_VENV_ROOT!\Scripts\0.8.74
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
 if %ERRORLEVEL% NEQ 0 (
     echo activate python virtual environment failed!
     exit /b 5
