@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.framework import core
 
 from .process_mesh import ProcessMesh, get_current_process_mesh
 from .static.dist_context import get_default_distributed_context
@@ -67,7 +68,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
 
     if process_mesh is not None:
         assert isinstance(
-            process_mesh, ProcessMesh
+            process_mesh, core.ProcessMesh
         ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
             process_mesh
         )
