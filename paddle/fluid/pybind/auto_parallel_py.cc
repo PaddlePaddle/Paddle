@@ -16,7 +16,6 @@
 #include <pybind11/stl.h>
 
 #include "paddle/fluid/framework/op_desc.h"
-#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"

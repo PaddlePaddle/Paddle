@@ -121,7 +121,6 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   };
 };
 
-// TODO(chenweihang): Maybe SpmdRule only contains backward function?
 class SpmdRule {
  public:
   explicit SpmdRule(InferSpmdFn forward_fn)

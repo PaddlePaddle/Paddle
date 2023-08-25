@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
-#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
