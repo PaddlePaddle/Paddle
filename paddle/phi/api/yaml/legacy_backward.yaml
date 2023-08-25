@@ -758,6 +758,28 @@
   kernel :
     func : triu_grad
 
+- backward_op: disable_check_model_nan_inf_grad
+  forward: disable_check_model_nan_inf (Tensor x, int flag=0) -> Tensor(out)
+  args: (Tensor out_grad, int unsetflag = 1)
+  output : Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [out_grad]
+  kernel:
+    func: check_model_nan_inf
+    data_type: out_grad
+
+- backward_op: enable_check_model_nan_inf_grad
+  forward: enable_check_model_nan_inf (Tensor x, int flag=1) -> Tensor(out)
+  args: (Tensor out_grad, int unsetflag = 0)
+  output : Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [out_grad]
+  kernel:
+    func: check_model_nan_inf
+    data_type: out_grad
+
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)
