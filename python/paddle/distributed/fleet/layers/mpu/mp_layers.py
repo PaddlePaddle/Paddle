@@ -181,20 +181,31 @@ class VocabParallelEmbedding(paddle.nn.Layer):
 
 class InnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
-    def forward(ctx, x, weight, bias, attr_map):
+    def forward(
+        ctx,
+        x,
+        weight,
+        bias,
+        fuse_matmul_bias,
+        mp_async_allreduce,
+        mp_skip_c_identity,
+        mp_fused_linear_param_grad_add,
+        model_parallel_group,
+    ):
         ctx.save_for_backward(x, weight, bias)
-        ctx.attr_map = attr_map
-        if attr_map["mp_skip_c_identity"] is False:
+        ctx.model_parallel_group = model_parallel_group
+        ctx.mp_fused_linear_param_grad_add = mp_fused_linear_param_grad_add
+        if mp_skip_c_identity is False:
             x = paddle._legacy_C_ops.c_identity(
                 x,
                 'use_calc_stream',
                 True,
                 'ring_id',
-                attr_map["model_parallel_group"].id,
+                model_parallel_group.id,
                 'use_model_parallel',
                 True,
             )
-        if not attr_map["fuse_matmul_bias"]:
+        if not fuse_matmul_bias:
             return paddle._C_ops.linear(x, weight, bias)
         else:
             return paddle._legacy_C_ops.fused_gemm_epilogue(x, weight, bias)
@@ -204,13 +215,13 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
         x, weight, bias = ctx.saved_tensor()
         dx = paddle.matmul(dy, weight, transpose_y=True)
         op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-        task = ctx.attr_map["model_parallel_group"].process_group.all_reduce(
+        task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False
         )
         # TODO(GhostScreaming): remove it in future.
         tmp = paddle.ones([512])
 
-        if ctx.attr_map["mp_fused_linear_param_grad_add"]:
+        if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
                 raise NotImplementedError(
                     "You set mp_fused_linear_param_grad_add=True, "
@@ -455,16 +466,16 @@ class ColumnParallelLinear(paddle.nn.Layer):
         # use inner api to process identity
 
         def _overlap_linear():
-            attr_map = {}
-            attr_map["fuse_matmul_bias"] = self.fuse_matmul_bias
-            attr_map["mp_async_allreduce"] = self.mp_async_allreduce
-            attr_map["mp_skip_c_identity"] = self.mp_skip_c_identity
-            attr_map[
-                "mp_fused_linear_param_grad_add"
-            ] = self.mp_fused_linear_param_grad_add
-            attr_map["model_parallel_group"] = self.model_parallel_group
-
-            return InnerOverlapLinear.apply(x, self.weight, self.bias, attr_map)
+            return InnerOverlapLinear.apply(
+                x,
+                self.weight,
+                self.bias,
+                self.fuse_matmul_bias,
+                self.mp_async_allreduce,
+                self.mp_skip_c_identity,
+                self.mp_fused_linear_param_grad_add,
+                self.model_parallel_group,
+            )
 
         if self.mp_async_allreduce:
             output_parallel = _overlap_linear()
