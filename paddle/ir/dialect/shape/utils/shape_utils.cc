@@ -18,8 +18,8 @@
 namespace ir {
 
 bool compareSymbolicDimNames(const std::string& lhs, const std::string& rhs) {
-  if (lhs.size() < 1 || lhs[0] != 'S' && lhs[0] != 'C') return lhs < rhs;
-  if (rhs.size() < 1 || rhs[0] != 'S' && rhs[0] != 'C') return lhs < rhs;
+  if (lhs.size() < 1 || (lhs[0] != 'S' && lhs[0] != 'C')) return lhs < rhs;
+  if (rhs.size() < 1 || (rhs[0] != 'S' && rhs[0] != 'C')) return lhs < rhs;
   int64_t lhsIdx = 0, rhsIdx = 0;
   try {
     lhsIdx = stol(lhs.substr(1));

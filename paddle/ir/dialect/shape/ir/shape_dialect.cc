@@ -22,7 +22,9 @@ ShapeDialect::ShapeDialect(IrContext *context)
   initialize();
 }
 
-void ShapeDialect::initialize() { RegisterOps<SymbolicDim>(); }
+void ShapeDialect::initialize() {
+  RegisterOps<SymbolicDim, DimOp, TieProductEqualOp>();
+}
 
 }  // namespace dialect
 }  // namespace ir

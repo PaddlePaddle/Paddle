@@ -138,3 +138,55 @@ TEST(assist_struct_test, symbolic_dim_mgr) {
   EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimS1));
   EXPECT_FALSE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimC10));
 }
+
+TEST(assist_struct_test, dim) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Program program(ctx);
+  ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ir::Builder builder = ir::Builder(ctx, program.block());
+
+  ir::dialect::DimOp dimOp = builder.Build<ir::dialect::DimOp>("S0");
+  ir::OpResult res = dimOp.out();
+  EXPECT_EQ(dimOp.getName(), "S0");
+  dimOp.setName("S1");
+  EXPECT_EQ(dimOp.getName(), "S1");
+  EXPECT_EQ(res.GetDefiningOp(), dimOp.operation());
+  EXPECT_EQ(res.type(), ir::IndexType::get(ctx));
+}
+
+TEST(assist_struct_test, tie_product_equal) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Program program(ctx);
+  ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ir::Builder builder = ir::Builder(ctx, program.block());
+  ir::SymbolTable symbolTable(program.module_op());
+
+  ir::OpResult dimOp0 = builder.Build<ir::dialect::DimOp>("S0").out();
+  ir::OpResult dimOp1 = builder.Build<ir::dialect::DimOp>("S1").out();
+  ir::OpResult dimOp2 = builder.Build<ir::dialect::DimOp>("S2").out();
+  ir::OpResult dimOp3 = builder.Build<ir::dialect::DimOp>("S3").out();
+  ir::OpResult dimOp4 = builder.Build<ir::dialect::DimOp>("S4").out();
+
+  ir::dialect::TieProductEqualOp tie_product_equal =
+      builder.Build<ir::dialect::TieProductEqualOp>(
+          2,
+          3,
+          std::vector<ir::OpResult>{dimOp0, dimOp1, dimOp2, dimOp3, dimOp4});
+
+  std::vector<ir::Value> lhs = tie_product_equal.getLhs();
+  std::vector<ir::Value> rhs = tie_product_equal.getRhs();
+
+  std::vector<ir::Value> lhs_ref{dimOp0, dimOp1};
+  std::vector<ir::Value> rhs_ref{dimOp2, dimOp3, dimOp4};
+
+  EXPECT_EQ(symbolTable.insert(tie_product_equal), "tie_product_equal");
+  EXPECT_EQ(
+      symbolTable.lookup<ir::dialect::TieProductEqualOp>("tie_product_equal")
+          .size(),
+      static_cast<size_t>(1));
+  EXPECT_EQ(symbolTable.lookup<ir::dialect::TieProductEqualOp>(
+                "tie_product_equal")[0],
+            tie_product_equal);
+  EXPECT_EQ(lhs, lhs_ref);
+  EXPECT_EQ(rhs, rhs_ref);
+}
