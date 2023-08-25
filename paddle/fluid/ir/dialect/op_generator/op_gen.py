@@ -151,8 +151,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{inplace}}}, {{{view}}});
-
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{kernel_key_backend}}}, {{{inplace}}}, {{{view}}});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
 }}
 """
@@ -1013,6 +1012,7 @@ def OpGenerator(
             kernel_func_str = ""
             kernel_param_str = ""
             kernel_key_dtype = ""
+            kernel_key_backend = ""
             if op_kernel_map is not None:
                 kernel_func_str = '", "'.join(op_kernel_map['func'])
                 kernel_param_str = '", "'.join(op_kernel_map['param'])
@@ -1022,6 +1022,12 @@ def OpGenerator(
                     )
                     if kernel_key_dtype != "":
                         kernel_key_dtype = '"' + kernel_key_dtype + '"'
+                if 'backend' in op_kernel_map and op_kernel_map['backend']:
+                    kernel_key_backend = '", "'.join(
+                        op_kernel_map['backend']['candidates']
+                    )
+                    if kernel_key_backend != "":
+                        kernel_key_backend = '"' + kernel_key_backend + '"'
 
             inplace_str = ""
             view_str = ""
@@ -1045,6 +1051,7 @@ def OpGenerator(
                 kernel_func=kernel_func_str,
                 kernel_param=kernel_param_str,
                 kernel_key_dtype=kernel_key_dtype,
+                kernel_key_backend=kernel_key_backend,
                 inplace=inplace_str,
                 view=view_str,
                 origin_op_name=op_info.op_yaml_item['name'],
@@ -1072,21 +1079,24 @@ def OpGenerator(
             # =================================== #
 
             # generate op vjp function str
-            op_vjp_str = ''
 
-            # TODO(chenzhiyang) add vjp gen code
-            if (
-                op_info.backward_name
-                and op_info.op_phi_name[0]
-                in vjp_interface_implementation_gen_op_list
-            ):
-                op_vjp_str = gen_op_vjp_str(
-                    op_class_name,
-                    op_info.backward_name,
-                    op_name,
-                    op_info_items[op_info.op_phi_name[0]],
-                    op_info_items[op_info.backward_name],
-                )
+            op_vjp_str = ''
+            if dialect_name == "cinn":
+                logging.warning("cinn is currently not support Vjp function")
+            else:
+                # TODO(chenzhiyang) add vjp gen code
+                if (
+                    op_info.backward_name
+                    and op_info.op_phi_name[0]
+                    in vjp_interface_implementation_gen_op_list
+                ):
+                    op_vjp_str = gen_op_vjp_str(
+                        op_class_name,
+                        op_info.backward_name,
+                        op_name,
+                        op_info_items[op_info.op_phi_name[0]],
+                        op_info_items[op_info.backward_name],
+                    )
 
             ops_name_list.append(op_class_name)
             ops_declare_list.append(op_declare_str)
@@ -1100,7 +1110,7 @@ def OpGenerator(
             ops_defined_list.append(op_infer_meta_str)
             # NOTE(chenxi67)skip if dialect_name==cinn
             if dialect_name == "cinn":
-                logging.warning("cinn is currently not support Vjp function")
+                pass
             else:
                 ops_vjp_defined_list.append(op_vjp_str)
 
