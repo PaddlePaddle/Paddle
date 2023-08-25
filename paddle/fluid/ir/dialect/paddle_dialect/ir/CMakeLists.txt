@@ -127,14 +127,17 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
           ${ops_api_source_file}
   COMMENT "copy_if_different ${ops_api_source_file}"
-  DEPENDS ${ops_api_gen_file} ${op_forward_yaml_file1} ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1} ${op_backward_yaml_file2}
+  DEPENDS ${ops_api_gen_file}
+          ${op_forward_yaml_file1}
+          ${op_forward_yaml_file2}
+          ${op_backward_yaml_file1}
+          ${op_backward_yaml_file2}
           ${op_compat_yaml_file}
+          ${python_c_header_file}
+          ${python_c_source_file}
   VERBATIM)
 
-add_custom_target(
-  ops_api_gen ALL DEPENDS ${ops_api_source_file} ${python_c_header_file}
-                          ${python_c_source_file})
+add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
 cc_library(
   pd_dialect_core
