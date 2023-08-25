@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import os
 
 import paddle
 
@@ -320,25 +319,24 @@ def is_available():
 
 
 def _init_parallel_env(backend):
-    master_endpoint = os.getenv("PADDLE_MASTER", None)
-    if master_endpoint is None:
-        master_endpoint = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
-        assert (
-            master_endpoint is not None
-        ), "Please set PADDLE_MASTER enviroment variable."
-    if master_endpoint:
-        global_env = _get_global_env()
-        rank = global_env.rank
-        world_size = global_env.world_size
-        dev_id = global_env.device_id
-        store = core.create_or_get_global_tcp_store()
-        # store = paddle.distributed.collective.StaticTCPStore()
-        if backend == "gloo":
-            core.CommContextManager.create_gloo_comm_context(
-                store, "0", rank, world_size
-            )
-        elif backend == "nccl":
-            core.CommContextManager.set_device_id(dev_id)
-            core.CommContextManager.create_nccl_comm_context(
-                store, "0", rank, world_size
-            )
+    store = core.create_or_get_global_tcp_store()
+    global_env = _get_global_env()
+    rank = global_env.rank
+    world_size = global_env.world_size
+    dev_id = global_env.device_id
+
+    if backend == "gloo":
+        core.CommContextManager.create_gloo_comm_context(
+            store, "0", rank, world_size
+        )
+    elif backend == "nccl":
+        core.CommContextManager.set_cuda_device_id(dev_id)
+        core.CommContextManager.create_nccl_comm_context(
+            store, "0", rank, world_size
+        )
+    elif backend == "xccl":
+        dev_type = global_env.device_type
+        paddle.device.set_device(f"{dev_type}:{dev_id}")
+        core.CommContextManager.create_xccl_comm_context(
+            store, "0", rank, world_size, dev_type
+        )

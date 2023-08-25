@@ -57,6 +57,12 @@ void BindCommContextManager(py::module *m) {
               &phi::distributed::CommContextManager::CreateGlooCommContext,
               py::call_guard<py::gil_scoped_release>())
 #endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+          .def_static(
+              "create_xccl_comm_context",
+              &phi::distributed::CommContextManager::CreateXCCLCommContext,
+              py::call_guard<py::gil_scoped_release>())
+#endif
           .def("set_store", &phi::distributed::CommContextManager::SetStore);
 }
 
