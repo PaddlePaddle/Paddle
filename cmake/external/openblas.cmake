@@ -19,7 +19,7 @@ set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 set(CBLAS_TAG v0.3.7)
 
-# OpenBLAS support Raptor Lake v0.3.22
+# OpenBLAS support Raptor Lake from v0.3.22
 if(UNIX
    AND NOT APPLE
    AND NOT WITH_ROCM
