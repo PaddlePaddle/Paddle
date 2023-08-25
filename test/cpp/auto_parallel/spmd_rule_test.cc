@@ -14,12 +14,17 @@ limitations under the License. */
 
 #include <iostream>
 #include <sstream>
+
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 
 namespace paddle {
 namespace distributed {
@@ -45,22 +50,24 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
 
-  DistTensorSpec x_dist_tensor_spec = DistTensorSpec(x_shape, x_dist_attr);
-  DistTensorSpec y_dist_tensor_spec = DistTensorSpec(y_shape, y_dist_attr);
-
-  paddle::framework::AttributeMap attrs;
-  attrs["trans_x"] = false;
-  attrs["trans_y"] = false;
-
-  SPMDRuleBase* matmul_rule = SPMDRuleMap::Instance().Get("matmul");
-
-  // mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
-  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-      infered_dist_attrs = matmul_rule->InferForward(
-          {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-
   size_t input_size = 2;
   size_t output_size = 1;
+
+  auto dist_x =
+      phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  auto dist_y =
+      phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  phi::MetaTensor x(dist_x);
+  phi::MetaTensor y(dist_y);
+
+  auto matmul_spmd_rule =
+      phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule("matmul");
+
+  // mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
+  phi::distributed::InferSpmdContext ctx(
+      {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
+  auto infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
+
   EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
 
@@ -74,10 +81,15 @@ TEST(MatmulSPMDRule, Ctor) {
   VLOG(4) << "test1 done." << std::endl << std::endl << std::endl;
 
   // mk[-1,-1],kn[-1,0] --> mk[-1,-1],kn[-1,0] = nm[-1,0] partial[]
-  x_dist_tensor_spec.set_dims_mapping({-1, -1});
-  y_dist_tensor_spec.set_dims_mapping({-1, 0});
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({-1, -1});
+  y_dist_attr.set_dims_mapping({-1, 0});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -88,10 +100,15 @@ TEST(MatmulSPMDRule, Ctor) {
   VLOG(4) << "test2 done." << std::endl << std::endl << std::endl;
 
   // mk[1, 0],kn[-1,-1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]: done
-  x_dist_tensor_spec.set_dims_mapping({1, 0});
-  y_dist_tensor_spec.set_dims_mapping({-1, -1});
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({1, 0});
+  y_dist_attr.set_dims_mapping({-1, -1});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({1, 0}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -104,10 +121,15 @@ TEST(MatmulSPMDRule, Ctor) {
   VLOG(4) << "test3 done." << std::endl << std::endl << std::endl;
 
   // mk[-1,-1],kn[1,0] --> mk[-1, 1],kn[1, 0] = nm[-1, 0] partial[1]: done
-  x_dist_tensor_spec.set_dims_mapping({-1, -1});
-  y_dist_tensor_spec.set_dims_mapping({1, 0});
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({-1, -1});
+  y_dist_attr.set_dims_mapping({1, 0});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, 1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -121,11 +143,16 @@ TEST(MatmulSPMDRule, Ctor) {
 
   // abcmk[1, 0, -1, -1],kn[-1, -1] --> abcmk[1, 0, -1, -1],kn[-1, -1] =
   // abcmn[1, 0, -1, -1] partial[]: done
-  x_dist_tensor_spec.set_shape({512, 48, 64, 32});
-  x_dist_tensor_spec.set_dims_mapping({0, 1, -1, -1});
-  y_dist_tensor_spec.set_dims_mapping({-1, -1});
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_shape = {512, 48, 64, 32};
+  x_dist_attr.set_dims_mapping({0, 1, -1, -1});
+  y_dist_attr.set_dims_mapping({-1, -1});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, 1, -1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -137,10 +164,15 @@ TEST(MatmulSPMDRule, Ctor) {
 
   // abcmk[1, -1, -1, 0],kn[-1, -1] --> abcmk[1, -1, -1, 0],kn[0, -1] = abcmn[1,
   // -1, -1, -1] partial[0]: done
-  x_dist_tensor_spec.set_dims_mapping({1, -1, -1, 0});
-  y_dist_tensor_spec.set_dims_mapping({-1, -1});
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({1, -1, -1, 0});
+  y_dist_attr.set_dims_mapping({-1, -1});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({1, -1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -154,11 +186,15 @@ TEST(MatmulSPMDRule, Ctor) {
 
   // abcmk[1, -1, -1, 0], kn[-1, -1] --> abcmk[1, -1, -1, 0],kn[-1, -1] =
   // abcmn[1, -1, 0, -1] partial[]: done
-  x_dist_tensor_spec.set_dims_mapping({1, -1, -1, 0});
-  y_dist_tensor_spec.set_dims_mapping({-1, -1});
-  attrs["trans_x"] = true;
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({1, -1, -1, 0});
+  y_dist_attr.set_dims_mapping({-1, -1});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/true, /*trans_x=*/false});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({1, -1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -170,12 +206,15 @@ TEST(MatmulSPMDRule, Ctor) {
 
   // abcmk[-1, -1, -1, -1], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] =
   // abcmn[-1, -1, -1, 1] partial[0]: done
-  x_dist_tensor_spec.set_dims_mapping({-1, -1, -1, -1});
-  y_dist_tensor_spec.set_dims_mapping({1, 0});
-  attrs["trans_x"] = false;
-  attrs["trans_y"] = true;
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({-1, -1, -1, -1});
+  y_dist_attr.set_dims_mapping({1, 0});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/false, /*trans_x=*/true});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -191,12 +230,15 @@ TEST(MatmulSPMDRule, Ctor) {
 
   // abcmk[-1, -1, -1, -1], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] =
   // abcmn[-1, -1, -1, 1] partial[0]: done
-  x_dist_tensor_spec.set_dims_mapping({-1, -1, 0, 1});
-  y_dist_tensor_spec.set_dims_mapping({1, 0});
-  attrs["trans_y"] = true;
-  attrs["trans_x"] = true;
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({-1, -1, 0, 1});
+  y_dist_attr.set_dims_mapping({1, 0});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 0, 1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -214,23 +256,29 @@ TEST(MatmulSPMDRule, Ctor) {
 
   // abcmk[-1, -1, 1, 0], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] =
   // abcmn[-1, -1, -1, 1] partial[0]: done
-  x_dist_tensor_spec.set_dims_mapping({-1, -1, 1, 0});
-  y_dist_tensor_spec.set_dims_mapping({1, 0});
-  attrs["trans_y"] = true;
-  attrs["trans_x"] = true;
-  EXPECT_ANY_THROW(infered_dist_attrs = matmul_rule->InferForward(
-                       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs));
+  x_dist_attr.set_dims_mapping({-1, -1, 1, 0});
+  y_dist_attr.set_dims_mapping({1, 0});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
+  EXPECT_ANY_THROW(infered_dist_attrs = matmul_spmd_rule.InferForward(ctx));
   // Error
   VLOG(4) << "test10 done." << std::endl << std::endl << std::endl;
 
   // abcmk[-1, -1, -1, -1], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] =
   // abcmn[-1, -1, -1, 1] partial[0]:
-  x_dist_tensor_spec.set_dims_mapping({-1, -1, 0, 1});
-  y_dist_tensor_spec.set_dims_mapping({1, 0});
-  attrs["trans_y"] = true;
-  attrs["trans_x"] = true;
-  infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  x_dist_attr.set_dims_mapping({-1, -1, 0, 1});
+  y_dist_attr.set_dims_mapping({1, 0});
+  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
+  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
+  x = phi::MetaTensor(dist_x);
+  y = phi::MetaTensor(dist_y);
+  ctx = phi::distributed::InferSpmdContext(
+      {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
+  infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   EXPECT_ANY_THROW(infered_dist_attrs.second[0].clean_partial_dims(
       std::vector<int64_t>({1})));
   infered_dist_attrs.second[0].set_partial_status(std::vector<int64_t>({1}));

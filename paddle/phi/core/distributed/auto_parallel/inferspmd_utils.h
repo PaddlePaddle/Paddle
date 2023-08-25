@@ -38,6 +38,10 @@ namespace distributed {
 class InferSpmdContext {
  public:
   InferSpmdContext() = default;
+  InferSpmdContext(
+      paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs,
+      paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs)
+      : inputs_(std::move(inputs)), attrs_(std::move(attrs)) {}
 
   void EmplaceBackInput(MetaTensor input);
   void EmplaceBackAttr(Attribute attr);
@@ -104,7 +108,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     }                                                                     \
   }
 
-  // TODO(chenweihang): support other attr type later
+  // TODO(chenweihang): support other attr type later by needed
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(bool);
 
   /* End case */
