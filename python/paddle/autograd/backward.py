@@ -585,10 +585,10 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         block, effective_forward_ops, no_grad_set, inputs, complete_outputs
     )
 
-    inverse_effective_forward_opss = inverse_sort_op(effective_forward_ops)
+    inverse_effective_forward_ops = inverse_sort_op(effective_forward_ops)
 
     append_backward_ops(
-        block, inverse_effective_forward_opss, no_grad_set, backward_ops, state
+        block, inverse_effective_forward_ops, no_grad_set, backward_ops, state
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
 
