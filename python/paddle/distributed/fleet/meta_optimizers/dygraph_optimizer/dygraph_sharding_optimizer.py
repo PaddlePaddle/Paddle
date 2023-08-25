@@ -87,48 +87,44 @@ class DygraphShardingOptimizer:
         self._param2rank = self._map_param_to_rank()
 
         if self._using_param_groups:
-            param_groups = optimizer._param_groups.copy()
-            for param_group in param_groups:
-                param_groups['params'] = []
+            param_groups = [
+                {"params": []} for _ in range(len(optimizer._param_groups))
+            ]
+            for idx, pg in enumerate(optimizer._param_groups):
+                param_groups[idx].update(
+                    {k: v for k, v in pg.items() if k != 'params'}
+                )
             for param in self._rank2params[self._sharding_rank]:
-                param_groups[self._param_2_group_id[id(param)]][
-                    'params'
-                ].append(param)
+                group_id = self._param_2_group_id[id(param)]
+                param_groups[group_id]['params'].append(param)
+
             self._set_inner_opt_attr('_param_groups', param_groups)
+            self._set_inner_opt_attr(
+                '_parameter_list', self._rank2params[self._sharding_rank]
+            )
+            self._param_groups = self._parameter_list
         else:
             self._set_inner_opt_attr(
                 '_param_groups', self._rank2params[self._sharding_rank]
             )
-
-        self._set_inner_opt_attr(
-            '_parameter_list', self._rank2params[self._sharding_rank]
-        )
+            self._set_inner_opt_attr(
+                '_parameter_list', self._rank2params[self._sharding_rank]
+            )
 
     def clear_grad(self, set_to_zero=True):
         """
         should clear grad for all parameters in model
         """
-
-        def _clear_grad(param):
-            if hasattr(param, "main_grad") and param.main_grad is not None:
-                assert (
-                    param._grad_ivar() is None
-                ), "param.grad should be None when using main_grad"
+        for p in self._parameter_list:
+            if hasattr(p, "main_grad") and p.main_grad is not None:
+                assert p._grad_ivar() is None
                 if set_to_zero:
-                    param.main_grad.zero_()
+                    p.main_grad.zero_()
                 else:
-                    param.main_grad._clear()
-                    param.main_grad = None
-            elif not hasattr(param, "main_grad"):
-                param.clear_gradient(set_to_zero)
-
-        if self._using_param_groups:
-            for param_group in self._param_groups:
-                for p in param_group['params']:
-                    _clear_grad(p)
-        else:
-            for p in self._parameter_list:
-                _clear_grad(p)
+                    p.main_grad._clear()
+                    p.main_grad = None
+            elif not hasattr(p, "main_grad"):
+                p.clear_gradient(set_to_zero)
 
     def filter_parameters(self, parameter_list, hcg):
         sharding_parallel_rank = hcg.get_sharding_parallel_rank()
@@ -321,7 +317,7 @@ class DygraphShardingOptimizer:
                 self._set_inner_opt_attr('_grad_clip', origin_clip)
         else:
             # optimize parameters in groups
-            for param_group in self._param_groups:
+            for param_group in self._inner_opt._param_groups:
                 params_grads = defaultdict(lambda: [])
 
                 # TODO(shenliang03): support ClipGradByGlobalNorm in sharding when using param_groups
