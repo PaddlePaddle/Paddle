@@ -311,6 +311,7 @@ from .tensor.math import i0e  # noqa: F401
 from .tensor.math import i1  # noqa: F401
 from .tensor.math import i1e  # noqa: F401
 from .tensor.math import polygamma  # noqa: F401
+from .tensor.math import multi_head_attention  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -563,6 +564,7 @@ __all__ = [  # noqa
     'index_select',
     'CPUPlace',
     'matmul',
+    'multi_head_attention',
     'seed',
     'acos',
     'logical_xor',

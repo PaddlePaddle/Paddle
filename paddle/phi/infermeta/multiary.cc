@@ -2338,6 +2338,16 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
   }
 }
 
+void MultiHeadAttentionInferMeta(const MetaTensor& query,
+                                 const MetaTensor& key,
+                                 const MetaTensor& value,
+                                 const MetaTensor& attn_mask,
+                                 MetaTensor* out) {
+  out->set_dims(query.dims());
+  out->set_dtype(query.dtype());
+
+}
+
 void MomentumInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& velocity,

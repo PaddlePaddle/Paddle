@@ -28,7 +28,7 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.2
    AND NOT WITH_XPU)
   # We only compile with openblas 0.3.18 when gcc >= 8.3
-  set(CBLAS_TAG v0.3.18)
+  set(CBLAS_TAG v0.3.23)
 endif()
 
 if(APPLE AND WITH_ARM)

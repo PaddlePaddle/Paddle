@@ -431,6 +431,12 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
+void MultiHeadAttentionInferMeta(const MetaTensor& query,
+                                 const MetaTensor& key,
+                                 const MetaTensor& value,
+                                 const MetaTensor& attn_mask,
+                                 MetaTensor* out);
+
 void MomentumInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& velocity,

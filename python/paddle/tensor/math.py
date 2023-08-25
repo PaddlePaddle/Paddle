@@ -168,6 +168,13 @@ def log(x, name=None):
         helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
         return out
 
+def multi_head_attention(q, k, v, attn_mask):
+    if in_dynamic_mode():
+        return _C_ops.multi_head_attention(q, k, v, attn_mask)
+    else:
+        out = None
+        return out
+
 
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """

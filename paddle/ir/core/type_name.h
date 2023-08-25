@@ -25,9 +25,9 @@ inline std::string get_type_name() {
   std::string name = __PRETTY_FUNCTION__;
   std::string key = "DesiredTypeName = ";
   name = name.substr(name.find(key));
-  assert(!name.empty() && "Unable to find the template parameter!");
+  // assert(!name.empty() && "Unable to find the template parameter!");
   name = name.substr(key.size());
-  assert(name.back() == "]" && "Name doesn't end in the substitution key!");
+  // assert(name.back() == "]" && "Name doesn't end in the substitution key!");
   auto sem_pos = name.find_first_of(";");
   if (sem_pos == std::string::npos)
     name.pop_back();

@@ -1528,6 +1528,15 @@
     data_type : inputs
   backward : meshgrid_grad
 
+- op : multi_head_attention
+  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask)
+  output : Tensor(out)
+  infer_meta :
+    func : MultiHeadAttentionInferMeta
+  kernel :
+    func : multi_head_attention
+    data_type : q
+
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
   output : Tensor(out), Tensor(indices)
