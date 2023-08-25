@@ -39,3 +39,5 @@ collect_srcs(
   kernel_factory.cc
   tensor_utils.cc
   utils/type_info.cc)
+
+cc_library(ddim SRCS ddim.cc)

@@ -24,7 +24,7 @@ class TestDistTensor(unittest.TestCase):
     def test_dist_tensor_creation(self):
         shape = [10, 5]
         mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
 
         # create dist tensor using numpy
         dist_tensor_with_numpy = dist.shard_tensor(

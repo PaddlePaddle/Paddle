@@ -18,7 +18,12 @@ namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    "pd.load_combine", "pd.c_concat", "pd.c_broadcast_"};
+    "pd.load_combine",
+    "pd.c_concat",
+    "pd.c_broadcast_",
+    "pd.fused_bn_add_activation_",
+    "pd.fused_bn_add_activation_grad",
+};
 
 enum class AttrType {
   UNDEFINED = 0,
