@@ -87,10 +87,9 @@ TEST(assist_struct_test, symbolic_dim_table) {
 
   ir::SymbolTable symbolTable(program.module_op());
   EXPECT_EQ(symbolTable.insert(symDim), "S0");
-  EXPECT_EQ(symbolTable.lookup("S0")->dyn_cast<ir::dialect::SymbolicDim>(),
-            symDim);
-  EXPECT_EQ(symbolTable.lookup("S1"), nullptr);
+  EXPECT_EQ(symbolTable.lookup<ir::dialect::SymbolicDim>("S0"), symDim);
   EXPECT_EQ(symbolTable.getOp(), program.module_op());
+  EXPECT_FALSE(symbolTable.lookup<ir::dialect::SymbolicDim>("S1"));
 }
 
 TEST(assist_struct_test, symbolic_dim_mgr) {
@@ -131,13 +130,9 @@ TEST(assist_struct_test, symbolic_dim_mgr) {
   EXPECT_EQ(symDimC10.getValue(), 10);
   EXPECT_EQ(symDimVec[0].getSymName(), "S2");
   EXPECT_EQ(symDimVec[1].getSymName(), "C2");
-  EXPECT_EQ(symDimMgr.symbolTable()
-                .lookup("S0")
-                ->dyn_cast<ir::dialect::SymbolicDim>(),
+  EXPECT_EQ(symDimMgr.symbolTable().lookup<ir::dialect::SymbolicDim>("S0"),
             symDimS0);
-  EXPECT_EQ(symDimMgr.symbolTable()
-                .lookup("C10")
-                ->dyn_cast<ir::dialect::SymbolicDim>(),
+  EXPECT_EQ(symDimMgr.symbolTable().lookup<ir::dialect::SymbolicDim>("C10"),
             symDimC10);
   EXPECT_EQ(symDimMgr.getRootSymbolicDim(symDimS1), symDimS0);
   EXPECT_TRUE(symDimMgr.isSymbolicDimEqual(symDimS0, symDimS1));

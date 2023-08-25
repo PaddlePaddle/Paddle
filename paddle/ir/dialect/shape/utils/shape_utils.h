@@ -15,6 +15,7 @@
 #pragma once
 
 #include <functional>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include "paddle/ir/core/builtin_op.h"
@@ -29,29 +30,50 @@ struct SymbolicDimProduct {
   std::vector<SymbolicDim> symbols;
   int64_t factor = 1;
   bool empty() { return factor == 1 && symbols.empty(); }
+  friend inline bool operator==(const SymbolicDimProduct& lhs,
+                                const SymbolicDimProduct& rhs) {
+    return lhs.factor == rhs.factor && lhs.symbols == rhs.symbols;
+  }
+
+  friend inline bool operator!=(const SymbolicDimProduct& lhs,
+                                const SymbolicDimProduct& rhs) {
+    return !(lhs == rhs);
+  }
 };
-
-inline bool operator==(const SymbolicDimProduct& lhs,
-                       const SymbolicDimProduct& rhs) {
-  return lhs.factor == rhs.factor && lhs.symbols == rhs.symbols;
-}
-
-inline bool operator!=(const SymbolicDimProduct& lhs,
-                       const SymbolicDimProduct& rhs) {
-  return !(lhs == rhs);
-}
 
 class SymbolTable {
  public:
   explicit SymbolTable(ir::Operation* symbolTableOp)
       : symbolTableOp_(symbolTableOp) {}
-  ir::Operation* lookup(const std::string& name) const;
+  template <typename T>
+  typename std::enable_if<std::is_same<T, SymbolicDim>::value,
+                          SymbolicDim>::type
+  lookup(const std::string& name) const {
+    auto it = symbolTableMap_.find(name);
+    return it != symbolTableMap_.end() ? it->second->dyn_cast<SymbolicDim>()
+                                       : SymbolicDim(nullptr);
+  }
+  template <typename T>
+  typename std::enable_if<!std::is_same<T, SymbolicDim>::value,
+                          std::vector<T>>::type
+  lookup(const std::string& name) const {
+    std::vector<T> res;
+    auto it = symbolFuncMap_.find(name);
+    if (it != symbolFuncMap_.end()) {
+      for (auto& p : it->second) {
+        res.push_back(p->dyn_cast<T>());
+      }
+    }
+    return res;
+  }
+
   const std::string insert(Operation* symbol);
   ir::Operation* getOp() const { return symbolTableOp_; }
 
  private:
   ir::Operation* symbolTableOp_;
   std::unordered_map<std::string, ir::Operation*> symbolTableMap_;
+  std::unordered_map<std::string, std::vector<ir::Operation*>> symbolFuncMap_;
 };
 
 struct SymDimHasher {
@@ -74,6 +96,7 @@ struct SymProductHasher {
 class SymbolicDimMgr {
  public:
   explicit SymbolicDimMgr(ir::ModuleOp m);
+  bool load();  // TODO(liujinnan): load constraint func
   SymbolicDim newSymbolicDim(const std::string& name = {});
   SymbolicDim newConstantSymbolicDim(int64_t val);
   std::vector<SymbolicDim> createSymbolicDimsForRankedValue(Value value);
@@ -81,9 +104,27 @@ class SymbolicDimMgr {
   bool isSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
   SymbolTable& symbolTable() { return symbolTable_; }
   bool mapSymbolicDimEqual(SymbolicDim lhs, SymbolicDim rhs);
+  bool save();  // TODO(liujinnan): load constraint func
+
+  bool isSymbolicDimProductEqual(
+      const SymbolicDimProduct&
+          lhs,  // TODO(liujinnan): load & save shape_constraint_func
+      const SymbolicDimProduct& rhs);
+  bool mapSymbolicDimProductEqual(
+      const SymbolicDimProduct&
+          lhs,  // TODO(liujinnan): load & save shape_constraint_func
+      const SymbolicDimProduct& rhs);
 
  private:
   const std::string getNextName();
+  bool isMultipleOfKnownSymbolicDimProductEqualPair(
+      const SymbolicDimProduct& lhs,
+      const SymbolicDimProduct&
+          rhs);  // TODO(liujinnan): load & save shape_constraint_func
+  bool saveShapeConstraintGraph();  // TODO(liujinnan): load & save
+                                    // shape_constraint_func
+  bool loadShapeConstraintGraph();  // TODO(liujinnan): load & save
+                                    // shape_constraint_func
 
  private:
   ir::ModuleOp m_;
@@ -104,6 +145,42 @@ class SymbolicDimMgr {
       std::unordered_map<SymbolicDimProduct, bool, SymProductHasher>,
       SymProductHasher>;
   SymbolicDimProductMap productEqualityMap_;
+  bool productEqualityMapUpdated_ = true;
 };
+
+// class ShapeAnalysis {
+//   public:
+//     virtual ~ShapeAnalysis() = default;
+
+//     virtual bool isShapeEqual(ir::Value lhs, ir::Value rhs) const = 0;
+
+//     virtual bool isProductEqual(ir::Value lhs, std::vector<int> lhsDimIdxs,
+//     ir::Value rhs,
+//                                 std::vector<int> rhsDimIdxs) const = 0;
+//     virtual bool isProductEqual(ir::Value lhs, int lhsFrom, int lhsTo,
+//     ir::Value rhs,
+//                                 int rhsFrom, int rhsTo);
+//     virtual bool isSameNumElements(ir::Value lhs, ir::Value rhs);
+// };
+
+// class SymbolicDimShapeAnalysis : public ShapeAnalysis {
+//   public:
+//     explicit SymbolicDimShapeAnalysis(ir::Operation* op);
+//     ~SymbolicDimShapeAnalysis();
+
+//     const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
+
+//     bool isShapeEqual(ir::Value lhs, ir::Value rhs) override;
+
+//     bool isProductEqual(ir::Value lhs, std::vector<int> lhsDimIdxs, ir::Value
+//     rhs,
+//                         std::vector<int> rhsDimIdxs) override;
+
+//   private:
+//     ir::Operation* op_;
+//     SymbolicDimMgr mgr_;
+//     std::unordered_map<ir::Value, std::vector<SymbolicDim>> value2SymDims_;
+
+// };
 
 }  // namespace ir
