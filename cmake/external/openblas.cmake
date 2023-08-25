@@ -20,7 +20,7 @@ set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 set(CBLAS_TAG v0.3.7)
 set(CMAKE_VERBOSE_MAKEFILE 1)
 
-# OpenBLAS support Raptor Lake v0.3.22
+# OpenBLAS support Raptor Lake from v0.3.22
 if(UNIX
    AND NOT APPLE
    AND NOT WITH_ROCM
