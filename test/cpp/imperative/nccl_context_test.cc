@@ -37,7 +37,9 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
   return strategy;
 }
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_MCCL)
+
 void BcastNCCLId(int local_rank, std::vector<ncclUniqueId>* nccl_ids) {
   auto strategy = GetStrategy(local_rank);
   int server_fd = platform::CreateListenSocket(strategy.current_endpoint_);
