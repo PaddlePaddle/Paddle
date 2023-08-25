@@ -118,6 +118,16 @@ const std::string& OpYamlInfoParser::InplaceName(
       "Can not find inplace input of [%s].", out_name));
 }
 
+std::unordered_map<int, int> OpYamlInfoParser::GetInplaceIdMap() const {
+  std::unordered_map<int, int> inplace_id_map;
+  auto& inplace_info = std::get<3>(op_info_tuple_).inplace;
+  for (const auto& info : inplace_info) {
+    inplace_id_map[OutputName2Id().at(info.first)] =
+        InputName2Id().at(info.second);
+  }
+  return inplace_id_map;
+}
+
 bool OpYamlInfoParser::HasView(const std::string& out_name) const {
   auto& view_info = std::get<3>(op_info_tuple_).view;
   for (size_t i = 0; i < view_info.size(); i++) {

@@ -53,6 +53,8 @@ class OpYamlInfoParser {
 
   const std::string& InplaceName(const std::string& out_name) const;
 
+  std::unordered_map<int, int> GetInplaceIdMap() const;
+
   bool HasView(const std::string& out_name) const;
 
   const std::string& ViewName(const std::string& out_name) const;
