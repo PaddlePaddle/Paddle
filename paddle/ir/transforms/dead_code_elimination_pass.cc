@@ -17,6 +17,7 @@
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/pass/pass.h"
+#include "paddle/ir/pass/pass_registry.h"
 
 namespace {
 
