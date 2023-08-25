@@ -459,7 +459,7 @@ EOF
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_soSize=$($com ${PADDLE_ROOT}/build/paddle/fluid/pybind/libpaddle.so |awk '{print $1}')
+        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so |awk '{print $1}')
         echo "PR so Size: $PR_soSize"
         echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
@@ -1159,12 +1159,12 @@ function check_approvals_of_unittest() {
 EOF
         if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 89012307 7845005 23653004`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), qingqing01 or yuanlehome) approval for this PR\n"
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR.\n"
                 echo "=========================================================================================="
                 exit 6
             fi

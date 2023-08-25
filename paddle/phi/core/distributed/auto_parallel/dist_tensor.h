@@ -15,81 +15,88 @@
 #pragma once
 
 #include <memory>
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 namespace phi {
-
-class DenseTensorUtils;
-
 namespace distributed {
-class TensorDistAttr;
+class ReshardFunction;
 
 class DistTensor final
     : public phi::TensorBase,
       public phi::TypeInfoTraits<phi::TensorBase, DistTensor> {
  public:
-  /// \brief Construct a dist tensor and allocate space.
-  /// \param a The allocator used to allocate space.
-  /// \param meta The meta data of dist tensor.
-  DistTensor(Allocator* a,
-             const DenseTensorMeta& meta,
-             const std::shared_ptr<TensorDistAttr>& dist_attr)
-      : meta_(meta), dist_attr_(dist_attr) {
-    value_ = std::make_unique<DenseTensor>(a, meta);
-  }
+  /// \brief Careful to create dist tensor using default constructor.
+  /// this should only used in reshard for now, and the dist properties
+  /// will be set by reshard later.
+  DistTensor() = default;
 
-  DistTensor(Allocator* a,
-             DenseTensorMeta&& meta,
-             const std::shared_ptr<TensorDistAttr>& dist_attr)
-      : meta_(std::move(meta)), dist_attr_(dist_attr) {
-    value_ = std::make_unique<DenseTensor>(a, meta);
-  }
+  /// \brief Construct a dist tensor based dense tensor.
+  /// \param global_value The global dense tensor of the current tensor.
+  /// \param dist_attr The distributed attributes of the current tensor.
+  DistTensor(const phi::DenseTensor& global_value,
+             const TensorDistAttr& dist_attr);
 
-  DistTensor(const std::shared_ptr<phi::Allocation>& holder,
-             const DenseTensorMeta& meta,
-             const std::shared_ptr<TensorDistAttr>& dist_attr)
-      : meta_(meta), dist_attr_(dist_attr) {
-    value_ = std::make_unique<DenseTensor>(holder, meta);
-  }
+  /// \brief Construct a empty dist tensor (for infer spmd)
+  /// \param dims The global dimension of the currnet Tensor.
+  /// \param dist_attr The distributed attributes of the current tensor.
+  DistTensor(const DDim& dims, const TensorDistAttr& dist_attr);
 
-  DistTensor(const std::shared_ptr<phi::DenseTensor>& dense_tensor,
-             const DenseTensorMeta& meta,
-             const std::shared_ptr<TensorDistAttr>& dist_attr)
-      : meta_(meta), dist_attr_(dist_attr) {
-    value_ = std::make_unique<DenseTensor>(*dense_tensor);
-  }
-
+  /// \brief Destroy the tensor object and release exclusive resources.
   ~DistTensor() = default;
 
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
   static const char* name() { return "DistTensor"; }
 
-  const DenseTensor& value() const { return *value_; }
+  /// \brief Returns the global dims of the dist tensor.
+  /// \return The global dims of the dist tensor.
+  const DDim& dims() const override { return dims_; }
 
-  DenseTensor* mutable_value() { return value_.get(); }
+  /// \brief Set the global dims of the dist tensor.
+  /// \return void
+  void set_dims(const DDim& dims);
 
-  const std::shared_ptr<TensorDistAttr>& dist_attr() const {
-    return dist_attr_;
-  }
+  /// \brief Returns the dist attr of current dist tensor.
+  /// \return The TensorDistAttr's const reference
+  const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
-  /// \brief Returns the number of elements contained in tensor.
+  /// \brief Returns the dense tensor value's const reference in dist tensor.
+  /// \return The DenseTensor value's const reference
+  const DenseTensor& value() const { return value_; }
+
+  /// \brief Returns the global dims of the dist tensor.
+  /// \return The global dims of the dist tensor.
+  const DDim& local_dims() const;
+
+  /// \brief Returns the global number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
   int64_t numel() const override;
 
-  /// \brief Returns the dims of the tensor.
-  /// \return The dims of the tensor.
-  const DDim& dims() const override { return meta_.dims; }
+  /// \brief Test whether the dense tensor value's storage is allocated.
+  /// \return Whether the dense tensor value's storage is allocated.
+  bool initialized() const override;
 
-  /// \brief Test whether the storage is allocated.
-  /// \return Whether the storage is allocated.
-  bool initialized() const override {
-    return value_ && value_->holder_ && value_->holder_->ptr();
-  }
-
-  bool defined() const { return value_ && value_->holder_; }
+  /// \brief Test whether the dense tensor value is defined.
+  /// \return Whether the dense tensor value is defined.
+  bool defined() const;
 
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
-  bool valid() const override { return meta_.valid(); }
+  bool valid() const override;
+
+  /// \brief Returns the data type of the tensor.
+  /// \return The data type of the tensor.
+  DataType dtype() const override;
+
+  /// \brief Returns the data layout of the tensor.
+  /// \return The data layout of the tensor.
+  DataLayout layout() const override;
+
+  /// \brief Returns the data place of the tensor.
+  /// \return The data place of the tensor.
+  const Place& place() const override;
 
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.
@@ -98,33 +105,15 @@ class DistTensor final
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
 
-  /// \brief Returns the data type of the tensor.
-  /// \return The data type of the tensor.
-  DataType dtype() const override { return meta_.dtype; }
-
-  /// \brief Returns the data layout of the tensor.
-  /// \return The data layout of the tensor.
-  DataLayout layout() const override { return meta_.layout; }
-
-  /// \brief Returns the data place of the tensor.
-  /// \return The data place of the tensor.
-  const Place& place() const override;
-
-  const DenseTensorMeta& meta() const noexcept { return meta_; }
-
-  /// \brief Sets the meta information of the tensor. Only when the original
-  /// attribute of Tensor is incomplete, can it be reset.
-  /// \param meta The meta information of the tensor.
-  void set_meta(DenseTensorMeta&& meta);
-
-  void set_meta(const DenseTensorMeta& meta);
-
  private:
-  friend class phi::DenseTensorUtils;
+  friend class ReshardFunction;
 
-  DenseTensorMeta meta_;
-  std::shared_ptr<TensorDistAttr> dist_attr_{nullptr};
-  std::unique_ptr<DenseTensor> value_{nullptr};
+  // The global dimensions(shape)
+  DDim dims_;
+  // The distributed attributes
+  TensorDistAttr dist_attr_;
+  // The local DenseTensor value
+  DenseTensor value_;
 };
 
 }  // namespace distributed

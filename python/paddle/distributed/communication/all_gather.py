@@ -63,7 +63,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> dist.all_gather(tensor_list, data)
             >>> print(tensor_list)
-            [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
+            >>> # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
     """
     return stream.all_gather(tensor_list, tensor, group, sync_op)
 
@@ -99,7 +99,7 @@ def all_gather_object(object_list, obj, group=None):
             ...     obj = {"bar": [4, 5, 6]}
             >>> dist.all_gather_object(object_list, obj)
             >>> print(object_list)
-            [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
+            >>> # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
     """
     assert (
         framework.in_dynamic_mode()
