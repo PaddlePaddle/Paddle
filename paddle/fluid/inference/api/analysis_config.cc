@@ -448,6 +448,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(mixed_white_list_);
   CP_MEMBER(enable_gpu_mixed_);
   CP_MEMBER(mixed_precision_mode_);
   CP_MEMBER(enable_low_precision_io_);
@@ -1154,6 +1155,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
     for (auto attr : pattern) ss << attr;
   ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
+  for (auto &op : mixed_white_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -1533,6 +1535,11 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
 void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableMixedPrecisionOps(
+    const std::unordered_set<std::string> &white_list) {
+  mixed_white_list_ = white_list;
 }
 
 void AnalysisConfig::Exp_EnableCINNCompiler() {
