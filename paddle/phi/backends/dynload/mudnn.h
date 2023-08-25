@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_MUSA
 #include <mudnn.h>
+#include <musa_runtime_api.h>
 
 namespace phi {
 namespace dynload {
@@ -28,6 +29,12 @@ using ::musa::dnn::Softmax;
 using ::musa::dnn::Tensor;
 
 extern bool HasCUDNN();
+
+void mudnnCreate(Handle** handle, int device);
+
+void mudnnSetStream(Handle* handle, musaStream_t stream);
+
+void mudnnDestroy(Handle* handle);
 
 }  // namespace dynload
 }  // namespace phi

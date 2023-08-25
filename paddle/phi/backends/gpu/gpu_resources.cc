@@ -334,8 +334,8 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenCreate(handle));
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetStream(*handle, stream));
 #elif defined(PADDLE_WITH_MUSA)
-    *handle = new dynload::Handle(place.device);
-    (*handle)->SetStream(stream);
+    dynload::mudnnCreate(handle, place.device);
+    dynload::mudnnSetStream(*handle, stream);
 #else
     auto local_cudnn_version = phi::dynload::cudnnGetVersion() / 100;
     auto compile_cudnn_version = CUDNN_VERSION / 100;
@@ -366,10 +366,7 @@ void DestroyDnnHandle(dnnHandle_t handle) {
   }
 #elif defined(PADDLE_WITH_MUSA)
   if (handle != nullptr) {
-    // TODO(@caizhi): enable dynload module
-    // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::mudnnDestroy(handle));
-    delete handle;
-    handle = nullptr;
+    dynload::mudnnDestroy(handle);
   }
 #else
   if (handle != nullptr) {

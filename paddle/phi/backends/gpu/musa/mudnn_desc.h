@@ -76,40 +76,6 @@ inline dynload::Tensor::Type ToCudnnDataType(const phi::DataType& t) {
   return type;
 }
 
-#if 0
-class ActivationDescriptor {
- public:
-  using T = cudnnActivationStruct;
-  struct Deleter {
-    void operator()(T* t) {
-      if (t != nullptr) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cudnnDestroyActivationDescriptor(t));
-        t = nullptr;
-      }
-    }
-  };
-  ActivationDescriptor() {
-    T* raw_ptr;
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cudnnCreateActivationDescriptor(&raw_ptr));
-    desc_.reset(raw_ptr);
-  }
-  template <typename T>
-  void set(cudnnActivationMode_t mode, const T& coef) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetActivationDescriptor(
-        desc_.get(), mode, CUDNN_NOT_PROPAGATE_NAN, static_cast<double>(coef)));
-  }
-
-  T* desc() { return desc_.get(); }
-  T* desc() const { return desc_.get(); }
-
- private:
-  std::unique_ptr<T, Deleter> desc_;
-};
-
-#endif
-
 class TensorDescriptor {
  public:
   using T = dynload::Tensor;

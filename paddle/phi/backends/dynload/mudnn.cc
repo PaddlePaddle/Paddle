@@ -23,6 +23,19 @@ bool HasCUDNN() {
   return true;
 }
 
+void mudnnCreate(Handle** handle, int device) { *handle = new Handle(device); }
+
+void mudnnSetStream(Handle* handle, musaStream_t stream) {
+  handle->SetStream(stream);
+}
+
+void mudnnDestroy(Handle* handle) {
+  if (handle != nullptr) {
+    delete handle;
+    handle = nullptr;
+  }
+}
+
 }  // namespace dynload
 }  // namespace phi
 #endif
