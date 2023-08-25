@@ -106,10 +106,8 @@ def gen_op_vjp_str(
             bw_input_list[idx] in op_info.input_name_list
             or bw_input_list[idx] in op_info.output_name_list
         ):
-            input_type = input_types_map[
-                op_grad_info.input_type_list[idx]
-            ]
-            if(input_type == 'Tensor'):
+            input_type = input_types_map[op_grad_info.input_type_list[idx]]
+            if input_type == 'Tensor':
                 forward_input_output_code += (
                     OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE.format(
                         input_type=input_type,
@@ -135,17 +133,19 @@ def gen_op_vjp_str(
         build_args_str += op_attribute_list[idx] + ", "
         if op_attribute_list[idx] in op_info.attribute_name_list:
             if op_attribute_list[idx] in op_info.mutable_attribute_name_list:
-                attribute_code += OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE.format(
-                    input_type="Tensor",
-                    input_name=op_attribute_list[idx],
-                )     
+                attribute_code += (
+                    OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE.format(
+                        input_type="Tensor",
+                        input_name=op_attribute_list[idx],
+                    )
+                )
             else:
                 attribute_code += OP_VJP_ATTRIBUTE_TEMPLATE.format(
                     attr_type=op_grad_info.attribute_gen_arg_type_list[idx],
                     attr_name=op_attribute_list[idx],
                     attr_parse_type=op_grad_info.attribute_type_list[idx],
-                )     
-                
+                )
+
         else:
             attribute_code += OP_VJP_ATTRIBUTE_DEFAULT_TEMPLATE.format(
                 attr_type=op_grad_info.attribute_gen_arg_type_list[idx],
