@@ -252,7 +252,7 @@ def fluid_softmax_with_cross_entropy(
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   1.35328650)
+                   [1.35328650])
     """
     input_dims = len(list(logits.shape))
     if input_dims == 0:
