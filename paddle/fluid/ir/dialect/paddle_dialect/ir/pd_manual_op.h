@@ -60,6 +60,10 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
   static OpInfoTuple GetOpInfo();
   static void Build(ir::Builder &builder,             // NOLINT
                     ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult x_,
+                    float axis = 0);
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
                     ir::OpResult out_grad_,
                     ir::OpResult axis_);
 
@@ -67,6 +71,7 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
   ir::Value out_grad() { return operand_source(0); }
   ir::Value axis() { return operand_source(1); }
   ir::OpResult x_grad() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
 }  // namespace dialect
