@@ -145,6 +145,31 @@ class InplacePass : public ir::Pass {
     auto inplace_ops = GetInplaceOp(block);
 
     for (auto& op : *block) {
+      if (inplace_ops.count(op) > 0) {
+        ir::OpInfo inplace_op_info = inplace_ops.at(op);
+
+        std::vector<ir::OpResult> inputs;
+        for (size_t i = 0; i < op->num_operands(); ++i) {
+          inputs.emplace_back(op->operand_source(i).dyn_cast<::ir::OpResult>());
+        }
+
+        std::vector<ir::Type> outputs;
+        for (size_t i = 0; i < op->num_results(); ++i) {
+          outputs.emplace_back(op->result(i).type());
+        }
+
+        ir::Operation* inplace_op = ir::Operation::Create(
+            inputs, op->attributes(), outputs, inplace_op_info);
+
+        for (size_t i = 0; i < op->num_results(); ++i) {
+          op->result(i).ReplaceAllUsesWith(inplace_op->result(i));
+        }
+
+        ir::Block::iterator insert_pos =
+            std::find(block->begin(), block->end(), op);
+        block->insert(insert_pos, inplace_op);
+        block->erase(insert_pos);
+      }
     }
   }
 
