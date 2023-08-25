@@ -96,7 +96,7 @@ rem ------initialize the python environment------
 set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
 %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
-call !PYTHON_VENV_ROOT!\Scripts\0.8.74
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
 if %ERRORLEVEL% NEQ 0 (
     echo activate python virtual environment failed!
     exit /b 5
@@ -361,7 +361,7 @@ set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
 
 rem install ninja if GENERATOR is Ninja
 if %GENERATOR% == "Ninja" (
-    pip install ninja
+    python -m pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
         exit /b 5
@@ -422,25 +422,15 @@ python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third
 if !ERRORLEVEL! EQU 0 (
     echo Getting source code of third party : extracting ...
     tar -xf %md5%.tar.gz
-    rmdir %md5%.tar.gz /s/q
+    del %md5%.tar.gz
+    if !errorlevel! EQU 0 (
+        echo Getting source code of third party : successful
+    )
 ) else (
     git submodule update --init --recursive
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading source code of third_party: checking bce ...
-    if not exist %cache_dir%\bce-python-sdk-new (
-        echo There is no bce in this PC, will install bce.
-        cd /d %cache_dir%
-        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
-        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
-        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-        python -m pip install bce-python-sdk==0.8.74
-    )
-    python -m pip list|find "pycryptodome" >nul && (
-        echo "pycryptodome is installed." 
-    ) || (
-        echo "installing pycryptodome..."
-        python -m pip install pycryptodome
-    )   
+    goto :install_bce
     if !errorlevel! EQU 0 (
         cd /d %work_dir%
         echo Uploading source code of third party: compressing ...
@@ -474,7 +464,7 @@ echo %task_name%|findstr build >nul && (
 
 if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
-    pip install wget
+    python -m pip install wget
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd /d %THIRD_PARTY_HOME%
     echo Getting third party: downloading ...
@@ -496,6 +486,18 @@ if not exist %THIRD_PARTY_PATH% (
 ) else (
     echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
 )
+
+:install_bce
+if not exist %cache_dir%\bce-python-sdk-new (
+        echo There is no bce in this PC, will install bce.
+        cd /d %cache_dir%
+        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+    )
+python -m pip install pycryptodome
+python -m pip install bce-python-sdk==0.8.74
+goto:eof
 
 :cmake_impl
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
@@ -623,20 +625,7 @@ if %ERRORLEVEL% NEQ 0 (
 if "%UPLOAD_TP_FILE%"=="ON" (
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading third_party: checking bce ...
-    if not exist %cache_dir%\bce-python-sdk-new (
-        echo There is no bce in this PC, will install bce.
-        cd /d %cache_dir%
-        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
-        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
-        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-        python -m pip install bce-python-sdk==0.8.74
-    )
-     python -m pip list|find "pycryptodome" >nul && (
-        echo "pycryptodome is installed." 
-    ) || (
-        echo "installing pycryptodome..."
-        python -m pip install pycryptodome
-    ) 
+    goto :install_bce
     if !errorlevel! EQU 0 (
         cd /d %THIRD_PARTY_HOME%
         echo Uploading third_party: compressing ...
@@ -702,9 +691,9 @@ dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 
 @ECHO ON
-pip uninstall -y paddlepaddle
-pip uninstall -y paddlepaddle-gpu
-pip install %PADDLE_WHL_FILE_WIN%
+python -m pip uninstall -y paddlepaddle
+python -m pip uninstall -y paddlepaddle-gpu
+python -m pip install %PADDLE_WHL_FILE_WIN%
 %PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle
 %PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle-gpu
 %PYTHON_ROOT%\python.exe -m pip install %PADDLE_WHL_FILE_WIN%
@@ -731,7 +720,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-pip install -r %work_dir%\python\unittest_py\requirements.txt
+python -m pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
