@@ -201,9 +201,9 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
-void ElementwiseMaddXPUInferMeta(const MetaTensor& x,
-                                 const MetaTensor& y,
-                                 const MetaTensor& w,
-                                 MetaTensor* out);
+void AddCMulXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& w,
+                         MetaTensor* out);
 
 }  // namespace phi

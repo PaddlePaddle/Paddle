@@ -22,7 +22,7 @@
 namespace xpu2 {
 namespace plugin {
 template <typename T>
-__attribute__((global)) void fast_mul_add(const T* x,
+__attribute__((global)) void fast_addcmul(const T* x,
                                           const T* y,
                                           T* z,
                                           int64_t len);
@@ -38,7 +38,7 @@ template <typename T>
 static int xpu2_wrapper(
     Context* ctx, const T* w, const T* x, const T* y, T* z, int64_t len) {
   if (x == w) {
-    xpu2::plugin::fast_mul_add<T>
+    xpu2::plugin::fast_addcmul<T>
         <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(x, y, z, len);
   } else {
     return addcmul(ctx, w, x, y, z, 1.0f, len);
@@ -47,7 +47,7 @@ static int xpu2_wrapper(
 }
 
 template <typename T>
-int fast_mul_add(
+int fast_addcmul(
     Context* ctx, const T* w, const T* x, const T* y, T* z, int64_t len) {
   WRAPPER_CHECK_CTX(ctx);
   WRAPPER_DUMP_FUNCTION_T1(ctx, "fast_mul_add", T);
@@ -61,9 +61,9 @@ int fast_mul_add(
   WRAPPER_UNIMPLEMENTED(ctx);
 }
 
-template int fast_mul_add(
+template int fast_addcmul(
     Context*, const float*, const float*, const float*, float*, int64_t);
-template int fast_mul_add(Context*,
+template int fast_addcmul(Context*,
                           const float16*,
                           const float16*,
                           const float16*,

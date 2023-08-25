@@ -24,7 +24,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 class TestGatherAddTransposePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ["elementwise_madd"], (1e-3, 1e-3)
+        yield config, ["addcmul_xpu"], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
         x_shape = draw(
@@ -64,7 +64,9 @@ class TestGatherAddTransposePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_examples=25, passes=["element_mul_add_fuse_pass"]
+            quant=False,
+            max_examples=25,
+            passes=["elementwise_mul_add_fuse_pass"],
         )
 
 

@@ -19,11 +19,11 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void ElementwiseMaddXPUKernel(const Context& ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& y,
-                              const DenseTensor& w,
-                              DenseTensor* out) {
+void AddCMulXPUKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& w,
+                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto* x_data = x.data<T>();
   const auto* y_data = y.data<T>();
@@ -32,13 +32,13 @@ void ElementwiseMaddXPUKernel(const Context& ctx,
   auto* out_data = ctx.template Alloc<T>(out);
 
 #ifdef PADDLE_WITH_XPU_PLUGIN
-  int r = xpu::plugin::fast_mul_add(ctx.x_context(),
+  int r = xpu::plugin::fast_addcmul(ctx.x_context(),
                                     reinterpret_cast<const XPUType*>(w_data),
                                     reinterpret_cast<const XPUType*>(x_data),
                                     reinterpret_cast<const XPUType*>(y_data),
                                     reinterpret_cast<XPUType*>(out_data),
                                     x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_mul_add");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_addcmul");
 #else
   int r = xpu::addcmul(ctx.x_context(),
                        reinterpret_cast<const XPUType*>(w_data),
@@ -53,9 +53,9 @@ void ElementwiseMaddXPUKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(elementwise_madd,
+PD_REGISTER_KERNEL(addcmul_xpu,
                    XPU,
                    ALL_LAYOUT,
-                   phi::fusion::ElementwiseMaddXPUKernel,
+                   phi::fusion::AddCMulXPUKernel,
                    float,
                    phi::dtype::float16) {}

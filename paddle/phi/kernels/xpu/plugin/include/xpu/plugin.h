@@ -115,7 +115,7 @@ DLL_EXPORT int fast_embedding(Context* ctx,
                               int64_t padding_idx,
                               TID start_index = 0);
 template <typename T>
-DLL_EXPORT int fast_mul_add(
+DLL_EXPORT int fast_addcmul(
     Context* ctx, const T* w, const T* x, const T* y, T* z, int64_t len);
 
 }  // namespace plugin

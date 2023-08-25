@@ -40,7 +40,7 @@ namespace ir {
 namespace patterns {
 
 /*
-fuse elementwise_mul + elementwise_add op to elementwise_madd op
+fuse elementwise_mul + elementwise_add op to addcmul_xpu op
 For example:
 graph:
               x         y
@@ -58,13 +58,13 @@ After the pass is applied:
                x      y      w
                 \     |     /
                  \    |    /
-               elementwise_madd
+                 addcmul_xpu
                       |
                       |
                     output
 */
-struct ElementMulAddFusePattern : public PatternBase {
-  ElementMulAddFusePattern(PDPattern* pattern, const std::string& name_scope);
+struct ElementwiseMulAddFusePass : public PatternBase {
+  ElementwiseMulAddFusePass(PDPattern* pattern, const std::string& name_scope);
   // declare operator node's name
   PATTERN_DECL_NODE(elementwise_mul);
   PATTERN_DECL_NODE(elementwise_add);
@@ -76,7 +76,7 @@ struct ElementMulAddFusePattern : public PatternBase {
   PATTERN_DECL_NODE(add_out);
 };
 
-ElementMulAddFusePattern::ElementMulAddFusePattern(
+ElementwiseMulAddFusePass::ElementwiseMulAddFusePass(
     PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto elementwise_mul =
@@ -104,7 +104,7 @@ ElementMulAddFusePattern::ElementMulAddFusePattern(
 }
 
 /*
-special case for elementwise_madd op:
+special case for addcmul_xpu op:
 graph:
               x         y
                \       /
@@ -121,13 +121,14 @@ After the pass is applied:
                x             y
                 \           /
                  \         /
-               elementwise_madd
+                 addcmul_xpu
                       |
                       |
                     output
 */
-struct ElementMulAddFuseXYPattern : public PatternBase {
-  ElementMulAddFuseXYPattern(PDPattern* pattern, const std::string& name_scope);
+struct ElementwiseMulAddFuseXYPattern : public PatternBase {
+  ElementwiseMulAddFuseXYPattern(PDPattern* pattern,
+                                 const std::string& name_scope);
   // declare operator node's name
   PATTERN_DECL_NODE(elementwise_mul);
   PATTERN_DECL_NODE(elementwise_add);
@@ -138,7 +139,7 @@ struct ElementMulAddFuseXYPattern : public PatternBase {
   PATTERN_DECL_NODE(add_out);
 };
 
-ElementMulAddFuseXYPattern::ElementMulAddFuseXYPattern(
+ElementwiseMulAddFuseXYPattern::ElementwiseMulAddFuseXYPattern(
     PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto elementwise_mul =
@@ -164,35 +165,35 @@ ElementMulAddFuseXYPattern::ElementMulAddFuseXYPattern(
 }
 }  // namespace patterns
 
-class ElementMulAddFusePass : public FusePassBase {
+class ElementwiseMulAddFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void FuseElementMulAdd(ir::Graph* graph) const;
-  void FuseElementMulAddWithOnlyXY(ir::Graph* graph) const;
+  void FuseElementwiseMulAdd(ir::Graph* graph) const;
+  void FuseElementwiseMulAddWithOnlyXY(ir::Graph* graph) const;
 
-  const std::string name_scope_{"element_mul_add_fuse_pass"};
+  const std::string name_scope_{"elementwise_mul_add_fuse_pass"};
 };
 
-void ElementMulAddFusePass::ApplyImpl(ir::Graph* graph) const {
+void ElementwiseMulAddFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
-  FuseElementMulAdd(graph);
-  FuseElementMulAddWithOnlyXY(graph);
+  FuseElementwiseMulAdd(graph);
+  FuseElementwiseMulAddWithOnlyXY(graph);
 }
 
-void ElementMulAddFusePass::FuseElementMulAdd(ir::Graph* graph) const {
+void ElementwiseMulAddFusePass::FuseElementwiseMulAdd(ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::ElementMulAddFusePattern pattern(gpd.mutable_pattern(),
-                                             name_scope_);
+  patterns::ElementwiseMulAddFusePass pattern(gpd.mutable_pattern(),
+                                              name_scope_);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle ElementMulAddFusePass";
+    VLOG(4) << "handle ElementwiseMulAddFusePass";
     // declare operator node's name
     GET_IR_NODE(elementwise_mul);
     GET_IR_NODE(elementwise_add);
@@ -229,9 +230,9 @@ void ElementMulAddFusePass::FuseElementMulAdd(ir::Graph* graph) const {
       // delete useless node
       std::unordered_set<const Node*> delete_nodes;
 
-      // Generate elementwise_madd op
+      // Generate addcmul_xpu op
       framework::OpDesc fused_op_desc(block);
-      fused_op_desc.SetType("elementwise_madd");
+      fused_op_desc.SetType("addcmul_xpu");
       fused_op_desc.SetInput("x", {mul_x->Name()});
       fused_op_desc.SetInput("y", {mul_y->Name()});
       fused_op_desc.SetInput("w", {add_w->Name()});
@@ -251,16 +252,16 @@ void ElementMulAddFusePass::FuseElementMulAdd(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void ElementMulAddFusePass::FuseElementMulAddWithOnlyXY(
+void ElementwiseMulAddFusePass::FuseElementwiseMulAddWithOnlyXY(
     ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::ElementMulAddFuseXYPattern pattern(gpd.mutable_pattern(),
-                                               name_scope_);
+  patterns::ElementwiseMulAddFuseXYPattern pattern(gpd.mutable_pattern(),
+                                                   name_scope_);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle ElementMulAddFusePass";
+    VLOG(4) << "handle ElementwiseMulAddFusePass";
     // declare operator node's name
     GET_IR_NODE(elementwise_mul);
     GET_IR_NODE(elementwise_add);
@@ -294,9 +295,9 @@ void ElementMulAddFusePass::FuseElementMulAddWithOnlyXY(
       // delete useless node
       std::unordered_set<const Node*> delete_nodes;
 
-      // Generate elementwise_madd op
+      // Generate addcmul_xpu op
       framework::OpDesc fused_op_desc(block);
-      fused_op_desc.SetType("elementwise_madd");
+      fused_op_desc.SetType("addcmul_xpu");
       fused_op_desc.SetInput("x", {mul_x->Name()});
       fused_op_desc.SetInput("y", {mul_y->Name()});
       fused_op_desc.SetInput("w", {mul_x->Name()});
@@ -319,10 +320,10 @@ void ElementMulAddFusePass::FuseElementMulAddWithOnlyXY(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(element_mul_add_fuse_pass,
-              paddle::framework::ir::ElementMulAddFusePass);
+REGISTER_PASS(elementwise_mul_add_fuse_pass,
+              paddle::framework::ir::ElementwiseMulAddFusePass);
 
-REGISTER_PASS_CAPABILITY(element_mul_add_fuse_pass)
+REGISTER_PASS_CAPABILITY(elementwise_mul_add_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .GE("elementwise_add", 0)

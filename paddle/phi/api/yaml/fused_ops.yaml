@@ -23,6 +23,15 @@
     func : add_layernorm_xpu
     data_type : x
 
+- op : addcmul_xpu
+  args : (Tensor x, Tensor y, Tensor w)
+  output : Tensor(out)
+  infer_meta :
+    func : AddCMulXPUInferMeta
+  kernel :
+    func : addcmul_xpu
+    data_type : x
+
 - op : conv1d_xpu
   args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, str padding_algorithm, int dilations, int strides, int groups, int act_type, float act_param)
   output : Tensor(out), Tensor(out_max)
@@ -52,15 +61,6 @@
     func : conv2d_xpu
     data_type : x
   optional : bias, branch, branch_max ,x_max
-
-- op : elementwise_madd
-  args : (Tensor x, Tensor y, Tensor w)
-  output : Tensor(out)
-  infer_meta :
-    func : ElementwiseMaddXPUInferMeta
-  kernel :
-    func : elementwise_madd
-    data_type : x
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, Tensor mask, int64_t padding_idx)

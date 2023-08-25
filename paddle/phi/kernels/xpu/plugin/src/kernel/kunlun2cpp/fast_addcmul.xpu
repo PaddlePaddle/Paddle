@@ -39,7 +39,7 @@ static inline __device__ void primitive_addcmul(T* x, const T* y, int len) {
 }
 
 template <typename T>
-__global__ void fast_mul_add(const T* x, const T* y, T* z, int64_t len) {
+__global__ void fast_addcmul(const T* x, const T* y, T* z, int64_t len) {
   int cid = core_id();
   const int ncores = core_num();
   int tid = cid * cluster_num() + cluster_id();
@@ -67,11 +67,11 @@ __global__ void fast_mul_add(const T* x, const T* y, T* z, int64_t len) {
   }
 }
 
-#define _XPU_DEF__FAST_MUL_ADD_(DTYPE)          \
-  template __global__ void fast_mul_add<DTYPE>( \
+#define _XPU_DEF__FAST_ADDCMUL_(DTYPE)          \
+  template __global__ void fast_addcmul<DTYPE>( \
       const DTYPE* x, const DTYPE* y, DTYPE* z, int64_t len);
-_XPU_DEF__FAST_MUL_ADD_(float);
-_XPU_DEF__FAST_MUL_ADD_(float16);
+_XPU_DEF__FAST_ADDCMUL_(float);
+_XPU_DEF__FAST_ADDCMUL_(float16);
 
 }  // namespace plugin
 }  // namespace xpu2
