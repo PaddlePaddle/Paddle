@@ -23,6 +23,7 @@ class EntryAttr:
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.enable_static()
 
             >>> sparse_feature_dim = 1024
             >>> embedding_size = 64
@@ -63,6 +64,7 @@ class ProbabilityEntry(EntryAttr):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.enable_static()
 
             >>> sparse_feature_dim = 1024
             >>> embedding_size = 64
@@ -107,6 +109,7 @@ class CountFilterEntry(EntryAttr):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.enable_static()
 
             >>> sparse_feature_dim = 1024
             >>> embedding_size = 64
