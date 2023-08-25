@@ -14,7 +14,7 @@
 
 import cinn
 
-from ..runtime import CINNLowerLevelIRJIT
+from ..runtime import CinnLowerLevelIrJit
 from .compute_code_generator import ComputeCodeGenerator
 from .schedule_code_generator import ScheduleCodeGenerator
 
@@ -42,10 +42,10 @@ def llir_to_runtime_module(llir_func, target, function_name, arg_names):
 
 
 def compile(fn, **kwargs):
-    if isinstance(fn, CINNLowerLevelIRJIT):
+    if isinstance(fn, CinnLowerLevelIrJit):
         llir_func = ast_to_llir(fn, kwargs["jit_inputs_signature"])
     else:
-        raise Exception("Current Only support compile from CINNLowerLevelIRJIT")
+        raise Exception("Current Only support compile from CinnLowerLevelIrJit")
 
     rt_module = llir_to_runtime_module(
         llir_func, kwargs["target"], fn.__name__, kwargs["arg_names"]

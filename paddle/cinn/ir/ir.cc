@@ -270,9 +270,11 @@ Expr For::Make(Var loop_var,
 }
 Expr For::Make(Var loop_var, Expr min, Expr extent, Expr body) {
   auto node = make_shared<For>();
-  CHECK(loop_var.defined());
-  CHECK(min.defined());
-  CHECK(extent.defined());
+  CHECK(loop_var.defined()) << "Var is not defined in the for loop";
+  CHECK(min.defined())
+      << "The min value of the iteration of the for loop is undefined";
+  CHECK(extent.defined())
+      << "The extent value of the iteration of the for loop is undefined";
   node->loop_var = loop_var;
   node->min = min;
   node->extent = extent;
@@ -283,9 +285,14 @@ Expr For::Make(Var loop_var, Expr min, Expr extent, Expr body) {
   BindInfo bind_info = BindInfo();
   node->set_bind_info(BindInfo());
 
-  if (node->is_vectorized()) CHECK(node->vectorize_info().valid());
-  if (node->is_binded() && bind_info.offset >= 0)
-    CHECK(node->bind_info().valid());
+  if (node->is_vectorized()) {
+    CHECK(node->vectorize_info().valid())
+        << "The vectorize information bound to the for loop is incorrect";
+  }
+  if (node->is_binded() && bind_info.offset >= 0) {
+    CHECK(node->bind_info().valid())
+        << "The bind information bound to the for loop is incorrect";
+  }
 
   return Expr(node);
 }

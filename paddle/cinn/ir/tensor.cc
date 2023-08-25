@@ -57,7 +57,7 @@ Tensor _Tensor_::Make(const std::string &name,
                       const std::vector<Expr> &shape,
                       const std::vector<Expr> &domain,
                       const std::vector<Var> &reduce_axis) {
-  CHECK(!name.empty()) << "Tensor name is set empty";
+  CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
   auto n = make_shared<_Tensor_>();
   n->name = name;
   n->shape = shape;

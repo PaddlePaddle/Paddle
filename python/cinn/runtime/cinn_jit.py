@@ -22,7 +22,7 @@ from typing import Callable, Generic, Optional, TypeVar, Union, cast
 T = TypeVar('T')
 
 
-class CINNLowerLevelIRJIT(Generic[T]):
+class CinnLowerLevelIrJit(Generic[T]):
     def __init__(self, fn):
         self.fn = fn
         # function prototype
@@ -94,9 +94,9 @@ def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget())
 
 def to_cinn_llir(
     fn: Optional[T] = None,
-) -> Union[CINNLowerLevelIRJIT[T]]:
-    def decorator(fn: T) -> CINNLowerLevelIRJIT[T]:
-        return CINNLowerLevelIRJIT(fn)
+) -> Union[CinnLowerLevelIrJit[T]]:
+    def decorator(fn: T) -> CinnLowerLevelIrJit[T]:
+        return CinnLowerLevelIrJit(fn)
 
     if fn is not None:
         return decorator(fn)

@@ -17,9 +17,14 @@ from cinn import runtime
 
 
 class DataArray:
-    """ """
+    """
+    Provides Python encapsulation of the cinn_buffer_t
+    data interface in the CINN RunTime module.
+    """
 
-    def __init__(self, data, shape, dtype) -> None:
+    def __init__(
+        self, data: runtime.cinn_buffer_t, shape: list, dtype: cinn.common.Type
+    ) -> None:
         self.data = data
         self.shape = shape
         self.dtype = dtype
@@ -38,14 +43,16 @@ class DataArray:
 
     @staticmethod
     def from_numpy(np_array, target=cinn.common.DefaultHostTarget()):
-        """ """
+        """
+        Create DataArray form numpy array
+        """
         assert isinstance(np_array, np.ndarray)
         data = runtime.cinn_buffer_t(np_array, target)
         dtype_np_to_cinn_common = {
             "float": cinn.common.Float(32),
             "float32": cinn.common.Float(32),
         }
-        # TODO(6clc): Support float16,
+        # TODO(6clc): Support float16
         dtype_np = str(np_array.dtype).split(".")[-1]
         assert dtype_np in dtype_np_to_cinn_common.keys()
 
