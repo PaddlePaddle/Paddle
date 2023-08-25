@@ -54,7 +54,7 @@ void SymbolicDim::Build(
   argument.AddAttribute("knownNonSizeZero", attr_knownNonSizeZero);
 }
 
-std::string SymbolicDim::getSymName() {
+const std::string SymbolicDim::getSymName() {
   return attribute<ir::StrAttribute>("sym_name").AsString();
 }
 int64_t SymbolicDim::getValue() {
@@ -101,6 +101,35 @@ void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
   operation()->set_attribute(
       "knownNonSizeZero",
       ir::BoolAttribute::get(ir::IrContext::Instance(), attrValue));
+}
+
+bool SymbolicDim::isDynamic() {
+  return getValue() == -100000;
+}  // TODO(zhangbo): getValue() == ShapedType::kDynamic;
+
+bool SymbolicDim::merge(SymbolicDim other) {
+  if (!isDynamic() && !other.isDynamic() && getValue() != other.getValue())
+    return false;
+  if (isDynamic() && !other.isDynamic()) updateValue(other.getValue());
+
+  bool knownNonNegativeFlag =
+      getKnownNonNegative() || other.getKnownNonNegative();
+  bool knownNegativeOneFlag =
+      getKnownNegativeOne() || other.getKnownNegativeOne();
+  bool knownNonSizeOneFlag = getKnownNonSizeOne() ||
+                             other.getKnownNonSizeOne() || knownNegativeOneFlag;
+  bool knownNonSizeZeroFlag = getKnownNonSizeZero() ||
+                              other.getKnownNonSizeZero() ||
+                              knownNegativeOneFlag;
+
+  if (knownNonNegativeFlag && knownNegativeOneFlag) return false;
+
+  updateKnownNonSizeZero(knownNonSizeZeroFlag);
+  updateKnownNonSizeOne(knownNonSizeOneFlag);
+  updateKnownNegativeOne(knownNegativeOneFlag);
+  updateKnownNonNegative(knownNonNegativeFlag);
+
+  return true;
 }
 
 }  // namespace dialect
