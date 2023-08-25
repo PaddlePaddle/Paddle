@@ -51,17 +51,20 @@ def prim_enabled():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
-            disable_prim()
+            >>> disable_prim()
 
-            print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     return prim_option.get_status()
 
@@ -79,13 +82,15 @@ def enable_prim():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
+
     """
     prim_option.set_status(True)
 
@@ -103,17 +108,20 @@ def disable_prim():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
-            disable_prim()
+            >>> disable_prim()
 
-            print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     prim_option.set_status(False)
 
