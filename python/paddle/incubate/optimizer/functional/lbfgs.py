@@ -82,23 +82,23 @@ def minimize_lbfgs(
         .. code-block:: python
             :name: code-example1
 
-            # Example1: 1D Grid Parameters
-            import paddle
-            # Randomly simulate a batch of input data
-            inputs = paddle. normal(shape=(100, 1))
-            labels = inputs * 2.0
-            # define the loss function
-            def loss(w):
-                y = w * inputs
-                return paddle.nn.functional.square_error_cost(y, labels).mean()
-            # Initialize weight parameters
-            w = paddle.normal(shape=(1,))
-            # Call the bfgs method to solve the weight that makes the loss the smallest, and update the parameters
-            for epoch in range(0, 10):
-                # Call the bfgs method to optimize the loss, note that the third parameter returned represents the weight
-                w_update = paddle.incubate.optimizer.functional.minimize_bfgs(loss, w)[2]
-                # Use paddle.assign to update parameters in place
-                paddle. assign(w_update, w)
+            >>> >>> # Example1: 1D Grid Parameters
+            >>> >>> import paddle
+            >>> >>> # Randomly simulate a batch of input data
+            >>> >>> inputs = paddle. normal(shape=(100, 1))
+            >>> >>> labels = inputs * 2.0
+            >>> >>> # define the loss function
+            >>> >>> def loss(w):
+            >>> ...     y = w * inputs
+            >>> ...     return paddle.nn.functional.square_error_cost(y, labels).mean()
+            >>> >>> # Initialize weight parameters
+            >>> >>> w = paddle.normal(shape=(1,))
+            >>> >>> # Call the bfgs method to solve the weight that makes the loss the smallest, and update the parameters
+            >>> >>> for epoch in range(0, 10):
+            >>> ...     # Call the bfgs method to optimize the loss, note that the third parameter returned represents the weight
+            >>> ...     w_update = paddle.incubate.optimizer.functional.minimize_bfgs(loss, w)[2]
+            >>> ...     # Use paddle.assign to update parameters in place
+            >>> ...     paddle. assign(w_update, w)
 
         .. code-block:: python
             :name: code-example2
