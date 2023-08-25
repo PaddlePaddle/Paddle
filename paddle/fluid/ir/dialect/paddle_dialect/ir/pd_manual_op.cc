@@ -167,6 +167,7 @@ OpInfoTuple SplitGradOp::GetOpInfo() {
                     {"out_grad", "axis"},
                     {"out_grad"},
                     {},
+                    {},
                     {});
 
   return std::make_tuple(
