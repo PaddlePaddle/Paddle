@@ -14,8 +14,12 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/naive_executor.h"
