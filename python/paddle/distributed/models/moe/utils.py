@@ -30,6 +30,7 @@ def _number_count(numbers, upper_range):
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
 
+
             >>> numbers = [
             ...     [0, 2],
             ...     [0, 2]
