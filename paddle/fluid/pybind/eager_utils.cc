@@ -134,6 +134,10 @@ bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj) {
 
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 
+bool PyObject_CheckIROpResult(PyObject* obj) {
+  return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
+}
+
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {
     return false;  // To be compatible with QA integration testing. Some
@@ -650,6 +654,10 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
                                             const std::string& op_type,
                                             ssize_t arg_pos) {
+  if (obj == Py_None) {
+    return phi::DataType::UNDEFINED;
+  }
+
   paddle::DataType dtype;
   if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
     dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
@@ -884,6 +892,16 @@ PyObject* ToPyObject(const ir::OpResult& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
+}
+
+PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+  }
+
+  return result;
 }
 
 PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
@@ -1467,8 +1485,8 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
-ir::OpResult CastPyArg2OpResult(const std::string& op_type,
-                                PyObject* obj,
+ir::OpResult CastPyArg2OpResult(PyObject* obj,
+                                const std::string& op_type,
                                 size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<ir::OpResult>();
@@ -1482,8 +1500,8 @@ ir::OpResult CastPyArg2OpResult(const std::string& op_type,
   }
 }
 
-std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(const std::string& op_type,
-                                                     PyObject* obj,
+std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
+                                                     const std::string& op_type,
                                                      size_t arg_pos) {
   std::vector<ir::OpResult> result_list;
   if (PyList_Check(obj)) {

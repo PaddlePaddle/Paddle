@@ -16,6 +16,7 @@
 #include <thread>
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/context_pool.h"
 
 namespace paddle {
 namespace memory {
@@ -179,7 +180,11 @@ void StreamSafeCustomDeviceAllocator::FreeImpl(phi::Allocation* allocation) {
 
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
   if (!stream_safe_cuda_allocation->GetOwningStream()) {
-    stream_safe_cuda_allocation->SetOwningStream(default_stream_);
+    stream_safe_cuda_allocation->SetOwningStream(
+        default_stream_ ? default_stream_
+                        : reinterpret_cast<phi::CustomContext*>(
+                              phi::DeviceContextPool::Instance().Get(place_))
+                              ->stream());
   }
   stream_safe_cuda_allocation->MarkAsWillBeFreed();
   if (stream_safe_cuda_allocation->CanBeFreed()) {
