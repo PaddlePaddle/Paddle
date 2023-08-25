@@ -39,6 +39,26 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+enum class GeneratePluginDataType {
+  BOOL,
+  UINT8,
+  INT8,
+  INT16,
+  INT32,
+  INT64,
+  FP16,
+  FP32,
+  FP64,
+  BF16,
+  SIZE_T,
+  COMPLEX64,
+  COMPLEX128,
+  OPTIONAL
+};
+
+GeneratePluginDataType ProtoTypeToGeneratePluginDataType(
+    framework::proto::VarType_Type proto_type);
+
 void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                                phi::KernelContext* kernel_context,
                                const phi::KernelSignature& signature,
@@ -47,8 +67,8 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
 class GenericPlugin : public DynamicPluginTensorRT {
  public:
   struct InputOutPutVarInfo {
-    std::vector<int> inputs_data_type;
-    std::vector<int> outputs_data_type;
+    std::vector<GeneratePluginDataType> inputs_data_type;
+    std::vector<GeneratePluginDataType> outputs_data_type;
   };
 
  public:
@@ -59,8 +79,8 @@ class GenericPlugin : public DynamicPluginTensorRT {
                 bool with_fp16_ = false);
 
   GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
-                const std::vector<int>& inputs_data_type,
-                const std::vector<int>& outputs_data_type,
+                const std::vector<GeneratePluginDataType>& inputs_data_type,
+                const std::vector<GeneratePluginDataType>& outputs_data_type,
                 bool with_fp16_ = false);
 
   // It was used for tensorrt deserialization.
@@ -149,8 +169,8 @@ class GenericPlugin : public DynamicPluginTensorRT {
   std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
 
  private:
-  std::vector<int> inputs_data_type_;
-  std::vector<int> outputs_data_type_;
+  std::vector<GeneratePluginDataType> inputs_data_type_;
+  std::vector<GeneratePluginDataType> outputs_data_type_;
 };
 
 class GenericPluginCreator : public TensorRTPluginCreator {

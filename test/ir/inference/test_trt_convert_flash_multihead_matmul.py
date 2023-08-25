@@ -32,10 +32,12 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(batch, dim1):
-            return np.random.rand(batch, dim1, 320).astype(np.float32) / 10
+            return (
+                np.random.rand(batch, dim1, 320).astype(np.float32) / 10 - 0.05
+            )
 
         def generate_weight1():
-            return np.random.rand(320, 320).astype(np.float32) / 10
+            return np.random.rand(320, 320).astype(np.float32) / 10 - 0.05
 
         for batch in [1, 2]:
             self.batch = batch
