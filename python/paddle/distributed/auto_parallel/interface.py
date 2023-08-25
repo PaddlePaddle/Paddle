@@ -55,13 +55,13 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            x = paddle.ones([4, 6])
-            shard_spec = ["x", "y"]
-            auto.shard_tensor(x, mesh, shard_spec)
+            >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> x = paddle.ones([4, 6])
+            >>> shard_spec = ["x", "y"]
+            >>> auto.shard_tensor(x, mesh, shard_spec)
 
     """
 
@@ -144,16 +144,17 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            x = paddle.ones([4, 6])
-            y = paddle.zeros([4, 6])
-            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-            dist_add = auto.shard_op(paddle.add,
-                                     in_shard_specs=[["x", "y"], ["y", None]],
-                                     out_shard_specs=[[None, "x"]])
-            dist_add(x, y)
+            >>> x = paddle.ones([4, 6])
+            >>> y = paddle.zeros([4, 6])
+            >>> mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            >>> dist_add = auto.shard_op(paddle.add,
+            ...                          mesh,
+            ...                          in_shard_specs=[["x", "y"], ["y", None]],
+            ...                          out_shard_specs=[[None, "x"]])
+            >>> dist_add(x, y)
 
     """
 
