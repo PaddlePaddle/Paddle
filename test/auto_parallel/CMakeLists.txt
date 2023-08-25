@@ -102,7 +102,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
   py_test_modules(test_tuning_recompute_with_amp MODULES
                   test_tuning_recompute_with_amp)
-  set_tests_properties(test_tuning_recompute_with_amp PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_tuning_recompute_with_amp PROPERTIES TIMEOUT 60)
   py_test_modules(test_fused_linear_pass MODULES test_fused_linear_pass)
   set_tests_properties(test_fused_linear_pass PROPERTIES TIMEOUT 40)
   py_test_modules(test_align_tool MODULES test_align_tool)
