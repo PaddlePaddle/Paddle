@@ -611,8 +611,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     }
 
     if (op_item->name() == "builtin.slice") {
-      phi::Place out_place = place;
-      // Copy op inputs
       std::vector<ir::OpResult> vec_inputs;
       std::vector<ir::Type> op_output_types;
       if (op_item->num_operands() > 0) {
@@ -630,16 +628,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                                 op_item->name()));
           auto new_in = map_value_pair.at(cur_in);
           vec_inputs.push_back(new_in);
-          op_output_types.push_back(new_in.type());
+
           if (new_in.type().isa<ir::VectorType>()) {
             auto vec_types = new_in.type().dyn_cast<ir::VectorType>().data();
-            out_place =
-                vec_types[op_item->attributes()
-                              .at("index")
-                              .dyn_cast<ir::Int32Attribute>()
-                              .data()]
-                    .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
-                    .place();
+            auto index = op_item->attributes()
+                             .at("index")
+                             .dyn_cast<ir::Int32Attribute>()
+                             .data();
+            op_output_types.push_back(vec_types[index]);
           } else {
             PADDLE_THROW(
                 phi::errors::Unimplemented("only support vector type for now"));
@@ -994,8 +990,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     ir::Operation* op = ir::Operation::Create(
         vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
 
-    op->Print(std::cout);
-    std::cerr << "\n";
     map_op_pair[op_item] = op;
 
     // only deal with single output
