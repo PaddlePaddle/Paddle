@@ -20,8 +20,11 @@
 #include <tuple>
 #include <unordered_set>
 
+namespace cinn {
+
 template <typename VT, typename FT>
 class EquationGraphTopoWalker final {
+ public:
   using VariableVisitorT = std::function<void(VT)>;
   using FunctionVisitorT = std::function<void(FT)>;
   using F4VVisitor = std::function<void(VT, const FunctionVisitorT&)>;
@@ -71,8 +74,9 @@ class EquationGraphTopoWalker final {
     std::queue<FT> functions_queue{};
     std::unordered_set<FT> queued_functions{};
     const TryEnqueueVaraible = [&](VT variable) {
-      if (queued_variables.count(variable)) {
+      if (queued_variables.count(variable) == 0) {
         variables_queue.push_back(variable);
+        queued_variables.insert(variable);
       }
     };
     const TryEnqueueFunction = [&](FT function) {
@@ -117,3 +121,5 @@ class EquationGraphTopoWalker final {
   // tOut [Variable] <- Function
   V4FVisitor OutputVariablesVisitor_;
 };
+
+}  // namespace cinn
