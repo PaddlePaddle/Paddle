@@ -81,7 +81,9 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
     for (auto *var_node : node->inputs) {
-      if (!var_node->Var()->Persistable()) continue;
+
+if (!var_node || !var_node->Var() || !var_node->Var()->Persistable())
+continue;
       auto var_name = var_node->Var()->Name();
       if (std::count(
               repetitive_params.begin(), repetitive_params.end(), var_name)) {
