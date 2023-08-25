@@ -262,6 +262,90 @@ ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
              target_op_name);
   }
 
+  if (!paddle::dialect::HaveLegacyOpToPdOpsMap(target_op_name)) {
+    return op_info;
+  }
+
+  // for selected rows kernel choose
+  auto* op_info_concept =
+      op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
+
+  OpInputInfoList input_infos;
+  OpAttributeInfoList attr_infos;
+  OpOutputInfoList output_infos;
+  std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
+      op_info_concept->get_op_info_();
+
+  auto& op_normalizer = OpNameNormalizer::instance();
+  std::vector<std::string> need_inputs_sig;
+  for (const auto& info : input_infos) {
+    std::string legacy_input_name =
+        op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
+    auto legacy_input_vars = op_desc.Input(legacy_input_name, true);
+    IR_ENFORCE(legacy_input_vars.size() <= 1,
+               "Do not support duplicable tensor input, when op have multi "
+               "kernels. OP is %s",
+               op_desc.Type());
+
+    if (legacy_input_vars.empty()) {
+      need_inputs_sig.emplace_back("");
+      continue;
+    }
+    VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
+    if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
+      need_inputs_sig.emplace_back("dense");
+    } else if (var->GetType() ==
+               paddle::framework::proto::VarType::SELECTED_ROWS) {
+      need_inputs_sig.emplace_back("selected_rows");
+    } else {
+      IR_THROW("Op %d only support densetensor and selected_rows, but not %d",
+               op_desc.Type(),
+               var->GetType());
+    }
+  }
+
+  target_op_name = OpNameCompatibleMapping(op_desc.Type());
+
+  auto sig_infos = paddle::dialect::LegacyOpToPdOpsMapping(target_op_name);
+
+  target_op_name = "";
+  for (const auto& sig : sig_infos) {
+    if (need_inputs_sig.size() != sig.inputs.size()) {
+      continue;
+    }
+    size_t i;
+    for (i = 0; i < need_inputs_sig.size(); ++i) {
+      if (need_inputs_sig[i] == "") {
+        continue;
+      }
+      if (need_inputs_sig[i] != sig.inputs[i]) {
+        break;
+      }
+    }
+    if (i == need_inputs_sig.size()) {
+      target_op_name = sig.name;
+      break;
+    }
+  }
+
+  IR_ENFORCE(!target_op_name.empty(),
+             "Op %d should have corresponding OpInfo %d",
+             op_desc.Type(),
+             target_op_name);
+
+  target_op_name = kTargetDialectPrefix + target_op_name;
+  if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
+    target_op_name += "_";
+  }
+  VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
+          << target_op_name;
+  op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  if (!op_info) {
+    IR_THROW("Op %d should have corresponding OpInfo %d",
+             op_desc.Type(),
+             target_op_name);
+  }
+
   return op_info;
 }
 

@@ -39,7 +39,7 @@ OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
   paddle::dialect::OpRunTimeInfo run_time_info =
-      OpRunTimeInfo("", {""}, {""}, {""}, {""}, {}, {});
+      OpRunTimeInfo("", {""}, "", {""}, {""}, {}, {});
 
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }

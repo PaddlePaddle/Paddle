@@ -674,7 +674,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
     std::string kernel_fn_str;
     if (op_info_parser != nullptr) {
-      kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
+      kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func;
     }
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());

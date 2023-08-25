@@ -74,14 +74,14 @@ struct OpAttributeInfo {
 struct OpRunTimeInfo {
   std::string infer_meta_func;
   std::vector<std::string> infer_meta_param;
-  std::vector<std::string> kernel_func;
+  std::string kernel_func;
   std::vector<std::string> kernel_param;
   std::vector<std::string> kernel_key_dtype;
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
   OpRunTimeInfo(const std::string& infer_meta_func,
                 const std::vector<std::string>& infer_meta_param,
-                const std::vector<std::string>& kernel_func,
+                const std::string& kernel_func,
                 const std::vector<std::string>& kernel_param,
                 const std::vector<std::string>& dtype,
                 const std::vector<std::pair<std::string, std::string>>& inplace,

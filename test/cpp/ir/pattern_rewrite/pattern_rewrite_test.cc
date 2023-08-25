@@ -471,7 +471,7 @@ OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
                      "exhaustive_search",
                      "channels",
                      "user_workspace_size"},
-                    {"ConvFusionKernel"},
+                    "ConvFusionKernel",
                     {"input",
                      "filter",
                      "bias",
