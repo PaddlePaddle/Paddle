@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ import random
 import unittest
 
 import numpy as np
+from hybrid_parallel_sharding_model import SimpleDPNet
 
 import paddle
 from paddle.distributed import fleet
@@ -30,84 +31,6 @@ output_size = 10
 seq_length = 2
 batch_size = 4
 STEPS = 10
-
-
-def parallel_matmul(lm_output, logit_weights, parallel_output):
-    hcg = fleet.get_hybrid_communicate_group()
-    model_parallel_group = hcg.get_model_parallel_group()
-    world_size = hcg.get_model_parallel_world_size()
-    rank = hcg.get_model_parallel_rank()
-
-    if world_size > 1:
-        input_parallel = paddle.distributed.collective._c_identity(
-            lm_output, group=model_parallel_group
-        )
-
-        logits = paddle.matmul(input_parallel, logit_weights, transpose_y=True)
-
-        if parallel_output:
-            return logits
-
-        return paddle.distributed.collective._c_concat(
-            logits, group=model_parallel_group
-        )
-    else:
-        logits = paddle.matmul(lm_output, logit_weights, transpose_y=True)
-        return logits
-
-
-class SimpleDPNet(paddle.nn.Layer):
-    def __init__(
-        self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
-    ):
-
-        super().__init__()
-        self.linear1 = paddle.nn.Linear(
-            hidden_size,
-            inner_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(np_fc1)
-            ),
-            bias_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-        )
-
-        self.linear2 = paddle.nn.Linear(
-            inner_size,
-            hidden_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(np_fc2)
-            ),
-            bias_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-        )
-
-        self.linear3 = paddle.nn.Linear(
-            hidden_size,
-            output_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-            bias_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-        )
-
-        self.embedding = paddle.nn.Embedding(
-            vocab_size,
-            hidden_size,
-            weight_attr=paddle.nn.initializer.Constant(value=0.5),
-        )
-
-    def forward(self, x):
-        x = self.embedding(x)
-        x = self.linear1(x)
-        x = self.linear2(x)
-        x = self.linear3(x)
-        x = paddle.matmul(x, self.embedding.weight, transpose_y=True)
-        return x
 
 
 class TestDistMPTraning(unittest.TestCase):
@@ -137,7 +60,6 @@ class TestDistMPTraning(unittest.TestCase):
         ]
 
     def train_batch(self, batch, model, optimizer):
-
         output = model(batch)
         loss = output.mean()
         loss.backward()  # do backward
@@ -146,10 +68,28 @@ class TestDistMPTraning(unittest.TestCase):
         return loss
 
     def build_optimizer(self, model, strategy=None, Optimizer="adam"):
-        clip = paddle.nn.ClipGradByGlobalNorm(0.5)
+        clip = paddle.nn.ClipGradByNorm(0.7)
+        param_groups = [
+            {
+                "params": model.linear1.parameters(),
+                "weight_decay": 0.0001,
+                "learning_rate": 0.1,
+            },
+            {
+                "params": model.linear2.parameters(),
+                "weight_decay": 0.020,
+                "learning_rate": 0.01,
+            },
+            {
+                "params": model.linear3.parameters(),
+                "weight_decay": 0.1,
+                "learning_rate": 0.1,
+            },
+        ]
+
         if Optimizer == "adam":
             optimizer = paddle.optimizer.AdamW(
-                parameters=model.parameters(),
+                parameters=param_groups,
                 learning_rate=0.001,
                 weight_decay=0.00001,
                 grad_clip=clip,
@@ -198,11 +138,10 @@ class TestDistMPTraning(unittest.TestCase):
         )
 
         for idx in range(STEPS):
-
-            if idx == 2 and paddle.distributed.get_rank() == 0:
+            if idx > 1:
                 self.assertTrue(
                     set(optimizer_a._inner_opt._inner_opt.state_dict().keys())
-                    == sharded_accumulators
+                    == sharded_accumulators[paddle.distributed.get_rank()]
                 )
 
             if paddle.distributed.get_rank() == 0:
@@ -214,6 +153,7 @@ class TestDistMPTraning(unittest.TestCase):
             loss_a = self.train_batch(batch_sharding, model_a, optimizer_a)
             loss_b = self.train_batch(batch_single, model_b, optimizer_b)
 
+            np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
             for j in range(len(model_a.parameters())):
                 np.testing.assert_allclose(
                     model_a.parameters()[j].numpy(),
@@ -222,38 +162,39 @@ class TestDistMPTraning(unittest.TestCase):
                 )
 
     def test_sharding_adam(self):
-        sharded_accumulators = {
-            "linear_0.b_0_moment2_0",
-            'embedding_0.w_0_beta1_pow_acc_0',
-            'linear_2.b_0_beta2_pow_acc_0',
-            'linear_0.b_0_beta1_pow_acc_0',
-            'linear_2.b_0_moment2_0',
-            'linear_0.b_0_beta2_pow_acc_0',
-            'linear_1.b_0_moment1_0',
-            'embedding_0.w_0_moment2_0',
-            'linear_1.b_0_moment2_0',
-            'linear_2.b_0_beta1_pow_acc_0',
-            'linear_0.b_0_moment1_0',
-            'linear_2.b_0_moment1_0',
-            'embedding_0.w_0_moment1_0',
-            'embedding_0.w_0_beta2_pow_acc_0',
-            'linear_1.b_0_beta1_pow_acc_0',
-            'linear_1.b_0_beta2_pow_acc_0',
-        }
+        sharded_accumulators = [
+            {
+                'linear_0.b_0_moment1_0',
+                'linear_1.b_0_moment1_0',
+                'linear_2.w_0_moment1_0',
+                'linear_2.b_0_moment1_0',
+                'linear_0.b_0_moment2_0',
+                'linear_1.b_0_moment2_0',
+                'linear_2.w_0_moment2_0',
+                'linear_2.b_0_moment2_0',
+                'linear_0.b_0_beta1_pow_acc_0',
+                'linear_1.b_0_beta1_pow_acc_0',
+                'linear_2.w_0_beta1_pow_acc_0',
+                'linear_2.b_0_beta1_pow_acc_0',
+                'linear_0.b_0_beta2_pow_acc_0',
+                'linear_1.b_0_beta2_pow_acc_0',
+                'linear_2.w_0_beta2_pow_acc_0',
+                'linear_2.b_0_beta2_pow_acc_0',
+            },
+            {
+                'linear_0.w_0_moment1_0',
+                'linear_1.w_0_moment1_0',
+                'linear_0.w_0_moment2_0',
+                'linear_1.w_0_moment2_0',
+                'linear_0.w_0_beta1_pow_acc_0',
+                'linear_1.w_0_beta1_pow_acc_0',
+                'linear_0.w_0_beta2_pow_acc_0',
+                'linear_1.w_0_beta2_pow_acc_0',
+            },
+        ]
+
         self.sharding_model(
             Optimizer="adam",
-            sharded_accumulators=sharded_accumulators,
-        )
-
-    def test_sharding_momentum(self):
-        sharded_accumulators = {
-            'linear_8.b_0_velocity_0',
-            'embedding_2.w_0_velocity_0',
-            'linear_6.b_0_velocity_0',
-            'linear_7.b_0_velocity_0',
-        }
-        self.sharding_model(
-            Optimizer="Momentum",
             sharded_accumulators=sharded_accumulators,
         )
 
