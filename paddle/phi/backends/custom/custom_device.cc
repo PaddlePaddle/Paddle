@@ -90,16 +90,10 @@ class CustomDevice : public DeviceInterface {
       C_Device_st device;
       device.id = dev_id;
       devices_pool[dev_id] = device;
-      InitDevice(dev_id);
     }
   }
 
   void Finalize() override {
-    auto devices = GetDeviceList();
-    for (auto dev_id : devices) {
-      DeInitDevice(dev_id);
-    }
-
     bool ok = true;
     if (pimpl_->finalize && pimpl_->finalize() != C_SUCCESS) {
       LOG(ERROR) << "Finalize " << Type() << " Failed\n";
