@@ -110,7 +110,6 @@ list(
   unbind_op.cc
   assign_op.cc
   flip_op.cc
-  atan2
   atan2_op.cc
   quantize_linear_op.cc
   dequantize_linear_op.cc)
