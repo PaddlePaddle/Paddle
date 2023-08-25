@@ -459,7 +459,7 @@ EOF
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_soSize=$($com ${PADDLE_ROOT}/build/paddle/fluid/pybind/libpaddle.so |awk '{print $1}')
+        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so |awk '{print $1}')
         echo "PR so Size: $PR_soSize"
         echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
@@ -3140,10 +3140,10 @@ function exec_samplecode_test() {
 
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py --debug cpu; example_error=$?
+        python sampcd_processor.py --debug --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
-        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug gpu; example_error=$?
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug --mode gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
