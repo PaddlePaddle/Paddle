@@ -402,7 +402,7 @@ if %day_now% NEQ %day_before% (
 )
 
 echo set -ex > cache.sh
-echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake  ^|md5sum ^| awk '{print $1}') >> cache.sh
+echo md5_content=$(git submodule status ^|md5sum ^| awk '{print $1}') >> cache.sh
 echo echo ${md5_content}^>md5.txt >> cache.sh
 
 %cache_dir%\tools\busybox64.exe cat cache.sh
@@ -415,6 +415,51 @@ if "%WITH_GPU%"=="ON" (
 ) else (
     set sub_dir=cpu
 )
+
+@ECHO ON
+cd /d %work_dir%
+python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party_code/%sub_dir%/%md5%.tar.gz')" 2>nul
+if !ERRORLEVEL! EQU 0 (
+    echo Getting source code of third party : extracting ...
+    tar -xf %md5%.tar.gz
+    del %md5%.tar.gz
+    if !errorlevel! EQU 0 (
+        echo Getting source code of third party : successful
+    )
+) else (
+    git submodule update --init --recursive
+    set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
+    echo Uploading source code of third_party: checking bce ...
+    if not exist %cache_dir%\bce-python-sdk-new (
+        echo There is no bce in this PC, will install bce.
+        cd /d %cache_dir%
+        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+    )
+    python -m pip install pycryptodome
+    python -m pip install bce-python-sdk==0.8.74
+    if !errorlevel! EQU 0 (
+        cd /d %work_dir%
+        echo Uploading source code of third party: compressing ...
+        tar -zcf %md5%.tar.gz ./third_party ./.git/modules
+        if !errorlevel! EQU 0 (
+            echo Uploading source code of third party: uploading ...
+            python !BCE_FILE! %md5%.tar.gz paddle-windows/third_party_code/%sub_dir% 1>nul
+            if !errorlevel! EQU 0 (
+                echo Upload source code of third party %md5% to bos paddle-windows/third_party_code/%sub_dir% successfully.
+            ) else (
+                echo Failed upload source code of third party to bos, reason: upload failed.
+            )
+        ) else (
+            echo Failed upload source code of third party to bos, reason: compress failed.
+        )
+        del %md5%.tar.gz
+    ) else (
+        echo Failed upload source code of third party to bos, reason: install bce failed.
+    )
+)
+
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 
@@ -582,8 +627,9 @@ if "%UPLOAD_TP_FILE%"=="ON" (
         echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
         python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
         python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-        python -m pip install bce-python-sdk==0.8.74
     )
+    python -m pip install pycryptodome
+    python -m pip install bce-python-sdk==0.8.74
     if !errorlevel! EQU 0 (
         cd /d %THIRD_PARTY_HOME%
         echo Uploading third_party: compressing ...
