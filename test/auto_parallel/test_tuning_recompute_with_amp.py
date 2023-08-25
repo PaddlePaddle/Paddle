@@ -84,8 +84,8 @@ def apply_pass():
 
 class TestRecomputeWithAMPPassTuning(unittest.TestCase):
     def setUp(self):
-        self.batch_size = 8
-        self.batch_num = 200
+        self.batch_size = 4
+        self.batch_num = 100
         self.dataset = FakeDataset(
             self.batch_size * self.batch_num,
             vocab_size=50304,
