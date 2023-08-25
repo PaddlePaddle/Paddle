@@ -41,7 +41,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 #endif
@@ -197,7 +197,7 @@ struct Argument {
   // The cache capacity of different input shapes for mkldnn.
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,
@@ -240,6 +240,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int64_t);
   DECL_ARGUMENT_FIELD(tensorrt_min_subgraph_size, TensorRtMinSubgraphSize, int);
+  DECL_ARGUMENT_FIELD(trt_mark_output, TRTMarkOutput, bool);
+  DECL_ARGUMENT_FIELD(trt_output_tensor_names,
+                      TRTOutputTensorNames,
+                      std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
                       std::vector<std::string>);
@@ -267,6 +271,9 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_explicit_quantization,
+                      TensorRtUseExplicitQuantization,
+                      bool);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
@@ -411,6 +418,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
   DECL_ARGUMENT_FIELD(mixed_black_list,
                       MixedBlackList,
+                      std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(mixed_white_list,
+                      MixedWhiteList,
                       std::unordered_set<std::string>);
   DECL_ARGUMENT_FIELD(enable_gpu_mixed, EnableGPUMixed, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);

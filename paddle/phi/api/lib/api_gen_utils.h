@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -22,6 +23,12 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
+
+namespace phi {
+namespace distributed {
+class DistTensor;
+}  // namespace distributed
+}  // namespace phi
 
 namespace paddle {
 namespace experimental {
@@ -106,6 +113,35 @@ phi::SelectedRows* SetSelectedRowsKernelOutput(Tensor* out);
 phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type);
 
 phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type);
+
+phi::DenseTensor* ProcessStrideBackup(phi::DenseTensor** tensor);
+
+std::vector<phi::DenseTensor*> ProcessStrideBackup(
+    std::vector<phi::DenseTensor*>* tensor);
+
+phi::SelectedRows* ProcessStrideBackup(phi::SelectedRows** tensor);
+
+void TransStride(phi::DeviceContext* dev_ctx,
+                 phi::DenseTensor* from,
+                 phi::DenseTensor* to);
+
+void TransStride(phi::DeviceContext* dev_ctx,
+                 const std::vector<phi::DenseTensor*>& from,
+                 const std::vector<phi::DenseTensor*>& to);
+
+void TransStride(phi::DeviceContext* dev_ctx,
+                 phi::SelectedRows* from,
+                 phi::SelectedRows* to);
+
+void TransStrideLegacy(phi::DeviceContext* dev_ctx,
+                       phi::DenseTensor* from,
+                       phi::DenseTensor* to);
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+/* ------------------ for auto parallel ----------------------- */
+
+phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
+#endif
 
 }  // namespace experimental
 }  // namespace paddle

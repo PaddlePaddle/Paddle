@@ -242,6 +242,16 @@
   kernel :
     func : frobenius_norm_grad
 
+- backward_op : fused_softmax_mask_upper_triangle_grad
+  forward : fused_softmax_mask_upper_triangle(Tensor X) -> Tensor(Out)
+  args: (Tensor Out, Tensor Out_grad)
+  output : Tensor(X_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [Out_grad]
+  kernel:
+    func : fused_softmax_mask_upper_triangle_grad
+
 - backward_op : hardswish_grad
   forward : hardswish (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -747,6 +757,28 @@
     param : [out_grad]
   kernel :
     func : triu_grad
+
+- backward_op: disable_check_model_nan_inf_grad
+  forward: disable_check_model_nan_inf (Tensor x, int flag=0) -> Tensor(out)
+  args: (Tensor out_grad, int unsetflag = 1)
+  output : Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [out_grad]
+  kernel:
+    func: check_model_nan_inf
+    data_type: out_grad
+
+- backward_op: enable_check_model_nan_inf_grad
+  forward: enable_check_model_nan_inf (Tensor x, int flag=1) -> Tensor(out)
+  args: (Tensor out_grad, int unsetflag = 0)
+  output : Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [out_grad]
+  kernel:
+    func: check_model_nan_inf
+    data_type: out_grad
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)

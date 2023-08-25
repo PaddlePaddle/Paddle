@@ -127,7 +127,7 @@ class CUDAGraphAllocator
       : underlying_allocator_(allocator) {}
 
  public:
-  ~CUDAGraphAllocator() override {}
+  ~CUDAGraphAllocator() override = default;
 
   static std::shared_ptr<Allocator> Create(
       const std::shared_ptr<Allocator>& allocator) {
@@ -206,12 +206,15 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
         auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
-          for (size_t dev_id = 0;
-               dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-               ++dev_id) {
+          for (auto& dev_id :
+               phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
             InitNaiveBestFitCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id));
           }
+        }
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          WrapStreamSafeCustomDeviceAllocatorForDefault();
+          is_stream_safe_cuda_allocator_used_ = true;
         }
 #endif
         break;
@@ -268,12 +271,15 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
         auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
-          for (size_t dev_id = 0;
-               dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-               ++dev_id) {
+          for (auto& dev_id :
+               phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
             InitAutoGrowthCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
           }
+        }
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          WrapStreamSafeCustomDeviceAllocatorForDefault();
+          is_stream_safe_cuda_allocator_used_ = true;
         }
 #endif
         break;
@@ -607,6 +613,55 @@ class AllocatorFacadePrivate {
       return custom_device_allocators_[place][stream];
     }
   }
+
+  const std::shared_ptr<StreamSafeCustomDeviceAllocator>
+  GetDefaultStreamSafeCustomDeviceAllocator(
+      const platform::CustomPlace& place) const {
+    const auto iter = default_stream_safe_custom_device_allocators_.find(place);
+    PADDLE_ENFORCE_NE(
+        iter,
+        default_stream_safe_custom_device_allocators_.end(),
+        platform::errors::NotFound(
+            "No StreamSafeCustomDeviceAllocator found for the place, %s",
+            place));
+    return iter->second;
+  }
+
+  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
+                    phi::stream::stream_t stream) {
+    std::shared_ptr<StreamSafeCustomDeviceAllocation>
+        stream_safe_custom_device_allocation =
+            std::dynamic_pointer_cast<StreamSafeCustomDeviceAllocation>(
+                allocation);
+    if (stream_safe_custom_device_allocation != nullptr) {
+      stream_safe_custom_device_allocation->RecordStream(stream);
+    } else {
+      VLOG(6) << "RecordStream for a non-StreamSafeCustomDeviceAllocation";
+    }
+  }
+
+  void SetDefaultStream(const platform::CustomPlace& place,
+                        phi::stream::stream_t stream) {
+    const std::shared_ptr<StreamSafeCustomDeviceAllocator>& allocator =
+        GetDefaultStreamSafeCustomDeviceAllocator(place);
+
+    PADDLE_ENFORCE_EQ(allocator->GetDefaultStream(),
+                      nullptr,
+                      platform::errors::Unavailable(
+                          "The default stream for "
+                          "StreamSafeCustomDeviceAllocator(%p) in %s has been "
+                          "set to %p, not allow to change it to %p.",
+                          allocator.get(),
+                          place,
+                          allocator->GetDefaultStream(),
+                          stream));
+
+    allocator->SetDefaultStream(stream);
+    VLOG(8) << "Set default stream to " << stream
+            << " for StreamSafeCustomDeviceAllocator(" << allocator.get()
+            << ") in " << place;
+  }
+
 #endif
 
  private:
@@ -1073,6 +1128,24 @@ class AllocatorFacadePrivate {
         allow_free_idle_chunk);
   }
 
+  void WrapStreamSafeCustomDeviceAllocatorForDefault() {
+    for (auto& pair : allocators_) {
+      auto& place = pair.first;
+      if (platform::is_custom_place(place)) {
+        std::shared_ptr<StreamSafeCustomDeviceAllocator>&& allocator =
+            std::make_shared<StreamSafeCustomDeviceAllocator>(
+                pair.second,
+                place,
+                /* default_stream = */
+                nullptr);
+        pair.second = allocator;
+        default_stream_safe_custom_device_allocators_[place] = allocator;
+        VLOG(8) << "WrapStreamSafeCustomDeviceAllocatorForDefault for " << place
+                << ", allocator address = " << pair.second.get();
+      }
+    }
+  }
+
   void InitAutoGrowthCustomDeviceAllocator(platform::CustomPlace p,
                                            phi::stream::stream_t stream) {
     auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
@@ -1137,9 +1210,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
-      for (size_t dev_id = 0;
-           dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-           dev_id++) {
+      for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
         platform::CustomPlace p(dev_type, dev_id);
         system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
       }
@@ -1173,9 +1244,7 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
-      for (size_t dev_id = 0;
-           dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-           dev_id++) {
+      for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
         places.emplace_back(platform::CustomPlace(dev_type, dev_id));
       }
     }
@@ -1272,7 +1341,7 @@ AllocatorFacadePrivate::AllocatorMap AllocatorFacadePrivate::system_allocators_;
 AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
 // delete m_ may cause core dump when the destructor of python in conflict with
 // cpp.
-AllocatorFacade::~AllocatorFacade() {}
+AllocatorFacade::~AllocatorFacade() = default;
 
 AllocatorFacade& AllocatorFacade::Instance() {
   static AllocatorFacade* instance = new AllocatorFacade;
@@ -1486,13 +1555,26 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place, phi::stream::stream_t stream) {
   AllocatorFacadePrivate* m = GetPrivate();
-  if (!FLAGS_use_stream_safe_cuda_allocator) {
+  if (!m->IsStreamSafeCUDAAllocatorUsed()) {
     return m->GetAllocator(place,
                            stream,
                            /*create_if_not_found=*/true);
   }
   return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
+
+void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
+                                   phi::stream::stream_t stream) {
+  GetPrivate()->RecordStream(allocation, stream);
+}
+
+void AllocatorFacade::SetDefaultStream(const platform::CustomPlace& place,
+                                       phi::stream::stream_t stream) {
+  if (m_->IsStreamSafeCUDAAllocatorUsed()) {
+    m_->SetDefaultStream(place, stream);
+  }
+}
+
 #endif
 
 UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =

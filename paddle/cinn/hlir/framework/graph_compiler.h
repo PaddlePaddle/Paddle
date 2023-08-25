@@ -28,9 +28,11 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/parallel_compiler.h"
+#include "paddle/cinn/hlir/framework/program.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/lang/packed_func.h"
@@ -41,102 +43,45 @@ namespace hlir {
 namespace framework {
 
 /**
- * The Program is the runtime instance for running a computation.
- */
-class Program {
- public:
-  /**
-   * Constructor.
-   * @param scope The scope containing all the runtime variables.
-   * @param instrs The instructions belonging to this program.
-   */
-  Program(const std::shared_ptr<Scope>& scope,
-          std::vector<std::unique_ptr<Instruction>>&& instrs);
-
-  void PreRun(
-      const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr);
-
-  void Export(const std::vector<std::string>& persistent_vars,
-              const std::string& filename);
-
-  /**
-   * Execute the program -- that is running all the instructions inside it.
-   */
-  void Execute(
-      const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr,
-      void* stream = nullptr,
-      bool use_cache = true);
-
-  void ExecuteTest(int repeat_);
-
-  /**
-   * Get the number of instructions.
-   */
-  size_t size() const { return instrs_.size(); }
-
-  const std::vector<std::unique_ptr<Instruction>>& GetPreRunInstructions() {
-    return prerun_instrs_;
-  }
-  const std::vector<std::unique_ptr<Instruction>>& GetRunInstructions() {
-    return instrs_;
-  }
-
- private:
-  // We need to hold scope to assure tensors alive used in instructions.
-  std::shared_ptr<Scope> scope_;
-  // prerun instructions
-  std::vector<std::unique_ptr<Instruction>> prerun_instrs_;
-  // only runtime instructions
-  std::vector<std::unique_ptr<Instruction>> instrs_;
-};
-
-/**
  * GraphCompiler compiles a graph and generate the runtime Program.
  */
 class GraphCompiler final {
  public:
-  GraphCompiler(Target target,
-                const std::shared_ptr<Scope>& scope,
-                const std::shared_ptr<Graph>& graph)
-      : target_(std::move(target)), scope_(scope), graph_(graph) {}
-
-  struct CompilationResult {
-    std::unique_ptr<Program> runtime_program;
-  };
-
-  struct CompileOptions {
-    std::string attached_code = "";
-    bool with_instantiate_variables = false;
-    bool with_buffer_handle_instruction_inserted = false;
-    bool remove_unused_variables = true;
-    // nodes group, it may come from the result of op fusion or graph tuning.
-    // nodes in a group will be built into an Instruction
-    std::vector<std::shared_ptr<Graph::Group>> groups;
-    // corresponding LoweredFuncs of above grouped nodes,
-    // if it is empty then graph_compiler will generate for them
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-
-    // apply results of auto-tune to compile
-    void Apply(const auto_schedule::TuningResult& tuning_result);
-  };
+  GraphCompiler(CompilationContext context) : compilation_context_(context) {}
 
   // Compile with a packing option and result, to be extended easily.
-  CompilationResult Build(const CompileOptions& options,
-                          std::unordered_set<std::string>&& fetch_var_ids = {},
-                          void* stream = nullptr);
+  CompilationResult Build(CompilationContext* context);
 
   std::unique_ptr<Program> Build(const std::string& code = "");
 
-  const std::shared_ptr<Scope>& GetScope() const { return scope_; }
+  CompilationResult Lowering();
+  CompilationResult Lowering(CompilationContext* context);
+
+  CompilationResult CodegenAndJit();
+  CompilationResult CodegenAndJit(CompilationContext* context);
+
+  CompilationResult BuildInstruction();
+  CompilationResult BuildInstruction(CompilationContext* context);
+
+  const std::shared_ptr<Scope>& GetScope() const {
+    return compilation_context_.scope;
+  }
+
+  CompilationContext& GetCompilationContext() { return compilation_context_; }
+
+  void SetCompilationContext(const CompilationContext& context) {
+    compilation_context_ = context;
+  }
 
  private:
   // instantiate all variables on compile time
-  void InstantiateVariables();
+  void InstantiateVariables(CompilationContext* context);
 
   // some variables are eliminated by optimized passes(such as OpFusion),
   // we can filter out them according to arguments of the built instructions,
   // and erase them from the scope to avoid unnecessary buffer allocation
   void RemoveInvalidVariables(
+      CompilationContext* context,
       const std::vector<std::unique_ptr<Instruction>>& instructions);
 
   // find the first and last instruction where a variable used, and mark the
@@ -151,21 +96,14 @@ class GraphCompiler final {
   // firstly used in the next instruction, and insert a buffer free instruction
   // applying on variables after no instruction will use them anymore
   void InsertBufferHandlers(
+      CompilationContext* context,
       std::vector<std::unique_ptr<Instruction>>* instructions);
 
  private:
   // parallel compiler
   std::shared_ptr<ParallelCompiler> parallel_compiler_;
 
-  Target target_;
-  std::shared_ptr<Graph> graph_;
-  std::shared_ptr<Scope> scope_;
-  // fetch var ids in cinn and the corresponding var nodes will not be fused so
-  // as to get the result
-  std::unordered_set<std::string> fetch_var_ids_;
-
-  // map dst reuse var to the src var sharing buffer
-  absl::flat_hash_map<std::string, std::string> reuse_vars_map_;
+  CompilationContext compilation_context_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(GraphCompiler);
 };

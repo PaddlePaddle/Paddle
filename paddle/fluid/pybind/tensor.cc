@@ -1025,11 +1025,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  using phi::distributed::auto_parallel::DistTensor;
+  using phi::distributed::DistTensor;
   py::class_<DistTensor>(m, "DistTensor")
       .def(
           "get_tensor",
-          [](DistTensor &self) { return self.mutable_value(); },
+          [](DistTensor &self) { return self.value(); },
           py::return_value_policy::reference)
       .def("numel",
            [](DistTensor &self) -> int64_t { return self.value().numel(); });

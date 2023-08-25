@@ -40,6 +40,10 @@ class VarDesc;
 }  // namespace framework
 
 namespace distributed {
+
+using phi::distributed::ProcessMesh;
+using phi::distributed::TensorDistAttr;
+
 namespace auto_parallel {
 
 using framework::BlockDesc;
@@ -48,8 +52,6 @@ using framework::ProgramDesc;
 using framework::VarDesc;
 
 using phi::distributed::auto_parallel::OperatorDistAttrProto;
-using phi::distributed::auto_parallel::ProcessMesh;
-using phi::distributed::auto_parallel::TensorDistAttr;
 
 constexpr const char* kDefault = "default";
 

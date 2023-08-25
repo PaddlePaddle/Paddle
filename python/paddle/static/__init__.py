@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from . import amp  # noqa: F401
 from . import nn  # noqa: F401
 
 from .nn.common import py_func  # noqa: F401
+from .nn.common import ExponentialMovingAverage  # noqa: F401
 
 from .io import save_inference_model  # noqa: F401
 from .io import load_inference_model  # noqa: F401
@@ -55,9 +58,8 @@ from ..fluid.compiler import ExecutionStrategy  # noqa: F401
 from ..fluid.framework import default_main_program  # noqa: F401
 from ..fluid.framework import default_startup_program  # noqa: F401
 from ..fluid.framework import device_guard  # noqa: F401
-from ..fluid.framework import Program  # noqa: F401
+
 from ..fluid.framework import name_scope  # noqa: F401
-from ..fluid.framework import program_guard  # noqa: F401
 from ..fluid.framework import cpu_places  # noqa: F401
 from ..fluid.framework import cuda_places  # noqa: F401
 from ..fluid.framework import xpu_places  # noqa: F401
@@ -68,16 +70,14 @@ from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.framework import set_ipu_shard  # noqa: F401
 from .nn.control_flow import Print  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
-from ..fluid.optimizer import Optimizer  # noqa: F401
-from ..fluid.optimizer import Adam  # noqa: F401
-from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 
-from ..fluid.layers import exponential_decay  # noqa: F401
-from ..fluid.layers import learning_rate_scheduler  # noqa: F401
 
 from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401
 from .nn.metric import ctr_metric_bundle  # noqa: F401
+
+from ..fluid.framework import program_guard  # noqa: F401
+from ..fluid.framework import Program  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
@@ -126,5 +126,4 @@ __all__ = [  # noqa
     'create_parameter',
     'set_ipu_shard',
     'ctr_metric_bundle',
-    'exponential_decay',
 ]

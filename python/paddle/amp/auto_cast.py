@@ -250,7 +250,6 @@ def _is_valid_optimizer(optimizer):
         optimizer,
         (
             paddle.optimizer.Optimizer,
-            paddle.fluid.optimizer.Optimizer,
             DygraphShardingOptimizer,
         ),
     )
@@ -260,7 +259,7 @@ def check_optimizers(optimizers):
     for optimizer in optimizers:
         if not _is_valid_optimizer(optimizer):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
+                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
                     type(optimizer)
                 )
             )
@@ -370,6 +369,7 @@ def amp_guard(
                 "For float16, amp only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
                 % (paddle.device.cuda.get_device_name(), prop[0], prop[1])
             )
+            enable = False
         elif (dtype == 'bfloat16') and not _is_gpu_bfloat16_supported():
             prop = paddle.device.cuda.get_device_capability()
             cuda_version = paddle.version.cuda()
@@ -382,6 +382,7 @@ def amp_guard(
                     cuda_version,
                 )
             )
+            enable = False
 
     amp_dtype = dtype
     amp_global_state().amp_dtype = amp_dtype
@@ -572,6 +573,46 @@ def amp_decorate(
         else:
             return models, optimizers
 
+    # check tracer
+    tracer = _dygraph_tracer()
+    if not tracer:
+        raise ValueError(
+            "current_tracer is None, maybe it is not in imperative mode."
+        )
+
+    # check device_type:
+    if not (
+        tracer._expected_place.is_gpu_place()
+        or tracer._expected_place.is_xpu_place()
+        or tracer._expected_place.is_custom_place()
+    ):
+        if optimizers is None:
+            return models
+        else:
+            return models, optimizers
+    # For xpu:
+    if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
+        if optimizers is None:
+            return models
+        else:
+            return models, optimizers
+    # For custom device:
+    if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
+        if optimizers is None:
+            return models
+        else:
+            return models, optimizers
+    # For gpu float16: Compute Capability should >= 7.
+    # For gpu bfloat16: Compute Capability should >= 8 & CUDA Version should >= 11.
+    if tracer._expected_place.is_gpu_place():
+        if (dtype == 'float16' and not _is_gpu_float16_supported()) or (
+            dtype == 'bfloat16' and not _is_gpu_bfloat16_supported()
+        ):
+            if optimizers is None:
+                return models
+            else:
+                return models, optimizers
+
     models_is_list = False
     if isinstance(models, paddle.nn.Layer):
         models_is_list = False
@@ -743,50 +784,52 @@ def decorate(
 
     Examples:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        # required: gpu
-        # Demo1: single model and optimizer:
-        import paddle
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # Demo1: single model and optimizer:
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-        model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimizer = paddle.optimizer.SGD(parameters=model.parameters())
+            >>> model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+            >>> optimizer = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.amp.decorate(models=model, optimizers=optimizer, level='O2')
+            >>> model, optimizer = paddle.amp.decorate(models=model, optimizers=optimizer, level='O2')
 
-        data = paddle.rand([10, 3, 32, 32])
+            >>> data = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
-            output = model(data)
-            print(output.dtype) # FP16
+            >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+            ...     output = model(data)
+            ...     assert output.dtype == paddle.float16
 
-        # required: gpu
-        # Demo2: multi models and optimizers:
-        model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # Demo2: multi models and optimizers:
+            >>> model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+            >>> optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.amp.decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
+            >>> models, optimizers = paddle.amp.decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
-        data = paddle.rand([10, 3, 32, 32])
+            >>> data = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
-            output = models[0](data)
-            output2 = models[1](data)
-            print(output.dtype) # FP16
-            print(output2.dtype) # FP16
+            >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+            ...    output = models[0](data)
+            ...    output2 = models[1](data)
+            ...    assert output.dtype == paddle.float16
+            ...    assert output2.dtype == paddle.float16
 
-        # required: gpu
-        # Demo3: optimizers is None:
-        model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimizer3 = paddle.optimizer.Adam(parameters=model3.parameters())
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # Demo3: optimizers is None:
+            >>> model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+            >>> optimizer3 = paddle.optimizer.Adam(parameters=model3.parameters())
 
-        model = paddle.amp.decorate(models=model3, level='O2')
+            >>> model = paddle.amp.decorate(models=model3, level='O2')
 
-        data = paddle.rand([10, 3, 32, 32])
+            >>> data = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
-            output = model(data)
-            print(output.dtype) # FP16
+            >>> with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+            ...    output = model(data)
+            ...    assert output.dtype == paddle.float16
+
     """
     return amp_decorate(
         models,

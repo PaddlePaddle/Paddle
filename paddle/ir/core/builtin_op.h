@@ -93,6 +93,14 @@ class IR_API CombineOp : public ir::Op<CombineOp> {
                     const std::vector<ir::OpResult> &inputs);
 
   void Verify() const;
+  std::vector<ir::Value> inputs() {
+    std::vector<ir::Value> inputs;
+    for (uint32_t idx = 0; idx < num_operands(); idx++) {
+      inputs.push_back(operand_source(static_cast<int>(idx)));
+    }
+    return inputs;
+  }
+  ir::OpResult out() { return result(0); }
 };
 
 ///
@@ -107,7 +115,42 @@ class IR_API SliceOp : public ir::Op<SliceOp> {
   static constexpr uint32_t attributes_num = 1;
 
   static const char *attributes_name[attributes_num];
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const ir::OpResult &input,
+                    int index);
+
   void Verify() const;
+  ir::Value input() { return operand_source(0); }
+};
+
+///
+/// \brief SplitOp: SplitOp(OpOperand)
+///
+class IR_API SplitOp : public ir::Op<SplitOp> {
+ public:
+  using Op::Op;
+
+  static const char *name() { return "builtin.split"; }
+
+  static constexpr uint32_t attributes_num = 0;
+
+  static constexpr const char **attributes_name = nullptr;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const ir::OpResult &input);
+
+  void Verify() const;
+  ir::Value input() { return operand_source(0); }
+  std::vector<ir::OpResult> outputs() {
+    std::vector<ir::OpResult> outputs;
+    for (uint32_t idx = 0; idx < num_results(); idx++) {
+      outputs.push_back(result(static_cast<int>(idx)));
+    }
+    return outputs;
+  }
 };
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
@@ -144,5 +187,6 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::GetParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::SetParameterOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::CombineOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::SliceOp)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::SplitOp)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::ConstantLikeTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::ConstantOp)

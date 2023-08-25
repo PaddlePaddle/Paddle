@@ -22,6 +22,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -887,6 +888,21 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out.stop_gradient = True
             return out
     else:
+        if paddle.ir.core._use_new_ir_api():
+            # Below code will be removed after we can generate IR api automatically
+            place = _current_expected_place()
+            if force_cpu:
+                place = core.CPUPlace()
+            if isinstance(shape, (list, tuple)):
+                shape = paddle.utils.convert_shape_to_list(shape)
+
+            if not isinstance(dtype, core.DataType):
+                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+
+            if out is None:
+                out = paddle._ir_ops.full(shape, float(value), dtype, place)
+                out.stop_gradient = True
+                return out
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
         if not isinstance(value, Variable):
@@ -1462,6 +1478,17 @@ def tril(x, diagonal=0, name=None):
         return _tril_triu_op(LayerHelper('tril', **locals()))
 
 
+@inplace_apis_in_dygraph_only
+def tril_(x, diagonal=0, name=None):
+    r"""
+    Inplace version of ``tril`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_tril`.
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.tril_(x, diagonal)
+
+
 def triu(x, diagonal=0, name=None):
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
@@ -1522,6 +1549,17 @@ def triu(x, diagonal=0, name=None):
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def triu_(x, diagonal=0, name=None):
+    r"""
+    Inplace version of ``triu`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_triu`.
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.triu_(x, diagonal)
 
 
 def meshgrid(*args, **kwargs):

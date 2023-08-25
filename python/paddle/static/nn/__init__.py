@@ -40,7 +40,6 @@ from .common import layer_norm  # noqa: F401
 
 from .common import embedding  # noqa: F401
 from .common import sparse_embedding  # noqa: F401
-from ...fluid.layers import StaticRNN  # noqa: F401
 
 from .sequence_lod import sequence_conv  # noqa: F401
 from .sequence_lod import sequence_softmax  # noqa: F401
@@ -59,6 +58,7 @@ from .sequence_lod import sequence_enumerate  # noqa: F401
 from .sequence_lod import sequence_reverse  # noqa: F401
 
 from .control_flow import cond
+from .static_pylayer import static_pylayer
 
 __all__ = [  # noqa
     'fc',
@@ -67,6 +67,7 @@ __all__ = [  # noqa
     'embedding',
     'case',
     'cond',
+    'static_pylayer',
     'conv2d',
     'conv2d_transpose',
     'conv3d',
@@ -99,6 +100,5 @@ __all__ = [  # noqa
     'sequence_scatter',
     'sequence_enumerate',
     'sequence_reverse',
-    'StaticRNN',
     'prelu',
 ]

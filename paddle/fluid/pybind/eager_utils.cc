@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
-
 #include <Python.h>
+#include "paddle/ir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -49,7 +49,9 @@ extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
+extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
@@ -133,6 +135,10 @@ bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj) {
 }
 
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
+
+bool PyObject_CheckIROpResult(PyObject* obj) {
+  return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
+}
 
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {
@@ -544,12 +550,11 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
 }
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-using phi::distributed::auto_parallel::TensorDistAttr;
-std::shared_ptr<TensorDistAttr> CastPyArg2DistAttr(PyObject* obj,
-                                                   ssize_t arg_pos) {
+using phi::distributed::TensorDistAttr;
+TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_tensor_dist_attr_pytype))) {
-    return ::pybind11::handle(obj).cast<std::shared_ptr<TensorDistAttr>>();
+    return ::pybind11::handle(obj).cast<TensorDistAttr>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -637,6 +642,28 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
         "argument (position %d) must be "
         "one of core.VarDesc.VarType, "
         "but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return dtype;
+}
+
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos) {
+  if (obj == Py_None) {
+    return phi::DataType::UNDEFINED;
+  }
+
+  paddle::DataType dtype;
+  if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
+    dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s: argument (position %d) must be "
+        "one of core.VarDesc.VarType, "
+        "but got %s",
+        op_type,
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
@@ -858,15 +885,30 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const ir::OpResult& value) {
+  auto obj = ::pybind11::cast(value);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+  }
+
+  return result;
+}
+
 #ifdef PADDLE_WITH_DISTRIBUTE
-PyObject* ToPyObject(const phi::distributed::auto_parallel::DistTensor* value) {
+PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
 }
 
-PyObject* ToPyObject(
-    const phi::distributed::auto_parallel::TensorDistAttr* value) {
+PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
@@ -1006,10 +1048,9 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
   }
 }
 
-PyObject* ToPyObject(egr::GradNodeBase* grad_node) {
+PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node) {
   py::object py_obj = py::cast(grad_node, py::return_value_policy::reference);
-  py::handle py_handle = py::handle(py_obj);
-  PyObject* py_grad_node = py_handle.ptr();
+  PyObject* py_grad_node = py_obj.release().ptr();
   Py_INCREF(py_grad_node);
   return py_grad_node;
 }
@@ -1427,6 +1468,78 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
         arg_pos + 1,
         type_name));  // NOLINT
   }
+}
+
+ir::OpResult CastPyArg2OpResult(PyObject* obj,
+                                const std::string& op_type,
+                                size_t arg_pos) {
+  if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return ::pybind11::handle(obj).cast<ir::OpResult>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "OpResult, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+}
+
+std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
+                                                     const std::string& op_type,
+                                                     size_t arg_pos) {
+  std::vector<ir::OpResult> result_list;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
+        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+      } else if (item == Py_None) {
+        continue;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "vector<OpResult>, but got vector<%s>",
+            op_type,
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)
+                ->tp_name));  // NOLINT
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
+        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+      } else if (item == Py_None) {
+        continue;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "vector<OpResult>, but got vector<%s>",
+            op_type,
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)
+                ->tp_name));  // NOLINT
+      }
+    }
+  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return {::pybind11::handle(obj).cast<ir::OpResult>()};
+  } else if (obj == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "Vector<>, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+  return result_list;
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,

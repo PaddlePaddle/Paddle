@@ -16,6 +16,7 @@ import atexit
 import collections
 import glob
 import hashlib
+import importlib.abc
 import importlib.util
 import json
 import logging
@@ -173,6 +174,7 @@ def custom_write_stub(resource, pyfile):
         import sys
         import types
         import paddle
+        import importlib.abc
         import importlib.util
 
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -904,10 +906,10 @@ def get_build_directory(verbose=False):
 
     .. code-block:: python
 
-        from paddle.utils.cpp_extension import get_build_directory
+        >>> from paddle.utils.cpp_extension import get_build_directory
 
-        build_dir = get_build_directory()
-        print(build_dir)
+        >>> build_dir = get_build_directory()
+        >>> print(build_dir)
 
     """
     root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')

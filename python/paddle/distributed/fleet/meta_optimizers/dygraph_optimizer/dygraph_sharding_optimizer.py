@@ -23,10 +23,8 @@ from paddle.distributed import fleet
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import fused_parameters
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
-logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
 
 if g_shard_norm_align_dp:
     assert (
@@ -98,20 +96,17 @@ class DygraphShardingOptimizer:
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
-        if not self.tensor_fusion:
-            self._set_inner_opt_attr(
-                '_parameter_list', self._rank2params[self._sharding_rank]
-            )
-            self._set_inner_opt_attr(
-                '_param_groups', self._rank2params[self._sharding_rank]
-            )
+        if not self.tensor_fusion and not self.comm_overlap:
+            local_params = self._rank2params[self._sharding_rank]
+            self._set_inner_opt_attr('_parameter_list', local_params)
+            self._set_inner_opt_attr('_param_groups', local_params)
         else:
             self._tensor_fusion()
 
             decay_params = [
                 p.name for p in self._rank2decay[self._sharding_rank]
             ]
-            fused_params = self._rank2fused[self._sharding_rank]
+            local_fused_params = self._rank2fused[self._sharding_rank]
             apply_decay_param_fun = lambda x: x in decay_params
 
             all_fused_params = []
@@ -120,8 +115,15 @@ class DygraphShardingOptimizer:
             self._parameter_list = all_fused_params
             self._param_groups = all_fused_params
 
-            self._set_inner_opt_attr('_parameter_list', fused_params)
-            self._set_inner_opt_attr('_param_groups', fused_params)
+            self._set_inner_opt_attr('_parameter_list', local_fused_params)
+            self._set_inner_opt_attr('_param_groups', local_fused_params)
+            if self.comm_overlap:
+                # Only set local param for check finite when comm overlap.
+                # Under comm overlap, all grads will be communicated before check_finite.
+                # Therefore, each sharding rank can get all grads' info at check_finite.
+                # Without comm overlap, all grads will be communicated after check_finite,
+                # which means each sharding rank should do check_finite to all grads.
+                self._local_parameter_list = local_fused_params
             origin_decay_param_fun = getattr(
                 self._inner_opt, '_apply_decay_param_fun', None
             )
@@ -129,6 +131,14 @@ class DygraphShardingOptimizer:
                 self._set_inner_opt_attr(
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
+            # Note: during the tensor fusion for parameters, the allocator will apply for
+            # some extra GPU memory for the fused big paramters. This extra GPU memory will
+            # be useless at once the fusion has done. But the Paddle's allocator won't
+            # release those memory, it will hold that part in the memory poll. So after
+            # tensor fusion, the 'reserved' memory will increase but the 'allocate' memory
+            # won't change. To avoid failure on some other applications (such as some nvtx
+            # operations), here we manulay let the allocator release the cached memory.
+            paddle.device.cuda.empty_cache()
 
     def clear_grad(self, set_to_zero=True):
         """

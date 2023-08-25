@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import os
 
 import paddle
 
@@ -151,9 +150,7 @@ def _new_process_group_impl(
     if backend == "gloo":
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL.create(
-            store, genv.device_id, rank, world_size, group_id
-        )
+        pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
 
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -191,12 +188,13 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
 
-            paddle.distributed.init_parallel_env()
-            tindata = paddle.randn(shape=[2, 3])
-            gp = paddle.distributed.new_group([2,4,6])
-            paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
+            >>> paddle.distributed.init_parallel_env()
+            >>> tindata = paddle.randn(shape=[2, 3])
+            >>> gp = paddle.distributed.new_group([2, 4, 6])
+            >>> paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
 
     """
     global _custom_gid
@@ -313,40 +311,32 @@ def is_available():
     Examples:
         .. code-block:: python
 
-            import paddle
-
-            print(paddle.distributed.is_available())
+            >>> import paddle
+            >>> print(paddle.distributed.is_available())
 
     """
     return core.is_compiled_with_dist()
 
 
 def _init_parallel_env(backend):
-    master_endpoint = os.getenv("PADDLE_MASTER", None)
-    if master_endpoint is None:
-        master_endpoint = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
-        assert (
-            master_endpoint is not None
-        ), "Please set PADDLE_MASTER enviroment variable."
-    if master_endpoint:
-        master_addr = master_endpoint.split(":")[0]
-        master_port = int(master_endpoint.split(":")[1])
-        global_env = _get_global_env()
-        rank = global_env.rank
-        world_size = global_env.world_size
-        dev_id = global_env.device_id
-        is_master = rank == 0
-        store = core.TCPStore(
-            master_addr,
-            master_port,
-            is_master,
-            world_size,
+    store = core.create_or_get_global_tcp_store()
+    global_env = _get_global_env()
+    rank = global_env.rank
+    world_size = global_env.world_size
+    dev_id = global_env.device_id
+
+    if backend == "gloo":
+        core.CommContextManager.create_gloo_comm_context(
+            store, "0", rank, world_size
         )
-        if backend == "gloo":
-            core.CommContextManager.create_gloo_comm_context(
-                store, 0, rank, world_size
-            )
-        elif backend == "nccl":
-            core.CommContextManager.create_nccl_comm_context(
-                store, dev_id, 0, rank, world_size
-            )
+    elif backend == "nccl":
+        core.CommContextManager.set_cuda_device_id(dev_id)
+        core.CommContextManager.create_nccl_comm_context(
+            store, "0", rank, world_size
+        )
+    elif backend == "xccl":
+        dev_type = global_env.device_type
+        paddle.device.set_device(f"{dev_type}:{dev_id}")
+        core.CommContextManager.create_xccl_comm_context(
+            store, "0", rank, world_size, dev_type
+        )

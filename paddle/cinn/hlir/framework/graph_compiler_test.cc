@@ -19,6 +19,7 @@
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
@@ -48,7 +49,8 @@ TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
   ASSERT_EQ(scope->var_names().size(), 6);
   EXPECT_NE(scope->FindVar(c->id), nullptr);
 
-  GraphCompiler gc(target, scope, graph);
+  CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   ASSERT_EQ(scope->var_names().size(), 3);
   EXPECT_EQ(scope->FindVar(c->id), nullptr);
@@ -69,10 +71,11 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
-  GraphCompiler gc_disable(target, scope, graph);
-  GraphCompiler::CompileOptions options;
+  CompilationContext context_disable(graph, scope, target);
+  GraphCompiler gc_disable(context_disable);
   // disable with_buffer_handle_instruction_inserted: only 1 instruction
-  auto runtime_program_disable = gc_disable.Build(options).runtime_program;
+  auto runtime_program_disable =
+      gc_disable.Build(&context_disable).runtime_program;
   ASSERT_EQ(runtime_program_disable->size(), 1);
   const auto& computation_instr_disable =
       runtime_program_disable->GetRunInstructions().front();
@@ -80,9 +83,11 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   // enable with_buffer_handle_instruction_inserted: 3 instructions, 1st ->
   // malloc instruction(a, b, d), 2nd -> the real computation
   // instruction(add + relu)  and 3rd -> free instruction
-  GraphCompiler gc_enable(target, scope, graph);
-  options.with_buffer_handle_instruction_inserted = true;
-  auto runtime_program_enable = gc_enable.Build(options).runtime_program;
+  CompilationContext context_enable(graph, scope, target);
+  context_enable.with_buffer_handle_instruction_inserted = true;
+  GraphCompiler gc_enable(context_enable);
+  auto runtime_program_enable =
+      gc_enable.Build(&context_enable).runtime_program;
   const auto& instructions = runtime_program_enable->GetRunInstructions();
   ASSERT_EQ(instructions.size(), 3);
 
@@ -193,7 +198,8 @@ void RunCublas(
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 
   auto scope = BuildScope(target, graph);
-  GraphCompiler gc(target, scope, graph);
+  CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
   auto exe_program = gc.Build();
 
   auto data_a = scope->GetTensor("A");
@@ -229,6 +235,66 @@ TEST(GraphCompilerTest, TestCublas) {
   RunCublas(64, 128, 128, false, true);
   RunCublas(64, 128, 128, true, false);
   RunCublas(64, 128, 128, true, true);
+}
+
+TEST(GraphCompilerTest, TestLowering) {
+  frontend::NetBuilder builder("test_lowering_on_graph_compiler");
+  auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "A");
+  auto b = builder.CreateInput(Float(32), {64}, "B");
+
+  auto c = builder.Add(a, b, 1);
+  auto d = builder.Relu(c);
+
+  auto target = common::DefaultNVGPUTarget();
+  auto program = builder.Build();
+  auto graph = Optimize(&program, {}, target);
+  auto scope = BuildScope(target, graph);
+
+  CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
+  CompilationResult result = gc.Lowering();
+
+  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+}
+
+TEST(GraphCompilerTest, TestCodegenAndJit) {
+  frontend::NetBuilder builder("test_codegen_and_jit_on_graph_compiler");
+  auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "A");
+  auto b = builder.CreateInput(Float(32), {64}, "B");
+
+  auto c = builder.Add(a, b, 1);
+  auto d = builder.Relu(c);
+
+  auto target = common::DefaultNVGPUTarget();
+  auto program = builder.Build();
+  auto graph = Optimize(&program, {}, target);
+  auto scope = BuildScope(target, graph);
+
+  CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
+  CompilationResult result = gc.CodegenAndJit();
+
+  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+}
+
+TEST(GraphCompilerTest, TestBuildInstruction) {
+  frontend::NetBuilder builder("test_build_instruction_on_graph_compiler");
+  auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "A");
+  auto b = builder.CreateInput(Float(32), {64}, "B");
+
+  auto c = builder.Add(a, b, 1);
+  auto d = builder.Relu(c);
+
+  auto target = common::DefaultNVGPUTarget();
+  auto program = builder.Build();
+  auto graph = Optimize(&program, {}, target);
+  auto scope = BuildScope(target, graph);
+
+  CompilationContext context(graph, scope, target);
+  GraphCompiler gc(context);
+  CompilationResult result = gc.BuildInstruction();
+
+  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
 }
 
 #endif

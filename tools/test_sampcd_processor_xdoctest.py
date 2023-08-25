@@ -14,9 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import os
 import unittest
 
+import xdoctest
 from sampcd_processor_utils import get_test_results
 from sampcd_processor_xdoctest import Xdoctester
 
@@ -37,7 +39,6 @@ class TestXdoctester(unittest.TestCase):
         self.assertEqual(doctester.style, 'freeform')
         self.assertEqual(doctester.target, 'codeblock')
         self.assertEqual(doctester.mode, 'native')
-        self.assertEqual(doctester.config['analysis'], 'auto')
 
         doctester = Xdoctester(analysis='static')
         self.assertEqual(doctester.config['analysis'], 'static')
@@ -47,6 +48,11 @@ class TestXdoctester(unittest.TestCase):
         docstring_input = "# doctest: -SKIP\n"
         docstring_output = doctester.convert_directive(docstring_input)
         docstring_target = "# xdoctest: -SKIP\n"
+        self.assertEqual(docstring_output, docstring_target)
+
+        docstring_input = '# doctest: +SKIP("skip this test...")\n'
+        docstring_output = doctester.convert_directive(docstring_input)
+        docstring_target = '# xdoctest: +SKIP("skip this test...")\n'
         self.assertEqual(docstring_output, docstring_target)
 
         docstring_input = """
@@ -138,6 +144,877 @@ class TestXdoctester(unittest.TestCase):
 
 
 class TestGetTestResults(unittest.TestCase):
+    def test_global_exec(self):
+        _clear_environ()
+
+        # test set_default_dtype
+        docstrings_to_test = {
+            'before_set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.set_default_dtype('float64')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'after_set_default': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> a = paddle.to_tensor(.2)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+            global_exec=r"\n".join(
+                [
+                    "import paddle",
+                    "paddle.device.set_device('cpu')",
+                ]
+            ),
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_set_default', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('set_default', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        # tr_2 is passed, because of multiprocessing
+        self.assertIn('after_set_default', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        # test new default global_exec
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_set_default', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('set_default', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_set_default', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        # test disable static
+        docstrings_to_test = {
+            'before_enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> print(paddle.in_dynamic_mode())
+                    True
+            """,
+            'enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> print(paddle.in_dynamic_mode())
+                    False
+            """,
+            'after_enable_static': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> print(paddle.in_dynamic_mode())
+                    True
+            """,
+        }
+
+        # test old global_exec
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+            global_exec=r"\n".join(
+                [
+                    "import paddle",
+                    "paddle.device.set_device('cpu')",
+                ]
+            ),
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_enable_static', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('enable_static', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        # tr_2 is passed, because of multiprocessing
+        self.assertIn('after_enable_static', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        # test new default global_exec
+        doctester = Xdoctester(
+            style='freeform',
+            target='codeblock',
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 3)
+
+        tr_0, tr_1, tr_2 = test_results
+
+        self.assertIn('before_enable_static', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('enable_static', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('after_enable_static', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+    def test_patch_xdoctest(self):
+        # test patch tensor place
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(style='freeform', target='codeblock')
+        doctester.prepare(test_capacity)
+
+        docstrings_to_test = {
+            'gpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.20000000])
+
+            """,
+            'cpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+
+            """,
+            'gpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.20000000])
+
+            """,
+            'cpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.2)
+                    >>> # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.20000000])
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.20000000])
+            """,
+            'gpu_to_cpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor([[1,2,3], [2,3,4], [3,4,5]])
+                    >>> # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    >>> # [[1, 2, 3],
+                    >>> # [2, 3, 4],
+                    >>> # [3, 4, 5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+                    [[1, 2, 3],
+                    [2, 3, 4],
+                    [3, 4, 5]])
+            """,
+            'cpu_to_gpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor([[1,2,3], [2,3,4], [3,4,5]])
+                    >>> # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+                    >>> # [[1, 2, 3],
+                    >>> # [2, 3, 4],
+                    >>> # [3, 4, 5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [[1, 2, 3],
+                    [2, 3, 4],
+                    [3, 4, 5]])
+            """,
+        }
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 6)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5 = test_results
+
+        self.assertIn('gpu_to_gpu', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('cpu_to_cpu', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('gpu_to_cpu', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        self.assertIn('cpu_to_gpu', tr_3.name)
+        self.assertTrue(tr_3.passed)
+
+        self.assertIn('gpu_to_cpu_array', tr_4.name)
+        self.assertTrue(tr_4.passed)
+
+        self.assertIn('cpu_to_gpu_array', tr_5.name)
+        self.assertTrue(tr_5.passed)
+
+        # reload xdoctest.checker
+        importlib.reload(xdoctest.checker)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform', target='codeblock', patch_tensor_place=False
+        )
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 6)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5 = test_results
+
+        self.assertIn('gpu_to_gpu', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('cpu_to_cpu', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('gpu_to_cpu', tr_2.name)
+        self.assertFalse(tr_2.passed)
+
+        self.assertIn('cpu_to_gpu', tr_3.name)
+        self.assertFalse(tr_3.passed)
+
+        self.assertIn('gpu_to_cpu_array', tr_4.name)
+        self.assertFalse(tr_4.passed)
+
+        self.assertIn('cpu_to_gpu_array', tr_5.name)
+        self.assertFalse(tr_5.passed)
+
+        # test patch float precision
+        # reload xdoctest.checker
+        importlib.reload(xdoctest.checker)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(style='freeform', target='codeblock')
+        doctester.prepare(test_capacity)
+
+        docstrings_to_test = {
+            'gpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.123456780])
+
+            """,
+            'cpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.123456780])
+
+            """,
+            'gpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.123456780])
+
+            """,
+            'cpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.123456780])
+            """,
+            'gpu_to_cpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor([[1.123456789 ,2,3], [2,3,4], [3,4,5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[1.123456780, 2., 3.],
+                    [2., 3., 4.],
+                    [3., 4., 5.]])
+            """,
+            'cpu_to_gpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor([[1.123456789,2,3], [2,3,4], [3,4,5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [[1.123456780, 2., 3.],
+                    [2., 3., 4.],
+                    [3., 4., 5.]])
+            """,
+            'mass_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(
+                    ... [[1.123456780, 2., -3, .3],
+                    ... [2, 3, +4., 1.2+10.34e-5j],
+                    ... [3, 5.e-3, 1e2, 3e-8]]
+                    ... )
+                    >>> # Tensor(shape=[3, 4], dtype=complex64, place=Place(gpu:0), stop_gradient=True,
+                    >>> #       [[ (1.1234568357467651+0j)                    ,
+                    >>> #          (2+0j)                                     ,
+                    >>> #         (-3+0j)                                     ,
+                    >>> #          (0.30000001192092896+0j)                   ],
+                    >>> #        [ (2+0j)                                     ,
+                    >>> #          (3+0j)                                     ,
+                    >>> #          (4+0j)                                     ,
+                    >>> #         (1.2000000476837158+0.00010340000153519213j)],
+                    >>> #        [ (3+0j)                                     ,
+                    >>> #          (0.004999999888241291+0j)                  ,
+                    >>> #          (100+0j)                                   ,
+                    >>> #          (2.999999892949745e-08+0j)                 ]])
+                    >>> print(a)
+                    Tensor(shape=[3, 4], dtype=complex64, place=Place(AAA), stop_gradient=True,
+                        [[ (1.123456+0j),
+                            (2+0j),
+                            (-3+0j),
+                            (0.3+0j)],
+                            [ (2+0j),
+                            (3+0j),
+                            (4+0j),
+                            (1.2+0.00010340j)],
+                            [ (3+0j),
+                            (0.00499999+0j),
+                            (100+0j),
+                            (2.999999e-08+0j)]])
+            """,
+            'float_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> x = [[2, 3, 4], [7, 8, 9]]
+                    >>> x = paddle.to_tensor(x, dtype='float32')
+                    >>> print(paddle.log(x))
+                    Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[0.69314718, 1.09861231, 1.38629436],
+                        [1.94591010, 2.07944155, 2.19722462]])
+
+            """,
+            'float_array_diff': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> x = [[2, 3, 4], [7, 8, 9]]
+                    >>> x = paddle.to_tensor(x, dtype='float32')
+                    >>> print(paddle.log(x))
+                    Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [[0.69314712, 1.09861221, 1.386294],
+                        [1.94591032, 2.07944156, 2.1972246]])
+
+            """,
+        }
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 9)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7, tr_8 = test_results
+
+        self.assertIn('gpu_to_gpu', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('cpu_to_cpu', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        self.assertIn('gpu_to_cpu', tr_2.name)
+        self.assertTrue(tr_2.passed)
+
+        self.assertIn('cpu_to_gpu', tr_3.name)
+        self.assertTrue(tr_3.passed)
+
+        self.assertIn('gpu_to_cpu_array', tr_4.name)
+        self.assertTrue(tr_4.passed)
+
+        self.assertIn('cpu_to_gpu_array', tr_5.name)
+        self.assertTrue(tr_5.passed)
+
+        self.assertIn('mass_array', tr_6.name)
+        self.assertTrue(tr_6.passed)
+
+        self.assertIn('float_array', tr_7.name)
+        self.assertTrue(tr_7.passed)
+
+        self.assertIn('float_array_diff', tr_8.name)
+        self.assertTrue(tr_8.passed)
+
+        # reload xdoctest.checker
+        importlib.reload(xdoctest.checker)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(
+            style='freeform', target='codeblock', patch_float_precision=None
+        )
+        doctester.prepare(test_capacity)
+
+        docstrings_to_test = {
+            'gpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.123456780])
+
+            """,
+            'cpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.123456780])
+
+            """,
+            'gpu_to_cpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [0.123456780])
+
+            """,
+            'cpu_to_gpu': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor(.123456789)
+                    >>> print(a)
+                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [0.123456780])
+            """,
+            'gpu_to_cpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor([[1.123456789 ,2,3], [2,3,4], [3,4,5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[1.123456780, 2., 3.],
+                    [2., 3., 4.],
+                    [3., 4., 5.]])
+            """,
+            'cpu_to_gpu_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> a = paddle.to_tensor([[1.123456789,2,3], [2,3,4], [3,4,5]])
+                    >>> print(a)
+                    Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    [[1.123456780, 2., 3.],
+                    [2., 3., 4.],
+                    [3., 4., 5.]])
+            """,
+            'mass_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> a = paddle.to_tensor(
+                    ... [[1.123456780, 2., -3, .3],
+                    ... [2, 3, +4., 1.2+10.34e-5j],
+                    ... [3, 5.e-3, 1e2, 3e-8]]
+                    ... )
+                    >>> # Tensor(shape=[3, 4], dtype=complex64, place=Place(gpu:0), stop_gradient=True,
+                    >>> #       [[ (1.1234568357467651+0j)                    ,
+                    >>> #          (2+0j)                                     ,
+                    >>> #         (-3+0j)                                     ,
+                    >>> #          (0.30000001192092896+0j)                   ],
+                    >>> #        [ (2+0j)                                     ,
+                    >>> #          (3+0j)                                     ,
+                    >>> #          (4+0j)                                     ,
+                    >>> #         (1.2000000476837158+0.00010340000153519213j)],
+                    >>> #        [ (3+0j)                                     ,
+                    >>> #          (0.004999999888241291+0j)                  ,
+                    >>> #          (100+0j)                                   ,
+                    >>> #          (2.999999892949745e-08+0j)                 ]])
+                    >>> print(a)
+                    Tensor(shape=[3, 4], dtype=complex64, place=Place(AAA), stop_gradient=True,
+                        [[ (1.123456+0j),
+                            (2+0j),
+                            (-3+0j),
+                            (0.3+0j)],
+                            [ (2+0j),
+                            (3+0j),
+                            (4+0j),
+                            (1.2+0.00010340j)],
+                            [ (3+0j),
+                            (0.00499999+0j),
+                            (100+0j),
+                            (2.999999e-08+0j)]])
+            """,
+            'float_array': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> x = [[2, 3, 4], [7, 8, 9]]
+                    >>> x = paddle.to_tensor(x, dtype='float32')
+                    >>> print(paddle.log(x))
+                    Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [[0.69314718, 1.09861231, 1.38629436],
+                        [1.94591010, 2.07944155, 2.19722462]])
+
+            """,
+            'float_array_diff': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> import paddle
+                    >>> paddle.device.set_device('cpu')
+                    >>> x = [[2, 3, 4], [7, 8, 9]]
+                    >>> x = paddle.to_tensor(x, dtype='float32')
+                    >>> print(paddle.log(x))
+                    Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [[0.69314712, 1.09861221, 1.386294],
+                        [1.94591032, 2.07944156, 2.1972246]])
+
+            """,
+        }
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 9)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7, tr_8 = test_results
+
+        self.assertIn('gpu_to_gpu', tr_0.name)
+        self.assertFalse(tr_0.passed)
+
+        self.assertIn('cpu_to_cpu', tr_1.name)
+        self.assertFalse(tr_1.passed)
+
+        self.assertIn('gpu_to_cpu', tr_2.name)
+        self.assertFalse(tr_2.passed)
+
+        self.assertIn('cpu_to_gpu', tr_3.name)
+        self.assertFalse(tr_3.passed)
+
+        self.assertIn('gpu_to_cpu_array', tr_4.name)
+        self.assertFalse(tr_4.passed)
+
+        self.assertIn('cpu_to_gpu_array', tr_5.name)
+        self.assertFalse(tr_5.passed)
+
+        self.assertIn('mass_array', tr_6.name)
+        self.assertFalse(tr_6.passed)
+
+        self.assertIn('float_array', tr_7.name)
+        self.assertTrue(tr_7.passed)
+
+        self.assertIn('float_array_diff', tr_8.name)
+        self.assertFalse(tr_8.passed)
+
     def test_run_cpu(self):
         _clear_environ()
 
@@ -940,6 +1817,256 @@ class TestGetTestResults(unittest.TestCase):
         self.assertFalse(tr_0.passed)
         self.assertTrue(tr_0.skipped)
         self.assertFalse(tr_0.failed)
+
+    def test_multiprocessing_xdoctester(self):
+        docstrings_to_test = {
+            'static_0': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import numpy as np
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> data = paddle.static.data(name='X', shape=[None, 2, 28, 28], dtype='float32')
+            """,
+            'static_1': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> import numpy as np
+                    >>> import paddle
+                    >>> paddle.enable_static()
+                    >>> data = paddle.static.data(name='X', shape=[None, 1, 28, 28], dtype='float32')
+
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        tr_0, tr_1 = test_results
+
+        self.assertIn('static_0', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('static_1', tr_1.name)
+        self.assertTrue(tr_1.passed)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(use_multiprocessing=False)
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 2)
+
+        tr_0, tr_1 = test_results
+
+        self.assertIn('static_0', tr_0.name)
+        self.assertTrue(tr_0.passed)
+
+        self.assertIn('static_1', tr_1.name)
+        self.assertFalse(tr_1.passed)
+        self.assertTrue(tr_1.failed)
+
+    def test_timeout(self):
+        docstrings_to_test = {
+            'timeout_false': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(0.1)
+            """,
+            'timeout_true': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(3)
+            """,
+            'timeout_false_with_skip_0': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +SKIP
+                    >>> import time
+                    >>> time.sleep(0.1)
+            """,
+            'timeout_false_with_skip_1': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(0.1)
+            """,
+            'timeout_true_with_skip_0': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> # doctest: +SKIP
+                    >>> import time
+                    >>> time.sleep(3)
+            """,
+            'timeout_true_with_skip_1': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +SKIP
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(3)
+            """,
+            'timeout_more_codes': """
+            this is docstring...
+
+            Examples:
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(0.1)
+
+                .. code-block:: python
+
+                    >>> # doctest: +TIMEOUT(2)
+                    >>> import time
+                    >>> time.sleep(3)
+
+            """,
+        }
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester()
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 8)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7 = test_results
+
+        self.assertIn('timeout_false', tr_0.name)
+        self.assertTrue(tr_0.passed)
+        self.assertFalse(tr_0.timeout)
+
+        self.assertIn('timeout_true', tr_1.name)
+        self.assertFalse(tr_1.passed)
+        self.assertTrue(tr_1.timeout)
+
+        self.assertIn('timeout_false_with_skip_0', tr_2.name)
+        self.assertFalse(tr_2.passed)
+        self.assertFalse(tr_2.timeout)
+        self.assertTrue(tr_2.skipped)
+
+        self.assertIn('timeout_false_with_skip_1', tr_3.name)
+        self.assertFalse(tr_3.passed)
+        self.assertFalse(tr_3.timeout)
+        self.assertTrue(tr_3.skipped)
+
+        self.assertIn('timeout_true_with_skip_0', tr_4.name)
+        self.assertFalse(tr_4.passed)
+        self.assertFalse(tr_4.timeout)
+        self.assertTrue(tr_4.skipped)
+
+        self.assertIn('timeout_true_with_skip_1', tr_5.name)
+        self.assertFalse(tr_5.passed)
+        self.assertFalse(tr_5.timeout)
+        self.assertTrue(tr_5.skipped)
+
+        self.assertIn('timeout_more_codes', tr_6.name)
+        self.assertTrue(tr_6.passed)
+        self.assertFalse(tr_6.timeout)
+
+        self.assertIn('timeout_more_codes', tr_7.name)
+        self.assertFalse(tr_7.passed)
+        self.assertTrue(tr_7.timeout)
+
+        _clear_environ()
+
+        test_capacity = {'cpu'}
+        doctester = Xdoctester(use_multiprocessing=False)
+        doctester.prepare(test_capacity)
+
+        test_results = get_test_results(doctester, docstrings_to_test)
+        self.assertEqual(len(test_results), 8)
+
+        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7 = test_results
+
+        self.assertIn('timeout_false', tr_0.name)
+        self.assertTrue(tr_0.passed)
+        self.assertFalse(tr_0.timeout)
+
+        self.assertIn('timeout_true', tr_1.name)
+        self.assertFalse(tr_1.passed)
+        self.assertTrue(tr_1.timeout)
+
+        self.assertIn('timeout_false_with_skip_0', tr_2.name)
+        self.assertFalse(tr_2.passed)
+        self.assertFalse(tr_2.timeout)
+        self.assertTrue(tr_2.skipped)
+
+        self.assertIn('timeout_false_with_skip_1', tr_3.name)
+        self.assertFalse(tr_3.passed)
+        self.assertFalse(tr_3.timeout)
+        self.assertTrue(tr_3.skipped)
+
+        self.assertIn('timeout_true_with_skip_0', tr_4.name)
+        self.assertFalse(tr_4.passed)
+        self.assertFalse(tr_4.timeout)
+        self.assertTrue(tr_4.skipped)
+
+        self.assertIn('timeout_true_with_skip_1', tr_5.name)
+        self.assertFalse(tr_5.passed)
+        self.assertFalse(tr_5.timeout)
+        self.assertTrue(tr_5.skipped)
+
+        self.assertIn('timeout_more_codes', tr_6.name)
+        self.assertTrue(tr_6.passed)
+        self.assertFalse(tr_6.timeout)
+
+        self.assertIn('timeout_more_codes', tr_7.name)
+        self.assertFalse(tr_7.passed)
+        self.assertTrue(tr_7.timeout)
 
 
 if __name__ == '__main__':
