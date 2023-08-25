@@ -19,7 +19,6 @@
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/elementwise_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reduction_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/reshape_spmd_rule.h"
@@ -31,9 +30,6 @@
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
-
-// matmul rule
-REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
 
 // reduction rules
 REGISTER_SPMD_RULE(all, ReductionSPMDRule);

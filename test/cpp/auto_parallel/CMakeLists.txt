@@ -9,7 +9,6 @@ if(WITH_DISTRIBUTE)
     dist_tensor_test
     SRCS dist_tensor_test.cc
     DEPS phi)
-  cc_test_old(infer_spmd_test SRCS infer_spmd_test DEPS phi)
 endif()
 
 cc_test_old(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)

@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,50 +12,84 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
+#include "paddle/phi/infermeta/spmd_rules/matmul.h"
 
+#include "glog/logging.h"
+
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
-namespace auto_parallel {
+
 using phi::distributed::auto_parallel::str_join;
-std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
-                             const paddle::framework::AttributeMap& attrs) {
-  // step0: verify input args based on matmul logic
-  auto input_specs_size = input_specs.size();
-  PADDLE_ENFORCE_EQ(
-      input_specs_size,
-      2,
-      phi::errors::InvalidArgument(
-          "The size of InputSpec of matmul should be 2, but got [%d].",
-          input_specs_size));
-  auto x_shape = input_specs[0].shape();
-  auto y_shape = input_specs[1].shape();
+
+////////////////// Utils Functions //////////////////
+
+TensorDistAttr GetMatmulInferedDistAttr(
+    const TensorDistAttr& origin_dist_attr,
+    const std::vector<int64_t>& shape,
+    const std::string& tensor_axis,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    bool trans_axis) {
+  TensorDistAttr dist_attr = CopyTensorDistAttrForOutput(origin_dist_attr);
+  std::vector<int64_t> infered_dims_mapping;
+  infered_dims_mapping.reserve(tensor_axis.size());
+
+  for (size_t i = 0; i < tensor_axis.size(); ++i) {
+    if (shape.size() > i && shape[i] == 1) {
+      infered_dims_mapping.push_back(-1);
+    } else {
+      auto itr = axis_to_dim_map.find(tensor_axis.substr(i, 1));
+      if (itr == axis_to_dim_map.end()) {
+        phi::errors::InvalidArgument(
+            "Tensor axis [%s] of not in axis_to_dim_map.",
+            tensor_axis.substr(i, 1));
+      }
+      infered_dims_mapping.push_back(itr->second);
+    }
+  }
+
+  if (trans_axis) {
+    std::iter_swap(infered_dims_mapping.end() - 2,
+                   infered_dims_mapping.end() - 1);
+  }
+
+  dist_attr.set_dims_mapping(infered_dims_mapping);
+  return dist_attr;
+}
+
+////////////////// InferMeta(Contains SPMD) Functions //////////////////
+
+SpmdInfo MatmulSpmdInferForward(const MetaTensor& x,
+                                const MetaTensor& y,
+                                bool trans_x,
+                                bool trans_y) {
+  // Step0: verify input args based on matmul logic
+  auto x_shape = phi::vectorize(x.dims());
+  auto y_shape = phi::vectorize(y.dims());
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
-  auto x_dist_attr_src = input_specs[0].dist_attr();
-  auto y_dist_attr_src = input_specs[1].dist_attr();
+  auto x_dist_attr_src = x.dist_attr();
+  auto y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument(
-          "Mismatch of X's tensor size: [%d] and X's dims_mapping size [%d].",
-          x_ndim,
-          x_dims_mapping.size()));
+      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                   "dims_mapping size [%d] are not matched.",
+                                   x_ndim,
+                                   x_dims_mapping.size()));
   PADDLE_ENFORCE_EQ(
       y_ndim,
       y_dims_mapping.size(),
-      phi::errors::InvalidArgument(
-          "Mismatch of Y's tensor size: [%d] and Y's dims_mapping size [%d].",
-          y_ndim,
-          y_dims_mapping.size()));
-
-  bool trans_x = ExtractAttr<bool>("trans_x", attrs);
-  bool trans_y = ExtractAttr<bool>("trans_y", attrs);
+      phi::errors::InvalidArgument("The Tensor Y's rank [%d] and Y's "
+                                   "dims_mapping size [%d] are not matched.",
+                                   y_ndim,
+                                   y_dims_mapping.size()));
 
   VLOG(6) << "MatmulSPMDRule InferForward Inputs: "
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
@@ -66,7 +100,7 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           << "trans_y: "
           << "[" << (trans_y ? "true" : "false") << "]; ";
 
-  // step1: build Einsum Notation
+  // Step1: build Einsum Notation
 
   // reserve the char k, m, n for matrix product notation: mk,kn -> mn
   int max_ndim = std::max(x_ndim, y_ndim);
@@ -116,31 +150,31 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
         y_ndim));
   }
 
-  // step2: Sharding Propogation
+  // Step2: Sharding Propogation
   if (trans_x) {
-    PADDLE_ENFORCE_GE(
-        x_ndim,
-        2,
-        phi::errors::InvalidArgument("When trans_x is True, the size of X "
-                                     "tensor should be 2,  but got [%d].",
-                                     x_ndim));
+    PADDLE_ENFORCE_GE(x_ndim,
+                      2,
+                      phi::errors::InvalidArgument(
+                          "When trans_x is True, the size of X "
+                          "tensor should be greater than 2,  but got [%d].",
+                          x_ndim));
     std::iter_swap(x_dims_mapping.end() - 2, x_dims_mapping.end() - 1);
   }
   if (trans_y) {
-    PADDLE_ENFORCE_GE(
-        y_ndim,
-        2,
-        phi::errors::InvalidArgument("When trans_x is True, the size of X "
-                                     "tensor should be 2,  but got [%d].",
-                                     y_ndim));
+    PADDLE_ENFORCE_GE(y_ndim,
+                      2,
+                      phi::errors::InvalidArgument(
+                          "When trans_y is True, the size of Y "
+                          "tensor should be greater than 2,  but got [%d].",
+                          y_ndim));
     std::iter_swap(y_dims_mapping.end() - 2, y_dims_mapping.end() - 1);
   }
-  // step2.1: Sharding Merge
+  // Step2.1: Sharding Merge
   std::pair<std::string, std::vector<int64_t>> x_pair(x_axes, x_dims_mapping);
   std::pair<std::string, std::vector<int64_t>> y_pair(y_axes, y_dims_mapping);
   auto axis_to_dim_map = ShardingMergeForTensors({x_pair, y_pair});
 
-  // step2.2: Infer Output's Dims Mapping.
+  // Step2.2: Infer Output's Dims Mapping.
   TensorDistAttr output_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   std::vector<int64_t> out_dims_mapping;
@@ -150,13 +184,13 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   }
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
-  // step2.3: Merge and get Inputs' New Dims Mapping.
-  TensorDistAttr x_dist_attr_dst = GetInferedDistAttr(
+  // Step2.3: Merge and get Inputs' New Dims Mapping.
+  TensorDistAttr x_dist_attr_dst = GetMatmulInferedDistAttr(
       x_dist_attr_src, x_shape, x_axes, axis_to_dim_map, trans_x);
-  TensorDistAttr y_dist_attr_dst = GetInferedDistAttr(
+  TensorDistAttr y_dist_attr_dst = GetMatmulInferedDistAttr(
       y_dist_attr_src, y_shape, y_axes, axis_to_dim_map, trans_y);
 
-  // step2.3: Handle Partial
+  // Step2.3: Handle Partial
   // Step2.3.1 Output Partial
   std::vector<int64_t> partial_on_dims =
       ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
@@ -180,48 +214,5 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {output_dist_attr_dst}};
 }
 
-TensorDistAttr GetInferedDistAttr(
-    const TensorDistAttr& origin_dist_attr,
-    const std::vector<int64_t>& shape,
-    const std::string& tensor_axis,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
-    const bool trans_axis) {
-  TensorDistAttr dist_attr_ = CopyTensorDistAttrForOutput(origin_dist_attr);
-  std::vector<int64_t> infered_dims_mapping;
-  infered_dims_mapping.reserve(tensor_axis.size());
-
-  for (size_t i = 0; i < tensor_axis.size(); ++i) {
-    if (shape.size() > i && shape[i] == 1) {
-      infered_dims_mapping.push_back(-1);
-    } else {
-      auto itr = axis_to_dim_map.find(tensor_axis.substr(i, 1));
-      if (itr == axis_to_dim_map.end()) {
-        phi::errors::InvalidArgument(
-            "Tensor axis [%s] of not in axis_to_dim_map.",
-            tensor_axis.substr(i, 1));
-      }
-      infered_dims_mapping.push_back(itr->second);
-    }
-  }
-
-  if (trans_axis) {
-    std::iter_swap(infered_dims_mapping.end() - 2,
-                   infered_dims_mapping.end() - 1);
-  }
-
-  dist_attr_.set_dims_mapping(infered_dims_mapping);
-  return dist_attr_;
-}
-
-std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-MatmulSPMDRule::InferBackward(const std::vector<DistTensorSpec>& output_specs,
-                              const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of MatmulSPMDRule is NOT implemented yet."));
-
-  return {};
-}
-
-}  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

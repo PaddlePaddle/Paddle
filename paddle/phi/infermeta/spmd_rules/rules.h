@@ -15,13 +15,32 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
-#include "paddle/phi/infermeta/spmd_rules/binary.h"
+
+#include "paddle/phi/infermeta/spmd_rules/matmul.h"
+
+/**
+ * Design Notes:
+ *
+ * 1. SPMD info is the special meta info of DistTensor, so we put Spmd infer
+ * functions in `infermeta` directory.
+ *
+ * 2. Since the infer functions of Spmd forward and backward are closely related
+ * and need to be registered together, we manage them together in one file.
+ *
+ * 3. SPMD rules are much smaller than infermeta function, and we manage files
+ * in operator units.
+ *
+ * 4. The previous registration used some compile-time regular matching methods,
+ * which was less flexible, and the registration of SPMD rules here is declare
+ * directly in the header file
+ */
 
 namespace phi {
 namespace distributed {
 
 // matmul rule
-PD_REGISTER_SPMD_RULE(matmul, PD_INFER_SPMD(phi::distributed::MatmulInferSpmd));
+PD_REGISTER_SPMD_RULE(matmul,
+                      PD_INFER_SPMD(phi::distributed::MatmulSpmdInferForward));
 
 }  // namespace distributed
 }  // namespace phi

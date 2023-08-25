@@ -22,11 +22,13 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-// SPMD info is the special meta info of DIstTensor
-SpmdInfo MatmulInferSpmd(const MetaTensor& x,
-                         const MetaTensor& y,
-                         bool trans_x,
-                         bool trans_y);
+SpmdInfo MatmulSpmdInferForward(const MetaTensor& x,
+                                const MetaTensor& y,
+                                bool trans_x,
+                                bool trans_y);
+
+// TODO(dev): Add Infer Backward rule later
+// SpmdInfo MatmulSpmdInferBackward(...);
 
 }  // namespace distributed
 }  // namespace phi
