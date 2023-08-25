@@ -24,7 +24,6 @@
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
