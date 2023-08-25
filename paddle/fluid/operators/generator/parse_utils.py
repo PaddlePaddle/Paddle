@@ -150,6 +150,8 @@ def parse_output(op_name: str, s: str) -> Dict[str, str]:
 
 
 def parse_outputs(op_name: str, outputs: str) -> List[Dict]:
+    if outputs is None:
+        return []
     outputs = parse_plain_list(outputs, sep=",")
     output_items = []
     for output in outputs:

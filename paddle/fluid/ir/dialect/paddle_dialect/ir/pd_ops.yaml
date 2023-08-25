@@ -1,0 +1,115 @@
+- op : add_n_
+  args : (Tensor[] inputs)
+  output : Tensor(out)
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: add_n
+    param: [inputs]
+  backward: add_n_grad
+
+- op : add_n_with_kernel
+  args : (Tensor[] inputs)
+  output : Tensor(out)
+  infer_meta:
+    func: AddNInferMeta
+    param: [inputs]
+  kernel:
+    func: add_n
+    param: [inputs]
+  backward: add_n_grad
+
+- op : assert
+  args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
+  output :
+  kernel :
+    func : assert
+    param : [cond, data, summarize]
+    data_type : cond
+
+- op : assign_value
+  args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
+  output : Tensor(out)
+  infer_meta :
+    func : AssignValueInferMeta
+    param: [shape, dtype]
+  kernel :
+    func : assign_value
+    param : [shape, dtype, values]
+    backend: place>
+    data_type : dtype
+
+- op : embedding_grad_sparse
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx = -1, bool sparse = false)
+  output : SelectedRows(weight_grad)
+  infer_meta:
+    func: EmbeddingGradSparseInferMeta
+    param: [weight]
+  kernel:
+    func: embedding_sparse_grad
+    param: [x, weight, out_grad, padding_idx, sparse]
+    data_type : weight
+
+- op : feed
+  args : (str name, int col)
+  output : Tensor(out)
+
+- op : fetch
+  args : (Tensor x, str name, int col)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fetch
+    param : [x]
+
+- op : load_combine
+  args : (str file_path, bool load_as_fp16, bool model_from_memory)
+  output : Tensor[](Out)
+  kernel:
+    func: load_combine
+    param: [file_path, load_as_fp16, model_from_memory]
+  optional : Out
+
+- op : lod_array_length
+  args : (Tensor[] x)
+  output : Tensor(out)
+
+- op : print
+  args : (Tensor in, int first_n, str message, int summarize, bool print_tensor_name = true, bool print_tensor_shape = true, bool print_tensor_layout = true, bool print_tensor_lod = true, str print_phase = "BOTH", bool is_forward = true)
+  output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [in]
+  kernel :
+    func : print_kernel
+    param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
+
+- op : save_combine
+  args : (Tensor[] x, str file_path, bool overwrite, bool save_as_fp16, bool save_to_memory)
+  output : Tensor(out)
+  kernel:
+    func: save_combine_tensor
+    param: [X, file_path, overwrite, save_as_fp16, save_to_memory]
+  optional : out
+
+- op : shadow_feed
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: shadow_feed
+    param: [x]
+
+- op : share_buffer_
+  args : (Tensor[] x, bool[] share_dims_and_dtype = {})
+  output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
+
+- op : write_to_array
+  args : (Tensor i, Tensor x)
+  output : Tensor[](out)
+  backward: write_to_array_grad
