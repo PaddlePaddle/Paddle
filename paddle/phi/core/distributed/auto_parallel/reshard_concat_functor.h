@@ -14,24 +14,17 @@
 
 #pragma once
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include <cstdint>
+#include <vector>
 
 namespace phi {
+class DeviceContext;
+class DenseTensor;
 namespace distributed {
 
-class RToSReshardFunction final : public ReshardFunction {
- public:
-  RToSReshardFunction() = default;
-  ~RToSReshardFunction() = default;
-
-  bool IsSuitable(const DistTensor& in,
-                  const TensorDistAttr& out_dist_attr) override;
-
-  void Eval(DeviceContext* dev_ctx,
-            const DistTensor& in,
-            const TensorDistAttr& out_dist_attr,
-            DistTensor* out) override;
-};
+DenseTensor ReshardConcatFunctor(const DeviceContext& dev_ctx,
+                                 const std::vector<const DenseTensor*>& input,
+                                 int64_t axis);
 
 }  // namespace distributed
 }  // namespace phi
