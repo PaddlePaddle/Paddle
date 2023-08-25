@@ -151,8 +151,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{inplace}}}, {{{view}}});
-
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{kernel_key_backend}}}, {{{inplace}}}, {{{view}}});
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
 }}
 """
@@ -1013,6 +1012,7 @@ def OpGenerator(
             kernel_func_str = ""
             kernel_param_str = ""
             kernel_key_dtype = ""
+            kernel_key_backend = ""
             if op_kernel_map is not None:
                 kernel_func_str = '", "'.join(op_kernel_map['func'])
                 kernel_param_str = '", "'.join(op_kernel_map['param'])
@@ -1022,6 +1022,12 @@ def OpGenerator(
                     )
                     if kernel_key_dtype != "":
                         kernel_key_dtype = '"' + kernel_key_dtype + '"'
+                if 'backend' in op_kernel_map and op_kernel_map['backend']:
+                    kernel_key_backend = '", "'.join(
+                        op_kernel_map['backend']['candidates']
+                    )
+                    if kernel_key_backend != "":
+                        kernel_key_backend = '"' + kernel_key_backend + '"'
 
             inplace_str = ""
             view_str = ""
@@ -1045,6 +1051,7 @@ def OpGenerator(
                 kernel_func=kernel_func_str,
                 kernel_param=kernel_param_str,
                 kernel_key_dtype=kernel_key_dtype,
+                kernel_key_backend=kernel_key_backend,
                 inplace=inplace_str,
                 view=view_str,
                 origin_op_name=op_info.op_yaml_item['name'],
