@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,8 +38,8 @@ function add_failed(){
 }
 
 
-api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec` 
-api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
+api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec`
+api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for API change.\n"
     echo_line="${echo_line} and one TPM approval for API change: \n"
@@ -47,21 +47,21 @@ if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="${echo_line} liuTINA0907/LiuShuangQiao for distributed related APIs.\n"
     echo_line="${echo_line} leiqing1/LeiQing for inference related APIs.\n"
 
-    check_approval 1 46782768 8555991 47554610 7845005
-    check_approval 1 29231 70642955 23093488 39876205 65896652 54695910
+    check_approval 1 XiaoguangHu01 jeff41404 lanxianghit qingqing01
+    check_approval 1 jzhang533 sunzhongkai588 dingjiaweiww Ligoml liuTINA0907 leiqing1
 fi
 
-api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
+api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc`
 if [ "$api_doc_spec_diff" != "" ]; then
     echo_line="You must have  one TPM approval for API documents change: \n"
     echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, dingjiaweiww/DingJiaWei, Ligoml/LiMengLiu for general API docs.\n"
     echo_line="${echo_line} liuTINA0907/LiuShuangQiao for distributed related API docs.\n"
     echo_line="${echo_line} leiqing1/LeiQing for inference related API docs.\n"
 
-    check_approval 1 29231 70642955 23093488 39876205 65896652 54695910
+    check_approval 1 jzhang533 sunzhongkai588 dingjiaweiww Ligoml liuTINA0907 leiqing1
 fi
 
-api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}` 
+api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
 if [ "$api_yaml_diff" != "" ]; then
     echo_line="API's name and params should be consistent with op's name and params in yaml.
                 The API or Yaml file you changed may cause inconsistent.\n"
@@ -70,7 +70,7 @@ if [ "$api_yaml_diff" != "" ]; then
     check_approval 1 YuanRisheng zyfncg chenwhql phlrain
 fi
 
-api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
+api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5`
 if [ "$api_src_spec_diff" != "" ]; then
     echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
     echo_line="${echo_line}You must have one RD (JiabinYang (Recommend) or wanghuancoder, phlrain) approval for the api change for the opreator-related api without '_C_ops'.\n"
@@ -81,13 +81,13 @@ fi
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
 if [ "$op_type_spec_diff" != "" ]; then
     echo_line="You must have one RD (Aurelius84 (Recommend) or zhhsplendid)approval for the data_type registration of new operator. More data_type of new operator should be registered in your PR. Please make sure that both float/double (or int/int64_t) have been registered.\n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/Data-types-of-generic-Op-must-be-fully-registered].\n"
-    check_approval 1 9301846 7913861
+    check_approval 1 Aurelius84 zhhsplendid
 fi
 
 op_kernel_dtype_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_PR.spec`
 if [ "$op_kernel_dtype_spec_diff" != "" ]; then
     echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (lanxianghit (Recommend) or chenwhql) review and approve. Including the following kernels:\n${op_kernel_dtype_spec_diff}\n"
-    check_approval 1 47554610 22561442
+    check_approval 1 lanxianghit chenwhql
 fi
 
 op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle/fluid/OP_DESC_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_DESC_PR.spec`
@@ -100,20 +100,20 @@ fi
 
 if [ "$slim_approve" != "" ]; then
     echo_line="You must have one RD (wanghaoshuang(Recommend), qingqing01) approval for the changes of `quant` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${slim_approve}\n"
-    check_approval 1 7534971 7845005
+    check_approval 1 wanghaoshuang qingqing01
 fi
 
 if [ "$inference_approve" != "" ]; then
     echo_line="You must have one RD (qingqing01(Recommend), heavengate) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
-    check_approval 1 qingqing01 heavengate 
+    check_approval 1 qingqing01 heavengate
 fi
 
 DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec
 PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
-ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}` 
+ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}`
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
-  echo_line="You must have one RD (zhiqiu (Recommend) or zhhsplendid) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
-  check_approval 1 6888866 7913861
+  echo_line="You must have one RD (zhiqiu (Recommend) or zhhsplendid) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n"
+  check_approval 1 zhiqiu zhhsplendid
 fi
 
 OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
@@ -123,7 +123,7 @@ if [ "$OUTPUT_LOG" != "" ];then
     sample_status=0
     if [ "$samplecode" != "" ];then
         cat `find tools/samplecode_temp -type f` >/tmp/samplecode.txt
-        sed -i s#\"#\'#g /tmp/samplecode.txt 
+        sed -i s#\"#\'#g /tmp/samplecode.txt
         while read line
         do
             code_in=`grep "$line" /tmp/samplecode.txt || true`
@@ -152,9 +152,9 @@ if [ -n "${echo_list}" ];then
   fi
   if [ "${api_params_diff}" != "" ] ; then
     echo "api_params_diff: ${api_params_diff}"
-  fi 
+  fi
   if [ "${op_type_spec_diff}" != "" ] ; then
     echo "op_type_spec_diff: ${op_type_spec_diff}"
-  fi 
+  fi
   exit 6
 fi

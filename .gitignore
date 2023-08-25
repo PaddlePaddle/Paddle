@@ -97,3 +97,4 @@ python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
 python/paddle/fluid/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/fluid/ir_adaptor/translator/op_compat_info.cc
+paddle/fluid/pybind/static_op_function.*
