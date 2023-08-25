@@ -45,31 +45,37 @@ class RemoveRedundentReshapePattern
   }
 };
 
-class FoldBroadcastToConstantPattern
-    : public ir::drr::DrrPatternBase<FoldBroadcastToConstantPattern> {
+class RemoveExpandPattern
+    : public ir::drr::DrrPatternBase<RemoveExpandPattern> {
  public:
   void operator()(ir::drr::DrrPatternContext *ctx) const override {
+     // Source Pattern 中可匹配的类型包括 Op 和 Tensor
     ir::drr::SourcePattern pat = ctx->SourcePattern();
-    // Source Pattern 中可匹配的类型包括 Op 和 Tensor
-    const auto &fill_constant = pat.Op(
-        "pd.fill_constant",
-        {{"value", pat.Attr("value_1")}, {"dtype", pat.Attr("dtype_1")}});
-    const auto &broadcast_to =
-        pat.Op("pd.expand", {{"shape", pat.Attr("shape_1")}});
-    // 匹配fill_constant+broadcast_to，同时对输出张量标记为ret，方便后面加约束
-    pat.Tensor("ret") = broadcast_to(fill_constant());
-    // Constrains：本Pass无额外的约束规则
-    // Result patterns：要替换为的子图
+    const auto &full1 = pat.Op(
+        "pd.full",
+        {{"shape", pat.Attr("shape_1")}, 
+         {"value", pat.Attr("value_1")},
+         {"dtype", pat.Attr("dtype_1")},
+         {"place", pat.Attr("place_1")}}
+    );
+    const auto &full_int_array1 = pat.Op(
+        "pd.full_int_array",
+        {{"value", pat.Attr("expand_shape_value")},
+         {"dtype", pat.Attr("dtype_2")},
+         {"place", pat.Attr("place_2")}}
+    );
+    const auto &expand = pat.Op("pd.expand");
+    pat.Tensor("ret") = expand(full1(), full_int_array1());
+    
+    // Result patterns：要替换为的子图.      Constrains: 本Pass无额外约束规则
     ir::drr::ResultPattern res = pat.ResultPattern();
-    // 使用 folded_fill_constant 替换
-    // broadcast_to(fill_constant())，注意shape属性已更新 所有 ret
-    // 参数均在Source Pattern中使用，对 ret 的赋值等同于对 ret 的 producer
-    // op的删除和重连接
-    const auto &folded_fill_constant = res.Op("pd.fill_constant",
-                                              {{"shape", res.Attr("shape_1")},
-                                               {"value", res.Attr("value_1")},
-                                               {"dtype", res.Attr("dtype_1")}});
-    res.Tensor("ret") = folded_fill_constant();
+    const auto &full2 = res.Op("pd.full",
+                                {{"shape", pat.Attr("expand_shape_value")},  // full_int_array的value为expand的shape
+                                 {"value", pat.Attr("value_1")},
+                                 {"dtype", pat.Attr("dtype_1")},
+                                 {"place", pat.Attr("place_1")}}
+    );
+    res.Tensor("ret") = full2();
   }
 };
 
@@ -124,14 +130,23 @@ class RemoveUselessCastPattern
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16, 16},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16},
                                              1.5,
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
 
+  paddle::dialect::FullIntArrayOp full_int_array_op = 
+      builder.Build<paddle::dialect::FullIntArrayOp>(std::vector<int64_t>{4, 3, 16, 16},
+                                                    phi::DataType::FLOAT32,
+                                                    phi::CPUPlace());
+
+  paddle::dialect::ExpandOp expand_op = 
+      builder.Build<paddle::dialect::ExpandOp>(
+          full_input_op.out(), full_int_array_op.out());                                      
+
   paddle::dialect::ReshapeOp reshape_op1 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          full_input_op.out(), std::vector<int64_t>{16, 3, 4, 16});
+          expand_op.out(), std::vector<int64_t>{16, 3, 4, 16});
 
   paddle::dialect::ReshapeOp reshape_op2 =
       builder.Build<paddle::dialect::ReshapeOp>(
@@ -170,6 +185,7 @@ class DrrPatternRewritePass : public ir::Pass {
     ps.Add(RemoveRedundentTransposePattern().Build(context));
     ps.Add(RemoveRedundentCastPattern().Build(context));
     ps.Add(RemoveUselessCastPattern().Build(context));
+    ps.Add(RemoveExpandPattern().Build(context));
 
     patterns_ = ir::FrozenRewritePatternSet(std::move(ps));
     return true;
@@ -197,7 +213,7 @@ TEST(DrrTest, drr) {
   ir::Builder builder = ir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 12u);
+  EXPECT_EQ(program.block()->size(), 14u);
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<DrrPatternRewritePass>());

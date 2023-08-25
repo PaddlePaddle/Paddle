@@ -42,6 +42,7 @@ PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
                                    paddle::dialect::DataTypeAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
 
 template <typename T>
 struct IrAttrTypeCast {
@@ -59,6 +60,28 @@ struct IrAttrTypeCast<std::vector<int32_t>> {
       result.push_back(array_attr.at(i).dyn_cast<ir::Int32Attribute>().data());
     }
     return result;
+  }
+};
+
+template <>
+struct IrAttrTypeCast<std::vector<int64_t>>{
+  static std::vector<int64_t> To(const ir::Attribute& attr){
+    std::vector<int64_t> result;
+    auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();   
+
+    if (array_attr) {
+      for(size_t i = 0; i < array_attr.size(); i++){
+        result.push_back(array_attr.at(i).dyn_cast<ir::Int64Attribute>().data());
+      }
+      return result;
+    } 
+
+    else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
+      result = attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
+      return result;
+    }
+    LOG(ERROR) << "Dynamic cast failed for IR attribute vector<int64_t>";
+    IR_THROW();
   }
 };
 
