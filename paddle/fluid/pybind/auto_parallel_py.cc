@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -347,7 +348,7 @@ void BindAutoParallel(py::module *m) {
       .def("infer_forward",
            [](const phi::distributed::SpmdRule &self,
               const std::vector<DistTensorSpec> &input_specs,
-              const paddle::framework::AttributeMap &attrs) {
+              const std::vector<phi::Attribute> &attrs) {
              phi::distributed::InferSpmdContext ctx;
              std::vector<phi::distributed::DistTensor> input_tensors;
              for (auto &spec : input_specs) {
@@ -357,20 +358,15 @@ void BindAutoParallel(py::module *m) {
              for (auto &tensor : input_tensors) {
                ctx.EmplaceBackInput(phi::MetaTensor(tensor));
              }
-             // TODO(chenweihang): ensure element order is same as function's
-             // argument order later, if `paddle::framework::AttributeMap`
-             // is unnecessary, recommend to use vector directly
              for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(
-                   paddle::framework::TransFluidAttributeToPhiAttribute(
-                       attr.second, attr.first));
+               ctx.EmplaceBackAttr(attr);
              }
              return self.InferForward(ctx);
            })
       .def("infer_backward",
            [](const phi::distributed::SpmdRule &self,
               const std::vector<DistTensorSpec> &input_specs,
-              const paddle::framework::AttributeMap &attrs) {
+              const std::vector<phi::Attribute> &attrs) {
              phi::distributed::InferSpmdContext ctx;
              std::vector<phi::distributed::DistTensor> input_tensors;
              for (auto &spec : input_specs) {
@@ -381,9 +377,7 @@ void BindAutoParallel(py::module *m) {
                ctx.EmplaceBackInput(phi::MetaTensor(tensor));
              }
              for (auto &attr : attrs) {
-               ctx.EmplaceBackAttr(
-                   paddle::framework::TransFluidAttributeToPhiAttribute(
-                       attr.second, attr.first));
+               ctx.EmplaceBackAttr(attr);
              }
              return self.InferBackward(ctx);
            });

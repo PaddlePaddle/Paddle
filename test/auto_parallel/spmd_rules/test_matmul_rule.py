@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from collections import OrderedDict
 
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
@@ -41,15 +42,13 @@ class TestMatmulSPMDRule(unittest.TestCase):
         y_tensor_dist_attr.process_mesh = process_mesh
         self.y_dist_tensor_spec = DistTensorSpec(y_shape, y_tensor_dist_attr)
 
-        self.attrs = {
-            'trans_x': False,
-            'trans_y': False,
-        }
+        self.attrs = OrderedDict([('trans_x', False), ('trans_y', False)])
 
     def test_matmul_infer_forward(self):
         # TODO test partial: mk[1, 0],kn[0, -1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -68,7 +67,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -82,7 +82,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -95,7 +96,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -108,7 +110,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -122,7 +125,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -137,7 +141,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -154,7 +159,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -173,7 +179,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
         self.attrs['trans_x'] = True
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -192,7 +199,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.attrs['trans_x'] = False
         self.attrs['trans_y'] = True
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -215,7 +223,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.attrs['trans_x'] = True
         self.attrs['trans_y'] = True
         result_dist_attrs = self.rule.infer_forward(
-            [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+            [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+            list(self.attrs.values()),
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -239,7 +248,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.attrs['trans_y'] = True
         with self.assertRaises(NotImplementedError):
             self.rule.infer_forward(
-                [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
+                [self.x_dist_tensor_spec, self.y_dist_tensor_spec],
+                list(self.attrs.values()),
             )
 
 

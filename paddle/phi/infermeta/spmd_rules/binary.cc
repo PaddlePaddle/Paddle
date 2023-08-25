@@ -70,12 +70,10 @@ SpmdInfo MatmulInferSpmd(const MetaTensor& x,
   // Step0: verify input args based on matmul logic
   auto x_shape = phi::vectorize(x.dims());
   auto y_shape = phi::vectorize(y.dims());
-  VLOG(0) << "get dims done";
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   auto y_dist_attr_src = y.dist_attr();
-  VLOG(0) << "get dist attr done";
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
