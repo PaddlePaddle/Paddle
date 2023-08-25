@@ -16,10 +16,7 @@ import re
 
 import paddle
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.dygraph.base import (
-    _convert_into_variable,
-    in_declarative_mode,
-)
+from paddle.base.dygraph.base import _convert_into_variable, in_declarative_mode
 from paddle.base.framework import Variable, core, default_main_program
 
 from .utils import (

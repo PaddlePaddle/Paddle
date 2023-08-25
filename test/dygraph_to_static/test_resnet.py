@@ -36,9 +36,7 @@ l2_decay = 1e-4
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 if base.is_compiled_with_cuda():

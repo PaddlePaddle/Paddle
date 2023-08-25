@@ -19,9 +19,9 @@ from .meta_optimizer_base import MetaOptimizerBase
 __all__ = []
 
 import paddle
-from paddle.common_ops_import import LayerHelper
 from paddle.base import framework
 from paddle.base.dygraph import base as imperative_base
+from paddle.common_ops_import import LayerHelper
 from paddle.framework import core, in_dynamic_mode
 from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
 from paddle.optimizer import Momentum, Optimizer

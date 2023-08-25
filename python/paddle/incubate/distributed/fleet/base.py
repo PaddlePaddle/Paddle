@@ -15,8 +15,8 @@
 import abc
 
 from paddle import base
-from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.base.executor import Executor
+from paddle.distributed.fleet.base.role_maker import RoleMakerBase
 from paddle.optimizer import SGD
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 

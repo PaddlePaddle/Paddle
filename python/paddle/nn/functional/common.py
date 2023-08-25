@@ -16,8 +16,8 @@ import numpy
 
 import paddle
 from paddle import _C_ops
-from paddle.common_ops_import import Variable, default_main_program
 from paddle.base.layer_helper import LayerHelper
+from paddle.common_ops_import import Variable, default_main_program
 from paddle.framework import core, in_dynamic_mode
 from paddle.tensor.creation import full
 

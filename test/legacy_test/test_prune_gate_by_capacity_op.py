@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.distributed.models.moe import utils
 from paddle.base import core
+from paddle.distributed.models.moe import utils
 
 
 def count(x, upper_num):

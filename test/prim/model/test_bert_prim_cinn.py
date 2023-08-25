@@ -21,8 +21,8 @@ from bert import Bert, BertPretrainingCriterion, create_pretraining_dataset
 
 import paddle
 from paddle import base
-from paddle.dataset.common import DATA_HOME, download
 from paddle.base import core
+from paddle.dataset.common import DATA_HOME, download
 
 SEED = 2023
 BATCH_SIZE = 2

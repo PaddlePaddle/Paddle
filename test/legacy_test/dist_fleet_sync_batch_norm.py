@@ -21,8 +21,8 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.distributed import fleet
 from paddle.base import core
+from paddle.distributed import fleet
 from paddle.static import Executor, Program, program_guard
 
 

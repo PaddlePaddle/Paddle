@@ -26,14 +26,14 @@ import paddle
 import paddle.distributed as dist
 from paddle import base
 from paddle.autograd import no_grad
-from paddle.distributed import fleet
-from paddle.distributed.fleet.base import role_maker
 from paddle.base import core
 from paddle.base.dygraph.base import to_variable
 from paddle.base.executor import global_scope
 from paddle.base.framework import Variable
 from paddle.base.framework import _current_expected_place as _get_device
 from paddle.base.framework import _get_paddle_place
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.framework import in_dynamic_mode
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
@@ -58,9 +58,7 @@ def to_list(value):
 
 
 def to_numpy(var):
-    assert isinstance(
-        var, (Variable, base.core.eager.Tensor)
-    ), "not a variable"
+    assert isinstance(var, (Variable, base.core.eager.Tensor)), "not a variable"
     if isinstance(var, base.core.eager.Tensor):
         return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()

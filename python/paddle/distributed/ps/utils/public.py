@@ -18,8 +18,8 @@ import os
 import warnings
 from functools import reduce
 
-from paddle.distributed.io import is_persistable
 from paddle.base.framework import generate_control_dev_var_name
+from paddle.distributed.io import is_persistable
 from paddle.framework import core
 
 # logging.basicConfig(

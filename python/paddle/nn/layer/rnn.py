@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
-from paddle.common_ops_import import Variable
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
@@ -28,6 +27,7 @@ from paddle.base.framework import (
     in_dygraph_mode,
     program_guard,
 )
+from paddle.common_ops_import import Variable
 from paddle.framework import core
 from paddle.nn import functional as F
 from paddle.nn import initializer as I

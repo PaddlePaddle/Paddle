@@ -25,9 +25,7 @@ import paddle
 from paddle import base
 from paddle.nn import ClipGradByGlobalNorm
 
-place = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 STEP_NUM = 10
 PRINT_STEP = 2
 

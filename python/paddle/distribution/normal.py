@@ -18,9 +18,9 @@ from collections.abc import Iterable
 import numpy as np
 
 import paddle
-from paddle.distribution import distribution
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
+from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 

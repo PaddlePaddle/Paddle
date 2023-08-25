@@ -14,9 +14,9 @@
 
 import unittest
 
-from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
 from paddle.base import core
 from paddle.base.framework import Program
+from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
 
 
 class TestDrawBlockGraphviz(unittest.TestCase):

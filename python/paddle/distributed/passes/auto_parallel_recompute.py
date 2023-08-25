@@ -15,7 +15,6 @@
 import logging
 
 import paddle
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.base.backward import (
     ProgramStats,
     _append_grad_suffix_,
@@ -23,6 +22,7 @@ from paddle.base.backward import (
     _get_no_grad_set_name,
     _rename_arg_,
 )
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
 from paddle.utils import unique_name
 

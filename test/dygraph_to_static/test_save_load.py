@@ -29,9 +29,7 @@ from paddle.optimizer import Adam
 
 np.random.seed(2020)
 
-place = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 class PrimeNet(paddle.nn.Layer):

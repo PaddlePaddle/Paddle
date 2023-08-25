@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static
+from paddle.base.core import TensorDistAttr
+from paddle.base.framework import Program
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.dist_context import (
     DistributedContext,
@@ -26,8 +28,6 @@ from paddle.distributed.auto_parallel.static.dist_context import (
 )
 from paddle.distributed.auto_parallel.static.process_mesh_v2 import ProcessMesh
 from paddle.distributed.fleet import auto
-from paddle.base.core import TensorDistAttr
-from paddle.base.framework import Program
 
 paddle.enable_static()
 

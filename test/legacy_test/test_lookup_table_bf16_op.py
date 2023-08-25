@@ -24,7 +24,7 @@ from eager_op_test import (
 from op import Operator
 
 import paddle
-from paddle import enable_static, base
+from paddle import base, enable_static
 from paddle.base import core
 
 

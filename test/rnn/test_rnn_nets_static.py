@@ -507,9 +507,7 @@ class TestLSTM(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = (
-        ["cpu", "gpu"] if paddle.base.is_compiled_with_cuda() else ["cpu"]
-    )
+    devices = ["cpu", "gpu"] if paddle.base.is_compiled_with_cuda() else ["cpu"]
     for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:

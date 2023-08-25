@@ -52,9 +52,7 @@ class TestFetchHandler(unittest.TestCase):
             var_dict={'emb': var_emb, 'emb2': None, 'emb3': var_emb3},
             period_secs=1,
         )
-        default_fm = base.trainer_factory.FetchHandlerMonitor(
-            scope, default_fh
-        )
+        default_fm = base.trainer_factory.FetchHandlerMonitor(scope, default_fh)
         default_fm.start()
         time.sleep(5)
         default_fm.stop()

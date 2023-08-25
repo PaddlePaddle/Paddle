@@ -45,10 +45,7 @@ class TestCacheProgram(unittest.TestCase):
                 # Check forward ops
                 prev_ops = cur_ops
                 cur_ops = Counter(
-                    [
-                        op.type
-                        for op in base.default_main_program().block(0).ops
-                    ]
+                    [op.type for op in base.default_main_program().block(0).ops]
                 )
                 if batch_id > 0:
                     prev_out_numpy = (

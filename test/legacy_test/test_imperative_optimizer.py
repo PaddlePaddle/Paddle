@@ -19,8 +19,8 @@ from test_imperative_base import new_program_scope
 
 import paddle
 from paddle import base
-from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.base import core
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.

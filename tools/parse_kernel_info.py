@@ -94,9 +94,7 @@ def parse_paddle_kernels(lib="phi", kernel_type="function", print_detail=False):
     if lib == "phi":
         assert kernel_type in ["function", "structure", "all"]
         # phi kernel type can be: function, structure, all
-        kernel_infos = paddle.base.core._get_registered_phi_kernels(
-            kernel_type
-        )
+        kernel_infos = paddle.base.core._get_registered_phi_kernels(kernel_type)
     else:
         # fluid, phi, all
         assert kernel_type in ["fluid", "phi", "all"]

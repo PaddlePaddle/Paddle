@@ -24,7 +24,7 @@ from test_layer_norm_mkldnn_op import (
     _reference_layer_norm_naive,
 )
 
-from paddle import enable_static, base
+from paddle import base, enable_static
 from paddle.base import core
 
 np.random.random(123)

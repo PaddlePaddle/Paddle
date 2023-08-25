@@ -199,9 +199,7 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
             train_cp = base.default_main_program()
 
             if use_parallel_executor:
-                train_cp = compiler.CompiledProgram(
-                    base.default_main_program()
-                )
+                train_cp = compiler.CompiledProgram(base.default_main_program())
                 fetch_list = [loss.name]
             else:
                 fetch_list = [loss]

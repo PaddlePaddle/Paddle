@@ -28,9 +28,7 @@ from paddle import base
 from paddle.base import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
-place = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 SEED = 2020
 STEP_NUM = 10
 PRINT_STEP = 2

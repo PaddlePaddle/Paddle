@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 from paddle import nn
-from paddle.distributed.fleet import auto
 from paddle.base import core
+from paddle.distributed.fleet import auto
 from paddle.static import InputSpec
 from paddle.static.amp.bf16.amp_utils import _valid_types
 from paddle.static.amp.fp16_utils import find_true_prev_op

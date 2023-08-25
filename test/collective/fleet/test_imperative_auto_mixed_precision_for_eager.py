@@ -1357,9 +1357,7 @@ class TestLayerNormFp16(unittest.TestCase):
                     with paddle.amp.auto_cast(custom_white_list=['layer_norm']):
                         out = layer_norm(x)
 
-                    self.assertTrue(
-                        out.dtype == base.core.VarDesc.VarType.FP16
-                    )
+                    self.assertTrue(out.dtype == base.core.VarDesc.VarType.FP16)
 
         func_isinstance()
 

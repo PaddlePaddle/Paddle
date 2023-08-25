@@ -17,9 +17,9 @@ import unittest
 
 import paddle
 from paddle import base
-from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.base.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
 from paddle.base.incubate.checkpoint.checkpoint_saver import CheckpointSaver
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import fleet
 

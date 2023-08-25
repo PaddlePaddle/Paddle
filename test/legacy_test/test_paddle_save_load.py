@@ -570,9 +570,7 @@ class TestSaveLoadAny(unittest.TestCase):
             )
         self.assertTrue(load_tensor2['epoch'] == 123)
 
-        self.assertTrue(
-            isinstance(load_tensor3[0], paddle.base.core.LoDTensor)
-        )
+        self.assertTrue(isinstance(load_tensor3[0], paddle.base.core.LoDTensor))
         np.testing.assert_array_equal(
             np.array(load_tensor3[0]), obj3[0].numpy()
         )

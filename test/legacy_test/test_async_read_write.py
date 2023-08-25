@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.device import cuda
 from paddle.base import core
+from paddle.device import cuda
 
 
 class TestAsyncRead(unittest.TestCase):

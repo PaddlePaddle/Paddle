@@ -19,9 +19,9 @@ from sqlite3 import NotSupportedError
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
-from paddle.common_ops_import import Variable, check_type, default_main_program
 from paddle.base import core, framework, unique_name
 from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.common_ops_import import Variable, check_type, default_main_program
 from paddle.framework import LayerHelper, in_dynamic_mode
 from paddle.tensor.layer_function_generator import templatedoc
 

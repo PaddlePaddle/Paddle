@@ -97,9 +97,7 @@ class PsProgramBuilder:
         elif self.attrs['is_server']:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
-            base.framework.switch_startup_program(
-                self.attrs['_startup_server']
-            )
+            base.framework.switch_startup_program(self.attrs['_startup_server'])
 
 
 class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
@@ -372,9 +370,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         elif self.attrs['is_server']:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
-            base.framework.switch_startup_program(
-                self.attrs['_startup_server']
-            )
+            base.framework.switch_startup_program(self.attrs['_startup_server'])
 
 
 class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
@@ -479,7 +475,5 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             )
         else:
             self._build_pserver_programs()
-            base.framework.switch_startup_program(
-                self.attrs['_startup_server']
-            )
+            base.framework.switch_startup_program(self.attrs['_startup_server'])
             paddle.framework.switch_main_program(self.attrs['_main_server'])

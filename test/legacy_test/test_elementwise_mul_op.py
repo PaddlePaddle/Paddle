@@ -182,12 +182,8 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.axis = -1
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_base_dtype(
-                convert_float_to_uint16(self.x)
-            ),
-            'Y': OpTest.np_dtype_to_base_dtype(
-                convert_float_to_uint16(self.y)
-            ),
+            'X': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.x)),
+            'Y': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.y)),
         }
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
