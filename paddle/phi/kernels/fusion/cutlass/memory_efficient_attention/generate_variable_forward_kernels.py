@@ -200,6 +200,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
       params.ElementV,
       params.ElementO,
       params.causal,
+      params.mask_broadcast_head,
       params.scale,
       problem_sizes1.data());
 
@@ -234,7 +235,6 @@ class FwdKernel:
     k: int
     single_value_iter: bool
     support_mask: bool = True
-    mask_broadcast: bool = False
     dispatch_cond: Optional[str] = None
 
     def __post_init__(self) -> None:
@@ -249,7 +249,6 @@ class FwdKernel:
             0 if self.single_value_iter else 1,
             self.q,
             0 if self.mask_aligned else 1,
-            0 if self.mask_broadcast else 1,
         )
 
     @property
@@ -263,10 +262,6 @@ class FwdKernel:
     @property
     def _mask_support_suffix(self) -> str:
         return "sm" if self.support_mask else "usm"
-
-    @property
-    def _mask_broadcast_suffix(self) -> str:
-        return "mb" if self.mask_broadcast else "mnb"
 
     @property
     def _single_value_suffix(self) -> str:
@@ -289,7 +284,6 @@ class FwdKernel:
                 "true" if self.single_value_iter else "false",
                 "cutlass::gemm::kernel::GroupScheduleMode::kDeviceOnly",
                 "true" if self.support_mask else "false",
-                "false",
             ]
         )
         return f"cutlass::gemm::kernel::DefaultFMHAGrouped<{template_args}>"
@@ -297,7 +291,7 @@ class FwdKernel:
     @property
     def impl_group(self) -> str:
         # Maps to file which will contain the implementation
-        return f"{self.dtype}_{self._aligned_suffix}_{self._mask_support_suffix}_{self._mask_aligned_suffix}_{self._mask_broadcast_suffix}_{self._single_value_suffix}_{self.q}x{self.k}"
+        return f"{self.dtype}_{self._aligned_suffix}_{self._mask_support_suffix}_{self._mask_aligned_suffix}_{self._single_value_suffix}_{self.q}x{self.k}"
 
     @property
     def cpp_impl(self) -> str:
@@ -336,7 +330,6 @@ class FwdKernel:
                             single_value_iter=single_value_iter,
                             support_mask=support_mask,
                             mask_aligned=mask_aligned,
-                            mask_broadcast=False,
                         )
                     )
         return kernels
@@ -490,7 +483,7 @@ struct Params {{
   int64_t ElementO;
 
   bool causal;
-  bool mask_broadcast_row;
+  bool mask_broadcast_head;
 }};
 
 __global__ static void get_problem_sizes(const int* seq_lens,
