@@ -76,7 +76,6 @@ class LBFGS(Optimizer):
     Examples:
         .. code-block:: python
 
-
             >>> import paddle
             >>> import numpy as np
             >>> from paddle.incubate.optimizer import LBFGS
