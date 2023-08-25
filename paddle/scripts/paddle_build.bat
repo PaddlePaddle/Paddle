@@ -96,7 +96,7 @@ rem ------initialize the python environment------
 set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
 %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
-call !PYTHON_VENV_ROOT!\Scripts\0.8.74
+call !PYTHON_VENV_ROOT!\Scripts\activate.bat
 if %ERRORLEVEL% NEQ 0 (
     echo activate python virtual environment failed!
     exit /b 5
@@ -422,7 +422,7 @@ python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third
 if !ERRORLEVEL! EQU 0 (
     echo Getting source code of third party : extracting ...
     tar -xf %md5%.tar.gz
-    rmdir %md5%.tar.gz /s/q
+    del %md5%.tar.gz
 ) else (
     git submodule update --init --recursive
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
