@@ -20,7 +20,9 @@ from .register import register_decomp
 def mean(x, axis, keepdim):
     """define composite rule of op mean"""
     x_shape = x.shape
-    axes = (axis,) if isinstance(axis, int) else tuple(range(0, len(x_shape)))
+    if axis is None:
+        axis = tuple(range(0, len(x_shape)))
+    axes = (axis,) if isinstance(axis, int) else axis
     sum_x = sum(x, axis=axes, keepdim=keepdim)
     value_to_fill = 1
     for axis in axes:

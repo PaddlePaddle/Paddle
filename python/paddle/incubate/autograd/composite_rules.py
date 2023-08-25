@@ -266,7 +266,9 @@ def mean_composite(x, axis, keepdim):
         is_amp = True
         x = cast(x, "float32")
 
-    axes = [axis] if isinstance(axis, int) else list(range(0, len(x.shape)))
+    if axis is None:
+        axis = tuple(range(0, len(x.shape)))
+    axes = (axis,) if isinstance(axis, int) else axis
     sum_x = sum(x, axis=axes, keepdim=keepdim)
     ele_nums_list = [x.shape[axis] for axis in axes]
     if ele_nums_list == []:

@@ -27,7 +27,7 @@ def _build_tensor_tuple(xs):
         return (xs,)
     elif isinstance(xs, typing.Sequence):
         return tuple(xs)
-    return TypeError(f"Type {type(xs)} is not supported")
+    return TypeError(f"Type {type(xs)} is not supported.")
 
 
 def _prepare_python_api_arguments(op):
