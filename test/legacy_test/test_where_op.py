@@ -148,9 +148,7 @@ class TestWhereAPI(unittest.TestCase):
                     result.stop_gradient = False
                     append_backward(paddle.mean(result))
                     for use_cuda in [False, True]:
-                        if use_cuda and (
-                            not base.core.is_compiled_with_cuda()
-                        ):
+                        if use_cuda and (not base.core.is_compiled_with_cuda()):
                             break
                         place = (
                             base.CUDAPlace(0) if use_cuda else base.CPUPlace()

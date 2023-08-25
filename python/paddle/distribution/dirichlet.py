@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import paddle
-from paddle.distribution import exponential_family
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
+from paddle.distribution import exponential_family
 from paddle.framework import in_dynamic_mode
 
 

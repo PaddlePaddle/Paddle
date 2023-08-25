@@ -281,9 +281,7 @@ def train(to_static):
     np.random.seed(0)
 
     place = (
-        base.CUDAPlace(0)
-        if base.is_compiled_with_cuda()
-        else base.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
     with base.dygraph.guard(place):
         base.default_startup_program().random_seed = 1000

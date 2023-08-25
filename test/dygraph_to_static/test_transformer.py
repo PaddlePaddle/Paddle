@@ -30,9 +30,7 @@ import paddle
 from paddle import base
 
 trainer_count = 1
-place = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 SEED = 10
 STEP_NUM = 10
 

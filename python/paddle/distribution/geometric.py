@@ -17,8 +17,8 @@ import numbers
 import numpy as np
 
 import paddle
-from paddle.distribution import distribution, uniform
 from paddle.base import framework
+from paddle.distribution import distribution, uniform
 
 
 class Geometric(distribution.Distribution):

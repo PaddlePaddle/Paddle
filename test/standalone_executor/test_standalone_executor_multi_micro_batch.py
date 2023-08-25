@@ -19,10 +19,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.distributed.passes.pass_utils import get_skip_gc_vars, split_program
 from paddle.base import core
 from paddle.base.core import Job, Plan
 from paddle.base.executor import _add_feed_fetch_ops, _StandaloneExecutor
+from paddle.distributed.passes.pass_utils import get_skip_gc_vars, split_program
 from paddle.nn import TransformerEncoderLayer
 
 paddle.enable_static()

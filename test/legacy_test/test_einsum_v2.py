@@ -181,9 +181,7 @@ class TestEinsum(unittest.TestCase):
         expected_result = np.einsum(self.sample["paradigm"], *operands)
         equation = self.sample["paradigm"]
 
-        with paddle.base.dygraph.guard(
-            self._get_place(force_to_use_cpu=False)
-        ):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
             result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
@@ -390,9 +388,7 @@ class TestNumpyTests(unittest.TestCase):
 
     def check_output(self, eqn, *ops):
         expect = np.einsum(eqn, *ops)
-        with paddle.base.dygraph.guard(
-            self._get_place(force_to_use_cpu=False)
-        ):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
             pd_operands = [paddle.to_tensor(op) for op in ops]
             actual = paddle.einsum(eqn, *pd_operands)
             self.check_output_equal(actual.numpy(), expect)

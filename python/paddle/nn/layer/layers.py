@@ -2164,9 +2164,7 @@ class Layer:
 
         # 2. cast param / Tensor to dtype
         if dtype is not None and dtype != t_used.dtype:
-            with paddle.base.framework._dygraph_place_guard(
-                place=t_used.place
-            ):
+            with paddle.base.framework._dygraph_place_guard(place=t_used.place):
                 t_casted = t_used.cast(dtype=dtype)
         else:
             t_casted = t_used

@@ -550,9 +550,7 @@ def optimizer_setting(parameters):
 
 def train(args, to_static):
     place = (
-        base.CUDAPlace(0)
-        if base.is_compiled_with_cuda()
-        else base.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
 
     paddle.jit.enable_to_static(to_static)

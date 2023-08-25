@@ -22,13 +22,13 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.base import core, executor
+from paddle.base.compiler import CompiledProgram
+from paddle.base.framework import Program, program_guard
 from paddle.distributed.io import (
     load_inference_model_distributed,
     save_persistables,
 )
-from paddle.base import core, executor
-from paddle.base.compiler import CompiledProgram
-from paddle.base.framework import Program, program_guard
 from paddle.static.io import load_inference_model, save_inference_model
 
 paddle.enable_static()

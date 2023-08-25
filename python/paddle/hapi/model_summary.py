@@ -353,9 +353,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     depth = len(list(model.sublayers()))
 
     def _get_shape_from_tensor(x):
-        if isinstance(
-            x, (paddle.base.Variable, paddle.base.core.eager.Tensor)
-        ):
+        if isinstance(x, (paddle.base.Variable, paddle.base.core.eager.Tensor)):
             return list(x.shape)
         elif isinstance(x, (list, tuple)):
             return [_get_shape_from_tensor(xx) for xx in x]

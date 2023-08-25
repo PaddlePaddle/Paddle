@@ -392,9 +392,7 @@ class TestLayerTo(unittest.TestCase):
             paddle.base.core.VarDesc.VarType.FP64,
         )
         for p in self.linear.parameters():
-            self.assertTrue(
-                isinstance(p, paddle.base.framework.EagerParamBase)
-            )
+            self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))
 
         if paddle.base.is_compiled_with_cuda():
             self.linear.to(device=paddle.CUDAPlace(0))
@@ -470,9 +468,7 @@ class TestLayerTo(unittest.TestCase):
             paddle.base.core.VarDesc.VarType.FP64,
         )
         for p in self.linear.parameters():
-            self.assertTrue(
-                isinstance(p, paddle.base.framework.EagerParamBase)
-            )
+            self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))
 
     def func_test_to_api_numpy_dtype(self):
         self.linear.to(dtype=np.float64)
@@ -505,9 +501,7 @@ class TestLayerTo(unittest.TestCase):
             paddle.base.core.VarDesc.VarType.FP64,
         )
         for p in self.linear.parameters():
-            self.assertTrue(
-                isinstance(p, paddle.base.framework.EagerParamBase)
-            )
+            self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))
 
     def func_test_to_api_none_buffer(self):
         model = paddle.nn.Linear(2, 4)

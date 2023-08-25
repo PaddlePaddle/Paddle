@@ -29,7 +29,7 @@ from op import Operator
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle import enable_static, base
+from paddle import base, enable_static
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 

@@ -22,6 +22,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import base, nn, static, utils
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.cluster import Cluster
 from paddle.distributed.auto_parallel.static.completion import Completer
@@ -39,7 +40,6 @@ from paddle.distributed.auto_parallel.static.parallelizer import (
 from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 from paddle.distributed.auto_parallel.static.reshard import Resharder
 from paddle.distributed.fleet import auto
-from paddle.base import core
 
 if os.getenv("CUDA_VISIBLE_DEVICES") is not None:
     os.environ["CUDA_VISIBLE_DEVICES"] = ""

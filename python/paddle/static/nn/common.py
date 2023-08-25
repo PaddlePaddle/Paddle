@@ -19,11 +19,6 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.common_ops_import import (
-    LayerHelper,
-    check_type,
-    check_variable_and_dtype,
-)
 from paddle.base import core, unique_name
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import (
@@ -38,6 +33,11 @@ from paddle.base.framework import (
 from paddle.base.layers.layer_function_generator import templatedoc
 from paddle.base.param_attr import ParamAttr
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.common_ops_import import (
+    LayerHelper,
+    check_type,
+    check_variable_and_dtype,
+)
 from paddle.nn.initializer import Constant, Normal
 
 __all__ = []

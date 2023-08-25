@@ -496,9 +496,7 @@ class Args:
     print_step = 1
     train_step = 10
     place = (
-        base.CUDAPlace(0)
-        if base.is_compiled_with_cuda()
-        else base.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
     model_save_dir = None
     model_save_prefix = None

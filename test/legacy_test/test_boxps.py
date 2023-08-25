@@ -16,8 +16,8 @@ import unittest
 
 import paddle
 from paddle import base
-from paddle.distributed.transpiler import collective
 from paddle.base import core
+from paddle.distributed.transpiler import collective
 from paddle.incubate.layers.nn import _pull_box_sparse
 
 

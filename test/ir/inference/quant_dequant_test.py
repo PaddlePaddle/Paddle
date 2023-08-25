@@ -285,9 +285,7 @@ class QuantDequantTest(unittest.TestCase):
             paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size,
         )
-        feeder = base.DataFeeder(
-            feed_list=[self.data, self.label], place=place
-        )
+        feeder = base.DataFeeder(feed_list=[self.data, self.label], place=place)
         with base.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())

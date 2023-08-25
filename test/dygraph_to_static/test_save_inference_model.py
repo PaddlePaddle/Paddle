@@ -29,9 +29,7 @@ SEED = 2020
 
 np.random.seed(SEED)
 
-place = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 class SimpleFcLayer(paddle.nn.Layer):

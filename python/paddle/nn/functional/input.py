@@ -14,9 +14,9 @@
 
 from paddle import _C_ops
 
-from ...common_ops_import import Variable
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
+from ...common_ops_import import Variable
 from ...framework import in_dynamic_mode
 
 __all__ = []

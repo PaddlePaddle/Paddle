@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
-from paddle.base import core
 from paddle.incubate import DistributedFusedLamb
 from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
 from paddle.vision.models import resnet18 as resnet

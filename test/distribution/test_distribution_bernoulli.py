@@ -27,9 +27,9 @@ from parameterize import (
 from test_distribution import DistributionNumpy
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import Bernoulli
 from paddle.distribution.kl import kl_divergence
-from paddle.base.data_feeder import convert_dtype
 
 np.random.seed(2023)
 paddle.seed(2023)

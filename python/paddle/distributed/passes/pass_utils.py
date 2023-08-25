@@ -15,6 +15,8 @@
 from collections import OrderedDict
 from typing import List
 
+from paddle.base import core
+from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
@@ -22,8 +24,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_optimize_op,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.base import core
-from paddle.base.framework import Parameter, Program
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,

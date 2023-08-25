@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
-from paddle.distributed.fleet import auto
 from paddle.base import program_guard
 from paddle.base.backward import append_backward
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 

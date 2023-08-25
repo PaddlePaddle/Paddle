@@ -22,10 +22,10 @@ from google.protobuf import text_format
 
 import paddle
 from paddle import base
-from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
 from paddle.base import core
 from paddle.base.framework import Program
 from paddle.base.proto import framework_pb2
+from paddle.distributed.fleet.base.util_factory import draw_block_graphviz
 from paddle.framework import io_utils
 
 __all__ = [

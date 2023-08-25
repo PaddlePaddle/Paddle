@@ -19,6 +19,7 @@ from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from ifelse_simple_func import (
     NetWithControlFlowIf,
     add_fn,
+    base,
     dyfunc_empty_nonlocal,
     dyfunc_ifelse_ret_int1,
     dyfunc_ifelse_ret_int2,
@@ -28,7 +29,6 @@ from ifelse_simple_func import (
     dyfunc_with_if_else2,
     dyfunc_with_if_else3,
     dyfunc_with_if_else_with_list_generator,
-    base,
     if_tensor_case,
     if_with_and_or,
     if_with_and_or_1,

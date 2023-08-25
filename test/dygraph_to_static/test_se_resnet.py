@@ -38,9 +38,7 @@ EPOCH_NUM = 1
 PRINT_STEP = 2
 STEP_NUM = 10
 
-place = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,

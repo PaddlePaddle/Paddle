@@ -61,9 +61,7 @@ class InplaceTestBase(unittest.TestCase):
 
                 with base.scope_guard(scope):
                     exe = base.Executor(
-                        base.CUDAPlace(0)
-                        if self.use_cuda
-                        else base.CPUPlace()
+                        base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
                     )
                     exe.run(startup_program)
 

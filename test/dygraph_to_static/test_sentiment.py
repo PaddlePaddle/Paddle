@@ -304,9 +304,7 @@ class Args:
 def train(args, to_static):
     paddle.jit.enable_to_static(to_static)
     place = (
-        base.CUDAPlace(0)
-        if base.is_compiled_with_cuda()
-        else base.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
 
     with base.dygraph.guard(place):

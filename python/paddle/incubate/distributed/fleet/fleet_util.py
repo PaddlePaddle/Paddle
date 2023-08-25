@@ -25,8 +25,8 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.base.log_helper import get_logger
+from paddle.distributed.fleet.utils.fs import HDFSClient
 
 from . import utils
 

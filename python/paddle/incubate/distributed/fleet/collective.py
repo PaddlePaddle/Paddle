@@ -17,7 +17,6 @@ import os
 import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
 from paddle import base
-from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
 from paddle.base.compiler import CompiledProgram
 from paddle.base.executor import Executor
 from paddle.base.framework import Program
@@ -25,6 +24,7 @@ from paddle.base.incubate.checkpoint.checkpoint_saver import (
     CheckpointSaver,
     PaddleModel,
 )
+from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
 from paddle.incubate.distributed.fleet.base import (
     DistributedOptimizer,
     Fleet,

@@ -16,10 +16,9 @@ from collections import defaultdict
 
 import numpy as np
 
-from paddle.distributed import fleet
-
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
+from paddle.distributed import fleet
 from paddle.framework import Block, Program, in_dynamic_mode
 
 

@@ -29,10 +29,10 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.base import compiler
 from paddle.distributed.fleet.meta_optimizers import (
     RawProgramOptimizer as RawProgram,
 )
-from paddle.base import compiler
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import (
     DistributedStrategy,

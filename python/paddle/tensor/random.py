@@ -16,8 +16,8 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.common_ops_import import Variable
 from paddle.base.framework import _current_expected_place
+from paddle.common_ops_import import Variable
 from paddle.framework import in_dynamic_mode
 
 from ..base.data_feeder import (

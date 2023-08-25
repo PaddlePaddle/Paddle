@@ -177,12 +177,8 @@ class TestElementwiseModBF16Op(OpTest):
         self.init_kernel_type()
         self.init_axis()
         self.inputs = {
-            'X': convert_float_to_uint16(
-                OpTest.np_dtype_to_base_dtype(self.x)
-            ),
-            'Y': convert_float_to_uint16(
-                OpTest.np_dtype_to_base_dtype(self.y)
-            ),
+            'X': convert_float_to_uint16(OpTest.np_dtype_to_base_dtype(self.x)),
+            'Y': convert_float_to_uint16(OpTest.np_dtype_to_base_dtype(self.y)),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}

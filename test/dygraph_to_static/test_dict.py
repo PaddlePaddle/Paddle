@@ -20,9 +20,7 @@ import paddle
 from paddle import base
 from paddle.jit import to_static
 
-PLACE = (
-    base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
-)
+PLACE = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 class SubNetWithDict(paddle.nn.Layer):

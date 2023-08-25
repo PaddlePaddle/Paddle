@@ -20,7 +20,7 @@ from operator import mul
 import numpy as np
 from eager_op_test import OpTestTool, _set_use_system_allocator
 
-from paddle import enable_static, base
+from paddle import base, enable_static
 from paddle.base import core
 
 np.random.random(123)

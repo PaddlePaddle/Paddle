@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle.device.cuda import device_count, memory_allocated
 from paddle.base import core
+from paddle.device.cuda import device_count, memory_allocated
 
 
 class TestMemoryAllocated(unittest.TestCase):

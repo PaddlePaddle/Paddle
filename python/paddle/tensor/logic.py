@@ -16,8 +16,8 @@
 
 import paddle
 
-from ..common_ops_import import Variable
 from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..common_ops_import import Variable
 from .layer_function_generator import templatedoc
 
 Tensor = paddle.base.framework.core.eager.Tensor
