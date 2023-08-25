@@ -495,17 +495,6 @@ if not exist %THIRD_PARTY_PATH% (
     echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
 )
 
-:install_bce
-if not exist %cache_dir%\bce-python-sdk-new (
-        echo There is no bce in this PC, will install bce.
-        cd /d %cache_dir%
-        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
-        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
-        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-    )
-python -m pip install pycryptodome
-python -m pip install bce-python-sdk==0.8.74
-goto:eof
 
 :cmake_impl
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
