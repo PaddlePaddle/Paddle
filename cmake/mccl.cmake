@@ -46,6 +46,6 @@ if(WITH_MCCL)
         "Current MCCL version is "
         "v${MCCL_MAJOR_VERSION}.${MCCL_MINOR_VERSION}.${MCCL_PATCH_VERSION} ")
   else()
-    message(FATAL_ERROR "WITH_MCCL  is enabled but mccl.h file is not found!")
+    message(FATAL_ERROR "WITH_MCCL is enabled but mccl.h file is not found!")
   endif()
 endif()

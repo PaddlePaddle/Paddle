@@ -49,7 +49,7 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/musparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
 #include "paddle/phi/backends/dynload/mccl.h"
-#endif  // !defined(__APPLE__) && defined(PADDLE_WITH_MCCL )
+#endif  // !defined(__APPLE__) && defined(PADDLE_WITH_MCCL)
 #endif  // PADDLE_WITH_MUSA
 
 #ifdef PADDLE_WITH_HIP
