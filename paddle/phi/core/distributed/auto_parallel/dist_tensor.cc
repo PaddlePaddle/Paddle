@@ -14,6 +14,10 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+
 namespace phi {
 namespace distributed {
 
@@ -27,15 +31,21 @@ inline void check_defined(const DistTensor& dist_tensor,
           method_hint));
 }
 
-// TODO(chenweihang): Reshard the input global value into local value
 DistTensor::DistTensor(const phi::DenseTensor& global_value,
                        const TensorDistAttr& dist_attr)
-    : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {}
+    : dims_(global_value.dims()), dist_attr_(dist_attr), value_(global_value) {
+  if (!IsDimsMappingReplicated(dist_attr_.dims_mapping())) {
+    // 1. create replicated global tensor
+    int64_t dims_size = global_value.dims().size();
+    std::vector<int64_t> dims_mapping(dims_size, -1);
+    dist_attr_.set_dims_mapping(dims_mapping);
 
-DistTensor::DistTensor(const phi::DenseTensor& value,
-                       const DDim& dims,
-                       const TensorDistAttr& dist_attr)
-    : dims_(dims), dist_attr_(dist_attr), value_(value) {}
+    // 2. reshard from replicated to other state
+    auto* func = ChooseProperReshardFunction(*this, dist_attr);
+    auto* dev_ctx = DeviceContextPool::Instance().Get(global_value.place());
+    func->Eval(dev_ctx, *this, dist_attr, this);
+  }
+}
 
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
     : dims_(dims), dist_attr_(dist_attr) {}
