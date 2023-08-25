@@ -134,6 +134,7 @@ add_custom_command(
           ${op_backward_yaml_file2}
           ${op_compat_yaml_file}
           ${python_c_header_file}
+          ${python_c_source_file}
   VERBATIM)
 
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
