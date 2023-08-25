@@ -132,7 +132,9 @@ add_custom_command(
           ${op_compat_yaml_file}
   VERBATIM)
 
-add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
+add_custom_target(
+  ops_api_gen ALL DEPENDS ${ops_api_source_file} ${python_c_header_file}
+                          ${python_c_source_file})
 
 cc_library(
   pd_dialect_core
