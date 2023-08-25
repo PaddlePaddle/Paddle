@@ -183,15 +183,9 @@ __global__ void fast_layer_norm_tiny_common(float epsilon,
   int ncores = core_num();
   int tid = cid * cluster_num() + cluster_id();
   int nthreads = ncores * cluster_num();
-  int64_t mstart = 0;
-  int64_t mend = 0;
-  partition(tid, nthreads, m, 1, &mstart, &mend);
-  if (mstart >= mend) {
-    return;
-  }
 
   float one_div_n = 1.0f / n;
-  constexpr int lm_buffer_size = 832 * sizeof(float) / sizeof(T);
+  constexpr int lm_buffer_size = 1664 * sizeof(float) / sizeof(T);
   constexpr int sm_buffer_size = 1664 * 16;
   __simd__ T xlm[lm_buffer_size];
   __simd__ __shared__ float scale_sm[sm_buffer_size];
@@ -207,7 +201,7 @@ __global__ void fast_layer_norm_tiny_common(float epsilon,
     GM2SM(bias, bias_sm, n * sizeof(float));
   }
   sync_all();
-  for (int64_t i = mstart; i < mend; i += 1) {
+  for (int64_t i = tid; i < m; i += nthreads) {
     GM2LM(x + i * n, xlm, n * sizeof(T));
     update_sum_and_squaresum<T>(xlm, n, &sum, &squaresum);
     float sample_mean = sum * one_div_n;

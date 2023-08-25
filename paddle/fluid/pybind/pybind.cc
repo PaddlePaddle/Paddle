@@ -195,10 +195,11 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/ir/interface/vjp.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/ir/core/program.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
@@ -1419,6 +1420,8 @@ All parameter, weight, gradient are variables in Paddle.
             defalut_val.index() - 1);
       });
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_set_bwd_prim_blacklist",
+        &paddle::prim::PrimCommonUtils::SetPrimBackwardBlacklist);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",
@@ -1977,6 +1980,13 @@ All parameter, weight, gradient are variables in Paddle.
                   &>(),
           py::arg("job_list"),
           py::arg("type_to_program"))
+      .def(
+          py::init<
+              const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<::ir::Program>> &>(),
+          py::arg("job_list"),
+          py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
       .def("program", &framework::interpreter::Plan::Program);

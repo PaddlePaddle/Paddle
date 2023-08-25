@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
