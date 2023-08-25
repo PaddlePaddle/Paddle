@@ -21,6 +21,8 @@
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
 
+#include "paddle/phi/common/reduce_type.h"
+
 namespace phi {
 namespace ccl {
 typedef void* CCLComm;
@@ -37,6 +39,32 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT8,
   CCL_DATA_TYPE_UINT8
 };
+
+inline CCLReduceOp ToXCCLReduceOp(int reduce_type) {
+  phi::ccl::CCLReduceOp red_type = phi::ccl::CCLReduceOp::SUM;
+  switch (static_cast<phi::ReduceType>(reduce_type)) {
+    case phi::ReduceType::kRedSum:
+      red_type = phi::ccl::CCLReduceOp::SUM;
+      break;
+    case phi::ReduceType::kRedMax:
+      red_type = phi::ccl::CCLReduceOp::MAX;
+      break;
+    case phi::ReduceType::kRedMin:
+      red_type = phi::ccl::CCLReduceOp::MIN;
+      break;
+    case phi::ReduceType::kRedProd:
+      red_type = phi::ccl::CCLReduceOp::PRODUCT;
+      break;
+    case phi::ReduceType::kRedAvg:
+      red_type = phi::ccl::CCLReduceOp::AVG;
+      break;
+    default:
+      PADDLE_THROW(
+          errors::Unavailable("Unsuppored reduce type. Reduce type must be one "
+                              "of SUM, MAX, MIN, PRODUCT and AVG."));
+  }
+  return red_type;
+}
 
 inline CCLDataType ToCCLDataType(phi::DataType type) {
   if (type == phi::DataType::FLOAT64) {
@@ -77,6 +105,15 @@ inline phi::DataType ToPhiDataType(CCLDataType type) {
     PADDLE_THROW(
         phi::errors::Unimplemented("This datatype in CCL is not supported."));
   }
+}
+
+inline std::string SerializeXCCLUniqueId(const phi::ccl::CCLRootId& ccl_id) {
+  const uint8_t* bytes = ccl_id.data();
+  std::ostringstream oss;
+  for (size_t i = 0; i < ccl_id.size(); ++i) {
+    oss << std::hex << static_cast<int>(bytes[i]);
+  }
+  return oss.str();
 }
 
 }  // namespace ccl

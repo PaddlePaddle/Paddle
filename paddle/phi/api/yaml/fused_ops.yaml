@@ -58,6 +58,7 @@
   output: Tensor(out), Tensor(seq_lod), Tensor(max_seq_len)
   infer_meta :
     func: EmbeddingWithEltwiseAddXPUInferMeta
+    param : [ids, tables, mask]
   kernel:
     func: embedding_with_eltwise_add_xpu
     data_type: tables

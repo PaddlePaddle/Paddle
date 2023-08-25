@@ -46,10 +46,10 @@ class AMPTest(unittest.TestCase):
 
     def test_amp_lists_2(self):
         # 2. w={'tanh'}, b=None
-        self.fp32_list.remove('tanh')
-        self.bf16_list.add('tanh')
+        self.fp32_list.remove('tan')
+        self.bf16_list.add('tan')
 
-        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'tanh'})
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'tan'})
 
     def test_amp_lists_3(self):
         # 3. w={'lstm'}, b=None
