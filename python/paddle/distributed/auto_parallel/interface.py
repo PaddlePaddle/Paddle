@@ -55,6 +55,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed.fleet import auto
 
