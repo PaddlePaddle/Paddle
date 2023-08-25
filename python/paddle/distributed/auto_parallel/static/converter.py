@@ -101,28 +101,29 @@ class Converter:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                complete_tensors = np.arange(4).reshape([2, 2])
-                partitial_tensors = np.split(complete_tensors, 2, axis=0)
-                name = "tmp_0"
-                tensors_dict = {name: partitial_tensors}
-                strategy_1 = {
-                    name: {
-                        "process_shape": [2],
-                        "process_group": [0, 1],
-                        "dims_mapping": [0, -1]
-                    }
-                }
-                strategy_2 = {
-                    name: {
-                        "process_shape": [2],
-                        "process_group": [0, 1],
-                        "dims_mapping": [-1, -1]
-                    }
-                }
-                converter = Converter(tensors_dict, strategy_1, strategy_2)
-                result = converter.convert()
-                # the result's value is equal to `complete_tensors`
+                >>> import numpy as np
+                >>> from paddle.distributed.auto_parallel.static.converter import Converter
+                >>> complete_tensors = np.arange(4).reshape([2, 2])
+                >>> partitial_tensors = np.split(complete_tensors, 2, axis=0)
+                >>> name = "tmp_0"
+                >>> tensors_dict = {name: partitial_tensors}
+                >>> strategy_1 = {
+                ...     name: {
+                ...         "process_shape": [2],
+                ...         "process_group": [0, 1],
+                ...         "dims_mapping": [0, -1]
+                ...     }
+                ... }
+                >>> strategy_2 = {
+                ...     name: {
+                ...         "process_shape": [2],
+                ...         "process_group": [0, 1],
+                ...         "dims_mapping": [-1, -1]
+                ...     }
+                ... }
+                >>> converter = Converter(tensors_dict, strategy_1, strategy_2)
+                >>> result = converter.convert()
+                >>> # the result's value is equal to `complete_tensors`
         """
         tensors_dict = {}
         # the name which is in cur_process but not in pre_process
@@ -352,13 +353,14 @@ class Converter:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                partition_tensor_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
-                tensor = np.array([[[1.13, 1.14]]])
-                partition_index = [[0,1],[0,1],[2,4]]
+                >>> import numpy as np
+                >>> partition_tensor_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
+                >>> tensor = np.array([[[1.13, 1.14]]])
+                >>> partition_index = [[0,1],[0,1],[2,4]]
 
-                _merge_tensor(partition_tensor_list, tensor, partition_index)
-                # partition_tensor_list: [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
+                >>> _merge_tensor(partition_tensor_list, tensor, partition_index)
+                >>> print(partition_tensor_list)
+                [(np.array([[[1.11, 1.12, 1.13, 1.14]]]), [[0,1],[0,1],[0,4]])]
         """
         from .reshard import Resharder
 
@@ -416,16 +418,18 @@ class Converter:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-                rank = 2
-                complete_shape = [1, 1, 6]
-                dims_mapping = [-1, -1, 0]
-                process_shape = [3]
-                process_group = [0, 1, 2]
+                >>> import numpy as np
+                >>> from paddle.distributed.auto_parallel.static.utils import split
+                >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                >>> rank = 2
+                >>> complete_shape = [1, 1, 6]
+                >>> dims_mapping = [-1, -1, 0]
+                >>> process_shape = [3]
+                >>> process_group = [0, 1, 2]
 
-                sliced_tensor_list = split(complete_tensor, [[], [], [2, 4]], 3)
-                # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+                >>> sliced_tensor_list = split(complete_tensor, [[], [], [2, 4]], 3)
+                >>> print(sliced_tensor_list)
+                [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
         """
         sliced_tensor_list = []
         axis = len(complete_tensor.shape) - length
@@ -453,15 +457,17 @@ class Converter:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-                complete_shape = [1, 1, 6]
-                dims_mapping = [-1, -1, 0]
-                process_shape = [3]
-                process_group = [0, 1, 2]
+                >>> import numpy as np
+                >>> from paddle.distributed.auto_parallel.static.utils import _get_split_indices
+                >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                >>> complete_shape = [1, 1, 6]
+                >>> dims_mapping = [-1, -1, 0]
+                >>> process_shape = [3]
+                >>> process_group = [0, 1, 2]
 
-                index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
-                # index: [[], [], [2, 4]]
+                >>> index = _get_split_indices(complete_shape, dims_mapping, process_shape, process_group)
+                >>> print(index)
+                [[], [], [2, 4]]
         """
         from .reshard import Resharder
 
@@ -502,21 +508,23 @@ class Converter:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-                rank = 2
-                complete_shape = [1, 1, 6]
-                dims_mapping = [-1, -1, 0]
-                process_shape = [3]
-                process_group = [0, 1, 2]
+                >>> import numpy as np
+                >>> from paddle.distributed.auto_parallel.static.utils import _get_sliced_index
+                >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                >>> rank = 2
+                >>> complete_shape = [1, 1, 6]
+                >>> dims_mapping = [-1, -1, 0]
+                >>> process_shape = [3]
+                >>> process_group = [0, 1, 2]
 
-                slice_tensor = _slice_tensor(complete_tensor, [[], [], [2, 4]], 3)
-                # slice_tensor:
-                # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+                >>> slice_tensor = _slice_tensor(complete_tensor, [[], [], [2, 4]], 3)
+                >>> print(slice_tensor)
+                [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
-                index = _get_sliced_index(rank, complete_shape, dims_mapping
-                                                process_shape, process_group)
-                # index: 2
+                >>> index = _get_sliced_index(rank, complete_shape, dims_mapping,
+                ...                                 process_shape, process_group)
+                >>> print(index)
+                2
         """
         from .reshard import Resharder
 
