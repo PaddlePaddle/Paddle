@@ -83,16 +83,14 @@ void FTRLOpKernel(const Context& ctx,
     y_t = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
           l_acc_out.constant(static_cast<T>(2) * l2_t);
     T pre_shrink = x_t / y_t;
-    p_out.device(place) =
-        (l_acc_out.abs() > l_acc_out.constant(l1_t))
-            .select(pre_shrink, p.constant(static_cast<T>(0)));
+    p_out.device(place) = (l_acc_out.abs() > l_acc_out.constant(l1_t))
+                              .select(pre_shrink, p.constant(0));
   } else {
     y_t = (new_accum.pow(-lr_power_t) / lr.broadcast(grad_dsize)) +
           l_acc_out.constant(static_cast<T>(2) * l2_t);
     T pre_shrink = x_t / y_t;
-    p_out.device(place) =
-        (l_acc_out.abs() > l_acc_out.constant(l1_t))
-            .select(pre_shrink, p.constant(static_cast<T>(0)));
+    p_out.device(place) = (l_acc_out.abs() > l_acc_out.constant(l1_t))
+                              .select(pre_shrink, p.constant(0));
   }
   s_acc_out.device(place) = sq_accum + g * g;
 }
