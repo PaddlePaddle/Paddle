@@ -59,7 +59,6 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     if (use_device_ == p::kCUDA) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_MCCL)
-
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
