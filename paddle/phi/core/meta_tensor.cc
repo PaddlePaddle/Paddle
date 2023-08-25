@@ -90,9 +90,7 @@ void MetaTensor::set_dims(const DDim& dims) {
         ->dims = dims;
 #ifdef PADDLE_WITH_DISTRIBUTE
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(
-        static_cast<distributed::DistTensor*>(tensor_))
-        ->dims = dims;
+    static_cast<distributed::DistTensor*>(tensor_)->set_dims(dims);
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -127,9 +125,7 @@ void MetaTensor::set_dtype(DataType dtype) {
         ->dtype = dtype;
 #ifdef PADDLE_WITH_DISTRIBUTE
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(
-        static_cast<distributed::DistTensor*>(tensor_))
-        ->dtype = dtype;
+    // skip, DistTensor no need to set dtype
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -163,9 +159,7 @@ void MetaTensor::set_layout(DataLayout layout) {
         ->layout = layout;
 #ifdef PADDLE_WITH_DISTRIBUTE
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(
-        static_cast<distributed::DistTensor*>(tensor_))
-        ->layout = layout;
+    // skip, DistTensor no need to set dtype
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(

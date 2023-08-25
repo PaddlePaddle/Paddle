@@ -53,18 +53,61 @@ class PTQ(Quantization):
         Return: The prepared model for post-training quantization.
 
         Examples:
-        .. code-block:: python
-            from paddle.quantization import PTQ, QuantConfig
-            from paddle.quantization.observers import AbsmaxObserver
-            from paddle.vision.models import LeNet
+            .. code-block:: python
 
-            observer = AbsmaxObserver()
-            q_config = QuantConfig(activation=observer, weight=observer)
-            ptq = PTQ(q_config)
-            model = LeNet()
-            model.eval()
-            quant_model = ptq.quantize(model)
-            print(quant_model)
+                >>> from paddle.quantization import PTQ, QuantConfig
+                >>> from paddle.quantization.observers import AbsmaxObserver
+                >>> from paddle.vision.models import LeNet
+
+                >>> observer = AbsmaxObserver()
+                >>> q_config = QuantConfig(activation=observer, weight=observer)
+                >>> ptq = PTQ(q_config)
+                >>> model = LeNet()
+                >>> model.eval()
+                >>> quant_model = ptq.quantize(model)
+                >>> print(quant_model)
+                LeNet(
+                  (features): Sequential(
+                    (0): QuantedConv2D(
+                      (weight_quanter): AbsmaxObserverLayer()
+                      (activation_quanter): AbsmaxObserverLayer()
+                    )
+                    (1): ObserveWrapper(
+                      (_observer): AbsmaxObserverLayer()
+                      (_observed): ReLU()
+                    )
+                    (2): ObserveWrapper(
+                      (_observer): AbsmaxObserverLayer()
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                    )
+                    (3): QuantedConv2D(
+                      (weight_quanter): AbsmaxObserverLayer()
+                      (activation_quanter): AbsmaxObserverLayer()
+                    )
+                    (4): ObserveWrapper(
+                      (_observer): AbsmaxObserverLayer()
+                      (_observed): ReLU()
+                    )
+                    (5): ObserveWrapper(
+                      (_observer): AbsmaxObserverLayer()
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                    )
+                  )
+                  (fc): Sequential(
+                    (0): QuantedLinear(
+                      (weight_quanter): AbsmaxObserverLayer()
+                      (activation_quanter): AbsmaxObserverLayer()
+                    )
+                    (1): QuantedLinear(
+                      (weight_quanter): AbsmaxObserverLayer()
+                      (activation_quanter): AbsmaxObserverLayer()
+                    )
+                    (2): QuantedLinear(
+                      (weight_quanter): AbsmaxObserverLayer()
+                      (activation_quanter): AbsmaxObserverLayer()
+                    )
+                  )
+                )
         """
         _model = model
         if not inplace:

@@ -24,11 +24,14 @@
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/program.h"
@@ -57,7 +60,7 @@ PyTypeObject *g_ir_opresult_pytype = nullptr;
 void BindOpsAPI(pybind11::module *module);
 
 void BindProgram(py::module *m) {
-  py::class_<Program> program(*m, "Program", R"DOC(
+  py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
     computational graphs and weights. The Program has a main block that stores the computational
     graphs.
@@ -102,18 +105,23 @@ void BindProgram(py::module *m) {
           "__init__",
           [](Program &self) { new (&self) Program(ir::IrContext::Instance()); })
       .def("__str__",
-           [](Program &self) {
+           [](const std::shared_ptr<Program> &self) {
              std::ostringstream print_stream;
-             self.Print(print_stream);
+             self->Print(print_stream);
              return print_stream.str();
            })
-      .def("parameters_num", &Program::parameters_num)
-      .def("block",
-           py::overload_cast<>(&Program::block),
-           return_value_policy::reference)
-      .def("block",
-           py::overload_cast<>(&Program::block, py::const_),
-           return_value_policy::reference);
+      .def("parameters_num",
+           [](const std::shared_ptr<Program> &self) {
+             return self->parameters_num();
+           })
+      .def(
+          "block",
+          [](std::shared_ptr<Program> self) { return self->block(); },
+          return_value_policy::reference)
+      .def(
+          "block",
+          [](const std::shared_ptr<Program> &self) { return self->block(); },
+          return_value_policy::reference);
 }
 
 void BindBlock(py::module *m) {
@@ -249,6 +257,9 @@ void BindValue(py::module *m) {
       .def("get_defining_op",
            &Value::GetDefiningOp,
            return_value_policy::reference)
+      .def("first_use", &Value::first_use, return_value_policy::reference)
+      .def("has_one_use", &Value::HasOneUse)
+      .def("use_empty", &Value::use_empty)
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -272,9 +283,11 @@ void BindOpOperand(py::module *m) {
   op_operand
       .def("source",
            [](OpOperand &self) { return self.source().dyn_cast<OpResult>(); })
-      .def("set_source", [](OpOperand &self, const OpResult &result) {
-        self.set_source(result);
-      });
+      .def("set_source",
+           [](OpOperand &self, const OpResult &result) {
+             self.set_source(result);
+           })
+      .def("owner", &OpOperand::owner, return_value_policy::reference);
 }
 
 bool GetStopGradient(const OpResult &self) {
@@ -331,6 +344,8 @@ void BindOpResult(py::module *m) {
       .def("get_defining_op",
            &OpResult::GetDefiningOp,
            return_value_policy::reference)
+      .def("first_use", &OpResult::first_use, return_value_policy::reference)
+      .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &OpResult::use_empty)
       .def("type", &OpResult::type)
       .def_property(
@@ -390,7 +405,14 @@ void BindUtils(pybind11::module *m) {
          []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
-  m->def("translate_to_new_ir", &paddle::TranslateLegacyProgramToProgram, R"DOC(
+  m->def(
+      "translate_to_new_ir",
+      [](const ::paddle::framework::ProgramDesc &legacy_program) {
+        std::shared_ptr<Program> ret =
+            std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
+        return ret;
+      },
+      R"DOC(
         Convert Fluid Program to New IR Program.
 
         Args:
@@ -426,6 +448,21 @@ void BindUtils(pybind11::module *m) {
                 print(newir_program)
 
       )DOC");
+  m->def(
+      "check_unregistered_ops",
+      [](const framework::ProgramDesc &legacy_program) {
+        ir::IrContext *ctx = ir::IrContext::Instance();
+        return paddle::translator::CheckUnregisteredOperation(ctx,
+                                                              legacy_program);
+      },
+      R"DOC(
+      Check unregistered operators in paddle dialect.
+
+      Args:
+        legacy_program (ProgramDesc): The Fluid Program that need checked.
+      Returns:
+        list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
+    )DOC");
 }
 
 void BindNewIR(pybind11::module *module) {

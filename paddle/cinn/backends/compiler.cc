@@ -41,6 +41,48 @@ using ir::Module;
 
 static constexpr int DebugLogMaxLen = 30000;
 
+void CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
+    const ir::LoweredFunc& lowered_func, const int gidx) {
+  if (FLAGS_cinn_dump_group_lowered_func.empty() ||
+      lowered_func.get() == nullptr) {
+    return;
+  }
+  std::stringstream content;
+  content << lowered_func;
+  Dump(FLAGS_cinn_dump_group_lowered_func,
+       gidx,
+       "lowered_function.txt",
+       content.str());
+}
+
+void CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+    const std::string& source_code, const int gidx) {
+  if (FLAGS_cinn_dump_group_source_code.empty()) {
+    return;
+  }
+  Dump(FLAGS_cinn_dump_group_source_code, gidx, "source_code.cu", source_code);
+}
+
+void CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+    const std::string& source_ptx, const int gidx) {
+  if (FLAGS_cinn_dump_group_ptx.empty()) {
+    return;
+  }
+  Dump(FLAGS_cinn_dump_group_ptx, gidx, "source_ptx.ptx", source_ptx);
+}
+
+void CompilationInfoDumper::DumpInstructionByGroupIndex(
+    const std::unique_ptr<cinn::hlir::framework::Instruction>& instr,
+    const int gidx) {
+  if (FLAGS_cinn_dump_group_instruction.empty() || instr.get() == nullptr) {
+    return;
+  }
+  Dump(FLAGS_cinn_dump_group_instruction,
+       gidx,
+       "instruction.txt",
+       instr->DumpInstruction());
+}
+
 void CompilationInfoDumper::DumpLoweredFunc() {
   if (FLAGS_cinn_dump_group_lowered_func.empty()) {
     return;

@@ -27,7 +27,7 @@ def data():
         inputs={},
         outputs={'out': out},
         attrs={
-            'index': 0,
+            'shape': [1, 1],
             'dtype': 0,
             'place': 0,
             'name': "x",

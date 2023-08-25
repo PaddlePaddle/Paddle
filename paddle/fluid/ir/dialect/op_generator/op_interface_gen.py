@@ -57,17 +57,17 @@ OP_VJP_DEFINE_TEMPLATE = """
 std::vector<std::vector<ir::OpResult>> {op_class_name}::Vjp(ir::Operation* op, const std::vector<std::vector<ir::OpResult>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
     {op_class_name} op_obj = op->dyn_cast<{op_class_name}>();
 
-VLOG(6) << "Prepare inputs of {op_grad_name}";
+    VLOG(6) << "Prepare inputs of {op_grad_name}";
 {forward_input_code}
 {forward_output_grad_code}
 
-VLOG(6) << "Vjp prepare Prepare attributes of {op_grad_name}";
+    VLOG(6) << "Vjp prepare Prepare attributes of {op_grad_name}";
 {attribute_code}
 
-VLOG(4) << "Vjp prepare call {op_phi_name}'s vjp inteface";
+    VLOG(4) << "Vjp prepare call {op_phi_name}'s vjp inteface";
 {call_vjp_code}
 
-VLOG(4) << "Vjp prepare stop gradient of {op_grad_name}";
+    VLOG(4) << "Vjp prepare stop gradient of {op_grad_name}";
 {stop_gradient_input_grad_code}
     return res;
 }}
