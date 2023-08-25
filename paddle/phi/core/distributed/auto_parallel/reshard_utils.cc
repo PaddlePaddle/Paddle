@@ -175,6 +175,15 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
       PADDLE_THROW(phi::errors::Unimplemented(
           "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
 #endif
+    } else if (phi::CustomContext::classof(&dev_ctx)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      CommContextManager::CreateXCCLCommContext(
+          store,
+          unique_comm_key,
+          dev_ctx.GetPlace().GetDeviceType(),
+          rank,
+          world_size);
+#endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (phi::GPUContext::classof(&dev_ctx)) {
