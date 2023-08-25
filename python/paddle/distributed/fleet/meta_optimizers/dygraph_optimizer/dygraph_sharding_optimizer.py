@@ -15,6 +15,7 @@
 ######
 
 import os
+from collections import defaultdict
 from distutils.util import strtobool
 from functools import reduce
 
@@ -22,6 +23,7 @@ import paddle
 from paddle import framework
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
+from paddle.nn import ClipGradByGlobalNorm
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
@@ -74,9 +76,22 @@ class DygraphShardingOptimizer:
             raise ValueError(
                 "the optimzier object should have _apply_optimize function"
             )
-        # the self._parameter_list holds the whole model paramters
-        self._parameter_list = optimizer._parameter_list
-        self._origin_parameter_list = self._parameter_list
+
+        self._using_param_groups = isinstance(
+            optimizer._parameter_list[0], dict
+        )
+
+        self._parameter_list = []
+        self._param_2_group_id = {}
+        if self._using_param_groups:
+            for idx, param_group in enumerate(optimizer._param_groups):
+                for param in param_group['params']:
+                    self._param_2_group_id[id(param)] = idx
+                    self._parameter_list.append(param)
+        else:
+            self._parameter_list = optimizer._parameter_list
+            self._origin_parameter_list = self._parameter_list
+
         self._inner_opt = optimizer
         self._hcg = hcg
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
@@ -110,49 +125,73 @@ class DygraphShardingOptimizer:
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
-        if not self.tensor_fusion and not self.comm_overlap:
-            local_params = self._rank2params[self._sharding_rank]
-            self._set_inner_opt_attr('_parameter_list', local_params)
-            self._set_inner_opt_attr('_param_groups', local_params)
-        else:
-            self._tensor_fusion()
+        # if not self.tensor_fusion and not self.comm_overlap:
+        #    local_params = self._rank2params[self._sharding_rank]
+        #    self._set_inner_opt_attr('_parameter_list', local_params)
+        #    self._set_inner_opt_attr('_param_groups', local_params)
+        # else:
+        #    self._tensor_fusion()
 
-            decay_params = [
-                p.name for p in self._rank2decay[self._sharding_rank]
+        #    decay_params = [
+        #        p.name for p in self._rank2decay[self._sharding_rank]
+        #    ]
+        #    local_fused_params = self._rank2fused[self._sharding_rank]
+        #    apply_decay_param_fun = lambda x: x in decay_params
+
+        #    all_fused_params = []
+        #    for v in self._rank2fused.values():
+        #        all_fused_params += v
+        #    self._parameter_list = all_fused_params
+        #    self._param_groups = all_fused_params
+
+        #    self._set_inner_opt_attr('_parameter_list', local_fused_params)
+        #    self._set_inner_opt_attr('_param_groups', local_fused_params)
+        #    if self.comm_overlap:
+        #        # Only set local param for check finite when comm overlap.
+        #        # Under comm overlap, all grads will be communicated before check_finite.
+        #        # Therefore, each sharding rank can get all grads' info at check_finite.
+        #        # Without comm overlap, all grads will be communicated after check_finite,
+        #        # which means each sharding rank should do check_finite to all grads.
+        #        self._local_parameter_list = local_fused_params
+        #    origin_decay_param_fun = getattr(
+        #        self._inner_opt, '_apply_decay_param_fun', None
+        #    )
+        #    if origin_decay_param_fun is not None:
+        #        self._set_inner_opt_attr(
+        #            '_apply_decay_param_fun', apply_decay_param_fun
+        #        )
+        #    # Note: during the tensor fusion for parameters, the allocator will apply for
+        #    # some extra GPU memory for the fused big paramters. This extra GPU memory will
+        #    # be useless at once the fusion has done. But the Paddle's allocator won't
+        #    # release those memory, it will hold that part in the memory poll. So after
+        #    # tensor fusion, the 'reserved' memory will increase but the 'allocate' memory
+        #    # won't change. To avoid failure on some other applications (such as some nvtx
+        #    # operations), here we manulay let the allocator release the cached memory.
+        #    paddle.device.cuda.empty_cache()
+        if self._using_param_groups:
+            param_groups = [
+                {"params": []} for _ in range(len(optimizer._param_groups))
             ]
-            local_fused_params = self._rank2fused[self._sharding_rank]
-            apply_decay_param_fun = lambda x: x in decay_params
-
-            all_fused_params = []
-            for v in self._rank2fused.values():
-                all_fused_params += v
-            self._parameter_list = all_fused_params
-            self._param_groups = all_fused_params
-
-            self._set_inner_opt_attr('_parameter_list', local_fused_params)
-            self._set_inner_opt_attr('_param_groups', local_fused_params)
-            if self.comm_overlap:
-                # Only set local param for check finite when comm overlap.
-                # Under comm overlap, all grads will be communicated before check_finite.
-                # Therefore, each sharding rank can get all grads' info at check_finite.
-                # Without comm overlap, all grads will be communicated after check_finite,
-                # which means each sharding rank should do check_finite to all grads.
-                self._local_parameter_list = local_fused_params
-            origin_decay_param_fun = getattr(
-                self._inner_opt, '_apply_decay_param_fun', None
-            )
-            if origin_decay_param_fun is not None:
-                self._set_inner_opt_attr(
-                    '_apply_decay_param_fun', apply_decay_param_fun
+            for idx, pg in enumerate(optimizer._param_groups):
+                param_groups[idx].update(
+                    {k: v for k, v in pg.items() if k != 'params'}
                 )
-            # Note: during the tensor fusion for parameters, the allocator will apply for
-            # some extra GPU memory for the fused big paramters. This extra GPU memory will
-            # be useless at once the fusion has done. But the Paddle's allocator won't
-            # release those memory, it will hold that part in the memory poll. So after
-            # tensor fusion, the 'reserved' memory will increase but the 'allocate' memory
-            # won't change. To avoid failure on some other applications (such as some nvtx
-            # operations), here we manulay let the allocator release the cached memory.
-            paddle.device.cuda.empty_cache()
+            for param in self._rank2params[self._sharding_rank]:
+                group_id = self._param_2_group_id[id(param)]
+                param_groups[group_id]['params'].append(param)
+
+            self._set_inner_opt_attr('_param_groups', param_groups)
+            self._set_inner_opt_attr(
+                '_parameter_list', self._rank2params[self._sharding_rank]
+            )
+            self._param_groups = self._parameter_list
+        else:
+            self._set_inner_opt_attr(
+                '_param_groups', self._rank2params[self._sharding_rank]
+            )
+            self._set_inner_opt_attr(
+                '_parameter_list', self._rank2params[self._sharding_rank]
+            )
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -332,6 +371,9 @@ class DygraphShardingOptimizer:
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
+        assert (
+            not self._using_param_groups
+        ), "minimize() is not support if using param_groups"
         input_param_names = {param.name for param in parameters}
         parameters = list(
             filter(
@@ -355,12 +397,13 @@ class DygraphShardingOptimizer:
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
         # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
         origin_clip = self._inner_opt._grad_clip
+
         target_param_list = (
             self._origin_parameter_list
             if (not self.tensor_fusion or not self.fuse_optimizer)
             else self._parameter_list
         )
-        if not isinstance(target_param_list[0], dict):
+        if not isinstance(target_param_list[0], dict) or if not self._using_param_groups:
             params_grads = []
             for param in target_param_list:
                 if (
@@ -398,6 +441,35 @@ class DygraphShardingOptimizer:
             if g_shard_norm_align_dp:
                 # restore the grad clip
                 self._set_inner_opt_attr('_grad_clip', origin_clip)
+        else:
+            # optimize parameters in groups
+            for param_group in self._inner_opt._param_groups:
+                params_grads = defaultdict(lambda: [])
+
+                # TODO(shenliang03): support ClipGradByGlobalNorm in sharding when using param_groups
+                grad_clip = param_group['grad_clip']
+                assert not isinstance(
+                    grad_clip, ClipGradByGlobalNorm
+                ), "ClipGradByGlobalNorm is not support if using param_groups in sharding"
+
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+
+                    grad_var = param._grad_ivar()
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        grad_var = param.main_grad
+
+                    params_grads['params'].append((param, grad_var))
+                params_grads.update(
+                    {k: v for k, v in param_group.items() if k != 'params'}
+                )
+                self._apply_optimize(
+                    loss=None, startup_program=None, params_grads=params_grads
+                )
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()

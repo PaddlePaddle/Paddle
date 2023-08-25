@@ -45,6 +45,10 @@ class TestHybridParallel(TestMultipleGpus):
         os.environ["FLAGS_shard_split_param"] = "0"
         self.run_mnist_2gpu('hybrid_parallel_sharding_model_with_fusion_amp.py')
 
+    def test_hybrid_parallel_sharding_param_group(self):
+        # test shard grad reduce
+        self.run_mnist_2gpu('hybrid_parallel_sharding_param_group.py')
+
     def test_hybrid_parallel_sharding_state_dict(self):
         os.environ["FLAGS_shard_split_param"] = "0"
         self.run_mnist_2gpu('hybrid_parallel_sharding_state_dict.py')

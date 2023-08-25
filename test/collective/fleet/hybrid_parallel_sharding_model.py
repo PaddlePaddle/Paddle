@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
@@ -63,72 +62,6 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
     else:
         logits = paddle.matmul(lm_output, logit_weights, transpose_y=True)
         return logits
-
-
-class SimpleMPNet(paddle.nn.Layer):
-    def __init__(
-        self,
-        vocab_size,
-        hidden_size,
-        inner_size,
-        output_size,
-        np_fc1,
-        np_fc2,
-        mp_id,
-    ):
-        super().__init__()
-
-        if mp_id == 0:
-            init_fc1_data = np_fc1[:, : (inner_size // 2)]
-            init_fc2_data = np_fc2[: (inner_size // 2), :]
-        else:
-            init_fc1_data = np_fc1[:, (inner_size // 2) :]
-            init_fc2_data = np_fc2[(inner_size // 2) :, :]
-
-        self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
-            hidden_size,
-            inner_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(init_fc1_data)
-            ),
-            gather_output=False,
-            has_bias=True,
-        )
-
-        self.linear2 = fleet.meta_parallel.RowParallelLinear(
-            inner_size,
-            hidden_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(init_fc2_data)
-            ),
-            input_is_parallel=True,
-            has_bias=True,
-        )
-
-        self.linear3 = paddle.nn.Linear(
-            hidden_size,
-            output_size,
-            weight_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-            bias_attr=paddle.framework.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)
-            ),
-        )
-
-        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            vocab_size,
-            hidden_size,
-            weight_attr=paddle.nn.initializer.Constant(value=0.5),
-        )
-
-    def forward(self, x):
-        x = self.embedding(x)
-        x = self.linear1(x)
-        x = self.linear2(x)
-        x = self.linear3(x)
-        x = parallel_matmul(x, self.embedding.weight, False)
-        return x
 
 
 class SimpleDPNet(paddle.nn.Layer):
@@ -240,12 +173,6 @@ class TestDistMPTraining(unittest.TestCase):
         return optimizer
 
     def build_model_optimizer(self, Optimizer="adam", amp_level=None):
-        hcg = fleet.get_hybrid_communicate_group()
-        word_size = hcg.get_model_parallel_world_size()
-        sharding_id = hcg.get_sharding_parallel_rank()
-        dp_id = hcg.get_data_parallel_rank()
-        rank_id = dist.get_rank()
-
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
         np_fc2 = np.random.random_sample((inner_size, hidden_size))
 
