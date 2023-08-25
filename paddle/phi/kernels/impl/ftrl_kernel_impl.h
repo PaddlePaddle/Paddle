@@ -38,8 +38,6 @@ void FTRLOpKernel(const Context& ctx,
                   DenseTensor* squared_accumulator_out,
                   DenseTensor* linear_accumulator_out,
                   DenseTensor* grad_out) {
-  ctx.template Alloc<T>(grad);
-  ctx.template Alloc<T>(grad_out);
   T l1_t = static_cast<T>(l1) + static_cast<T>(1e-10);
   T l2_t = static_cast<T>(l2) + static_cast<T>(1e-10);
   T lr_power_t = static_cast<T>(lr_power);
@@ -71,7 +69,8 @@ void FTRLOpKernel(const Context& ctx,
             p;
   }
 
-  T x_t = (l_acc_out.constant(l1_t) * l_acc_out.sign() - l_acc_out);
+  T x_t = static_cast<T>(l_acc_out.constant(l1_t)) *
+    static_cast<T>(l_acc_out.sign()) - static_cast<T>(l_acc_out));
   if (lr_power_t == static_cast<T>(-0.5)) {
     auto y = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
              l_acc_out.constant(static_cast<T>(2) * l2_t);
