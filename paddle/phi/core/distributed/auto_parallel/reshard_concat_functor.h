@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,26 +14,17 @@
 
 #pragma once
 
-#include "paddle/phi/core/macros.h"
+#include <cstdint>
+#include <vector>
 
 namespace phi {
+class DeviceContext;
+class DenseTensor;
 namespace distributed {
 
-class CommContext {
- public:
-  CommContext(int rank, int size) : rank_(rank), size_(size) {}
-  virtual ~CommContext() = default;
-
-  int GetRank() const { return rank_; }
-  int GetSize() const { return size_; }
-
- protected:
-  int rank_;
-  int size_;
-
- private:
-  DISABLE_COPY_AND_ASSIGN(CommContext);
-};
+DenseTensor ReshardConcatFunctor(const DeviceContext& dev_ctx,
+                                 const std::vector<const DenseTensor*>& input,
+                                 int64_t axis);
 
 }  // namespace distributed
 }  // namespace phi
