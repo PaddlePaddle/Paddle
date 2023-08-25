@@ -51,8 +51,8 @@ void FTRLOpKernel(const Context& ctx,
   auto x_t = phi::EigenVector<T>::Flatten(x);
   auto y_t = phi::EigenVector<T>::Flatten(y);
 
-  auto x_out = phi::EigenVector<T>::Flatten(*x_out);
-  auto y_out = phi::EigenVector<T>::Flatten(*y_out);
+  auto x_out_t = phi::EigenVector<T>::Flatten(*x_out);
+  auto y_out_t = phi::EigenVector<T>::Flatten(*y_out);
   auto p_out = phi::EigenVector<T>::Flatten(*param_out);
   auto s_acc_out = phi::EigenVector<T>::Flatten(*squared_accumulator_out);
   auto l_acc_out = phi::EigenVector<T>::Flatten(*linear_accumulator_out);
@@ -74,18 +74,18 @@ void FTRLOpKernel(const Context& ctx,
             p;
   }
 
-  x_out = (l_acc_out.constant((l1_t)) * l_acc_out.sign() - l_acc_out);
+  x_out_t = (l_acc_out.constant((l1_t)) * l_acc_out.sign() - l_acc_out);
 
   if (lr_power_t == static_cast<T>(-0.5)) {
-    y_out = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
-            l_acc_out.constant(static_cast<T>(2) * l2_t);
-    auto pre_shrink = x_out / y_out;
+    y_out_t = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
+              l_acc_out.constant(static_cast<T>(2) * l2_t);
+    auto pre_shrink = x_out_t / y_out_t;
     p_out.device(place) = (l_acc_out.abs() > l_acc_out.constant(l1_t))
                               .select(pre_shrink, p.constant(0));
   } else {
-    y_out = (new_accum.pow(-lr_power_t) / lr.broadcast(grad_dsize)) +
-            l_acc_out.constant(static_cast<T>(2) * l2_t);
-    auto pre_shrink = x_out / y_out;
+    y_out_t = (new_accum.pow(-lr_power_t) / lr.broadcast(grad_dsize)) +
+              l_acc_out.constant(static_cast<T>(2) * l2_t);
+    auto pre_shrink = x_out_t / y_out_t;
     p_out.device(place) = (l_acc_out.abs() > l_acc_out.constant(l1_t))
                               .select(pre_shrink, p.constant(0));
   }
