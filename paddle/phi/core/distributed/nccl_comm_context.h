@@ -13,7 +13,7 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include <cuda_runtime.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
@@ -41,12 +41,13 @@ class NCCLCommContext final : public CommContext {
   gpuEvent_t GetComputeEvent();
 
   void SetComputeEvent(
-      std::shared_ptr<paddle::platform::CudaEventObject>&& compute_event);
+      std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&&
+          compute_event);
 
   gpuEvent_t GetCommEvent();
 
   void SetCommEvent(
-      std::shared_ptr<paddle::platform::CudaEventObject>&& comm_event);
+      std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&& comm_event);
 
   phi::GPUContext* GetDevContext();
 
@@ -98,10 +99,10 @@ class NCCLCommContext final : public CommContext {
   std::unique_ptr<phi::GPUContext> dev_ctx_;
 
   // used for comm wait compute, compute_stream-->event-->comm_stream
-  std::shared_ptr<paddle::platform::CudaEventObject> compute_event_;
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> compute_event_;
 
   // used for compute wait comm, comm_stream-->event-->compute_stream
-  std::shared_ptr<paddle::platform::CudaEventObject> comm_event_;
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> comm_event_;
 };
 
 }  // namespace distributed

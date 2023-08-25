@@ -49,14 +49,15 @@ void NCCLCommContext::SetDevContext(
 gpuEvent_t NCCLCommContext::GetComputeEvent() { return compute_event_.get(); }
 
 void NCCLCommContext::SetComputeEvent(
-    std::shared_ptr<paddle::platform::CudaEventObject>&& compute_event) {
+    std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&&
+        compute_event) {
   compute_event_ = std::move(compute_event);
 }
 
 gpuEvent_t NCCLCommContext::GetCommEvent() { return comm_event_.get(); }
 
 void NCCLCommContext::SetCommEvent(
-    std::shared_ptr<paddle::platform::CudaEventObject>&& comm_event) {
+    std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&& comm_event) {
   comm_event_ = std::move(comm_event);
 }
 

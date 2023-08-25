@@ -27,8 +27,6 @@
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
 #include <cuda_runtime.h>
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
 
 namespace phi {
@@ -363,7 +361,7 @@ class MemoryUtils {
     return memory_method_->get_pinned_allocator();
   }
 
-  std::shared_ptr<paddle::platform::CudaEventObject> GetCudaEvent(
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
       int device_id) {
     return memory_method_->get_new_cuda_event(device_id);
   }
