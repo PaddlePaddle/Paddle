@@ -41,7 +41,8 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
             "Trt flash attention oss plugin only support fp16 mode yet."));
 
     framework::OpDesc op_desc(op, nullptr);
-    bool weight_is_constant = PADDLE_GET_CONST(bool, op_desc.GetAttr("weight_is_constant"));
+    bool weight_is_constant =
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("weight_is_constant"));
 
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
     nvinfer1::ITensor* input_shape_tensor = Shape(input);
@@ -49,10 +50,10 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     int hidden_out = PADDLE_GET_CONST(int, op_desc.GetAttr("hidden_out"));
     int head_size = hidden_out / head_number;
 
-    nvinfer1::ILayer* reshape_before_mha_layer=nullptr;
+    nvinfer1::ILayer* reshape_before_mha_layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
     nvinfer1::ILayer* layer = nullptr;
-    if(weight_is_constant) {
+    if (weight_is_constant) {
       // do weight transpose
       auto weight_name = op_desc.Input("W").front();
       auto* weight_v = scope.FindVar(weight_name);
@@ -73,11 +74,11 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       // [hidden_in, 3, head_number, head_size]
       // -> [head_number, 3, head_size, hidden_in]
       auto transpose_weight = [](const float* src,
-                                float* dst,
-                                int three,
-                                int head_number,
-                                int head_size,
-                                int hidden_in) {
+                                 float* dst,
+                                 int three,
+                                 int head_number,
+                                 int head_size,
+                                 int hidden_in) {
         for (int hn = 0; hn < head_number; hn++) {
           for (int t = 0; t < three; t++) {
             for (int hs = 0; hs < head_size; hs++) {
@@ -85,7 +86,8 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                 int out_index = hn * three * head_size * hidden_in +
                                 t * head_size * hidden_in + hs * hidden_in + hi;
                 int in_index = hi * three * head_number * head_size +
-                              t * head_number * head_size + hn * head_size + hs;
+                               t * head_number * head_size + hn * head_size +
+                               hs;
                 dst[out_index] = src[in_index];
               }
             }
@@ -94,18 +96,19 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       };
       std::vector<float> weight_data_tmp;
       weight_data_tmp.reserve(weight_t->numel());
-      memcpy(
-          weight_data_tmp.data(), weight_data, weight_t->numel() * sizeof(float));
+      memcpy(weight_data_tmp.data(),
+             weight_data,
+             weight_t->numel() * sizeof(float));
 
       transpose_weight(weight_data_tmp.data(),
-                      weight_data,
-                      three,
-                      head_number,
-                      head_size,
-                      hidden_in);
+                       weight_data,
+                       three,
+                       head_number,
+                       head_size,
+                       hidden_in);
       nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
-                              static_cast<void*>(weight_data),
-                              static_cast<int32_t>(weight_t->numel())};
+                               static_cast<void*>(weight_data),
+                               static_cast<int32_t>(weight_t->numel())};
       nvinfer1::Weights bias{};
       // add shuffle for FullyConnected layer
       std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
@@ -120,14 +123,14 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
 
       auto* reshape_before_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      reshape_before_fc_layer->setInput(1,
-                                        *Concat(reshape_before_fc_shape_tensor));
+      reshape_before_fc_layer->setInput(
+          1, *Concat(reshape_before_fc_shape_tensor));
       reshape_before_fc_layer->setName(
           ("shuffle_before_fc_multihead_matmul(Output: " + output_name + ")")
               .c_str());
       nvinfer1::ILayer* fc_layer = nullptr;
 
-      //TODO(wangbojun) need replace FullConnected layer into MatrixMultiply
+      // TODO(wangbojun) need replace FullConnected layer into MatrixMultiply
       fc_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                       FullyConnected,
                                       *reshape_before_fc_layer->getOutput(0),
@@ -142,75 +145,103 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       reshape_before_mha_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
     } else {
-      VLOG(3)<<"build MatrixMultiply trt layer";
-      nvinfer1::MatrixOperation matrix_operation_x = nvinfer1::MatrixOperation::kNONE;
-      nvinfer1::MatrixOperation matrix_operation_y = nvinfer1::MatrixOperation::kNONE;
-      auto* q_weight = engine_->GetITensor(op_desc.Input("weight_query").front());
+      VLOG(3) << "build MatrixMultiply trt layer";
+      nvinfer1::MatrixOperation matrix_operation_x =
+          nvinfer1::MatrixOperation::kNONE;
+      nvinfer1::MatrixOperation matrix_operation_y =
+          nvinfer1::MatrixOperation::kNONE;
+
+      auto* q_weight =
+          engine_->GetITensor(op_desc.Input("weight_query").front());
       auto* k_weight = engine_->GetITensor(op_desc.Input("weight_key").front());
-      auto* v_weight = engine_->GetITensor(op_desc.Input("weight_value").front());
-      
-      int head_dim = head_number*head_size;
+      auto* v_weight =
+          engine_->GetITensor(op_desc.Input("weight_value").front());
+
+      int head_dim = head_number * head_size;
       auto* weight_reshape_before_q_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *q_weight);
-      weight_reshape_before_q_fc_layer->setInput(1, *Concat({Add1DConstantLayer(1),Add1DConstantLayer(head_dim),Add1DConstantLayer(head_dim)}));
+      weight_reshape_before_q_fc_layer->setInput(
+          1,
+          *Concat({Add1DConstantLayer(1),
+                   Add1DConstantLayer(head_dim),
+                   Add1DConstantLayer(head_dim)}));
       auto* weight_reshape_before_k_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *k_weight);
-      weight_reshape_before_k_fc_layer->setInput(1, *Concat({Add1DConstantLayer(1),Add1DConstantLayer(head_dim),Add1DConstantLayer(head_dim)}));
+      weight_reshape_before_k_fc_layer->setInput(
+          1,
+          *Concat({Add1DConstantLayer(1),
+                   Add1DConstantLayer(head_dim),
+                   Add1DConstantLayer(head_dim)}));
       auto* weight_reshape_before_v_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *v_weight);
-      weight_reshape_before_v_fc_layer->setInput(1, *Concat({Add1DConstantLayer(1),Add1DConstantLayer(head_dim),Add1DConstantLayer(head_dim)}));
+      weight_reshape_before_v_fc_layer->setInput(
+          1,
+          *Concat({Add1DConstantLayer(1),
+                   Add1DConstantLayer(head_dim),
+                   Add1DConstantLayer(head_dim)}));
 
-      auto* q_fc_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                              MatrixMultiply,
-                                              *input,
-                                              matrix_operation_x,
-                                              *weight_reshape_before_q_fc_layer->getOutput(0),
-                                              matrix_operation_y);
-      auto* k_fc_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                              MatrixMultiply,
-                                              *input,
-                                              matrix_operation_x,
-                                              *weight_reshape_before_k_fc_layer->getOutput(0),
-                                              matrix_operation_y);
-      auto* v_fc_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                              MatrixMultiply,
-                                              *input,
-                                              matrix_operation_x,
-                                              *weight_reshape_before_v_fc_layer->getOutput(0),
-                                              matrix_operation_y);
+      auto* q_fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               MatrixMultiply,
+                               *input,
+                               matrix_operation_x,
+                               *weight_reshape_before_q_fc_layer->getOutput(0),
+                               matrix_operation_y);
+      auto* k_fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               MatrixMultiply,
+                               *input,
+                               matrix_operation_x,
+                               *weight_reshape_before_k_fc_layer->getOutput(0),
+                               matrix_operation_y);
+      auto* v_fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               MatrixMultiply,
+                               *input,
+                               matrix_operation_x,
+                               *weight_reshape_before_v_fc_layer->getOutput(0),
+                               matrix_operation_y);
       std::vector<nvinfer1::ITensor*> reshape_after_qkv_fc_layer_shape;
       for (int i = 0; i < 5; i++) {
         reshape_after_qkv_fc_layer_shape.push_back(Add1DConstantLayer(1));
       }
-      reshape_after_qkv_fc_layer_shape[0] = GetEleTensorOfShape(input_shape_tensor, 0);
-      reshape_after_qkv_fc_layer_shape[1] = GetEleTensorOfShape(input_shape_tensor, 1);
+      reshape_after_qkv_fc_layer_shape[0] =
+          GetEleTensorOfShape(input_shape_tensor, 0);
+      reshape_after_qkv_fc_layer_shape[1] =
+          GetEleTensorOfShape(input_shape_tensor, 1);
       reshape_after_qkv_fc_layer_shape[2] = Add1DConstantLayer(head_number);
       reshape_after_qkv_fc_layer_shape[3] = Add1DConstantLayer(1);
-      reshape_after_qkv_fc_layer_shape[4] = Add1DConstantLayer(head_size);      
+      reshape_after_qkv_fc_layer_shape[4] = Add1DConstantLayer(head_size);
       auto* reshape_after_q_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *q_fc_layer->getOutput(0));
-      reshape_after_q_fc_layer->setInput(1, *Concat(reshape_after_qkv_fc_layer_shape));
+      reshape_after_q_fc_layer->setInput(
+          1, *Concat(reshape_after_qkv_fc_layer_shape));
 
       auto* reshape_after_k_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *k_fc_layer->getOutput(0));
-      reshape_after_k_fc_layer->setInput(1, *Concat(reshape_after_qkv_fc_layer_shape));
+      reshape_after_k_fc_layer->setInput(
+          1, *Concat(reshape_after_qkv_fc_layer_shape));
 
       auto* reshape_after_v_fc_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *v_fc_layer->getOutput(0));
-      reshape_after_v_fc_layer->setInput(1, *Concat(reshape_after_qkv_fc_layer_shape));
+      reshape_after_v_fc_layer->setInput(
+          1, *Concat(reshape_after_qkv_fc_layer_shape));
 
       std::vector<nvinfer1::ITensor*> concat_after_qkv_fc_input_tensors;
-      concat_after_qkv_fc_input_tensors.push_back(reshape_after_q_fc_layer->getOutput(0));
-      concat_after_qkv_fc_input_tensors.push_back(reshape_after_k_fc_layer->getOutput(0));
-      concat_after_qkv_fc_input_tensors.push_back(reshape_after_v_fc_layer->getOutput(0));
-      auto* concat_after_qkv_fc_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_after_qkv_fc_input_tensors.data(), 3);
+      concat_after_qkv_fc_input_tensors.push_back(
+          reshape_after_q_fc_layer->getOutput(0));
+      concat_after_qkv_fc_input_tensors.push_back(
+          reshape_after_k_fc_layer->getOutput(0));
+      concat_after_qkv_fc_input_tensors.push_back(
+          reshape_after_v_fc_layer->getOutput(0));
+      auto* concat_after_qkv_fc_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Concatenation, concat_after_qkv_fc_input_tensors.data(), 3);
       concat_after_qkv_fc_layer->setAxis(3);
-      reshape_before_mha_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_after_qkv_fc_layer->getOutput(0));
+      reshape_before_mha_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Shuffle, *concat_after_qkv_fc_layer->getOutput(0));
     }
 
-    VLOG(3)<<"convert fmha_v2 plugin";
+    VLOG(3) << "convert fmha_v2 plugin";
 
     std::vector<nvinfer1::ITensor*> mha_input_tensor_shape;
     for (int i = 0; i < 5; i++) {
@@ -226,7 +257,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         ("shuffle_before_multihead_matmul(Output: " + output_name + ")")
             .c_str());
     auto creator = GetPluginRegistry()->getPluginCreator("fMHA_V2", "1");
-    assert("fmha_v2 plugin creater must not be null"&&creator != nullptr);
+    assert("fmha_v2 plugin creater must not be null" && creator != nullptr);
     std::vector<nvinfer1::PluginField> fields{};
     nvinfer1::PluginFieldCollection* plugin_collection =
         static_cast<nvinfer1::PluginFieldCollection*>(
@@ -291,7 +322,8 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
 
     int hidden_out = PADDLE_GET_CONST(int, op_desc.GetAttr("hidden_out"));
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
-    bool weight_is_constant = PADDLE_GET_CONST(bool, op_desc.GetAttr("weight_is_constant"));
+    bool weight_is_constant =
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("weight_is_constant"));
 
     std::vector<std::string> qkv_weight_name = {
         "weight_query", "weight_key", "weight_value"};
@@ -305,7 +337,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       auto* weight_tensor = weight_value->GetMutable<phi::DenseTensor>();
       float* weight_data = const_cast<float*>(static_cast<const float*>(
           engine_->GetFp32TrtWeight(weight_name, *weight_tensor).get().values));
-      if(weight_is_constant) {
+      if (weight_is_constant) {
         const auto& weight_dims = weight_tensor->dims();
         for (int k = 0; k < weight_dims[0]; ++k) {
           for (int j = k; j < weight_dims[1]; ++j) {
