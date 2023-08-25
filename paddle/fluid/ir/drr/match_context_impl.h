@@ -64,24 +64,22 @@ struct IrAttrTypeCast<std::vector<int32_t>> {
 };
 
 template <>
-struct IrAttrTypeCast<std::vector<int64_t>>{
-  static std::vector<int64_t> To(const ir::Attribute& attr){
+struct IrAttrTypeCast<std::vector<int64_t>> {
+  static std::vector<int64_t> To(const ir::Attribute& attr) {
     std::vector<int64_t> result;
-    auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();   
-
-    if (array_attr) {
-      for(size_t i = 0; i < array_attr.size(); i++){
-        result.push_back(array_attr.at(i).dyn_cast<ir::Int64Attribute>().data());
+    if (attr.dyn_cast<ir::ArrayAttribute>()) {
+      auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();
+      for (size_t i = 0; i < array_attr.size(); i++) {
+        result.push_back(
+            array_attr.at(i).dyn_cast<ir::Int64Attribute>().data());
       }
       return result;
-    } 
-
-    else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
-      result = attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
+    } else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
+      result =
+          attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
       return result;
     }
-    LOG(ERROR) << "Dynamic cast failed for IR attribute vector<int64_t>";
-    IR_THROW();
+    IR_THROW("Dynamic cast failed for IR attribute vector<int64_t>");
   }
 };
 
