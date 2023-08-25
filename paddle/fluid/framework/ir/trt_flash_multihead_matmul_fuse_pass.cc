@@ -273,7 +273,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
   int sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
   use_trt_fma = sm >= 80 ? true : false;
 #endif
-	// Lora's attention weight cannot be manipulated during pass processing
+  // Lora's attention weight cannot be manipulated during pass processing
   bool weight_is_constant = false;
 
   // Create pattern.
@@ -310,11 +310,10 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
 
     multihead_op_desc.SetType("flash_multihead_matmul");
     multihead_op_desc.SetInput("Input", {input0->Name()});
-		if (mul0_w->Var()->Persistable() 
-			&& mul1_w->Var()->Persistable()
-			&& mul2_w->Var()->Persistable()) {
-			weight_is_constant = true;
-		}
+    if (mul0_w->Var()->Persistable() && mul1_w->Var()->Persistable() &&
+        mul2_w->Var()->Persistable()) {
+      weight_is_constant = true;
+    }
     auto* wq_tensor =
         scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* wk_tensor =
@@ -381,7 +380,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     multihead_op_desc.SetAttr("head_number", head_number);
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
     multihead_op_desc.SetAttr("use_trt_fma", use_trt_fma);
-		multihead_op_desc.SetAttr("weight_is_constant", weight_is_constant);
+    multihead_op_desc.SetAttr("weight_is_constant", weight_is_constant);
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
     IR_NODE_LINK_TO(input0, multihead);
     IR_NODE_LINK_TO(mul0_w, multihead);
@@ -502,7 +501,6 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     ++fusion_count;
   };
   gpd(graph, handler);
-
   return fusion_count;
 }
 
