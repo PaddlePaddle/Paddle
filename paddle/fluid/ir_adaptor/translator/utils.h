@@ -15,7 +15,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
@@ -33,6 +35,9 @@ ir::Operation* InsertSliceOperationForTarget(
 
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str);
+
+std::vector<std::string> CheckUnregisteredOperation(
+    ir::IrContext* ctx, const framework::ProgramDesc& legacy_program);
 
 }  // namespace translator
 }  // namespace paddle

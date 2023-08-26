@@ -946,9 +946,7 @@ static void RegisterOperatorKernel(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : device_types) {
-    for (size_t dev_id = 0;
-         dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-         dev_id++) {
+    for (auto& dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
       RegisterOperatorKernelWithPlace(name,
                                       op_kernel_func,
                                       proto::VarType::RAW,
