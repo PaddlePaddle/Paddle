@@ -51,7 +51,7 @@ Token IrParser::PeekToken() { return cur_token; }
 void IrParser::ConsumeAToken(string expect_token_val) {
   string token_val = GetToken().val_;
   IR_ENFORCE(token_val == expect_token_val,
-             "The token value of expectation is " + expect_token_val + " not," +
+             "The token value of expectation is " + expect_token_val + " ,not" +
                  token_val + "." + GetErrorLocationInfo());
 }
 
@@ -91,6 +91,9 @@ Type IrParser::ParseType() {
   } else if (type_val == "i64") {
     GetToken();
     return Int64Type::get(ctx);
+  } else if (type_val == "index") {
+    GetToken();
+    return IndexType::get(ctx);
   } else if (type_val == "c64") {
     GetToken();
     return builder->complex64_type();

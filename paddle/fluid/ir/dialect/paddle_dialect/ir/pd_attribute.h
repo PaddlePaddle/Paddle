@@ -143,17 +143,24 @@ class PlaceAttribute : public ir::Attribute {
       return PlaceAttribute::get(parser.ctx, phi::CPUPlace{});
     } else if (place_token.val_ == "gpu") {
       parser.GetToken();
+      parser.GetToken();
+      parser.GetToken();
       return PlaceAttribute::get(parser.ctx, phi::GPUPlace{});
-    } else if (place_token.val_ == "gpupinned") {
+    } else if (place_token.val_ == "gpu_pinned") {
       parser.GetToken();
       return PlaceAttribute::get(parser.ctx, phi::GPUPinnedPlace{});
     } else if (place_token.val_ == "xpu") {
       parser.GetToken();
+      parser.GetToken();
+      parser.GetToken();
       return PlaceAttribute::get(parser.ctx, phi::XPUPlace{});
     } else if (place_token.val_ == "ipu") {
       parser.GetToken();
+      parser.GetToken();
+      parser.GetToken();
       return PlaceAttribute::get(parser.ctx, phi::IPUPlace{});
-    } else if (place_token.val_ == "custom") {
+    } else if (place_token.val_ == ":") {
+      parser.GetToken();
       parser.GetToken();
       return PlaceAttribute::get(parser.ctx, phi::CustomPlace{});
     } else if (place_token.val_ == "undefined") {
@@ -181,41 +188,32 @@ class DataLayoutAttribute : public ir::Attribute {
   }
   static DataLayoutAttribute Parse(ir::IrParser &parser) {  // NOLINT
     Token data_layout_token = parser.GetToken();
-    if (data_layout_token.val_ == "UNDEFINED") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::UNDEFINED);
-    } else if ((data_layout_token.val_ == "ANY") ||
-               (data_layout_token.val_ == "kAnyLayout")) {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::ANY);
-    } else if ((data_layout_token.val_ == "NCHW") ||
-               (data_layout_token.val_ == "kNCHW")) {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::NCHW);
-    } else if ((data_layout_token.val_ == "NHWC") ||
-               (data_layout_token.val_ == "kNHWC")) {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::NHWC);
-    } else if ((data_layout_token.val_ == "NCDHW") ||
-               (data_layout_token.val_ == "kNCDHW")) {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::NCDHW);
-    } else if ((data_layout_token.val_ == "NDHWC") ||
-               (data_layout_token.val_ == "kNDHWC")) {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::NDHWC);
-    } else if ((data_layout_token.val_ == "ONEDNN") ||
-               (data_layout_token.val_ == "kMKLDNN")) {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::ONEDNN);
+    if (data_layout_token.val_ == "NHWC") {
+      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNHWC);
+    } else if (data_layout_token.val_ == "NCHW") {
+      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNCHW);
+    } else if (data_layout_token.val_ == "Undefined") {
+      parser.GetToken();
+      parser.GetToken();
+      parser.GetToken();
+      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kAnyLayout);
+    } else if (data_layout_token.val_ == "ONEDNN") {
+      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kMKLDNN);
     } else if (data_layout_token.val_ == "SPARSE_COO") {
       return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::SPARSE_COO);
     } else if (data_layout_token.val_ == "SPARSE_CSR") {
       return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::SPARSE_CSR);
+    } else if (data_layout_token.val_ == "NDHWC") {
+      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNDHWC);
+    } else if (data_layout_token.val_ == "NCDHW") {
+      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kNCDHW);
     } else if (data_layout_token.val_ == "PSTRING_UNION") {
       return DataLayoutAttribute::get(parser.ctx,
                                       phi::DataLayout::PSTRING_UNION);
-    } else if (data_layout_token.val_ == "NUM_DATA_LAYOUTS") {
-      return DataLayoutAttribute::get(parser.ctx,
-                                      phi::DataLayout::NUM_DATA_LAYOUTS);
-    } else if (data_layout_token.val_ == "ALL_LAYOUT") {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::ALL_LAYOUT);
-    } else {
-      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::UNDEFINED);
+    } else if (data_layout_token.val_ == "STRIDED") {
+      return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::STRIDED);
     }
+    return DataLayoutAttribute::get(parser.ctx, phi::DataLayout::kAnyLayout);
   }
 
   phi::DataLayout data() const;

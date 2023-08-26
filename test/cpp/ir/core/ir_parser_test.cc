@@ -14,6 +14,8 @@
 
 #include "paddle/ir/core/ir_parser.h"
 #include <gtest/gtest.h>
+#include <fstream>
+#include <iostream>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -74,11 +76,11 @@ TestTask* ParserTest::GetTestTask() {
   }
   test_text.get();
   string test_type_info;
-  while (test_text.peek() != '/n') {
+  while (test_text.peek() != '\n') {
     test_type_info += test_text.get();
   }
   test_text.get();
-  while (test_text.peek() != '/' || test_text.peek() != EOF) {
+  while (test_text.peek() != '/' && test_text.peek() != EOF) {
     test_info += test_text.get();
   }
   if (test_type_info == "attributemap") {
@@ -102,9 +104,12 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
   while (parser->PeekToken().token_type_ != EOF_) {
     before_parser_tokens.push_back(parser->GetToken().val_);
   }
-  parser = new ir::IrParser(ctx, is);
+  delete parser;
+  stringstream is_par(test_info);
+  parser = new ir::IrParser(ctx, is_par);
   stringstream os;
   if (test_type == AttributeMapTest) {
+    parser->lex_seg = LexSegment::parserAttribute;
     AttributeMap attributes = parser->ParseAttributeMap();
     printer = new ir::IrPrinter(os);
     std::map<std::string, ir::Attribute, std::less<std::string>>
@@ -126,26 +131,13 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
     parser->ParseBlock(*block);
     printer = new ir::IrPrinter(os);
     printer->PrintBlock(block);
-    parser = new ir::IrParser(ctx, os);
-    std::vector<string> after_parser_tokens;
-    while (parser->PeekToken().token_type_ != EOF_) {
-      after_parser_tokens.push_back(parser->GetToken().val_);
-    }
-    delete printer;
-    delete parser;
-    delete test_task;
-    if (after_parser_tokens.size() != before_parser_tokens.size()) return false;
-
-    for (int i = 0; i < after_parser_tokens.size(); i++) {
-      if (after_parser_tokens[i] != before_parser_tokens[i]) return false;
-    }
-
-    return true;
   } else if (test_type == TypeTest) {
+    parser->lex_seg = LexSegment::parseFunctionType;
     ir::Type type = parser->ParseType();
     printer = new ir::IrPrinter(os);
     printer->PrintType(type);
   }
+  delete parser;
   parser = new ir::IrParser(ctx, os);
   std::vector<string> after_parser_tokens;
   while (parser->PeekToken().token_type_ != EOF_) {
@@ -156,7 +148,7 @@ bool ParserTest::ConsumeTestTask(TestTask* test_task, ir::IrContext* ctx) {
   delete test_task;
   if (after_parser_tokens.size() != before_parser_tokens.size()) return false;
 
-  for (int i = 0; i < after_parser_tokens.size(); i++) {
+  for (size_t i = 0; i < after_parser_tokens.size(); i++) {
     if (after_parser_tokens[i] != before_parser_tokens[i]) return false;
   }
 
@@ -168,11 +160,12 @@ TEST(IrParserTest, TestParserByFile) {
   ctx->GetOrRegisterDialect<PaddleDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   std::ifstream is("TestParserText.txt");
+  EXPECT_TRUE(is.is_open());
   ParserTest parser_test(is);
   bool test_ans = true;
-  TestTask* test_task;
-  while (test_task = parser_test.GetTestTask()) {
+  while (TestTask* test_task = parser_test.GetTestTask()) {
     test_ans &= parser_test.ConsumeTestTask(test_task, ctx);
   }
+  is.close();
   EXPECT_TRUE(test_ans);
 }
