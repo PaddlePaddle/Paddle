@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 #include <map>
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builder.h"
@@ -96,6 +97,7 @@ TEST(assist_struct_test, symbolic_dim_mgr) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Program program(ctx);
   ctx->GetOrRegisterDialect<ir::dialect::ShapeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   ir::SymbolicDimMgr symDimMgr(program.module_op());
   ir::dialect::SymbolicDim symDimS0 = symDimMgr.newSymbolicDim();
