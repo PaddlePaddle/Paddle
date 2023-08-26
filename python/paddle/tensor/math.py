@@ -436,7 +436,7 @@ def multiplex(inputs, index, name=None):
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Inplace version of ``scale`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_scale`.
+    Please refer to :ref:`api_paddle_scale`.
     """
     if in_dynamic_mode():
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
@@ -686,7 +686,7 @@ def add(x, y, name=None):
 def add_(x, y, name=None):
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_add`.
+    Please refer to :ref:`api_paddle_add`.
     """
 
     out_shape = broadcast_shape(x.shape, y.shape)
@@ -826,7 +826,7 @@ def subtract(x, y, name=None):
 def subtract_(x, y, name=None):
     """
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_subtract`.
+    Please refer to :ref:`api_paddle_subtract`.
     """
 
     out_shape = broadcast_shape(x.shape, y.shape)
@@ -972,7 +972,7 @@ def remainder(x, y, name=None):
 def remainder_(x, y, name=None):
     r"""
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_remainder`.
+    Please refer to :ref:`api_paddle_remainder`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -1045,7 +1045,7 @@ def multiply(x, y, name=None):
 def multiply_(x, y, name=None):
     """
     Inplace version of ``multiply`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_multiply`.
+    Please refer to :ref:`api_paddle_multiply`.
     """
 
     assert (
@@ -2220,7 +2220,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     """
     Inplace version of ``addmm`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_label_addmm`.
+    Please refer to :ref:`api_paddle_addmm`.
     """
     input_shape = input.shape
     x_shape = x.shape
@@ -3482,7 +3482,7 @@ def clip(x, min=None, max=None, name=None):
 def clip_(x, min=None, max=None, name=None):
     """
     Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_clip`.
+    Please refer to :ref:`api_paddle_clip`.
     """
     fmin = float(np.finfo(np.float32).min)
     fmax = float(np.finfo(np.float32).max)
@@ -4513,7 +4513,7 @@ def tanh(x, name=None):
 def tanh_(x, name=None):
     r"""
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_tanh`.
+    Please refer to :ref:`api_paddle_tanh`.
     """
     return _C_ops.tanh_(x)
 
@@ -5162,7 +5162,7 @@ def lerp(x, y, weight, name=None):
 def lerp_(x, y, weight, name=None):
     r"""
     Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_lerp`.
+    Please refer to :ref:`api_paddle_lerp`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
     check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
@@ -5222,7 +5222,7 @@ def erfinv(x, name=None):
 def erfinv_(x, name=None):
     r"""
     Inplace version of ``erfinv`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_erfinv`.
+    Please refer to :ref:`api_paddle_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
     return _C_ops.erfinv_(x)
