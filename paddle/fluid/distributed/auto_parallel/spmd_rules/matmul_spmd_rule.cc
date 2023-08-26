@@ -20,6 +20,91 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 using phi::distributed::auto_parallel::str_join;
+
+TensorDistAttr GetInferedDistAttr(
+    const TensorDistAttr& origin_dist_attr,
+    const std::vector<int64_t>& shape,
+    const std::string& tensor_axis,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool trans_axis) {
+  TensorDistAttr dist_attr_ = CopyTensorDistAttrForOutput(origin_dist_attr);
+  std::vector<int64_t> infered_dims_mapping;
+  infered_dims_mapping.reserve(tensor_axis.size());
+
+  for (size_t i = 0; i < tensor_axis.size(); ++i) {
+    if (shape.size() > i && shape[i] == 1) {
+      infered_dims_mapping.push_back(-1);
+    } else {
+      auto itr = axis_to_dim_map.find(tensor_axis.substr(i, 1));
+      if (itr == axis_to_dim_map.end()) {
+        // infer the k axis as -1 in inferbackward.
+        infered_dims_mapping.push_back(-1);
+      } else {
+        infered_dims_mapping.push_back(itr->second);
+      }
+    }
+  }
+
+  if (trans_axis) {
+    std::iter_swap(infered_dims_mapping.end() - 2,
+                   infered_dims_mapping.end() - 1);
+  }
+
+  dist_attr_.set_dims_mapping(infered_dims_mapping);
+  return dist_attr_;
+}
+
+void FillMatmulOperandNotation(const int x_ndim,
+                               const int y_ndim,
+                               std::string* x_axes,
+                               std::string* y_axes,
+                               std::string* out_axes) {
+  int max_ndim = std::max(x_ndim, y_ndim);
+  // reserve the char k, m, n for matrix product notation: mk,kn -> mn
+  std::string alphabet = "abcdefghijlopqrstuvwxyz";
+
+  // Handle 4 different matmul cases in Paddle
+  // vector * vector = scala
+  if (x_ndim == 1 && y_ndim == 1) {
+    *x_axes = "k";
+    *y_axes = "k";
+    *out_axes = "";
+    // vector * batched matrix
+  } else if (x_ndim == 1 && y_ndim > 1) {
+    *x_axes = "k";
+    std::string y_broadcast_axes =
+        GetBroadcastAxes(y_ndim - 2, y_ndim - 2, alphabet);
+    *y_axes = y_broadcast_axes + "kn";
+    *out_axes = y_broadcast_axes + "n";
+    // batched matrix * vector
+  } else if (x_ndim > 1 && y_ndim == 1) {
+    *y_axes = "k";
+    std::string x_broadcast_axes =
+        GetBroadcastAxes(x_ndim - 2, x_ndim - 2, alphabet);
+    *x_axes = x_broadcast_axes + "mk";
+    *out_axes = x_broadcast_axes + "m";
+    // batched matrix * batched matrix
+  } else if (x_ndim > 1 && y_ndim > 1) {
+    std::string x_broadcast_axes =
+        GetBroadcastAxes(x_ndim - 2, max_ndim - 2, alphabet);
+    std::string y_broadcast_axes =
+        GetBroadcastAxes(y_ndim - 2, max_ndim - 2, alphabet);
+    *x_axes = x_broadcast_axes + "mk";
+    *y_axes = y_broadcast_axes + "kn";
+
+    if (x_ndim > y_ndim) {
+      *out_axes = x_broadcast_axes + "mn";
+    } else {
+      *out_axes = y_broadcast_axes + "mn";
+    }
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "MatmulSPMDRule Receive Unsupported x_dim [%d] and y_dim [%d].",
+        x_ndim,
+        y_ndim));
+  }
+}
+
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                              const paddle::framework::AttributeMap& attrs) {
@@ -67,54 +152,10 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
           << "[" << (trans_y ? "true" : "false") << "]; ";
 
   // step1: build Einsum Notation
-
-  // reserve the char k, m, n for matrix product notation: mk,kn -> mn
-  int max_ndim = std::max(x_ndim, y_ndim);
-  std::string alphabet = "abcdefghijlopqrstuvwxyz";
   std::string x_axes;
   std::string y_axes;
   std::string out_axes;
-
-  // Handle 4 different matmul cases in Paddle
-  // vector * vector = scala
-  if (x_ndim == 1 && y_ndim == 1) {
-    x_axes = "k";
-    y_axes = "k";
-    out_axes = "";
-    // vector * batched matrix
-  } else if (x_ndim == 1 && y_ndim > 1) {
-    x_axes = "k";
-    std::string y_broadcast_axes =
-        GetBroadcastAxes(y_ndim - 2, y_ndim - 2, alphabet);
-    y_axes = y_broadcast_axes + "kn";
-    out_axes = y_broadcast_axes + "n";
-    // batched matrix * vector
-  } else if (x_ndim > 1 && y_ndim == 1) {
-    y_axes = "k";
-    std::string x_broadcast_axes =
-        GetBroadcastAxes(x_ndim - 2, x_ndim - 2, alphabet);
-    x_axes = x_broadcast_axes + "mk";
-    out_axes = x_broadcast_axes + "m";
-    // batched matrix * batched matrix
-  } else if (x_ndim > 1 && y_ndim > 1) {
-    std::string x_broadcast_axes =
-        GetBroadcastAxes(x_ndim - 2, max_ndim - 2, alphabet);
-    std::string y_broadcast_axes =
-        GetBroadcastAxes(y_ndim - 2, max_ndim - 2, alphabet);
-    x_axes = x_broadcast_axes + "mk";
-    y_axes = y_broadcast_axes + "kn";
-
-    if (x_ndim > y_ndim) {
-      out_axes = x_broadcast_axes + "mn";
-    } else {
-      out_axes = y_broadcast_axes + "mn";
-    }
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "MatmulSPMDRule Receive Unsupported x_dim [%d] and y_dim [%d].",
-        x_ndim,
-        y_ndim));
-  }
+  FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
   // step2: Sharding Propogation
   if (trans_x) {
@@ -180,46 +221,72 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {output_dist_attr_dst}};
 }
 
-TensorDistAttr GetInferedDistAttr(
-    const TensorDistAttr& origin_dist_attr,
-    const std::vector<int64_t>& shape,
-    const std::string& tensor_axis,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
-    const bool trans_axis) {
-  TensorDistAttr dist_attr_ = CopyTensorDistAttrForOutput(origin_dist_attr);
-  std::vector<int64_t> infered_dims_mapping;
-  infered_dims_mapping.reserve(tensor_axis.size());
-
-  for (size_t i = 0; i < tensor_axis.size(); ++i) {
-    if (shape.size() > i && shape[i] == 1) {
-      infered_dims_mapping.push_back(-1);
-    } else {
-      auto itr = axis_to_dim_map.find(tensor_axis.substr(i, 1));
-      if (itr == axis_to_dim_map.end()) {
-        phi::errors::InvalidArgument(
-            "Tensor axis [%s] of not in axis_to_dim_map.",
-            tensor_axis.substr(i, 1));
-      }
-      infered_dims_mapping.push_back(itr->second);
-    }
-  }
-
-  if (trans_axis) {
-    std::iter_swap(infered_dims_mapping.end() - 2,
-                   infered_dims_mapping.end() - 1);
-  }
-
-  dist_attr_.set_dims_mapping(infered_dims_mapping);
-  return dist_attr_;
-}
-
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-MatmulSPMDRule::InferBackward(const std::vector<DistTensorSpec>& output_specs,
+MatmulSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                              const std::vector<DistTensorSpec>& output_specs,
                               const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of MatmulSPMDRule is NOT implemented yet."));
+  // extra & verify input
+  auto output_specs_size = output_specs.size();
+  PADDLE_ENFORCE_EQ(
+      output_specs_size,
+      1,
+      phi::errors::InvalidArgument(
+          "The size of OutputSpec of matmul should be 1, but got [%d].",
+          output_specs_size));
 
-  return {};
+  auto out_shape = output_specs[0].shape();
+  int out_ndim = out_shape.size();
+
+  auto x_shape = input_specs[0].shape();
+  auto y_shape = input_specs[1].shape();
+  int x_ndim = x_shape.size();
+  int y_ndim = y_shape.size();
+  int max_ndim = std::max(x_ndim, y_ndim);
+  PADDLE_ENFORCE_EQ(max_ndim,
+                    out_ndim,
+                    phi::errors::InvalidArgument(
+                        "The max ndim of inputs should be equal out_ndim in "
+                        "Matmul, but got max ndim: [%d] and out_ndim: [%d].",
+                        max_ndim,
+                        out_ndim));
+
+  bool trans_x = ExtractAttr<bool>("trans_x", attrs);
+  bool trans_y = ExtractAttr<bool>("trans_y", attrs);
+
+  auto out_dist_attr_src = output_specs[0].dist_attr();
+  std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
+
+  // step1: build Einsum Notation
+  std::string x_axes;
+  std::string y_axes;
+  std::string out_axes;
+  FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
+
+  // step2: Sharding Propogation
+  // should not use input dims mapping for backward sharding merge
+  auto axis_to_dim_map =
+      ShardingMergeForTensors({{out_axes, out_dims_mapping}}, false);
+
+  TensorDistAttr x_dist_attr_dst = GetInferedDistAttr(
+      input_specs[0].dist_attr(), x_shape, x_axes, axis_to_dim_map, trans_x);
+  TensorDistAttr y_dist_attr_dst = GetInferedDistAttr(
+      input_specs[1].dist_attr(), y_shape, y_axes, axis_to_dim_map, trans_y);
+
+  // step3: Handle Partial
+  // NOTE we skip the partial backward inference in Partial Stage-I.
+  // output partial --> axis k is sharded.
+
+  VLOG(4) << "MatmulSPMDRule InferBackward: "
+          << "Einsum notation: [" << x_axes << "," << y_axes << " --> "
+          << out_axes << "]. " << std::endl
+          << "Out shape: [" << str_join(out_shape) << "], src_dims_mapping: ["
+          << str_join(out_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(out_dims_mapping) << "]; Input X dims_mapping: ["
+          << str_join(x_dist_attr_dst.dims_mapping())
+          << "], Input Y dims_mapping:["
+          << str_join(y_dist_attr_dst.dims_mapping()) << "].";
+
+  return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr_src}};
 }
 
 }  // namespace auto_parallel
