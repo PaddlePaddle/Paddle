@@ -2647,7 +2647,7 @@ def polar(abs, angle, name=None):
             >>> out = paddle.polar(abs, angle)
             >>> print(out)
             Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
-            [(6.123233995736766e-17+1j)
+            [ (6.123233995736766e-17+1j)             ,
              (-1.4142135623730954-1.414213562373095j)])
     """
     check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
