@@ -153,6 +153,7 @@ class TestDiffOpN(TestDiffOp):
         self.prepend = None
         self.append = None
 
+
 class TestDiffOpAxis(TestDiffOp):
     def set_args(self):
         self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')

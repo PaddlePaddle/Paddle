@@ -5567,8 +5567,11 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     """
     if n < 1:
         raise ValueError(
-            "Diff expects input to be at least one-dimensional but got {}".format(n))
-    
+            "Diff expects input to be at least one-dimensional but got {}".format(
+                n
+            )
+        )
+
     def _diff_handler(x, n=1, axis=-1, prepend=None, append=None, name=None):
         if axis < 0:
             axis = axis + len(x.shape)
@@ -5689,11 +5692,16 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 out = paddle.tensor.math.subtract(input_back, input_front)
             return out
 
-    out = _diff_handler(x,  n=1, axis=axis, prepend=prepend, append=append, name=name)
-    if n > 1 :
-        for _ in range(n-1):
-            out = _diff_handler(out, n=1, axis=axis, prepend=prepend, append=append, name=name)
+    out = _diff_handler(
+        x, n=1, axis=axis, prepend=prepend, append=append, name=name
+    )
+    if n > 1:
+        for _ in range(n - 1):
+            out = _diff_handler(
+                out, n=1, axis=axis, prepend=prepend, append=append, name=name
+            )
     return out
+
 
 def angle(x, name=None):
     r"""
