@@ -58,6 +58,7 @@ class DeviceMesh(core.DeviceMesh):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
 

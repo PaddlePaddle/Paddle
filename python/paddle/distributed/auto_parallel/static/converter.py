@@ -101,6 +101,7 @@ class Converter:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
                 >>> from paddle.distributed.auto_parallel.static.converter import Converter
                 >>> complete_tensors = np.arange(4).reshape([2, 2])
@@ -353,6 +354,7 @@ class Converter:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
                 >>> partition_tensor_list = [(np.array([[[1.11, 1.12]]]), [[0,1],[0,1],[0,2]])]
                 >>> tensor = np.array([[[1.13, 1.14]]])
@@ -418,8 +420,8 @@ class Converter:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
-                >>> from paddle.distributed.auto_parallel.static.utils import split
                 >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
                 >>> rank = 2
                 >>> complete_shape = [1, 1, 6]
@@ -457,6 +459,7 @@ class Converter:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
                 >>> from paddle.distributed.auto_parallel.static.utils import _get_split_indices
                 >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
@@ -508,6 +511,7 @@ class Converter:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> import numpy as np
                 >>> from paddle.distributed.auto_parallel.static.utils import _get_sliced_index
                 >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
