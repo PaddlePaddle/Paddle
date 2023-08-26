@@ -338,7 +338,14 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
       .def("infer_forward", &SPMDRuleBase::InferForward)
-      .def("infer_backward", &SPMDRuleBase::InferBackward);
+      .def("infer_backward",
+           static_cast<std::pair<std::vector<TensorDistAttr>,
+                                 std::vector<TensorDistAttr>> (SPMDRuleBase::*)(
+               const std::vector<DistTensorSpec> &,
+               const std::vector<DistTensorSpec> &,
+               const paddle::framework::AttributeMap &)>(
+               &SPMDRuleBase::InferBackward));
+  // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
 
   py::class_<DistTensorSpec>(*m, "DistTensorSpec")
       .def(py::init<>())
