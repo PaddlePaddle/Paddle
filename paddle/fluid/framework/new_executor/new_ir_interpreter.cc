@@ -517,7 +517,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (IsLegacyOp(op_name)) {
+      if (dialect::IsLegacyOp(op_name)) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,
