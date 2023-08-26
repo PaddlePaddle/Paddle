@@ -76,6 +76,15 @@ cc_test_old(
   ir)
 
 cc_test_old(
+  add_dialect_parser_test
+  SRCS
+  add_dialect_parser_test.cc
+  DEPS
+  gtest
+  pd_dialect
+  ir)
+
+cc_test_old(
   ir_parser_test
   SRCS
   ir_parser_test.cc

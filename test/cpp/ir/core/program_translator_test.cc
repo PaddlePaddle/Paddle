@@ -41,14 +41,6 @@ using BlockDesc = paddle::framework::BlockDesc;
 using OpDesc = paddle::framework::OpDesc;
 using VarDesc = paddle::framework::VarDesc;
 using VarType = paddle::framework::proto::VarType;
-using std::ofstream;
-using std::string;
-void write_to_file(string str, string filename) {
-  ofstream os;
-  os.open(filename);
-  os << str;
-  os.close();
-}
 
 ProgramDesc load_from_file(const std::string &file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -128,19 +120,12 @@ TEST(IrParserTest, MainProgram) {
 
   std::stringstream ss;
   program->Print(ss);
-  write_to_file(ss.str(), "mainprogram.txt");
   ir::IrParser *parser = new ir::IrParser(ctx, ss);
   std::unique_ptr<ir::Program> parser_program = parser->ParseProgram();
   std::stringstream ssp;
   parser_program->Print(ssp);
-
+  delete parser;
   EXPECT_TRUE(ssp.str() == ss.str());
-  //    for (auto item : *program->block()) {
-  //    std::stringstream stp;
-  //    ir::IrPrinter* printer = new ir::IrPrinter{stp};
-  //   printer->PrintOperation(item);
-  //   std::cout<<stp.str()<<std::endl;
-  //}
 }
 
 TEST(IrParserTest, StartupProgram) {
@@ -157,6 +142,6 @@ TEST(IrParserTest, StartupProgram) {
   std::unique_ptr<ir::Program> parser_program = parser->ParseProgram();
   std::stringstream ssp;
   parser_program->Print(ssp);
-
+  delete parser;
   EXPECT_TRUE(ssp.str() == ss.str());
 }
