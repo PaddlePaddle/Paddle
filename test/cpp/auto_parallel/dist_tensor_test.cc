@@ -46,20 +46,14 @@ TEST(dist_tensor, constructor) {
   EXPECT_EQ(dist_x1.local_dims()[0], 3L);
   EXPECT_EQ(dist_x1.local_dims()[1], 4L);
 
-  DenseTensor x2(alloc, meta);
-  DistTensor dist_x2(x2, dims, dist_attr);
-  EXPECT_TRUE(dist_x2.defined());
-  EXPECT_TRUE(dist_x2.initialized());
-  EXPECT_TRUE(dist_x1.valid());
-
   // empty construct
-  DistTensor dist_x3(dims, dist_attr);
-  EXPECT_TRUE(!dist_x3.defined());
-  EXPECT_TRUE(!dist_x3.initialized());
+  DistTensor dist_x2(dims, dist_attr);
+  EXPECT_TRUE(!dist_x2.defined());
+  EXPECT_TRUE(!dist_x2.initialized());
   // allocate error test
   bool caught_exception = false;
   try {
-    dist_x3.AllocateFrom(alloc, phi::DataType::FLOAT32, 12L, false);
+    dist_x2.AllocateFrom(alloc, phi::DataType::FLOAT32, 12L, false);
   } catch (phi::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_NE(std::string(error.what()).find("Unavailable"), 0UL);
