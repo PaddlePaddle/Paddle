@@ -90,16 +90,10 @@ class CustomDevice : public DeviceInterface {
       C_Device_st device;
       device.id = dev_id;
       devices_pool[dev_id] = device;
-      InitDevice(dev_id);
     }
   }
 
   void Finalize() override {
-    auto devices = GetDeviceList();
-    for (auto dev_id : devices) {
-      DeInitDevice(dev_id);
-    }
-
     bool ok = true;
     if (pimpl_->finalize && pimpl_->finalize() != C_SUCCESS) {
       LOG(ERROR) << "Finalize " << Type() << " Failed\n";
@@ -760,13 +754,15 @@ class CustomDevice : public DeviceInterface {
   }
 
   void CCLGroupStart() override {
-    CHECK_PTR(pimpl_->xccl_group_start);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
+    if (pimpl_->xccl_group_start) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
+    }
   }
 
   void CCLGroupEnd() override {
-    CHECK_PTR(pimpl_->xccl_group_end);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
+    if (pimpl_->xccl_group_end) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
+    }
   }
 
   void CCLSend(void* send_buf,

@@ -158,6 +158,26 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
+    phi::DenseTensor out;
+    out.Resize(tensor.dims());
+    auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
+    auto kernel_result =
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "cast",
+            {phi::TransToPhiBackend(tensor.place()),
+             phi::DataLayout::ALL_LAYOUT,
+             tensor.dtype()});
+    using kernel_signature = void (*)(const phi::DeviceContext&,
+                                      const phi::DenseTensor&,
+                                      phi::DataType,
+                                      phi::DenseTensor*);
+    const auto& kernel = kernel_result.kernel;
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx, tensor, dtype, &out);
+    return out;
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Place type is not supported when casting data type."));
