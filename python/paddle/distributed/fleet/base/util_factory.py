@@ -98,16 +98,13 @@ class UtilBase:
                 ...     if fleet.is_server():
                 ...         input = np.array([1, 2])
                 ...         output = fleet.util.all_reduce(input, "sum", "server")
-                ...         print(output)
-                [2, 4]
+                ...         print(output) # [2, 4]
                 ...     elif fleet.is_worker():
                 ...         input = np.array([3, 4])
                 ...         output = fleet.util.all_reduce(input, "sum", "worker")
-                ...         print(output)
-                [6, 8]
+                ...         print(output) # [6, 8]
                 ...     output = fleet.util.all_reduce(input, "sum", "all")
-                ...     print(output)
-                [8, 12]
+                ...     print(output) # [8, 12]
 
                 >>> if __name__ == "__main__":
                 ...     train()
@@ -143,15 +140,12 @@ class UtilBase:
                 ...
                 ...     if fleet.is_server():
                 ...         fleet.util.barrier("server")
-                ...         print("all server arrive here")
-                all server arrive here
+                ...         print("all server arrive here") # all server arrive here
                 ...     elif fleet.is_worker():
                 ...         fleet.util.barrier("worker")
-                ...         print("all server arrive here")
-                all server arrive here
+                ...         print("all server arrive here") # all server arrive here
                 ...     fleet.util.barrier("all")
-                ...     print("all servers and workers arrive here")
-                all servers and workers arrive here
+                ...     print("all servers and workers arrive here") #all servers and workers arrive here
 
                 >>> if __name__ == "__main__":
                 ...     train()
@@ -192,16 +186,13 @@ class UtilBase:
                 ...     if fleet.is_server():
                 ...         input = fleet.server_index()
                 ...         output = fleet.util.all_gather(input, "server")
-                ...         print(output)
-                [0, 1]
+                ...         print(output) # [0, 1]
                 ...     elif fleet.is_worker():
                 ...         input = fleet.worker_index()
                 ...         output = fleet.util.all_gather(input, "worker")
-                ...         print(output)
-                [0, 1]
+                ...         print(output) # [0, 1]
                 ...     output = fleet.util.all_gather(input, "all")
-                ...     print(output)
-                [0, 1, 0, 1]
+                ...     print(output) # [0, 1, 0, 1]
 
                 >>> if __name__ == "__main__":
                 ...     train()
