@@ -50,7 +50,8 @@ void OutputProcess(framework::ir::Graph *graph,
                    const std::unordered_set<framework::ir::Node *> &trt_outputs,
                    phi::Backend backend,
                    phi::DataType precision,
-                   const std::unordered_set<std::string> &blacklist) {
+                   const std::unordered_set<std::string> &blacklist,
+                   const std::unordered_set<std::string> &whitelist) {
   framework::BlockDesc *block_desc{nullptr};
   int suffix = 0;
   std::unordered_map<framework::ir::Node *, framework::ir::Node *>
@@ -86,7 +87,8 @@ void OutputProcess(framework::ir::Graph *graph,
                   phi::TransToPhiKernelName(next_op->Op()->Type()),
                   backend,
                   precision,
-                  blacklist)) {
+                  blacklist,
+                  whitelist)) {
             InsertCastOp(graph,
                          var_node,
                          next_op,
@@ -363,6 +365,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       static_cast<phi::DataType>(Get<int>("model_precision"));
   auto mixed_black_list =
       Get<std::unordered_set<std::string>>("mixed_black_list");
+  auto mixed_white_list =
+      Get<std::unordered_set<std::string>>("mixed_white_list");
 
   std::set<std::string> output_names;
   std::set<std::string> output_names_with_id;
@@ -414,8 +418,12 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         static_cast<int>(x->Var()->GetDataType());
   }
 
-  OutputProcess(
-      graph, trt_outputs, phi::Backend::GPU, model_precision, mixed_black_list);
+  OutputProcess(graph,
+                trt_outputs,
+                phi::Backend::GPU,
+                model_precision,
+                mixed_black_list,
+                mixed_white_list);
 
   std::unordered_map<std::string, std::string> output_name_map;
   std::unordered_map<std::string, framework::ir::Node *> graph_var_map;
