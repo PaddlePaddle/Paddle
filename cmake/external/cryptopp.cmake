@@ -19,7 +19,10 @@ set(CRYPTOPP_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cryptopp)
 set(CRYPTOPP_INCLUDE_DIR
     "${CRYPTOPP_INSTALL_DIR}/include"
     CACHE PATH "cryptopp include directory." FORCE)
-set(CRYPTOPP_REPOSITORY ${GIT_URL}/weidai11/cryptopp.git)
+# TODO(MTAI): In order to download quickly, a repo was temporarily forked on MooreThreads internal github.
+# When merged into the paddle official repo, we need to restore it.
+set(CRYPTOPP_REPOSITORY "https://github.mthreads.com/zhi-cai/cryptopp.git")
+#set(CRYPTOPP_REPOSITORY ${GIT_URL}/weidai11/cryptopp.git)
 set(CRYPTOPP_TAG CRYPTOPP_8_2_0)
 
 if(WIN32)

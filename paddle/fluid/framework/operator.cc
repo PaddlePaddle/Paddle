@@ -750,7 +750,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(PADDLE_WITH_MUSA)
       PADDLE_THROW(platform::errors::Unavailable(
           "Cannot run operator on place %s, please recompile paddle or "
           "reinstall Paddle with CUDA support.",
@@ -1552,7 +1553,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
     auto& dev_ctx = ctx.device_context<phi::GPUContext>();
     use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
   }
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP || PADDLE_WITH_MUSA
 
 #if defined(PADDLE_WITH_CUDA)
   if (use_cudnn && data_type == phi::DataType::BFLOAT16) {

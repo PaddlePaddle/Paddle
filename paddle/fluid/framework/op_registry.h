@@ -446,7 +446,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
 
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && \
+    !defined(PADDLE_WITH_MUSA)
 #define USE_OP_KERNEL(op_type) USE_OP_DEVICE_KERNEL(op_type, CPU)
 #else
 #define USE_OP_KERNEL(op_type)        \

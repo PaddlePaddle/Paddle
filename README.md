@@ -88,9 +88,10 @@ docker run -it --privileged --name=paddle_musa_dev --env MTHREADS_VISIBLE_DEVICE
 
 ## Useful Environment Variables
 
-| Docker Tag | Module | Description |
+| environment variable | Module | Description |
 | ---- | --- | --- |
 | export GLOG_v=0~9 | Paddle | Control the log level |
+| export FLAGS_enable_api_kernel_fallback=0/1 | Paddle | Enable fallback or not |
 | export MUSA_VISIBLE_DEVICES=0,1,2,3 | Driver | Control the visible devices |
 | export MUSA_LAUNCH_BLOCKING=1 | Driver | Set the synchronization mode |
 
