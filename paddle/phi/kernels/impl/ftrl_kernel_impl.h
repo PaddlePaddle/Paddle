@@ -187,13 +187,16 @@ void FTRLOpSparseKernel(const Context& ctx,
   T l1_r = static_cast<T>(l1);
   T l2_r = static_cast<T>(l2);
   T lr_power_r = static_cast<T>(lr_power);
-  const phi::SelectedRows* grad_ptr = &grad;
-  auto& grad_row = *grad_ptr;
-  auto& grad_tensor = grad_row.value();
-  const T* grad_data = grad_tensor.template data<T>();
-  auto* grad_rows = &grad_row.rows();
-  const int64_t* rows = grad_rows.Data(ctx.GetPlace());
-  auto row_numel = grad_tensor.numel() / grad_row.rows().size();
+
+  phi::SelectedRows tmp_merged_grad;
+  phi::SelectedRows* merged_grad = &tmp_merged_grad;
+  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
+  merge_func(ctx, grad, merged_grad);
+
+  auto* grad_merge_rows = merged_grad->mutable_rows();
+  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
+  int64_t row_numel = merged_grad->value().numel() / merged_grad->rows().size();
 
   phi::funcs::ForRange<Context> for_range(ctx, grad.numel());
 
