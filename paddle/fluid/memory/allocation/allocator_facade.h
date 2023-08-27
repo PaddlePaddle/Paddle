@@ -99,6 +99,11 @@ class AllocatorFacade {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
                                                  phi::stream::stream_t stream);
+  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
+                    phi::stream::stream_t stream);
+
+  void SetDefaultStream(const platform::CustomPlace& place,
+                        phi::stream::stream_t stream);
 #endif
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:

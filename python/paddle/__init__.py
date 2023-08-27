@@ -449,6 +449,11 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
+
+from .new_ir_utils import _switch_to_new_ir  # noqa: F401
+
+_switch_to_new_ir()
+
 __all__ = [  # noqa
     'iinfo',
     'finfo',

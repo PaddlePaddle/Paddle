@@ -39,11 +39,13 @@ class StreamSafeCustomDeviceAllocation : public Allocation {
   bool CanBeFreed();
   void MarkAsWillBeFreed();
   phi::stream::stream_t GetOwningStream() const;
+  void SetOwningStream(phi::stream::stream_t s);
 
  private:
   thread_local static std::once_flag once_flag_;
   DecoratedAllocationPtr underlying_allocation_;
-  std::map<phi::stream::stream_t, phi::event::Event> outstanding_event_map_;
+  std::map<phi::stream::stream_t, std::shared_ptr<phi::event::Event>>
+      outstanding_event_map_;
   phi::stream::stream_t owning_stream_;
   SpinLock outstanding_event_map_lock_;
   std::shared_ptr<Allocator> allocator_;
