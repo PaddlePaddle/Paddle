@@ -20,7 +20,6 @@
 
 namespace paddle {
 namespace dialect {
-
 class LegacyKernelOp : public ir::Op<LegacyKernelOp> {
  public:
   using Op::Op;
