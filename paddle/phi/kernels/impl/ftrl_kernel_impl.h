@@ -176,7 +176,7 @@ void FTRLOpKernel(const Context& ctx,
 
 template <typename T, typename Context>
 void FTRLOpSparseKernel(const Context& ctx,
-                        const DenseTensor& grad,
+                        const SelectedRows& grad,
                         const DenseTensor& learningRate,
                         const DenseTensor& param,
                         const DenseTensor& squared_accumulator,
@@ -187,6 +187,12 @@ void FTRLOpSparseKernel(const Context& ctx,
                         DenseTensor* param_out,
                         DenseTensor* squared_accumulator_out,
                         DenseTensor* linear_accumulator_out) {
+  // sparse update maybe empty.
+  if (grad.rows().size() == 0) {
+    VLOG(3) << "Grad SelectedRows contains no data!";
+    return;
+  }
+
   T l1_r = static_cast<T>(l1);
   T l2_r = static_cast<T>(l2);
   T lr_power_r = static_cast<T>(lr_power);
@@ -203,7 +209,7 @@ void FTRLOpSparseKernel(const Context& ctx,
 
   phi::funcs::ForRange<Context> for_range(ctx, grad.numel());
 
-  SparseFTRLFunctor<T> functor(grad.data<T>(),
+  SparseFTRLFunctor<T> functor(merged_grad->value().data<T>(),
                                param.data<T>(),
                                squared_accumulator.data<T>(),
                                learningRate.data<T>(),
@@ -212,9 +218,9 @@ void FTRLOpSparseKernel(const Context& ctx,
                                lr_power_r,
                                rows,
                                row_numel,
-                               ctx.template Alloc<T> param_out,
-                               ctx.template Alloc<T> squared_accumulator_out,
-                               ctx.template Alloc<T> linear_accumulator_out);
+                               ctx.template Alloc<T>(param_out),
+                               ctx.template Alloc<T>(squared_accumulator_out),
+                               ctx.template Alloc<T>(linear_accumulator_out);
   for_range(functor);
 }
 }  // namespace phi
