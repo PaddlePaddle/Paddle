@@ -30,8 +30,6 @@ void FTRLOpKernel(const Context& ctx,
                   const DenseTensor& param,
                   const DenseTensor& squared_accumulator,
                   const DenseTensor& linear_accumulator,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
                   float l1,
                   float l2,
                   float lr_power,
@@ -46,8 +44,6 @@ void FTRLOpKernel(const Context& ctx,
   auto sq_accum = phi::EigenVector<T>::Flatten(squared_accumulator);
   auto lin_accum = phi::EigenVector<T>::Flatten(linear_accumulator);
   auto lr = phi::EigenVector<T>::Flatten(learningrate);
-  auto x_t = phi::EigenVector<T>::Flatten(x);
-  auto y_t = phi::EigenVector<T>::Flatten(y);
 
   auto p_out = phi::EigenVector<T>::Flatten(*param_out);
   auto s_acc_out = phi::EigenVector<T>::Flatten(*squared_accumulator_out);
@@ -70,17 +66,17 @@ void FTRLOpKernel(const Context& ctx,
             p;
   }
 
-  x_t = (l_acc_out.constant((l1_t)) * l_acc_out.sign() - l_acc_out);
+  auto x_t = (l_acc_out.constant((l1_t)) * l_acc_out.sign() - l_acc_out);
 
   if (lr_power_t == static_cast<T>(-0.5)) {
-    y_t = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
-          l_acc_out.constant(static_cast<T>(2) * l2_t);
+    auto y_t = (new_accum.sqrt() / lr.broadcast(grad_dsize)) +
+               l_acc_out.constant(static_cast<T>(2) * l2_t);
     auto pre_shrink = x_t / y_t;
     p_out.device(place) = (l_acc_out.abs() > l_acc_out.constant(l1_t))
                               .select(pre_shrink, p.constant(0));
   } else {
-    y_t = (new_accum.pow(-lr_power_t) / lr.broadcast(grad_dsize)) +
-          l_acc_out.constant(static_cast<T>(2) * l2_t);
+    auto y_t = (new_accum.pow(-lr_power_t) / lr.broadcast(grad_dsize)) +
+               l_acc_out.constant(static_cast<T>(2) * l2_t);
     auto pre_shrink = x_t / y_t;
     p_out.device(place) = (l_acc_out.abs() > l_acc_out.constant(l1_t))
                               .select(pre_shrink, p.constant(0));
