@@ -51,6 +51,8 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
         )
 
     x = l1 * np.sign(lin_accum_updated) - lin_accum_updated
+    y = 0
+
     if lr_power == -0.5:
         y = (np.sqrt(new_accum) / lr) + (2 * l2)
         pre_shrink = x / y
@@ -66,16 +68,20 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
 
     sq_accum_updated = sq_accum_hit + grad * grad
 
+    x_out = x.copy()
+    y_out = y.copy()
     param_out = param.copy()
     sq_accum_out = sq_accum.copy()
     lin_accum_out = lin_accum.copy()
 
     for i in range(len(rows)):
+        x_out[rows[i]] = x[i]
+        y_out[rows[i]] = y[i]
         param_out[rows[i]] = param_updated[i]
         sq_accum_out[rows[i]] = sq_accum_updated[i]
         lin_accum_out[rows[i]] = lin_accum_updated[i]
 
-    return param_out, sq_accum_out, lin_accum_out
+    return param_out, sq_accum_out, lin_accum_out, x_out, y_out
 
 
 class TestFTRLOp(OpTest):
@@ -105,7 +111,7 @@ class TestFTRLOp(OpTest):
             'learning_rate': lr,
         }
 
-        param_out, sq_accum_out, lin_accum_out = ftrl_step(
+        param_out, sq_accum_out, lin_accum_out, x_out, y_out = ftrl_step(
             w, g, range(rows), sq_accum, linear_accum, lr, l1, l2, lr_power
         )
 
@@ -113,6 +119,8 @@ class TestFTRLOp(OpTest):
             'ParamOut': param_out,
             'SquaredAccumOut': sq_accum_out,
             'LinearAccumOut': lin_accum_out,
+            'XOut': x_out,
+            'YOut': y_out,
         }
 
     def test_check_output(self):
@@ -164,7 +172,7 @@ class TestSparseFTRLOp(unittest.TestCase):
         lr.set(lr_array, place)
 
         # calculate ground-truth answer
-        param_out, sq_accum_out, lin_accum_out = ftrl_step(
+        param_out, sq_accum_out, lin_accum_out, x_out, y_out = ftrl_step(
             param_array,
             grad_array,
             rows,
