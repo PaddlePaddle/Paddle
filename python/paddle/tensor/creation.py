@@ -294,7 +294,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-                >>> # doctest: +TIMEOUT(0.1)
+                >>> # doctest: +TIMEOUT(1)
                 >>> import time
                 >>> time.sleep(2)
                 >>> import paddle
