@@ -93,7 +93,7 @@ class L1Decay(WeightDecayRegularizer):
             >>> # Global regularizer does not take effect on my_conv2d for this case.
             >>> from paddle.nn import Conv2D
             >>> from paddle import ParamAttr
-            >>> from paddle.regularizer import L2Decay
+            >>> from paddle.regularizer import L1Decay
 
             >>> my_conv2d = Conv2D(
             ...         in_channels=10,
