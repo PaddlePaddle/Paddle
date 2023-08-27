@@ -34,7 +34,7 @@ void FTRLOpKernel(const Context& ctx,
 
 template <typename T, typename Context>
 void FTRLOpSparseKernel(const Context& ctx,
-                        const DenseTensor& grad,
+                        const SelectedRows& grad,
                         const DenseTensor& learningRate,
                         const DenseTensor& param,
                         const DenseTensor& squared_accumulator,
