@@ -49,54 +49,57 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        >>> import paddle
-        >>> from paddle import signal
+            >>> import paddle
+            >>> from paddle import signal
 
-        >>> # 1D
-        >>> x = paddle.arange(8)
-        >>> y0 = signal.frame(x, frame_length=4, hop_length=2, axis=-1)
-        >>> print(y0)
-        [[0, 2, 4],
-         [1, 3, 5],
-         [2, 4, 6],
-         [3, 5, 7]]
+            >>> # 1D
+            >>> x = paddle.arange(8)
+            >>> y0 = signal.frame(x, frame_length=4, hop_length=2, axis=-1)
+            >>> print(y0)
+            Tensor(shape=[4, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 2, 4],
+             [1, 3, 5],
+             [2, 4, 6],
+             [3, 5, 7]])
 
-        >>> y1 = signal.frame(x, frame_length=4, hop_length=2, axis=0)
-        >>> print(y1)
-        [[0, 1, 2, 3],
-         [2, 3, 4, 5],
-         [4, 5, 6, 7]]
+            >>> y1 = signal.frame(x, frame_length=4, hop_length=2, axis=0)
+            >>> print(y1)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 2, 3],
+             [2, 3, 4, 5],
+             [4, 5, 6, 7]])
 
-        >>> # 2D
-        >>> x0 = paddle.arange(16).reshape([2, 8])
-        >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
-        >>> print(y0)
-        [[[0, 2, 4],
-          [1, 3, 5],
-          [2, 4, 6],
-          [3, 5, 7]],
-         [[8 , 10, 12],
-          [9 , 11, 13],
-          [10, 12, 14],
-          [11, 13, 15]]]
+            >>> # 2D
+            >>> x0 = paddle.arange(16).reshape([2, 8])
+            >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
+            >>> print(y0)
+            Tensor(shape=[2, 4, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0 , 2 , 4 ],
+              [1 , 3 , 5 ],
+              [2 , 4 , 6 ],
+              [3 , 5 , 7 ]],
+             [[8 , 10, 12],
+              [9 , 11, 13],
+              [10, 12, 14],
+              [11, 13, 15]]])
 
-        >>> x1 = paddle.arange(16).reshape([8, 2])
-        >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
-        >>> print(y1.shape)
-        [3, 4, 2]
+            >>> x1 = paddle.arange(16).reshape([8, 2])
+            >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
+            >>> print(y1.shape)
+            [3, 4, 2]
 
-        >>> # > 2D
-        >>> x0 = paddle.arange(32).reshape([2, 2, 8])
-        >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
-        >>> print(y0.shape)
-        [2, 2, 4, 3]
+            >>> # > 2D
+            >>> x0 = paddle.arange(32).reshape([2, 2, 8])
+            >>> y0 = signal.frame(x0, frame_length=4, hop_length=2, axis=-1)
+            >>> print(y0.shape)
+            [2, 2, 4, 3]
 
-        >>> x1 = paddle.arange(32).reshape([8, 2, 2])
-        >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
-        >>> print(y1.shape)
-        [3, 4, 2, 2]
+            >>> x1 = paddle.arange(32).reshape([8, 2, 2])
+            >>> y1 = signal.frame(x1, frame_length=4, hop_length=2, axis=0)
+            >>> print(y1.shape)
+            [3, 4, 2, 2]
     """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
@@ -161,46 +164,53 @@ def overlap_add(x, hop_length, axis=-1, name=None):
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        >>> import paddle
-        >>> from paddle.signal import overlap_add
+            >>> import paddle
+            >>> from paddle.signal import overlap_add
 
-        >>> # 2D
-        >>> x0 = paddle.arange(16).reshape([8, 2])
-        >>> print(x0)
-        [[0 , 1 ],
-         [2 , 3 ],
-         [4 , 5 ],
-         [6 , 7 ],
-         [8 , 9 ],
-         [10, 11],
-         [12, 13],
-         [14, 15]]
+            >>> # 2D
+            >>> x0 = paddle.arange(16).reshape([8, 2])
+            >>> print(x0)
+            Tensor(shape=[8, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0 , 1 ],
+             [2 , 3 ],
+             [4 , 5 ],
+             [6 , 7 ],
+             [8 , 9 ],
+             [10, 11],
+             [12, 13],
+             [14, 15]])
 
-        >>> y0 = overlap_add(x0, hop_length=2, axis=-1)
-        >>> print(y0)
-        [0 , 2 , 5 , 9 , 13, 17, 21, 25, 13, 15]
 
-        >>> x1 = paddle.arange(16).reshape([2, 8])
-        >>> print(x1)
-        [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
-         [8 , 9 , 10, 11, 12, 13, 14, 15]]
+            >>> y0 = overlap_add(x0, hop_length=2, axis=-1)
+            >>> print(y0)
+            Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0 , 2 , 5 , 9 , 13, 17, 21, 25, 13, 15])
 
-        >>> y1 = overlap_add(x1, hop_length=2, axis=0)
-        >>> print(y1)
-        [0 , 1 , 10, 12, 14, 16, 18, 20, 14, 15]
+            >>> x1 = paddle.arange(16).reshape([2, 8])
+            >>> print(x1)
+            Tensor(shape=[2, 8], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
+             [8 , 9 , 10, 11, 12, 13, 14, 15]])
 
-        >>> # > 2D
-        >>> x0 = paddle.arange(32).reshape([2, 1, 8, 2])
-        >>> y0 = overlap_add(x0, hop_length=2, axis=-1)
-        >>> print(y0.shape)
-        [2, 1, 10]
 
-        >>> x1 = paddle.arange(32).reshape([2, 8, 1, 2])
-        >>> y1 = overlap_add(x1, hop_length=2, axis=0)
-        >>> print(y1)
-        [10, 1, 2]
+            >>> y1 = overlap_add(x1, hop_length=2, axis=0)
+            >>> print(y1)
+            Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0 , 1 , 10, 12, 14, 16, 18, 20, 14, 15])
+
+
+            >>> # > 2D
+            >>> x0 = paddle.arange(32).reshape([2, 1, 8, 2])
+            >>> y0 = overlap_add(x0, hop_length=2, axis=-1)
+            >>> print(y0.shape)
+            [2, 1, 10]
+
+            >>> x1 = paddle.arange(32).reshape([2, 8, 1, 2])
+            >>> y1 = overlap_add(x1, hop_length=2, axis=0)
+            >>> print(y1.shape)
+            [10, 1, 2]
     """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')

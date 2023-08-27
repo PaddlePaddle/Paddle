@@ -101,7 +101,7 @@ class L1Decay(WeightDecayRegularizer):
             ...         kernel_size=1,
             ...         stride=1,
             ...         padding=0,
-            ...         weight_attr=ParamAttr(regularizer=L2Decay(coeff=0.01)),
+            ...         weight_attr=ParamAttr(regularizer=L1Decay(coeff=0.01)),
             ...         bias_attr=False)
     """
 
