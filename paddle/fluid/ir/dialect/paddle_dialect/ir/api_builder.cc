@@ -15,14 +15,12 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/api_builder.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/ir_context.h"
-// #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 
 namespace paddle {
 namespace dialect {
 
 APIBuilder::APIBuilder() : builder_(nullptr) {
   ctx_ = ir::IrContext::Instance();
-  // ctx_->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 }
 
 void APIBuilder::SetProgram(ir::Program* program) {

@@ -130,6 +130,8 @@ class TensorDistAttr {
 
   void parse_from_string(const std::string& data);
 
+  bool empty() const;
+
  private:
   static std::vector<std::string> fields_;
   ProcessMesh process_mesh_;
