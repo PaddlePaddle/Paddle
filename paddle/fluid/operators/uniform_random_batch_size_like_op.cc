@@ -65,11 +65,11 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     std::vector<int64_t> new_shape;
     auto list_new_shape_tensor =
         ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
-    if (list_new_shape_tensor.size() > 0 || ctx.HasInput("ShapeTensor")) {
+    if (!list_new_shape_tensor.empty() || ctx.HasInput("ShapeTensor")) {
       if (ctx.HasInput("ShapeTensor")) {
         auto *shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
         new_shape = GetNewDataFromShapeTensor(shape_tensor);
-      } else if (list_new_shape_tensor.size() > 0) {
+      } else if (!list_new_shape_tensor.empty()) {
         new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
       }
     }

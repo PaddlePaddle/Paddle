@@ -62,7 +62,7 @@ void Copy(const Context& dev_ctx,
   void* dst_ptr = nullptr;
   if (dst_place.GetType() == AllocationType::CPU) {
     dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     dst->set_layout(src.layout());
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -448,7 +448,7 @@ template void Copy(const CustomContext& dev_ctx,
                    TensorArray* dst);
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template void Copy(const OneDNNContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,

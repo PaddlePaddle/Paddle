@@ -90,16 +90,10 @@ class CustomDevice : public DeviceInterface {
       C_Device_st device;
       device.id = dev_id;
       devices_pool[dev_id] = device;
-      InitDevice(dev_id);
     }
   }
 
   void Finalize() override {
-    auto devices = GetDeviceList();
-    for (auto dev_id : devices) {
-      DeInitDevice(dev_id);
-    }
-
     bool ok = true;
     if (pimpl_->finalize && pimpl_->finalize() != C_SUCCESS) {
       LOG(ERROR) << "Finalize " << Type() << " Failed\n";
@@ -356,7 +350,7 @@ class CustomDevice : public DeviceInterface {
       }
     } else {
       if (!pimpl_->memory_copy_p2p) {
-        std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
+        std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);  // NOLINT
         MemoryCopyD2H(src_dev_id, tmp.get(), src, size);
         MemoryCopyH2D(dst_dev_id, dst, tmp.get(), size);
       } else {
@@ -447,7 +441,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_memory_set(device, ptr, value, size));
     } else {
-      std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
+      std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);  // NOLINT
       memset(tmp.get(), value, size);
       MemoryCopyH2D(dev_id, ptr, tmp.get(), size);
     }
@@ -760,13 +754,15 @@ class CustomDevice : public DeviceInterface {
   }
 
   void CCLGroupStart() override {
-    CHECK_PTR(pimpl_->xccl_group_start);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
+    if (pimpl_->xccl_group_start) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
+    }
   }
 
   void CCLGroupEnd() override {
-    CHECK_PTR(pimpl_->xccl_group_end);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
+    if (pimpl_->xccl_group_end) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
+    }
   }
 
   void CCLSend(void* send_buf,

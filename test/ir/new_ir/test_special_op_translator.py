@@ -274,5 +274,70 @@ class TestIndexPutOpTranscriber(unittest.TestCase):
         _ = ir.translate_to_new_ir(main_program.desc)
 
 
+class TestGradAddOpTranscriber(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x_data = np.random.rand(100, 2, 3)
+                y_data = np.random.rand(100, 1, 1)
+                x = paddle.to_tensor(x_data, dtype='float32')
+                x.stop_gradient = False
+                y = paddle.to_tensor(y_data, dtype='float32')
+
+                helper = LayerHelper('grad_add')
+                out = helper.create_variable_for_type_inference("float")
+                helper.append_op(
+                    type="grad_add",
+                    inputs={"X": x, "Y": y},
+                    outputs={"Out": out},
+                    attrs={"axis": -1},
+                )
+
+        _ = ir.translate_to_new_ir(main_program.desc)
+
+
+class TestShadowOutputSlice(unittest.TestCase):
+    def test_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.rand([3, 9, 5])
+                y = paddle.static.data(
+                    name="y", shape=[3, 9, 5], dtype="float32"
+                )
+
+                _, out, _ = paddle.split(x, num_or_sections=3, axis=1)
+                helper = LayerHelper('shadow_output')
+                helper.append_op(
+                    type="shadow_output",
+                    inputs={"x": [out.name]},
+                    outputs={"out": [y.name]},
+                    attrs={"name": out.name},
+                )
+
+        l = ir.translate_to_new_ir(main_program.desc)
+
+
+class TestCheckUnregisteredOp(unittest.TestCase):
+    def test_program(self):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.randn((4, 16))
+            prev_h = paddle.randn((4, 32))
+
+            cell = paddle.nn.SimpleRNNCell(16, 32)
+            y, h = cell(x, prev_h)
+
+        ops = ir.check_unregistered_ops(main_program.desc)
+        assert len(ops) == 0
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -55,9 +55,9 @@ class IR_API alignas(8) Operation final {
 
   OpResult result(uint32_t index) const;
 
-  OpOperand op_operand(uint32_t index) const;
+  OpOperand operand(uint32_t index) const;
 
-  Value operand(uint32_t index) const;
+  Value operand_source(uint32_t index) const;
 
   /// Returns the region held by this operation at position 'index'.
   Region &region(unsigned index);
@@ -141,6 +141,10 @@ class IR_API alignas(8) Operation final {
   }
 
   void Verify();
+
+  std::vector<OpOperand> operands() const;
+
+  std::vector<OpResult> results() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);

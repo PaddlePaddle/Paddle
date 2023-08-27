@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_grad_kernel.h"
+#include <array>
 #include <numeric>
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -78,7 +79,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
                               bool accumulate,
                               DenseTensor* value_grad,
                               DenseTensor* x_grad) {
-  const int64_t* pd_indices[7];
+  std::array<const int64_t*, 7> pd_indices;
   for (size_t i = 0; i < indices.size(); ++i) {
     pd_indices[i] = indices[i]->data<int64_t>();
   }
@@ -93,7 +94,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       auto x_grad_stride = phi::stride(x_grad_dims);
 
       set_zero_kernel<T>(
-          numel, pd_indices, x_grad_stride, x_grad_dims, x_grad_data);
+          numel, pd_indices.data(), x_grad_stride, x_grad_dims, x_grad_data);
     }
   }
 
@@ -111,7 +112,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
 
       index_put_grad_kernel<T>(numel,
                                out_grad_data,
-                               pd_indices,
+                               pd_indices.data(),
                                out_grad_stride,
                                out_grad_dims,
                                tmp_value_grad_data);
@@ -131,7 +132,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
 
       index_put_grad_kernel<T>(numel,
                                out_grad_data,
-                               pd_indices,
+                               pd_indices.data(),
                                out_grad_stride,
                                out_grad_dims,
                                value_grad_data);
@@ -144,7 +145,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
 
       index_put_grad_kernel<T>(numel,
                                out_grad_data,
-                               pd_indices,
+                               pd_indices.data(),
                                out_grad_stride,
                                out_grad_dims,
                                tmp_value_grad_data);

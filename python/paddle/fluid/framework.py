@@ -34,10 +34,12 @@ from .proto import framework_pb2, data_feed_pb2
 
 from . import core
 from . import unique_name
+from .. import ir
+from paddle.fluid.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
 import functools
-from .variable_index import _getitem_impl_, _setitem_impl_
+from .variable_index import _getitem_static, _setitem_static, _setitem_impl_
 import threading
 
 __all__ = [
@@ -62,6 +64,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
+    '_stride_in_no_check_dy2st_diff',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -154,6 +157,22 @@ extra_op_attrs = {
     "uniform": ["diag_num"],
     "unique": ["is_sorted"],
 }
+
+paddle_type_to_proto_type = {
+    DataType.BOOL: core.VarDesc.VarType.BOOL,
+    DataType.FLOAT16: core.VarDesc.VarType.FP16,
+    DataType.UINT16: core.VarDesc.VarType.BF16,
+    DataType.FLOAT32: core.VarDesc.VarType.FP32,
+    DataType.FLOAT64: core.VarDesc.VarType.FP64,
+    DataType.INT8: core.VarDesc.VarType.INT8,
+    DataType.INT16: core.VarDesc.VarType.INT16,
+    DataType.INT32: core.VarDesc.VarType.INT32,
+    DataType.INT64: core.VarDesc.VarType.INT64,
+    DataType.UINT8: core.VarDesc.VarType.UINT8,
+    DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
+    DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
+}
+
 
 # FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
@@ -1004,7 +1023,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
             string.
 
     Returns:
-        core.VarDesc.VarType: The data type in Paddle.
+        core.VarDesc.VarType / core.DataType : The data type in Paddle.
 
     """
     # Convert the data type string to numpy data type.
@@ -2293,13 +2312,16 @@ class Variable(metaclass=VariableMetaClass):
             raise IndexError("Valid index accept int or slice or tuple")
 
     def __getitem__(self, item):
-        return _getitem_impl_(self, item)
+        return _getitem_static(self, item)
 
     def __setitem__(self, item, value):
         from .dygraph.base import in_declarative_mode
 
         if in_declarative_mode():
-            return _setitem_impl_(self, item, value)
+            if is_compiled_with_xpu():
+                # (NOTE): Currently, there is no index_put_xpu kernel.
+                return _setitem_impl_(self, item, value)
+            return _setitem_static(self, item, value)
         else:
             raise RuntimeError(
                 "In static mode, the __setitem__ (looks like: x[indices] = values) should not be used. Please use x = paddle.static.setitem(x, indices, values)"
@@ -2705,6 +2727,7 @@ class Operator:
         'go',
         'rnn_memory_helper_grad',
         'conditional_block',
+        'pylayer',
         'while',
         'send',
         'recv',
@@ -3562,6 +3585,10 @@ def _stride_in_no_check_dy2st_diff():
 
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
+    if (
+        op_type == "while"
+    ):  # dont' need check while, while is only a wrapper of inner ops, we will stuck in inner op.
+        return
     if outputs is not None:
         for k, v in outputs.items():
             if isinstance(v, Variable):
@@ -4235,6 +4262,8 @@ class Block:
             ignore_ops = {
                 'conditional_block',
                 'conditional_block_grad',
+                'pylayer',
+                'pylayer_grad',
                 'recurrent',
                 'recurrent_grad',
                 'while',
@@ -7134,6 +7163,8 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             **kwargs,
         )
         self.trainable = kwargs.get('trainable', True)
+
+        self.stop_gradient = not self.trainable
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 

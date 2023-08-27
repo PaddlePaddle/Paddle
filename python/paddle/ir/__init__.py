@@ -22,26 +22,16 @@ from paddle.fluid.libpaddle.ir import (
     Type,
 )  # noqa: F401
 from paddle.fluid.libpaddle.ir import (
-    get_op_result_shape,
-    get_op_result_dtype,
     translate_to_new_ir,
     set_global_program,
     set_insertion_point,
     reset_insertion_point_to_start,
     reset_insertion_point_to_end,
+    check_unregistered_ops,
+    register_paddle_dialect,
+    PassManager,
 )  # noqa: F401
 
 from . import core
 
-__all__ = [  # noqa
-    'Program',
-    'Block',
-    'Operation',
-    'Value',
-    'OpOperand',
-    'OpResult',
-    'Type',
-    'get_op_result_shape',
-    'get_op_result_dtype',
-    'translate_to_new_ir',
-]
+__all__ = []

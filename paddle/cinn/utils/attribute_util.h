@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/utils/type_defs.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/common/data_type.h"
 
@@ -87,6 +87,7 @@ common::Type ConvertIRType(::ir::Type type) {
   CASE_TYPE(Int16Type, I16)
   CASE_TYPE(Int32Type, I32)
   CASE_TYPE(Int64Type, I64)
+  CASE_TYPE(IndexType, I32)
   CASE_TYPE(BoolType, UI1)
 
   LOG(FATAL) << "unknown ir::Type " << type;

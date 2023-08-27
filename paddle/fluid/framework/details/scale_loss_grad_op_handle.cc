@@ -40,7 +40,7 @@ ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node,
   this->SetDeviceContext(place_, dev_ctx);
 }
 
-ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
+ScaleLossGradOpHandle::~ScaleLossGradOpHandle() = default;
 
 struct ScaleLossGradFunctor {
   float coeff_;

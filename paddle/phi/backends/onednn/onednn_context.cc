@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_context.h"
 
 #include "paddle/phi/common/place.h"
@@ -95,7 +95,7 @@ struct OneDNNContext::Impl {
     p_mutex_.reset(new std::mutex());
   }
 
-  ~Impl() {}
+  ~Impl() = default;
 
   void ResetBlobMap(void* ptr) {
     VLOG(4) << OneDNNContext::tls().get_curr_exec() << " " << ptr;

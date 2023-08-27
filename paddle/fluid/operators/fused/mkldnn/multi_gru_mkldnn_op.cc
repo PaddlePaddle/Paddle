@@ -76,7 +76,7 @@ class MultiGRUHandler {
         layers_ * 2,
         platform::errors::InvalidArgument("The number of WeightH inputs does "
                                           "not match the number of layers."));
-    if (biases_.size() > 0)
+    if (!biases_.empty())
       PADDLE_ENFORCE_EQ(
           biases_.size(),
           layers_ * 2,
@@ -124,7 +124,7 @@ class MultiGRUHandler {
 
     // Create attributes for each oneDNN gru
     for (int i = 0; i < 2 * layers_; ++i) {
-      attrs_.push_back(dnnl::primitive_attr());
+      attrs_.emplace_back();
     }
 
     if (is_int8) {
@@ -463,7 +463,7 @@ class MultiGRUHandler {
       auto* bias_data = reinterpret_cast<float*>(memory_p->get_data_handle());
 
       int idx = layer * 2 + (dir == R2L);
-      if (biases_.size() > 0 && biases_[idx]) {
+      if (!biases_.empty() && biases_[idx]) {
         const float* user_bias_data =
             biases_[idx]->data<float>();  // Bias in oneDNN is always float
         memcpy(bias_data, user_bias_data, sizeof(float) * 3 * OCs[layer]);
@@ -473,7 +473,7 @@ class MultiGRUHandler {
         memset(bias_data, 0, sizeof(float) * 3 * OCs[layer]);
       }
 
-      if (origin_mode_ == false && biases_.size() && biases_[idx]) {
+      if (origin_mode_ == false && !biases_.empty() && biases_[idx]) {
         for (int64_t i = 0; i < OCs[layer]; ++i) {
           bias_data[i] *= -1;
         }

@@ -23,7 +23,7 @@ namespace tensorrt {
 
 class ExprWrapper {
  public:
-  ExprWrapper() {}
+  ExprWrapper() = default;
   ExprWrapper(const nvinfer1::IDimensionExpr* expr,
               nvinfer1::IExprBuilder* expr_builder) {
     this->expr = expr;
@@ -122,7 +122,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
 ) {
   std::vector<ExprWrapper> x_dims_wrap;
   for (int i = 0; i < x_dims.nbDims; i++) {
-    x_dims_wrap.push_back(ExprWrapper(x_dims.d[i], &expr_builder));
+    x_dims_wrap.emplace_back(x_dims.d[i], &expr_builder);
   }
   return x_dims_wrap;
 }
@@ -643,7 +643,7 @@ nvinfer1::DimsExprs Conv2dFusionInferMeta(
 
   std::vector<ExprWrapper> paddings_wrap;
   for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings_wrap.emplace_back(ExprWrapper(paddings[i], &expr_builder));
+    paddings_wrap.emplace_back(paddings[i], &expr_builder);
   }
 
   UpdatePaddingAndDilation(&paddings_wrap,
@@ -772,6 +772,30 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
   return VecExprWrapper2DimsExprs(output_dims_wrap);
 }
 
+nvinfer1::DimsExprs PadInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const auto x_dims = inputs[0];
+  auto paddings =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+
+  nvinfer1::DimsExprs output;
+  output.nbDims = x_dims.nbDims;
+  for (int i = 0; i < x_dims.nbDims; ++i) {
+    output.d[i] = expr_builder.operation(
+
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                *x_dims.d[i],
+                                *expr_builder.constant(paddings[2 * i])),
+        *expr_builder.constant(paddings[2 * i + 1]));
+  }
+  return output;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
@@ -785,7 +809,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_transpose, Conv2dTransposeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
-
+PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

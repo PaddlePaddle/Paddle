@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.optimizer import Optimizer
+from paddle.optimizer import Optimizer
 
 __all__ = []
 
@@ -81,7 +81,7 @@ class MetaOptimizerBase(Optimizer):
         )
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.inner_opt.apply_optimize(
+        return self.inner_opt._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
 
