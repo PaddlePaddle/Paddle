@@ -43,7 +43,7 @@ MasterDaemon::MasterDaemon(SocketType socket, int nranks, int timeout)
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
-MasterDaemon::~MasterDaemon() {
+MasterDaemon::~MasterDaemon() {  // NOLINT
   VLOG(4) << ("begin to destruct MasterDaemon");
   StopByControlFd();
   _background_thread.join();

@@ -3299,7 +3299,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
 }  // namespace framework
 }  // namespace paddle
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 3) {
     std::cerr << "argc must be 3" << std::endl;
     return -1;
