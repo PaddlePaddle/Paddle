@@ -424,7 +424,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            NO CODE
+            >>> import paddle
     """
     # TODO
     if dtype is None:
