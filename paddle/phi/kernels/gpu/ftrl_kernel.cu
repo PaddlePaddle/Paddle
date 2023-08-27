@@ -20,3 +20,6 @@
 #include "paddle/phi/kernels/impl/ftrl_kernel_impl.h"
 
 PD_REGISTER_KERNEL(ftrl, GPU, ALL_LAYOUT, phi::FTRLOpKernel, float) {}
+
+PD_REGISTER_KERNEL(
+    ftrl_sparse, GPU, ALL_LAYOUT, phi::FTRLOpSparseKernel, float) {}

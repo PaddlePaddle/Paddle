@@ -24,9 +24,79 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
+void FTRLOpSparseKernel(const Context& ctx,
+                        const DenseTensor& grad,
+                        const DenseTensor& param,
+                        const DenseTensor& squared_accumulator,
+                        const DenseTensor& learningRate,
+                        float l1,
+                        float l2,
+                        float lr_power,
+                        int64_t* rows,
+                        int64_t row_numel,
+                        DenseTensor* param_out,
+                        DenseTensor* squared_accumulator_out,
+                        DenseTensor* linear_accumulator_out) {
+  auto g_ = phi::EigenVector<T>::Flatten(grad);
+  auto p_ = phi::EigenVector<T>::Flatten(param);
+  auto s_acc_ = phi::EigenVector<T>::Flatten(squared_accumulator);
+  auto lr_ = phi::EigenVector<T>::Flatten(learningRate);
+  auto l1_ = l1;
+  auto l2_ = l2, auto lr_power_ = lr_power;
+  auto rows_ = phi::EigenVector<int64_t>::Flatten(*rows);
+  auto row_numel_ = row_numel;
+  auto p_out_ = phi::EigenVector<T>::Flatten(*param_out);
+  auto s_acc_out_ = phi::EigenVector<T>::Flatten(*squared_accumulator_out);
+  auto l_acc_out_ = phi::EigenVector<T>::Flatten(*linear_accumulator_out);
+
+  inline HOSTDEVICE void operator()(size_t i) {
+    auto j = rows_[i / row_numel_] * row_numel_ + i % row_numel_;
+    const T g = g_[i];
+    const T p = p_[j];
+    const T s_acc = s_acc_[j];
+    const T lr = lr_[0];
+
+    auto new_acc = s_acc + g * g;
+
+    if (lr_power_ == static_cast<T>(-0.5)) {
+      l_acc_out_[j] += g - (std::sqrt(new_acc) - std::sqrt(s_acc)) / lr * p;
+    } else {
+      l_acc_out_[j] +=
+          g - (std::pow(new_acc, -lr_power_) - std::pow(s_acc, -lr_power_)) /
+                  lr * p;
+    }
+
+    auto l_acc = l_acc_out_[j];
+
+    if (std::fabs(l_acc) > l1_) {
+      auto x = -l_acc;
+      if (l_acc >= static_cast<T>(0)) {
+        x += l1_;
+      } else {
+        x -= l1_;
+      }
+
+      auto y = static_cast<T>(2) * l2_;
+      if (lr_power_ == static_cast<T>(-0.5)) {
+        y += std::sqrt(new_acc) / lr;
+      } else {
+        y += std::pow(new_acc, -lr_power_) / lr;
+      }
+
+      auto pre_shrink = x / y;
+      p_out_[j] = pre_shrink;
+    } else {
+      p_out_[j] = static_cast<T>(0);
+    }
+
+    s_acc_out_[j] += g * g;
+  }
+}
+
+template <typename T, typename Context>
 void FTRLOpKernel(const Context& ctx,
                   const DenseTensor& grad,
-                  const DenseTensor& learningrate,
+                  const DenseTensor& learningRate,
                   const DenseTensor& param,
                   const DenseTensor& squared_accumulator,
                   const DenseTensor& linear_accumulator,
@@ -43,7 +113,7 @@ void FTRLOpKernel(const Context& ctx,
   auto p = phi::EigenVector<T>::Flatten(param);
   auto sq_accum = phi::EigenVector<T>::Flatten(squared_accumulator);
   auto lin_accum = phi::EigenVector<T>::Flatten(linear_accumulator);
-  auto lr = phi::EigenVector<T>::Flatten(learningrate);
+  auto lr = phi::EigenVector<T>::Flatten(learningRate);
 
   auto p_out = phi::EigenVector<T>::Flatten(*param_out);
   auto s_acc_out = phi::EigenVector<T>::Flatten(*squared_accumulator_out);

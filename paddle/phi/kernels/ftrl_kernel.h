@@ -32,4 +32,19 @@ void FTRLOpKernel(const Context& ctx,
                   DenseTensor* squared_accumulator_out,
                   DenseTensor* linear_accumulator_out);
 
+template <typename T, typename Context>
+void FTRLOpSparseKernel(const Context& ctx,
+                        const DenseTensor& grad,
+                        const DenseTensor& param,
+                        const DenseTensor& squared_accumulator,
+                        const DenseTensor& learningRate,
+                        float l1,
+                        float l2,
+                        float lr_power,
+                        int64_t* rows,
+                        int64_t row_numel,
+                        DenseTensor* param_out,
+                        DenseTensor* squared_accumulator_out,
+                        DenseTensor* linear_accumulator_out);
+
 }  // namespace phi
