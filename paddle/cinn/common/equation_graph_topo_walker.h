@@ -33,9 +33,9 @@ class EquationGraphTopoWalker final {
   EquationGraphTopoWalker(const F4VVisitor& NextFunctionsVisitor,
                           const V4FVisitor& InputVariablesVisitor,
                           const V4FVisitor& OutputVariablesVisitor)
-      : NextFunctionsVisitor_(NextFunctionsVisitor),
-        InputVariablesVisitor_(InputVariablesVisitor),
-        OutputVariablesVisitor_(OutputVariablesVisitor) {}
+      : VisitNextFunctions(NextFunctionsVisitor),
+        VisitInputVariables(InputVariablesVisitor),
+        VisitOutputVariables(OutputVariablesVisitor) {}
   ~EquationGraphTopoWalker() = default;
 
   void operator()(VT start, const VariableVisitorT& VariableVisitor) const {
@@ -93,15 +93,15 @@ class EquationGraphTopoWalker final {
         FT function = functions_queue.front();
         functions_queue.pop();
         FunctionVisitor(function);
-        OutputVariablesVisitor_(function, TryEnqueueVaraible);
+        VisitOutputVariables(function, TryEnqueueVaraible);
       }
       if (!variables_queue.empty()) {
         VT variable = variables_queue.front();
         variables_queue.pop();
         VariableVisitor(variable);
-        NextFunctionsVisitor_(variable, [&](FT function) {
+        VisitNextFunctions(variable, [&](FT function) {
           size_t num_unfinished_inputs = 0;
-          InputVariablesVisitor_(function, [&](VT in_variable) {
+          VisitInputVariables(function, [&](VT in_variable) {
             num_unfinished_inputs +=
                 (queued_variables.count(in_variable) > 0 ? 0 : 1);
           });
@@ -113,13 +113,12 @@ class EquationGraphTopoWalker final {
     }
   }
 
- private:
   // tNext [Function] <- Variable
-  F4VVisitor NextFunctionsVisitor_;
+  F4VVisitor VisitNextFunctions;
   // tIn [Variable] <- Function
-  V4FVisitor InputVariablesVisitor_;
+  V4FVisitor VisitInputVariables;
   // tOut [Variable] <- Function
-  V4FVisitor OutputVariablesVisitor_;
+  V4FVisitor VisitOutputVariables;
 };
 
 }  // namespace cinn

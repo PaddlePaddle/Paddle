@@ -37,6 +37,8 @@ filtered_anchor_tensor 保存过滤出来的 tAnchor Variable
 
 std::unordered_map<Index, std::vector<FakeOpPlaceHolder>> PartitionGraph(
     const Graph& graph) {
+  // TODO(yifan)
+
   std::unordered_set<Variable> candidate_index = InitCandidateIndex(graph);
   std::unordered_set<Index> selected_anchor_index;
 
