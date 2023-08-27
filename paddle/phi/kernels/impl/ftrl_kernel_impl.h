@@ -19,8 +19,11 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/ftrl_kernel.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 namespace phi {
 
 template <typename T>
