@@ -39,9 +39,7 @@ namespace experimental {
 inline bool NeedTransformDataType(const DataType& input,
                                   const DataType& target,
                                   const TransformFlag& transform_flag) {
-  return input != target &&
-         (transform_flag.need_trans_data_type() ||
-          target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
+  return input != target && (transform_flag.need_trans_data_type());
 }
 
 inline bool NeedTransformLayout(const DataLayout& input,
