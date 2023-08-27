@@ -23,31 +23,48 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
 
-template <typename T, typename Context>
-void FTRLOpSparseKernel(const Context& ctx,
-                        const DenseTensor& grad,
-                        const DenseTensor& param,
-                        const DenseTensor& squared_accumulator,
-                        const DenseTensor& learningRate,
-                        float l1,
-                        float l2,
-                        float lr_power,
-                        int64_t* rows,
-                        int64_t row_numel,
-                        DenseTensor* param_out,
-                        DenseTensor* squared_accumulator_out,
-                        DenseTensor* linear_accumulator_out) {
-  auto g_ = phi::EigenVector<T>::Flatten(grad);
-  auto p_ = phi::EigenVector<T>::Flatten(param);
-  auto s_acc_ = phi::EigenVector<T>::Flatten(squared_accumulator);
-  auto lr_ = phi::EigenVector<T>::Flatten(learningRate);
-  auto l1_ = l1;
-  auto l2_ = l2, auto lr_power_ = lr_power;
-  auto rows_ = phi::EigenVector<int64_t>::Flatten(*rows);
-  auto row_numel_ = row_numel;
-  auto p_out_ = phi::EigenVector<T>::Flatten(*param_out);
-  auto s_acc_out_ = phi::EigenVector<T>::Flatten(*squared_accumulator_out);
-  auto l_acc_out_ = phi::EigenVector<T>::Flatten(*linear_accumulator_out);
+template <typename T>
+struct SparseFTRLFunctor {
+ private:
+  const T* g_;
+  const T* p_;
+  const T* s_acc_;
+  const T* l_acc_;
+  const T* lr_;
+  const T l1_;
+  const T l2_;
+  const T lr_power_;
+  const int64_t* rows_;
+  const int64_t row_numel_;
+  T* p_out_;
+  T* s_acc_out_;
+  T* l_acc_out_;
+
+ public:
+  SparseFTRLFunctor(const T* g,
+                    const T* p,
+                    const T* s_acc,
+                    const T* lr,
+                    const T l1,
+                    const T l2,
+                    const T lr_power,
+                    const int64_t* rows,
+                    int64_t row_numel,
+                    T* p_out,
+                    T* s_acc_out,
+                    T* l_acc_out)
+      : g_(g),
+        p_(p),
+        s_acc_(s_acc),
+        lr_(lr),
+        l1_(l1),
+        l2_(l2),
+        lr_power_(lr_power),
+        rows_(rows),
+        row_numel_(row_numel),
+        p_out_(p_out),
+        s_acc_out_(s_acc_out),
+        l_acc_out_(l_acc_out) {}
 
   inline HOSTDEVICE void operator()(size_t i) {
     auto j = rows_[i / row_numel_] * row_numel_ + i % row_numel_;
@@ -91,7 +108,7 @@ void FTRLOpSparseKernel(const Context& ctx,
 
     s_acc_out_[j] += g * g;
   }
-}
+};
 
 template <typename T, typename Context>
 void FTRLOpKernel(const Context& ctx,
@@ -152,5 +169,46 @@ void FTRLOpKernel(const Context& ctx,
                               .select(pre_shrink, p.constant(0));
   }
   s_acc_out.device(place) = sq_accum + g * g;
+}
+
+template <typename T, typename Context>
+void FTRLOpSparseKernel(const Context& ctx,
+                        const DenseTensor& grad,
+                        const DenseTensor& learningRate,
+                        const DenseTensor& param,
+                        const DenseTensor& squared_accumulator,
+                        const DenseTensor& linear_accumulator,
+                        float l1,
+                        float l2,
+                        float lr_power,
+                        DenseTensor* param_out,
+                        DenseTensor* squared_accumulator_out,
+                        DenseTensor* linear_accumulator_out) {
+  T l1_r = static_cast<T>(l1);
+  T l2_r = static_cast<T>(l2);
+  T lr_power_r = static_cast<T>(lr_power);
+  const phi::SelectedRows* grad_ptr = &grad;
+  auto& grad_row = *grad_ptr;
+  auto& grad_tensor = grad_row.value();
+  const T* grad_data = grad_tensor.template data<T>();
+  auto* grad_rows = &grad_row.rows();
+  const int64_t* rows = grad_rows.Data(ctx.GetPlace());
+  auto row_numel = grad_tensor.numel() / grad_row.rows().size();
+
+  phi::funcs::ForRange<Context> for_range(ctx, grad.numel());
+
+  SparseFTRLFunctor<T> functor(grad.data<T>(),
+                               param.data<T>(),
+                               squared_accumulator.data<T>(),
+                               learningRate.data<T>(),
+                               l1_r,
+                               l2_r,
+                               lr_power_r,
+                               rows,
+                               row_numel,
+                               ctx.template Alloc<T> param_out,
+                               ctx.template Alloc<T> squared_accumulator_out,
+                               ctx.template Alloc<T> linear_accumulator_out);
+  for_range(functor);
 }
 }  // namespace phi
