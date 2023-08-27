@@ -1527,3 +1527,16 @@ def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
     out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
     grad_var_names['out'] = list(map(fn, out_grad_vars))
     return grad_var_names
+
+
+@signature_safe_contextmanager
+def tensor_name_guard(tensors, names):
+    try:
+        assert len(tensors) == len(names)
+        origin_names = [t.name for t in tensors]
+        for t, name in zip(tensors, names):
+            t.name = name
+        yield
+    finally:
+        for t, name in zip(tensors, origin_names):
+            t.name = name

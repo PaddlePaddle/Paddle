@@ -146,6 +146,7 @@ RUN pip3.7 --no-cache-dir install pre-commit==2.17.0 pylint==2.12.0 && \
 
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
+
 RUN pip3.7 --no-cache-dir install -r /root/requirements.txt && \
     pip3.7 --no-cache-dir install -r /home/requirements.txt && \
     pip3.8 --no-cache-dir install -r /root/requirements.txt && \
