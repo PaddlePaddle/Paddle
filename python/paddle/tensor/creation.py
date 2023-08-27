@@ -87,11 +87,12 @@ def create_global_var(
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                           persistable=True, force_cpu=True, name='new_var')
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+            ...                                persistable=True, force_cpu=True, name='new_var')
     """
+    # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
         check_type(
@@ -172,10 +173,12 @@ def create_parameter(
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            W = paddle.create_parameter(shape=[784, 200], dtype='float32')
+            >>> # doctest: +SKIP('just for test...')
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
+    # TODO
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
     for item in shape:
         check_type(
@@ -243,9 +246,10 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
-          import paddle
-          tensor = paddle.tensor.create_tensor(dtype='float32')
+          >>> import paddle some bad syntax
+          >>> tensor = paddle.tensor.create_tensor(dtype='float32')
     """
+    # TODO
     check_dtype(
         dtype,
         'dtype',
@@ -290,11 +294,13 @@ def linspace(start, stop, num, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-             import paddle
-             data = paddle.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
-             data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
+                >>> # doctest: +TIMEOUT(0.000001)
+                >>> import paddle
+                >>> data = paddle.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
+                >>> data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
+    # TODO
     if dtype is None:
         dtype = 'float32'
     tensor_num = num
@@ -418,12 +424,9 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.logspace(0, 10, 5, 2, 'float32')
-            # [1.          , 5.65685415  , 32.         , 181.01933289, 1024.       ]
-            data = paddle.logspace(0, 10, 1, 2, 'float32')
-            # [1.]
+            NO CODE
     """
+    # TODO
     if dtype is None:
         dtype = 'float32'
     tensor_num = num
