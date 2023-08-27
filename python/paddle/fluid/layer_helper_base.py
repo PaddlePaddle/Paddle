@@ -76,15 +76,15 @@ class LayerHelperBase:
 
         Examples:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import numpy as np
-            import paddle.fluid as fluid
+                >>> import numpy as np
+                >>> import paddle.fluid as fluid
 
-            with fluid.dygraph.guard():
-                x = np.ones([2, 2], np.float32)
-                y = fluid.dygraph.to_variable(x)
-
+                >>> with fluid.dygraph.guard():
+                ...     x = np.ones([2, 2], np.float32)
+                ...     y = fluid.dygraph.to_variable(x)
+                ...
         """
         if isinstance(value, np.ndarray):
             return core.eager.Tensor(
