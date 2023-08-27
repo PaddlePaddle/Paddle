@@ -418,6 +418,9 @@ class _SaveLoadConfig:
         # when need to save a prune model, use input_names_after_prune to specify the inputs left after pruning
         self.input_names_after_prune = None
 
+        # in the scene of llm-inference, prunning program can cause unexpectable result, an option to skip prune is necessary
+        self.skip_prune_program = False
+
     @property
     def output_spec(self):
         return self._output_spec
@@ -497,6 +500,7 @@ def _parse_save_configs(configs):
         "clip_extra",
         "skip_forward",
         "input_names_after_prune",
+        "skip_prune_program",
     ]
 
     # input check
@@ -517,6 +521,7 @@ def _parse_save_configs(configs):
     inner_config.input_names_after_prune = configs.get(
         "input_names_after_prune", None
     )
+    inner_config.skip_prune_program = configs.get("skip_prune_program", False)
 
     return inner_config
 
@@ -1259,6 +1264,7 @@ def save(layer, path, input_spec=None, **configs):
                 executor=Executor(_current_expected_place()),
                 program=concrete_program.main_program.clone(),
                 clip_extra=configs.clip_extra,
+                skip_prune_program=configs.skip_prune_program,
             )
 
         if combine_params:

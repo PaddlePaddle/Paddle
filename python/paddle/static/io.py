@@ -187,7 +187,7 @@ def append_fetch_ops(
         )
 
 
-def normalize_program(program, feed_vars, fetch_vars):
+def normalize_program(program, feed_vars, fetch_vars, skip_prune_program=False):
     """
 
     Normalize/Optimize a program according to feed_vars and fetch_vars.
@@ -277,9 +277,10 @@ def normalize_program(program, feed_vars, fetch_vars):
     copy_program.desc.flush()
 
     feed_var_names = [var.name for var in feed_vars]
-    copy_program = copy_program._prune_with_input(
-        feeded_var_names=feed_var_names, targets=fetch_vars
-    )
+    if not skip_prune_program:
+        copy_program = copy_program._prune_with_input(
+            feeded_var_names=feed_var_names, targets=fetch_vars
+        )
     copy_program = copy_program._inference_optimize(prune_read_op=True)
     fetch_var_names = [var.name for var in fetch_vars]
     prepend_feed_ops(copy_program, feed_var_names)
@@ -568,7 +569,9 @@ def save_inference_model(
 
     program = _get_valid_program(kwargs.get('program', None))
     clip_extra = kwargs.get('clip_extra', True)
-    program = normalize_program(program, feed_vars, fetch_vars)
+    program = normalize_program(
+        program, feed_vars, fetch_vars, kwargs.get('skip_prune_program', False)
+    )
 
     # serialize and save program
     legacy_format = kwargs.get('legacy_format', False)
