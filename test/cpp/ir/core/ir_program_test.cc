@@ -14,6 +14,8 @@
 
 #include <gtest/gtest.h>
 
+#include <sstream>
+
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
@@ -193,7 +195,13 @@ TEST(program_test, program) {
   EXPECT_EQ(program.block()->size() == 5, true);
   EXPECT_EQ(program.parameters_num() == 3, true);
 
-  program.Print(std::cout);
+  std::stringstream ss;
+  program.Print(ss);
+
+  std::stringstream ss_ostram;
+  ss_ostram << program;
+
+  EXPECT_EQ(ss.str(), ss_ostram.str());
 }
 
 TEST(program_test, slice_combine_test) {
