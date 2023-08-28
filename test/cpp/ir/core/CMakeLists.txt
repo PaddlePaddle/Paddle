@@ -95,3 +95,12 @@ cc_test_old(
   program_translator
   pd_dialect
   ir)
+
+cc_test_old(
+  block_operand_test
+  SRCS
+  block_operand_test.cc
+  DEPS
+  test_dialect
+  gtest
+  ir)

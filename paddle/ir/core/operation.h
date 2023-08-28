@@ -29,6 +29,10 @@ class Program;
 class OpOperand;
 class OpResult;
 
+namespace detial {
+class BlockOperandImpl;
+}  // namespace detial
+
 class IR_API alignas(8) Operation final {
  public:
   ///
@@ -41,7 +45,8 @@ class IR_API alignas(8) Operation final {
                            const AttributeMap &attributes,
                            const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info,
-                           size_t num_regions = 0);
+                           size_t num_regions = 0,
+                           const std::vector<Block *> &successors = {});
   static Operation *Create(OperationArgument &&op_argument);
 
   ///
@@ -59,9 +64,16 @@ class IR_API alignas(8) Operation final {
 
   Value operand_source(uint32_t index) const;
 
+  uint32_t num_successors() const { return num_successors_; }
+  BlockOperand block_operand(uint32_t index) const;
+  Block *successor(uint32_t index) const;
+  void set_successor(Block *block, unsigned index);
+  bool HasSuccessors() { return num_successors_ != 0; }
+
   /// Returns the region held by this operation at position 'index'.
   Region &region(unsigned index);
   const Region &region(unsigned index) const;
+  uint32_t num_regions() const { return num_regions_; }
 
   void Print(std::ostream &os) const;
 
@@ -89,8 +101,6 @@ class IR_API alignas(8) Operation final {
   uint32_t num_results() const { return num_results_; }
 
   uint32_t num_operands() const { return num_operands_; }
-
-  uint32_t num_regions() const { return num_regions_; }
 
   std::string name() const;
 
@@ -152,7 +162,8 @@ class IR_API alignas(8) Operation final {
             ir::OpInfo op_info,
             uint32_t num_results,
             uint32_t num_operands,
-            uint32_t num_regions);
+            uint32_t num_regions,
+            uint32_t num_successors);
 
   template <typename T, typename Enabler = void>
   struct CastUtil {
@@ -179,7 +190,9 @@ class IR_API alignas(8) Operation final {
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
+  const uint32_t num_successors_ = 0;
 
+  detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};
   Block *parent_{nullptr};
   Block::iterator position_;
