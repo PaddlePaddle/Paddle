@@ -324,4 +324,9 @@ std::ostream& operator<<(std::ostream& os, Attribute attr) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const Program& prog) {
+  prog.Print(os);
+  return os;
+}
+
 }  // namespace ir
