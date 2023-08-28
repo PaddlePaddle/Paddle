@@ -2308,17 +2308,20 @@ def clone(x, name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> import numpy as np
 
             >>> x = paddle.ones([2])
             >>> x.stop_gradient = False
+            >>> x.retain_grads()
             >>> clone_x = paddle.clone(x)
+            >>> clone_x.retain_grads()
 
             >>> y = clone_x**3
             >>> y.backward()
-            >>> print(clone_x.grad)
-            None
-            >>> print(x.grad.numpy())
-            [3. 3.]
+            >>> np.testing.assert_array_equal(x, [1, 1])
+            >>> np.testing.assert_array_equal(clone_x.grad.numpy(), [3, 3])
+            >>> np.testing.assert_array_equal(x.grad.numpy(), [3, 3])
+            >>> paddle.enable_static()
     """
     return x.clone()
 
