@@ -90,6 +90,8 @@ class MetaTensor {
   //  and it will be deleted in the future.
   virtual bool is_tensor_array() const;
 
+  virtual bool is_same_tensor(const MetaTensor& meta_tensor) const;
+
   // For auto parallel
   const distributed::TensorDistAttr& dist_attr() const;
 
