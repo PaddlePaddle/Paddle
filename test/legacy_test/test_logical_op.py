@@ -179,11 +179,11 @@ def test(unit_test, use_gpu=False, test_error=False):
             for complex_data_type in [np.complex64, np.complex128]:
                 for x_data in (0 + 0j, 0 + 1j, 1 + 0j, 1 + 1j):
                     for y_data in (0 + 0j, 0 + 1j, 1 + 0j, 1 + 1j):
-                        meta_data['x_np'] = x_data * np.ones(
-                            shape_data['x_shape']
+                        meta_data['x_np'] = (
+                            x_data * np.ones(shape_data['x_shape'])
                         ).astype(complex_data_type)
-                        meta_data['y_np'] = y_data * np.ones(
-                            shape_data['y_shape']
+                        meta_data['y_np'] = (
+                            y_data * np.ones(shape_data['y_shape'])
                         ).astype(complex_data_type)
                         if meta_data['binary_op'] and test_error:
                             # catch C++ Exception
