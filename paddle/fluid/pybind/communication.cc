@@ -28,8 +28,8 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace py = pybind11;
