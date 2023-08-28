@@ -41,6 +41,12 @@
 #endif
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/ir/core/builtin_attribute.h"
@@ -517,7 +523,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (dialect::IsLegacyOp(op_name)) {
+      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,

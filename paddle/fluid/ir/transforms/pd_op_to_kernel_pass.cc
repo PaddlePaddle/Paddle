@@ -26,6 +26,7 @@
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
@@ -506,6 +507,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
 
   std::string phi_kernel_op_name = paddle::dialect::PhiKernelOp::name();
   ir::OpInfo phi_kernel_op_info = ctx->GetRegisteredOpInfo(phi_kernel_op_name);
+
+  std::string legacy_kernel_op_name = paddle::dialect::LegacyKernelOp::name();
+  ir::OpInfo legacy_kernel_op_info = ctx->GetRegisteredOpInfo(legacy_kernel_op_name);
 
   auto skip_feed_names = GetSkipFeedNames(block);
 
@@ -1008,7 +1012,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
         {"op_name", ir::StrAttribute::get(ctx, op_item->name())},
         {"kernel_name", ir::StrAttribute::get(ctx, kernel_fn_str)},
         {"kernel_key", dialect::KernelAttribute::get(ctx, kernel_key)}};
-
     auto op_attr_map = op_item->attributes();
 
     for (auto& map_item : op_attr_map) {
@@ -1019,8 +1022,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
       op_attribute.emplace("is_inplace", ir::BoolAttribute::get(ctx, true));
     }
 
-    ir::Operation* op = ir::Operation::Create(
-        vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
+    ir::Operation* op;
+    if (dialect::IsLegacyOp(op_item->name())) {
+      op = ir::Operation::Create(
+        vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
+    } else {
+      op = ir::Operation::Create(
+          vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
+    }
 
     map_op_pair[op_item] = op;
 
