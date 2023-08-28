@@ -44,7 +44,7 @@ class DistTensor final
   DistTensor(const DDim& dims, const TensorDistAttr& dist_attr);
 
   /// \brief Destroy the tensor object and release exclusive resources.
-  ~DistTensor() = default;
+  virtual ~DistTensor() = default;
 
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.

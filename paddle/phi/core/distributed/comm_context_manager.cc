@@ -33,6 +33,7 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "glog/logging.h"
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
 

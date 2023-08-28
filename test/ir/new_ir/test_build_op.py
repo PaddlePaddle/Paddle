@@ -121,5 +121,25 @@ class TestBuildOp4(unittest.TestCase):
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
 
+class TestBuildOp5(unittest.TestCase):
+    def test_build_split_op(self):
+        newir_program = get_ir_program()
+        tanh_out = newir_program.block().ops[-1].result(0)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            out = paddle.split(tanh_out, [2, 2], 0)
+        self.assertEqual(out[0].get_defining_op().name(), "builtin.split")
+        self.assertEqual(
+            out[0]
+            .get_defining_op()
+            .operands()[0]
+            .source()
+            .get_defining_op()
+            .name(),
+            "pd.split",
+        )
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
+
 if __name__ == "__main__":
     unittest.main()

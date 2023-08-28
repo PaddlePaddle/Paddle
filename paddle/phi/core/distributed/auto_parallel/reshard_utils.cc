@@ -15,13 +15,17 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 #include <cstdlib>
+
+// the <winsock2.h> needs to be included before <winsock.h>, otherwise
+// there will be symbol redefinition error on windows
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
 #include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace phi {
 namespace distributed {

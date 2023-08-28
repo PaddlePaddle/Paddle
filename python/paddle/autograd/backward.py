@@ -201,7 +201,6 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
                     outputs_set.add(operand)
         else:
             relevant_op_flags[i] = False
-
     # recover full op or full_Intarray op created by mutable attribute.
     total_ops_list = list(total_ops)
     for i, op in enumerate(total_ops_list):
@@ -354,12 +353,16 @@ def append_backward_ops(
 
     def make_output_grad(op):
         zero_flag = [False] * op.num_results()
+        output_grads = []
         for i, value in enumerate(op.results()):
             if (
                 value not in state.value_to_valuegrad
                 or state.value_to_valuegrad[value] is None
             ):
-                if value.first_use().owner().name() == "builtin.split":
+                if (
+                    not value.use_empty()
+                    and value.first_use().owner().name() == "builtin.split"
+                ):
                     # pattern case:
                     # this fwd_op's output is vectorType, it will split to
                     # Type by builtin.split op, so need get from split op's ouput
@@ -367,7 +370,7 @@ def append_backward_ops(
                         value.first_use().owner()
                     )
                     zero_flag[i] = all(split_zero_flag)
-                    grad_value = [op_list[0] for op_list in split_output_grad]
+                    state.value_to_valuegrad[value] = [split_output_grad]
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
@@ -388,7 +391,7 @@ def append_backward_ops(
                     )
                     zero_flag[i] = True
 
-                state.value_to_valuegrad[value] = [[grad_value]]
+                    state.value_to_valuegrad[value] = [[grad_value]]
 
             if len(state.value_to_valuegrad[value]) > 1:
                 # one value is input of more than one fwd_op,
@@ -411,8 +414,8 @@ def append_backward_ops(
                     value
                 ]
 
-            output_grad = state.value_to_valuegrad[value][0]
-        return zero_flag, output_grad
+            output_grads.append(state.value_to_valuegrad[value][0][0])
+        return zero_flag, output_grads
 
     def make_input_stopgradient(op):
         input_grad_stopgradients = []
@@ -529,8 +532,9 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
             inputs_set.add(state.value_to_valuegrad[output][0][0])
     inputs_set_tmp = set()
     for out_grad in inputs_set:
-        for item in out_grad.first_use().owner().operands_source():
-            inputs_set_tmp.add(item)
+        if not out_grad.use_empty():
+            for item in out_grad.first_use().owner().operands_source():
+                inputs_set_tmp.add(item)
     inputs_set.update(inputs_set_tmp)
 
     no_gradvar_set = set()  # grad_value of value in no_grad_set
