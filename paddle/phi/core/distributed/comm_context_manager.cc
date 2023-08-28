@@ -97,7 +97,6 @@ void CommContextManager::CreateNCCLCommContext(
     nccl_comm_context->SetDevContext(std::move(dev_ctx));
     nccl_comm_context->SetComputeEvent(std::move(compute_event));
     nccl_comm_context->SetCommEvent(std::move(comm_event));
-  } else {
   }
 
   comm_context_manager.SetStore(store);
