@@ -28,6 +28,7 @@ class DenseTensorType : public ir::Type,  // Not inherite any more
                                                   DenseTensorTypeStorage,
                                                   ir::ShapedTypeInterface> {
  public:
+  using Base::Base;
   using Type::Type;
 
   DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
@@ -48,6 +49,7 @@ class SelectedRowsType : public ir::Type,  // Not inherite any more
                                                    SelectedRowsTypeStorage,
                                                    ir::ShapedTypeInterface> {
  public:
+  using Base::Base;
   using Type::Type;
 
   DECLARE_TYPE_UTILITY_FUNCTOR(SelectedRowsType, SelectedRowsTypeStorage);

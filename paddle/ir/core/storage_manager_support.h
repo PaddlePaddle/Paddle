@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/type_base.h"
 #include "paddle/ir/core/type_id.h"
 
 namespace ir {
@@ -47,32 +49,45 @@ inline bool hasTrait(TypeId traitID) {
 
 template <typename ConcreteT,
           typename StorageT,
-          typename UniquerT>  // Traits or Interface
+          typename ManagerT,
+          class... TraitOrInterface>  // Traits or Interface
 class StorageHelperBase {
  public:
-  using ImplType = StorageT;
+  using Base =
+      StorageHelperBase<ConcreteT, StorageT, ManagerT, TraitOrInterface...>;
   using HasTraitFn = bool (*)(TypeId);
+  using Stroage = StorageT;
+
+  /// Utility for easy access to the storage instance.
+  const Stroage *stroage() const {
+    return static_cast<Stroage *>(this->stroage_);
+  }
 
   /// Get the identifier for the concrete type.
-  static TypeId getTypeId() { return TypeId::get<ConcreteT>(); }
+  static ir::TypeId type_id() { return ir::TypeId::get<ConcreteT>(); }
 
-  //   /// Returns the function that returns true if the given Trait ID matches
-  //   the
-  //   /// IDs of any of the traits defined by the storage user.
-  //   static HasTraitFn getHasTraitFn() {
-  //     return [](TypeId id) {
-  //       return storage_helper_base_impl::hasTrait<Traits...>(id);
-  //     };
-  //   }
+  /// Provide an implementation of 'classof' that compares the type id of the
+  /// provided value with that of the concrete type.
+  template <typename T>
+  static bool classof_name(T val) {
+    return val.type_id() == type_id();
+  }
 
   /// Get or create a new ConcreteT instance within the ctx.
   template <typename... Args>
-  static ConcreteT get(MLIRContext *ctx, Args... args) {
-    return UniquerT::template get<ConcreteT>(ctx, args...);
+  static ConcreteT get(ir::IrContext *ctx, Args... args) {
+    // return ManagerT::template get<ConcreteT>(ctx, args...);
+    return ir::TypeManager::template get<ConcreteT>(ctx, args...);
   }
 
-  /// Utility for easy access to the storage instance.
-  ImplType *getImpl() const { return static_cast<ImplType *>(this->impl); }
+  /// Returns the function that returns true if the given Trait ID matches the
+  /// IDs of any of the traits defined by the storage user.
+  static HasTraitFn getHasTraitFn() {
+    return [](TypeId id) {
+      return storage_helper_base_impl::hasTrait<TraitOrInterface...>(
+          id);  // 需要 filter
+    };
+  }
 };
 }  // namespace detail
 }  // namespace ir
