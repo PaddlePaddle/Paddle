@@ -40,9 +40,11 @@ Block *ModuleOp::block() {
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   ir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
-  argument.AddRegion()->emplace_back();
+  argument.num_regions = 1;
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  return ModuleOp(Operation::Create(std::move(argument)));
+  Operation *op = Operation::Create(std::move(argument));
+  op->region(0).emplace_back();
+  return ModuleOp(op);
 }
 
 void ModuleOp::Destroy() {
