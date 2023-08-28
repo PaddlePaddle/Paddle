@@ -115,6 +115,8 @@ def check_layer_numerics(func):
         if args:
             # Set temp data and temp.gradient = False
             start_data = args[0]
+            if not isinstance(start_data, paddle.Tensor):
+                raise RuntimeError("First input of this layer must be tensor.")
             start_data.stop_gradient = False
             modified_args = list(args)  # Convert args to a mutable list
             # Set FLAGS_check_nan_inf = 1
@@ -125,7 +127,7 @@ def check_layer_numerics(func):
             out = _C_ops.disable_check_model_nan_inf(out_data, 0)
             return out
         else:
-            print("No elements found in args")
+            raise RuntimeError("No elements found in args.")
         out = func(self, *args, **kwargs)
         return out
 
