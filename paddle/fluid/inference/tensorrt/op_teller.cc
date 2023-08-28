@@ -2944,7 +2944,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "quantize_linear",
       "dequantize_linear"};
 
-
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
       "bmm",
