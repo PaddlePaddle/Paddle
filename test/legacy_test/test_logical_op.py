@@ -175,6 +175,41 @@ def test(unit_test, use_gpu=False, test_error=False):
                     (dygraph_result.numpy() == np_result).all()
                 )
                 unit_test.assertTrue((eager_result.numpy() == np_result).all())
+            # add some corner case for complex datatype
+            for complex_data_type in [np.complex64, np.complex128]:
+                for x_data in (0 + 0j, 0 + 1j, 1 + 0j, 1 + 1j):
+                    for y_data in (0 + 0j, 0 + 1j, 1 + 0j, 1 + 1j):
+                        meta_data['x_np'] = x_data * np.ones(shape_data).astype(
+                            complex_data_type
+                        )
+                        meta_data['y_np'] = y_data * np.ones(shape_data).astype(
+                            complex_data_type
+                        )
+                        if meta_data['binary_op'] and test_error:
+                            # catch C++ Exception
+                            unit_test.assertRaises(
+                                BaseException, run_static, **meta_data
+                            )
+                            unit_test.assertRaises(
+                                BaseException, run_dygraph, **meta_data
+                            )
+                            continue
+                        static_result = run_static(**meta_data)
+                        dygraph_result = run_dygraph(**meta_data)
+                        eager_result = run_eager(**meta_data)
+                        if meta_data['binary_op']:
+                            np_result = np_op(
+                                meta_data['x_np'], meta_data['y_np']
+                            )
+                        else:
+                            np_result = np_op(meta_data['x_np'])
+                        unit_test.assertTrue((static_result == np_result).all())
+                        unit_test.assertTrue(
+                            (dygraph_result.numpy() == np_result).all()
+                        )
+                        unit_test.assertTrue(
+                            (eager_result.numpy() == np_result).all()
+                        )
 
 
 def test_type_error(unit_test, use_gpu, type_str_map):
