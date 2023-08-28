@@ -15,6 +15,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
@@ -45,6 +46,7 @@ using paddle::distributed::auto_parallel::kDefault;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
 using paddle::distributed::auto_parallel::SPMDRuleBase;
 using paddle::distributed::auto_parallel::SPMDRuleMap;
+using paddle::framework::BlockDesc;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
 using phi::distributed::ProcessMesh;
@@ -335,16 +337,15 @@ void BindAutoParallel(py::module *m) {
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
 
-  // py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
-  //     .def("infer_forward", &SPMDRuleBase::InferForward)
-  //     .def("infer_backward",
-  //          static_cast<std::pair<std::vector<TensorDistAttr>,
-  //                                std::vector<TensorDistAttr>>
-  //                                (SPMDRuleBase::*)(
-  //              const std::vector<DistTensorSpec> &,
-  //              const std::vector<DistTensorSpec> &,
-  //              const paddle::framework::AttributeMap &)>(
-  //              &SPMDRuleBase::InferBackward));
+  py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
+      .def("infer_forward", &SPMDRuleBase::InferForward)
+      .def("infer_backward",
+           static_cast<std::pair<std::vector<TensorDistAttr>,
+                                 std::vector<TensorDistAttr>> (SPMDRuleBase::*)(
+               const std::vector<DistTensorSpec> &,
+               const std::vector<DistTensorSpec> &,
+               const paddle::framework::AttributeMap &)>(
+               &SPMDRuleBase::InferBackward));
   // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
 
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
