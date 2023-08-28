@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/ir/transforms/inplace_pass.h"
 
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/pass/pass.h"
