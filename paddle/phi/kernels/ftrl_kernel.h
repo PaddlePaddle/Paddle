@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-
+#include "paddle/phi/core/selected_rows.h"
 namespace phi {
 
 template <typename T, typename Context>
