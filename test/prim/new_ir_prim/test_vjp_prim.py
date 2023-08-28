@@ -32,11 +32,11 @@ def get_ir_program_0():
         )
         x.stop_gradient = False
         y = paddle.tensor.fill_constant(shape=[4], dtype='float32', value=1.0)
-        y.stop_gradiable = False
+        y.stop_gradient = False
         dout = paddle.tensor.fill_constant(
             shape=[1, 4], dtype='float32', value=1.0
         )
-        dout.stop_gradiable = False
+        dout.stop_gradient = False
         out = paddle.divide(x, y)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
@@ -55,7 +55,7 @@ def get_ir_program_1():
         dout = paddle.tensor.fill_constant(
             shape=[1], dtype='float32', value=1.0
         )
-        dout.stop_gradiable = False
+        dout.stop_gradient = False
         out = paddle.sum(x)
     newir_program = ir.translate_to_new_ir(main_program.desc)
     return newir_program
@@ -64,6 +64,7 @@ def get_ir_program_1():
 class TestVjpPrim(unittest.TestCase):
     def test_divide_grad_prim_case1(self):
         newir_program = get_ir_program_0()
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
         paddle.fluid.core._set_prim_backward_enabled(True)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
@@ -85,9 +86,9 @@ class TestVjpPrim(unittest.TestCase):
             "pd.full",
             "pd.elementwise_pow",
             "pd.divide",
-            "pd.multiply",
             "pd.full",
             "pd.scale",
+            "pd.multiply",
             "pd.full_int_array",
             "pd.sum",
             "pd.full_int_array",
@@ -105,6 +106,7 @@ class TestVjpPrim(unittest.TestCase):
 
     def test_divide_grad_no_prim(self):
         newir_program = get_ir_program_0()
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
         paddle.fluid.core._set_prim_backward_enabled(False)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
@@ -123,6 +125,7 @@ class TestVjpPrim(unittest.TestCase):
 
     def test_sum_grad_prim(self):
         newir_program = get_ir_program_1()
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
         paddle.fluid.core._set_prim_backward_enabled(True)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]
@@ -150,6 +153,7 @@ class TestVjpPrim(unittest.TestCase):
 
     def test_sum_grad_no_prim(self):
         newir_program = get_ir_program_1()
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
         paddle.fluid.core._set_prim_backward_enabled(False)
         dout = newir_program.block().ops[-2].result(0)
         out_grads = [[dout]]

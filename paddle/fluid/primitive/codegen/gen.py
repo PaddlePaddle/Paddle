@@ -232,7 +232,7 @@ if __name__ == "__main__":
         help='Destination base directory for generated file.',
     )
     args = parser.parse_args()
-
+"""
     gen(
         pathlib.Path(args.prim_path),
         pathlib.Path(args.fwd_path),
@@ -242,3 +242,4 @@ if __name__ == "__main__":
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
     )
+"""

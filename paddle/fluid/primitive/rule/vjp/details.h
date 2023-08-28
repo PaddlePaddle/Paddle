@@ -39,10 +39,7 @@ void divide_grad(const Tensor& x,
                  Tensor* dy) {
   if (dy) {
     // dy = -(x/y^2) * dout
-    auto denominator =
-        elementwise_pow<T>(y, full<T>(y.shape(), 2.0, y.dtype(), y.place()));
-    auto dy_res = scale<T>(
-        multiply<T>(divide<T>(x, denominator), out_grad), -1.0, 0.0, true);
+    auto dy_res = -(x / y.pow(2.0)) * out_grad;
     if (x.dims() != y.dims()) {
       // Maybe need reduce here
       phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
@@ -50,7 +47,7 @@ void divide_grad(const Tensor& x,
         set_output<T>(dy_res, dy);
       } else {
         auto dy_reduce_res =
-            sum<T>(dy_res, phi::vectorize(reduce_dim), y.dtype(), false);
+            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
         auto reshape_res = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
         auto dy_tmp = std::get<0>(reshape_res);
         set_output<T>(dy_tmp, dy);
@@ -62,7 +59,7 @@ void divide_grad(const Tensor& x,
   if (dx) {
     // dx = (1/y) * dout
     auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
-    auto dx_res = multiply<T>(divide<T>(one_tensor, y), out_grad);
+    auto dx_res = one_tensor / y * out_grad;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
       auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
@@ -70,7 +67,7 @@ void divide_grad(const Tensor& x,
         set_output<T>(dx_res, dx);
       } else {
         auto dx_reduce_res =
-            sum<T>(dx_res, phi::vectorize(reduce_dim), x.dtype(), false);
+            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
         auto dx_reduce_reshape_res =
             reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
         auto dx_tmp = std::get<0>(dx_reduce_reshape_res);
