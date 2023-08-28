@@ -35,6 +35,12 @@
 #endif
 #include "paddle/fluid/operators/miopen_rnn_cache.h"
 #endif
+#ifdef PADDLE_WITH_MUSA
+#if defined(PADDLE_WITH_MCCL)
+#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
+#endif
+#endif
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
