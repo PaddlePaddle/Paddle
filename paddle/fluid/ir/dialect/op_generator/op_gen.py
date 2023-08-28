@@ -281,6 +281,7 @@ class OpInfoParser:
         # parse inputs
         self.input_name_list = self.parse_input_name_list()
         self.input_type_list = self.parse_input_type_list()
+        self.input_type_dict = self.parse_input_type_dict()
         self.input_optional_list = self.parse_input_optional_list()
         self.input_no_need_buffer_list = self.parse_input_no_need_buffer_list()
         self.cross_check(
@@ -290,6 +291,7 @@ class OpInfoParser:
         # parse outputs
         self.output_name_list = self.parse_output_name_list()
         self.output_type_list = self.parse_output_type_list()
+        self.output_type_dict = self.parse_output_type_dict()
         self.output_size_list = self.parse_output_size_list()
         self.output_optional_list = self.parse_output_optional_list()
         self.output_intermediate_list = self.parse_output_intermediate_list()
@@ -397,7 +399,7 @@ class OpInfoParser:
             type_list
         ), "name list size != type list size."
         if optional_list is not None:
-            assert len(type_list) == len(
+            assert len(name_list) == len(
                 optional_list
             ), "type list size != optional list size."
 
@@ -545,9 +547,22 @@ class OpInfoParser:
         return name_list
 
     def parse_input_type_list(self):
+        input_types_map = {
+            'Tensor': 'paddle::dialect::DenseTensorType',
+            'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+        }
+        type_list = []
+        for input_info in self.op_yaml_item['inputs']:
+            assert (
+                input_info['typename'] in input_types_map
+            ), f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
+            type_list.append(input_types_map[input_info['typename']])
+        return type_list
+
+    def parse_input_type_dict(self):
         type_dict = {}
 
-        if self.kernel_map is None or len(self.kernel_map['func'] == 1):
+        if self.kernel_map is None or len(self.kernel_map['func']) == 1:
             input_types_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
                 'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
@@ -608,9 +623,23 @@ class OpInfoParser:
         return name_list
 
     def parse_output_type_list(self):
+        output_type_map = {
+            'Tensor': 'paddle::dialect::DenseTensorType',
+            'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+            'SelectedRows': 'paddle::dialect::SelectedRowsType',
+        }
+        type_list = []
+        for output_info in self.op_yaml_item['outputs']:
+            assert (
+                output_info['typename'] in output_type_map
+            ), f"{self.op_phi_name} : Output type error: the output type only support Tensor and Tensor[], but now is {output_info['typename']}."
+            type_list.append(output_type_map[output_info['typename']])
+        return type_list
+
+    def parse_output_type_dict(self):
         type_dict = {}
 
-        if self.kernel_map is None or len(self.kernel_map['func'] == 1):
+        if self.kernel_map is None or len(self.kernel_map['func']) == 1:
             output_type_map = {
                 'Tensor': 'paddle::dialect::DenseTensorType',
                 'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
@@ -904,13 +933,13 @@ def OpGenerator(
                         op_dialect_name = dialect_name + "." + kernel_func_name
 
                 if kernel_func_name is None:
-                    op_input_type_list = op_info.input_type_list['default']
-                    op_output_type_list = op_info.output_type_list['default']
+                    op_input_type_list = op_info.input_type_dict['default']
+                    op_output_type_list = op_info.output_type_dict['default']
                 else:
-                    op_input_type_list = op_info.input_type_list[
+                    op_input_type_list = op_info.input_type_dict[
                         kernel_func_name
                     ]
-                    op_output_type_list = op_info.output_type_list[
+                    op_output_type_list = op_info.output_type_dict[
                         kernel_func_name
                     ]
 
