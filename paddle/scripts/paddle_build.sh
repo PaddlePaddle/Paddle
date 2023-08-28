@@ -1310,7 +1310,7 @@ function collect_failed_tests() {
 
 # getting qucik disable ut list
 function get_quickly_disable_ut() {
-    python -m pip install requests
+    python -m pip install httpx
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
         echo "========================================="
         echo "The following unittests have been disabled:"
