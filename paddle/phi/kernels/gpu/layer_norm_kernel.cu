@@ -13,13 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
-#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
-
-DECLARE_bool(use_fast_math);
 
 namespace phi {
 
@@ -334,8 +331,8 @@ __global__ void LayerNormFwdWithWelford(
     U warp_square = tid_square;
     WelfordWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
 
-    U row_variance = max(warp_square / warp_cnt, 0.f);
-    U row_inv_var = funcs::rsqrt_(row_variance + epsilon);
+    U row_variance = max(warp_square / warp_cnt, static_cast<U>(0.f));
+    U row_inv_var = funcs::rsqrt_<U>(row_variance + static_cast<U>(epsilon));
 
     // TODO(limingshu): make code below vectorization.
     if (threadIdx.x == 0) {
@@ -410,6 +407,11 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
       }
     }
   }
+
+  VLOG(6) << "rows=" << rows << ", cols=" << cols
+          << ", is_same_type=" << is_same_type << ", block_size=" << block_size
+          << ", cols_per_thread=" << cols_per_thread
+          << ", vec_size=" << vec_size;
 
 #define IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, vec_size_) \
   case (vec_size_): {                                                       \
@@ -633,8 +635,7 @@ void LayerNormKernel(const Context &dev_ctx,
     }
   } else {
     // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (FLAGS_use_fast_math && feature_size <= 1024 &&
-        (!std::is_same<T, int8_t>::value)) {
+    if (feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
       LaunchLayerNormKernel<Context, T, U>(dev_ctx,
                                            x_data,
                                            y_data,
