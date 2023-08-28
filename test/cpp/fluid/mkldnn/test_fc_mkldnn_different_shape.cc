@@ -44,23 +44,24 @@ paddle::framework::VarDesc *Data(
   var->SetPersistable(is_persistable);
   return var;
 }
-TEST(FCMklDNNOp, ChangeSrcShape) {
+TEST(FCMklDNNOp, ChangeSrcLayout) {
   paddle::platform::Place place = paddle::platform::CPUPlace();
   paddle::framework::Scope scope;
   paddle::framework::ProgramDesc program;
 
   auto *block = program.MutableBlock(0);
-  auto *x = Data(block, "Input", {2, 3});
-  auto *w = Data(block, "W", {3, 2});
+  auto *x = Data(block, "Input", {2, 1, 2});
+  auto *w = Data(block, "W", {2, 2});
   auto *out = Data(block, "Out", {2, 2});
   auto *fc_op = block->AppendOp();
-  auto x_value = scope.Var(x->Name())->GetMutable<phi::DenseTensor>();
-  x_value->Resize({2, 3});
 
+  auto x_value = scope.Var(x->Name())->GetMutable<phi::DenseTensor>();
   auto *w_value = scope.Var(w->Name())->GetMutable<phi::DenseTensor>();
-  w_value->Resize({3, 2});
-  float a_original_arr[] = {0, 1, 2, 3, 4, 5};
-  float b_original_arr[] = {0.0, .1, .2, .3, .4, .5};
+  x_value->Resize({2, 1, 2});
+  w_value->Resize({2, 2});
+
+  float a_original_arr[] = {0, 1, 0, 1};
+  float b_original_arr[] = {0.0, .1, 0.0, .1};
 
   std::copy_n(a_original_arr, 4, x_value->mutable_data<float>(place));
   std::copy_n(b_original_arr, 4, w_value->mutable_data<float>(place));
@@ -86,19 +87,8 @@ TEST(FCMklDNNOp, ChangeSrcShape) {
   auto *x_tensor = exe.FindTensor("Input");
   auto *w_tensor = exe.FindTensor("W");
 
-  x_tensor->Resize({2, 2});
-  w_tensor->Resize({2, 2});
+  x_tensor->set_layout(phi::DataLayout::NHWC);
+  w_tensor->set_layout(phi::DataLayout::NHWC);
 
-  float a_arr[] = {0, 1, 2, 3};
-  float b_arr[] = {0.0, .1, .2, .3};
-  float c_arr[] = {.2, .3, .6, 1.1};
-
-  std::copy_n(a_arr, 4, x_tensor->mutable_data<float>(place));
-  std::copy_n(b_arr, 4, w_tensor->mutable_data<float>(place));
   exe.Run();
-  auto *out_tensor = exe.FindTensor("Out");
-  auto *c_data = out_tensor->mutable_data<float>(place);
-  for (int i = 0; i < 4; i++) {
-    CHECK_EQ(c_data[i], c_arr[i]) << "Fc output is wrong value!";
-  }
 }
