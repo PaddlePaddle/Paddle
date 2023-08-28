@@ -21,15 +21,13 @@ limitations under the License. */
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 DECLARE_bool(use_stride_kernel);
 
@@ -157,6 +155,26 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
+    phi::DenseTensor out;
+    out.Resize(tensor.dims());
+    auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
+    auto kernel_result =
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "cast",
+            {phi::TransToPhiBackend(tensor.place()),
+             phi::DataLayout::ALL_LAYOUT,
+             tensor.dtype()});
+    using kernel_signature = void (*)(const phi::DeviceContext&,
+                                      const phi::DenseTensor&,
+                                      phi::DataType,
+                                      phi::DenseTensor*);
+    const auto& kernel = kernel_result.kernel;
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx, tensor, dtype, &out);
+    return out;
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -577,7 +595,6 @@ void TransDataBackend(const phi::SelectedRows* tensor,
   }
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
@@ -614,7 +631,6 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
   }
   return nullptr;
 }
-#endif
 
 }  // namespace experimental
 }  // namespace paddle

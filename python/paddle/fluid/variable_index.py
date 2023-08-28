@@ -589,7 +589,7 @@ def _setitem_impl_(var, item, value):
             ProgramTranslator,
         )
 
-        ProgramTranslator.get_instance()._params_map.add(
+        ProgramTranslator.get_instance()._inplace_map.add(
             cur_block.program, var.desc.id(), output
         )
 
@@ -935,7 +935,7 @@ def _setitem_static(x, indices, values):
 
         if not paddle.in_dynamic_mode():
             # map var to the new output
-            paddle.jit.api.ProgramTranslator.get_instance()._params_map.add(
+            paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
             )
         return output
@@ -1008,7 +1008,7 @@ def _setitem_static(x, indices, values):
         )
         if not paddle.in_dynamic_mode():
             # map var to the new output
-            paddle.jit.api.ProgramTranslator.get_instance()._params_map.add(
+            paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
             )
         return output

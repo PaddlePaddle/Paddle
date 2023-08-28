@@ -94,6 +94,32 @@ class TesBackward_1(unittest.TestCase):
         self.assertEqual(newir_program.block().ops[-1].name(), "pd.mean")
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
+    def test_split(self):
+        # test create output_grad in backward use full op
+        newir_program = get_ir_program_0()
+        input = newir_program.block().ops[-1].operand(0).source()
+        tanh_out = newir_program.block().ops[-1].result(0)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            out = paddle.split(tanh_out, [2, 2], 0)
+            input_grad = grad(out, input)
+
+        ops_name = [
+            "pd.data",
+            "pd.tanh",
+            "pd.full_int_array",
+            "pd.full",
+            "pd.split",
+            "builtin.split",
+            "pd.full",
+            "builtin.combine",
+            "pd.split_grad",
+            "pd.tanh_grad",
+        ]
+        for i, op in enumerate(newir_program.block().ops):
+            self.assertEqual(op.name(), ops_name[i])
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
 
 def get_ir_program_1():
     x = paddle.randn([2, 2])
@@ -164,6 +190,38 @@ class TesBackward_2(unittest.TestCase):
         ]
         for i, op in enumerate(newir_program.block().ops):
             self.assertEqual(op.name(), ops_name[i])
+
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+
+
+def get_ir_program_2():
+    x = paddle.randn([2, 2])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        k_s = paddle.sum(x_s, axis=(-1,), keepdim=False)
+    newir_program = ir.translate_to_new_ir(main_program.desc)
+    return newir_program
+
+
+class TestBackward_3(unittest.TestCase):
+    def test_basic_network(self):
+        newir_program = get_ir_program_2()
+        x = newir_program.block().ops[-1].operand(0).source()
+        sum_x = newir_program.block().ops[-1].result(0)
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+        with paddle.ir.core.program_guard(newir_program):
+            norm = paddle.tensor.fill_constant(
+                shape=[],
+                value=1.0,
+                dtype=sum_x.dtype,
+            )
+            res = paddle.divide(sum_x, norm)
+            input_grad = grad(res, x)
 
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
 
