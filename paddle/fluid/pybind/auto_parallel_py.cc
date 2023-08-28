@@ -339,15 +339,16 @@ void BindAutoParallel(py::module *m) {
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
       .def("_clean_partial_status", &TensorDistAttr::clean_partial_status);
 
-  py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
-      .def("infer_forward", &SPMDRuleBase::InferForward)
-      .def("infer_backward",
-           static_cast<std::pair<std::vector<TensorDistAttr>,
-                                 std::vector<TensorDistAttr>> (SPMDRuleBase::*)(
-               const std::vector<DistTensorSpec> &,
-               const std::vector<DistTensorSpec> &,
-               const paddle::framework::AttributeMap &)>(
-               &SPMDRuleBase::InferBackward));
+  // py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
+  //     .def("infer_forward", &SPMDRuleBase::InferForward)
+  //     .def("infer_backward",
+  //          static_cast<std::pair<std::vector<TensorDistAttr>,
+  //                                std::vector<TensorDistAttr>>
+  //                                (SPMDRuleBase::*)(
+  //              const std::vector<DistTensorSpec> &,
+  //              const std::vector<DistTensorSpec> &,
+  //              const paddle::framework::AttributeMap &)>(
+  //              &SPMDRuleBase::InferBackward));
   // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
 
   py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
@@ -372,14 +373,19 @@ void BindAutoParallel(py::module *m) {
       .def("infer_backward",
            [](const phi::distributed::SpmdRule &self,
               const std::vector<DistTensorSpec> &input_specs,
+              const std::vector<DistTensorSpec> &output_specs,
               const std::vector<phi::Attribute> &attrs) {
              phi::distributed::InferSpmdContext ctx;
-             std::vector<phi::distributed::DistTensor> input_tensors;
+             std::vector<phi::distributed::DistTensor> tensors;
              for (auto &spec : input_specs) {
-               input_tensors.emplace_back(phi::distributed::DistTensor(
+               tensors.emplace_back(phi::distributed::DistTensor(
                    phi::make_ddim(spec.shape()), spec.dist_attr()));
              }
-             for (auto &tensor : input_tensors) {
+             for (auto &spec : output_specs) {
+               tensors.emplace_back(phi::distributed::DistTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             for (auto &tensor : tensors) {
                ctx.EmplaceBackInput(phi::MetaTensor(tensor));
              }
              for (auto &attr : attrs) {
