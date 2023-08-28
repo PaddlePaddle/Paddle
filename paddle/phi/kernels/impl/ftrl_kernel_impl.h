@@ -220,7 +220,7 @@ void FTRLOpSparseKernel(const Context& ctx,
                                row_numel,
                                ctx.template Alloc<T>(param_out),
                                ctx.template Alloc<T>(squared_accumulator_out),
-                               ctx.template Alloc<T>(linear_accumulator_out);
+                               ctx.template Alloc<T>(linear_accumulator_out));
   for_range(functor);
 }
 }  // namespace phi
