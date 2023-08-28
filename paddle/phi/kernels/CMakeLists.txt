@@ -28,21 +28,6 @@ file(GLOB kernel_primitive_h "primitive/*.h")
 # cutlass weight_only
 if(WITH_CUTLASS)
   file(
-    GLOB
-    cutlass_h
-    "fusion/cutlass/cutlass_extensions/arch/*.h"
-    "fusion/cutlass/cutlass_extensions/epilogue/thread/*.h"
-    "fusion/cutlass/cutlass_extensions/epilogue/threadblock/*.h"
-    "fusion/cutlass/cutlass_extensions/epilogue/*.h"
-    "fusion/cutlass/cutlass_extensions/gemm/kernel/*.h"
-    "fusion/cutlass/cutlass_extensions/gemm/threadblock/*.h"
-    "fusion/cutlass/cutlass_extensions/gemm/warp/*.h"
-    "fusion/cutlass/cutlass_extensions/*.h"
-    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.h"
-    "fusion/cutlass/utils/*.h")
-  list(APPEND kernel_impl_h ${cutlass_h})
-
-  file(
     GLOB weight_only
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
