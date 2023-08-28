@@ -509,7 +509,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
   ir::OpInfo phi_kernel_op_info = ctx->GetRegisteredOpInfo(phi_kernel_op_name);
 
   std::string legacy_kernel_op_name = paddle::dialect::LegacyKernelOp::name();
-  ir::OpInfo legacy_kernel_op_info = ctx->GetRegisteredOpInfo(legacy_kernel_op_name);
+  ir::OpInfo legacy_kernel_op_info =
+      ctx->GetRegisteredOpInfo(legacy_kernel_op_name);
 
   auto skip_feed_names = GetSkipFeedNames(block);
 
@@ -1025,7 +1026,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     ir::Operation* op;
     if (dialect::IsLegacyOp(op_item->name())) {
       op = ir::Operation::Create(
-        vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
+          vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
     } else {
       op = ir::Operation::Create(
           vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
