@@ -27,11 +27,9 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 /**
  * Implementation of GradNodeBase, Edge and GradTensorHolder.
@@ -112,7 +110,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     return;
   }
 
-  phi::DenseTensor* dense_tensor = nullptr;
+  const phi::DenseTensor* dense_tensor = nullptr;
   // Record TensorMeta
   if (phi::DenseTensor::classof(fwd_out.impl().get())) {
     // Only Copy Meta
@@ -125,14 +123,12 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     phi::SparseCsrTensor* csr_tensor =
         static_cast<phi::SparseCsrTensor*>(fwd_out.impl().get());
     dense_tensor = csr_tensor->mutable_non_zero_elements();
-#ifdef PADDLE_WITH_DISTRIBUTE
   } else if (phi::distributed::DistTensor::classof(fwd_out.impl().get())) {
     // TODO(chenweihang): DistTensor contains global and local meta, here
     // only set the local meta now, we should set global meta later
     dense_tensor =
-        static_cast<phi::distributed::DistTensor*>(fwd_out.impl().get())
-            ->mutable_value();
-#endif
+        &(static_cast<phi::distributed::DistTensor*>(fwd_out.impl().get())
+              ->value());
   } else {
     VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
@@ -268,20 +264,18 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_in.place());
-#ifdef PADDLE_WITH_DISTRIBUTE
     } else if (phi::distributed::DistTensor::classof(fwd_in.impl().get())) {
-      phi::DenseTensor* dense_tensor =
+      const phi::DenseTensor& dense_tensor =
           static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get())
-              ->mutable_value();
+              ->value();
       PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
+          dense_tensor.meta().dtype,
           phi::DataType::UNDEFINED,
           paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
-      meta.SetTensorMeta(dense_tensor->meta());
+      meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
-#endif
     } else {
       VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
