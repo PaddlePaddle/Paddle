@@ -89,11 +89,52 @@ FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
   useless_op->LinksFrom({useless_op_in}).LinksTo({useless_op_out});
 }
 
+// pre_op -> pre_op_out -> cast_op_1 -> cast_op_1_out -> cast_op_2 ->
+// cast_op_2_out
+// ->
+// pre_op -> cast_op_2_out
+struct FindTwoCastOpPattern : public PatternBase {
+  FindTwoCastOpPattern(PDPattern* pattern, const std::string& name_scope);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(pre_op_out);
+  PATTERN_DECL_NODE(cast_op_1);
+  PATTERN_DECL_NODE(cast_op_1_out);
+  PATTERN_DECL_NODE(cast_op_2);
+  PATTERN_DECL_NODE(cast_op_2_out);
+};
+
+FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
+                                           const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* pre_op_out = pattern->NewNode(pre_op_out_repr())
+                         ->assert_is_var()
+                         ->assert_var_not_persistable()
+                         ->assert_has_n_outputs(1)
+                         ->assert_more([](Node* x) {
+                           for (auto* op : x->inputs) {
+                             CHECK_EQ(op->IsOp(), true);
+                             const auto& op_type = op->Op()->Type();
+                             if (op_type == "conditional_block" ||
+                                 op_type == "while" || op_type == "feed") {
+                               return false;
+                             }
+                           }
+                           return true;
+                         });
+
+  auto* cast_op_1 = pattern->NewNode(cast_op_1_repr())->assert_is_op("cast");
+  auto* cast_op_1_out = pattern->NewNode(cast_op_1_out_repr())->assert_is_var();
+  auto* cast_op_2 = pattern->NewNode(cast_op_2_repr())->assert_is_op("cast");
+  auto* cast_op_2_out = pattern->NewNode(cast_op_2_out_repr())->assert_is_var();
+
+  cast_op_1->LinksFrom({pre_op_out}).LinksTo({cast_op_1_out});
+  cast_op_2->LinksFrom({cast_op_1_out}).LinksTo({cast_op_2_out});
+}
+
 }  // namespace patterns
 
-void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
-  Init(name_scope_, graph);
-
+int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::FindUselessOpPattern pattern(gpd.mutable_pattern(), name_scope_);
 
@@ -119,6 +160,49 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
       };
 
   gpd(graph, handler);
+  return found_count;
+}
+
+int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::FindTwoCastOpPattern pattern(gpd.mutable_pattern(), name_scope_);
+
+  int found_count = 0;
+  GraphPatternDetector::handle_t handler =
+      [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+        GET_IR_NODE_FROM_SUBGRAPH(pre_op_out, pre_op_out, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_1, cast_op_1, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_1_out, cast_op_1_out, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_2, cast_op_2, pattern);
+        GET_IR_NODE_FROM_SUBGRAPH(cast_op_2_out, cast_op_2_out, pattern);
+        CHECK_EQ(pre_op_out->IsVar(), true);
+        CHECK_EQ(cast_op_1_out->IsVar(), true);
+        CHECK_EQ(cast_op_2_out->IsVar(), true);
+        CHECK_EQ(cast_op_1->IsOp(), true);
+        CHECK_EQ(cast_op_2->IsOp(), true);
+        if (pre_op_out->Var()->GetDataType() ==
+            cast_op_2_out->Var()->GetDataType()) {
+          for (auto* prev_op : pre_op_out->inputs) {
+            CHECK_EQ(prev_op->IsOp(), true);
+            prev_op->Op()->RenameOutput(pre_op_out->Var()->Name(),
+                                        cast_op_2_out->Var()->Name());
+            IR_NODE_LINK_TO(prev_op, cast_op_2_out);
+          }
+
+          GraphSafeRemoveNodes(
+              graph, {pre_op_out, cast_op_1, cast_op_1_out, cast_op_2});
+          found_count++;
+        }
+      };
+
+  gpd(graph, handler);
+  return found_count;
+}
+
+void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+  Init(name_scope_, graph);
+  int found_count = CleanUselessOp(graph);
+  found_count += CleanTwoCastOp(graph);
   AddStatis(found_count);
 }
 

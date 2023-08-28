@@ -24,13 +24,10 @@ limitations under the License. */
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/phi/core/kernel_factory.h"
@@ -173,7 +170,6 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
   }
 };
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
@@ -201,7 +197,6 @@ struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
     // do nothing
   }
 };
-#endif
 
 }  // namespace detail
 
@@ -235,12 +230,10 @@ DataLayout ParseLayout(DataLayout layout);
 DataLayout ParseLayout(const Tensor& tensor);
 DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 template <typename... Args>
 bool AllInputsAreDistTensor(const Args&... args) {
   return detail::DistTensorTypeParser().apply(args...).result;
 }
-#endif
 
 }  // namespace experimental
 }  // namespace paddle

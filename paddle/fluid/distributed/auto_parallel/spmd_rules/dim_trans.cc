@@ -214,7 +214,8 @@ DimTrans* GetDimTrans(DimTrans* dim_trans,
     for (int64_t i = 1, n = inputs.size(); i < n; i++) {
       DimTrans* input = inputs[i];
       if (input->type() == DimTrans::Type::INPUTDIM) {
-        (*shardable)[i].assign(nmesh, false);
+        InputDim* inputdim = dynamic_cast<InputDim*>(input);
+        (*shardable)[inputdim->input_dim()].assign(nmesh, false);
       }
 
       GetDimTrans(input,
