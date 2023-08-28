@@ -15,8 +15,11 @@
 #include "paddle/fluid/ir/transforms/inplace_pass.h"
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
 #include "paddle/ir/core/builtin_op.h"
+#include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/pass/pass.h"
 
@@ -91,21 +94,21 @@ GetEagerDeletionValues(ir::Block* block) {
 }
 
 std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
-  const auto eager_deletion_input_values = GetEagerDeletionInputValues(block);
+  const auto eager_deletion_input_values = GetEagerDeletionValues(block);
 
   std::unordered_map<ir::Operation*, ir::OpInfo> inplace_ops;
   for (auto& op : *block) {
     if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
-      VLOG(0) << "Operation " << op->name()
-              << " doesn't have inplace version." continue;
+      VLOG(0) << "Operation " << op->name() << " doesn't have inplace version.";
+      continue;
     }
 
     std::string inplace_op_name = op->name() + "_";
     ir::OpInfo inplace_op_info =
         ir::IrContext::Instance()->GetRegisteredOpInfo(inplace_op_name);
     if (!inplace_op_info) {
-      VLOG(0) << "Operation " << op->name()
-              << " doesn't have inplace version." continue;
+      VLOG(0) << "Operation " << op->name() << " doesn't have inplace version.";
+      continue;
     }
 
     auto inplace_op_yaml_interface =
@@ -150,11 +153,9 @@ class InplacePass : public ir::Pass {
       ir::Block::iterator insert_pos =
           std::find(block->begin(), block->end(), origin_op);
 
-      PADDLE_ENFORCE_NE(
-          insert_pos,
-          block->end(),
-          paddle::platform::errors::NotFound("Operator %s not found in block.",
-                                             origin_op->name()));
+      IR_ENFORCE(insert_pos != block->end(),
+                 "Operator %s not found in block.",
+                 origin_op->name());
 
       std::vector<ir::OpResult> inputs;
       for (size_t i = 0; i < origin_op->num_operands(); ++i) {
@@ -184,7 +185,7 @@ class InplacePass : public ir::Pass {
   }
 };
 
-std::unique_ptr<Pass> CreateInplacePass() {
+std::unique_ptr<ir::Pass> CreateInplacePass() {
   return std::make_unique<InplacePass>();
 }
 
