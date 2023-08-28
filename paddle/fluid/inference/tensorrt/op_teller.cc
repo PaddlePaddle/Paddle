@@ -2940,7 +2940,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unbind",
       "assign",
       "flip",
-      "atan2"
+      "atan2",
       "quantize_linear",
       "dequantize_linear"};
 
@@ -3109,7 +3109,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unbind",
       "assign",
       "flip",
-      "atan2"
+      "atan2",
       "quantize_linear",
       "dequantize_linear"};
 };
