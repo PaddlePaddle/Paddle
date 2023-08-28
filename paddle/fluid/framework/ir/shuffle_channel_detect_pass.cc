@@ -141,15 +141,14 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
         if ((reshape1_shape[i] == unk_dim_idx) && (i != 0)) {
           // there is no sufficient info
           if (!all_positive) return;
-          reshape1_shape[i] =
-              std::accumulate(x_shape1.begin(),
-                              x_shape1.end(),
-                              static_cast<int64_t>(1),
-                              std::multiplies<int64_t>()) /  // NOLINT
-              std::accumulate(reshape1_shape.begin(),
-                              reshape1_shape.end(),
-                              static_cast<int64_t>(-1),
-                              std::multiplies<int64_t>());  // NOLINT
+          reshape1_shape[i] = std::accumulate(x_shape1.begin(),
+                                              x_shape1.end(),
+                                              static_cast<int64_t>(1),
+                                              std::multiplies<>()) /
+                              std::accumulate(reshape1_shape.begin(),
+                                              reshape1_shape.end(),
+                                              static_cast<int64_t>(-1),
+                                              std::multiplies<>());
           break;
         }
       }
@@ -164,11 +163,11 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
           reshape2_shape[i] = std::accumulate(x_shape2.begin(),
                                               x_shape2.end(),
                                               static_cast<int64_t>(1),
-                                              std::multiplies<int64_t>()) /
+                                              std::multiplies<>()) /
                               std::accumulate(reshape2_shape.begin(),
                                               reshape2_shape.end(),
                                               static_cast<int64_t>(-1),
-                                              std::multiplies<int64_t>());
+                                              std::multiplies<>());
           break;
         }
       }
