@@ -14,19 +14,31 @@ limitations under the License. */
 
 #pragma once
 
+#include <iterator>
+#include <map>
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-// (TODO) Support 3 parallel cases for embedding:
-// 1. Batch dimensions of input ids is sharded on mesh.
-// 2. Row-wise Parallel of embedding table. (NOTE: Row-wise Parallel need to
-// change the embedding kernel for miss ids.)
-// 3. Column-wise Parallel of embedding table.
-// 4. Hybrid Parallelism of above 3 cases.
-class EmbeddingSPMDRule : public SPMDRuleBase {
+TensorDistAttr GetInferedDistAttr(
+    const TensorDistAttr& origin_dist_attr,
+    const std::vector<int64_t>& shape,
+    const std::string& tensor_axes,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool trans_axis);
+
+void FillMatmulOperandNotation(const int x_ndim,
+                               const int y_ndim,
+                               std::string* x_axes,
+                               std::string* y_axes,
+                               std::string* out_axes);
+
+class MatmulSPMDRule : public SPMDRuleBase {
  public:
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
   InferForward(const std::vector<DistTensorSpec>& input_specs,

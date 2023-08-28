@@ -27,8 +27,11 @@ SpmdInfo MatmulSpmdInferForward(const MetaTensor& x,
                                 bool trans_x,
                                 bool trans_y);
 
-// TODO(dev): Add Infer Backward rule later
-// SpmdInfo MatmulSpmdInferBackward(...);
+SpmdInfo MatmulSpmdInferBackward(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& out,
+                                 bool trans_x,
+                                 bool trans_y);
 
 }  // namespace distributed
 }  // namespace phi
