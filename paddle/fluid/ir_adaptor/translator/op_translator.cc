@@ -186,9 +186,7 @@ inline ir::Operation* InsertFullArrayOperationForAttributeInput(
   IR_ENFORCE(attr.isa<dialect::IntArrayAttribute>(),
              "Encounter non IntArray type when trying to insert IntArray "
              "mutable attribute");
-
   phi::IntArray int_array = attr.dyn_cast<dialect::IntArrayAttribute>().data();
-
   ir::Builder builder(ctx, program->block());
   dialect::FullIntArrayOp full_int_array_op =
       builder.Build<dialect::FullIntArrayOp>(
@@ -208,40 +206,6 @@ inline ir::Operation* InsertStackOperationForTarget(
   dialect::StackOp stack_op =
       builder.Build<dialect::StackOp>(combine_op->result(0), axis);
   return stack_op.operation();
-}
-
-inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
-                                        ir::Program* program,
-                                        const OpDesc& op_desc,
-                                        const OpInputInfo& input_info) {
-  auto& attribute_translator = AttributeTranslator::instance();
-  auto& op_normalizer = OpNameNormalizer::instance();
-
-  auto legacy_attr_name =
-      op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
-
-  if (!op_desc.HasAttr(legacy_attr_name)) {
-    IR_THROW("Op %s arg %s should not be zero size",
-             op_desc.Type(),
-             legacy_attr_name);
-  }
-  paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
-  VLOG(10) << "[" << op_desc.Type() << "][attribute]"
-           << " name: " << legacy_attr_name << " " << legacy_attr.index();
-  ir::Attribute new_attr =
-      attribute_translator(input_info.type_name, legacy_attr);
-
-  ir::Operation* defining_op = nullptr;
-  bool is_int_array = (input_info.type_name.find("IntArrayAttribute") !=
-                       input_info.type_name.npos);
-  if (is_int_array) {
-    defining_op =
-        InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
-  } else {
-    defining_op = InsertFullOperationForAttributeInput(ctx, program, new_attr);
-  }
-
-  return defining_op->result(0);
 }
 
 }  // namespace
@@ -299,6 +263,40 @@ void OpTranscriber::InsertSliceOperationForInput(
       }
     }
   }
+}
+
+ir::OpResult OpTranscriber::GetAttributeAsInput(ir::IrContext* ctx,
+                                                ir::Program* program,
+                                                const OpDesc& op_desc,
+                                                const OpInputInfo& input_info) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  auto& op_normalizer = OpNameNormalizer::instance();
+
+  auto legacy_attr_name =
+      op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
+
+  if (!op_desc.HasAttr(legacy_attr_name)) {
+    IR_THROW("Op %s arg %s should not be zero size",
+             op_desc.Type(),
+             legacy_attr_name);
+  }
+  paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
+  VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+           << " name: " << legacy_attr_name << " " << legacy_attr.index();
+  ir::Attribute new_attr =
+      attribute_translator(input_info.type_name, legacy_attr);
+
+  ir::Operation* defining_op = nullptr;
+  bool is_int_array = (input_info.type_name.find("IntArrayAttribute") !=
+                       input_info.type_name.npos);
+  if (is_int_array) {
+    defining_op =
+        InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
+  } else {
+    defining_op = InsertFullOperationForAttributeInput(ctx, program, new_attr);
+  }
+
+  return defining_op->result(0);
 }
 
 std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
@@ -1583,6 +1581,114 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
   }
 };
 
+struct SetValueOpTranscriber : public OpTranscriber {
+  ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
+                                   ir::Program* program,
+                                   const OpDesc& op_desc,
+                                   const OpInputInfo& input_info) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+
+    auto legacy_attr_name =
+        op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
+
+    if (!op_desc.HasAttr(legacy_attr_name)) {
+      IR_THROW("Op %s arg %s should not be zero size",
+               op_desc.Type(),
+               legacy_attr_name);
+    }
+    framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
+    VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+             << " name: " << legacy_attr_name << " " << legacy_attr.index();
+    ir::Attribute new_attr =
+        attribute_translator("paddle::dialect::IntArrayAttribute", legacy_attr);
+
+    ir::Operation* defining_op =
+        InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
+    return defining_op->result(0);
+  }
+};
+
+struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SetValueWithTensorOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op set_value should have corresponding OpInfo "
+          "pd.set_value_with_tensor");
+    }
+
+    return op_info;
+  }
+
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
+    if (input_name != "values") {
+      return nullptr;
+    }
+    return [](ir::IrContext* ctx,
+              TranslationContext* param_map,
+              const OpDesc& op_desc,
+              const std::string&,
+              const OpInputInfo& info,
+              ir::Program* program) -> ir::OpResult {
+      std::vector<std::string> legacy_input_vars;
+      IR_ENFORCE(op_desc.HasInput("ValueTensor"),
+                 "[set_value] should have ValueTensor");
+      legacy_input_vars = op_desc.Input("ValueTensor", true);
+      IR_ENFORCE(
+          legacy_input_vars.size() == 1u,
+          "[set_value][ValueTensor] should only have 1 variable, but got %d",
+          legacy_input_vars.size());
+      auto var_name = legacy_input_vars[0];
+      auto defining_info = (*param_map)[var_name];
+      if (defining_info.generated_by_vector) {
+        InsertSliceOperationForTarget(
+            ctx, param_map, program, defining_info, var_name);
+        defining_info = param_map->at(var_name).value;
+      }
+      return defining_info.value;
+    };
+  }
+};
+
+struct SetValueGradOpTranscriber : public SetValueWithTensorOpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SetValueGradOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op set_value_grad should have corresponding OpInfo "
+          "pd.set_value_grad");
+    }
+
+    return op_info;
+  }
+};
+
+struct LegacySetValueDispatcher : public OpTranscriber {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
+    std::vector<std::string> legacy_input_vars;
+
+    // if op has input with name "ValueTensor", then use that input as value
+    if (op_desc.HasInput("ValueTensor")) {
+      legacy_input_vars = op_desc.Input("ValueTensor", true);
+      if (legacy_input_vars.size() > 0) {
+        VLOG(10) << "legacy op:" << op_desc.Type()
+                 << " has ValueTensor and convert to set_value_with_tensor";
+        return SetValueWithTensorOpTranscriber()(
+            ctx, param_map, op_desc, program);
+      }
+    }
+
+    return SetValueOpTranscriber()(ctx, param_map, op_desc, program);
+  }
+};
+
 OpTranslator::OpTranslator() {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -1594,6 +1700,7 @@ OpTranslator::OpTranslator() {
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
@@ -1603,10 +1710,11 @@ OpTranslator::OpTranslator() {
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
+  special_handlers["set_value"] = LegacySetValueDispatcher();
+  special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
-  special_handlers["fill_constant"] = FillConstantTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
