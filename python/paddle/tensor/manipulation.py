@@ -1976,6 +1976,14 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            if not isinstance(num_or_sections, int):
+                return paddle._ir_ops.split(input, num_or_sections, dim)
+            else:
+                raise NotImplementedError(
+                    "_ir_ops.split_with_num is not implemented, please change sections as list"
+                )
+
         check_variable_and_dtype(
             input,
             'input',
