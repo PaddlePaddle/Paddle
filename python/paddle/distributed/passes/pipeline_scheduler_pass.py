@@ -50,6 +50,7 @@ class PipelineFThenBPass(PipelinePassBase):
             job_list.append(backward_job)
 
         opt_job = core.Job("optimizer")
+        opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
 
@@ -105,6 +106,7 @@ class Pipeline1F1BPass(PipelinePassBase):
             backward_micro_batch_id += 1
 
         opt_job = core.Job("optimizer")
+        opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
 

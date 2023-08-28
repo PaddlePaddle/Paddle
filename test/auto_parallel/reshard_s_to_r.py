@@ -57,9 +57,8 @@ class TestReshardSToR:
         assert reshard_func.is_suitable(input_tensor, out_dist_attr)
 
         out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
-        out_shape = list(self._shape)
-        out_shape[self._shard] = out_shape[self._shard] * 2
-        assert np.equal(out.shape, out_shape).all()
+        assert np.equal(out.shape, out._local_shape).all()
+        assert np.equal(out.shape, input_tensor.shape).all()
 
 
 if __name__ == '__main__':
