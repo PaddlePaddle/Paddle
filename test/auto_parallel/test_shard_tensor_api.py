@@ -16,6 +16,10 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.auto_parallel.static.dist_context import (
+    get_default_distributed_context,
+)
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 class TestDistAttrBasic(unittest.TestCase):
@@ -23,7 +27,7 @@ class TestDistAttrBasic(unittest.TestCase):
         exception = None
         try:
             mesh = [[0, 1], [2, 3]]
-            dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+            dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
         except ValueError as ex:
             self.assertIn(
                 "The mesh must be an instance of paddle.distributed.ProcessMesh",
@@ -40,7 +44,7 @@ class TestDistAttrBasic(unittest.TestCase):
                 [[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"]
             )
             dist_attr = dist.DistAttr(
-                mesh=mesh, sharding_specs={"x": 0, "y": 1}
+                mesh=mesh, sharding_specs={"x": None, "y": None}
             )
         except ValueError as ex:
             self.assertIn(
@@ -51,27 +55,80 @@ class TestDistAttrBasic(unittest.TestCase):
         self.assertIsNotNone(exception)
 
 
-class TestShardTensorBasic(unittest.TestCase):
-    # remove this test after static mode is supported
-    def test_static_mode_unimplemented(self):
-        exception = None
-        try:
-            paddle.enable_static()
-            mesh = dist.ProcessMesh(
-                [[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"]
-            )
-            dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
-            a = paddle.to_tensor([[1, 2, 3], [5, 6, 7]])
-            d_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-        except NotImplementedError as ex:
-            self.assertIn(
-                "The `paddle.distributed.shard_tensor` for static mode will be implemented later",
-                str(ex),
-            )
-            exception = ex
-            paddle.disable_static()
+class TestShardTensorDynamic(unittest.TestCase):
+    def setUp(self):
+        self.mesh = dist.ProcessMesh(
+            [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
+        )
 
-        self.assertIsNotNone(exception)
+    def test_dynamic(self):
+        dist_attr = dist.DistAttr(
+            mesh=self.mesh, sharding_specs=[None, None, None]
+        )
+
+        input = paddle.rand([4, 1024, 512])
+        d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
+        print(dist_attr.dims_mapping)
+
+        self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
+        self.assertEqual(d_tensor.dist_attr.dims_mapping, [-1, -1, -1])
+        self.assertTrue(d_tensor.dist_attr.is_annotated("process_mesh"))
+        self.assertTrue(d_tensor.dist_attr.is_annotated("dims_mapping"))
+
+
+class TestShardTensorStatic(unittest.TestCase):
+    def setUp(self):
+        self.mesh = dist.ProcessMesh(
+            [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
+        )
+
+    @switch_to_static_graph
+    def test_static_mode(self):
+        dist_attr = dist.DistAttr(
+            mesh=self.mesh, sharding_specs=['x', None, None]
+        )
+
+        input = paddle.static.data(
+            name="input",
+            shape=[4, 1024, 512],
+            dtype='float32',
+        )
+        d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
+
+        default_dist_context = get_default_distributed_context()
+        dist_input = default_dist_context.get_dist_tensor_for_program(input)
+        self.assertEqual(dist_input.dist_attr.process_mesh, self.mesh)
+        self.assertEqual(dist_input.dist_attr.dims_mapping, [0, -1, -1])
+        self.assertTrue(dist_input.dist_attr.is_annotated("process_mesh"))
+        self.assertTrue(dist_input.dist_attr.is_annotated("dims_mapping"))
+
+
+class TestShardTensorStaticDy2Static(unittest.TestCase):
+    def test_dy2static(self):
+        @paddle.jit.to_static
+        def func():
+            mesh = dist.ProcessMesh(
+                [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
+            )
+            dist_attr = dist.DistAttr(
+                mesh=mesh, sharding_specs=[None, None, None]
+            )
+
+            input = paddle.rand([4, 1024, 512])
+            d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
+            return input, mesh
+
+        dy_tensor, mesh = func()
+        static_tensor = func.outputs[0]  # get the inputs of static program
+
+        default_dist_context = get_default_distributed_context()
+        dist_input = default_dist_context.get_dist_tensor_for_program(
+            static_tensor
+        )
+        self.assertEqual(dist_input.dist_attr.process_mesh, mesh)
+        self.assertEqual(dist_input.dist_attr.dims_mapping, [-1, -1, -1])
+        self.assertTrue(dist_input.dist_attr.is_annotated("process_mesh"))
+        self.assertTrue(dist_input.dist_attr.is_annotated("dims_mapping"))
 
 
 if __name__ == "__main__":

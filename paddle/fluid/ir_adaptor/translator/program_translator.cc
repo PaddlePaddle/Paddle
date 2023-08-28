@@ -143,12 +143,16 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter || is_unseen_variable;
+        bool need_get_parameter_op = is_parameter && is_unseen_variable;
         if (need_get_parameter_op) {
+          PADDLE_ENFORCE_NOT_NULL(
+              var_desc,
+              phi::errors::PreconditionNotMet(
+                  "VarDesc of [%s] can not be nullptr", var_name));
           ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
           param_map_[var_name] = VariableDefiningInfo(op->result(0));
-          VLOG(10) << "[op translated][get parameter]" << op;
+          VLOG(10) << "[op translated][get parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
           parameter_visited_.insert(var_name);
@@ -224,7 +228,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           insert_pos++;
 
           block->insert(insert_pos, op);
-          VLOG(10) << "[op translated][set parameter]" << op;
+          VLOG(10) << "[op translated][set parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
           parameter_visited_.insert(var_name);

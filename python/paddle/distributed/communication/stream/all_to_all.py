@@ -154,23 +154,23 @@ def alltoall(
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            out_tensor_list = []
-            if dist.get_rank() == 0:
-                data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
-                data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
-            else:
-                data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
-                data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
-            task = dist.stream.alltoall(out_tensor_list, [data1, data2], sync_op=False)
-            task.wait()
-            print(out_tensor_list)
-            # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]    (2 GPUs, out for rank 0)
-            # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
+            >>> dist.init_parallel_env()
+            >>> out_tensor_list = []
+            >>> if dist.get_rank() == 0:
+            ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            ...     data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
+            >>> else:
+            ...     data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
+            ...     data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
+            >>> task = dist.stream.alltoall(out_tensor_list, [data1, data2], sync_op=False)
+            >>> task.wait()
+            >>> print(out_tensor_list)
+            >>> # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]    (2 GPUs, out for rank 0)
+            >>> # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return
@@ -289,43 +289,45 @@ def alltoall_single(
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            local_rank = dist.get_rank()
+            >>> dist.init_parallel_env()
+            >>> local_rank = dist.get_rank()
 
-            # case 1
-            output = paddle.empty([2], dtype="int64")
-            if local_rank == 0:
-                data = paddle.to_tensor([0, 1])
-            else:
-                data = paddle.to_tensor([2, 3])
-            task = dist.stream.alltoall_single(output, data, sync_op=False)
-            task.wait()
-            out = output.numpy()
-            # [0, 2] (2 GPUs, out for rank 0)
-            # [1, 3] (2 GPUs, out for rank 1)
+            >>> # case 1
+            >>> output = paddle.empty([2], dtype="int64")
+            >>> if local_rank == 0:
+            ...     data = paddle.to_tensor([0, 1])
+            >>> else:
+            ...     data = paddle.to_tensor([2, 3])
+            >>> task = dist.stream.alltoall_single(output, data, sync_op=False)
+            >>> task.wait()
+            >>> out = output.numpy()
+            >>> print(out)
+            >>> # [0, 2] (2 GPUs, out for rank 0)
+            >>> # [1, 3] (2 GPUs, out for rank 1)
 
-            # case 2
-            size = dist.get_world_size()
-            output = paddle.empty([(local_rank + 1) * size, size], dtype='float32')
-            if local_rank == 0:
-                data = paddle.to_tensor([[0., 0.], [0., 0.], [0., 0.]])
-            else:
-                data = paddle.to_tensor([[1., 1.], [1., 1.], [1., 1.]])
-            out_split_sizes = [local_rank + 1 for i in range(size)]
-            in_split_sizes = [i + 1 for i in range(size)]
-            task = dist.stream.alltoall_single(output,
-                                            data,
-                                            out_split_sizes,
-                                            in_split_sizes,
-                                            sync_op=False)
-            task.wait()
-            out = output.numpy()
-            # [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
-            # [[0., 0.], [0., 0.], [1., 1.], [1., 1.]] (2 GPUs, out for rank 1)
+            >>> # case 2
+            >>> size = dist.get_world_size()
+            >>> output = paddle.empty([(local_rank + 1) * size, size], dtype='float32')
+            >>> if local_rank == 0:
+            ...     data = paddle.to_tensor([[0., 0.], [0., 0.], [0., 0.]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1., 1.], [1., 1.], [1., 1.]])
+            >>> out_split_sizes = [local_rank + 1 for i in range(size)]
+            >>> in_split_sizes = [i + 1 for i in range(size)]
+            >>> task = dist.stream.alltoall_single(output,
+            ...                                 data,
+            ...                                 out_split_sizes,
+            ...                                 in_split_sizes,
+            ...                                 sync_op=False)
+            >>> task.wait()
+            >>> out = output.numpy()
+            >>> print(out)
+            >>> # [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
+            >>> # [[0., 0.], [0., 0.], [1., 1.], [1., 1.]] (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return

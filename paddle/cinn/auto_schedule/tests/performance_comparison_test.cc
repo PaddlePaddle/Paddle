@@ -25,6 +25,7 @@
 #include "paddle/cinn/frontend/paddle_model_convertor.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/ir_base.h"
@@ -61,6 +62,7 @@ namespace cinn {
 namespace auto_schedule {
 
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
 using ::cinn::hlir::framework::Graph;
 using ::cinn::hlir::framework::GraphCompiler;
 using ::cinn::hlir::framework::Instruction;
@@ -94,8 +96,8 @@ class PerformanceTester : public ::testing::Test {
       hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
       VLOG(3) << "Build " << schedule_name << " program.";
       auto scope = BuildScope(target_, graph);
-      auto graph_compiler =
-          std::make_unique<GraphCompiler>(target_, scope, graph);
+      CompilationContext context(graph, scope, target_);
+      auto graph_compiler = std::make_unique<GraphCompiler>(context);
       auto runtime_program =
           (this->*build_fn)(graph.get(), graph_compiler.get());
       if (execute) {
@@ -145,16 +147,16 @@ class PerformanceTester : public ::testing::Test {
         std::make_unique<hlir::framework::OpLowerer>(
             dtype_dict, shape_dict, target_);
 
-    GraphCompiler::CompileOptions compile_options;
-    compile_options.with_instantiate_variables = true;
+    CompilationContext& context = graph_compiler->GetCompilationContext();
+    context.with_instantiate_variables = true;
 
     if (graph->fusion_groups.empty()) {
       hlir::framework::ApplyPasses(graph, {"BuildNonFusedGroupsPass"});
     }
-    compile_options.groups = graph->fusion_groups;
+    context.groups = graph->fusion_groups;
 
     for (auto group : graph->fusion_groups) {
-      compile_options.lowered_funcs.push_back(
+      context.lowered_funcs.push_back(
           op_lowerer->Lower(group,
                             /*apply_op_schedule = */ false,
                             /*apply_group_schedule=*/false));
@@ -162,7 +164,7 @@ class PerformanceTester : public ::testing::Test {
 
     VLOG(3) << "===========================No Schedule LoweredFunc "
                "Begin===========================";
-    for (const auto& funcvec : compile_options.lowered_funcs) {
+    for (const auto& funcvec : context.lowered_funcs) {
       for (const auto& func : funcvec) {
         VLOG(3) << func;
       }
@@ -170,7 +172,7 @@ class PerformanceTester : public ::testing::Test {
     VLOG(3) << "===========================No Schedule LoweredFunc "
                "End=============================";
 
-    return graph_compiler->Build(compile_options).runtime_program;
+    return graph_compiler->Build();
   }
 
   std::unique_ptr<hlir::framework::Program> BuildManualScheduleProgram(
@@ -191,13 +193,13 @@ class PerformanceTester : public ::testing::Test {
     tuner->Initialize(tuning_config, graph_compiler);
     TuningResult tuning_result = tuner->Tune(tuning_options);
 
-    GraphCompiler::CompileOptions compile_options;
-    compile_options.with_instantiate_variables = true;
-    compile_options.Apply(tuning_result);
+    CompilationContext& context = graph_compiler->GetCompilationContext();
+    context.with_instantiate_variables = true;
+    context.ApplyTuningResult(tuning_result);
 
     VLOG(3) << "===========================Auto Schedule LoweredFunc "
                "Begin===========================";
-    for (const auto& funcvec : compile_options.lowered_funcs) {
+    for (const auto& funcvec : context.lowered_funcs) {
       for (const auto& func : funcvec) {
         VLOG(3) << func;
       }
@@ -205,7 +207,7 @@ class PerformanceTester : public ::testing::Test {
     VLOG(3) << "===========================Auto Schedule LoweredFunc "
                "End=============================";
 
-    return graph_compiler->Build(compile_options).runtime_program;
+    return graph_compiler->Build();
   }
 
 #ifdef CINN_WITH_CUDA

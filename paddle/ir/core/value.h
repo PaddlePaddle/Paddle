@@ -16,6 +16,7 @@
 
 #include "paddle/ir/core/cast_utils.h"
 #include "paddle/ir/core/type.h"
+#include "paddle/ir/core/use_iterator.h"
 
 namespace ir {
 class Operation;
@@ -66,47 +67,7 @@ class IR_API OpOperand {
   friend Operation;
 
  private:
-  // The interface shoule ensure impl_ isn't nullptr.
-  // if the user can accept impl_ is nullptr, shoule use impl_ member directly.
-  detail::OpOperandImpl *impl() const;
-
   detail::OpOperandImpl *impl_{nullptr};
-};
-
-///
-/// \brief Value Iterator
-///
-template <typename OperandType>
-class ValueUseIterator {
- public:
-  ValueUseIterator(OperandType use = nullptr) : current_(use) {}  // NOLINT
-
-  bool operator==(const ValueUseIterator<OperandType> &rhs) const {
-    return current_ == rhs.current_;
-  }
-  bool operator!=(const ValueUseIterator<OperandType> &rhs) const {
-    return !(*this == rhs);
-  }
-
-  ir::Operation *owner() const { return current_.owner(); }
-
-  OperandType &operator*() { return current_; }
-
-  OperandType *operator->() { return &operator*(); }
-
-  ValueUseIterator<OperandType> &operator++() {
-    current_ = current_.next_use();
-    return *this;
-  }
-
-  ValueUseIterator<OperandType> operator++(int) {
-    ValueUseIterator<OperandType> tmp = *this;
-    ++*(this);
-    return tmp;
-  }
-
- protected:
-  OperandType current_;
 };
 
 ///
@@ -150,11 +111,11 @@ class IR_API Value {
   ///
   /// \brief Provide iterator interface to access Value use chain.
   ///
-  using use_iterator = ValueUseIterator<OpOperand>;
+  using UseIterator = ValueUseIterator<OpOperand>;
 
-  use_iterator begin() const;
+  UseIterator use_begin() const;
 
-  use_iterator end() const;
+  UseIterator use_end() const;
 
   OpOperand first_use() const;
 
@@ -169,9 +130,8 @@ class IR_API Value {
       const std::function<bool(OpOperand)> &should_replace) const;
   void ReplaceAllUsesWith(Value new_value) const;
 
-  // The interface shoule ensure impl_ isn't nullptr.
-  // if the user can accept impl_ is nullptr, shoule use impl_ member directly.
-  detail::ValueImpl *impl() const;
+  detail::ValueImpl *impl() { return impl_; }
+  const detail::ValueImpl *impl() const { return impl_; }
 
  protected:
   detail::ValueImpl *impl_{nullptr};
@@ -197,11 +157,10 @@ class IR_API OpResult : public Value {
   friend Operation;
 
   detail::ValueImpl *value_impl() const;
+  detail::OpResultImpl *impl() const;
 
  private:
   static uint32_t GetValidInlineIndex(uint32_t index);
-
-  detail::OpResultImpl *impl() const;
 };
 
 }  // namespace ir
