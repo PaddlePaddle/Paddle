@@ -176,7 +176,7 @@ void ThrowWarnInternal(const std::string& msg) {
 
 std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
-  size_t type_end_pos = str.find(":", 0);
+  size_t type_end_pos = str.find(':', 0);
   if (type_end_pos == std::string::npos) {
     sout << str;
   } else {
@@ -278,7 +278,7 @@ std::string GetExternalErrorMsg(T status) {
     Dl_info info;
     if (dladdr(reinterpret_cast<void*>(GetCurrentTraceBackString), &info)) {
       std::string phi_so_path(info.dli_fname);
-      const size_t last_slash_idx = phi_so_path.find_last_of("/");
+      const size_t last_slash_idx = phi_so_path.find_last_of('/');
       if (std::string::npos != last_slash_idx) {
         phi_so_path.erase(last_slash_idx, std::string::npos);
       }

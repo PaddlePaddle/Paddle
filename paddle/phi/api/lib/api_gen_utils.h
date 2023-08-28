@@ -24,6 +24,12 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
 
+namespace phi {
+namespace distributed {
+class DistTensor;
+}  // namespace distributed
+}  // namespace phi
+
 namespace paddle {
 namespace experimental {
 
@@ -126,6 +132,14 @@ void TransStride(phi::DeviceContext* dev_ctx,
 void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to);
+
+void TransStrideLegacy(phi::DeviceContext* dev_ctx,
+                       phi::DenseTensor* from,
+                       phi::DenseTensor* to);
+
+/* ------------------ for auto parallel ----------------------- */
+
+phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
 
 }  // namespace experimental
 }  // namespace paddle

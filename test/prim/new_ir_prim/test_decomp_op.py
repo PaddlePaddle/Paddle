@@ -41,13 +41,19 @@ def get_ir_program():
 class TestBuildOp(unittest.TestCase):
     def test_build_op(self):
         newir_program = get_ir_program()
+        y = newir_program.block().ops[-2].results()
+        orig_shape = y[0].shape
         paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        decompose(newir_program)
+        y_new = decompose(newir_program, y)
+        new_shape = y_new[0].shape
+        assert (
+            orig_shape == new_shape
+        ), f"Original shape {orig_shape} is not equal to new shape {new_shape}"
         op_name_list = [op.name() for op in newir_program.block().ops]
         self.assertEqual(
             op_name_list,
             [
-                'builtin.get_parameter',
+                'pd.data',
                 'pd.matmul',
                 'pd.add',
                 'pd.full_int_array',

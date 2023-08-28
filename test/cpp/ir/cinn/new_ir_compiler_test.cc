@@ -19,13 +19,11 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_op.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
-#include "paddle/cinn/frontend/net_builder.h"
-#include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/utils/data_util.h"
 
 #include "paddle/cinn/hlir/dialect/jit_kernel_op.h"
