@@ -414,7 +414,11 @@ class Parallelizer:
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 
-        if self._strategy.pipeline.enable and use_new_executor():
+        if (
+            self.is_train
+            and self._strategy.pipeline.enable
+            and use_new_executor()
+        ):
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
