@@ -41,11 +41,14 @@ def llir_to_runtime_module(llir_func, target, function_name, arg_names):
     return cinn.runtime.Module(llir_module, target, function_name, arg_names)
 
 
-def compile(fn, **kwargs):
+def compile(fn, just_convert=False, jit_inputs_signature=[], **kwargs):
     if isinstance(fn, CinnLowerLevelIrJit):
-        llir_func = ast_to_llir(fn, kwargs["jit_inputs_signature"])
+        llir_func = ast_to_llir(fn, jit_inputs_signature)
     else:
         raise Exception("Current Only support compile from CinnLowerLevelIrJit")
+
+    if just_convert:
+        return llir_func
 
     rt_module = llir_to_runtime_module(
         llir_func, kwargs["target"], fn.__name__, kwargs["arg_names"]

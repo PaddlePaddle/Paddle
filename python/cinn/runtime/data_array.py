@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import cinn
 import numpy as np
-from cinn import runtime
+from cinn import common, runtime
 
 
 class DataArray:
@@ -23,18 +22,21 @@ class DataArray:
     """
 
     def __init__(
-        self, data: runtime.cinn_buffer_t, shape: list, dtype: cinn.common.Type
+        self,
+        shape: list,
+        dtype: common.Type = common.Float(32),
+        data: runtime.cinn_buffer_t = None,
     ) -> None:
-        self.data = data
         self.shape = shape
         self.dtype = dtype
+        self.data = data
 
     def to_numpy(self):
         """
         Convert DataArray to numpy array
         """
-        cinn_dtype_to_np_dtype = {cinn.common.Float(32): "float32"}
-        if self.dtype.is_float(32, cinn.common.Type.specific_type_t.UNK):
+        cinn_dtype_to_np_dtype = {common.Float(32): "float32"}
+        if self.dtype.is_float(32, common.Type.specific_type_t.UNK):
             np_dtype = np.float32
         np_arr = np.empty(self.shape, np_dtype)
         assert np_arr.flags["C_CONTIGUOUS"]
@@ -42,20 +44,18 @@ class DataArray:
         return np_arr
 
     @staticmethod
-    def from_numpy(np_array, target=cinn.common.DefaultHostTarget()):
+    def from_numpy(np_array, target=common.DefaultHostTarget()):
         """
         Create DataArray form numpy array
         """
         assert isinstance(np_array, np.ndarray)
         data = runtime.cinn_buffer_t(np_array, target)
-        dtype_np_to_cinn_common = {
-            "float": cinn.common.Float(32),
-            "float32": cinn.common.Float(32),
+        dtype_np_to_common = {
+            "float": common.Float(32),
+            "float32": common.Float(32),
         }
         # TODO(6clc): Support float16
         dtype_np = str(np_array.dtype).split(".")[-1]
-        assert dtype_np in dtype_np_to_cinn_common.keys()
+        assert dtype_np in dtype_np_to_common.keys()
 
-        return DataArray(
-            data, np_array.shape, dtype_np_to_cinn_common[dtype_np]
-        )
+        return DataArray(np_array.shape, dtype_np_to_common[dtype_np], data)

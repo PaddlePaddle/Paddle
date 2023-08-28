@@ -16,6 +16,7 @@ import ast
 from typing import Union
 
 from cinn import ir
+from cinn.runtime.data_array import DataArray
 
 
 class ComputeCodeGenerator(ast.NodeVisitor):
@@ -93,11 +94,37 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         return cinn_stmts
 
     def visit_arguments(self, node):
-        arg_names = []
-        # Just get the name of the arg,
-        # the properties of the arg are already stored in JIT Function.
-        for arg in node.args:
-            arg_names += arg.arg
+        arg_names = [arg.arg for arg in node.args]
+
+        if len(self.inputs_signature) != len(arg_names):
+            self.inputs_signature = []
+            for arg in node.args:
+                arg_annotation = arg.annotation
+                if isinstance(arg_annotation, ast.Call):
+                    data_array_args = [
+                        self.visit(item) for item in arg_annotation.args
+                    ]
+                    self.inputs_signature.append(DataArray(*data_array_args))
+                elif isinstance(arg_annotation, int):
+                    if (
+                        -(2**21) <= arg_annotation
+                        and arg_annotation <= 2**31 - 1
+                    ):
+                        self.inputs_signature.append("i32")
+                    elif (
+                        2**63 <= arg_annotation
+                        and arg_annotation <= 2**64 - 1
+                    ):
+                        self.inputs_signature.append("u64")
+                    else:
+                        self.inputs_signature.append("i64")
+                elif isinstance(arg_annotation, float):
+                    return self.inputs_signature.append("fp32")
+                else:
+                    raise TypeError(
+                        f'Unsupported type {type(arg_annotation)} for {arg_annotation}'
+                    )
+
         return arg_names
 
     def visit_For(self, node) -> ir.Expr:
@@ -149,9 +176,10 @@ class ComputeCodeGenerator(ast.NodeVisitor):
 
     def visit_Subscript(self, node):
         expr_tensor = self.visit(node.value)
-        indices = [
-            self.visit(node.slice),
-        ]
+        if isinstance(node.slice, (ast.List, ast.Tuple)):
+            indices = [self.visit(x) for x in node.slice.elts]
+        else:
+            indices = [self.visit(node.slice)]
         if type(node.ctx) == ast.Load:
             return ir.Load.make(expr_tensor, indices)
         return expr_tensor, indices
@@ -192,6 +220,12 @@ class ComputeCodeGenerator(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         return ir.Expr(node.value)
+
+    def visit_With(self, node):
+        blocks = []
+        for ast_block in node.body:
+            blocks.append(self.visit(ast_block))
+        return ir.Block.make(blocks)
 
     def eval_expression(self, node):
         """

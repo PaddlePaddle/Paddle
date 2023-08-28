@@ -63,6 +63,11 @@ def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget())
         exec(lazy_compile, scope)
         return scope[self.fn.__name__]
 
+    def convert_to_llir(self):
+        from cinn.compiler import compile
+
+        return compile(self, just_convert=True)
+
     def parse(self):
         tree = ast.parse(self.src)
         assert isinstance(tree, ast.Module)
@@ -90,6 +95,9 @@ def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget())
                 return "fp32"
             else:
                 raise TypeError(f'Unsupported type {type(arg)} for {arg}')
+
+    def __str__(self):
+        return str(self.convert_to_llir())
 
 
 def to_cinn_llir(
