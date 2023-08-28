@@ -18,6 +18,95 @@
 
 namespace cinn::adt::equation {
 
+
+using EquationIGroupOps = std::unordered_set<FakeOpPlaceHolder>;
+using IGroupList = std::unordered_set<EquationIGroupOps>;
+
+std::unordered_set<Index> InitCandidateIndex(const Graph& graph){
+  //no methods now
+  std::unordered_set<Variable> variables_ = graph.getVariables();
+
+  std::unordered_set<Index> candidate_indexes;
+  
+  auto iter_val = variables_.begin();
+  while(iter_val != variables_.end()){
+    *iter_val >> match{
+      [&](const Index& index){
+        candidate_indexes.insert(index);
+      }
+    };
+    iter_val++;
+  }
+  return candidate_indexes;
+}
+
+Index Pick(const std::unordered_set<Index>& candidate_indexes){
+    //后续添加启发性优化
+    return *candidate_indexes.begin();
+}
+
+EquationIGroupOps Walk(const Graph& graph, const Index& chosen_index){
+    EquationIGroupOps igroup;
+    
+    EquationGraphTopoWalker<const Variable, const Function*> walker = graph.GetWalker();
+    
+    auto variableVisitor = [&](const Variable& variable){
+        variable >> match{
+            [&](const FakeOpPlaceHolder& fakeOpPlaceholder){
+                igroup.insert(fakeOpPlaceholder);
+            }
+        };
+    };
+    std::array<Index, 1> arr = {chosen_index};
+  
+    walker(arr.begin(), arr.end(), variableVisitor);
+    return igroup;
+}
+
+bool isContain(const EquationIGroupOps& pre_igroup, const EquationIGroupOps& igroup){
+  auto iter_pre_igroup = pre_igroup.begin();
+  while (iter_pre_igroup != pre_igroup.end()){
+    if(igroup.find(*iter_pre_igroup) == igroup.end()){
+      return false;
+    }
+    iter_pre_igroup++;
+  }
+  return true;
+}
+
+
+void CleanAndAddSelectedSet(IGroupList& pre_igroups, const EquationIGroupOps& igroup){
+
+  auto iter_pre_igroup = pre_igroups.begin();
+  while(iter_pre_igroup!= pre_igroups.end()){
+    if(iter_pre_igroup->size() >= igroup.size()){
+      continue;
+    }
+    if(isContain(*iter_pre_igroup, igroup)){
+      pre_igroups.erase(iter_pre_igroup);
+      pre_igroups.insert(igroup);
+    }
+  }
+}
+
+void CleanCandidateSet(const Graph& graph, const EquationIGroupOps& igroup, std::unordered_set<Index>* candidate_indexes, Index& candidate_index){
+  EquationGraphTopoWalker<const Variable, const Function*> walker = graph.GetWalker();
+  
+  auto variableVisitor = [&](const Variable& variable){
+    variable >> match{
+      [&](const Index& index){
+        if(candidate_indexes->find(index) != candidate_indexes->end()){
+          candidate_indexes->erase(index);
+        }
+      }
+    };
+  };
+  std::array<Index, 1> arr = {candidate_index};
+  walker(arr.begin(), arr.end(), variableVisitor);
+}
+
+
+
 /*
 PartitionGraph: [EquationAnchorIndex, EquationIGroupOps] <- EquationGraph
 EquationAnchorIndex = tAnchor Index
@@ -37,9 +126,7 @@ filtered_anchor_tensor 保存过滤出来的 tAnchor Variable
 
 std::unordered_map<Index, std::vector<FakeOpPlaceHolder>> PartitionGraph(
     const Graph& graph) {
-  // TODO(yifan)
-
-  std::unordered_set<Variable> candidate_index = InitCandidateIndex(graph);
+  std::unordered_set<Index> candidate_index = InitCandidateIndex(graph);
   std::unordered_set<Index> selected_anchor_index;
 
   IGroupList igroups;
@@ -48,9 +135,8 @@ std::unordered_map<Index, std::vector<FakeOpPlaceHolder>> PartitionGraph(
     Index candidate = Pick(candidate_index);
 
     EquationIGroupOps igroup = Walk(graph, candidate);
-    CleanSelectedSet(igroups, igroup);
-    AddToSelectedSet(igroups, igroup);
-    CleanCandidateSet(graph, igroup, &candidate_index);
+    CleanAndAddSelectedSet(igroups, igroup);
+    CleanCandidateSet(graph, igroup, &candidate_index, candidate);
   }
 }
 
