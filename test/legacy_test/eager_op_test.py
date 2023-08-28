@@ -31,6 +31,7 @@ sys.path.append("..")
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
+    new_ir_white_list,
     no_check_set_white_list,
     no_grad_set_white_list,
     op_accuracy_white_list,
@@ -1359,7 +1360,6 @@ class OpTest(unittest.TestCase):
                 feed=feed,
                 fetch_list=fetch_list,
             )
-            print("111111111111", outs)
         return outs
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
@@ -2454,18 +2454,19 @@ class OpTest(unittest.TestCase):
             dygraph_checker.check()
             dygraph_dygraph_outs = dygraph_checker.outputs
 
-        print("Before new ir checker...........")
-        from paddle.new_ir_utils import IrChange
+        if self.op_type in new_ir_white_list.new_ir_white_list:
+            print("Before new ir checker...........")
+            from paddle.new_ir_utils import IrChange
 
-        ir_change = IrChange()
-        set_flags({"FLAGS_enable_new_ir_api": True})
-        ir_change._switch_to_new_ir()
+            ir_change = IrChange()
+            set_flags({"FLAGS_enable_new_ir_api": True})
+            ir_change._switch_to_new_ir()
 
-        new_ir_checker = NewIRChecker(self, self.outputs)
-        new_ir_checker.check()
-        set_flags({"FLAGS_enable_new_ir_api": False})
-        ir_change._switch_to_old_ir()
-        print("New ir checker finish...........")
+            new_ir_checker = NewIRChecker(self, self.outputs)
+            new_ir_checker.check()
+            set_flags({"FLAGS_enable_new_ir_api": False})
+            ir_change._switch_to_old_ir()
+            print("New ir checker finish...........")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -3012,31 +3013,32 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                 )
         # get new ir gradient
-        print("Before new ir gradient...........")
-        from paddle.new_ir_utils import IrChange
+        if self.op_type in new_ir_white_list.new_ir_white_list:
+            print("Before new ir gradient...........")
+            from paddle.new_ir_utils import IrChange
 
-        ir_change = IrChange()
-        set_flags({"FLAGS_enable_new_ir_api": True})
+            ir_change = IrChange()
+            set_flags({"FLAGS_enable_new_ir_api": True})
 
-        ir_change._switch_to_new_ir()
-        new_ir_grad = self._get_ir_gradient(
-            inputs_to_check,
-            place,
-            output_names,
-            user_defined_grad_outputs,
-            no_grad_set,
-        )
-        set_flags({"FLAGS_enable_new_ir_api": False})
-        ir_change._switch_to_old_ir()
-        print("new ir gradient finish...........")
-        self._assert_is_close(
-            numeric_grads,
-            [new_ir_grad],
-            inputs_to_check,
-            max_relative_error,
-            "Gradient Check On %s" % str(place),
-            atol=atol,
-        )
+            ir_change._switch_to_new_ir()
+            new_ir_grad = self._get_ir_gradient(
+                inputs_to_check,
+                place,
+                output_names,
+                user_defined_grad_outputs,
+                no_grad_set,
+            )
+            set_flags({"FLAGS_enable_new_ir_api": False})
+            ir_change._switch_to_old_ir()
+            print("new ir gradient finish...........")
+            self._assert_is_close(
+                numeric_grads,
+                [new_ir_grad],
+                inputs_to_check,
+                max_relative_error,
+                "Gradient Check On %s" % str(place),
+                atol=atol,
+            )
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
@@ -3480,7 +3482,6 @@ class OpTest(unittest.TestCase):
                 feed=feed,
                 fetch_list=fetch_list,
             )
-            print("22222222222", outs)
             return outs
 
 
