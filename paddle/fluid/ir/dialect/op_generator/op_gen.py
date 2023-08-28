@@ -844,9 +844,12 @@ def OpGenerator(
                     pascal_kernel_func_name = to_pascal_case(kernel_func_name)
                     if op_name[-1] == "_":
                         op_class_name = pascal_kernel_func_name + "_Op"
+                        op_dialect_name = (
+                            dialect_name + "." + kernel_func_name + "_"
+                        )
                     else:
                         op_class_name = pascal_kernel_func_name + "Op"
-                    op_dialect_name = dialect_name + "." + kernel_func_name
+                        op_dialect_name = dialect_name + "." + kernel_func_name
 
                 # =================================== #
                 #    gen interface/trait list str     #
@@ -1201,6 +1204,9 @@ def OpGenerator(
                     outputs = op_kernel_map['dispatch'][kernel_func_name][0]
                     inputs = '"' + '", "'.join(inputs) + '"'
                     outputs = '"' + '", "'.join(outputs) + '"'
+                    if op_name[-1] == "_":
+                        kernel_func_name = kernel_func_name + "_"
+
                     legacy_op_to_pd_ops_sig_list.append(
                         LEGACY_OP_TO_PD_OPS_MAP_ITEM_SIG.format(
                             kernel_name=kernel_func_name,
