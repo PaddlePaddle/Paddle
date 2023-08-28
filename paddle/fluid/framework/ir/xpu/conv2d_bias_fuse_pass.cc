@@ -178,7 +178,6 @@ void Conv2dBiasFusePass::TransFcBias(ir::Graph* graph,
     GET_IR_NODE(ew_bias_add_x);
     GET_IR_NODE(ew_bias_add_out);
 
-    auto* scope = param_scope();
     // trans link order of x && y for ew_bias_add op
     auto ew_bias_add_desc = ew_bias_add->Op();
     IR_NODE_UNLINK(mul_out, ew_bias_add);
