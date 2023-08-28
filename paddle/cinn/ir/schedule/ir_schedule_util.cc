@@ -883,12 +883,17 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
           return true;
         }
         const ir::Store* store = x->As<ir::Store>();
-        if (store && store->value.As<ir::Call>()) {
-          const std::vector<ir::Expr>& read_args =
-              store->value.As<ir::Call>()->read_args;
-          for (const ir::Expr& arg : read_args) {
-            if (arg.as_tensor()) {
-              producer_tensor_names.insert(arg.as_tensor_ref()->name);
+        if (store) {
+          std::set<ir::Expr> call_nodes = ir::CollectIRNodesWithoutTensor(
+              store->value,
+              [](const ir::Expr* x) { return x->As<ir::Call>(); });
+          for (ir::Expr call : call_nodes) {
+            const std::vector<ir::Expr>& read_args =
+                call.As<ir::Call>()->read_args;
+            for (const ir::Expr& arg : read_args) {
+              if (arg.as_tensor()) {
+                producer_tensor_names.insert(arg.as_tensor_ref()->name);
+              }
             }
           }
         }
@@ -944,9 +949,9 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
                           ->body;
     auto find_load_or_call =
         ir::CollectIRNodesWithoutTensor(block_body, [&](const Expr* x) {
-          if (x->As<ir::Store>() && x->As<ir::Store>()->value.As<ir::Call>()) {
+          if (x->As<ir::Call>()) {
             const std::vector<ir::Expr>& read_args =
-                x->As<ir::Store>()->value.As<ir::Call>()->read_args;
+                x->As<ir::Call>()->read_args;
             for (const ir::Expr& arg : read_args) {
               if (arg.as_tensor() &&
                   arg.as_tensor_ref()->name == block_tensor) {
