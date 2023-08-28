@@ -1946,7 +1946,9 @@ void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out) {
   ElementwiseInferMeta(x, y, out);
-  out->set_dtype(DataType::BOOL);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void LUUnpackInferMeta(const MetaTensor& x,

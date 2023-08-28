@@ -2040,10 +2040,10 @@ void KthvalueInferMeta(const MetaTensor& x,
 }
 
 void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_layout(x.layout());
-  out->set_dtype(DataType::BOOL);
-  out->share_lod(x);
+  UnchangedInferMeta(x, out);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void LogsumexpInferMeta(const MetaTensor& input,
