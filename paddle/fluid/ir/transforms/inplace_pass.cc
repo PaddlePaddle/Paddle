@@ -62,6 +62,7 @@ bool IsNoNeedBufferValue(ir::Operation* op, ir::Value value) {
 
 std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>>
 GetEagerDeletionValues(ir::Block* block) {
+  VLOG(0) << "GetEagerDeletionValues run";
   std::unordered_map<ir::Value, ir::Operation*> value_2_op;
   for (auto& op : *block) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -87,15 +88,31 @@ GetEagerDeletionValues(ir::Block* block) {
     ir::Operation* op = value_op_pair.second;
     eager_deletion_values[op].insert(value);
   }
+  VLOG(0) << "eager deletion values include: ";
+  for (auto kv : eager_deletion_values) {
+    VLOG(0) << kv.first->name() << "(" << kv.first << "): " << kv.second.size();
+  }
 
   return eager_deletion_values;
 }
 
 std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
+  VLOG(0) << "GetInplaceOp run";
   const auto eager_deletion_input_values = GetEagerDeletionValues(block);
+
+  VLOG(0) << "eager_deletion_input_values include: ";
+  for (auto kv : eager_deletion_input_values) {
+    VLOG(0) << kv.first->name() << "(" << kv.first << "): " << kv.second.size();
+  }
 
   std::unordered_map<ir::Operation*, ir::OpInfo> inplace_ops;
   for (auto& op : *block) {
+    if (eager_deletion_input_values.count(op) == 0) {
+      VLOG(0) << "Operation " << op->name() << " can not do inplace.";
+      continue;
+    }
+
+    VLOG(0) << "check inplace op: " << op->name();
     if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
       VLOG(0) << "Operation " << op->name() << " doesn't have inplace version.";
       continue;
@@ -109,6 +126,8 @@ std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
       continue;
     }
 
+    VLOG(0) << op->name() << " has inplace version op: " << inplace_op_name;
+
     auto inplace_op_yaml_interface =
         inplace_op_info
             .GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
@@ -121,8 +140,14 @@ std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
     std::unordered_map<int, int> inplace_out_2_in =
         inplace_op_yaml_info_parser.GetInplaceIdMap();
 
+    VLOG(0) << inplace_op_name << " 's inplace info is:";
+    for (auto& kv : inplace_out_2_in) {
+      VLOG(0) << kv.first << " -> " << kv.second;
+    }
+
     bool can_do_inplace = true;
     for (auto& kv : inplace_out_2_in) {
+      VLOG(0) << "op ptr: " << op;
       if (eager_deletion_input_values.at(op).count(
               op->operand_source(kv.second)) == 0) {
         can_do_inplace = false;
@@ -130,6 +155,7 @@ std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
     }
     if (can_do_inplace) {
       inplace_ops[op] = inplace_op_info;
+      VLOG(0) << op->name() << " do inplace ";
     }
   }
   return inplace_ops;
@@ -140,6 +166,7 @@ class InplacePass : public ir::Pass {
   InplacePass() : ir::Pass("InplacePass", 3) {}
 
   void Run(ir::Operation* op) override {
+    VLOG(0) << "InplacePass run";
     auto module_op = op->dyn_cast<ir::ModuleOp>();
     IR_ENFORCE(module_op, "DcePass should run on module op.");
     auto* block = module_op.block();
@@ -147,6 +174,7 @@ class InplacePass : public ir::Pass {
 
     for (auto kv : inplace_ops) {
       ir::Operation* origin_op = kv.first;
+      VLOG(0) << "do inplace for: " << origin_op->name();
 
       ir::Block::iterator insert_pos =
           std::find(block->begin(), block->end(), origin_op);
@@ -168,13 +196,27 @@ class InplacePass : public ir::Pass {
 
       ir::Operation* inplace_op = ir::Operation::Create(
           inputs, origin_op->attributes(), outputs, kv.second);
+      VLOG(0) << "create a new inplace op: " << inplace_op->name();
 
       for (size_t i = 0; i < origin_op->num_results(); ++i) {
         origin_op->result(i).ReplaceAllUsesWith(inplace_op->result(i));
       }
 
+      VLOG(0) << "====origin====";
+      for (auto& op : *block) {
+        VLOG(0) << op->name();
+      }
+
       block->insert(insert_pos, inplace_op);
+      VLOG(0) << "====insert inplace op to block====";
+      for (auto& op : *block) {
+        VLOG(0) << op->name();
+      }
       block->erase(insert_pos);
+      VLOG(0) << "====erase non-inplace op from block====";
+      for (auto& op : *block) {
+        VLOG(0) << op->name();
+      }
     }
   }
 
@@ -184,6 +226,7 @@ class InplacePass : public ir::Pass {
 };
 
 std::unique_ptr<ir::Pass> CreateInplacePass() {
+  VLOG(0) << "Create a InplacePass";
   return std::make_unique<InplacePass>();
 }
 
