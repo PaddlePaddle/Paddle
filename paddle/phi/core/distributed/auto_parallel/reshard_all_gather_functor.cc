@@ -17,7 +17,6 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/all_gather_kernel.h"
 
 namespace phi {
@@ -47,6 +46,18 @@ DenseTensor ReshardAllGatherFunctor(DeviceContext* dev_ctx,
     PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(
         input.dtype(), "AllGather", ([&] {
           AllGather<data_t>(static_cast<const GPUContext&>(*dev_ctx),
+                            input,
+                            world_size,
+                            &out);
+        }));
+    return out;
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (phi::CustomContext::classof(dev_ctx)) {
+    PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(
+        input.dtype(), "AllGather", ([&] {
+          AllGather<data_t>(static_cast<const CustomContext&>(*dev_ctx),
                             input,
                             world_size,
                             &out);

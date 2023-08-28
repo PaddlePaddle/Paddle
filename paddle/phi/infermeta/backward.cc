@@ -1247,4 +1247,20 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
   }
 }
 
+void SetValueGradInferMeta(const MetaTensor& out_grad,
+                           const MetaTensor& values,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad) {
+  if (x_grad) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(out_grad.dtype());
+    x_grad->share_lod(out_grad);
+  }
+  if (value_grad) {
+    value_grad->set_dims(values.dims());
+    value_grad->set_dtype(values.dtype());
+    value_grad->share_lod(values);
+  }
+}
+
 }  // namespace phi

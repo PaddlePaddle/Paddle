@@ -40,14 +40,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/core/string_tensor.h"
-
-#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/string_tensor.h"
 using phi::distributed::DistTensor;
 using phi::distributed::TensorDistAttr;
-#endif
 
 namespace paddle {
 namespace pybind {
@@ -137,7 +134,6 @@ void EmptyStringTensorInitializer(TensorObject* self,
   self->tensor.set_impl(string_tensor);
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 void CreateDistTensorWithNumpyValue(TensorObject* self,
                                     const std::string& name,
                                     const paddle::platform::Place& place,
@@ -149,6 +145,7 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
                                     framework::proto::VarType::Type dtype =
                                         paddle::framework::proto::VarType::FP32,
                                     const std::vector<int>& dims = {0}) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   auto ddims = phi::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
@@ -203,8 +200,13 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
             << ") have not GradNode, add GradNodeAccumulation"
             << autograd_meta->GradNode() << " for it.";
   }
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The numpy value-based initialization of (Dist)Tensor is not supported "
+      "in the current PaddlePaddle, please recompile and install PaddlePaddle "
+      "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 void InitTensorWithNumpyValue(TensorObject* self,
                               const py::object& array,
@@ -264,12 +266,12 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
   }
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 void InitDistTensorWithTensor(TensorObject* self,
                               const paddle::Tensor& src,
                               const paddle::platform::Place& place,
                               const std::string& name,
                               const TensorDistAttr& dist_attr) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   PADDLE_ENFORCE(src.is_dense_tensor(),
                  paddle::platform::errors::InvalidArgument(
                      "DistTensor can only initialize by DenseTensor"));
@@ -293,8 +295,13 @@ void InitDistTensorWithTensor(TensorObject* self,
   } else {
     egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
   }
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The tensor-based initialization of (Dist)Tensor is not supported "
+      "in the current PaddlePaddle, please recompile and install PaddlePaddle "
+      "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 void InitTensorWithTensor(TensorObject* self,
                           const paddle::Tensor& src,
@@ -393,7 +400,6 @@ paddle::platform::Place ParsePlace(
   return place;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 TensorDistAttr ParseDistAttrArgs(
     std::unordered_map<std::string, PyObject*> kws_map,
     std::unordered_map<std::string, Py_ssize_t> kw_order_map,
@@ -410,7 +416,6 @@ TensorDistAttr ParseDistAttrArgs(
   }
   return dist_attr;
 }
-#endif
 
 // boolean arguments: zero_copy, stop_gradient, persistable
 int ParseBooleanArgs(std::string key,
@@ -507,7 +512,6 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   stop_gradient = ParseBooleanArgs(
       "stop_gradient", kws_map, kw_order_map, args, flag_kwargs, args_num);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
   TensorDistAttr dist_attr =
       ParseDistAttrArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
@@ -522,7 +526,6 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
                                    zero_copy);
     return;
   }
-#endif
 
   EmptyTensorInitializer(
       py_tensor_ptr, act_name, place, persistable, stop_gradient);
@@ -554,10 +557,8 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
   place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
   TensorDistAttr dist_attr =
       ParseDistAttrArgs(kws_map, kw_order_map, args, flag_kwargs, args_num);
-#endif
 
   if (init_by_egr_tensor) {
     paddle::Tensor src_tensor;
@@ -577,16 +578,13 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
             "way."));
       }
     }
-#ifdef PADDLE_WITH_DISTRIBUTE
+
     if (!dist_attr.empty()) {
       InitDistTensorWithTensor(
           py_tensor_ptr, src_tensor, place, act_name, dist_attr);
     } else {
       InitTensorWithTensor(py_tensor_ptr, src_tensor, place, act_name);
     }
-#else
-    InitTensorWithTensor(py_tensor_ptr, src_tensor, place, act_name);
-#endif
   } else {
     // init by framework tensor
     phi::DenseTensor src_tensor;
