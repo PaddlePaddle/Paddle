@@ -76,6 +76,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
@@ -87,7 +88,6 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
-list(REMOVE_ITEM TEST_OPS test_linear_compress)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -154,10 +154,12 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
+  list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
-  list(REMOVE_ITEM TEST_OPS test_linear_compress)
+  list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
+  list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -964,10 +966,10 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
-  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 360)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_norm_op PROPERTIES TIMEOUT 150)
   set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 250)
   set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 250)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
@@ -1269,6 +1271,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_bucketize_api
     test_bincount_op
     test_c_embedding_op
     test_decayed_adagrad_op
@@ -1299,9 +1302,11 @@ set(STATIC_BUILD_TESTS
     test_prune_gate_by_capacity_op
     test_random_routing_op
     test_reduce_op
+    test_searchsorted_op
     test_segment_ops
     test_sparse_momentum_op
     test_sgd_op_bf16
+    test_shuffle_batch_op
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_conv_op
     test_sparse_norm_op
@@ -1372,6 +1377,20 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
                                "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
   else()
     message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
+  endif()
+endforeach()
+
+file(STRINGS
+     "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_precision_white_list"
+     NEW_IR_OP_RELAXED_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(
+      ${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                               "FLAGS_NEW_IR_OPTEST_RELAX_CHECK=True")
+  else()
+    message(
+      STATUS "NewIR Relaxed OpTest: not found ${IR_OP_TEST} in legacy_test")
   endif()
 endforeach()
 

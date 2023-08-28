@@ -30,6 +30,9 @@
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -47,7 +50,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -241,11 +243,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
-FetchList ProgramInterpreter::BetaRun(
-    const std::vector<std::string>& feed_names, bool need_fetch) {
-  return {};
-}
-
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
 }
@@ -311,16 +308,17 @@ void ProgramInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
 }
 
 void ProgramInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  if (is_shared_results_build_ || !src.IsSharedResultsBuild()) {
+  const ProgramInterpreter& impl = dynamic_cast<const ProgramInterpreter&>(src);
+  if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
     return;
   }
   // share op dependency
-  dependency_builder_.ShareDependencyFrom(src.GetDependencyBuilder());
-  dependecy_count_ = src.GetDependencyCount();
+  dependency_builder_.ShareDependencyFrom(impl.GetDependencyBuilder());
+  dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  stream_analyzer_.ShareEventInfoFrom(src.GetStreamAnalyzer());
+  stream_analyzer_.ShareEventInfoFrom(impl.GetStreamAnalyzer());
   is_shared_results_build_ = true;
-  VLOG(8) << "Share Build Results from InterpreterCore(" << &src
+  VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
@@ -1215,6 +1213,18 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
+// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
+// To support all the operators for communicating in the future.
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto operator_base_ptr = instr.OpBase();
+  if ((operator_base_ptr->Type() == "send_v2") &&
+      (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
+    stream = platform::NCCLCommContext::Instance()
+                 .Get(operator_base_ptr->Attr<int>("ring_id"),
+                      instr.DeviceContext().GetPlace())
+                 ->stream();
+  }
+#endif
   auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {

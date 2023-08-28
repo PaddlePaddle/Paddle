@@ -34,6 +34,7 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
+PHI_DECLARE_bool(enable_new_ir_in_executor);
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -188,22 +189,21 @@ class InterpreterCoreInfoCache {
   static InterpreterCoreInfoCache& Instance();
 
   bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
-    int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
-    VLOG(1) << "[Cache Check]: program_id=" << program_id
-            << "; scope_id=" << scope_i << "; is_grad=" << is_grad;
-    program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
-    VLOG(1) << "[Cache Check]: changed program_id: " << program_id;
-    bool result = info_map_.find(program_id) != info_map_.end() &&
-                  info_map_[program_id].IsAvailable(is_grad);
-    VLOG(1) << "[Cache Check]: result " << result;
-    return result;
+    if (FLAGS_enable_new_ir_in_executor) {
+      int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
+      program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+    }
+    return info_map_.find(program_id) != info_map_.end() &&
+           info_map_[program_id].IsAvailable(is_grad);
   }
 
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
                                               const framework::Scope* scope,
                                               bool is_grad) {
-    int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
-    program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+    if (FLAGS_enable_new_ir_in_executor) {
+      int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
+      program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+    }
     return info_map_[program_id].GetMutable(is_grad);
   }
 

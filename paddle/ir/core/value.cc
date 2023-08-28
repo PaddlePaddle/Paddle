@@ -14,9 +14,22 @@
 
 #include "paddle/ir/core/value.h"
 #include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value_impl.h"
 
+#define CHECK_NULL_IMPL(class_name, func_name)                  \
+  IR_ENFORCE(impl_,                                             \
+             "impl_ pointer is null when call func:" #func_name \
+             " , in class: " #class_name ".")
+
+#define CHECK_OPOPEREND_NULL_IMPL(func_name) \
+  CHECK_NULL_IMPL(OpOpernad, func_name)
+
+#define CHECK_VALUE_NULL_IMPL(func_name) CHECK_NULL_IMPL(Value, func_name)
+
+#define CHECK_OPRESULT_NULL_IMPL(func_name) CHECK_NULL_IMPL(OpResult, func_name)
 namespace ir {
+
 // Operand
 OpOperand::OpOperand(const detail::OpOperandImpl *impl)
     : impl_(const_cast<detail::OpOperandImpl *>(impl)) {}
@@ -34,22 +47,33 @@ OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
 }
 OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
-OpOperand OpOperand::next_use() const { return impl()->next_use(); }
+OpOperand OpOperand::next_use() const {
+  CHECK_OPOPEREND_NULL_IMPL(next_use);
+  return impl_->next_use();
+}
 
-Value OpOperand::source() const { return impl()->source(); }
+Value OpOperand::source() const {
+  CHECK_OPOPEREND_NULL_IMPL(source);
+  return impl_->source();
+}
 
 Type OpOperand::type() const { return source().type(); }
 
-void OpOperand::set_source(Value value) { impl()->set_source(value); }
-
-Operation *OpOperand::owner() const { return impl()->owner(); }
-
-void OpOperand::RemoveFromUdChain() { return impl()->RemoveFromUdChain(); }
-
-detail::OpOperandImpl *OpOperand::impl() const {
-  IR_ENFORCE(impl_, "Can't use impl() interface while op_operand is null.");
-  return impl_;
+void OpOperand::set_source(Value value) {
+  CHECK_OPOPEREND_NULL_IMPL(set_source);
+  impl_->set_source(value);
 }
+
+Operation *OpOperand::owner() const {
+  CHECK_OPOPEREND_NULL_IMPL(owner);
+  return impl_->owner();
+}
+
+void OpOperand::RemoveFromUdChain() {
+  CHECK_OPOPEREND_NULL_IMPL(RemoveFromUdChain);
+  return impl_->RemoveFromUdChain();
+}
+
 // Value
 Value::Value(const detail::ValueImpl *impl)
     : impl_(const_cast<detail::ValueImpl *>(impl)) {}
@@ -66,31 +90,48 @@ bool Value::operator!() const { return impl_ == nullptr; }
 
 Value::operator bool() const { return impl_; }
 
-ir::Type Value::type() const { return impl()->type(); }
+ir::Type Value::type() const {
+  CHECK_VALUE_NULL_IMPL(type);
+  return impl_->type();
+}
 
-void Value::set_type(ir::Type type) { impl()->set_type(type); }
+void Value::set_type(ir::Type type) {
+  CHECK_VALUE_NULL_IMPL(set_type);
+  impl_->set_type(type);
+}
 
 Operation *Value::GetDefiningOp() const {
   if (auto result = dyn_cast<OpResult>()) return result.owner();
   return nullptr;
 }
 
-std::string Value::PrintUdChain() { return impl()->PrintUdChain(); }
+std::string Value::PrintUdChain() {
+  CHECK_VALUE_NULL_IMPL(PrintUdChain);
+  return impl()->PrintUdChain();
+}
 
-Value::use_iterator Value::begin() const { return ir::OpOperand(first_use()); }
+Value::UseIterator Value::use_begin() const {
+  return ir::OpOperand(first_use());
+}
 
-Value::use_iterator Value::end() const { return Value::use_iterator(); }
+Value::UseIterator Value::use_end() const { return Value::UseIterator(); }
 
-OpOperand Value::first_use() const { return impl()->first_use(); }
+OpOperand Value::first_use() const {
+  CHECK_VALUE_NULL_IMPL(first_use);
+  return impl_->first_use();
+}
 
 bool Value::use_empty() const { return !first_use(); }
 
-bool Value::HasOneUse() const { return impl()->HasOneUse(); }
+bool Value::HasOneUse() const {
+  CHECK_VALUE_NULL_IMPL(HasOneUse);
+  return impl_->HasOneUse();
+}
 
 void Value::ReplaceUsesWithIf(
     Value new_value,
     const std::function<bool(OpOperand)> &should_replace) const {
-  for (auto it = begin(); it != end();) {
+  for (auto it = use_begin(); it != use_end();) {
     if (should_replace(*it)) {
       (it++)->set_source(new_value);
     }
@@ -98,14 +139,9 @@ void Value::ReplaceUsesWithIf(
 }
 
 void Value::ReplaceAllUsesWith(Value new_value) const {
-  for (auto it = begin(); it != end();) {
+  for (auto it = use_begin(); it != use_end();) {
     (it++)->set_source(new_value);
   }
-}
-
-detail::ValueImpl *Value::impl() const {
-  IR_ENFORCE(impl_, "Can't use impl() interface while value is null.");
-  return impl_;
 }
 
 // OpResult
@@ -113,12 +149,17 @@ bool OpResult::classof(Value value) {
   return value && ir::isa<detail::OpResultImpl>(value.impl());
 }
 
-Operation *OpResult::owner() const { return impl()->owner(); }
+Operation *OpResult::owner() const {
+  CHECK_OPRESULT_NULL_IMPL(owner);
+  return impl()->owner();
+}
 
-uint32_t OpResult::GetResultIndex() const { return impl()->GetResultIndex(); }
+uint32_t OpResult::GetResultIndex() const {
+  CHECK_OPRESULT_NULL_IMPL(GetResultIndex);
+  return impl()->GetResultIndex();
+}
 
 detail::OpResultImpl *OpResult::impl() const {
-  IR_ENFORCE(impl_, "Can't use impl() interface while value is null.");
   return reinterpret_cast<detail::OpResultImpl *>(impl_);
 }
 
@@ -168,7 +209,7 @@ void OpOperandImpl::InsertToUdChain() {
   if (next_use_) {
     next_use_->prev_use_addr_ = &next_use_;
   }
-  source_.impl()->SetFirstUse(this);
+  source_.impl()->set_first_use(this);
 }
 
 void OpOperandImpl::RemoveFromUdChain() {
@@ -176,9 +217,9 @@ void OpOperandImpl::RemoveFromUdChain() {
   if (!prev_use_addr_) return;
   if (prev_use_addr_ == source_.impl()->first_use_addr()) {
     /// NOTE: In ValueImpl, first_use_offseted_by_index_ use lower three bits
-    /// storage index information, so need to be updated using the SetFirstUse
+    /// storage index information, so need to be updated using the set_first_use
     /// method here.
-    source_.impl()->SetFirstUse(next_use_);
+    source_.impl()->set_first_use(next_use_);
   } else {
     *prev_use_addr_ = next_use_;
   }
@@ -221,6 +262,11 @@ uint32_t OpResultImpl::GetResultIndex() const {
     return outline_result->GetResultIndex();
   }
   return ir::dyn_cast<OpInlineResultImpl>(this)->GetResultIndex();
+}
+
+OpResultImpl::~OpResultImpl() {
+  assert(use_empty() &&
+         owner()->name() + " operation destroyed but still has uses.");
 }
 
 ir::Operation *OpResultImpl::owner() const {

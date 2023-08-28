@@ -1,4 +1,11 @@
-cc_test_old(type_test SRCS type_test.cc DEPS ir gtest)
+cc_test_old(
+  type_test
+  SRCS
+  type_test.cc
+  DEPS
+  ir
+  gtest
+  pd_dialect)
 cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS ir gtest)
 cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS ir gtest)
 cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS ir gtest)
@@ -32,6 +39,7 @@ cc_test_old(
   pd_op_to_kernel_pass
   program_translator
   pd_dialect
+  pd_kernel_dialect
   phi_kernel_adaptor
   ir
   phi
@@ -86,4 +94,13 @@ cc_test_old(
   gtest
   program_translator
   pd_dialect
+  ir)
+
+cc_test_old(
+  block_operand_test
+  SRCS
+  block_operand_test.cc
+  DEPS
+  test_dialect
+  gtest
   ir)

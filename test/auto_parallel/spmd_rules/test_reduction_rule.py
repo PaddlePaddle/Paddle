@@ -63,7 +63,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1])
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), True)
-        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), [0])
+        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), {0})
 
         # reduce on dim 0, keep_dim = true
         # [0, -1] --> [0, -1], [-1, -1], partial_on_dim:[0]
@@ -79,7 +79,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1])
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), True)
-        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), [0])
+        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), {0})
 
         # reduce on dim 1, keep_dim = false
         # [0, -1] --> [0, -1], [0], partial_on_dim:[]
@@ -125,7 +125,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [])
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), True)
-        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), [0])
+        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), {0})
 
         # reduce on dim 0 and 1, keep_dim = true
         # [0, -1] --> [0, -1], [-1, -1], partial_on_dim:[0]
@@ -141,7 +141,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1])
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), True)
-        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), [0])
+        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), {0})
 
     def test_multi_mesh_dim(self):
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
@@ -181,7 +181,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1])
 
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), True)
-        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), [0, 1])
+        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), {0, 1})
         infered_output_dist_attrs[0]._clean_partial_status()
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), False)
         # reduction on dim 1, 2, keep_dim = false
@@ -213,7 +213,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, 1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0])
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), True)
-        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), [1])
+        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), {1})
         infered_output_dist_attrs[0]._clean_partial_status()
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), False)
 
@@ -231,7 +231,7 @@ class TestReductionSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, 1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), True)
-        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), [1])
+        self.assertEqual(infered_output_dist_attrs[0]._partial_dims(), {1})
 
 
 if __name__ == "__main__":

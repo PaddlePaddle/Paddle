@@ -42,7 +42,6 @@ from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401, F403
-from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import finfo  # noqa: F401
@@ -437,6 +436,7 @@ import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
 
 from .tensor.random import check_shape  # noqa: F401
+from .nn.initializer.lazy_init import LazyGuard  # noqa: F401
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
@@ -449,6 +449,11 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
+
+from .new_ir_utils import _switch_to_new_ir  # noqa: F401
+
+_switch_to_new_ir()
+
 __all__ = [  # noqa
     'iinfo',
     'finfo',

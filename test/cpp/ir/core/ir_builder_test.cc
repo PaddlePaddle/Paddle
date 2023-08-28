@@ -31,6 +31,7 @@ TEST(builder_test, type_api) {
   EXPECT_EQ(ir::BFloat16Type::get(&ctx), builder.bfloat16_type());
   EXPECT_EQ(ir::Float32Type::get(&ctx), builder.float32_type());
   EXPECT_EQ(ir::Float64Type::get(&ctx), builder.float64_type());
+  EXPECT_EQ(ir::IndexType::get(&ctx), builder.index_type());
   EXPECT_EQ(ir::Int16Type::get(&ctx), builder.int16_type());
   EXPECT_EQ(ir::BoolType::get(&ctx), builder.bool_type());
   EXPECT_EQ(ir::Complex64Type::get(&ctx), builder.complex64_type());

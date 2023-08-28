@@ -268,11 +268,11 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "identity_op_clean_pass",              //
         "conv2d_fusion_layout_transfer_pass",  //
         "transfer_layout_elim_pass",
         "auto_mixed_precision_pass",  //
-        "inplace_op_var_pass",        // should be the last pass.
+        "identity_op_clean_pass",  // should be after auto_mixed_precision_pass.
+        "inplace_op_var_pass",     // should be the last pass.
   });
 
   use_gpu_ = true;
@@ -516,6 +516,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "reshape_unstack_concat_fuse_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
+      "cast_embedding_trans_ids_to_int32_pass",
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
@@ -527,10 +528,12 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
       "conv1d_xpu_fuse_pass",
+      "duplicated_transpose_fuse_pass",
       "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
       "delete_cast_op_pass",
       "xpu_delete_cast_op_pass",
+      "conv2d_trans_filter_dilations_nxn_to_1x1_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
       "relu6_fuse_pass",
@@ -546,6 +549,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "conv2d_transpose_xpu_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "fast_layernorm_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
       "link_xpu_op_max_pass",

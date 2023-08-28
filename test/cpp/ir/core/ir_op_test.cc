@@ -236,24 +236,26 @@ TEST(op_test, region_test) {
   argument.attributes = CreateAttributeMap({"op2_attr1", "op2_attr2"},
                                            {"op2_attr1", "op2_attr2"});
   argument.output_types = {ir::Float32Type::get(ctx)};
-  argument.regions.emplace_back(std::make_unique<ir::Region>());
-  ir::Region *region = argument.regions.back().get();
-  EXPECT_EQ(region->empty(), true);
+  argument.num_regions = 1;
+
+  ir::Operation *op3 = ir::Operation::Create(std::move(argument));
+  // argument.regions.emplace_back(std::make_unique<ir::Region>());
+
+  ir::Region &region = op3->region(0);
+  EXPECT_EQ(region.empty(), true);
 
   // (3) Test custom operation printer
   std::stringstream ss;
   op1->Print(ss);
   EXPECT_EQ(ss.str(), " (%0) = \"test.operation1\" ()");
 
-  region->push_back(new ir::Block());
-  region->push_front(new ir::Block());
-  region->insert(region->begin(), new ir::Block());
-  ir::Block *block = region->front();
+  region.push_back(new ir::Block());
+  region.push_front(new ir::Block());
+  region.insert(region.begin(), new ir::Block());
+  ir::Block *block = region.front();
   block->push_front(op1);
   block->insert(block->begin(), op1_2);
-  ir::Operation *op2 = ir::Operation::Create(std::move(argument));
-  EXPECT_EQ(op2->region(0).ir_context(), ctx);
-  op2->Destroy();
+  op3->Destroy();
 }
 
 TEST(op_test, module_op_death) {

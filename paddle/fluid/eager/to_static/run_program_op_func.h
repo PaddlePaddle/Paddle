@@ -77,10 +77,11 @@ static void clear_unused_out_var_in_backward(
 
 static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
     const std::vector<paddle::Tensor>& x,
+    const std::vector<std::string>& x_names,
     const paddle::framework::BlockDesc* backward_block) {
   auto filter_x = std::vector<paddle::Tensor>(x);
   for (size_t i = 0; i < x.size(); i++) {
-    if (!backward_block->HasVar(x[i].name())) {
+    if (!backward_block->HasVar(x_names[i])) {
       auto fake = paddle::Tensor(std::make_shared<phi::DenseTensor>());
       fake.set_name(paddle::framework::kFakeVarName);
       filter_x[i] = fake;
@@ -119,6 +120,9 @@ inline void run_program_ad_func(
   VLOG(2) << "start run run_program grad";
 
   if (require_any_grad) {
+    auto x_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
+
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
@@ -132,7 +136,7 @@ inline void run_program_ad_func(
         paddle::framework::BlockDesc*, attrs.at("backward_global_block"));
     // Clear unused x vars
     auto filter_x =
-        filter_unused_input_var_in_backward(x, backward_global_block);
+        filter_unused_input_var_in_backward(x, x_names, backward_global_block);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
     // Clear unused out vars
@@ -147,7 +151,7 @@ inline void run_program_ad_func(
 
     std::vector<const paddle::Tensor*> x_require_grad;
     for (size_t i = 0; i < x.size(); ++i) {
-      auto& name = x[i].name();
+      auto& name = x_names[i];
       if (forward_global_block->HasVar(name) ||
           backward_global_block->HasVar(name)) {
         x_require_grad.push_back(&x[i]);

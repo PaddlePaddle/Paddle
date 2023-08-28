@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
@@ -33,10 +33,11 @@
 #include "paddle/phi/core/kernel_context.h"
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/ir/dialect/kernel_attribute.h"
-#include "paddle/fluid/ir/dialect/kernel_type.h"
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
-#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
+#include "paddle/ir/core/type_name.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
 #include "glog/logging.h"
@@ -62,7 +63,10 @@ void BuildRuntimeContext(
 std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name,
+    const paddle::framework::Scope* scope);
 
 template <typename Context,
           typename InType,
@@ -78,8 +82,8 @@ void BuildPhiContext(ir::Operation* op,
                      Context* ctx) {
   paddle::framework::Scope* inner_scope =
       local_scope != nullptr ? local_scope : scope;
-  VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
-          << inner_scope << "]";
+  VLOG(6) << "Build " << get_type_name<Context>() << " in scope[" << scope
+          << "] inner_scope[" << inner_scope << "]";
 
   auto attr_map = op->attributes();
 
@@ -308,7 +312,7 @@ void BuildPhiContext(ir::Operation* op,
                 ->Get<phi::SelectedRows>()))));
     } else if (out_type.isa<ir::VectorType>()) {
       OutListType outputs;
-      auto& variable_array = scope->FindVar(name_map.at(out_ptr))
+      auto& variable_array = inner_scope->FindVar(name_map.at(out_ptr))
                                  ->Get<paddle::framework::VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
