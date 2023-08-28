@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -46,17 +47,51 @@ struct LogSoftmaxFunctor {
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    int axis_dim = X->dims()[axis];
-    const int n = funcs::SizeToAxis(axis, X->dims());
-    const int d = funcs::SizeFromAxis(axis, X->dims());
+    const auto& in_dims = X->dims();
+    int axis_dim = in_dims[axis];
+    const int n = funcs::SizeToAxis(axis, in_dims);
+    const int d = funcs::SizeFromAxis(axis, in_dims);
     phi::DDim dim_2d{n, d};
+
+    const int batch_size = dim_2d[kBatchDim];
+    const int num_classes = dim_2d[kClassDim];
+    const int num_remain = num_classes / axis_dim;
+
+    // Note: To accelerate the performance of CPU scenario, support avx here
+    if (num_remain == 1 &&
+        phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+      const T* in_data = X->data<T>();
+      T* out_data = Y->data<T>();
+      for (int bs = 0; bs < batch_size; ++bs) {
+        T max_val = *std::max_element(in_data, in_data + num_classes);
+        max_val *= static_cast<T>(-1);
+        // output[i] = input[i] - max_val
+        funcs::vec_add_bias<T, phi::backends::cpu::avx>(
+            num_classes, max_val, in_data, out_data);
+        // output[i] = exp(input[i] - max_val)
+        funcs::vec_exp<T>(num_classes, out_data, out_data);
+
+        T sum = 0;
+        // sum = \sum(exp(input[i] - max_val))
+        funcs::vec_sum<T, phi::backends::cpu::avx>(num_classes, out_data, &sum);
+        // output[i] = log(exp(input[i] - max_val)) = input[i] - max_val
+        // input data X and output data Y may share buffer, hence we have to
+        // recompute out_data here
+        for (int j = 0; j < num_classes; j++) {
+          out_data[j] = std::log(out_data[j]);
+        }
+        // output[i] = input[i] - max_val - log(sum)
+        funcs::vec_add_bias<T, phi::backends::cpu::avx>(
+            num_classes, -std::log(sum), out_data, out_data);
+
+        in_data += num_classes;
+        out_data += num_classes;
+      }
+      return;
+    }
 
     auto logits = EigenMatrixTemplate<T>::From(*X, dim_2d);
     auto log_softmax = EigenMatrixTemplate<T>::From(*Y, dim_2d);
-
-    const int batch_size = logits.dimension(kBatchDim);
-    const int num_classes = logits.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
 
     Eigen::DSizes<int, 1> along_axis(kAxisDim);
     Eigen::DSizes<int, 2> batch_classes(batch_size, num_classes);
@@ -73,22 +108,20 @@ struct LogSoftmaxFunctor {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
       log_softmax.device(*context.eigen_device()) =
-          (logits - logits.maximum(along_axis)
-                        .eval()
-                        .reshape(batch_by_one)
-                        .broadcast(one_by_class))
-              .unaryExpr(ValueClip<T>());
+          logits - logits.maximum(along_axis)
+                       .eval()
+                       .reshape(batch_by_one)
+                       .broadcast(one_by_class);
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       log_softmax.device(*context.eigen_device()) =
-          (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
-                                                   .maximum(along_axis)
-                                                   .eval()
-                                                   .reshape(batch_one_remain)
-                                                   .broadcast(one_axis_one)
-                                                   .reshape(batch_classes))
-              .unaryExpr(ValueClip<T>());
+          logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
+                                                  .maximum(along_axis)
+                                                  .eval()
+                                                  .reshape(batch_one_remain)
+                                                  .broadcast(one_axis_one)
+                                                  .reshape(batch_classes);
     }
 
     log_softmax.device(*context.eigen_device()) =

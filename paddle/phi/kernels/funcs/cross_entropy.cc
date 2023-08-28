@@ -31,11 +31,13 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
   HardLabelCrossEntropyCPUFunctorImpl(phi::DenseTensor* out,
                                       const phi::DenseTensor* prob,
                                       const phi::DenseTensor* labels,
+                                      const bool use_softmax,
                                       const int ignore_index,
                                       const int axis_dim)
       : out_(out),
         prob_(prob),
         labels_(labels),
+        use_softmax_(use_softmax),
         ignore_index_(ignore_index),
         axis_dim_(axis_dim) {}
 
@@ -75,10 +77,19 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
         }
         int index = i * num_classes + lbl * num_remain + j;
         int loss_idx = i * num_remain + j;
-        loss_data[loss_idx] =
-            lbl == ignore_index_
-                ? 0
-                : -phi::funcs::TolerableValue<T>()(std::log(prob_data[index]));
+        if (use_softmax_) {
+          // `use_softmax_` means call LogSoftmaxKernel to calculate prob_data,
+          // use `prob_data` instead of `log(prob_data)`
+          loss_data[loss_idx] =
+              lbl == ignore_index_
+                  ? 0
+                  : -phi::funcs::TolerableValue<T>()(prob_data[index]);
+        } else {
+          loss_data[loss_idx] = lbl == ignore_index_
+                                    ? 0
+                                    : -phi::funcs::TolerableValue<T>()(
+                                          std::log(prob_data[index]));
+        }
       }
     }
   }
@@ -87,6 +98,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
   phi::DenseTensor* out_;
   const phi::DenseTensor* prob_;
   const phi::DenseTensor* labels_;
+  const bool use_softmax_;
   const int ignore_index_;
   const int axis_dim_;
 };
@@ -98,6 +110,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const phi::DenseTensor* prob,
     const phi::DenseTensor* labels,
     const bool softLabel,
+    const bool use_softmax,
     const int ignore_index,
     const int axis_dim) {
   if (softLabel) {
@@ -109,14 +122,22 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     auto in = EigenMatrix<T>::From(*prob);
     auto lbl = EigenMatrix<T>::From(*labels);
     auto loss = EigenMatrix<T>::From(*out);
-
-    loss.device(*ctx.eigen_device()) =
-        -((lbl * in.log().unaryExpr(phi::funcs::TolerableValue<T>()))
-              .reshape(batch_axis_remain)
-              .sum(Eigen::DSizes<int, 1>(1)));
+    if (use_softmax) {
+      // `use_softmax` means call LogSoftmaxKernel to calculate prob, use
+      // `in.unaryExpr` instead of `in.log().unaryExpr`
+      loss.device(*ctx.eigen_device()) =
+          -((lbl * in.unaryExpr(phi::funcs::TolerableValue<T>()))
+                .reshape(batch_axis_remain)
+                .sum(Eigen::DSizes<int, 1>(1)));
+    } else {
+      loss.device(*ctx.eigen_device()) =
+          -((lbl * in.log().unaryExpr(phi::funcs::TolerableValue<T>()))
+                .reshape(batch_axis_remain)
+                .sum(Eigen::DSizes<int, 1>(1)));
+    }
   } else {
     HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(
-        out, prob, labels, ignore_index, axis_dim);
+        out, prob, labels, use_softmax, ignore_index, axis_dim);
     phi::VisitDataType(labels->dtype(), functor_impl);
   }
 }

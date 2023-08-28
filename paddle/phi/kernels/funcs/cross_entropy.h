@@ -81,6 +81,7 @@ class CrossEntropyFunctor {
                   const phi::DenseTensor* prob,
                   const phi::DenseTensor* labels,
                   const bool softLabel,
+                  const bool use_softmax,
                   const int ignore_index,
                   const int axis_dim);
 };

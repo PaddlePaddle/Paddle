@@ -1296,6 +1296,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                        &softmax_2d,
                                                        &labels_2d,
                                                        soft_label,
+                                                       false,
                                                        ignore_index,
                                                        axis_dim);
       return;
@@ -1396,6 +1397,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                        &loss_2d,
                                                        &softmax_2d,
                                                        &labels_2d,
+                                                       false,
                                                        false,
                                                        ignore_index,
                                                        axis_dim);
