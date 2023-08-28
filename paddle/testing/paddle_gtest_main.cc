@@ -23,7 +23,7 @@ limitations under the License. */
 DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) {  // NOLINT
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
