@@ -106,7 +106,7 @@ class EagerNumpyAllocation : public phi::Allocation {
             "The underlying PyObject pointer of numpy array cannot be None"));
     Py_INCREF(arr_);
   }
-  ~EagerNumpyAllocation() override {
+  ~EagerNumpyAllocation() override {  // NOLINT
     py::gil_scoped_acquire gil;
     Py_DECREF(arr_);
   }

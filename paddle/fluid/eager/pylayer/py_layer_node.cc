@@ -27,7 +27,7 @@
 #include "pybind11/pytypes.h"
 
 namespace egr {
-GradNodePyLayer::~GradNodePyLayer() {
+GradNodePyLayer::~GradNodePyLayer() {  // NOLINT
   pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ctx_);
 }

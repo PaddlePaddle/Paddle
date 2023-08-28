@@ -591,7 +591,7 @@ MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
   PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
 }
 
-MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
+MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {  // NOLINT
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   end_ns_ = PosixInNsec();
 

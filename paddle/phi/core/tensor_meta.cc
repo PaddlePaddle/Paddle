@@ -183,7 +183,8 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   return *this;
 }
 
-DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
+DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
+    DenseTensorMeta&& other) {
   is_scalar = other.is_scalar;
   use_gpudnn = other.use_gpudnn;
   dims = std::move(other.dims);

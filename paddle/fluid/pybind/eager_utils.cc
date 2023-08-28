@@ -1834,7 +1834,7 @@ void PyVoidHook::operator()() {
 
 PyObjectHolder::PyObjectHolder(PyObject* ptr) { ptr_ = ptr; }
 
-PyObjectHolder::~PyObjectHolder() {
+PyObjectHolder::~PyObjectHolder() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ptr_);
 }
@@ -1860,7 +1860,7 @@ void PyObjectHolder::dec_ref() {
 
 PackHook::PackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-PackHook::~PackHook() {
+PackHook::~PackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
@@ -1899,7 +1899,7 @@ void* PackHook::operator()(void* py_tensor) {
 
 UnPackHook::UnPackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-UnPackHook::~UnPackHook() {
+UnPackHook::~UnPackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
