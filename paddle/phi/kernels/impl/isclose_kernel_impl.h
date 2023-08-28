@@ -74,13 +74,6 @@ struct IscloseFunctor<phi::CPUContext, T> {
       bool val;
       if (std::isnan(a) || std::isnan(b)) {
         val = equal_nan && std::isnan(a) == std::isnan(b);
-      } else if (std::is_same<T, phi::dtype::complex<float>>::value ||
-                 std::is_same<T, phi::dtype::complex<double>>::value) {
-        using TReal = phi::dtype::ToReal(T);
-        TReal left = (a - b).abs();
-        TReal right = atol + rtol * b.abs();
-        TReal diff = (left - right).abs();
-        val = a == b || left <= right || diff <= 1e-15;
       } else {
         T left = (a > b ? a - b : b - a);
         T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
@@ -89,6 +82,40 @@ struct IscloseFunctor<phi::CPUContext, T> {
       }
       // *out_data &= val;
       out_data[i] = val;
+    }
+  }
+};
+
+template <typename T>
+struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
+  void operator()(const phi::CPUContext& ctx,
+                  const DenseTensor& in,
+                  const DenseTensor& other,
+                  const double rtol,
+                  const double atol,
+                  bool equal_nan,
+                  DenseTensor* output) {
+    auto* in_a = in.data<phi::dtype::complex<T>>();
+    auto* in_b = other.data<phi::dtype::complex<T>>();
+    auto* out_data = ctx.template Alloc<bool>(output);
+    auto num = in.numel();
+    // *out_data = true;
+    for (int i = 0; i < num; i++) {
+      out_data[i] = true;
+    }
+    for (int i = 0; i < num; i++) {
+      const phi::dtype::complex<T> a = in_a[i], b = in_b[i];
+      bool val;
+      if (std::isnan(a) || std::isnan(b)) {
+        val = equal_nan && std::isnan(a) == std::isnan(b);
+      } else {
+        T left = (a - b).abs();
+        T right = atol + rtol * b.abs();
+        T diff = (left - right).abs();
+        val = a == b || left <= right || diff <= 1e-15;
+        // *out_data &= val;
+        out_data[i] = val;
+      }
     }
   }
 };
@@ -110,17 +137,36 @@ __global__ void IscloseCUDAKernel(const T* in_data,
     const MPType b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
-    } else if (std::is_same<T, phi::dtype::complex<float>>::value ||
-               std::is_same<T, phi::dtype::complex<double>>::value) {
-      using TReal = phi::dtype::ToReal(T);
-      TReal left = (a - b).abs();
-      TReal right = atol + rtol * b.abs();
-      TReal diff = (left - right).abs();
-      val = a == b || left <= right || diff <= 1e-15;
     } else {
       MPType left = (a > b ? a - b : b - a);
       MPType right = atol + (b > 0 ? rtol * b : (-rtol) * b);
       MPType diff = (left > right ? left - right : right - left);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    out_data[i] = val;
+    // if (!val) *out_data = false;
+  }
+}
+template <typename T>
+__global__ void IscloseCUDAKernel<phi::dtype::complex<T>>(
+    const phi::dtype::complex<T>* in_data,
+    const phi::dtype::complex<T>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int num,
+    bool* out_data) {
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const T a = in_data[i];
+    const T b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      T left = (a - b).abs();
+      T right = atol + rtol * b.abs();
+      T diff = (left - right).abs();
       val = a == b || left <= right || diff <= 1e-15;
     }
     out_data[i] = val;
