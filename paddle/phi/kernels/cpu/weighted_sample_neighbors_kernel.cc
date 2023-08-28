@@ -57,7 +57,7 @@ void SampleWeightedNeighbors(
     bool return_eids) {
   std::priority_queue<phi::GraphWeightedNode<T>,
                       std::vector<phi::GraphWeightedNode<T>>,
-                      std::greater<phi::GraphWeightedNode<T>>>
+                      std::greater<phi::GraphWeightedNode<T>>>  // NOLINT
       min_heap;
   for (size_t i = 0; i < out_src.size(); i++) {
     float weight_key = log2(dice_distribution(rng)) * (1 / out_weight[i]);

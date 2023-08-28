@@ -94,10 +94,11 @@ void MemoryOptimizePass::CollectLifeCycle(
           for (auto i : in_shape) {
             CHECK_GT(i, 0);
           }
-          auto var_bytes = std::accumulate(in_shape.begin(),
-                                           in_shape.end(),
-                                           (int64_t)1,
-                                           std::multiplies<int64_t>());
+          auto var_bytes =
+              std::accumulate(in_shape.begin(),
+                              in_shape.end(),
+                              (int64_t)1,
+                              std::multiplies<int64_t>());  // NOLINT
           persis_byte +=
               paddle::framework::SizeOfType(node->Var()->GetDataType()) *
               var_bytes;
@@ -184,7 +185,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
       }
 
       int size = std::accumulate(
-          shape.begin(), shape.end(), 1, std::multiplies<int>());
+          shape.begin(), shape.end(), 1, std::multiplies<int>());  // NOLINT
       (*space_table)[node->Var()->Name()] =
           size * paddle::framework::SizeOfType(node->Var()->GetDataType());
     }
