@@ -26,7 +26,7 @@ namespace framework {
 // and secondly considering the amount of calculated data.
 struct NodePriority {
   bool has_loop_binded;
-  int64_t score;
+  double score;
 
   bool operator<(const NodePriority& other) const {
     if (has_loop_binded ^ other.has_loop_binded) {
@@ -66,6 +66,9 @@ class GroupScheduler {
   // Make every effort to automatically merge the loops of the vertical
   // relationship ScheduleBlockNode.
   void DoVerticalLoopFusion();
+
+  // Automatically bind cuda axis on loops.
+  void BindCudaAxis();
 
   // Automatically allocate storage locations for variables to optimize IO.
   void AllocateStorage();

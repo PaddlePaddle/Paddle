@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/group_scheduler.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
@@ -89,6 +90,27 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
   return same_loops;
 }
 
+std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
+  ir::ScheduleBlockRealize* schedule_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  ir::ScheduleBlock* schedule_block =
+      schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
+  std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
+  std::unordered_set<std::string> reduce_loop_var_names;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      ir::CollectIRNodesWithoutTensor(iter_values[i], [&](const ir::Expr* x) {
+        if (x->as_var()) {
+          reduce_loop_var_names.insert(x->as_var_ref()->name);
+        }
+        return false;
+      });
+    }
+  }
+  return reduce_loop_var_names;
+}
+
 GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
                                const std::shared_ptr<Graph::Group>& group,
                                const common::Target& target)
@@ -102,23 +124,35 @@ void GroupScheduler::operator()() {
   DoComputeInline();
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
+#ifdef CINN_WITH_CUDA
+  BindCudaAxis();
   AllocateStorage();
+#endif
 }
 
 NodePriority GroupScheduler::CalculateNodePriority(
     const ir::ScheduleBlockNode* node) const {
   bool has_loop_binded = false;
-  int64_t score = 1;
+  std::unordered_set<std::string> reduce_loop_var_names =
+      GetReduceLoopVarNames(node->Block());
+
+  int64_t reduce_score = 1;
+  double score = 1;
   for (Expr expr : node->ControlStmts()) {
     ir::For* for_node = expr.As<ir::For>();
     if (for_node != nullptr) {
       score *= ir::GetLoopExtent(expr);
     }
+    if (reduce_loop_var_names.count(for_node->loop_var->name) != 0) {
+      reduce_score *= ir::GetLoopExtent(expr);
+    }
     if (for_node->is_binded()) {
       has_loop_binded = true;
     }
   }
-  score += node->ControlStmts().size();
+  if (reduce_score > 1) {
+    score *= std::log2(reduce_score);
+  }
 
   VLOG(6) << "The priority score of node " << node->id() << " is " << score;
   VLOG(6) << "The node has_loop_binded: " << has_loop_binded;
@@ -180,6 +214,10 @@ void GroupScheduler::DoLoopAlignment() {
       if (expr.As<ir::For>() != nullptr &&
           (expr.As<ir::For>()->for_type() == ir::ForType::GPUBlock ||
            expr.As<ir::For>()->for_type() == ir::ForType::GPUThread)) {
+        return false;
+      }
+      if (expr.As<ir::For>()->body.As<ir::Block>() &&
+          expr.As<ir::For>()->body.As<ir::Block>()->stmts.size() > 1) {
         return false;
       }
     }
@@ -353,16 +391,29 @@ void GroupScheduler::DoVerticalLoopFusion() {
       }
     }
 
+    std::unordered_set<std::string> src_reduce_loop_var_names =
+        GetReduceLoopVarNames(node->Block());
     for (ir::ScheduleBlockNode* master : masters) {
       // Find the target loop candidates;
       std::vector<ir::Expr> target_loop_candidates;
       int64_t total_loop_extent = 1;
+      std::unordered_set<std::string> tgt_reduce_loop_var_names =
+          GetReduceLoopVarNames(master->Block());
       std::vector<std::tuple<cinn::ir::Expr, cinn::ir::Expr>> same_loops =
           FindSameOuterLoops(node, master);
       for (const std::tuple<cinn::ir::Expr, cinn::ir::Expr>& same_loop :
            same_loops) {
-        if (std::get<0>(same_loop).ptr() != std::get<1>(same_loop).ptr()) {
-          target_loop_candidates.push_back(std::get<1>(same_loop));
+        ir::Expr source_loop = std::get<0>(same_loop);
+        ir::Expr target_loop = std::get<1>(same_loop);
+        bool is_src_loop_reduce =
+            src_reduce_loop_var_names.count(
+                source_loop.As<ir::For>()->loop_var->name) > 0;
+        bool is_tgt_loop_reduce =
+            tgt_reduce_loop_var_names.count(
+                target_loop.As<ir::For>()->loop_var->name) > 0;
+        if (source_loop.ptr() != target_loop.ptr() && !is_src_loop_reduce &&
+            !is_tgt_loop_reduce) {
+          target_loop_candidates.push_back(target_loop);
         }
       }
       // Find the target loop with the highest priority and passing the
@@ -413,6 +464,31 @@ void GroupScheduler::DoVerticalLoopFusion() {
 
   schedule_block_graph_->DFSTopoWalk(ComputeAtFunc);
   VLOG(5) << "[After DoVerticalLoopFusion] func body: "
+          << ir_sch_->GetModule().GetExprs().front();
+}
+
+void GroupScheduler::BindCudaAxis() {
+  VLOG(5) << "[Start BindCudaAxis] func body: "
+          << ir_sch_->GetModule().GetExprs().front();
+
+  auto_schedule::AutoBind binder(target_);
+
+  auto BindFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return;
+    }
+    VLOG(6) << "try bind cuda axis on: " << node->id()
+            << ", before bind, func body: "
+            << ir_sch_->GetModule().GetExprs().front();
+    binder.Apply(ir_sch_, node->id());
+    VLOG(6) << "try bind cuda axis on: " << node->id()
+            << ", after bind, func body: "
+            << ir_sch_->GetModule().GetExprs().front();
+  };
+
+  schedule_block_graph_->NodesWalk(BindFunc);
+
+  VLOG(5) << "[After BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 }
 
@@ -772,7 +848,10 @@ void GroupScheduler::AllocateStorage() {
                        load_indice_value,
                        node->id(),
                        consumer_block_name)) {
-        memory_type = ir::MemoryType::Auto;
+        // TODO(BiynXu): Return error information to the front-end instead of
+        // terminating the program.
+        LOG(FATAL) << "Fusion requires synchronization across blocks, but "
+                      "currently we do not support it.";
         break;
       } else if (IsCrossThread(store_indice_value,
                                load_indice_value,
