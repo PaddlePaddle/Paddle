@@ -959,7 +959,6 @@ def einsum(equation, *operands):
             >>> y = paddle.rand([5])
 
             >>> # sum
-            >>> # doctest: +SKIP('The paddle.seed cannot provide fixed results.')
             >>> print(paddle.einsum('i->', x))
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.81225157)
