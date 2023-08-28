@@ -86,6 +86,8 @@ class MetaTensor {
   //  and it will be deleted in the future.
   virtual bool is_tensor_array() const;
 
+  virtual bool is_same_tensor(const MetaTensor& meta_tensor) const;
+
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;
   }

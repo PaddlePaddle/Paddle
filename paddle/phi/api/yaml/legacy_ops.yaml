@@ -144,13 +144,14 @@
 
 - op : cast
   args : (Tensor x, DataType dtype)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : CastInferMeta
   kernel :
     func : cast
     param : [x, dtype]
     data_type : x
+  inplace: (x -> out)
   backward : cast_grad
 
 - op : channel_shuffle
@@ -232,11 +233,12 @@
 
 - op : divide
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
   kernel :
     func : divide
+  inplace: (x -> out)
   backward : divide_grad
 
 - op : dropout
@@ -334,6 +336,7 @@
     func : CompareInferMeta
   kernel :
     func : equal
+  inplace: (x -> out)
 
 - op : exponential_
   args : (Tensor x, float lam)
@@ -365,6 +368,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : floor_divide
+  inplace: (x -> out)
 
 - op : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
@@ -499,6 +503,7 @@
     func : CompareInferMeta
   kernel :
     func : greater_equal
+  inplace: (x -> out)
 
 - op : greater_than
   args : (Tensor x, Tensor y)
@@ -507,6 +512,7 @@
     func : CompareInferMeta
   kernel :
     func : greater_than
+  inplace: (x -> out)
 
 - op : hardswish
   args : (Tensor x)
@@ -545,6 +551,7 @@
     func : CompareInferMeta
   kernel :
     func : less_equal
+  inplace: (x -> out)
 
 - op : less_than
   args : (Tensor x, Tensor y)
@@ -553,6 +560,7 @@
     func : CompareInferMeta
   kernel :
     func : less_than
+  inplace: (x -> out)
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
@@ -721,6 +729,7 @@
     func : CompareInferMeta
   kernel :
     func : not_equal
+  inplace: (x -> out)
 
 - op : one_hot
   args : (Tensor x, Scalar(int) num_classes)

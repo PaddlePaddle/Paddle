@@ -24,6 +24,8 @@ Tensor = paddle.fluid.framework.core.eager.Tensor
 
 from paddle import _C_ops
 from paddle.tensor.creation import full
+from paddle.tensor.math import broadcast_shape
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..framework import LayerHelper, in_dynamic_mode
 
@@ -138,6 +140,23 @@ def logical_and(x, y, out=None, name=None):
     )
 
 
+@inplace_apis_in_dygraph_only
+def logical_and_(x, y, name=None):
+    r"""
+    Inplace version of ``logical_and`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_logical_and`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.logical_and_(x, y)
+
+
 def logical_or(x, y, out=None, name=None):
     """
 
@@ -180,6 +199,23 @@ def logical_or(x, y, out=None, name=None):
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
     )
+
+
+@inplace_apis_in_dygraph_only
+def logical_or_(x, y, name=None):
+    r"""
+    Inplace version of ``logical_or`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_logical_or`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.logical_or_(x, y)
 
 
 def logical_xor(x, y, out=None, name=None):
@@ -227,6 +263,23 @@ def logical_xor(x, y, out=None, name=None):
     )
 
 
+@inplace_apis_in_dygraph_only
+def logical_xor_(x, y, name=None):
+    r"""
+    Inplace version of ``logical_xor`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_logical_xor`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.logical_xor_(x, y)
+
+
 def logical_not(x, out=None, name=None):
     """
 
@@ -264,6 +317,16 @@ def logical_not(x, out=None, name=None):
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
     )
+
+
+@inplace_apis_in_dygraph_only
+def logical_not_(x, name=None):
+    r"""
+    Inplace version of ``logical_not`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_logical_not`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.logical_not_(x)
 
 
 def is_empty(x, name=None):
@@ -506,6 +569,23 @@ def equal(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def equal_(x, y, name=None):
+    r"""
+    Inplace version of ``equal`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_equal`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.equal_(x, y)
+
+
 @templatedoc()
 def greater_equal(x, y, name=None):
     """
@@ -575,6 +655,23 @@ def greater_equal(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def greater_equal_(x, y, name=None):
+    r"""
+    Inplace version of ``greater_equal`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_greater_equal`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.greater_equal_(x, y)
+
+
 @templatedoc()
 def greater_than(x, y, name=None):
     """
@@ -642,6 +739,23 @@ def greater_than(x, y, name=None):
             outputs={'Out': [out]},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def greater_than_(x, y, name=None):
+    r"""
+    Inplace version of ``greater_than`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_greater_than`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.greater_than_(x, y)
 
 
 @templatedoc()
@@ -714,6 +828,23 @@ def less_equal(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def less_equal_(x, y, name=None):
+    r"""
+    Inplace version of ``less_equal`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_less_equal`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.less_equal_(x, y)
+
+
 @templatedoc()
 def less_than(x, y, name=None):
     """
@@ -784,6 +915,23 @@ def less_than(x, y, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def less_than_(x, y, name=None):
+    r"""
+    Inplace version of ``less_than`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_less_than`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.less_than_(x, y)
+
+
 @templatedoc()
 def not_equal(x, y, name=None):
     """
@@ -852,6 +1000,23 @@ def not_equal(x, y, name=None):
             outputs={'Out': [out]},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def not_equal_(x, y, name=None):
+    r"""
+    Inplace version of ``not_equal`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_not_equal`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.not_equal_(x, y)
 
 
 def is_tensor(x):
@@ -965,6 +1130,23 @@ def bitwise_and(x, y, out=None, name=None):
     )
 
 
+@inplace_apis_in_dygraph_only
+def bitwise_and_(x, y, name=None):
+    r"""
+    Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_and`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.bitwise_and_(x, y)
+
+
 def bitwise_or(x, y, out=None, name=None):
     r"""
 
@@ -1001,6 +1183,23 @@ def bitwise_or(x, y, out=None, name=None):
     return _bitwise_op(
         op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True
     )
+
+
+@inplace_apis_in_dygraph_only
+def bitwise_or_(x, y, name=None):
+    r"""
+    Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_or`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.bitwise_or_(x, y)
 
 
 def bitwise_xor(x, y, out=None, name=None):
@@ -1040,6 +1239,23 @@ def bitwise_xor(x, y, out=None, name=None):
     )
 
 
+@inplace_apis_in_dygraph_only
+def bitwise_xor_(x, y, name=None):
+    r"""
+    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_xor`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    if in_dynamic_mode():
+        return _C_ops.bitwise_xor_(x, y)
+
+
 def bitwise_not(x, out=None, name=None):
     r"""
 
@@ -1074,6 +1290,16 @@ def bitwise_not(x, out=None, name=None):
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False
     )
+
+
+@inplace_apis_in_dygraph_only
+def bitwise_not_(x, name=None):
+    r"""
+    Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_not`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.bitwise_not_(x)
 
 
 @templatedoc()

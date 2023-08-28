@@ -30,13 +30,22 @@ inline void CompareKernelImpl(const Context& ctx,
                               const DenseTensor& y,
                               int axis,
                               DenseTensor* out) {
-  ctx.template Alloc<bool>(out);
-  if (x.dims().size() >= y.dims().size()) {
-    funcs::ElementwiseCompute<Functor, T, bool>(
-        ctx, x, y, Functor(), out, axis);
+  if (!out->IsSharedWith(x)) {
+    ctx.template Alloc<bool>(out);
+    if (x.dims().size() >= y.dims().size()) {
+      funcs::ElementwiseCompute<Functor, T, bool>(
+          ctx, x, y, Functor(), out, axis);
+    } else {
+      funcs::ElementwiseCompute<InverseFunctor, T, bool>(
+          ctx, x, y, InverseFunctor(), out, axis);
+    }
   } else {
-    funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-        ctx, x, y, InverseFunctor(), out, axis);
+    if (x.dims().size() >= y.dims().size()) {
+      funcs::ElementwiseCompute<Functor, T, T>(ctx, x, y, Functor(), out, axis);
+    } else {
+      funcs::ElementwiseCompute<InverseFunctor, T, T>(
+          ctx, x, y, InverseFunctor(), out, axis);
+    }
   }
 }
 
@@ -83,21 +92,19 @@ PD_REGISTER_KERNEL(equal_all,
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
-  PD_REGISTER_KERNEL(name,                                \
-                     CPU,                                 \
-                     ALL_LAYOUT,                          \
-                     phi::func##Kernel,                   \
-                     bool,                                \
-                     int16_t,                             \
-                     int,                                 \
-                     int64_t,                             \
-                     float,                               \
-                     double,                              \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16) {              \
-    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
-  }
+#define PD_REGISTER_COMPARE_KERNEL(name, func) \
+  PD_REGISTER_KERNEL(name,                     \
+                     CPU,                      \
+                     ALL_LAYOUT,               \
+                     phi::func##Kernel,        \
+                     bool,                     \
+                     int16_t,                  \
+                     int,                      \
+                     int64_t,                  \
+                     float,                    \
+                     double,                   \
+                     phi::dtype::float16,      \
+                     phi::dtype::bfloat16) {}
 PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
 PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)
