@@ -2310,7 +2310,7 @@
     func : tanh_double_grad
   composite : tanh_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
-  backward : tanh_triple_grad
+  # backward : tanh_triple_grad
 
 - backward_op : tanh_grad
   forward : tanh (Tensor x) -> Tensor(out)
