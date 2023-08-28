@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from typing import List
 
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
@@ -213,22 +212,23 @@ def var_can_be_deleted(var_name, block):
     return var is not None and not var.persistable
 
 
-def get_skip_gc_vars(program_list: List[Program]):
+def set_skip_gc_vars(num_micro_batches, type_to_program, jobs):
     """
-    Get `skip_gc_vars` for every sub_program of program_list.
+    Set `skip_gc_vars` for every job in jobs.
 
     A whole_program is split up into sub_programs according to the schedule mode,
     thus a sub_program's vars might be used as the op's input of the later sub_program,
     and these vars cannot be gc after executing current sub_program.
     """
+    assert num_micro_batches >= 1, "num_micro_batches needs to be >= 1"
 
-    # step1: Get all vars of every sub_program of program_list that are non-persistable and not in op's no_need_buffer.
-    required_vars = [set() for _ in range(len(program_list))]
-    for idx, program in enumerate(program_list):
+    # step1: Get all vars of every sub_program that are non-persistable and not in op's no_need_buffer.
+    type_to_required_vars = {}
+    for type, program in type_to_program.items():
+        type_to_required_vars[type] = set()
         for block in program.blocks:
             for op in block.ops:
-                # NOTE(Ruibiao): Some vars maybe be the arguements of conditional_block op but no-need-buffer in the actual subblock, should not add them to the required_vars.
-                if op.type == "conditional_block":
+                if op.type in ["conditional_block", "while"]:
                     continue
 
                 op_info = OpInOutInfo()
@@ -237,19 +237,19 @@ def get_skip_gc_vars(program_list: List[Program]):
                     if var_can_be_deleted(
                         arg_name, block
                     ) and op_info.is_needed(arg_name):
-                        required_vars[idx].add(arg_name)
+                        type_to_required_vars[type].add(arg_name)
 
-    # step2: Get the `skip_gc_vars` that vars of current sub_program might be used in the later sub_program
-    suffixed_required_vars = set()
-    skip_gc_vars = [set()] * len(program_list)
-    for idx, vars_set in reversed(list(enumerate(required_vars))):
-        if idx < len(required_vars) - 1:
-            suffixed_required_vars = suffixed_required_vars.union(
-                required_vars[idx + 1]
-            )
-        skip_gc_vars[idx] = vars_set & suffixed_required_vars
-
-    return skip_gc_vars
+    # step2: Set `skip_gc_vars` for each job
+    suffixed_required_vars = [set() for i in range(num_micro_batches)]
+    num_jobs = len(jobs)
+    for job_id in reversed(range(num_jobs)):
+        job = jobs[job_id]
+        required_vars = type_to_required_vars[job.type()]
+        micro_batch_id = job.micro_batch_id()
+        job.set_skip_gc_vars(
+            required_vars & suffixed_required_vars[micro_batch_id]
+        )
+        suffixed_required_vars[micro_batch_id] |= required_vars
 
 
 def _create_param(dst_block, src_var):

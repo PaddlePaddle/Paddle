@@ -992,6 +992,19 @@ class Engine:
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy,
                         )
+                        print(
+                            f"memory_allocated = {paddle.device.cuda.memory_allocated()/1024/1024}"
+                        )
+                        print(
+                            f"max_memory_allocated = {paddle.device.cuda.max_memory_allocated()/1024/1024}"
+                        )
+                        print(
+                            f"memory_reserved = {paddle.device.cuda.memory_reserved()/1024/1024}"
+                        )
+                        print(
+                            f"max_memory_reserved = {paddle.device.cuda.max_memory_reserved()/1024/1024}"
+                        )
+
                     except core.EOFException:
                         break
                     lr = auto_utils.get_lr(self.optimizer)
