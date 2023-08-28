@@ -376,9 +376,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto mark_output = Get<bool>("mark_output");
   auto output_tensor_name =
       Get<std::vector<std::string>>("output_tensor_names");
-  VLOG(1) << "mark Output: " << mark_output;
 
-  if (mark_output == 1) {
+  if (mark_output) {
     VLOG(1) << "begin to mark output ...";
     for (auto node : subgraph) {
       if (node->NodeType() == Node::Type::kOperation) {
@@ -386,11 +385,11 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
         for (auto *x : node->outputs) {
           if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
             continue;
-          if (!output_tensor_name.empty() &&
-              std::count(output_tensor_name.begin(),
+          if (std::count(output_tensor_name.begin(),
                          output_tensor_name.end(),
-                         x->Name())) {
-            VLOG(1) << "output " << x->Name() << " has been marked";
+                         x->Name()) > 0 &&
+              !x->outputs.empty()) {
+            VLOG(3) << "output " << x->Name() << " has been marked";
             std::string output_name_withid =
                 x->Name() + std::to_string(x->id());
             output_names.insert(x->Name());
