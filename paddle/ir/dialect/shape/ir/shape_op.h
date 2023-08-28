@@ -57,7 +57,45 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
   void Verify() {}
 };
 
+class IR_API DimOp : public Op<DimOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.dim"; }
+
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::string &name);
+
+  const std::string getName();
+  void setName(std::string attrValue);
+  ir::OpResult out() { return result(0); }
+  void Verify() {}
+};
+
+class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.tie_product_equal"; }
+
+  static constexpr uint32_t attributes_num = 2;
+  static const char *attributes_name[attributes_num];
+  // attr operand_segment_sizes
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    int64_t lhs_len,
+                    int64_t rhs_len,
+                    const std::vector<ir::OpResult> &inputs);
+  std::vector<ir::Value> getLhs();
+  std::vector<ir::Value> getRhs();
+  void Verify() {}
+};
+
 }  // namespace dialect
 }  // namespace ir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::SymbolicDim);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::DimOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::dialect::TieProductEqualOp);
