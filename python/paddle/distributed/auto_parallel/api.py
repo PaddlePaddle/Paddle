@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
@@ -26,7 +27,7 @@ from paddle.framework import core
 class DistAttr(core.TensorDistAttr):
     """
     DistAttr specifies how tensors are distributed or sliced on ProcessMesh.
-        
+
     Args:
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         sharding_specs(list[str|None]): The specification describing how to shard the Tensor.
@@ -68,19 +69,6 @@ class DistAttr(core.TensorDistAttr):
 
         self.process_mesh = mesh
         self.dims_mapping = dims_mapping
-
-        self.mark_annotated("process_mesh")
-        self.mark_annotated("dims_mapping")
-
-    @property
-    def sharding_specs(self):
-        """
-        Get sharding_specs of the dist_attr
-
-        Returns:
-            list[str]: sharding_specs
-        """
-        return self._sharding_specs
 
 
 def shard_tensor(
@@ -143,30 +131,26 @@ def shard_tensor(
             data, dist_attr.process_mesh, dist_attr.sharding_specs
         )
 
-def dtensor_from_fn(
-        fn, dist_attr, *args, **kwargs
-):
+
+def dtensor_from_fn(fn, dist_attr, *args, **kwargs):
     """
-    Construct a Distributed Tensor from a function of arguments.
+    Construct a Distributed Tensor from a paddle api function of arguments.
 
     Args:
-        fn (callable): A callable function that takes arguments of Distributed Tensor and returns tensor.
+        fn (callable): A paddle api function that takes arguments of *args, **kwargs and returns tensor.
         dist_attr(paddle.distributed.DistAttr): Specify how tensors are distributed or sliced on ProcessMesh.
         *args: A list of arguments to be passed to the ``fn`` function.
         **kwargs: A list of arguments to be passed to the ``fn`` function.
 
     Retruns:
-        Tensor: A Tensor constructed from ``fn`` with distributed attributes.       
+        Tensor: A Tensor constructed from ``fn`` with distributed attributes.
 
     Examples:
 
-    .. code-block:: python     
+    .. code-block:: python
 
         import paddle
         import paddle.distribute as dist
-
-        def generate_tensor():
-            return paddle.ones(shape=[2, 3])
 
         # Create a distributed attribute
         mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
@@ -176,6 +160,6 @@ def dtensor_from_fn(
         d_tensor = dist.dtensor_from_fn(paddle.ones, dist_attr=dist_attr, shape=[2, 3])
 
         print(d_tensor)
-    """ 
+    """
     tensor = fn(*args, **kwargs)
     return shard_tensor(tensor, dist_attr=dist_attr)
