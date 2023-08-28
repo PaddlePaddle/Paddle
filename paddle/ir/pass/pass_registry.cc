@@ -12,24 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <cstdint>
-#include <iostream>
-#include <memory>
-#include <vector>
-
 #include "paddle/ir/pass/pass_registry.h"
 
 namespace ir {
-
-class IrContext;
-class Operation;
-class Program;
-class Pass;
-class PassInstrumentation;
-class PassInstrumentor;
-
 PassRegistry &PassRegistry::Instance() {
   static PassRegistry g_pass_info_map;
   return g_pass_info_map;

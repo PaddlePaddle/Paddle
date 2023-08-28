@@ -14,10 +14,13 @@
 
 #pragma once
 
-#include <cstdint>
-#include <iostream>
+#include <functional>
 #include <memory>
-#include <vector>
+#include <unordered_map>
+
+#include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/macros.h"
+#include "paddle/ir/pass/pass.h"
 
 namespace ir {
 
@@ -30,39 +33,24 @@ class PassRegistry {
   static PassRegistry &Instance();
 
   bool Has(const std::string &pass_type) const {
-    return map_.find(pass_type) != map_.end();
+    return pass_map_.find(pass_type) != pass_map_.end();
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    PADDLE_ENFORCE_NE(Has(pass_type),
-                      true,
-                      platform::errors::AlreadyExists(
-                          "Pass %s has been registered.", pass_type));
-    map_.insert({pass_type, pass_creator});
+    IR_ENFORCE(
+        Has(pass_type) != true, "Pass %s has been registered.", pass_type);
+    pass_map_.insert({pass_type, pass_creator});
   }
 
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
-    if (pass_type == "tensorrt_subgraph_pass") {
-      PADDLE_ENFORCE_EQ(Has(pass_type),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Pass %s has not been registered. Please "
-                            "use the paddle inference library "
-                            "compiled with tensorrt or disable "
-                            "the tensorrt engine in inference configuration! ",
-                            pass_type));
-    } else {
-      PADDLE_ENFORCE_EQ(Has(pass_type),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Pass %s has not been registered.", pass_type));
-    }
-    return map_.at(pass_type)();
+    IR_ENFORCE(
+        Has(pass_type) == true, "Pass %s has not been registered.", pass_type);
+    return pass_map_.at(pass_type)();
   }
 
  private:
   PassRegistry() = default;
-  std::unordered_map<std::string, PassCreator> map_;
+  std::unordered_map<std::string, PassCreator> pass_map_;
 
   DISABLE_COPY_AND_ASSIGN(PassRegistry);
 };
@@ -80,7 +68,8 @@ class PassRegistrar {
   // registrar variable won't be removed by the linker.
   void Touch() {}
   explicit PassRegistrar(const char *pass_type) {
-    PassRegistry::Instance().Insert(pass_type, std::make_unique<PassType>());
+    PassRegistry::Instance().Insert(
+        pass_type, []() { return std::make_unique<PassType>(); });
   }
 };
 
