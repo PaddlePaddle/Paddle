@@ -454,10 +454,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
-    VLOG(1) << "with_conv_bias : " << with_conv_bias << " with_bn : " << with_bn
-            << " with_scale : " << with_scale
-            << " with_branch_x : " << with_branch_x
-            << " with_branch_y : " << with_branch_y;
     // recompute bias and weight for conv2d_xpu op
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
@@ -546,8 +542,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         }
       }
     }
-    VLOG(1) << "conv_filter name : " << conv_filter->Name()
-            << " fusion_bias name: " << fusion_bias_node->Name();
     // deal with scale op
     if (with_scale) {
       auto bias_len = filter_dims[0];
@@ -679,7 +673,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     IR_NODE_LINK_TO(conv2d_xpu, conv2d_xpu_out_max);
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {conv, conv_filter};
+    std::unordered_set<const Node*> delete_nodes = {conv};
     if (act != nullptr) {
       delete_nodes.insert(act);
     }

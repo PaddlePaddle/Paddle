@@ -28,6 +28,46 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
+struct FcBiasPattern : public PatternBase {
+  FcBiasPattern(PDPattern* pattern,
+                const std::string& name_scope,
+                const std::string& mul_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ew_bias_add);
+  // declare variable node's name
+  PATTERN_DECL_NODE(mul_out);
+  PATTERN_DECL_NODE(ew_bias_add_x);
+  PATTERN_DECL_NODE(ew_bias_add_out);
+
+ private:
+  std::string mul_type_;
+};
+
+FcBiasPattern::FcBiasPattern(PDPattern* pattern,
+                             const std::string& name_scope,
+                             const std::string& mul_type)
+    : PatternBase(pattern, name_scope, name_scope), mul_type_(mul_type) {
+  auto* mul_out = pattern->NewNode(mul_out_repr())
+                      ->assert_is_op_output(mul_type_, "Out")
+                      ->assert_is_op_input("elementwise_add", "Y")
+                      ->assert_has_n_outputs(1);
+  auto* ew_bias_add = pattern->NewNode(ew_bias_add_repr())
+                          ->assert_is_op("elementwise_add")
+                          ->assert_more([](Node* node) {
+                            auto* op_desc = node->Op();
+                            auto axis = op_desc->GetAttrIfExists<int>("axis");
+                            return axis == -1;
+                          });
+  auto* ew_bias_add_x = pattern->NewNode(ew_bias_add_x_repr())
+                            ->assert_is_op_input("elementwise_add", "X")
+                            ->assert_is_persistable_var()
+                            ->assert_has_n_outputs(1);
+  auto* ew_bias_add_out = pattern->NewNode(ew_bias_add_out_repr())
+                              ->assert_is_op_output("elementwise_add", "Out");
+  ew_bias_add->LinksFrom({mul_out, ew_bias_add_x}).LinksTo({ew_bias_add_out});
+}
+
 struct Conv2dBiasPattern : public PatternBase {
   Conv2dBiasPattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -119,7 +159,46 @@ ScaleFusePattern::ScaleFusePattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-void Conv2dBiasFusePass::TransEwBiasAdd(ir::Graph* graph) const {
+void Conv2dBiasFusePass::TransFcBias(ir::Graph* graph,
+                                     const std::string& mul_type) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+  Init(name_scope_, graph);
+  GraphPatternDetector gpd;
+  patterns::FcBiasPattern pattern(gpd.mutable_pattern(), name_scope_, mul_type);
+
+  int found_subgraph_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle TransFcBias fuse";
+    // declare operator node's name
+    GET_IR_NODE(ew_bias_add);
+    // declare variable node's name
+    GET_IR_NODE(mul_out);
+    GET_IR_NODE(ew_bias_add_x);
+    GET_IR_NODE(ew_bias_add_out);
+
+    auto* scope = param_scope();
+    // trans link order of x && y for ew_bias_add op
+    auto ew_bias_add_desc = ew_bias_add->Op();
+    IR_NODE_UNLINK(mul_out, ew_bias_add);
+    IR_NODE_UNLINK(ew_bias_add_x, ew_bias_add);
+    ew_bias_add_desc->RemoveInput("X");
+    ew_bias_add_desc->RemoveInput("Y");
+    ew_bias_add_desc->Flush();
+    ew_bias_add_desc->SetInput("X", {mul_out->Name()});
+    ew_bias_add_desc->SetInput("Y", {ew_bias_add_x->Name()});
+    IR_OP_VAR_LINK(mul_out, ew_bias_add);
+    IR_OP_VAR_LINK(ew_bias_add_x, ew_bias_add);
+
+    found_subgraph_count++;
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_subgraph_count);
+}
+
+void Conv2dBiasFusePass::FoldConv2dBias(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -240,7 +319,11 @@ void Conv2dBiasFusePass::ApplyImpl(ir::Graph* graph) const {
   // for conv2d + scale fuse
   FuseScaleOps(graph);
   // for conv2d + ew_bias_add + scale fuse
-  TransEwBiasAdd(graph);
+  FoldConv2dBias(graph);
+  // for matmul + ew_bias_add fuse
+  for (auto mul_type : {"mul", "matmul", "matmul_v2"}) {
+    TransFcBias(graph, mul_type);
+  }
 }
 
 }  // namespace ir
@@ -251,5 +334,7 @@ REGISTER_PASS(conv2d_bias_fuse_pass, paddle::framework::ir::Conv2dBiasFusePass);
 
 REGISTER_PASS_CAPABILITY(conv2d_bias_fuse_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "conv2d", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("conv2d", 0)
+            .EQ("mul", 0)
+            .LE("elementwise_add", 1));

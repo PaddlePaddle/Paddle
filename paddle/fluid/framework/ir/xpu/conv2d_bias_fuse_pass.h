@@ -36,7 +36,9 @@ class Conv2dBiasFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void TransEwBiasAdd(ir::Graph* graph) const;
+  void TransFcBias(ir::Graph* graph, const std::string& mul_type) const;
+
+  void FoldConv2dBias(ir::Graph* graph) const;
   /*
   For example:
                         x

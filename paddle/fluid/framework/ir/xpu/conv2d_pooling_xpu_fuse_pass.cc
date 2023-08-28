@@ -510,8 +510,7 @@ int Conv2dPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
     IR_NODE_LINK_TO(conv2d_pooling_xpu, pool2d_out);
     IR_NODE_LINK_TO(conv2d_pooling_xpu, conv2d_pooling_xpu_out_max);
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {
-        conv, conv_filter, conv_out, pool2d};
+    std::unordered_set<const Node*> delete_nodes = {conv, conv_out, pool2d};
     if (act != nullptr) {
       delete_nodes.insert(act);
       delete_nodes.insert(act_out);
