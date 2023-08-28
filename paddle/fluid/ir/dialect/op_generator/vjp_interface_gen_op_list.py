@@ -37,4 +37,5 @@ vjp_interface_implementation_gen_op_list = [
     "divide",
     "add",
     "concat",
+    "split",
 ]
