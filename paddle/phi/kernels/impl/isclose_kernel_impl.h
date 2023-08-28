@@ -74,6 +74,13 @@ struct IscloseFunctor<phi::CPUContext, T> {
       bool val;
       if (std::isnan(a) || std::isnan(b)) {
         val = equal_nan && std::isnan(a) == std::isnan(b);
+      } else if (std::is_same<T, phi::dtype::complex<float>>::value ||
+                 std::is_same<T, phi::dtype::complex<double>>::value) {
+        using TReal = phi::dtype::ToReal(T);
+        TReal left = (a - b).abs();
+        TReal right = atol + rtol * b.abs();
+        TReal diff = (left - right).abs();
+        val = a == b || left <= right || diff <= 1e-15;
       } else {
         T left = (a > b ? a - b : b - a);
         T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
@@ -103,6 +110,13 @@ __global__ void IscloseCUDAKernel(const T* in_data,
     const MPType b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
+    } else if (std::is_same<T, phi::dtype::complex<float>>::value ||
+               std::is_same<T, phi::dtype::complex<double>>::value) {
+      using TReal = phi::dtype::ToReal(T);
+      TReal left = (a - b).abs();
+      TReal right = atol + rtol * b.abs();
+      TReal diff = (left - right).abs();
+      val = a == b || left <= right || diff <= 1e-15;
     } else {
       MPType left = (a > b ? a - b : b - a);
       MPType right = atol + (b > 0 ? rtol * b : (-rtol) * b);
