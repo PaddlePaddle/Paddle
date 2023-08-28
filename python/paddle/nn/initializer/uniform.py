@@ -168,14 +168,23 @@ class Uniform(UniformInitializer):
             ...     name="linear_bias",
             ...     initializer=paddle.nn.initializer.Uniform(low=-0.5, high=0.5))
             >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            >>> # linear.weight:  [[-0.46245047  0.05260676]
-            >>> #                  [ 0.38054508  0.29169726]]
-            >>> # linear.bias:  [-0.2734719   0.23939109]
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[ 0.36583614,  0.02014720],
+             [-0.24039063,  0.40525323]])
+
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [-0.07599911, -0.09358713])
 
             >>> res = linear(data)
-            >>> # res:  [[[-0.3553773  0.5836951]]
-            >>> #        [[-0.3553773  0.5836951]]
-            >>> #        [[-0.3553773  0.5836951]]]
+            >>> print(res)
+            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[0.04944640, 0.33181331]],
+             [[0.04944640, 0.33181331]],
+             [[0.04944640, 0.33181331]]])
     """
 
     def __init__(self, low=-1.0, high=1.0, name=None):

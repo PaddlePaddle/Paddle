@@ -302,6 +302,16 @@ def gather_tree(ids, parents):
 
             >>> final_sequences = paddle.nn.functional.gather_tree(ids, parents)
             >>> [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
+            >>> final_sequences = paddle.nn.functional.gather_tree(ids, parents)
+            >>> print(final_sequences)
+            Tensor(shape=[3, 2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[2, 2],
+              [1, 6]],
+             [[3, 3],
+              [6, 1]],
+             [[0, 1],
+              [9, 0]]])
+
 
     """
     if ids.ndim != 3:

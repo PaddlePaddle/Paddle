@@ -1067,7 +1067,7 @@ def dropout(
             >>> print(x)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 3.],
-            [4., 5., 6.]])
+             [4., 5., 6.]])
             >>> print(y_train)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 4., 0.],
@@ -1075,19 +1075,19 @@ def dropout(
             >>> print(y_test)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 3.],
-            [4., 5., 6.]])
+             [4., 5., 6.]])
             >>> print(y_0)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 4., 6.],
-            [8. , 10., 12.]])
+             [8. , 10., 12.]])
             >>> print(y_1)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2. , 4. , 6. ],
-            [8. , 10., 12.]])
+             [8. , 10., 12.]])
             >>> print(y_01)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 0., 6.],
-            [0., 0., 0.]])
+             [0., 0., 0.]])
     """
     if not isinstance(p, (float, int, Variable)):
         raise TypeError("p argument should be a number or Variable")
@@ -1825,18 +1825,25 @@ def linear(x, weight, bias=None, name=None):
             >>> import paddle
 
             >>> x = paddle.randn((3, 2), dtype="float32")
-            >>> # x: [[-0.32342386 -1.200079  ]
-            >>> #     [ 0.7979031  -0.90978354]
-            >>> #     [ 0.40597573  1.8095392 ]]
+            >>> print(x)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.52271217,  1.15350735],
+             [ 0.19930547, -1.82455611],
+             [ 0.74283653, -0.27741462]])
             >>> weight = paddle.full(shape=[2, 4], fill_value="0.5", dtype="float32", name="weight")
-            >>> # weight: [[0.5 0.5 0.5 0.5]
-            >>> #          [0.5 0.5 0.5 0.5]]
+            >>> print(weight)
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.50000000, 0.50000000, 0.50000000, 0.50000000],
+             [0.50000000, 0.50000000, 0.50000000, 0.50000000]])
             >>> bias = paddle.ones(shape=[4], dtype="float32", name="bias")
-            >>> # bias: [1. 1. 1. 1.]
+            >>> print(bias)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 1., 1., 1.])
             >>> y = paddle.nn.functional.linear(x, weight, bias)
-            >>> # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
-            >>> #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
-            >>> #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.31539762, 1.31539762, 1.31539762, 1.31539762],
+             [0.18737471, 0.18737471, 0.18737471, 0.18737471],
+             [1.23271096, 1.23271096, 1.23271096, 1.23271096]])
     """
     if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
@@ -2087,23 +2094,25 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         >>> num_classes = 20
         >>> batch_size = 10
         >>> num_samples = 6
+        >>> paddle.seed(2023)
         >>> label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
         >>> remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes, num_samples)
-
         >>> print(label)
-        >>> print(remapped_label)
-        >>> print(sampled_class_index)
-        >>> # the output is
         Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
         [10, 3 , 11, 14, 15, 15, 7 , 12, 5 , 13])
+
+        >>> print(remapped_label)
         Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
         [3, 0, 4, 7, 8, 8, 2, 5, 1, 6])
+
+        >>> print(sampled_class_index)
         Tensor(shape=[9], dtype=int64, place=Place(cpu), stop_gradient=True,
         [3 , 5 , 7 , 10, 11, 12, 13, 14, 15])
 
     .. code-block:: python
         :name: code-example2
 
+        >>> # doctest: +SKIP('Depends on external files.')
         >>> # required: distributed
         >>> # Multi GPU, test_class_center_sample.py
         >>> import paddle

@@ -1793,11 +1793,11 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
             >>> import paddle
             >>> import paddle.nn.functional as F
 
+            >>> paddle.seed(2023)
             >>> logits = paddle.randn([4, 6])
             >>> temperature = 0.01
             >>> gumbel_softmax = F.gumbel_softmax(logits, temperature)
             >>> print(gumbel_softmax)
-            >>> #out's value is as follows:
             Tensor(shape=[4, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.00000000, 0.00000000, 1.        , 0.00000000, 0.00000000, 0.00000000],
              [0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        , 0.00000000],

@@ -224,14 +224,23 @@ class XavierNormal(XavierInitializer):
             ...     name="linear_bias",
             ...     initializer=paddle.nn.initializer.XavierNormal())
             >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            >>> # inear.weight:  [[ 0.06910077 -0.18103665]
-            >>> #                 [-0.02546741 -1.0402188 ]]
-            >>> # linear.bias:  [-0.5012929   0.12418364]
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[ 0.85503507,  1.23234737],
+             [-0.66991222,  1.42757833]])
+
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [-0.45449322,  1.38386095])
 
             >>> res = linear(data)
-            >>> # res:  [[[-0.4576595 -1.0970719]]
-            >>> #        [[-0.4576595 -1.0970719]]
-            >>> #        [[-0.4576595 -1.0970719]]]
+            >>> print(res)
+            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[-0.26937038,  4.04378653]],
+             [[-0.26937038,  4.04378653]],
+             [[-0.26937038,  4.04378653]]])
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):
