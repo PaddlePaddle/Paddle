@@ -1153,38 +1153,42 @@ def OpGenerator(
 
                 # generate op vjp function str
                 op_vjp_str = ''
-            if dialect_name == "cinn":
-                logging.warning("cinn is currently not support Vjp function")
-            else:
-                # TODO(chenzhiyang) add vjp gen code
-                if (
-                    op_info.backward_name
-                    and op_info.op_phi_name[0]
-                    in vjp_interface_implementation_gen_op_list
-                ):
-                    op_vjp_str = gen_op_vjp_str(
-                        op_class_name,
-                        op_info.backward_name,
-                        op_name,
-                        op_info_items[op_info.op_phi_name[0]],
-                        op_info_items[op_info.backward_name],
-                    )
-
-                ops_name_list.append(op_class_name)
-                ops_declare_list.append(op_declare_str)
-                ops_defined_list.append(op_defined_str)
-                ops_defined_list.append(op_info_func_str)
-                ops_defined_list.append(build_func_with_muta_attr_not_input)
-                ops_defined_list.append(build_func_with_attr_is_map)
-                if len(op_mutable_attribute_name_list) > 0:
-                    ops_defined_list.append(build_func_with_muta_attr_is_input)
-                ops_defined_list.append(op_verify_str)
-                ops_defined_list.append(op_infer_meta_str)
-                # NOTE(chenxi67)skip if dialect_name==cinn
                 if dialect_name == "cinn":
-                    pass
+                    logging.warning(
+                        "cinn is currently not support Vjp function"
+                    )
                 else:
-                    ops_vjp_defined_list.append(op_vjp_str)
+                    # TODO(chenzhiyang) add vjp gen code
+                    if (
+                        op_info.backward_name
+                        and op_info.op_phi_name[0]
+                        in vjp_interface_implementation_gen_op_list
+                    ):
+                        op_vjp_str = gen_op_vjp_str(
+                            op_class_name,
+                            op_info.backward_name,
+                            op_name,
+                            op_info_items[op_info.op_phi_name[0]],
+                            op_info_items[op_info.backward_name],
+                        )
+
+                    ops_name_list.append(op_class_name)
+                    ops_declare_list.append(op_declare_str)
+                    ops_defined_list.append(op_defined_str)
+                    ops_defined_list.append(op_info_func_str)
+                    ops_defined_list.append(build_func_with_muta_attr_not_input)
+                    ops_defined_list.append(build_func_with_attr_is_map)
+                    if len(op_mutable_attribute_name_list) > 0:
+                        ops_defined_list.append(
+                            build_func_with_muta_attr_is_input
+                        )
+                    ops_defined_list.append(op_verify_str)
+                    ops_defined_list.append(op_infer_meta_str)
+                    # NOTE(chenxi67)skip if dialect_name==cinn
+                    if dialect_name == "cinn":
+                        pass
+                    else:
+                        ops_vjp_defined_list.append(op_vjp_str)
 
             if op_kernel_map is not None and len(op_kernel_map['func']) > 1:
                 LEGACY_OP_TO_PD_OPS_MAP_ITEM = (
