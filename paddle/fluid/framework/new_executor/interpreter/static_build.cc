@@ -19,7 +19,8 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
+std::set<std::string> OperatorBasesHandledInStaticBuild = {"read",
+                                                           "conditional_block"};
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
@@ -362,6 +363,7 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
             *dev_ctx, target_place, dtype, out_tensor->layout(), out_tensor);
       }
     }
+  } else if (op_type == "conditional_block") {
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Can not static build for op: %s", op_type));
