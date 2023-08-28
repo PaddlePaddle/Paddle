@@ -159,8 +159,8 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<float>>(
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const float a = in_data[i];
-    const float b = other_data[i];
+    const phi::dtype::complex<float> a = in_data[i];
+    const phi::dtype::complex<float> b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
@@ -186,8 +186,8 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<double>>(
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const double a = in_data[i];
-    const double b = other_data[i];
+    const phi::dtype::complex<double> a = in_data[i];
+    const phi::dtype::complex<double> b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
