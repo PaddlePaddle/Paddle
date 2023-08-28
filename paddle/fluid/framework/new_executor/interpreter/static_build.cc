@@ -49,13 +49,16 @@ std::set<std::string> StaticBuildBlackList = {
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
 // TODO(lizhiyu): This operator list is only for pipeline strategy temporarily.
-std::set<std::string> SkipCheckForPipelineTempList = {"c_broadcast",
-                                                      "c_allreduce_sum",
-                                                      "c_allgather",
-                                                      "layer_norm",
-                                                      "recv_v2",
-                                                      "reshape2_grad",
-                                                      "c_identity"};
+std::set<std::string> SkipCheckForPipelineTempList = {
+    "c_broadcast",
+    "c_allreduce_sum",
+    "c_allgather",
+    "layer_norm",
+    "recv_v2",
+    "reshape2_grad",
+    "c_identity",
+    "c_reduce_sum",
+};
 namespace paddle {
 namespace framework {
 namespace interpreter {
