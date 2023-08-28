@@ -40,7 +40,7 @@
 // },
 // ...
 // }
-int main(int argc, char **argv) {
+int main(int argc, char **argv) {  // NOLINT
   paddle::framework::InitDefaultKernelSignatureMap();
   auto &kernel_signature_map = phi::DefaultKernelSignatureMap::Instance();
   auto &kernel_factory = phi::KernelFactory::Instance();

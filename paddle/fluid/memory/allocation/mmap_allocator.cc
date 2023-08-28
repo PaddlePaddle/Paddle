@@ -391,7 +391,7 @@ void MemoryMapAllocationPool::Clear() {
   memory_map_allocations_.clear();
 }
 
-MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
+MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
 }  // namespace allocation
 }  // namespace memory
