@@ -14,16 +14,15 @@
 
 #pragma once
 
-#include <vector>
+#include "paddle/phi/core/dense_tensor.h"
 
-#include "paddle/ir/core/value.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/place.h"
+namespace phi {
 
-namespace paddle {
-namespace dialect {
+template <typename T, typename Context>
+void ShuffleBatchGradKernel(const Context& dev_ctx,
+                            const DenseTensor& shuffleidx,
+                            const DenseTensor& out_grad,
+                            int startup_seed,
+                            DenseTensor* x_grad);
 
-ir::OpResult split_grad(std::vector<ir::OpResult> out_grads, ir::OpResult axis);
-
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace phi
