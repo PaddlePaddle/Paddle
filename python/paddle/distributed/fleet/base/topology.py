@@ -43,9 +43,11 @@ class ParallelMode:
     Examples:
         .. code-block:: python
 
-            import paddle
-            parallel_mode = paddle.distributed.ParallelMode
-            print(parallel_mode.DATA_PARALLEL)  # 0
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> parallel_mode = paddle.distributed.ParallelMode
+            >>> print(parallel_mode.DATA_PARALLEL)
+            0
 
     """
 
