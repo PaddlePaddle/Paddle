@@ -122,6 +122,15 @@ struct cpu_gather_scatter_functor {
 
           self_idx = is_scatter_like ? replace_index : index_idx;
           src_idx = is_scatter_like ? index_idx : replace_index;
+
+          PADDLE_ENFORCE(
+              (self_idx > 0 && self_idx < self_size),
+              errors::InvalidArgument("Wrong gather index for output."));
+
+          PADDLE_ENFORCE(
+              (src_idx > 0 && src_idx < src_size),
+              errors::InvalidArgument("Wrong gather index for input."));
+
           reduce_op((tensor_t*)(self_data + self_idx),  // NOLINT
                     (tensor_t*)(src_data + src_idx));   // NOLINT
           index_idx++;
