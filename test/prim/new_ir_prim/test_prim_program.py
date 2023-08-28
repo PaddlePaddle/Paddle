@@ -44,11 +44,12 @@ class TestPrimMode(unittest.TestCase):
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             y = paddle.static.data('y', self.shape_y, dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
             divide_out = paddle.divide(x, y)
             sum_out = paddle.mean(divide_out, axis=0)
             [new_out] = decompose(main_program, [sum_out])
             gradients = grad(new_out, (x, y))
-            print(main_program)
 
             exe = paddle.static.Executor()
             [fwd, dx, dy] = exe.run(
