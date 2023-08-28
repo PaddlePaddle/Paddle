@@ -2299,7 +2299,7 @@ def _memcpy(input, place=None, output=None):
 
 
 def complex(real, imag, name=None):
-    """Return a compelx tensor given the real and image component.
+    """Return a complex tensor given the real and image component.
 
     Args:
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
