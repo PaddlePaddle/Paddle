@@ -253,7 +253,7 @@ def _mp_allreduce(
     use_calc_stream=True,
     use_model_parallel=True,
 ):
-    """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]"""
+    """[It is same as allreduce above, but it supports model parallel. And it support inplace startegy]"""
     if group is not None and not group.is_member():
         return
 
