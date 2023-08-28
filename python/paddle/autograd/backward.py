@@ -179,51 +179,56 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     pruned op in total_ops is uneffective_ops, else is effective_ops
 
     '''
-    relevant_op_flags = [True] * len(total_ops)
+    intersection_op_flags = [True] * len(total_ops)
+    union_op_flags = [False] * len(total_ops)
     # from input to output
     if inputs_set:
         for i, op in enumerate(total_ops):
             if some_in_set(op.results(), inputs_set):
+                union_op_flags[i] = True
                 continue
 
             if some_in_set(op.operands_source(), inputs_set):
+                union_op_flags[i] = True
                 for value in op.results():
                     if value not in no_grad_set:
                         inputs_set.add(value)
             else:
-                relevant_op_flags[i] = False
+                intersection_op_flags[i] = False
 
     # from output to input
     for i, op in reversed(list(enumerate(total_ops))):
         if some_in_set(op.results(), outputs_set):
+            union_op_flags[i] = True
             for operand in op.operands_source():
                 if operand not in no_grad_set:
                     outputs_set.add(operand)
         else:
-            relevant_op_flags[i] = False
-    # recover full op or full_Intarray op created by mutable attribute.
-    total_ops_list = list(total_ops)
-    for i, op in enumerate(total_ops_list):
-        if relevant_op_flags[i] is False:
-            for result in op.results():
-                if result.has_one_use():
-                    next_op = result.first_use().owner()
-                    if (
-                        next_op in total_ops
-                        and relevant_op_flags[total_ops_list.index(next_op)]
-                        is True
-                    ):
-                        relevant_op_flags[i] = True
-                else:
-                    continue
+            union_op_flags[i] = False
+            intersection_op_flags[i] = False
+    # # recover full op or full_Intarray op created by mutable attribute.
+    # total_ops_list = list(total_ops)
+    # for i, op in enumerate(total_ops_list):
+    #     if intersection_op_flags[i] is False:
+    #         for result in op.results():
+    #             if result.has_one_use():
+    #                 next_op = result.first_use().owner()
+    #                 if (
+    #                     next_op in total_ops
+    #                     and intersection_op_flags[total_ops_list.index(next_op)]
+    #                     is True
+    #                 ):
+    #                     intersection_op_flags[i] = True
+    #             else:
+    #                 continue
 
     effective_ops = [
-        total_ops[i] for i in range(len(total_ops)) if relevant_op_flags[i]
+        total_ops[i] for i in range(len(total_ops)) if intersection_op_flags[i]
     ]
     uneffective_ops = [
         total_ops[i]
         for i in reversed(range(len(total_ops)))
-        if not relevant_op_flags[i]
+        if not union_op_flags[i]
     ]
 
     return effective_ops, uneffective_ops
