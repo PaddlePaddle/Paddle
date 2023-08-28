@@ -275,6 +275,9 @@ class OpInfoParser:
         self.op_yaml_item = op_yaml_item
         self.op_compat_item = op_compat_item
         self.op_phi_name = self.parse_op_phi_name()
+
+        self.kernel_map = self.parse_kernel_map()
+
         # parse inputs
         self.input_name_list = self.parse_input_name_list()
         self.input_type_list = self.parse_input_type_list()
@@ -374,7 +377,6 @@ class OpInfoParser:
 
         # parse infermeta && kernel
         self.infer_meta_map = self.parse_infer_meta_map()
-        self.kernel_map = self.parse_kernel_map()
         if 'infer_meta' in self.op_yaml_item:
             self.infer_meta_func = self.op_yaml_item['infer_meta']["func"]
         else:
@@ -543,17 +545,43 @@ class OpInfoParser:
         return name_list
 
     def parse_input_type_list(self):
-        input_types_map = {
-            'Tensor': 'paddle::dialect::DenseTensorType',
-            'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
-        }
-        type_list = []
-        for input_info in self.op_yaml_item['inputs']:
-            assert (
-                input_info['typename'] in input_types_map
-            ), f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
-            type_list.append(input_types_map[input_info['typename']])
-        return type_list
+        type_dict = {}
+
+        if self.kernel_map is None or len(self.kernel_map['func'] == 1):
+            input_types_map = {
+                'Tensor': 'paddle::dialect::DenseTensorType',
+                'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+            }
+            type_list = []
+            for input_info in self.op_yaml_item['inputs']:
+                assert (
+                    input_info['typename'] in input_types_map
+                ), f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
+                type_list.append(input_types_map[input_info['typename']])
+
+            if self.kernel_map is None:
+                type_dict['default'] = type_list
+            else:
+                type_dict[self.kernel_map['func'][0]] = type_list
+
+        else:
+            input_types_map = {
+                'dense': 'paddle::dialect::DenseTensorType',
+                'selected_rows': 'paddle::dialect::SelectedRowsType',
+            }
+
+            for kernel_func_name in self.kernel_map['func']:
+                inputs = self.kernel_map['dispatch'][kernel_func_name][0]
+                type_list = []
+                for input_info in inputs:
+                    assert (
+                        input_info in input_types_map
+                    ), f"{self.op_phi_name} : Input type error: the input type only support dense and selected_rows, but now is {input_info}."
+                    type_list.append(input_types_map[input_info])
+
+                type_dict[kernel_func_name] = type_list
+
+        return type_dict
 
     def parse_input_optional_list(self):
         optional_list = []
@@ -580,18 +608,44 @@ class OpInfoParser:
         return name_list
 
     def parse_output_type_list(self):
-        output_type_map = {
-            'Tensor': 'paddle::dialect::DenseTensorType',
-            'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
-            'SelectedRows': 'paddle::dialect::SelectedRowsType',
-        }
-        type_list = []
-        for output_info in self.op_yaml_item['outputs']:
-            assert (
-                output_info['typename'] in output_type_map
-            ), f"{self.op_phi_name} : Output type error: the output type only support Tensor and Tensor[], but now is {output_info['typename']}."
-            type_list.append(output_type_map[output_info['typename']])
-        return type_list
+        type_dict = {}
+
+        if self.kernel_map is None or len(self.kernel_map['func'] == 1):
+            output_type_map = {
+                'Tensor': 'paddle::dialect::DenseTensorType',
+                'Tensor[]': 'ir::VectorType<paddle::dialect::DenseTensorType>',
+                'SelectedRows': 'paddle::dialect::SelectedRowsType',
+            }
+            type_list = []
+            for output_info in self.op_yaml_item['outputs']:
+                assert (
+                    output_info['typename'] in output_type_map
+                ), f"{self.op_phi_name} : Output type error: the output type only support Tensor and Tensor[], but now is {output_info['typename']}."
+                type_list.append(output_type_map[output_info['typename']])
+
+            if self.kernel_map is None:
+                type_dict['default'] = type_list
+            else:
+                type_dict[self.kernel_map['func'][0]] = type_list
+
+        else:
+            output_type_map = {
+                'dense': 'paddle::dialect::DenseTensorType',
+                'selected_rows': 'paddle::dialect::SelectedRowsType',
+            }
+
+            for kernel_func_name in self.kernel_map['func']:
+                outputs = self.kernel_map['dispatch'][kernel_func_name][1]
+                type_list = []
+                for output_info in outputs:
+                    assert (
+                        output_info in output_type_map
+                    ), f"{self.op_phi_name} : Input type error: the input type only support dense and selected_rows, but now is {output_info}."
+                    type_list.append(output_type_map[output_info])
+
+                type_dict[kernel_func_name] = type_list
+
+        return type_dict
 
     def parse_output_size_list(self):
         size_list = []
@@ -774,12 +828,10 @@ def OpGenerator(
     for key, op_info in op_info_items.items():
         # get op inputs info
         op_input_name_list = op_info.input_name_list
-        op_input_type_list = op_info.input_type_list
         op_input_optional_list = op_info.input_optional_list
         op_input_no_need_buffer_list = op_info.input_no_need_buffer_list
         # get op outputs info
         op_output_name_list = op_info.output_name_list
-        op_output_type_list = op_info.output_type_list
         op_output_size_list = op_info.output_size_list
         op_output_optional_list = op_info.output_optional_list
         op_output_intermediate_list = op_info.output_intermediate_list
@@ -850,6 +902,17 @@ def OpGenerator(
                     else:
                         op_class_name = pascal_kernel_func_name + "Op"
                         op_dialect_name = dialect_name + "." + kernel_func_name
+
+                if kernel_func_name is None:
+                    op_input_type_list = op_info.input_type_list['default']
+                    op_output_type_list = op_info.output_type_list['default']
+                else:
+                    op_input_type_list = op_info.input_type_list[
+                        kernel_func_name
+                    ]
+                    op_output_type_list = op_info.output_type_list[
+                        kernel_func_name
+                    ]
 
                 # =================================== #
                 #    gen interface/trait list str     #
@@ -1201,7 +1264,7 @@ def OpGenerator(
                 legacy_op_to_pd_ops_sig_list = []
                 for kernel_func_name in op_kernel_map['func']:
                     inputs = op_kernel_map['dispatch'][kernel_func_name][0]
-                    outputs = op_kernel_map['dispatch'][kernel_func_name][0]
+                    outputs = op_kernel_map['dispatch'][kernel_func_name][1]
                     inputs = '"' + '", "'.join(inputs) + '"'
                     outputs = '"' + '", "'.join(outputs) + '"'
                     if op_name[-1] == "_":
