@@ -23,7 +23,7 @@ from . import set_flags, get_flags
 from .framework import Program, default_main_program
 
 from ..ir import core as ir_core
-from ..ir import OpResult
+from ..ir import OpResult, PassManager
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype
 from .framework import Variable, Operator
@@ -1024,6 +1024,10 @@ class _ExecutorCache:
         _add_new_ir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
+
+        pm = PassManager(3)
+        pm.add_pass('InplacePass')  # apply pass to elimitate dead code
+        pm.run(program)
 
         default_job = core.Job("default")
         type_to_program = {"default": program}

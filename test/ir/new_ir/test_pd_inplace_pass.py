@@ -14,8 +14,9 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
-from paddle import ir
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -29,25 +30,24 @@ class TestPdInplacePass(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.scope_guard(new_scope):
             with paddle.static.program_guard(main_program):
-                x = paddle.ones([3, 9, 5], dtype='float32')
+                x = paddle.ones([2, 2], dtype='float32')
                 y = paddle.nn.functional.relu(x)
 
-        new_program = ir.translate_to_new_ir(main_program.desc)
-        op_names = [op.name() for op in new_program.block().ops]
-        print(op_names)
-        print(new_program)
-        self.assertTrue('pd.relu' in op_names)
-        pm = ir.PassManager()
-        pm.add_pass('InplacePass')  # apply pass to elimitate dead code
-        pm.run(new_program)
-        op_names = [op.name() for op in new_program.block().ops]
-        print(op_names)
-        print(new_program)
-        # self.assertEqual(pm.passes(), ['DeadCodeEliminationPass'])
-        # self.assertFalse(pm.empty())
-        # self.assertTrue(
-        #     'pd.uniform' not in op_names
-        # )  # uniform is elimited because its output is not used
+                op_names = [op.name() for op in main_program.block().ops]
+                self.assertTrue('pd.relu' in op_names)
+                self.assertTrue('pd.relu_' not in op_names)
+
+                exe = paddle.static.Executor()
+                (sum_value,) = exe.run(
+                    fetch_list=[main_program.block().ops[1].result(0)]
+                )
+                self.assertEqual(
+                    (sum_value == np.ones([2, 2], dtype="float32")).all(), True
+                )
+
+                op_names = [op.name() for op in main_program.block().ops]
+                self.assertTrue('pd.relu' not in op_names)
+                self.assertTrue('pd.relu_' in op_names)
 
 
 if __name__ == "__main__":

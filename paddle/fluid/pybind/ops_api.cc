@@ -56,6 +56,10 @@ static PyObject *split(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_split(self, args, kwargs);
 }
 
+static PyObject *relu(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_relu(self, args, kwargs);
+}
+
 static PyMethodDef OpsAPI[] = {{"add_n",
                                 (PyCFunction)(void (*)(void))add_n,
                                 METH_VARARGS | METH_KEYWORDS,
@@ -92,6 +96,10 @@ static PyMethodDef OpsAPI[] = {{"add_n",
                                 (PyCFunction)(void (*)(void))fetch,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for fetch."},
+                               {"relu",
+                                (PyCFunction)(void (*)(void))relu,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for relu."},
                                {nullptr, nullptr, 0, nullptr}};
 
 void BindOpsAPI(pybind11::module *module) {
