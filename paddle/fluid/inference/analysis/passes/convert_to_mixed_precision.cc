@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 #include "paddle/fluid/framework/ir/constant_folding_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/identity_op_clean_pass.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/backend.h"
 
@@ -33,7 +34,8 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     phi::DataType mixed_precision,
     phi::Backend backend,
     bool keep_io_types,
-    const std::unordered_set<std::string>& black_list)
+    const std::unordered_set<std::string>& black_list,
+    const std::unordered_set<std::string>& white_list)
     : model_file_(model_file),
       params_file_(params_file),
       mixed_model_file_(mixed_model_file),
@@ -41,7 +43,8 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
       mixed_precision_(mixed_precision),
       backend_(backend),
       keep_io_types_(keep_io_types),
-      black_list_(black_list) {
+      black_list_(black_list),
+      white_list_(white_list) {
   switch (backend_) {
     case phi::Backend::GPU:
       PADDLE_ENFORCE(mixed_precision_ == phi::DataType::FLOAT16 ||
@@ -88,19 +91,27 @@ void ConvertToMixedPrecisionPass::Run() {
 
   framework::ir::ConstantFoldingPass constant_folding_pass;
   constant_folding_pass.Apply(main_graph_.get());
-  framework::ir::AutoMixedPrecisionPass pass;
-  pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
+
+  framework::ir::AutoMixedPrecisionPass auto_mixed_precision_pass;
+  auto_mixed_precision_pass.Set("mixed_precision_mode",
+                                new int{static_cast<int>(mixed_precision_)});
   if (backend_ == phi::Backend::GPU) {
-    pass.Set("enable_gpu_mixed", new bool{true});
+    auto_mixed_precision_pass.Set("enable_gpu_mixed", new bool{true});
   } else if (backend_ == phi::Backend::XPU) {
-    pass.Set("enable_xpu_mixed", new bool{true});
+    auto_mixed_precision_pass.Set("enable_xpu_mixed", new bool{true});
   } else if (backend_ == phi::Backend::CUSTOM) {
-    pass.Set("enable_custom_device_mixed", new bool{true});
+    auto_mixed_precision_pass.Set("enable_custom_device_mixed", new bool{true});
   }
-  pass.Set("mixed_black_list",
-           new std::unordered_set<std::string>{black_list_});
-  pass.Set("enable_low_precision_io", new bool{!keep_io_types_});
-  pass.Apply(main_graph_.get());
+  auto_mixed_precision_pass.Set(
+      "mixed_black_list", new std::unordered_set<std::string>{black_list_});
+  auto_mixed_precision_pass.Set(
+      "mixed_white_list", new std::unordered_set<std::string>{white_list_});
+  auto_mixed_precision_pass.Set("enable_low_precision_io",
+                                new bool{!keep_io_types_});
+  auto_mixed_precision_pass.Apply(main_graph_.get());
+
+  framework::ir::IdentityOpCleanPass identity_op_clean_pass;
+  identity_op_clean_pass.Apply(main_graph_.get());
 
   SaveMixedModel();
 }
@@ -184,9 +195,10 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
                         phi::DataType precision,
-                        const std::unordered_set<std::string>& black_list) {
+                        const std::unordered_set<std::string>& black_list,
+                        const std::unordered_set<std::string>& white_list) {
   return framework::ir::OpSupportPrecision(
-      op_type, backend, precision, black_list);
+      op_type, backend, precision, black_list, white_list);
 }
 
 void InsertCastOp(
@@ -216,7 +228,8 @@ void ConvertToMixedPrecision(
     phi::DataType mixed_precision,
     phi::Backend backend,
     bool keep_io_types,
-    const std::unordered_set<std::string>& black_list) {
+    const std::unordered_set<std::string>& black_list,
+    const std::unordered_set<std::string>& white_list) {
   ConvertToMixedPrecisionPass pass(model_file,
                                    params_file,
                                    mixed_model_file,
@@ -224,7 +237,8 @@ void ConvertToMixedPrecision(
                                    mixed_precision,
                                    backend,
                                    keep_io_types,
-                                   black_list);
+                                   black_list,
+                                   white_list);
   pass.Run();
 }
 

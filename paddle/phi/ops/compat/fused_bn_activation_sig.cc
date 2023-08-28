@@ -35,10 +35,10 @@ KernelSignature BatchNormActGradFuseOpArgumentMapping(
                          {"X",
                           "Scale",
                           "Bias",
+                          "Y",
                           "SavedMean",
                           "SavedVariance",
                           "ReserveSpace",
-                          "Y",
                           "Y@GRAD"},
                          {"momentum", "epsilon", "act_type"},
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});

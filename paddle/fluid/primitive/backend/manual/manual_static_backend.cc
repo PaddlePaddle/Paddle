@@ -54,6 +54,23 @@ std::vector<Tensor> concat_grad<LazyTensor>(const std::vector<Tensor>& x,
   return op_result;
 }
 
+template <>
+Tensor split_grad<LazyTensor>(const std::vector<Tensor>& out_grads,
+                              const Tensor& axis) {
+  std::vector<ir::OpResult> out_grads_res;
+  for (uint64_t idx = 0; idx < out_grads.size(); idx++) {
+    out_grads_res.emplace_back(
+        std::static_pointer_cast<LazyTensor>(out_grads[idx].impl())
+            ->getValue()
+            .dyn_cast<ir::OpResult>());
+  }
+  ir::OpResult axis_res = std::static_pointer_cast<LazyTensor>(axis.impl())
+                              ->getValue()
+                              .dyn_cast<ir::OpResult>();
+  ir::OpResult op_res = paddle::dialect::split_grad(out_grads_res, axis_res);
+  return Tensor(std::make_shared<primitive::LazyTensor>(op_res));
+}
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -185,9 +186,7 @@ inline ir::Operation* InsertFullArrayOperationForAttributeInput(
   IR_ENFORCE(attr.isa<dialect::IntArrayAttribute>(),
              "Encounter non IntArray type when trying to insert IntArray "
              "mutable attribute");
-
   phi::IntArray int_array = attr.dyn_cast<dialect::IntArrayAttribute>().data();
-
   ir::Builder builder(ctx, program->block());
   dialect::FullIntArrayOp full_int_array_op =
       builder.Build<dialect::FullIntArrayOp>(
@@ -209,101 +208,7 @@ inline ir::Operation* InsertStackOperationForTarget(
   return stack_op.operation();
 }
 
-inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
-                                        ir::Program* program,
-                                        const OpDesc& op_desc,
-                                        const OpInputInfo& input_info) {
-  auto& attribute_translator = AttributeTranslator::instance();
-  auto& op_normalizer = OpNameNormalizer::instance();
-
-  auto legacy_attr_name =
-      op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
-
-  if (!op_desc.HasAttr(legacy_attr_name)) {
-    IR_THROW("Op %s arg %s should not be zero size",
-             op_desc.Type(),
-             legacy_attr_name);
-  }
-  paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
-  VLOG(10) << "[" << op_desc.Type() << "][attribute]"
-           << " name: " << legacy_attr_name << " " << legacy_attr.index();
-  ir::Attribute new_attr =
-      attribute_translator(input_info.type_name, legacy_attr);
-
-  ir::Operation* defining_op = nullptr;
-  bool is_int_array = (input_info.type_name.find("IntArrayAttribute") !=
-                       input_info.type_name.npos);
-  if (is_int_array) {
-    defining_op =
-        InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
-  } else {
-    defining_op = InsertFullOperationForAttributeInput(ctx, program, new_attr);
-  }
-
-  return defining_op->result(0);
-}
-
 }  // namespace
-
-/// @brief This class is used to translate a OpDesc, it's a functor class and
-/// should have no non-static data member, since we expected it's stateless.
-struct OpTranscriber {
- public:
-  virtual ~OpTranscriber() = default;
-
- public:
-  virtual ir::Operation* operator()(ir::IrContext* ctx,
-                                    TranslationContext* param_map,
-                                    const OpDesc& op_desc,
-                                    ir::Program* program);
-
- public:
-  virtual ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc);
-  virtual std::vector<ir::OpResult> GenerateOperationInput(
-      ir::IrContext* ctx,
-      TranslationContext* param_map,
-      const OpDesc& op_desc,
-      const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos,
-      ir::Program* program);
-  virtual std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
-      ir::IrContext* ctx,
-      const OpDesc& op_desc,
-      const OpOutputInfoList& output_infos);
-  virtual void HandleNonexistentAttribute(ir::IrContext*,
-                                          ir::AttributeMap* attribute_map,
-                                          const OpAttributeInfo& info) {
-    auto& attribute_translator = AttributeTranslator::instance();
-    (*attribute_map)[info.name] =
-        attribute_translator(info.type_name, paddle::framework::Attribute());
-  }
-  virtual ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext* ctx,
-      const std::string& normalized_op_name,
-      const OpAttributeInfoList& op_attr_infos,
-      const OpDesc& op_desc);
-
-  virtual void RecordOpResultMapping(ir::IrContext* ctx,
-                                     TranslationContext* param_map,
-                                     const OpDesc& op_desc,
-                                     ir::Operation* operation,
-                                     const OpOutputMapping& arg_to_idx);
-
- public:
-  virtual InputHandlerFn GetSpecialInputHandlers(
-      const std::string& input_name) {
-    return nullptr;
-  }
-  virtual AttributeHandlerFn GetSpecialAttributeHandlers(
-      const std::string& input_name) {
-    return nullptr;
-  }
-  virtual void InsertSliceOperationForInput(ir::IrContext* ctx,
-                                            TranslationContext* param_map,
-                                            const OpDesc& op_desc,
-                                            const OpInputInfoList& input_infos,
-                                            ir::Program* program);
-};
 
 ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
                                         const OpDesc& op_desc) {
@@ -358,6 +263,40 @@ void OpTranscriber::InsertSliceOperationForInput(
       }
     }
   }
+}
+
+ir::OpResult OpTranscriber::GetAttributeAsInput(ir::IrContext* ctx,
+                                                ir::Program* program,
+                                                const OpDesc& op_desc,
+                                                const OpInputInfo& input_info) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  auto& op_normalizer = OpNameNormalizer::instance();
+
+  auto legacy_attr_name =
+      op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
+
+  if (!op_desc.HasAttr(legacy_attr_name)) {
+    IR_THROW("Op %s arg %s should not be zero size",
+             op_desc.Type(),
+             legacy_attr_name);
+  }
+  paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
+  VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+           << " name: " << legacy_attr_name << " " << legacy_attr.index();
+  ir::Attribute new_attr =
+      attribute_translator(input_info.type_name, legacy_attr);
+
+  ir::Operation* defining_op = nullptr;
+  bool is_int_array = (input_info.type_name.find("IntArrayAttribute") !=
+                       input_info.type_name.npos);
+  if (is_int_array) {
+    defining_op =
+        InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
+  } else {
+    defining_op = InsertFullOperationForAttributeInput(ctx, program, new_attr);
+  }
+
+  return defining_op->result(0);
 }
 
 std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
@@ -622,6 +561,14 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
   }
 
   return attribute_map;
+}
+
+void OpTranscriber::HandleNonexistentAttribute(ir::IrContext*,
+                                               ir::AttributeMap* attribute_map,
+                                               const OpAttributeInfo& info) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  (*attribute_map)[info.name] =
+      attribute_translator(info.type_name, paddle::framework::Attribute());
 }
 
 void OpTranscriber::RecordOpResultMapping(ir::IrContext* ctx,
@@ -965,11 +912,14 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::Attribute shape = attribute_translator(
+        "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("shape"));
     ir::AttributeMap attribute_map = {
         {"name",
          ir::StrAttribute::get(ctx,
                                op_desc.GetAttrIfExists<std::string>("name"))},
-        {"index", ir::Int64Attribute::get(ctx, 0)},
+        {"shape", shape},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
         {"place",
@@ -1214,8 +1164,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
-    std::vector<int64_t> shape =
-        PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
+    auto& attribute_translator = AttributeTranslator::instance();
+    paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
     float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
@@ -1223,7 +1173,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
 
     ir::AttributeMap attribute_map = {
         {"shape",
-         paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape))},
+         attribute_translator("paddle::dialect::IntArrayAttribute",
+                              shape_attr)},
         {"value", attr_value.dyn_cast<paddle::dialect::ScalarAttribute>()},
         {"dtype",
          paddle::dialect::DataTypeAttribute::get(
@@ -1289,10 +1240,10 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
           ctx, param_map, program, shape_tensor_list_vars);
       op_inputs.push_back(defining_op->result(0));
     } else {
-      std::vector<int64_t> shape =
-          PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shape"));
-      ir::Attribute new_attr =
-          paddle::dialect::IntArrayAttribute::get(ctx, phi::IntArray(shape));
+      auto& attribute_translator = AttributeTranslator::instance();
+      paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
+      ir::Attribute new_attr = attribute_translator(
+          "paddle::dialect::IntArrayAttribute", shape_attr);
       auto defining_op =
           InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
       op_inputs.push_back(defining_op->result(0));
@@ -1630,7 +1581,118 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
   }
 };
 
+struct SetValueOpTranscriber : public OpTranscriber {
+  ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
+                                   ir::Program* program,
+                                   const OpDesc& op_desc,
+                                   const OpInputInfo& input_info) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+
+    auto legacy_attr_name =
+        op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
+
+    if (!op_desc.HasAttr(legacy_attr_name)) {
+      IR_THROW("Op %s arg %s should not be zero size",
+               op_desc.Type(),
+               legacy_attr_name);
+    }
+    framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
+    VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+             << " name: " << legacy_attr_name << " " << legacy_attr.index();
+    ir::Attribute new_attr =
+        attribute_translator("paddle::dialect::IntArrayAttribute", legacy_attr);
+
+    ir::Operation* defining_op =
+        InsertFullArrayOperationForAttributeInput(ctx, program, new_attr);
+    return defining_op->result(0);
+  }
+};
+
+struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SetValueWithTensorOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op set_value should have corresponding OpInfo "
+          "pd.set_value_with_tensor");
+    }
+
+    return op_info;
+  }
+
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
+    if (input_name != "values") {
+      return nullptr;
+    }
+    return [](ir::IrContext* ctx,
+              TranslationContext* param_map,
+              const OpDesc& op_desc,
+              const std::string&,
+              const OpInputInfo& info,
+              ir::Program* program) -> ir::OpResult {
+      std::vector<std::string> legacy_input_vars;
+      IR_ENFORCE(op_desc.HasInput("ValueTensor"),
+                 "[set_value] should have ValueTensor");
+      legacy_input_vars = op_desc.Input("ValueTensor", true);
+      IR_ENFORCE(
+          legacy_input_vars.size() == 1u,
+          "[set_value][ValueTensor] should only have 1 variable, but got %d",
+          legacy_input_vars.size());
+      auto var_name = legacy_input_vars[0];
+      auto defining_info = (*param_map)[var_name];
+      if (defining_info.generated_by_vector) {
+        InsertSliceOperationForTarget(
+            ctx, param_map, program, defining_info, var_name);
+        defining_info = param_map->at(var_name).value;
+      }
+      return defining_info.value;
+    };
+  }
+};
+
+struct SetValueGradOpTranscriber : public SetValueWithTensorOpTranscriber {
+  ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SetValueGradOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op set_value_grad should have corresponding OpInfo "
+          "pd.set_value_grad");
+    }
+
+    return op_info;
+  }
+};
+
+struct LegacySetValueDispatcher : public OpTranscriber {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
+    std::vector<std::string> legacy_input_vars;
+
+    // if op has input with name "ValueTensor", then use that input as value
+    if (op_desc.HasInput("ValueTensor")) {
+      legacy_input_vars = op_desc.Input("ValueTensor", true);
+      if (legacy_input_vars.size() > 0) {
+        VLOG(10) << "legacy op:" << op_desc.Type()
+                 << " has ValueTensor and convert to set_value_with_tensor";
+        return SetValueWithTensorOpTranscriber()(
+            ctx, param_map, op_desc, program);
+      }
+    }
+
+    return SetValueOpTranscriber()(ctx, param_map, op_desc, program);
+  }
+};
+
 OpTranslator::OpTranslator() {
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
@@ -1638,6 +1700,7 @@ OpTranslator::OpTranslator() {
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
+  special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
@@ -1647,10 +1710,11 @@ OpTranslator::OpTranslator() {
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
+  special_handlers["set_value"] = LegacySetValueDispatcher();
+  special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
-  special_handlers["fill_constant"] = FillConstantTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
