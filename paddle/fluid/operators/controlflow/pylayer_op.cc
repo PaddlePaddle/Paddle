@@ -59,6 +59,31 @@ void PyLayerOp::CreateInterpreter(
   }
 }
 
+class PyLayerForwardOpProtoMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput(PyLayerOp::kInputs, "The input variables of the sub-block.")
+        .AsDuplicable();
+    AddOutput(PyLayerOp::kOutputs, "The output variables of the sub-block.")
+        .AsDuplicable();
+    // TODO(MarioLulab): Must Use std::vector here ?
+    AddOutput(
+        PyLayerOp::kScope,
+        "(std::vector<Scope*>) The scope of static pylayer block, used for "
+        "passing intermediate variables between forward and backward.");
+    AddAttr<std::vector<framework::BlockDesc *>>(
+        "blocks",
+        "The blocks of PyLayer operator where blocks[0] indicates the forward "
+        "block and blocks[1] indicates the backward block.");
+    AddComment(R"DOC(PyLayer operator
+
+The PyLayer Operator is designed to support `@to_static` for `PyLayer in Dynamic Graph`.
+
+
+)DOC");
+  }
+};
+
 class PyLayerForwardOp : public PyLayerOp {
  public:
   PyLayerForwardOp(const std::string &type,
