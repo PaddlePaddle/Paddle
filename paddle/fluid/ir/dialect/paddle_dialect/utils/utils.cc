@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 
 namespace paddle {
 namespace dialect {
