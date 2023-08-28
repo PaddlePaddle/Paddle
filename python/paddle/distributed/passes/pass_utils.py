@@ -441,7 +441,7 @@ def _program_for_fthenb_and_1f1b(program):
         for op in src_block.ops:
             if is_lr_sched_op(op):
                 lr_ops.append(op)
-            if is_forward_op(op):
+            elif is_forward_op(op):
                 fwd_ops.append(op)
             elif is_backward_op(op):
                 bwd_ops.append(op)
@@ -501,6 +501,17 @@ def _program_for_fthenb_and_1f1b(program):
                 )
                 opt_block._set_forward_block_idx(src_block.forward_block_idx)
                 _add_ops_into_block(src_block, opt_block, opt_ops)
+
+        for fetch_op in src_block.ops:
+            if fetch_op.type in ["fetch", "fetch_v2"]:
+                in_name = fetch_op.input_arg_names[0]
+                dst_block = None
+                for block in [lr_block, fwd_block, bwd_block, opt_block]:
+                    if block._find_var_recursive(in_name):
+                        dst_block = block
+                        break
+                if dst_block:
+                    _create_program(src_block, dst_block, fetch_op)
 
     lr_prog._sync_with_cpp()
     fwd_prog._sync_with_cpp()
