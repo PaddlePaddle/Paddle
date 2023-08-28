@@ -147,10 +147,10 @@ __global__ void IscloseCUDAKernel(const T* in_data,
     // if (!val) *out_data = false;
   }
 }
-template <typename T>
-__global__ void IscloseCUDAKernel<phi::dtype::complex<T>>(
-    const phi::dtype::complex<T>* in_data,
-    const phi::dtype::complex<T>* other_data,
+template <>
+__global__ void IscloseCUDAKernel<phi::dtype::complex<float>>(
+    const phi::dtype::complex<float>* in_data,
+    const phi::dtype::complex<float>* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
@@ -159,14 +159,14 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<T>>(
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const T a = in_data[i];
-    const T b = other_data[i];
+    const float a = in_data[i];
+    const float b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      T left = (a - b).abs();
-      T right = atol + rtol * b.abs();
-      T diff = (left - right).abs();
+      float left = (a - b).abs();
+      float right = atol + rtol * b.abs();
+      float diff = (left - right).abs();
       val = a == b || left <= right || diff <= 1e-15;
     }
     out_data[i] = val;
@@ -174,6 +174,32 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<T>>(
   }
 }
 
+template <>
+__global__ void IscloseCUDAKernel<phi::dtype::complex<double>>(
+    const phi::dtype::complex<double>* in_data,
+    const phi::dtype::complex<double>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int num,
+    bool* out_data) {
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const double a = in_data[i];
+    const double b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      double left = (a - b).abs();
+      double right = atol + rtol * b.abs();
+      double diff = (left - right).abs();
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    out_data[i] = val;
+    // if (!val) *out_data = false;
+  }
+}
 template <typename T>
 struct GetTensorValue<phi::GPUContext, T> {
   T operator()(const phi::GPUContext& dev_ctx,
