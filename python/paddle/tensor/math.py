@@ -5565,125 +5565,142 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             [[1, 1],
              [1, 1]])
     """
-
-    if axis < 0:
-        axis = axis + len(x.shape)
-    if axis > len(x.shape):
-        axis = len(x.shape)
-    if axis < 0:
-        axis = 0
-    dtype = x.dtype
-    axes = [axis]
-    infer_flags = [1 for i in range(len(axes))]
-    if in_dynamic_mode():
-        has_pend = False
-        input_list = []
-        if prepend is not None and append is not None:
-            input_list = [prepend, x, append]
-            has_pend = True
-        elif prepend is not None:
-            input_list = [prepend, x]
-            has_pend = True
-        elif append is not None:
-            input_list = [x, append]
-            has_pend = True
-        if has_pend:
-            new_input = _C_ops.concat(input_list, axis)
-        else:
-            new_input = x
-
-        attrs_1 = ()
-        attrs_2 = ()
-
-        dim_len = new_input.shape[axis]
-
-        starts_1 = [0]
-        attrs_1 += ('starts', starts_1)
-        ends_1 = [dim_len - 1]
-        attrs_1 += ('ends', ends_1)
-        input_front = _C_ops.slice(
-            new_input, axes, starts_1, ends_1, infer_flags, []
-        )
-        starts_2 = [1]
-        attrs_2 += ('starts', starts_2)
-        ends_2 = [dim_len]
-        attrs_2 += ('ends', ends_2)
-        input_back = _C_ops.slice(
-            new_input, axes, starts_2, ends_2, infer_flags, []
-        )
-
-        if x.dtype == paddle.bool:
-            return _C_ops.logical_xor(input_back, input_front)
-        else:
-            return _C_ops.subtract(input_back, input_front)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
-            'diff',
-        )
-        check_type(axis, 'axis', (int), 'diff')
-        helper = LayerHelper('diff', **locals())
-        has_pend = False
-        input_list = []
-        if prepend is not None and append is not None:
-            input_list = [prepend, x, append]
-            has_pend = True
-        elif prepend is not None:
-            input_list = [prepend, x]
-            has_pend = True
-        elif append is not None:
-            input_list = [x, append]
-            has_pend = True
-
-        if has_pend:
-            new_input = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='concat',
-                inputs={'X': input_list},
-                outputs={'Out': [new_input]},
-                attrs={'axis': axis},
+    if n < 1:
+        raise ValueError(
+            "Diff expects input to be at least one-dimensional but got {}".format(
+                n
             )
-        else:
-            new_input = x
-
-        dim_len = new_input.shape[axis]
-        attrs_1 = {'axes': axes}
-        starts_1 = [0]
-        ends_1 = [dim_len - 1]
-        attrs_1['starts'] = starts_1
-        attrs_1['ends'] = ends_1
-        input_front = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='slice',
-            inputs={'Input': new_input},
-            attrs=attrs_1,
-            outputs={'Out': input_front},
-        )
-        attrs_2 = {'axes': axes}
-        starts_2 = [1]
-        ends_2 = [dim_len]
-        attrs_2['starts'] = starts_2
-        attrs_2['ends'] = ends_2
-        input_back = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='slice',
-            inputs={'Input': new_input},
-            attrs=attrs_2,
-            outputs={'Out': input_back},
         )
 
-        if dtype == paddle.bool:
-            out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='logical_xor',
-                inputs={"X": input_back, "Y": input_front},
-                outputs={"Out": out},
+    def _diff_handler(x, n=1, axis=-1, prepend=None, append=None, name=None):
+        if axis < 0:
+            axis = axis + len(x.shape)
+        if axis > len(x.shape):
+            axis = len(x.shape)
+        if axis < 0:
+            axis = 0
+        dtype = x.dtype
+        axes = [axis]
+        infer_flags = [1 for i in range(len(axes))]
+        if in_dynamic_mode():
+            has_pend = False
+            input_list = []
+            if prepend is not None and append is not None:
+                input_list = [prepend, x, append]
+                has_pend = True
+            elif prepend is not None:
+                input_list = [prepend, x]
+                has_pend = True
+            elif append is not None:
+                input_list = [x, append]
+                has_pend = True
+            if has_pend:
+                new_input = _C_ops.concat(input_list, axis)
+            else:
+                new_input = x
+
+            attrs_1 = ()
+            attrs_2 = ()
+
+            dim_len = new_input.shape[axis]
+
+            starts_1 = [0]
+            attrs_1 += ('starts', starts_1)
+            ends_1 = [dim_len - 1]
+            attrs_1 += ('ends', ends_1)
+            input_front = _C_ops.slice(
+                new_input, axes, starts_1, ends_1, infer_flags, []
             )
+            starts_2 = [1]
+            attrs_2 += ('starts', starts_2)
+            ends_2 = [dim_len]
+            attrs_2 += ('ends', ends_2)
+            input_back = _C_ops.slice(
+                new_input, axes, starts_2, ends_2, infer_flags, []
+            )
+
+            if x.dtype == paddle.bool:
+                return _C_ops.logical_xor(input_back, input_front)
+            else:
+                return _C_ops.subtract(input_back, input_front)
         else:
-            out = paddle.tensor.math.subtract(input_back, input_front)
-        return out
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
+                'diff',
+            )
+            check_type(axis, 'axis', (int), 'diff')
+            helper = LayerHelper('diff', **locals())
+            has_pend = False
+            input_list = []
+            if prepend is not None and append is not None:
+                input_list = [prepend, x, append]
+                has_pend = True
+            elif prepend is not None:
+                input_list = [prepend, x]
+                has_pend = True
+            elif append is not None:
+                input_list = [x, append]
+                has_pend = True
+
+            if has_pend:
+                new_input = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='concat',
+                    inputs={'X': input_list},
+                    outputs={'Out': [new_input]},
+                    attrs={'axis': axis},
+                )
+            else:
+                new_input = x
+
+            dim_len = new_input.shape[axis]
+            attrs_1 = {'axes': axes}
+            starts_1 = [0]
+            ends_1 = [dim_len - 1]
+            attrs_1['starts'] = starts_1
+            attrs_1['ends'] = ends_1
+            input_front = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='slice',
+                inputs={'Input': new_input},
+                attrs=attrs_1,
+                outputs={'Out': input_front},
+            )
+            attrs_2 = {'axes': axes}
+            starts_2 = [1]
+            ends_2 = [dim_len]
+            attrs_2['starts'] = starts_2
+            attrs_2['ends'] = ends_2
+            input_back = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='slice',
+                inputs={'Input': new_input},
+                attrs=attrs_2,
+                outputs={'Out': input_back},
+            )
+
+            if dtype == paddle.bool:
+                out = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type='logical_xor',
+                    inputs={"X": input_back, "Y": input_front},
+                    outputs={"Out": out},
+                )
+            else:
+                out = paddle.tensor.math.subtract(input_back, input_front)
+            return out
+
+    out = _diff_handler(
+        x, n=1, axis=axis, prepend=prepend, append=append, name=name
+    )
+    if n > 1:
+        for _ in range(n - 1):
+            out = _diff_handler(
+                out, n=1, axis=axis, prepend=prepend, append=append, name=name
+            )
+    return out
 
 
 def angle(x, name=None):
