@@ -144,32 +144,38 @@ class InplacePass : public ir::Pass {
     auto* block = module_op.block();
     auto inplace_ops = GetInplaceOp(block);
 
-    for (auto& op : *block) {
-      if (inplace_ops.count(op) > 0) {
-        ir::OpInfo inplace_op_info = inplace_ops.at(op);
+    for (auto kv : inplace_ops) {
+      ir::Operation* origin_op = kv.first;
 
-        std::vector<ir::OpResult> inputs;
-        for (size_t i = 0; i < op->num_operands(); ++i) {
-          inputs.emplace_back(op->operand_source(i).dyn_cast<::ir::OpResult>());
-        }
+      ir::Block::iterator insert_pos =
+          std::find(block->begin(), block->end(), origin_op);
 
-        std::vector<ir::Type> outputs;
-        for (size_t i = 0; i < op->num_results(); ++i) {
-          outputs.emplace_back(op->result(i).type());
-        }
+      PADDLE_ENFORCE_NE(
+          insert_pos,
+          block->end(),
+          paddle::platform::errors::NotFound("Operator %s not found in block.",
+                                             origin_op->name()));
 
-        ir::Operation* inplace_op = ir::Operation::Create(
-            inputs, op->attributes(), outputs, inplace_op_info);
-
-        for (size_t i = 0; i < op->num_results(); ++i) {
-          op->result(i).ReplaceAllUsesWith(inplace_op->result(i));
-        }
-
-        ir::Block::iterator insert_pos =
-            std::find(block->begin(), block->end(), op);
-        block->insert(insert_pos, inplace_op);
-        block->erase(insert_pos);
+      std::vector<ir::OpResult> inputs;
+      for (size_t i = 0; i < origin_op->num_operands(); ++i) {
+        inputs.emplace_back(
+            origin_op->operand_source(i).dyn_cast<::ir::OpResult>());
       }
+
+      std::vector<ir::Type> outputs;
+      for (size_t i = 0; i < origin_op->num_results(); ++i) {
+        outputs.emplace_back(origin_op->result(i).type());
+      }
+
+      ir::Operation* inplace_op = ir::Operation::Create(
+          inputs, origin_op->attributes(), outputs, kv.second);
+
+      for (size_t i = 0; i < origin_op->num_results(); ++i) {
+        origin_op->result(i).ReplaceAllUsesWith(inplace_op->result(i));
+      }
+
+      block->insert(insert_pos, inplace_op);
+      block->erase(insert_pos);
     }
   }
 
@@ -181,9 +187,6 @@ class InplacePass : public ir::Pass {
 std::unique_ptr<Pass> CreateInplacePass() {
   return std::make_unique<InplacePass>();
 }
-// std::unique_ptr<ir::Program> InplacePass(ir::Program* prog) {
-
-// }
 
 }  // namespace dialect
 }  // namespace paddle
