@@ -73,9 +73,9 @@ SINGLE_OUT_CREATION_TEMPLATE = """
 """
 VECTOR_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(x_grad);
-    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    std::vector<const phi::DenseTensor*> dense_out(dist_out.size());
     for (size_t i=0; i<dist_out.size(); i++) {{
-        dense_out[i] = dist_out[i]->mutable_value();
+        dense_out[i] = dist_out[i]->value();
     }}
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
@@ -84,9 +84,9 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
 """
 MULTI_VECTOR_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{name} = SetKernelDistOutput(x_grad);
-    std::vector<phi::DenseTensor*> dense_out_{name}(dist_out_{name}.size());
+    std::vector<const phi::DenseTensor*> dense_out_{name}(dist_out_{name}.size());
     for (size_t i=0; i<dist_out_{name}.size(); i++) {{
-        dense_out_{name}[i] = dist_out_{name}[i]->mutable_value();
+        dense_out_{name}[i] = dist_out_{name}[i]->value();
     }}
 """
 
@@ -157,7 +157,7 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
     auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
     std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
     for (auto tmp : dist_input_{name}_vec) {{
-      dense_input_{name}_vec.emplace_back(tmp->mutable_value());
+      dense_input_{name}_vec.emplace_back(&tmp->value());
     }}
     std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
     std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
@@ -232,17 +232,22 @@ OUTPUT_RESHARD_TEMPLATE = """
 #     out_size_expr : [], expression for getting size of vector<Tensor>
 
 skip_op_lists = [
-    "broadcast_tensors", "broadcast_tensors_grad", # 
-    "check_finite_and_unscale", # std::vector<Tensor>&, const Tensor& -> std::tuple<std::vector<Tensor>&, Tensor>
-    "coalesce_tensor", # const std::vector<Tensor>&, DataType, bool, bool, bool, float, bool, int, int, const std::vector<int64_t>&, const std::vector<int64_t>& -> std::tuple<std::vector<Tensor>, Tensor>
-    "meshgrid", "meshgrid_grad", # const std::vector<Tensor>& -> std::vector<Tensor>
-    "unbind", # const Tensor&, int -> std::vector<Tensor> 
-    "unstack", "unstack_grad", # const Tensor&, int, int -> std::vector<Tensor> 
-    "update_loss_scaling", # std::vector<Tensor>&, const Tensor&, Tensor&, Tensor&, Tensor&, int, int, float, float, const Scalar& -> std::tuple<std::vector<Tensor>&, Tensor&, Tensor&, Tensor&>
-    "einsum", "einsum_grad", # const std::vector<Tensor>&, const std::string& -> std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>> 
-    "split", # const Tensor&, const IntArray&, const Scalar& -> std::vector<Tensor>
-    "split_with_num", # const Tensor&, int, const Scalar& -> std::vector<Tensor>
+    "broadcast_tensors",
+    "broadcast_tensors_grad",  #
+    "check_finite_and_unscale",  # std::vector<Tensor>&, const Tensor& -> std::tuple<std::vector<Tensor>&, Tensor>
+    "coalesce_tensor",  # const std::vector<Tensor>&, DataType, bool, bool, bool, float, bool, int, int, const std::vector<int64_t>&, const std::vector<int64_t>& -> std::tuple<std::vector<Tensor>, Tensor>
+    "meshgrid",
+    "meshgrid_grad",  # const std::vector<Tensor>& -> std::vector<Tensor>
+    "unbind",  # const Tensor&, int -> std::vector<Tensor>
+    "unstack",
+    "unstack_grad",  # const Tensor&, int, int -> std::vector<Tensor>
+    "update_loss_scaling",  # std::vector<Tensor>&, const Tensor&, Tensor&, Tensor&, Tensor&, int, int, float, float, const Scalar& -> std::tuple<std::vector<Tensor>&, Tensor&, Tensor&, Tensor&>
+    "einsum",
+    "einsum_grad",  # const std::vector<Tensor>&, const std::string& -> std::tuple<Tensor, std::vector<Tensor>, std::vector<Tensor>>
+    "split",  # const Tensor&, const IntArray&, const Scalar& -> std::vector<Tensor>
+    "split_with_num",  # const Tensor&, int, const Scalar& -> std::vector<Tensor>
 ]
+
 
 class DistForwardAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
@@ -414,11 +419,16 @@ class DistForwardAPI(ForwardAPI):
                     input_args_code += SINGLE_DIST_META_IN_TEMPLATE.format(
                         param
                     )
-                elif self.inputs['input_info'][param] == "const std::vector<Tensor>&":
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                ):
                     input_args_code += VECTOR_DIST_META_IN_TEMPLATE.format(
                         param
                     )
-                    input_mega_code += VECTOR_DIST_META_IN_DECL_TEMPLATE.format(name=param)
+                    input_mega_code += VECTOR_DIST_META_IN_DECL_TEMPLATE.format(
+                        name=param
+                    )
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
@@ -458,8 +468,12 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        return output_decl_code + input_mega_code + INFER_SPMD_TEMPLATE.format(
-            infer_meta_func_code, input_args_code, output_args_code
+        return (
+            output_decl_code
+            + input_mega_code
+            + INFER_SPMD_TEMPLATE.format(
+                infer_meta_func_code, input_args_code, output_args_code
+            )
         )
 
     def generate_kernel_selection_code(self) -> str:
@@ -510,7 +524,7 @@ class DistForwardAPI(ForwardAPI):
         input_tensor_code += VECTOR_PREPARE_DATA_TEMPLATE.format(
             name=input_name,
             index=kernel_param.index(input_name),
-            trans_flag=trans_flag
+            trans_flag=trans_flag,
         )
 
         return input_tensor_code
@@ -585,7 +599,10 @@ class DistForwardAPI(ForwardAPI):
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_args_code += SINGLE_META_IN_TEMPLATE.format(param)
-                elif self.inputs['input_info'][param] == "const std::vector<Tensor>&":
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                ):
                     input_args_code += VECTOR_META_IN_TEMPLATE.format(param)
                 else:
                     raise ValueError(
@@ -662,7 +679,11 @@ class DistForwardAPI(ForwardAPI):
                     if input_infos[arg] == "const Tensor&":
                         input_args.append("*" + PREFIX_TENSOR_NAME + arg)
                     elif input_infos[arg] == "const std::vector<Tensor>&":
-                        input_args.append(PREFIX_VECTOR_TENSOR_NAME + arg + SUFFIX_VECTOR_TENSOR_NAME)
+                        input_args.append(
+                            PREFIX_VECTOR_TENSOR_NAME
+                            + arg
+                            + SUFFIX_VECTOR_TENSOR_NAME
+                        )
                     else:
                         # do nothing
                         pass
@@ -730,17 +751,17 @@ class DistForwardAPI(ForwardAPI):
     def check_argument_whether_support_auto_parallel(self):
         global skip_op_lists
         for name in self.inputs['names']:
-            if self.inputs['input_info'][name] not in ["const Tensor&", "const std::vector<Tensor>&"]:
+            if self.inputs['input_info'][name] not in [
+                "const Tensor&",
+                "const std::vector<Tensor>&",
+            ]:
                 return False
         for out_type in self.outputs['types']:
             if out_type not in ["Tensor", "std::vector<Tensor>"]:
                 return False
 
-        print("kernel name: ", self.kernel['func'][0])
         if self.kernel['func'][0] in skip_op_lists:
-            print(self.kernel['func'][0]," skip")
             return False
-        print()
         return True
 
     # override BaseAPI's method

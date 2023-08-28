@@ -31,7 +31,7 @@ PARALLEL_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({name});
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
     for (size_t i=0; i<dist_out.size(); i++) {{
-        dense_out[i] = dist_out[i]->mutable_value();
+        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
     }}
 """
 INPLACE_OUT_CREATION_TEMPLATE = """

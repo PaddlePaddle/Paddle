@@ -73,13 +73,13 @@ class TensorWrapper {
 #ifdef PADDLE_WITH_DISTRIBUTE
       } else if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
         // Only Copy Meta
-        phi::distributed::DistTensor* dist_tensor = static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
+        phi::distributed::DistTensor* dist_tensor =
+            static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
         // TODO(jiabin): It's not a good idea to set memory size to zero, find
         // another way and change this.
-        intermidiate_tensor_.set_impl(std::make_shared<phi::distributed::DistTensor>(
-            std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
-            dist_tensor->meta(),
-            dist_tensor->dist_attr()));
+        intermidiate_tensor_.set_impl(
+            std::make_shared<phi::distributed::DistTensor>(
+                dist_tensor->dims(), dist_tensor->dist_attr()));
 #endif
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(

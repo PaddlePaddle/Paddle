@@ -194,21 +194,6 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
-// #ifdef PADDLE_WITH_DISTRIBUTE
-// /* ------------------ for auto parallel ----------------------- */
-// std::vector<phi::MetaTensor> MakeMetaTensor(
-//     const std::vector<const phi::distributed::DistTensor*>& tensors) {
-//   std::vector<phi::MetaTensor> meta_tensors;
-//   meta_tensors.reserve(tensors.size());
-//   for (const auto* t : tensors) {
-//     meta_tensors.emplace_back(*(t->impl()));
-//   }
-//   return meta_tensors;
-// }
-// #endif
-
-/* ------------------ for output ----------------------- */
-
 phi::DenseTensor* SetKernelOutput(Tensor* out) {
   if (out) {
     if (out->impl() == nullptr) {
@@ -562,20 +547,22 @@ phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
   return nullptr;
 }
 
-std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(std::vector<Tensor*> out) {
+std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
+    std::vector<Tensor*> out) {
   std::vector<phi::distributed::DistTensor*> result;
   for (auto tmp : out) {
     if (tmp) {
       // TODO(chenweihang): now all dist case are nullptr
       if (tmp->impl() == nullptr) {
-        auto dense_t = std::make_shared<phi::DenseTensor>();
+        phi::DenseTensor dense_t;
         // TODO(chenweihang): polish code, dist_attr is null now
-        auto dist_attr = std::make_shared<phi::distributed::TensorDistAttr>();
-        auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-            dense_t, phi::DenseTensorMeta(), dist_attr);
+        phi::distributed::TensorDistAttr dist_attr;
+        auto dist_t =
+            std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
         tmp->set_impl(dist_t);
       }
-      result.emplace_back(static_cast<phi::distributed::DistTensor*>(tmp->impl().get()));
+      result.emplace_back(
+          static_cast<phi::distributed::DistTensor*>(tmp->impl().get()));
     } else {
       result.emplace_back(nullptr);
     }

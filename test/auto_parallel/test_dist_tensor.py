@@ -68,22 +68,20 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
 
         local_t.stop_gradient = False
         dist_t.stop_gradient = False
-        # local_t.stop_gradient = True
-        # dist_t.stop_gradient = True
 
         return local_t, dist_t
 
-    # def test_relu_api_for_dist_tensor(self):
-    #     x = np.random.random(size=[4, 4]).astype("float32")
-    #     local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
-    #     local_out = F.relu(local_in)
-    #     dist_out = F.relu(dist_in)
-    #     self.check_tensor_eq(local_out, dist_out)
+    def test_relu_api_for_dist_tensor(self):
+        x = np.random.random(size=[4, 4]).astype("float32")
+        local_in, dist_in = self.create_local_and_dist_tensor_pair(x)
+        local_out = F.relu(local_in)
+        dist_out = F.relu(dist_in)
+        self.check_tensor_eq(local_out, dist_out)
 
-    #     # test backward
-    #     local_out.backward()
-    #     dist_out.backward()
-    #     self.check_tensor_eq(local_in.grad, dist_in.grad)
+        # test backward
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_in.grad, dist_in.grad)
 
     def test_concat_for_dist_tensor(self):
         x1 = np.random.random(size=[4, 4]).astype("float32")
