@@ -206,21 +206,6 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
         else:
             union_op_flags[i] = False
             intersection_op_flags[i] = False
-    # # recover full op or full_Intarray op created by mutable attribute.
-    # total_ops_list = list(total_ops)
-    # for i, op in enumerate(total_ops_list):
-    #     if intersection_op_flags[i] is False:
-    #         for result in op.results():
-    #             if result.has_one_use():
-    #                 next_op = result.first_use().owner()
-    #                 if (
-    #                     next_op in total_ops
-    #                     and intersection_op_flags[total_ops_list.index(next_op)]
-    #                     is True
-    #                 ):
-    #                     intersection_op_flags[i] = True
-    #             else:
-    #                 continue
 
     effective_ops = [
         total_ops[i] for i in range(len(total_ops)) if intersection_op_flags[i]
