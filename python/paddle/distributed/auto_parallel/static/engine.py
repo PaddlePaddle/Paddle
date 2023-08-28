@@ -242,6 +242,14 @@ class Engine:
         elif self._strategy.pipeline.enable:
             self._acc_steps = self._strategy.pipeline.accumulate_steps
 
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "1F1B"
+        ):
+            assert (
+                os.getenv("CUDA_MODULE_LOADING") != "LAZY"
+            ), "EXP_CUDA_MODULE_LOADING_LAZY not supported in 1F1B pipeline."
+
         self.history = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
