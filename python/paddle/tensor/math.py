@@ -31,14 +31,13 @@ from ..fluid.data_feeder import (
 )
 from ..framework import (
     LayerHelper,
-    _dygraph_tracer,
     convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
 )
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
-from .manipulation import cast
+from .manipulation import cast, cast_
 from .ops import abs  # noqa: F401
 from .ops import abs_  # noqa: F401
 from .ops import acos  # noqa: F401
@@ -882,6 +881,22 @@ def divide(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
+@inplace_apis_in_dygraph_only
+def divide_(x, y, name=None):
+    r"""
+    Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_divide`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.divide_(x, y)
+
+
 def floor_divide(x, y, name=None):
     """
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
@@ -925,6 +940,22 @@ def floor_divide(x, y, name=None):
         return _C_ops.floor_divide(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
+
+
+@inplace_apis_in_dygraph_only
+def floor_divide_(x, y, name=None):
+    r"""
+    Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_divide`.
+    """
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+    return _C_ops.floor_divide_(x, y)
 
 
 def remainder(x, y, name=None):
@@ -986,6 +1017,16 @@ def remainder_(x, y, name=None):
 
 mod = remainder  # noqa: F841
 floor_mod = remainder  # noqa: F841
+mod_ = remainder_  # noqa: F841
+mod_.__doc__ = r"""
+    Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_mod`.
+    """
+floor_mod_ = remainder_  # noqa: F841
+floor_mod_.__doc__ = r"""
+    Inplace version of ``floor_mod_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_mod_`.
+    """
 
 
 def multiply(x, y, name=None):
@@ -1047,10 +1088,6 @@ def multiply_(x, y, name=None):
     Inplace version of ``multiply`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_multiply`.
     """
-
-    assert (
-        _dygraph_tracer()._has_grad is False
-    ), "The current inplace version of multiply_ needs to be used in the context of paddle.no_grad() since inplace multiply_grad is not yet supported."
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -1589,6 +1626,36 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     x = paddle.where(paddle.isnan(x), nan, x)
     x = paddle.where(x == posinf_value, posinf, x)
     x = paddle.where(x == neginf_value, neginf, x)
+    return x
+
+
+@inplace_apis_in_dygraph_only
+def nan_to_num_(x, nan=0.0, posinf=None, neginf=None, name=None):
+    r"""
+    Inplace version of ``nan_to_num`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_nan_to_num`.
+    """
+    # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
+    # incorrectly, so we have to explicitly contruct tensors here
+    posinf_value = paddle.full_like(x, float("+inf"))
+    neginf_value = paddle.full_like(x, float("-inf"))
+    nan = paddle.full_like(x, nan)
+    assert x.dtype in [paddle.float32, paddle.float64]
+    is_float32 = x.dtype == paddle.float32
+    if posinf is None:
+        posinf = (
+            np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
+        )
+    posinf = paddle.full_like(x, posinf)
+    if neginf is None:
+        neginf = (
+            np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
+        )
+    neginf = paddle.full_like(x, neginf)
+    x_not_nan = paddle.logical_not(paddle.isnan(x))
+    x = paddle.where_(x_not_nan, x, nan)
+    x = paddle.where_(x != posinf_value, x, posinf)
+    x = paddle.where_(x != neginf_value, x, neginf)
     return x
 
 
@@ -2341,6 +2408,32 @@ def renorm(x, p, axis, max_norm):
         helper.append_op(
             type="renorm", inputs=inputs, attrs=attrs, outputs={"Out": out}
         )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def renorm_(x, p, axis, max_norm):
+    """
+    Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_renorm`.
+    """
+    input_shape = x.shape
+    if not axis < len(input_shape):
+        raise ValueError(
+            "the axis:{} should be less then the shape's size {}:{}".format(
+                axis, len(input_shape), input_shape
+            )
+        )
+    if not axis >= 0:
+        if not axis >= -1 * len(input_shape):
+            raise ValueError(
+                "the axis:{} should not be less than -1 * length of input_shape:{}".format(
+                    axis, -1 * len(input_shape)
+                )
+            )
+        axis = axis + len(input_shape)
+    if in_dynamic_mode():
+        out = _C_ops.renorm_(x, p, axis, max_norm)
         return out
 
 
@@ -3852,6 +3945,25 @@ def cumsum(x, axis=None, dtype=None, name=None):
         return _cum_sum_(**kwargs)
 
 
+@inplace_apis_in_dygraph_only
+def cumsum_(x, axis=None, dtype=None, name=None):
+    r"""
+    Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cumprod`.
+    """
+    if axis is None:
+        flatten = True
+    else:
+        flatten = False
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast_(x, dtype)
+
+    if in_dynamic_mode():
+        if axis is None:
+            axis = -1
+        return _C_ops.cumsum_(x, axis, flatten, False, False)
+
+
 def cummax(x, axis=None, dtype='int64', name=None):
     """
     The cumulative max of the elements along a given axis.
@@ -4194,6 +4306,19 @@ def cumprod(x, dim=None, dtype=None, name=None):
             attrs={'dim': dim},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def cumprod_(x, dim=None, dtype=None, name=None):
+    r"""
+    Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cumprod`.
+    """
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = cast_(x, dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.cumprod_(x, dim)
 
 
 def isfinite(x, name=None):
@@ -5449,6 +5574,51 @@ def gcd(x, y, name=None):
         return out
 
 
+def gcd_(x, y, name=None):
+    r"""
+    Inplace version of ``gcd`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_gcd`.
+    """
+    shape = paddle.broadcast_shape(x.shape, y.shape)
+    if shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                shape, x.shape
+            )
+        )
+    y = paddle.broadcast_to(y, shape)
+    x = paddle.abs_(x)
+    y = paddle.abs(y)
+
+    def _gcd_cond_fn(x, y):
+        return paddle.any(y != 0)
+
+    def _gcd_body_fn(x, y):
+        # paddle.mod will raise an error when any element of y is 0. To avoid
+        # that, we change those zeros to ones. Their values don't matter because
+        # they won't be used.
+        y_equal_0 = y == 0
+        y_safe = paddle.where(y_equal_0, paddle.ones(y.shape, y.dtype), y)
+        y, x = (
+            paddle.where(
+                y_equal_0,
+                paddle.zeros(y.shape, y.dtype),
+                paddle.mod(x, y_safe),
+            ),
+            paddle.where_(y_equal_0, x, y),
+        )
+        return (
+            paddle.where(x < y, x, y),
+            paddle.where_(x >= y, x, y),
+        )
+
+    if in_dynamic_mode():
+        while _gcd_cond_fn(x, y):
+            y, x = _gcd_body_fn(x, y)
+
+        return x
+
+
 def lcm(x, y, name=None):
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
@@ -5505,6 +5675,25 @@ def lcm(x, y, name=None):
     d_safe = paddle.where(d_equal_0, paddle.ones(d.shape, d.dtype), d)
     out = paddle.where(
         d_equal_0, paddle.zeros(d.shape, d.dtype), paddle.abs(x * y) // d_safe
+    )
+    return out
+
+
+def lcm_(x, y, name=None):
+    r"""
+    Inplace version of ``lcm`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_lcm`.
+    """
+    d = paddle.gcd(x, y)
+    # paddle.mod will raise an error when any element of y is 0. To avoid
+    # that, we change those zeros to ones. Their values don't matter because
+    # they won't be used.
+    d_not_equal_0 = d != 0
+    d_safe = paddle.where(d_not_equal_0, d, paddle.ones(d.shape, d.dtype))
+    out = paddle.where_(
+        d_not_equal_0,
+        paddle.abs_(x.multiply_(y)).floor_divide_(d_safe),
+        paddle.zeros(d.shape, d.dtype),
     )
     return out
 
@@ -6651,6 +6840,7 @@ def polygamma(x, n, name=None):
         return out
 
 
+@inplace_apis_in_dygraph_only
 def polygamma_(x, n, name=None):
     r"""
     Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
@@ -6722,3 +6912,22 @@ def ldexp(x, y, name=None):
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
+
+
+def ldexp_(x, y, name=None):
+    r"""
+    Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_polygamma`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+    if x.dtype == paddle.float64 or y.dtype == paddle.float64:
+        out_dtype = paddle.float64
+    else:
+        out_dtype = paddle.get_default_dtype()
+    x = paddle.cast_(x, dtype=out_dtype)
+    y = paddle.cast(y, dtype=out_dtype)
+    two = paddle.to_tensor(2, dtype=out_dtype)
+    return paddle.multiply_(x, paddle.pow(two, y))
