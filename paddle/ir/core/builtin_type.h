@@ -1,3 +1,4 @@
+
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,6 +54,23 @@ class IR_API VectorType : public Type {
   Type operator[](size_t index) const { return data()[index]; }
 };
 
+class DenseTensorType : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
+
+  const ir::Type &dtype() const;
+
+  const DenseTensorTypeStorage::Dim &dims() const;
+
+  const DenseTensorTypeStorage::DataLayout &data_layout() const;
+
+  const DenseTensorTypeStorage::LoD &lod() const;
+
+  const size_t &offset() const;
+};
+
 #define DECLARE_BUILTIN_TYPE(__name)                   \
   class IR_API __name : public Type {                  \
    public:                                             \
@@ -99,3 +117,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BoolType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::IndexType)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex64Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex128Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::DenseTensorType)
