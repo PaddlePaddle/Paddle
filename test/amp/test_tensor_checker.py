@@ -138,6 +138,37 @@ class TestCheckLayerNumerics(unittest.TestCase):
         loss.backward()
         adam.step()
 
+    def test_error_no_element(self):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super().__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+
+            @paddle.amp.debugging.check_layer_numerics
+            def forward(self):
+                return self._w
+
+        with self.assertRaises(RuntimeError):
+            dtype = 'float32'
+            model = MyLayer(dtype)
+            data = model()
+
+    def test_error_type_error(self):
+        class MyLayer(paddle.nn.Layer):
+            def __init__(self, dtype):
+                super().__init__()
+                self._w = self.create_parameter([2, 3], dtype=dtype)
+
+            @paddle.amp.debugging.check_layer_numerics
+            def forward(self, x):
+                return self._w * x
+
+        x = 1
+        with self.assertRaises(RuntimeError):
+            dtype = 'float32'
+            model = MyLayer(dtype)
+            data = model(x)
+
 
 if __name__ == '__main__':
     unittest.main()

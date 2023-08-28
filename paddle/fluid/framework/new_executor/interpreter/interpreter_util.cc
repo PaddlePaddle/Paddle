@@ -72,7 +72,7 @@ class SingleStreamGuard {
     }
   }
 
-  ~SingleStreamGuard() {
+  ~SingleStreamGuard() {  // NOLINT
     if (!is_changed) {
       return;
     }

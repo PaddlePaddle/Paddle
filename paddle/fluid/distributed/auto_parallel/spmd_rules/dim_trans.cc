@@ -72,7 +72,7 @@ Flatten::Flatten(const std::vector<DimTrans*>& dims)
   all_dim_trans.emplace_back(this);
 }
 
-Flatten::~Flatten() {
+Flatten::~Flatten() {  // NOLINT
   input_dims_.assign(input_dims_.size(), nullptr);
   std::vector<DimTrans*>().swap(input_dims_);
 }

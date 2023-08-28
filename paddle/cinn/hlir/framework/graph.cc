@@ -309,8 +309,8 @@ void Graph::VisualizeGroupedGraph(
   }
 
   // Dump debug info for each group
-  LOG(INFO) << "Dump graph debug info to: "
-            << FLAGS_cinn_fusion_groups_graphviz_dir;
+  VLOG(4) << "Dump graph debug info to: "
+          << FLAGS_cinn_fusion_groups_graphviz_dir;
   const auto& groups = RemoveAccCheckGroups(origin_groups);
   const auto& group_dots = VisualizeGroups(groups, fetch_var_ids);
   for (int idx = 0; idx < groups.size(); ++idx) {
