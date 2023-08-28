@@ -86,10 +86,8 @@ void MetaTensor::set_dims(const DDim& dims) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dims = dims;
-#ifdef PADDLE_WITH_DISTRIBUTE
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
     static_cast<distributed::DistTensor*>(tensor_)->set_dims(dims);
-#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
@@ -121,10 +119,8 @@ void MetaTensor::set_dtype(DataType dtype) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dtype = dtype;
-#ifdef PADDLE_WITH_DISTRIBUTE
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
     // skip, DistTensor no need to set dtype
-#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -155,10 +151,8 @@ void MetaTensor::set_layout(DataLayout layout) {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->layout = layout;
-#ifdef PADDLE_WITH_DISTRIBUTE
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
     // skip, DistTensor no need to set dtype
-#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
@@ -169,11 +163,8 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   ValidCheck(meta_tensor);
   if (phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_)
-#ifdef PADDLE_WITH_DISTRIBUTE
-      || phi::distributed::DistTensor::classof(tensor_)
-#endif
-  ) {
+      phi::SparseCsrTensor::classof(tensor_) ||
+      phi::distributed::DistTensor::classof(tensor_)) {
     return;
   }
   if (meta_tensor.lod().empty()) {
@@ -199,11 +190,8 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   if (phi::DenseTensor::classof(tensor_) ||
       phi::SelectedRows::classof(tensor_) ||
       phi::SparseCooTensor::classof(tensor_) ||
-      phi::SparseCsrTensor::classof(tensor_)
-#ifdef PADDLE_WITH_DISTRIBUTE
-      || phi::distributed::DistTensor::classof(tensor_)
-#endif
-  ) {
+      phi::SparseCsrTensor::classof(tensor_) ||
+      phi::distributed::DistTensor::classof(tensor_)) {
     share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
     set_layout(meta_tensor.layout());
@@ -220,11 +208,9 @@ bool MetaTensor::is_dense() const { return DenseTensor::classof(tensor_); }
 bool MetaTensor::is_selected_rows() const {
   return SelectedRows::classof(tensor_);
 }
-#ifdef PADDLE_WITH_DISTRIBUTE
 bool MetaTensor::is_dist() const {
   return distributed::DistTensor::classof(tensor_);
 }
-#endif
 bool MetaTensor::is_tensor_array() const { return false; }
 
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
@@ -233,10 +219,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   bool is_selected_rows = phi::SelectedRows::classof(tensor_);
   bool is_sparse_coo = phi::SparseCooTensor::classof(tensor_);
   bool is_sparse_csr = phi::SparseCsrTensor::classof(tensor_);
-  bool is_dist_tensor = false;
-#ifdef PADDLE_WITH_DISTRIBUTE
-  is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
-#endif
+  bool is_dist_tensor = phi::distributed::DistTensor::classof(tensor_);
   if (is_dense_tensor || is_selected_rows || is_sparse_coo || is_sparse_csr ||
       is_dist_tensor) {
     if (is_selected_rows) {
@@ -291,7 +274,6 @@ const LoD& MetaTensor::lod() const {
   }
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /////////////// For Auto Parallel ////////////////
 
 const distributed::TensorDistAttr& MetaTensor::dist_attr() const {
@@ -302,6 +284,5 @@ const distributed::TensorDistAttr& MetaTensor::dist_attr() const {
                                    "DistTensor when call `dist_attr` method."));
   return static_cast<phi::distributed::DistTensor*>(tensor_)->dist_attr();
 }
-#endif
 
 }  // namespace phi
