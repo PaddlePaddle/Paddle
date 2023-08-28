@@ -86,7 +86,6 @@ Operation* CreateOperation(const OpCall& op_call,
         op_call.outputs()[1]->name(),
         std::make_shared<IrValue>(reshape_op->result(1)));
     return reshape_op;
-
   } else if (op_call.name() == "pd.transpose") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
@@ -98,7 +97,6 @@ Operation* CreateOperation(const OpCall& op_call,
         op_call.outputs()[0]->name(),
         std::make_shared<IrValue>(transpose_op->result(0)));
     return transpose_op;
-
   } else if (op_call.name() == "pd.cast") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
@@ -109,7 +107,6 @@ Operation* CreateOperation(const OpCall& op_call,
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(cast_op->result(0)));
     return cast_op;
-
   } else if (op_call.name() == "pd.full") {
     const auto& inputs = op_call.inputs();
     std::vector<Value> ir_values =
@@ -121,7 +118,7 @@ Operation* CreateOperation(const OpCall& op_call,
     return full_op;
   }
 
-  PADDLE_THROW("Unknown op :" + op_call.name());
+  PADDLE_THROW(phi::errors::Unavailable("Unknown op :" + op_call.name()));
 }
 
 }  // namespace drr
