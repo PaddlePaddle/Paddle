@@ -52,7 +52,7 @@ class StaticPyLayerBlock:
         self.fwd_inputs = inputs
         # used to specify the `Out` to `pylayer` op
         self.fwd_outputs = []
-        
+
         self.context = pylayer_context
 
         self.helper = LayerHelper("static_pylayer_block", name=name)
@@ -115,14 +115,7 @@ class StaticPyLayerBlock:
         # NOTE(MarioLulab): The reason of renaming the var name in the inside block is that
         # we need to associating `inside_grads` and `outside_grads` at
         # runtime `RunImpl` in pylayer op
-        for old_var_name, new_var_name in self.var_old_to_new.items():
-            # TODO(MarioLulab): need to remove recursively in ``sub_block``
-
-            # NOTE(MarioLulab): The reason why not using Block._rename_var is that `old_var_name` does not correspond to a Variable instance in Block
-            # and Block._rename_var will raise ValueError.
-            inside_block.desc._rename_var(
-                old_var_name.encode(), new_var_name.encode()
-            )
+        _rename_var_recursively_(inside_block, self.var_old_to_new)
 
         # update `blocks` attr by appending backward_block
         forward_block_desc = parent_block.program.block(
@@ -147,16 +140,68 @@ class StaticPyLayerBlock:
             return self.complete_backward_block()
 
 def _get_ctx_from_func_(func):
-    fn_bind_args = getattr(func, "args", None)
-    fn_ctx = None
-    if fn_bind_args is None:
-        return fn_ctx
+    if func is None:
+        return None
     
+    fn_bind_args = getattr(func, "args", None)
+    if fn_bind_args is None:
+        return None
+
+    fn_ctx = None
     if len(fn_bind_args) > 0 and isinstance(fn_bind_args[0], paddle.jit.dy2static.py_layer.StaticPyLayerContext):
         fn_ctx = fn_bind_args[0]
         
     return fn_ctx
 
+
+
+def _rename_var_recursively_(cur_block, var_old_to_new):
+    """
+    Rename the var name both the Variable instances and the input and output arg names of 
+    all ops in `cur_block` based on `var_old_to_new`.
+    `var_old_to_new` maybe the following format:
+    {
+        old_name_0 : new_name_0,
+        old_name_1 : new_name_1,
+        ...
+        old_name_n : new_name_n,
+    }
+    """
+    
+    for old_var_name, new_var_name in var_old_to_new.items():
+        # NOTE(MarioLulab): The reason why not using Block._rename_var is that `old_var_name` does not correspond to a Variable instance in Block
+        # and Block._rename_var will raise ValueError.
+        
+        if cur_block.has_var(old_var_name):
+            # `Block.desc._rename_var` can rename var in block and then rename var name in all ops
+            cur_block.desc._rename_var(
+                old_var_name.encode(), new_var_name.encode()
+            )
+        else:
+            # When cur_block does not have the var, `Block.desc._rename_var` can't rename var name in ops.
+            # In this case, we should traverse all ops and perform renaming manually.
+            for op in cur_block.ops:
+                op._rename_input(old_var_name, new_var_name)
+                op._rename_output(old_var_name, new_var_name)            
+        
+    # NOTE(MarioLulab): block attr type with the name of "blocks" or "sub_block" indicates
+    # the block might be excuted. We should rename the var name in these blocks recursively
+    block_attr_names = ["blocks", "sub_block"]
+        
+    for op in cur_block.ops:
+        for attr_name in op.all_attrs():
+            if attr_name not in block_attr_names:
+                continue
+            
+            if op.attr_type(attr_name) == core.AttrType.BLOCK:
+                sub_block_id = op._block_attr_id(attr_name)
+                sub_block = cur_block.program.block(sub_block_id)
+                _rename_var_recursively_(sub_block, var_old_to_new)
+            elif op.attr_type(attr_name) == core.Attrtype.BLOCKS:
+                sub_blocks_ids = op._blocks_attr_ids(attr_name)
+                for sub_block_id in sub_blocks_ids:
+                    sub_block = cur_block.program.block(sub_block_id)
+                    _rename_var_recursively_(sub_block, var_old_to_new)                    
 
 # TODO(MarioLulab):
 # Need to support non-Variable in ``inputs``

@@ -25,7 +25,7 @@ from paddle.fluid.framework import Program, program_guard
 np.random.seed(123)
 
 
-class TestStatocPyLayerInputOutput(unittest.TestCase):
+class TestStaticPyLayerInputOutput(unittest.TestCase):
     def test_return_single_var(self):
         """
         pseudocode:
@@ -231,16 +231,14 @@ class TestStatocPyLayerInputOutput(unittest.TestCase):
                 )
 
 
-# TODO(MarioLulab): Disable now. We will refine and add testcases later.
-class _TestControlFlowNestedStaticPyLayer(unittest.TestCase):
-    # TODO(MarioLulab): failed when i >= 5, fix it later
-    def _test_cond_inside_static_pylayer(self):
+class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
+    def test_cond_inside_static_pylayer(self):
         """
-        forward pass:
+        forward propagation:
                       _ _ _ _ _ _ _ _
-         ---> a ---> |               | -----> out_i
-        |            | StaticPyLayer |
-        i ---------> |_ _ _ _ _ _ _ _| -----> out ---> loss
+         ---> a ---> |               | -----> out_a ------
+        |            | StaticPyLayer |                    |
+        i ---------> |_ _ _ _ _ _ _ _| -----> out_i ---> out ---> loss
 
 
         pseudocode:
@@ -251,10 +249,11 @@ class _TestControlFlowNestedStaticPyLayer(unittest.TestCase):
                 return i, a - a
 
         def backward_fn(diout, daout):
+            daout_scaled = daout * 3.0
             if diout < 5:
-                return 2 * diout, daout * daout
+                return daout_scaled, -1 * daout
             else:
-                return 2 * diout, cos(daout)
+                return daout_scaled, daout * daout
         """
 
         paddle.enable_static()
@@ -265,10 +264,11 @@ class _TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             )
 
         def backward_fn(diout, daout):
-            return 2 * diout, paddle.static.nn.cond(
+            daout_scale = daout * 3.0
+            return daout_scale, paddle.static.nn.cond(
                 diout < 5.0,
-                lambda: paddle.multiply(daout, daout),
-                lambda: paddle.cos(daout),
+                lambda: -1 * daout,
+                lambda: daout * daout,
             )
 
         main_program = Program()
@@ -277,12 +277,13 @@ class _TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             i = paddle.static.data(name="i", shape=[1], dtype="float32")
             i.stop_gradient = False
             a = 2.0 * i
-            out_i, out = paddle.static.nn.static_pylayer(
+            out_i, out_a = paddle.static.nn.static_pylayer(
                 forward_fn, [i, a], backward_fn
             )
+            out = out_i + out_a
             loss = paddle.exp(out)
             append_backward(loss)
-
+            
         place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -290,24 +291,30 @@ class _TestControlFlowNestedStaticPyLayer(unittest.TestCase):
         )
         exe = fluid.Executor(place)
         for feed_i in range(0, 10):
-            print(feed_i)
             expected_a = 2.0 * feed_i
             if feed_i < 5:
                 expected_out_i = feed_i
-                expected_out = expected_a + expected_a
+                expected_out_a = expected_a + expected_a
+                expected_out = expected_out_a + expected_out_i 
                 expected_out_grad = np.exp(expected_out)
-                expected_a_grad = expected_out_grad * expected_out_grad
-                expected_i_grad = 2 * expected_a_grad + 0
             else:
                 expected_out_i = feed_i
-                expected_out = expected_a - expected_a
+                expected_out_a = expected_a - expected_a
+                expected_out = expected_out_a + expected_out_i
                 expected_out_grad = np.exp(expected_out)
-                expected_a_grad = np.cos(expected_out_grad)
-                expected_i_grad = 2 * expected_a_grad + 0
+            
+            if expected_out_grad < 5:
+                expected_a_grad = -1 * expected_out_grad
+                expected_i_grad = 3 * expected_out_grad + 2 * expected_a_grad
+            else:
+                expected_a_grad = expected_out_grad * expected_out_grad
+                expected_i_grad = 3 * expected_out_grad + 2 * expected_a_grad
+                
+            
             ret = exe.run(
                 main_program,
                 feed={'i': np.full((1), feed_i, dtype=np.float32)},
-                fetch_list=[out.name, out.grad_name, a.grad_name, i.grad_name],
+                fetch_list=[out.name, out.grad_name, out_i.grad_name, out_a.grad_name, a.grad_name, i.grad_name],
             )
             np.testing.assert_allclose(
                 np.asarray(ret[0]), expected_out, rtol=1e-05
@@ -316,10 +323,16 @@ class _TestControlFlowNestedStaticPyLayer(unittest.TestCase):
                 np.asarray(ret[1]), expected_out_grad, rtol=1e-05
             )
             np.testing.assert_allclose(
-                np.asarray(ret[2]), expected_a_grad, rtol=1e-05
+                np.asarray(ret[2]), expected_out_grad, rtol=1e-05
             )
             np.testing.assert_allclose(
-                np.asarray(ret[3]), expected_i_grad, rtol=1e-05
+                np.asarray(ret[3]), expected_out_grad, rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                np.asarray(ret[4]), expected_a_grad, rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                np.asarray(ret[5]), expected_i_grad, rtol=1e-05
             )
 
 
