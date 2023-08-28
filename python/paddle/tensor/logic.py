@@ -1316,8 +1316,8 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     two tensors are elementwise equal within a tolerance.
 
     Args:
-        x(Tensor): The input tensor, it's data type should be float16, float32, float64.
-        y(Tensor): The input tensor, it's data type should be float16, float32, float64.
+        x(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
+        y(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
         rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
         equal_nan(equalnantype, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
@@ -1355,10 +1355,16 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
-            x, "input", ['float16', 'float32', 'float64'], 'isclose'
+            x,
+            "input",
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'isclose',
         )
         check_variable_and_dtype(
-            y, "input", ['float16', 'float32', 'float64'], 'isclose'
+            y,
+            "input",
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'isclose',
         )
         check_type(rtol, 'rtol', float, 'isclose')
         check_type(atol, 'atol', float, 'isclose')
