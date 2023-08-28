@@ -226,7 +226,7 @@ for API_FILE in ${API_FILES[*]}; do
 done
 
 DEPS_PHI_IN_IR=`git diff --name-only | grep  -E "paddle/ir/" | grep "CMakeList" |xargs -I param  sh -c "cd .. && git diff | grep '^\+' | grep 'phi'" || true`
-if [ ${HAS_CONST_CAST} ]; then
+if [ ${DEPS_PHI_IN_IR} ]; then
     echo_line="You must have one RD (Aurelius84, phlrain, zhangbo9674) approval for the CMakeLists.txt with DEPS phi* in paddle/ir directory.\n"
     check_approval 1 Aurelius84 phlrain zhangbo9674
 fi
