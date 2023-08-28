@@ -12,17 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle
 
 
-def _switch_to_new_ir():
-    if paddle.ir.core._use_new_ir_api():
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
-        paddle.ir.register_paddle_dialect()
-        paddle.static.Program = paddle.ir.Program
-        paddle.fluid.Program = paddle.ir.Program
-        paddle.fluid.program_guard = paddle.ir.core.program_guard
-        paddle.static.program_guard = paddle.ir.core.program_guard
-        paddle.framework.default_main_program = (
-            paddle.ir.core.default_main_program
-        )
+class IrChange:
+    def __init__(self):
+        if not paddle.ir.core._use_new_ir_api():
+            self.old_Program = paddle.static.Program
+            self.old_program_guard = paddle.fluid.program_guard
+            self.old_default_main_program = paddle.static.default_main_program
+        else:
+            raise RuntimeError(
+                "IrChange only init when paddle.ir.core._use_new_ir_api() is false, \
+                please set FLAGS_enable_new_ir_api = false"
+            )
+
+    def _switch_to_new_ir(self):
+        if paddle.ir.core._use_new_ir_api():
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": True}
+            )
+            paddle.ir.register_paddle_dialect()
+            paddle.static.Program = paddle.ir.Program
+            paddle.fluid.Program = paddle.ir.Program
+            paddle.fluid.program_guard = paddle.ir.core.program_guard
+            paddle.static.program_guard = paddle.ir.core.program_guard
+            paddle.framework.default_main_program = (
+                paddle.ir.core.default_main_program
+            )
+
+    def _switch_to_old_ir(self):
+        if not paddle.ir.core._use_new_ir_api():
+            paddle.framework.set_flags(
+                {"FLAGS_enable_new_ir_in_executor": False}
+            )
+            paddle.static.Program = self.old_Program
+            paddle.fluid.Program = self.old_Program
+            paddle.fluid.program_guard = self.old_program_guard
+            paddle.static.program_guard = self.old_program_guard
+            paddle.framework.default_main_program = (
+                self.old_default_main_program
+            )
+        else:
+            raise RuntimeError(
+                "IrChange._switch_to_old_ir only work when paddle.ir.core._use_new_ir_api() is false, \
+                please set FLAGS_enable_new_ir_api = false"
+            )

@@ -98,44 +98,47 @@ def data(name, shape, dtype=None, lod_level=0):
                     [2.]]], dtype=float32)]
 
     """
-    helper = LayerHelper('data', **locals())
-    check_type(name, 'name', (bytes, str), 'data')
-    check_type(shape, 'shape', (list, tuple), 'data')
-
-    shape = list(shape)
-    for i in range(len(shape)):
-        if shape[i] is None:
-            shape[i] = -1
-
-    if dtype:
-        out = helper.create_global_variable(
-            name=name,
-            shape=shape,
-            dtype=dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            stop_gradient=True,
-            lod_level=lod_level,
-            is_data=True,
-            need_check_feed=True,
-        )
-
-    else:
-        out = helper.create_global_variable(
-            name=name,
-            shape=shape,
-            dtype=paddle.get_default_dtype(),
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            stop_gradient=True,
-            lod_level=lod_level,
-            is_data=True,
-            need_check_feed=True,
-        )
-        dtype = paddle.get_default_dtype()
 
     if paddle.ir.core._use_new_ir_api():
+        if not dtype:
+            dtype = paddle.get_default_dtype()
         ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
         return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
+
     else:
+        helper = LayerHelper('data', **locals())
+        check_type(name, 'name', (bytes, str), 'data')
+        check_type(shape, 'shape', (list, tuple), 'data')
+
+        shape = list(shape)
+        for i in range(len(shape)):
+            if shape[i] is None:
+                shape[i] = -1
+
+        if dtype:
+            out = helper.create_global_variable(
+                name=name,
+                shape=shape,
+                dtype=dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                stop_gradient=True,
+                lod_level=lod_level,
+                is_data=True,
+                need_check_feed=True,
+            )
+
+        else:
+            out = helper.create_global_variable(
+                name=name,
+                shape=shape,
+                dtype=paddle.get_default_dtype(),
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                stop_gradient=True,
+                lod_level=lod_level,
+                is_data=True,
+                need_check_feed=True,
+            )
+
         is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
         if evaluate_flag(is_new_ir_mode):
             helper = LayerHelper('data', **locals())

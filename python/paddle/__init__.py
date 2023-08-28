@@ -450,9 +450,10 @@ if is_compiled_with_cinn():
 
 disable_static()
 
-from .new_ir_utils import _switch_to_new_ir  # noqa: F401
+from .new_ir_utils import IrChange  # noqa: F401
 
-_switch_to_new_ir()
+ir_change = IrChange()
+ir_change._switch_to_new_ir()
 
 __all__ = [  # noqa
     'iinfo',
