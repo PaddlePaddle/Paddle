@@ -18,7 +18,10 @@
 #include "paddle/ir/core/region.h"
 
 namespace ir {
-Block::~Block() { clear(); }
+Block::~Block() {
+  assert(use_empty() && "block destroyed still has uses.");
+  clear();
+}
 void Block::push_back(Operation *op) { insert(ops_.end(), op); }
 
 void Block::push_front(Operation *op) { insert(ops_.begin(), op); }
@@ -50,5 +53,11 @@ void Block::SetParent(Region *parent, Region::iterator position) {
   parent_ = parent;
   position_ = position;
 }
+
+Block::UseIterator Block::use_begin() const { return first_use_; }
+
+Block::UseIterator Block::use_end() const { return Block::UseIterator(); }
+
+bool Block::HasOneUse() const { return first_use_ && !first_use_.next_use(); }
 
 }  // namespace ir

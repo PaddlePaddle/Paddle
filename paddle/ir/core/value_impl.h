@@ -46,7 +46,7 @@ class OpOperandImpl {
   OpOperandImpl(ir::Value source, ir::Operation *owner);
 
   // Insert self to the UD chain holded by source_;
-  // It is not safe. So set provate.
+  // It is not safe. So set private.
   void InsertToUdChain();
 
   ir::detail::OpOperandImpl *next_use_ = nullptr;
@@ -85,7 +85,7 @@ class alignas(8) ValueImpl {
         reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) & (~0x07));
   }
 
-  void SetFirstUse(OpOperandImpl *first_use) {
+  void set_first_use(OpOperandImpl *first_use) {
     uint32_t offset = index();
     first_use_offseted_by_index_ = reinterpret_cast<OpOperandImpl *>(
         reinterpret_cast<uintptr_t>(first_use) + offset);
@@ -163,6 +163,8 @@ class alignas(8) OpResultImpl : public ValueImpl {
   static uint32_t GetMaxInlineResultIndex() {
     return OUTLINE_OP_RESULT_INDEX - 1;
   }
+
+  ~OpResultImpl();
 };
 
 ///
