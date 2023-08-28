@@ -2318,10 +2318,10 @@ def clone(x, name=None):
 
             >>> y = clone_x**3
             >>> y.backward()
-            >>> np.testing.assert_array_equal(x, [1, 1])
-            >>> np.testing.assert_array_equal(clone_x.grad.numpy(), [3, 3])
-            >>> np.testing.assert_array_equal(x.grad.numpy(), [3, 3])
-            >>> paddle.enable_static()
+            >>> print(clone_x.grad.numpy())
+            [3. 3.]
+            >>> print(x.grad.numpy())
+            [3. 3.]
     """
     return x.clone()
 
