@@ -59,12 +59,12 @@ class CheckMethod(Enum):
 
                 >>> import numpy as np
                 >>> from paddle.incubate.asp import CheckMethod, MaskAlgo
-
-                >>> CheckMethod.get_checking_method(MaskAlgo.MASK_1D)
-
-                >>> CheckMethod.get_checking_method(MaskAlgo.MASK_2D_GREEDY)
-
-                >>> CheckMethod.get_checking_method(MaskAlgo.MASK_2D_BEST)
+                >>> print(CheckMethod.get_checking_method(MaskAlgo.MASK_1D))
+                CheckMethod.CHECK_1D
+                >>> print(CheckMethod.get_checking_method(MaskAlgo.MASK_2D_GREEDY))
+                CheckMethod.CHECK_2D
+                >>> print(CheckMethod.get_checking_method(MaskAlgo.MASK_2D_BEST))
+                CheckMethod.CHECK_2D
         """
         assert isinstance(
             mask_algo, MaskAlgo
@@ -200,10 +200,12 @@ def get_mask_1d(mat, n, m):
 
           >>> import numpy as np
           >>> import paddle.incubate.asp as sparsity
-
           >>> mat = np.array([[0, 1, 5, 4],
           ...                 [2, 7, 3, 6]])
           >>> mask = sparsity.get_mask_1d(mat, 2, 4)
+          >>> print(mask)
+          [[0 0 1 1]
+          [0 1 0 1]]
           >>> y = sparsity.check_mask_1d(mask, 2, 4)
           >>> print(y)
           True
@@ -299,7 +301,7 @@ def check_mask_2d(mat, n, m):
           ...               [0, 4, 6, 0]])
           >>> y = sparsity.check_mask_2d(x, 2, 4)
           >>> print(y)
-          False
+          True
 
           >>> # x would be padded to shape (8, 8)
           >>> x = np.array([[0, 8, 0, 9],
@@ -347,6 +349,11 @@ def get_mask_2d_greedy(mat, n, m):
           ...                 [5, 1, 3, 6],
           ...                 [2, 4, 6, 1]])
           >>> mask = sparsity.get_mask_2d_greedy(mat, 2, 4)
+          >>> print(mask)
+          [[1. 1. 0. 0.]
+          [1. 0. 0. 1.]
+          [0. 0. 1. 1.]
+          [0. 1. 1. 0.]]
           >>> y = sparsity.check_mask_2d(mask, 2, 4)
           >>> print(y)
           True
@@ -464,7 +471,7 @@ def get_mask_2d_best(mat, n, m):
           >>> print("L1 norm of `greedy` sparse matrix", np.multiply(mat, mask_greedy).sum())
           L1 norm of `greedy` sparse matrix 56.0
           >>> print("L1 norm of `best` sparse matrix", np.multiply(mat, mask_best).sum())
-          L1 norm of `greedy` sparse matrix 56.0
+          L1 norm of `best` sparse matrix 61.0
     """
     patterns = _compute_valid_2d_patterns(n, m)
 
