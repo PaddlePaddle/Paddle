@@ -212,7 +212,7 @@ class DrrPatternRewritePass : public ir::Pass {
   ir::FrozenRewritePatternSet patterns_;
 };
 
-TEST(DrrTest, drr) {
+TEST(DrrTest, drr_demo) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
