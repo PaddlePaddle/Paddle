@@ -61,9 +61,7 @@ extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_jit_function_pytype;
-#ifdef PADDLE_WITH_DISTRIBUTE
 extern PyTypeObject* g_tensor_dist_attr_pytype;
-#endif
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -549,9 +547,9 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 using phi::distributed::TensorDistAttr;
 TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_tensor_dist_attr_pytype))) {
     return ::pybind11::handle(obj).cast<TensorDistAttr>();
@@ -562,8 +560,13 @@ TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The parsing of `DistAttr` is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
@@ -901,19 +904,31 @@ PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
   return result;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "DistTensor to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
 }
 
 PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "TensorDistAttr to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 PyObject* ToPyObject(const phi::SelectedRows* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
@@ -1819,7 +1834,7 @@ void PyVoidHook::operator()() {
 
 PyObjectHolder::PyObjectHolder(PyObject* ptr) { ptr_ = ptr; }
 
-PyObjectHolder::~PyObjectHolder() {
+PyObjectHolder::~PyObjectHolder() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ptr_);
 }
@@ -1845,7 +1860,7 @@ void PyObjectHolder::dec_ref() {
 
 PackHook::PackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-PackHook::~PackHook() {
+PackHook::~PackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
@@ -1884,7 +1899,7 @@ void* PackHook::operator()(void* py_tensor) {
 
 UnPackHook::UnPackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-UnPackHook::~UnPackHook() {
+UnPackHook::~UnPackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
