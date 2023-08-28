@@ -114,18 +114,18 @@ struct SparseFTRLFunctor {
 };
 
 template <typename T, typename Context>
-void FTRLOpKernel(const Context& ctx,
-                  const DenseTensor& grad,
-                  const DenseTensor& learningRate,
-                  const DenseTensor& param,
-                  const DenseTensor& squared_accumulator,
-                  const DenseTensor& linear_accumulator,
-                  float l1,
-                  float l2,
-                  float lr_power,
-                  DenseTensor* param_out,
-                  DenseTensor* squared_accumulator_out,
-                  DenseTensor* linear_accumulator_out) {
+void FTRLKernel(const Context& ctx,
+                const DenseTensor& grad,
+                const DenseTensor& learningRate,
+                const DenseTensor& param,
+                const DenseTensor& squared_accumulator,
+                const DenseTensor& linear_accumulator,
+                float l1,
+                float l2,
+                float lr_power,
+                DenseTensor* param_out,
+                DenseTensor* squared_accumulator_out,
+                DenseTensor* linear_accumulator_out) {
   T l1_t = static_cast<T>(l1) + static_cast<T>(1e-10);
   T l2_t = static_cast<T>(l2) + static_cast<T>(1e-10);
   T lr_power_t = static_cast<T>(lr_power);
@@ -135,6 +135,9 @@ void FTRLOpKernel(const Context& ctx,
   auto lin_accum = phi::EigenVector<T>::Flatten(linear_accumulator);
   auto lr = phi::EigenVector<T>::Flatten(learningRate);
 
+  ctx.template Alloc<T>(param_out);
+  ctx.template Alloc<T>(squared_accumulator_out);
+  ctx.template Alloc<T>(linear_accumulator_out);
   auto p_out = phi::EigenVector<T>::Flatten(*param_out);
   auto s_acc_out = phi::EigenVector<T>::Flatten(*squared_accumulator_out);
   auto l_acc_out = phi::EigenVector<T>::Flatten(*linear_accumulator_out);
@@ -175,18 +178,18 @@ void FTRLOpKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void FTRLOpSparseKernel(const Context& ctx,
-                        const SelectedRows& grad,
-                        const DenseTensor& learningRate,
-                        const DenseTensor& param,
-                        const DenseTensor& squared_accumulator,
-                        const DenseTensor& linear_accumulator,
-                        float l1,
-                        float l2,
-                        float lr_power,
-                        DenseTensor* param_out,
-                        DenseTensor* squared_accumulator_out,
-                        DenseTensor* linear_accumulator_out) {
+void FTRLSparseKernel(const Context& ctx,
+                      const SelectedRows& grad,
+                      const DenseTensor& learningRate,
+                      const DenseTensor& param,
+                      const DenseTensor& squared_accumulator,
+                      const DenseTensor& linear_accumulator,
+                      float l1,
+                      float l2,
+                      float lr_power,
+                      DenseTensor* param_out,
+                      DenseTensor* squared_accumulator_out,
+                      DenseTensor* linear_accumulator_out) {
   // sparse update maybe empty.
   if (grad.rows().size() == 0) {
     VLOG(3) << "Grad SelectedRows contains no data!";

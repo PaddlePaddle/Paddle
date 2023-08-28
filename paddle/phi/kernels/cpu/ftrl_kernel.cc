@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/ftrl_kernel_impl.h"  // namespace phi
 
-PD_REGISTER_KERNEL(ftrl, CPU, ALL_LAYOUT, phi::FTRLOpKernel, float) {}
+PD_REGISTER_KERNEL(ftrl, CPU, ALL_LAYOUT, phi::FTRLKernel, float) {}
 
-PD_REGISTER_KERNEL(
-    ftrl_sparse, CPU, ALL_LAYOUT, phi::FTRLOpSparseKernel, float) {}
+PD_REGISTER_KERNEL(ftrl_sparse, CPU, ALL_LAYOUT, phi::FTRLSparseKernel, float) {
+}
