@@ -54,7 +54,10 @@ class InferSpmdContext {
   const Attribute& AttrAt(size_t idx) const;
 
  private:
+  // Now we only need `inputs`, for backward, the `output` is passed as input
   paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs_;
+  // Because the attribute arguments of dygraph do not have `attr name`,
+  // so we use vector instead of map
   paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs_;
 };
 
@@ -81,7 +84,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   template <typename... RemainingArgs>
   struct InferSpmdFnCallHelper;
 
-  // TODO(chenweihang): support other input type later
+  // TODO(chenweihang): support other input type later as needed
   template <typename... Tail>
   struct InferSpmdFnCallHelper<const MetaTensor&, Tail...> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
@@ -108,7 +111,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     }                                                                     \
   }
 
-  // TODO(chenweihang): support other attr type later by needed
+  // TODO(chenweihang): support other attr type later as needed
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(bool);
 
   /* End case */
