@@ -18,5 +18,16 @@
 #include "paddle/ir/core/builtin_op.h"
 
 namespace paddle {
-namespace dialect {}  // namespace dialect
+namespace dialect {
+ir::OpResult split_grad(std::vector<ir::OpResult> out_grads,
+                        ir::OpResult axis) {
+  auto combine_op =
+      APIBuilder::Instance().GetBuilder()->Build<ir::CombineOp>(out_grads);
+  paddle::dialect::SplitGradOp split_grad_op =
+      APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::SplitGradOp>(
+          combine_op.out(), axis);
+
+  return split_grad_op.x_grad();
+}
+}  // namespace dialect
 }  // namespace paddle

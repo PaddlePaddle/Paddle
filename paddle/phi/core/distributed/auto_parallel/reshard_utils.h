@@ -20,13 +20,13 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/distributed/store/tcp_store.h"
-
 namespace phi {
 class DeviceContext;
 
 namespace distributed {
 class CommContext;
+class TCPStore;
+
 class ProcessMesh;
 
 bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping);
