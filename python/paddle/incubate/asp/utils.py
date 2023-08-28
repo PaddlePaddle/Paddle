@@ -518,7 +518,17 @@ def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
           ...                    [5, 6, 3, 9],
           ...                    [2, 4, 6, 9]])
           >>> mask_1d = sparsity.create_mask(tensor, func_name=sparsity.MaskAlgo.MASK_1D)
+          >>> print(mask_1d)
+          [[0 0 1 1]
+          [1 0 0 1]
+          [0 1 0 1]
+          [0 0 1 1]]
           >>> mask_2d = sparsity.create_mask(tensor, func_name=sparsity.MaskAlgo.MASK_2D_BEST)
+          >>> print(mask_2d)
+          [[0 1 1 0]
+          [1 0 0 1]
+          [1 1 0 0]
+          [0 0 1 1]]
     """
     shape = tensor.shape
     dtype = tensor.dtype
@@ -579,12 +589,17 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
           ...                    [5, 6, 3, 9],
           ...                    [2, 4, 6, 9]])
           >>> mask_1d = sparsity.create_mask(tensor, func_name=sparsity.MaskAlgo.MASK_1D)
+          >>> print(mask_1d)
+          [[0 0 1 1]
+          [1 0 0 1]
+          [0 1 0 1]
+          [0 0 1 1]]
           >>> y = sparsity.check_sparsity(mask_1d, func_name=sparsity.CheckMethod.CHECK_1D)
           >>> print(y)
           True
           >>> y = sparsity.check_sparsity(mask_1d, func_name=sparsity.CheckMethod.CHECK_2D)
           >>> print(y)
-          False
+          True
     """
     shape = tensor.shape
     t = tensor.astype(float)
