@@ -21,7 +21,7 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
-#include "paddle/fluid/ir/transforms/fusion_merge_pass.h"
+#include "paddle/fluid/ir/transforms/cinn/fusion_merge_pass.h"
 
 std::vector<ir::OpResult> BuildInput(
     ::ir::Builder* builder,

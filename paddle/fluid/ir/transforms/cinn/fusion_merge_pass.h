@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/ir/transforms/fusion_merge_util.h"
+#include "paddle/fluid/ir/transforms/cinn/fusion_merge_util.h"
 #include "paddle/ir/core/program.h"
 
 namespace ir {

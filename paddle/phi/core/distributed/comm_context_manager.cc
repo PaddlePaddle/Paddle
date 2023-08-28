@@ -112,9 +112,11 @@ void CommContextManager::CreateXCCLCommContext(
   } else {
     xccl_root_id = store->get(unique_key);
   }
+  /*
   VLOG(3) << "init xccl rank: " << rank << ", nranks: " << size
           << ", unique_comm_key: " << unique_comm_key << ", xccl uniqueid: "
           << phi::ccl::SerializeXCCLUniqueId(xccl_root_id);
+  */
   auto xccl_comm_context =
       std::make_unique<XCCLCommContext>(device_type, rank, size, xccl_root_id);
   auto& comm_context_manager = CommContextManager::GetInstance();

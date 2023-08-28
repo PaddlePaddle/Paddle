@@ -162,16 +162,6 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
-- op : cinn_broadcast
-  args : (Tensor x, int64_t[] broadcast_axes,  int64_t[] out_shape)
-  output : Tensor(out)
-  infer_meta :
-    func : CINNBroadcastInferMeta
-    param : [x, broadcast_axes, out_shape]
-  kernel :
-    func : expand
-    param : [x, broadcast_axes]
-
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)

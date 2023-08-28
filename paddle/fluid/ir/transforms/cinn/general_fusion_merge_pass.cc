@@ -19,11 +19,11 @@
 #include "paddle/fluid/ir/transforms/cinn/op_group.h"
 #include "paddle/ir/core/value.h"
 
-#include "paddle/fluid/ir/transforms/fusion_merge_pass.h"
-#include "paddle/fluid/ir/transforms/general_fusion_merge_pass_utils.h"
+#include "paddle/fluid/ir/transforms/cinn/fusion_merge_pass.h"
+#include "paddle/fluid/ir/transforms/cinn/general_fusion_merge_pass_utils.h"
 
-#include "paddle/fluid/ir/transforms/fusion_merge_util.h"
-#include "paddle/fluid/ir/transforms/group_merge_util.h"
+#include "paddle/fluid/ir/transforms/cinn/fusion_merge_util.h"
+#include "paddle/fluid/ir/transforms/cinn/group_merge_util.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(enhance_vertical_fusion_with_recompute);
@@ -2120,24 +2120,3 @@ GroupList GeneralFusionMergePassInternal(const ::ir::Program* graph,
 }
 
 }  // namespace ir
-
-// CINN_REGISTER_HELPER(GeneralFusionMergePass) {
-//   CINN_REGISTER_PASS(GeneralFusionMergePass)
-//       .describe(
-//           "Fusion Merge Pass which performs Fusion-Ops fusion, Producer "
-//           "Fusion-Ops are fused into Consumer Fusion-Ops "
-//           "with certain conditions.")
-//       .set_change_structure(false)
-//       .set_body(cinn::hlir::pass::GeneralFusionMergePassInternal);
-
-//   return true;
-// }
-
-// CINN_REGISTER_FUSION_PASS(DefaultHorizontalFusePass,
-//                           cinn::hlir::pass::DefaultHorizontalFusePass);
-// CINN_REGISTER_FUSION_PASS(DefaultVerticalFusePass,
-//                           cinn::hlir::pass::DefaultVerticalFusePass);
-// CINN_REGISTER_FUSION_PASS(DefaultRecomputeFusePass,
-//                           cinn::hlir::pass::DefaultRecomputeFusePass);
-// CINN_REGISTER_FUSION_PASS(DefaultInputFusePass,
-//                           cinn::hlir::pass::DefaultInputFusePass);

@@ -19,7 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/ir/transforms/fusion_merge_pass.h"
+#include "paddle/fluid/ir/transforms/cinn/fusion_merge_pass.h"
 
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/operation.h"

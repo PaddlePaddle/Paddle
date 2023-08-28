@@ -26,7 +26,7 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
-#include "paddle/fluid/ir/transforms/fusion_merge_util.h"
+#include "paddle/fluid/ir/transforms/cinn/fusion_merge_util.h"
 
 namespace ir {
 
