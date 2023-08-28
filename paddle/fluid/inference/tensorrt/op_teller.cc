@@ -2940,9 +2940,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unbind",
       "assign",
       "flip",
-      "atan2",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "atan2"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3108,9 +3108,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unbind",
       "assign",
       "flip",
-      "atan2",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "atan2"};
 };
 
 struct GenericPluginTeller : public Teller {
