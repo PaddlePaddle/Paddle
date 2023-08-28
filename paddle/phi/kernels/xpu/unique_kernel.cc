@@ -228,26 +228,37 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   inverse_cpu[ori_idx_cpu[0]] = 0;
   IndexT unique_len = 1;
   IndexT repeat_cnt = 1;
-  for (IndexT i = 1; i < axis_len; ++i) {
-    int cnt_cpu = 0;
-    int* cnt_xpu = RAII_GUARD.alloc_l3_or_gm<int>(1);
-    r = xpu::nonzero_count<bool>(dev_ctx.x_context(),
-                                 compare_results + (i - 1) * slice_size,
-                                 cnt_xpu,
-                                 slice_size);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
-    memory_utils::Copy(
-        phi::CPUPlace(), &cnt_cpu, dev_ctx.GetPlace(), cnt_xpu, sizeof(int));
-    if (cnt_cpu != slice_size) {
-      unique_axis.push_back(i);
-      indices_cpu.push_back(ori_idx_cpu[i]);
-      counts_cpu.push_back(repeat_cnt);
-      ++unique_len;
-      repeat_cnt = 1;
-    } else {
-      ++repeat_cnt;
+  if (axis_len > 1) {
+    DenseTensor adj_identical_cpu;
+    adj_identical_cpu.Resize({axis_len - 1});
+    bool* adj_identical_cpu_data =
+        dev_ctx.template HostAlloc<bool>(&adj_identical_cpu);
+    auto* adj_identical_xpu = RAII_GUARD.alloc_l3_or_gm<bool>(axis_len - 1);
+    r = xpu::reduce_all<bool>(dev_ctx.x_context(),
+                              compare_results,
+                              adj_identical_xpu,
+                              {axis_len - 1, slice_size},
+                              {1});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_all");
+
+    memory_utils::Copy(phi::CPUPlace(),
+                       adj_identical_cpu_data,
+                       dev_ctx.GetPlace(),
+                       adj_identical_xpu,
+                       (axis_len - 1) * sizeof(bool));
+
+    for (IndexT i = 1; i < axis_len; ++i) {
+      if (!adj_identical_cpu_data[i - 1]) {
+        unique_axis.push_back(i);
+        indices_cpu.push_back(ori_idx_cpu[i]);
+        counts_cpu.push_back(repeat_cnt);
+        ++unique_len;
+        repeat_cnt = 1;
+      } else {
+        ++repeat_cnt;
+      }
+      inverse_cpu[ori_idx_cpu[i]] = unique_len - 1;
     }
-    inverse_cpu[ori_idx_cpu[i]] = unique_len - 1;
   }
   counts_cpu.push_back(repeat_cnt);
   DDim out_dims = x.dims();
