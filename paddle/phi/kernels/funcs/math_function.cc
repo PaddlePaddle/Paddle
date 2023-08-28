@@ -277,16 +277,14 @@ struct RowwiseAdd<phi::CPUContext, T> {
             " Expected vector size=%d, but received %d",
             size,
             vector.numel()));
-    const char* in_dims_cstr = in_dims.to_str().c_str();
-    const char* out_dims_cstr = out_dims.to_str().c_str();
     PADDLE_ENFORCE_EQ(out_dims,
                       in_dims,
                       phi::errors::InvalidArgument(
                           "The output tensor shape should be same as the input"
                           " tensor shape. Expected output tensor shape: %s,"
                           " but received %s",
-                          in_dims_cstr,
-                          out_dims_cstr));
+                          in_dims.to_str().c_str(),
+                          out_dims.to_str().c_str()));
 
     auto in = phi::EigenMatrix<T>::From(input);
     auto vec = phi::EigenVector<T>::Flatten(vector);
