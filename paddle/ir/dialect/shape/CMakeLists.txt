@@ -6,4 +6,5 @@ ir_library(
   ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.cc
   DEPS
   ddim
-  ir_core)
+  ir_core
+  phi)
