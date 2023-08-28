@@ -32,7 +32,6 @@ template <typename T, typename DeviceContext>
 class CConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    std::cerr << "c conat !!!!!!!!!!" << std::endl;
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     ncclDataType_t dtype =

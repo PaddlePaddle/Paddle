@@ -31,6 +31,7 @@ cc_test_old(
   general_fusion_merge_pass
   fusion_merge_pass
   pd_dialect
+  cinn_dialect
   ir
   gtest
   glog)
