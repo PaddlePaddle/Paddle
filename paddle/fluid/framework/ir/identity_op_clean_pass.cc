@@ -201,7 +201,8 @@ int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
 
 void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   Init(name_scope_, graph);
-  int found_count = CleanUselessOp(graph) + CleanTwoCastOp(graph);
+  int found_count = CleanUselessOp(graph);
+  found_count += CleanTwoCastOp(graph);
   AddStatis(found_count);
 }
 
