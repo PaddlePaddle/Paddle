@@ -20,11 +20,9 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/program.h"
 #include "paddle/ir/pass/pass.h"
 
-namespace paddle {
-namespace dialect {
+namespace ir {
 
 bool ValueCanBeDeleted(ir::Value value) {
   bool is_persisable = false;
@@ -189,5 +187,4 @@ std::unique_ptr<ir::Pass> CreateInplacePass() {
   return std::make_unique<InplacePass>();
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace ir

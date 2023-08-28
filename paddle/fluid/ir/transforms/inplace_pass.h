@@ -15,15 +15,12 @@
 #pragma once
 
 #include <memory>
+#include "paddle/ir/core/dll_decl.h"
 
 namespace ir {
-class Pass;
-class Program;
-}  // namespace ir
 
-namespace paddle {
-namespace dialect {
-std::unique_ptr<ir::Pass> CreateInplacePass();
-// std::unique_ptr<ir::Program> InplacePass(ir::Program* prog);
-}  // namespace dialect
-}  // namespace paddle
+class Pass;
+
+std::unique_ptr<Pass> CreateInplacePass();
+
+}  // namespace ir
