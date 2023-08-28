@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -109,9 +110,9 @@ struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
       if (std::isnan(a) || std::isnan(b)) {
         val = equal_nan && std::isnan(a) == std::isnan(b);
       } else {
-        T left = (a - b).abs();
-        T right = atol + rtol * b.abs();
-        T diff = (left - right).abs();
+        T left = abs(a - b);
+        T right = atol + rtol * abs(b);
+        T diff = abs(left - right);
         val = a == b || left <= right || diff <= 1e-15;
         // *out_data &= val;
         out_data[i] = val;
@@ -164,9 +165,9 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<float>>(
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      float left = (a - b).abs();
-      float right = atol + rtol * b.abs();
-      float diff = (left - right).abs();
+      float left = abs(a - b);
+      float right = atol + rtol * abs(b);
+      float diff = abs(left - right);
       val = a == b || left <= right || diff <= 1e-15;
     }
     out_data[i] = val;
@@ -191,9 +192,9 @@ __global__ void IscloseCUDAKernel<phi::dtype::complex<double>>(
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      double left = (a - b).abs();
-      double right = atol + rtol * b.abs();
-      double diff = (left - right).abs();
+      double left = abs(a - b);
+      double right = atol + rtol * abs(b);
+      double diff = abs(left - right);
       val = a == b || left <= right || diff <= 1e-15;
     }
     out_data[i] = val;
