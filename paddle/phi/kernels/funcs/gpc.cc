@@ -1026,7 +1026,7 @@ void gpc_polygon_clip(gpc_op op,
     /* Set yb and yt to the bottom and top of the scanbeam */
     yb = sbt[scanbeam++];
     if (scanbeam < sbt_entries) {
-      yt = sbt[scanbeam];
+      yt = sbt[scanbeam];  // NOLINT
       dy = yt - yb;
     }
     /* === SCANBEAM BOUNDARY PROCESSING ================================ */
@@ -1664,7 +1664,7 @@ void gpc_tristrip_clip(gpc_op op,
     /* Set yb and yt to the bottom and top of the scanbeam */
     yb = sbt[scanbeam++];
     if (scanbeam < sbt_entries) {
-      yt = sbt[scanbeam];
+      yt = sbt[scanbeam];  // NOLINT
       dy = yt - yb;
     }
 
