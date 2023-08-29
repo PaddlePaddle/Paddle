@@ -3083,6 +3083,40 @@
   outputs:
     {out: Out, noise: Noise}
 
+- op: set_value
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
+
+- op: set_value_with_tensor
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :

@@ -23,7 +23,9 @@ import sys
 import time
 import typing
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+logger.propagate = False
+
 if logger.handlers:
     console = logger.handlers[
         0
