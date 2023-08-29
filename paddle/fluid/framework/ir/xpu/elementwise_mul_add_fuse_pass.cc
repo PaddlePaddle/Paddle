@@ -92,7 +92,8 @@ ElementwiseMulAddFusePass::ElementwiseMulAddFusePass(
   auto mul_out = pattern->NewNode(mul_out_repr())
                      ->AsOutput()
                      ->assert_is_op_output("elementwise_mul", "Out")
-                     ->assert_is_op_input("elementwise_add", "X");
+                     ->assert_is_op_input("elementwise_add", "X")
+                     ->assert_has_n_outputs(1);
   elementwise_mul->LinksFrom({mul_x, mul_y}).LinksTo({mul_out});
   auto add_w = pattern->NewNode(add_w_repr())
                    ->AsInput()
