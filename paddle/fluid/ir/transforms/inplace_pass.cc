@@ -60,12 +60,36 @@ bool IsNoNeedBufferValue(ir::Operation* op, ir::Value value) {
   return false;
 }
 
+std::unordered_set<ir::Value> GetSkipDeletionValues(ir::Block* block) {
+  std::unordered_set<ir::Value> skip_gc_values;
+  // NOTE(zhangbo): pd.feed's output and pd.fetch's input can not be eager
+  // deleted.
+  for (auto& op : *block) {
+    if (op->name() == "pd.feed" || op->name() == "pd.data") {
+      skip_gc_values.insert(op->result(0));
+      continue;
+    }
+    if (op->name() == "pd.fetch") {
+      skip_gc_values.insert(op->operand_source(0));
+      continue;
+    }
+  }
+  return skip_gc_values;
+}
+
 std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>>
 GetEagerDeletionValues(ir::Block* block) {
+  std::unordered_set<ir::Value> skip_deletion_values =
+      GetSkipDeletionValues(block);
   std::unordered_map<ir::Value, ir::Operation*> value_2_op;
   for (auto& op : *block) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto input_value = op->operand_source(i);
+      if (skip_deletion_values.count(input_value) > 0) {
+        VLOG(6) << "The " << i << "-th input value of the Operation("
+                << op->name() << ") can not be deleted.";
+        continue;
+      }
       if (!input_value || !ValueCanBeDeleted(input_value)) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
                 << op->name() << ") can not be deleted.";
