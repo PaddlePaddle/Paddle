@@ -384,9 +384,14 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
-  out->set_dtype(out_dtype);
   out->set_layout(x.layout());
   out->share_lod(x);
+  // In inpalce case, setting the dtype of out will reset the dtype of x at the
+  // same time, which will cause bugs, so move the dtype setting of out to the
+  // kernel
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(out_dtype);
+  }
 }
 
 void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
@@ -459,6 +464,20 @@ void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void CIdentityInferMeta(const MetaTensor& x,
+                        int ring_id,
+                        bool use_calc_stream,
+                        bool use_model_parallel,
+                        MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      errors::InvalidArgument(
+          "The ring_id (%d) for c_identity must be non-negative.", ring_id));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {

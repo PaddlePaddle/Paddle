@@ -40,8 +40,20 @@ static PyObject *divide(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_divide(self, args, kwargs);
 }
 
+static PyObject *data(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_data(self, args, kwargs);
+}
+
+static PyObject *fetch(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_fetch(self, args, kwargs);
+}
+
 static PyObject *concat(PyObject *self, PyObject *args, PyObject *kwargs) {
   return static_api_concat(self, args, kwargs);
+}
+
+static PyObject *split(PyObject *self, PyObject *args, PyObject *kwargs) {
+  return static_api_split(self, args, kwargs);
 }
 
 static PyMethodDef OpsAPI[] = {{"add_n",
@@ -68,6 +80,18 @@ static PyMethodDef OpsAPI[] = {{"add_n",
                                 (PyCFunction)(void (*)(void))full,
                                 METH_VARARGS | METH_KEYWORDS,
                                 "C++ interface function for full."},
+                               {"split",
+                                (PyCFunction)(void (*)(void))split,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for split."},
+                               {"data",
+                                (PyCFunction)(void (*)(void))data,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for data."},
+                               {"fetch",
+                                (PyCFunction)(void (*)(void))fetch,
+                                METH_VARARGS | METH_KEYWORDS,
+                                "C++ interface function for fetch."},
                                {nullptr, nullptr, 0, nullptr}};
 
 void BindOpsAPI(pybind11::module *module) {
