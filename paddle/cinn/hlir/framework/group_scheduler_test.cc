@@ -83,7 +83,8 @@ void CheckAccuracy(NetBuilder* net_builder,
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     scope->Var<hlir::framework::Tensor>(input_names[i]);
