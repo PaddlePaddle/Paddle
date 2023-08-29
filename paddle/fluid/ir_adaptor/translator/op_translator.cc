@@ -1389,9 +1389,9 @@ struct MulGradOpTranscriber : public OpTranscriber {
         x_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
 
-    ir::OpResult x_value = operation->result(idx_in_op_x);
+    ir::OpResult x_value_res = operation->result(idx_in_op_x);
     ir::Builder builder(ctx, operation->GetParent());
-    auto reshape_op_x = builder.Build<dialect::ReshapeOp>(x_value, x_shape);
+    auto reshape_op_x = builder.Build<dialect::ReshapeOp>(x_value_res, x_shape);
     (*param_map)[x_grad_var_name] =
         VariableDefiningInfo(reshape_op_x.out(), false, -1);
 
@@ -1438,8 +1438,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
 
-    ir::OpResult y_value = operation->result(idx_in_op_y);
-    auto reshape_op_y = builder.Build<dialect::ReshapeOp>(y_value, y_shape);
+    ir::OpResult y_value_res = operation->result(idx_in_op_y);
+    auto reshape_op_y = builder.Build<dialect::ReshapeOp>(y_value_res, y_shape);
     (*param_map)[y_grad_var_name] =
         VariableDefiningInfo(reshape_op_y.out(), false, -1);
   }
