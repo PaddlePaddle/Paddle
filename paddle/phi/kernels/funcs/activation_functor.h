@@ -590,7 +590,7 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto a = static_cast<T>(scale_a);
+    auto a = static_cast<T>(scale_a);  // NOLINT
     auto b = static_cast<T>(scale_b);
     auto temp = (a * x).tanh() * (a * x).tanh();
     dx.device(d) = dout * a * b * (static_cast<T>(1) - temp);
@@ -1557,7 +1557,7 @@ struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto th = static_cast<T>(threshold);
+    auto th = static_cast<T>(threshold);  // NOLINT
     out.device(d) = (x > th).template cast<T>() * x;
   }
 };
@@ -1575,7 +1575,7 @@ struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto th = static_cast<T>(threshold);
+    auto th = static_cast<T>(threshold);  // NOLINT
     dx.device(d) = dout * (x > th).template cast<T>();
   }
 
@@ -1692,7 +1692,7 @@ struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto lambdaT = static_cast<T>(lambda);
+    auto lambdaT = static_cast<T>(lambda);  // NOLINT
     auto temp1 = (x > lambdaT).template cast<T>();
     auto temp2 = (x < -lambdaT).template cast<T>();
     out.device(d) = temp1 * (x - lambdaT) + temp2 * (x + lambdaT);
@@ -1711,7 +1711,7 @@ struct SoftShrinkGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto lambdaT = static_cast<T>(lambda);
+    auto lambdaT = static_cast<T>(lambda);  // NOLINT
     auto temp1 = (x > lambdaT).template cast<T>();
     auto temp2 = (x < -lambdaT).template cast<T>();
     dx.device(d) = dout * (temp1 + temp2).template cast<T>();
