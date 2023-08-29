@@ -46,6 +46,11 @@ void Region::TakeBody(Region &&other) {
 }
 
 void Region::clear() {
+  // In order to ensure the correctness of UD Chain,
+  // BlockOperend should be decontructed bofore its source.
+  for (auto iter = blocks_.rbegin(); iter != blocks_.rend(); ++iter) {
+    (*iter)->clear();
+  }
   while (!empty()) {
     delete blocks_.back();
     blocks_.pop_back();
