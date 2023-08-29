@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-void InferSpmdContext::EmplaceBackInput(MetaTensor input) {
+void InferSpmdContext::EmplaceBackInput(DistMetaTensor input) {
   inputs_.emplace_back(std::move(input));
 }
 
@@ -25,7 +25,7 @@ void InferSpmdContext::EmplaceBackAttr(Attribute attr) {
   attrs_.emplace_back(std::move(attr));
 }
 
-const MetaTensor& InferSpmdContext::InputAt(size_t idx) const {
+const DistMetaTensor& InferSpmdContext::InputAt(size_t idx) const {
   return inputs_.at(idx);
 }
 

@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
@@ -53,12 +52,8 @@ TEST(MatmulSPMDRule, Ctor) {
   size_t input_size = 2;
   size_t output_size = 1;
 
-  auto dist_x =
-      phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  auto dist_y =
-      phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  phi::MetaTensor x(dist_x);
-  phi::MetaTensor y(dist_y);
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor y(phi::make_ddim(y_shape), y_dist_attr);
 
   auto matmul_spmd_rule =
       phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule("matmul");
@@ -83,10 +78,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // mk[-1,-1],kn[-1,0] --> mk[-1,-1],kn[-1,0] = nm[-1,0] partial[]
   x_dist_attr.set_dims_mapping({-1, -1});
   y_dist_attr.set_dims_mapping({-1, 0});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -102,10 +95,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // mk[1, 0],kn[-1,-1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]: done
   x_dist_attr.set_dims_mapping({1, 0});
   y_dist_attr.set_dims_mapping({-1, -1});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -123,10 +114,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // mk[-1,-1],kn[1,0] --> mk[-1, 1],kn[1, 0] = nm[-1, 0] partial[1]: done
   x_dist_attr.set_dims_mapping({-1, -1});
   y_dist_attr.set_dims_mapping({1, 0});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -146,10 +135,8 @@ TEST(MatmulSPMDRule, Ctor) {
   x_shape = {512, 48, 64, 32};
   x_dist_attr.set_dims_mapping({0, 1, -1, -1});
   y_dist_attr.set_dims_mapping({-1, -1});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -166,10 +153,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // -1, -1, -1] partial[0]: done
   x_dist_attr.set_dims_mapping({1, -1, -1, 0});
   y_dist_attr.set_dims_mapping({-1, -1});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/false, /*trans_x=*/false});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -188,10 +173,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // abcmn[1, -1, 0, -1] partial[]: done
   x_dist_attr.set_dims_mapping({1, -1, -1, 0});
   y_dist_attr.set_dims_mapping({-1, -1});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/false});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -208,10 +191,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // abcmn[-1, -1, -1, 1] partial[0]: done
   x_dist_attr.set_dims_mapping({-1, -1, -1, -1});
   y_dist_attr.set_dims_mapping({1, 0});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/false, /*trans_x=*/true});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -232,10 +213,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // abcmn[-1, -1, -1, 1] partial[0]: done
   x_dist_attr.set_dims_mapping({-1, -1, 0, 1});
   y_dist_attr.set_dims_mapping({1, 0});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -258,10 +237,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // abcmn[-1, -1, -1, 1] partial[0]: done
   x_dist_attr.set_dims_mapping({-1, -1, 1, 0});
   y_dist_attr.set_dims_mapping({1, 0});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
   EXPECT_ANY_THROW(infered_dist_attrs = matmul_spmd_rule.InferForward(ctx));
@@ -272,10 +249,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // abcmn[-1, -1, -1, 1] partial[0]:
   x_dist_attr.set_dims_mapping({-1, -1, 0, 1});
   y_dist_attr.set_dims_mapping({1, 0});
-  dist_x = phi::distributed::DistTensor(phi::make_ddim(x_shape), x_dist_attr);
-  dist_y = phi::distributed::DistTensor(phi::make_ddim(y_shape), y_dist_attr);
-  x = phi::MetaTensor(dist_x);
-  y = phi::MetaTensor(dist_y);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  y = phi::distributed::DistMetaTensor(phi::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
   infered_dist_attrs = matmul_spmd_rule.InferForward(ctx);
@@ -290,7 +265,6 @@ TEST(MatmulSPMDRule, Ctor) {
             std::set<int64_t>({0}));
   infered_dist_attrs.second[0].clean_partial_dims(std::vector<int64_t>({0}));
   EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), false);
-
   VLOG(4) << "test11 done." << std::endl << std::endl << std::endl;
 }
 
@@ -420,25 +394,21 @@ TEST(MatmulSPMDRuleInferBackward, Ctor) {
   out_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
   out_dist_attr.set_partial_status(std::vector<int64_t>({0}));
 
-  DistTensorSpec x_dist_tensor_spec = DistTensorSpec(x_shape, x_dist_attr);
-  DistTensorSpec y_dist_tensor_spec = DistTensorSpec(y_shape, y_dist_attr);
-  DistTensorSpec out_dist_tensor_spec =
-      DistTensorSpec(out_shape, out_dist_attr);
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor y(phi::make_ddim(y_shape), y_dist_attr);
+  phi::distributed::DistMetaTensor out(phi::make_ddim(out_shape),
+                                       out_dist_attr);
 
-  paddle::framework::AttributeMap attrs;
-  attrs["trans_x"] = false;
-  attrs["trans_y"] = false;
-
-  SPMDRuleBase* matmul_rule = SPMDRuleMap::Instance().Get("matmul");
+  auto matmul_spmd_rule =
+      phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule("matmul");
 
   // TODO(zyc) update in future: propogate the partial in inferbackward
   // abmn[-1, -1, 1, -1] + partial[0] --> abmk[-1, -1, 1, -1], a1kn[-1, -1, -1,
   // -1]
+  phi::distributed::InferSpmdContext ctx(
+      {x, y, out}, {/*trans_x=*/false, /*trans_x=*/false});
   std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-      infered_dist_attrs =
-          matmul_rule->InferBackward({x_dist_tensor_spec, y_dist_tensor_spec},
-                                     {out_dist_tensor_spec},
-                                     attrs);
+      infered_dist_attrs = matmul_spmd_rule.InferBackward(ctx);
 
   size_t input_size = 2;
   size_t output_size = 1;

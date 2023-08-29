@@ -22,9 +22,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
-namespace distributed {
-class TensorDistAttr;
-}  // namespace distributed
 
 struct MetaConfig {
   bool is_runtime{true};
@@ -92,9 +89,6 @@ class MetaTensor {
 
   virtual bool is_same_tensor(const MetaTensor& meta_tensor) const;
 
-  // For auto parallel
-  const distributed::TensorDistAttr& dist_attr() const;
-
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;
   }
@@ -104,7 +98,7 @@ class MetaTensor {
  protected:
   static void unspecified_bool_true() {}
 
- private:
+ protected:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;

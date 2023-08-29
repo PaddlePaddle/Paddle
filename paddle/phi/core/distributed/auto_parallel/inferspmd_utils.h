@@ -23,10 +23,10 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -39,14 +39,14 @@ class InferSpmdContext {
  public:
   InferSpmdContext() = default;
   InferSpmdContext(
-      paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs,
+      paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs,
       paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs)
       : inputs_(std::move(inputs)), attrs_(std::move(attrs)) {}
 
-  void EmplaceBackInput(MetaTensor input);
+  void EmplaceBackInput(DistMetaTensor input);
   void EmplaceBackAttr(Attribute attr);
 
-  const MetaTensor& InputAt(size_t idx) const;
+  const DistMetaTensor& InputAt(size_t idx) const;
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) const;
@@ -55,7 +55,7 @@ class InferSpmdContext {
 
  private:
   // Now we only need `inputs`, for backward, the `output` is passed as input
-  paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs_;
+  paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs_;
   // Because the attribute arguments of dygraph do not have `attr name`,
   // so we use vector instead of map
   paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs_;
@@ -86,12 +86,12 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
 
   // TODO(chenweihang): support other input type later as needed
   template <typename... Tail>
-  struct InferSpmdFnCallHelper<const MetaTensor&, Tail...> {
+  struct InferSpmdFnCallHelper<const DistMetaTensor&, Tail...> {
     template <int in_idx, int attr_idx, typename... PreviousArgs>
     static SpmdInfo Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
                     "InferSpmd's Input should appear before Attributes.");
-      const MetaTensor& arg = ctx.InputAt(in_idx);
+      const DistMetaTensor& arg = ctx.InputAt(in_idx);
       return InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1,
                                                            attr_idx>(
           ctx, pargs..., arg);

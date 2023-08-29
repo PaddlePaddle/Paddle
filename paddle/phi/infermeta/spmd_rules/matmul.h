@@ -16,20 +16,20 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
-#include "paddle/phi/infermeta/binary.h"
 
 namespace phi {
 namespace distributed {
 
-SpmdInfo MatmulSpmdInferForward(const MetaTensor& x,
-                                const MetaTensor& y,
+SpmdInfo MatmulSpmdInferForward(const DistMetaTensor& x,
+                                const DistMetaTensor& y,
                                 bool trans_x,
                                 bool trans_y);
 
-SpmdInfo MatmulSpmdInferBackward(const MetaTensor& x,
-                                 const MetaTensor& y,
-                                 const MetaTensor& out,
+SpmdInfo MatmulSpmdInferBackward(const DistMetaTensor& x,
+                                 const DistMetaTensor& y,
+                                 const DistMetaTensor& out,
                                  bool trans_x,
                                  bool trans_y);
 

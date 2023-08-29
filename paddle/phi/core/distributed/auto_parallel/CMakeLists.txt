@@ -9,6 +9,7 @@ collect_srcs(
   dist_mapper.cc
   reshard_utils.cc
   dist_tensor.cc
+  dist_meta_tensor.cc
   inferspmd_utils.cc
   reshard_function.cc
   reshard_split_functor.cc
