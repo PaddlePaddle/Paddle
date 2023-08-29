@@ -41,8 +41,13 @@ constexpr decltype(auto) operator>>(std::variant<Ts...> const& v,
 template <typename... Ts>
 class Union {
  public:
-  template <typename... Args>
-  explicit Union(Args&&... args) : variant_(std::forward<Args>(args)...) {}
+  Union(const Union&) = default;
+  Union(Union&&) = default;
+
+  template <
+      typename Arg,
+      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, Union>, bool> = true>
+  explicit Union(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}
 
   template <typename... Fs>
   auto operator>>(match<Fs...> const& match) const {
@@ -105,9 +110,26 @@ class Tagged {
     using Tagged<T>::Tagged;       \
   };
 
-#define DEFINE_ADT_UNION(class_name, ...)                            \
-  struct class_name final : public ::cinn::adt::Union<__VA_ARGS__> { \
-    using ::cinn::adt::Union<__VA_ARGS__>::Union;                    \
+#define DEFINE_ADT_UNION(class_name, ...)                                      \
+  class class_name final {                                                     \
+   public:                                                                     \
+    class_name(const class_name&) = default;                                   \
+    class_name(class_name&&) = default;                                        \
+                                                                               \
+    template <typename Arg,                                                    \
+              std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, class_name>, \
+                               bool> = true>                                   \
+    explicit class_name(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}       \
+                                                                               \
+    template <typename... Fs>                                                  \
+    auto operator>>(match<Fs...> const& match) const {                         \
+      return variant_ >> match;                                                \
+    }                                                                          \
+                                                                               \
+    const std::variant<__VA_ARGS__>& variant() const { return variant_; }      \
+                                                                               \
+   private:                                                                    \
+    std::variant<__VA_ARGS__> variant_;                                        \
   };
 
 using Name = std::string;
