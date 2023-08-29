@@ -354,13 +354,9 @@ void BindAutoParallel(py::module *m) {
               const std::vector<DistTensorSpec> &input_specs,
               const std::vector<phi::Attribute> &attrs) {
              phi::distributed::InferSpmdContext ctx;
-             std::vector<phi::distributed::DistTensor> input_tensors;
              for (auto &spec : input_specs) {
-               input_tensors.emplace_back(phi::distributed::DistTensor(
+               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
                    phi::make_ddim(spec.shape()), spec.dist_attr()));
-             }
-             for (auto &tensor : input_tensors) {
-               ctx.EmplaceBackInput(phi::MetaTensor(tensor));
              }
              for (auto &attr : attrs) {
                ctx.EmplaceBackAttr(attr);
@@ -373,17 +369,13 @@ void BindAutoParallel(py::module *m) {
               const std::vector<DistTensorSpec> &output_specs,
               const std::vector<phi::Attribute> &attrs) {
              phi::distributed::InferSpmdContext ctx;
-             std::vector<phi::distributed::DistTensor> tensors;
              for (auto &spec : input_specs) {
-               tensors.emplace_back(phi::distributed::DistTensor(
+               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
                    phi::make_ddim(spec.shape()), spec.dist_attr()));
              }
              for (auto &spec : output_specs) {
-               tensors.emplace_back(phi::distributed::DistTensor(
+               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
                    phi::make_ddim(spec.shape()), spec.dist_attr()));
-             }
-             for (auto &tensor : tensors) {
-               ctx.EmplaceBackInput(phi::MetaTensor(tensor));
              }
              for (auto &attr : attrs) {
                ctx.EmplaceBackAttr(attr);
