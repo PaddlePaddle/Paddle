@@ -1312,7 +1312,6 @@ class OpTest(unittest.TestCase):
         ir_program = paddle.static.Program()
         with paddle.static.program_guard(ir_program):
             # prepare inps attributes feed
-            print("ir_program = ", ir_program)
             (
                 static_inputs,
                 attrs,
@@ -2455,16 +2454,10 @@ class OpTest(unittest.TestCase):
             dygraph_dygraph_outs = dygraph_checker.outputs
 
         print("Before new ir checker...........")
-        from paddle.new_ir_utils import IrChange
+        with paddle.new_ir_utils._newir_guard():
+            new_ir_checker = NewIRChecker(self, self.outputs)
+            new_ir_checker.check()
 
-        ir_change = IrChange()
-        set_flags({"FLAGS_enable_new_ir_api": True})
-        ir_change._switch_to_new_ir()
-
-        new_ir_checker = NewIRChecker(self, self.outputs)
-        new_ir_checker.check()
-        set_flags({"FLAGS_enable_new_ir_api": False})
-        ir_change._switch_to_old_ir()
         print("New ir checker finish...........")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
@@ -3012,22 +3005,16 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                 )
         # get new ir gradient
-        print("Before new ir gradient...........")
-        from paddle.new_ir_utils import IrChange
+        print("new ir gradient begin...........")
+        with paddle.new_ir_utils._newir_guard():
+            new_ir_grad = self._get_ir_gradient(
+                inputs_to_check,
+                place,
+                output_names,
+                user_defined_grad_outputs,
+                no_grad_set,
+            )
 
-        ir_change = IrChange()
-        set_flags({"FLAGS_enable_new_ir_api": True})
-
-        ir_change._switch_to_new_ir()
-        new_ir_grad = self._get_ir_gradient(
-            inputs_to_check,
-            place,
-            output_names,
-            user_defined_grad_outputs,
-            no_grad_set,
-        )
-        set_flags({"FLAGS_enable_new_ir_api": False})
-        ir_change._switch_to_old_ir()
         print("new ir gradient finish...........")
         self._assert_is_close(
             numeric_grads,
