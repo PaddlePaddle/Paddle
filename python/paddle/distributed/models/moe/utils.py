@@ -32,7 +32,7 @@ def _number_count(numbers, upper_range):
             >>> numbers = [
             ...     [0, 2],
             ...     [0, 2]
-            >>> ]
+            ... ]
             >>> upper_range = 6
             >>> numbers = paddle.to_tensor(numbers, dtype="int32")
             >>> number_count = paddle.distributed.utils.number_count(numbers, upper_range)
