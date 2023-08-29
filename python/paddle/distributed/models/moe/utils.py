@@ -30,15 +30,15 @@ def _number_count(numbers, upper_range):
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
-            >>> numbers = [
-            ...     [0, 2],
-            ...     [0, 2]
-            ... ]
+            >>> from paddle.distributed.models.moe import utils
+            
+            >>> numbers = [[0, 2], [0, 2]]
             >>> upper_range = 6
-            >>> numbers = paddle.to_tensor(numbers, dtype="int32")
-            >>> number_count = paddle.distributed.utils.number_count(numbers, upper_range)
+            >>> numbers = paddle.to_tensor(numbers, dtype="int64")
+            >>> number_count = utils._number_count(numbers, upper_range)
             >>> print(number_count)
-            >>> # the result: [2, 0, 2, 0, 0, 0]
+            Tensor(shape=[6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [2, 0, 2, 0, 0, 0])
     """
     if in_dynamic_mode():
         return _legacy_C_ops.number_count(numbers, 'upper_range', upper_range)
@@ -76,17 +76,17 @@ def _assign_pos(x, cum_count):
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
+            >>> from paddle.distributed.models.moe import utils
+            
             >>> number_count = [2, 0, 2, 0]
-            >>> numbers = [
-            ...     [0, 2],
-            ...     [0, 2]
-            >>> ]
-            >>> number_count = paddle.to_tensor(number_count)
-            >>> numbers = paddle.to_tensor(numbers, dtype="int32")
+            >>> numbers = [[0, 2], [0, 2]]
+            >>> number_count = paddle.to_tensor(number_count, dtype="int64")
+            >>> numbers = paddle.to_tensor(numbers, dtype="int64")
             >>> num_cum = paddle.cumsum(number_count)
-            >>> pos = paddle.distributed.utils.assign_pos(x=numbers, cum_count=num_cum)
+            >>> pos = utils._assign_pos(x=numbers, cum_count=num_cum)
             >>> print(pos)
-            >>> # the result: (2, 0, 3, 1)
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [2, 0, 3, 1])
     """
     if in_dynamic_mode():
         return _legacy_C_ops.assign_pos(x, cum_count, cum_count[-1])
@@ -142,16 +142,20 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
         out (Tensor): The output expert count limit by capacity.
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
+            >>> from paddle.distributed.models.moe import utils
+            
             >>> expert_count = [1, 2, 2, 8, 3, 6]
             >>> capacity = [5, 5, 5]
             >>> n_work = 2
-            >>> expert_count = paddle.to_tensor(expert_count, dtype="int32")
-            >>> capacity = paddle.to_tensor(capacity, dtype="int32")
-            >>> out = paddle.distributed.utils.limit_by_capacity(expert_count, capacity, n_work)
+            >>> expert_count = paddle.to_tensor(expert_count, dtype="int64")
+            >>> capacity = paddle.to_tensor(capacity, dtype="int64")
+            >>> out = utils._limit_by_capacity(expert_count, capacity, n_work)
             >>> print(out)
-            >>> # the result: [1, 2, 2, 4, 3, 3]
+            Tensor(shape=[6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [1, 2, 2, 4, 3, 3])
     """
     if in_dynamic_mode():
         return _legacy_C_ops.limit_by_capacity(
@@ -191,13 +195,18 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
-            >>> gate_idx = paddle.to_tensor([1, 3, 3, 3, 3, 2, 1, 1], dtype='int32')
-            >>> expert_count = paddle.to_tensor([0, 3, 1, 3, 0, 0, 0, 0], dtype='int32')
+            >>> from paddle.distributed.models.moe import utils
+            
+            >>> gate_idx = paddle.to_tensor([1, 3, 3, 3, 3, 2, 1, 1], dtype='int64')
+            >>> expert_count = paddle.to_tensor([0, 3, 1, 3, 0, 0, 0, 0], dtype='int64')
             >>> n_worker = 1
-            >>> new_gate_id = paddle.distributed.utils.prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker)
+            >>> n_expert = 8
+            >>> new_gate_id = utils._prune_gate_by_capacity(
+            ...     gate_idx, expert_count, n_expert, n_worker
+            ... )
             >>> print(new_gate_id)
-            >>> # Tensor(shape=[8], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
-            ...   [1, 3, 3, 3, -1, 2, 1, 1])
+            Tensor(shape=[8], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [1, 3, 3, 3, -1, 2, 1, 1])
     """
     if in_dynamic_mode():
         return _legacy_C_ops.prune_gate_by_capacity(
