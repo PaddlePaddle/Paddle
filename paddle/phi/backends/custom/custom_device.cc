@@ -935,7 +935,7 @@ class CustomDevice : public DeviceInterface {
 
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
-    int dev_id = place.GetDeviceId();
+    int dev_id = static_cast<unsigned char>(place.GetDeviceId());
     return dev_id;
   }
 
