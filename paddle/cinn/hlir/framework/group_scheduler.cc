@@ -204,6 +204,9 @@ void GroupScheduler::DoLoopAlignment() {
   ir::ScheduleBlockNode* global_master = FindGlobalMasterNode();
 
   auto LoopAlignmentFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return false;
+    }
     VLOG(6) << "try to align loops of block: " << node->id()
             << " with block: " << global_master->id();
     if (node == global_master) {
