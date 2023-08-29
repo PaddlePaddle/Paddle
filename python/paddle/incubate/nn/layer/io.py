@@ -55,21 +55,31 @@ class ListenAndServ:
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle
-            with fluid.program_guard(main):
-                serv = layers.ListenAndServ(
-                    "127.0.0.1:6170", ["X"], optimizer_mode=False)
-                with serv.do():
-                    x = paddle.static.data(
-                        shape=[32, 32],
-                        dtype='float32',
-                        name="X")
-                    paddle.nn.initializer.Constant(value=1.0)(x, main.global_block())
-                    paddle.scale(x=x, scale=10.0, out=out_var)
+            >>> import paddle.fluid as fluid
+            >>> from paddle.incubate.nn.layer.io import ListenAndServ
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> place = fluid.CPUPlace()
+            >>> main = fluid.Program()
+            >>> with fluid.program_guard(main):
+            ...     serv = ListenAndServ(
+            ...         "127.0.0.1:6", ["X"], optimizer_mode=False)
+            ...     with serv.do():
+            ...         out_var = main.global_block().create_var(
+            ...             name="scale_0.tmp_0",
+            ...             psersistable=True,
+            ...             dtype="float32",
+            ...             shape=[32, 32],
+            ...         )
+            ...         x = paddle.static.data(
+            ...             shape=[32, 32],
+            ...             dtype='float32',
+            ...             name="X")
+            ...         paddle.nn.initializer.Constant(value=1.0)(x, main.global_block())
+            ...         paddle.scale(x=x, scale=10.0, out=out_var)
 
-            exe = fluid.Executor(place)
-            exe.run(main)
+            >>> exe = fluid.Executor(place)
+            >>> exe.run(main)
     """
 
     def __init__(self, endpoint, inputs, fan_in=1, optimizer_mode=True):
@@ -115,7 +125,9 @@ class ListenAndServ:
         return parent_block
 
     def complete_op(self):
-        from paddle.incubate.fleet.parameter_server.mode import DistributedMode
+        from paddle.incubate.distributed.fleet.parameter_server.mode import (
+            DistributedMode,
+        )
 
         main_program = self.helper.main_program
         current_block = main_program.current_block()
