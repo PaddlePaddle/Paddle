@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
@@ -77,6 +78,24 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
   // the xxx_reduce_init block cannot be inlined.
   if (ir::IsReduceInitTensorName(tensor->name)) {
     return false;
+  }
+
+  // Skip external calls
+  std::vector<ir::Expr> consumers =
+      ir::GetConsumers(sche_block_realize_expr, root);
+  for (const ir::Expr& consumer : consumers) {
+    std::set<ir::Expr> find_load = ir::CollectIRNodesWithoutTensor(
+        consumer.As<ir::ScheduleBlockRealize>()
+            ->schedule_block.As<ir::ScheduleBlock>()
+            ->body,
+        [&](const ir::Expr* x) {
+          return x->As<ir::Load>() &&
+                 x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
+                     tensor->name;
+        });
+    if (find_load.empty()) {
+      return false;
+    }
   }
 
   // write_buffers.size() = 1 and read_buffers is empty, means const

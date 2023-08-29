@@ -116,7 +116,10 @@ std::vector<ir::LoweredFunc> OpLowerer::LowerGroup(
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
-  if (apply_group_schedule) {
+  auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
+  if (apply_group_schedule &&
+      !(nodes.size() == 1 &&
+        op_pattern_dict[nodes[0]->op()] == OpPatternKind::kNonFusible)) {
     DoGroupSchedule(ir_sch, group, tensor_map);
     VLOG(3) << "After group schedule, ir is: \n"
             << ir_sch.GetModule().GetExprs().at(0);

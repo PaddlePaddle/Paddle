@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/group_scheduler.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
@@ -26,6 +27,47 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
+
+static const std::unordered_set<std::string>
+    kProhibitScheduleExternalFuncNames = {
+#define CINN_NVGPU_FUNC2STRING(str) #str
+#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
+  CINN_NVGPU_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE)
+
+#define GEN_FUNC_NAME(_, impl) \
+  _(impl, gt_num)              \
+  _(impl, lt_num)              \
+  _(impl, index_add)           \
+  _(impl, next_smallest)
+
+#define GEN_FUNC_NAME_WITH_TYPE(_, ...)                                     \
+  _(__VA_ARGS__, _bool), _(__VA_ARGS__, _fp16), _(__VA_ARGS__, _fp32),      \
+      _(__VA_ARGS__, _fp64), _(__VA_ARGS__, _uint8), _(__VA_ARGS__, _int8), \
+      _(__VA_ARGS__, _int16), _(__VA_ARGS__, _int32), _(__VA_ARGS__, _int64),
+
+        GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
+#undef GEN_FUNC_NAME
+};
+
+bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
+  ir::ScheduleBlockRealize* sch_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(sch_block_realize);
+  ir::ScheduleBlock* sch_block =
+      sch_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(sch_block);
+
+  auto find_call = ir::CollectIRNodesWithoutTensor(
+      sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
+  for (ir::Expr call : find_call) {
+    ir::Call* call_node = call.As<ir::Call>();
+    if (call.As<ir::Call>() && kProhibitScheduleExternalFuncNames.count(
+                                   call.As<ir::Call>()->name) != 0) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // Find loops with same extents of 2 ScheduleBlock
 std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
@@ -48,6 +90,27 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
   return same_loops;
 }
 
+std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
+  ir::ScheduleBlockRealize* schedule_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  ir::ScheduleBlock* schedule_block =
+      schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
+  std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
+  std::unordered_set<std::string> reduce_loop_var_names;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      ir::CollectIRNodesWithoutTensor(iter_values[i], [&](const ir::Expr* x) {
+        if (x->as_var()) {
+          reduce_loop_var_names.insert(x->as_var_ref()->name);
+        }
+        return false;
+      });
+    }
+  }
+  return reduce_loop_var_names;
+}
+
 GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
                                const std::shared_ptr<Graph::Group>& group,
                                const common::Target& target)
@@ -61,33 +124,51 @@ void GroupScheduler::operator()() {
   DoComputeInline();
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
+#ifdef CINN_WITH_CUDA
+  BindCudaAxis();
   AllocateStorage();
+#endif
 }
 
-int64_t GroupScheduler::NodePriority(const ir::ScheduleBlockNode* node) const {
-  if (!node->ControlStmts()[0].As<ir::For>()->is_binded()) {
-    return -1;
-  }
+NodePriority GroupScheduler::CalculateNodePriority(
+    const ir::ScheduleBlockNode* node) const {
+  bool has_loop_binded = false;
+  std::unordered_set<std::string> reduce_loop_var_names =
+      GetReduceLoopVarNames(node->Block());
 
-  int64_t score = 1;
+  int64_t reduce_score = 1;
+  double score = 1;
   for (Expr expr : node->ControlStmts()) {
     ir::For* for_node = expr.As<ir::For>();
     if (for_node != nullptr) {
       score *= ir::GetLoopExtent(expr);
     }
+    if (reduce_loop_var_names.count(for_node->loop_var->name) != 0) {
+      reduce_score *= ir::GetLoopExtent(expr);
+    }
+    if (for_node->is_binded()) {
+      has_loop_binded = true;
+    }
   }
-  score += node->ControlStmts().size();
+  if (reduce_score > 1) {
+    score *= std::log2(reduce_score);
+  }
+
   VLOG(6) << "The priority score of node " << node->id() << " is " << score;
-  return score;
+  VLOG(6) << "The node has_loop_binded: " << has_loop_binded;
+  return NodePriority{has_loop_binded, score};
 }
 
 ir::ScheduleBlockNode* GroupScheduler::FindGlobalMasterNode() const {
-  int64_t max = 0;
+  NodePriority max{false, std::numeric_limits<int64_t>::min()};
   ir::ScheduleBlockNode* master = nullptr;
   auto FindMaster = [&](ir::ScheduleBlockNode* node) {
-    int64_t score = NodePriority(node);
-    if (score > max) {
-      max = score;
+    NodePriority priority = CalculateNodePriority(node);
+    VLOG(6) << "The priority score of node " << node->id() << " is "
+            << priority.score
+            << ", has_loop_binded: " << priority.has_loop_binded;
+    if (max < priority) {
+      max = priority;
       master = node;
     }
   };
@@ -110,6 +191,10 @@ std::unordered_set<std::string> GroupScheduler::OutputTensorNames() const {
         CHECK(node_data);
         return node_data->id();
       });
+
+  for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
+    output_tensor_names.insert(node->id());
+  }
   return output_tensor_names;
 }
 
@@ -119,6 +204,9 @@ void GroupScheduler::DoLoopAlignment() {
   ir::ScheduleBlockNode* global_master = FindGlobalMasterNode();
 
   auto LoopAlignmentFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return false;
+    }
     VLOG(6) << "try to align loops of block: " << node->id()
             << " with block: " << global_master->id();
     if (node == global_master) {
@@ -131,27 +219,42 @@ void GroupScheduler::DoLoopAlignment() {
            expr.As<ir::For>()->for_type() == ir::ForType::GPUThread)) {
         return false;
       }
+      if (expr.As<ir::For>()->body.As<ir::Block>() &&
+          expr.As<ir::For>()->body.As<ir::Block>()->stmts.size() > 1) {
+        return false;
+      }
     }
 
     // 1. Fuse source loops
     ir::Expr source_loop = ir_sch_->Fuse(node->ControlStmts());
+    int total_source_extent = ir::GetLoopExtent(source_loop);
 
     // 2. Split source loop to align with the target loops
     std::vector<int> factors;
-    int total_extent = 1;
+    int cur_extent = 1;
     std::vector<ir::Expr> target_loops = global_master->ControlStmts();
     for (ir::Expr target_loop : target_loops) {
       if (target_loop.As<ir::For>() == nullptr) {
         continue;
       }
-      if (total_extent >= ir::GetLoopExtent(source_loop) && factors.size() &&
-          ir::GetLoopExtent(target_loop) > 1) {
+      if (cur_extent >= total_source_extent && factors.size() &&
+              ir::GetLoopExtent(target_loop) > 1 ||
+          total_source_extent % (cur_extent * ir::GetLoopExtent(target_loop)) !=
+              0) {
         break;
       }
       factors.push_back(ir::GetLoopExtent(target_loop));
-      total_extent *= ir::GetLoopExtent(target_loop);
+      cur_extent *= ir::GetLoopExtent(target_loop);
     }
-    std::vector<ir::Expr> source_loops = ir_sch_->Split(source_loop, factors);
+    if (cur_extent < total_source_extent) {
+      factors.push_back(-1);
+    }
+    std::vector<ir::Expr> source_loops;
+    if (factors.size() > 0 && factors[0] < total_source_extent) {
+      source_loops = ir_sch_->Split(source_loop, factors);
+    } else {
+      source_loops = {source_loop};
+    }
 
     // 3. Copy bind info from target loops
     for (int idx = 0; idx < target_loops.size(); ++idx) {
@@ -189,6 +292,9 @@ void GroupScheduler::DoComputeInline() {
   auto_schedule::AutoInline inliner(target_, no_inline_output_names);
 
   auto InlineFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return;
+    }
     VLOG(6) << "try ComputeInline on: " << node->id()
             << ", before ComputeInline, func body: "
             << ir_sch_->GetModule().GetExprs().front();
@@ -215,10 +321,17 @@ void GroupScheduler::DoHorizontalLoopFusion() {
   ir::ScheduleBlockNode* master_node = end_nodes.front();
   CHECK_NOTNULL(master_node);
   for (int i = 1; i < end_nodes.size(); ++i) {
+    if (IsProhibitScheduleExternCallBlock(end_nodes[i]->Block())) {
+      continue;
+    }
     VLOG(6) << "try to fuse loop of " << end_nodes[i]->id() << " to "
             << master_node->id();
-    ir::Expr target_loop =
-        std::get<1>(FindSameOuterLoops(end_nodes[i], master_node).back());
+    std::vector<std::tuple<cinn::ir::Expr, cinn::ir::Expr>>&& same_loops =
+        FindSameOuterLoops(end_nodes[i], master_node);
+    if (same_loops.size() == 0) {
+      continue;
+    }
+    ir::Expr target_loop = std::get<1>(same_loops.back());
     VLOG(6) << "target_loop: " << target_loop;
     ir_sch_->SimpleComputeAt(end_nodes[i]->Block(), target_loop);
     VLOG(6) << "after fuse: " << ir_sch_->GetModule().GetExprs().front();
@@ -240,12 +353,16 @@ void GroupScheduler::DoVerticalLoopFusion() {
         masters.begin(),
         masters.end(),
         [&](const ir::ScheduleBlockNode* a, const ir::ScheduleBlockNode* b) {
-          return this->NodePriority(a) > this->NodePriority(b);
+          return this->CalculateNodePriority(b) <
+                 this->CalculateNodePriority(a);
         });
     return masters;
   };
 
   auto ComputeAtFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return;
+    }
     std::vector<ir::ScheduleBlockNode*> masters = FindMaster(node);
     if (masters.size() == 0) {
       return;
@@ -277,16 +394,29 @@ void GroupScheduler::DoVerticalLoopFusion() {
       }
     }
 
+    std::unordered_set<std::string> src_reduce_loop_var_names =
+        GetReduceLoopVarNames(node->Block());
     for (ir::ScheduleBlockNode* master : masters) {
       // Find the target loop candidates;
       std::vector<ir::Expr> target_loop_candidates;
       int64_t total_loop_extent = 1;
+      std::unordered_set<std::string> tgt_reduce_loop_var_names =
+          GetReduceLoopVarNames(master->Block());
       std::vector<std::tuple<cinn::ir::Expr, cinn::ir::Expr>> same_loops =
           FindSameOuterLoops(node, master);
       for (const std::tuple<cinn::ir::Expr, cinn::ir::Expr>& same_loop :
            same_loops) {
-        if (std::get<0>(same_loop).ptr() != std::get<1>(same_loop).ptr()) {
-          target_loop_candidates.push_back(std::get<1>(same_loop));
+        ir::Expr source_loop = std::get<0>(same_loop);
+        ir::Expr target_loop = std::get<1>(same_loop);
+        bool is_src_loop_reduce =
+            src_reduce_loop_var_names.count(
+                source_loop.As<ir::For>()->loop_var->name) > 0;
+        bool is_tgt_loop_reduce =
+            tgt_reduce_loop_var_names.count(
+                target_loop.As<ir::For>()->loop_var->name) > 0;
+        if (source_loop.ptr() != target_loop.ptr() && !is_src_loop_reduce &&
+            !is_tgt_loop_reduce) {
+          target_loop_candidates.push_back(target_loop);
         }
       }
       // Find the target loop with the highest priority and passing the
@@ -337,6 +467,31 @@ void GroupScheduler::DoVerticalLoopFusion() {
 
   schedule_block_graph_->DFSTopoWalk(ComputeAtFunc);
   VLOG(5) << "[After DoVerticalLoopFusion] func body: "
+          << ir_sch_->GetModule().GetExprs().front();
+}
+
+void GroupScheduler::BindCudaAxis() {
+  VLOG(5) << "[Start BindCudaAxis] func body: "
+          << ir_sch_->GetModule().GetExprs().front();
+
+  auto_schedule::AutoBind binder(target_);
+
+  auto BindFunc = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return;
+    }
+    VLOG(6) << "try bind cuda axis on: " << node->id()
+            << ", before bind, func body: "
+            << ir_sch_->GetModule().GetExprs().front();
+    binder.Apply(ir_sch_, node->id());
+    VLOG(6) << "try bind cuda axis on: " << node->id()
+            << ", after bind, func body: "
+            << ir_sch_->GetModule().GetExprs().front();
+  };
+
+  schedule_block_graph_->NodesWalk(BindFunc);
+
+  VLOG(5) << "[After BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 }
 
@@ -505,6 +660,8 @@ void GroupScheduler::AllocateStorage() {
         }
       }
     }
+    VLOG(6) << "lower_bound before simplify of " << indice_value << " = "
+            << copy_for_lower_bound;
     copy_for_lower_bound = common::AutoSimplify(copy_for_lower_bound);
     VLOG(6) << "upper_bound before simplify of " << indice_value << " = "
             << copy_for_upper_bound;
@@ -653,6 +810,9 @@ void GroupScheduler::AllocateStorage() {
 
   // function to set storage of each tensor
   auto SetStorage = [&](ir::ScheduleBlockNode* node) {
+    if (IsProhibitScheduleExternCallBlock(node->Block())) {
+      return;
+    }
     ir::MemoryType memory_type = ir::MemoryType::GPULocal;
     ir::Expr cur_block = node->Block();
     ir::Expr root_block = ir_sch_->GetRootBlock(cur_block);
@@ -691,7 +851,10 @@ void GroupScheduler::AllocateStorage() {
                        load_indice_value,
                        node->id(),
                        consumer_block_name)) {
-        memory_type = ir::MemoryType::Auto;
+        // TODO(BiynXu): Return error information to the front-end instead of
+        // terminating the program.
+        LOG(FATAL) << "Fusion requires synchronization across blocks, but "
+                      "currently we do not support it.";
         break;
       } else if (IsCrossThread(store_indice_value,
                                load_indice_value,
@@ -700,16 +863,16 @@ void GroupScheduler::AllocateStorage() {
         memory_type = ir::MemoryType::GPUShared;
       }
     }
+    // Set output node to global
+    std::unordered_set<std::string> output_names = OutputTensorNames();
+    if (output_names.count(node->id()) > 0) {
+      memory_type = ir::MemoryType::Auto;
+    }
     // Set the reduce_init tensor and the real tensor to the same memory
     if (ir::IsReduceInitTensorName(node->id())) {
       ir::Expr block =
           ir_sch_->GetBlock(ir::GetOriginalReduceTensorName(node->id()));
       memory_type = ir::GetTensor(block)->buffer->memory_type;
-    }
-    // Set output node to global
-    std::unordered_set<std::string> output_names = OutputTensorNames();
-    if (output_names.count(node->id()) > 0) {
-      memory_type = ir::MemoryType::Auto;
     }
     // Do schedule
     if (memory_type == ir::MemoryType::Auto) {

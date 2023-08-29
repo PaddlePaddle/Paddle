@@ -94,6 +94,8 @@ void BindGPUIndex(ir::IRSchedule* ir_schedule,
   auto all_loops = ir_schedule->GetLoops(block_name);
   CHECK_LE(num_loops_to_bind, all_loops.size())
       << "The number of loops to be bind is greater than size of all_loops";
+  CHECK_GE(num_loops_to_bind, 0)
+      << "The number of loops to be bind should be greater than 0";
   // check whether it is the case that threadIdx has been binded but blockIdx
   // not, the threadIdx can only be binded in the first loop after
   // num_loops_to_bind loops because we has excluded other cases in
@@ -179,6 +181,19 @@ std::vector<SearchState> AutoBind::ApplyOnBlock(SearchState state,
                kMaxBlocks,
                target_->max_num_threads());
   return {new_state};
+}
+
+void AutoBind::Apply(ir::IRSchedule* ir_schedule,
+                     const std::string& block_name) {
+  int num_loop_can_bind =
+      CountLoopCanBinded(ir_schedule->GetLoops(block_name)[0].As<ir::For>());
+  if (num_loop_can_bind > 0) {
+    BindGPUIndex(ir_schedule,
+                 block_name,
+                 num_loop_can_bind,
+                 kMaxBlocks,
+                 target_->max_num_threads());
+  }
 }
 
 }  // namespace auto_schedule

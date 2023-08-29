@@ -21,6 +21,22 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
+// The priority of the ScheduleBlockNode,
+// prioritizing whether it has been bound to the cuda axis,
+// and secondly considering the amount of calculated data.
+struct NodePriority {
+  bool has_loop_binded;
+  double score;
+
+  bool operator<(const NodePriority& other) const {
+    if (has_loop_binded ^ other.has_loop_binded) {
+      return !has_loop_binded;
+    } else {
+      return score < other.score;
+    }
+  }
+};
+
 /**
  * The class used for scheduling fusion groups.
  * Its responsibility is to perform loop alignment,
@@ -51,6 +67,9 @@ class GroupScheduler {
   // relationship ScheduleBlockNode.
   void DoVerticalLoopFusion();
 
+  // Automatically bind cuda axis on loops.
+  void BindCudaAxis();
+
   // Automatically allocate storage locations for variables to optimize IO.
   void AllocateStorage();
 
@@ -59,7 +78,7 @@ class GroupScheduler {
   // has a higher priority, while the node with a lower priority
   // needs to compromise and align loops with the node with the highest
   // priority.
-  int64_t NodePriority(const ir::ScheduleBlockNode* node) const;
+  NodePriority CalculateNodePriority(const ir::ScheduleBlockNode* node) const;
 
   // Find the highest priority ScheduleBlockNode,
   // other nodes need to align the loop with it.

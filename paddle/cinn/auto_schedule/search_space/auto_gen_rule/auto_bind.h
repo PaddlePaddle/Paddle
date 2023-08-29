@@ -42,6 +42,8 @@ class AutoBind : public AutoGenRule {
   std::vector<SearchState> ApplyOnBlock(SearchState state,
                                         const std::string& block_name) override;
 
+  void Apply(ir::IRSchedule* ir_schedule, const std::string& block_name);
+
  private:
   std::vector<Expr> applicable_schedule_blocks_;
 };
