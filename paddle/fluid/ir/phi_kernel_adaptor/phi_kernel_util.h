@@ -37,6 +37,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
+#include "paddle/ir/core/type_name.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
 #include "glog/logging.h"
@@ -81,8 +82,8 @@ void BuildPhiContext(ir::Operation* op,
                      Context* ctx) {
   paddle::framework::Scope* inner_scope =
       local_scope != nullptr ? local_scope : scope;
-  VLOG(6) << "BuildPhiContext in scope[" << scope << "] inner_scope["
-          << inner_scope << "]";
+  VLOG(6) << "Build " << get_type_name<Context>() << " in scope[" << scope
+          << "] inner_scope[" << inner_scope << "]";
 
   auto attr_map = op->attributes();
 
