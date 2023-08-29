@@ -24,7 +24,7 @@ from paddle import fluid
 from paddle.autograd.py_layer import PyLayer
 
 SEED = 2023
-np.random.seed(22)
+np.random.seed(SEED)
 
 def compare_result(dygraph_res, static_res, rtol=1e-5, atol=0):
     np.testing.assert_allclose(
