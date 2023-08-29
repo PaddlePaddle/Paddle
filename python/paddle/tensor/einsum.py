@@ -966,7 +966,7 @@ def einsum(equation, *operands):
             >>> # dot
             >>> print(paddle.einsum('i,i->', x, x))
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            1.81225157)
+            1.13530672)
 
             >>> # outer
             >>> print(paddle.einsum("i,j->ij", x, y))
