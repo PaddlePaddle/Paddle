@@ -122,8 +122,8 @@ set(generated_static_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_static_sig.cc)
 set(generated_sparse_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sparse_sig.cc)
-set(pd_op_forward_yaml_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/pd_ops.yaml)
+# set(pd_op_forward_yaml_file
+#     ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/pd_ops.yaml)
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir} RESULTS_VARIABLE
@@ -143,9 +143,9 @@ message(
 
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
-  COMMAND
-    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${pd_op_forward_yaml_file}
-    --output_path ./parsed_ops/pd_ops.parsed.yaml
+  # COMMAND
+  #   ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${pd_op_forward_yaml_file}
+  #   --output_path ./parsed_ops/pd_ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${op_yaml_file}
           --output_path ./parsed_ops/ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_op_yaml_file}

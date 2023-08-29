@@ -27,12 +27,12 @@ set(fused_op_backward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 
-# set(pd_op_forward_yaml_file
-#     ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.yaml)
+set(pd_op_forward_yaml_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/pd_ops.yaml)
 
-set(op_yaml_file3
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/pd_ops.parsed.yaml
-)
+set(parsed_op_dir
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/generated/)
+set(op_yaml_file3 ${parsed_op_dir}/pd_ops.parsed.yaml)
 set(op_yaml_files
     ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3}
 )
@@ -46,11 +46,12 @@ set(op_source_file_tmp ${op_source_file}.tmp)
 set(op_vjp_source_file ${PD_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
-# add_custom_command(
-#   OUTPUT ${op_yaml_file3}
-#   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-#           ${pd_op_forward_yaml_file} --output_path ${op_yaml_file3}
-#   VERBATIM)
+add_custom_command(
+  OUTPUT ${op_yaml_file3}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
+  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+          ${pd_op_forward_yaml_file} --output_path ${op_yaml_file3}
+  VERBATIM)
 
 add_custom_command(
   OUTPUT ${op_header_file} ${op_source_file} ${op_vjp_source_file}
