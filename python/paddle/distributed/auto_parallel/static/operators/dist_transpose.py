@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
+
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from ..cost import (
@@ -21,7 +23,7 @@ from ..cost import (
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import compute_compatible_and_update_dim_mapping, infer_with_spmd
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
@@ -102,6 +104,20 @@ class DistributedTranspose2Impl(DistributedOperatorImpl):
             x_shape_name
         )
         perm = op_desc.attr('axis')
+
+        if os.getenv("ENABLE_SPMD_RULE") == 'true':
+            print("################ transpose spmd ####################")
+            changed = infer_with_spmd(
+                dist_op, [x_name], [out_name], ['axis'], 'transpose'
+            )
+            x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+            if changed:
+                for i in range(len(x_dims_mapping)):
+                    x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
+                op_dist_attr.set_output_dims_mapping(
+                    x_shape_name, x_shape_dims_mapping
+                )
+            return changed
 
         assert len(x_dims_mapping) == len(perm)
 

@@ -30,6 +30,11 @@ _g_elementwise_ops = [
     "gather",
     "concat",
     "fused_softmax_mask_upper_triangle",
+    "assign",
+    "scale",
+    "fill_any_like",
+    "where",
+    "tanh",
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 

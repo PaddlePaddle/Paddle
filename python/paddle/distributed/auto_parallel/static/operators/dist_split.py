@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..utils import compute_compatible_and_update_dim_mapping, is_dim_shard
+import os
+
+from ..utils import (
+    compute_compatible_and_update_dim_mapping,
+    infer_with_spmd,
+    is_dim_shard,
+)
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
@@ -86,6 +92,20 @@ class DistributedSplitImpl(DistributedOperatorImpl):
         x_name = op_desc.input('X')[0]
         out_names = op_desc.output('Out')
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+
+        if os.getenv("ENABLE_SPMD_RULE") == 'true':
+            print("################ split spmd ####################")
+            # the attribute in split op is inconsistent in phi api and static,
+            # split spmd rule use only one attribute, i.e., either "num" or
+            # "sections", so pass one of them according to the user defination
+            if op_desc.attr("num") == 0 and op_desc.attr("sections") != []:
+                attr_names = ["sections"]
+            else:
+                attr_names = ["num"]
+            attr_names.append("axis")
+            return infer_with_spmd(
+                dist_op, [x_name], out_names, attr_names, "split"
+            )
 
         for out_name in out_names:
             out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)

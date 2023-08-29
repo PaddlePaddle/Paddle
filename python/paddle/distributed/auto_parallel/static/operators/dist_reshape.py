@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+import os
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
@@ -23,6 +24,7 @@ from ..cost import (
 )
 from ..utils import (
     compute_compatible_and_update_dim_mapping,
+    infer_with_spmd,
     is_dim_shard,
     set_dist_op_desc_original_id,
 )
@@ -42,6 +44,29 @@ class DistributedReshape2(DistributedOperatorImplContainer):
 
 
 register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
+
+
+def reshape_infer_spmd(dist_op):
+    changed = False
+    op_desc = dist_op.serial_op.desc
+    op_dist_attr = dist_op.dist_attr
+    x_name = op_desc.input('X')[0]
+    out_name = op_desc.output('Out')[0]
+    x_shape_name = op_desc.output('XShape')[0]
+
+    attr_names = ['shape']
+    changed = infer_with_spmd(
+        dist_op, [x_name], [out_name], attr_names, 'reshape'
+    )
+
+    x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(x_shape_name)
+    x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+    if changed:
+        for i in range(len(x_dims_mapping)):
+            x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
+        op_dist_attr.set_output_dims_mapping(x_shape_name, x_shape_dims_mapping)
+
+    return changed
 
 
 class DistributedReshapeImpl0(DistributedOperatorImpl):
@@ -204,6 +229,10 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
         x_shape_name = op_desc.output('XShape')[0]
+        if os.getenv("ENABLE_SPMD_RULE") == 'true':
+            print("################ reshape spmd0 ####################")
+            return reshape_infer_spmd(dist_op)
+
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
@@ -471,6 +500,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
             x_shape_name
         )
+        if os.getenv("ENABLE_SPMD_RULE") == 'true':
+            print("################ reshape spmd1 ####################")
+            return reshape_infer_spmd(dist_op)
 
         for i in range(len(out_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
@@ -727,6 +759,9 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         x_shape_dims_mapping = op_dist_attr.get_output_dims_mapping(
             x_shape_name
         )
+        if os.getenv("ENABLE_SPMD_RULE") == 'true':
+            print("################ reshape spmd2 ####################")
+            return reshape_infer_spmd(dist_op)
 
         for i in range(len(out_dims_mapping) - 1):
             dim_changed = compute_compatible_and_update_dim_mapping(

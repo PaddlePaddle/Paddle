@@ -35,6 +35,7 @@ register_distributed_operator_impl_container(
 )
 
 
+# TODO: 改成 reduce 规则，把 compatible 也改成可以支持 reduce 规则的
 # Batch Dimension ReduceSum Primitive
 class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
     def __init__(self, name):

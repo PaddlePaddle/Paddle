@@ -2500,3 +2500,80 @@ def wrap_data_for_completion(
         attrs[attr_name] = serial_op.desc.attr(attr_name)
 
     return input_specs, output_specs, attrs
+
+
+def infer_with_spmd(
+    dist_op,
+    input_arg_names: list,
+    output_arg_names: list,
+    attr_names: list,
+    rule_name: str,
+):
+    from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
+
+    changed = False
+    op_dist_attr = dist_op.dist_attr
+
+    ninputs = len(input_arg_names)
+    noutputs = len(output_arg_names)
+    original_input_dims_mapping_list = []
+    original_output_dims_mapping_list = []
+    for arg_name in input_arg_names:
+        dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+        original_input_dims_mapping_list.append(dims_mapping)
+    for arg_name in output_arg_names:
+        dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        original_output_dims_mapping_list.append(dims_mapping)
+
+    input_specs, output_specs, attrs = wrap_data_for_completion(
+        dist_op, input_arg_names, output_arg_names, attr_names
+    )
+
+    # HACK: some attribute names are inconsistent in static and dygraph mode,
+    # these names should be replaced when using spmd rule.
+    if rule_name == "transpose":
+        attrs["perm"] = attrs.pop("axis")
+
+    rule = get_spmd_rule(rule_name)
+    fw_result = rule.infer_forward(input_specs, attrs)
+    bw_result = rule.infer_backward(input_specs, output_specs, attrs)
+
+    infered_input_dims_mapping_list = []
+    infered_output_dims_mapping_list = []
+    for i in range(ninputs):
+        compatible_dims_mapping = compute_compatible_dims_mapping(
+            [fw_result[0][i].dims_mapping, bw_result[0][i].dims_mapping]
+        )
+        infered_input_dims_mapping_list.append(compatible_dims_mapping)
+    for i in range(noutputs):
+        compatible_dims_mapping = compute_compatible_dims_mapping(
+            [fw_result[1][i].dims_mapping, bw_result[1][i].dims_mapping]
+        )
+        infered_output_dims_mapping_list.append(compatible_dims_mapping)
+
+    changed = False
+    for i in range(ninputs):
+        original_dims_mapping = original_input_dims_mapping_list[i]
+        infered_dims_mapping = infered_input_dims_mapping_list[i]
+        if (
+            original_dims_mapping is not None
+            and infered_dims_mapping is not None
+        ):
+            if original_dims_mapping != infered_dims_mapping:
+                changed = True
+            op_dist_attr.set_input_dims_mapping(
+                input_arg_names[i], infered_dims_mapping
+            )
+    for i in range(noutputs):
+        original_dims_mapping = original_output_dims_mapping_list[i]
+        infered_dims_mapping = infered_output_dims_mapping_list[i]
+        if (
+            original_dims_mapping is not None
+            and infered_dims_mapping is not None
+        ):
+            if original_dims_mapping != infered_dims_mapping:
+                changed = True
+            op_dist_attr.set_output_dims_mapping(
+                output_arg_names[i], infered_dims_mapping
+            )
+    return changed
