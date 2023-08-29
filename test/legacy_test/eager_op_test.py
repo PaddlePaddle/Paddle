@@ -31,7 +31,7 @@ sys.path.append("..")
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
-    new_ir_white_list,
+    new_ir_python_api_grad_white_list,
     no_check_set_white_list,
     no_grad_set_white_list,
     op_accuracy_white_list,
@@ -2289,7 +2289,6 @@ class OpTest(unittest.TestCase):
                 self.checker_name = "new ir checker"
 
             def calculate_output(self):
-                # we only check end2end api when check_dygraph=True
                 self.is_python_api_test = True
                 new_ir_outs = self.op_test._calc_new_ir_output(place)
                 if new_ir_outs is None:
@@ -2454,7 +2453,10 @@ class OpTest(unittest.TestCase):
             dygraph_checker.check()
             dygraph_dygraph_outs = dygraph_checker.outputs
 
-        if self.op_type in new_ir_white_list.new_ir_white_list:
+        if (
+            self.op_type
+            in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
+        ):
             print("Before new ir checker...........")
             from paddle.new_ir_utils import IrChange
 
@@ -3013,7 +3015,10 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                 )
         # get new ir gradient
-        if self.op_type in new_ir_white_list.new_ir_white_list:
+        if (
+            self.op_type
+            in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
+        ):
             print("Before new ir gradient...........")
             from paddle.new_ir_utils import IrChange
 

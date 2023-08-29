@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-new_ir_white_list = [
+new_ir_python_api_grad_white_list = [
     "mean",
 ]
