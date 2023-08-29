@@ -320,7 +320,7 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
   }
 }
 
-void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
+bool FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const phi::Place& place,
                                           Scope* scope) {
   const std::string& op_type = op.Type();
@@ -364,11 +364,12 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       }
     }
   } else if (op_type == "conditional_block") {
-    op.Run(*scope, place);
+    return false;
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Can not static build for op: %s", op_type));
+    VLOG(4) << "Can not static build for op: " << op_type;
+    return false;
   }
+  return true;
 }
 
 phi::DataType GetInputDType(const RuntimeContext& runtime_ctx,

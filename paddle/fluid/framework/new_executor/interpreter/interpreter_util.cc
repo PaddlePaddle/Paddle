@@ -538,10 +538,10 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
   if (static_build) {
-    if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
-      op->Run(*scope, place);
+    bool init_success = FakeInitializeOutputsForOperatorBase(*op, place, scope);
+    if (!init_success || OperatorBasesMustRunInStaticBuild.count(op->Type())) {
+      op->Run(*scope, place);  // Run op when fake init failed.
     }
-    FakeInitializeOutputsForOperatorBase(*op, place, scope);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
   }
