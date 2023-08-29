@@ -27,6 +27,7 @@
 #include "paddle/fluid/ir/drr/pattern_graph.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/type_name.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
