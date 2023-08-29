@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -163,14 +163,15 @@ DEFINE_ADT_UNION(Variable,
 inline bool operator==(const Variable& lhs, const Variable& rhs) {
   return std::visit(
       [](auto&& lhs, auto&& rhs) {
-        if constexpr (std::is_same<decltype(lhs), decltype(rhs)>::value) {
+        if constexpr (std::is_same<std::decay_t<decltype(lhs)>,
+                                   std::decay_t<decltype(rhs)>>::value) {
           return lhs == rhs;
         } else {
           return false;
         }
       },
-      lhs,
-      rhs);
+      lhs.variant(),
+      rhs.variant());
 }
 
 inline bool operator==(const Iterator& lhs, const Iterator& rhs) {

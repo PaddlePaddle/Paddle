@@ -41,16 +41,18 @@ constexpr decltype(auto) operator>>(std::variant<Ts...> const& v,
 template <typename... Ts>
 class Union {
  public:
-  template <typename T>
-  explicit Union(const T& x) : var_(x) {}
+  template <typename... Args>
+  explicit Union(Args&&... args) : variant_(std::forward<Args>(args)...) {}
 
   template <typename... Fs>
   auto operator>>(match<Fs...> const& match) const {
-    return var_ >> match;
+    return variant_ >> match;
   }
 
+  const std::variant<Ts...>& variant() const { return variant_; }
+
  private:
-  std::variant<Ts...> var_;
+  std::variant<Ts...> variant_;
 };
 
 template <typename... Ts>
@@ -68,10 +70,22 @@ class Tuple {
 };
 
 template <typename T>
-using List = std::vector<T>;
+class List final {
+ public:
+  List(const List&) = default;
+  List(List&&) = default;
 
-template <typename T>
-using Box = std::shared_ptr<T>;
+  template <typename... Args>
+  explicit List(Args&&... args)
+      : vector_(std::make_shared<std::vector<T>>(
+            std::vector{std::forward<Args>(args)...})) {}
+
+  std::vector<T>& operator*() const { return *vector_; }
+  std::vector<T>* operator->() const { return vector_.get(); }
+
+ private:
+  std::shared_ptr<std::vector<T>> vector_;
+};
 
 template <typename T>
 class Tagged {

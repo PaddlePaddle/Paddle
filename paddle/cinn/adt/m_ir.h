@@ -43,7 +43,7 @@ using SymbolicDim = tVar<Name>;
 using SSAShadowTensor = Tuple<tSSAShadow<Name>, m_expr::Tensor>;
 
 // Tensor = const Graph::NodeData* | SSAShadowTensor
-using Tensor = Union<m_expr::Tensor, SSAShadowTensor>;
+DEFINE_ADT_UNION(Tensor, m_expr::Tensor, SSAShadowTensor);
 
 // Arg = (Tensor, [SymbolicDim])
 using Arg = Tuple<Tensor, List<SymbolicDim>>;
