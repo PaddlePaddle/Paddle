@@ -662,10 +662,12 @@ void GroupScheduler::AllocateStorage() {
     }
     VLOG(6) << "lower_bound before simplify of " << indice_value << " = "
             << copy_for_lower_bound;
-    copy_for_lower_bound = common::AutoSimplify(copy_for_lower_bound);
+    copy_for_lower_bound =
+        common::AutoSimplify(common::AutoSimplify(copy_for_lower_bound));
     VLOG(6) << "upper_bound before simplify of " << indice_value << " = "
             << copy_for_upper_bound;
-    copy_for_upper_bound = common::AutoSimplify(copy_for_upper_bound);
+    copy_for_upper_bound =
+        common::AutoSimplify(common::AutoSimplify(copy_for_upper_bound));
     VLOG(6) << "lower_bound of " << indice_value << " = "
             << copy_for_lower_bound;
     VLOG(6) << "upper_bound of " << indice_value << " = "
