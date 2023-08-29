@@ -159,7 +159,7 @@ class Uniform(UniformInitializer):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(1)
             >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
             >>> weight_attr = paddle.framework.ParamAttr(
             ...     name="linear_weight",
@@ -171,20 +171,20 @@ class Uniform(UniformInitializer):
             >>> print(linear.weight)
             Parameter containing:
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [[ 0.36583614,  0.02014720],
-             [-0.24039063,  0.40525323]])
+            [[-0.48212373,  0.26492310],
+             [ 0.17605734, -0.45379421]])
 
             >>> print(linear.bias)
             Parameter containing:
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [-0.07599911, -0.09358713])
+            [-0.11236754,  0.46462214])
 
             >>> res = linear(data)
             >>> print(res)
             Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [[[0.04944640, 0.33181331]],
-             [[0.04944640, 0.33181331]],
-             [[0.04944640, 0.33181331]]])
+            [[[-0.41843393,  0.27575102]],
+             [[-0.41843393,  0.27575102]],
+             [[-0.41843393,  0.27575102]]])
     """
 
     def __init__(self, low=-1.0, high=1.0, name=None):
