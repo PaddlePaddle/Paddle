@@ -49,7 +49,7 @@ def convert_load(x):
         """
         return _convert_into_variable(x)
 
-    if isinstance(x, PyLayerMeta):
+    if in_declarative_mode() and isinstance(x, PyLayerMeta):
         return StaticPyLayer(x)
 
     # get the new output of the var
