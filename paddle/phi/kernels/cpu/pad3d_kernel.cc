@@ -407,21 +407,21 @@ void Pad3dKernel(const Context& dev_ctx,
   auto out_dims = out->dims();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  int channels = in_dims[1];
-  int in_depth = in_dims[2];
-  int in_height = in_dims[3];
-  int in_width = in_dims[4];
-  int out_depth = out_dims[2];
-  int out_height = out_dims[3];
-  int out_width = out_dims[4];
+  int channels = static_cast<int>(in_dims[1]);
+  int in_depth = static_cast<int>(in_dims[2]);
+  int in_height = static_cast<int>(in_dims[3]);
+  int in_width = static_cast<int>(in_dims[4]);
+  int out_depth = static_cast<int>(out_dims[2]);
+  int out_height = static_cast<int>(out_dims[3]);
+  int out_width = static_cast<int>(out_dims[4]);
   if (data_format == "NDHWC") {
-    channels = in_dims[4];
-    in_depth = in_dims[1];
-    in_height = in_dims[2];
-    in_width = in_dims[3];
-    out_depth = out_dims[1];
-    out_height = out_dims[2];
-    out_width = out_dims[3];
+    channels = static_cast<int>(in_dims[4]);
+    in_depth = static_cast<int>(in_dims[1]);
+    in_height = static_cast<int>(in_dims[2]);
+    in_width = static_cast<int>(in_dims[3]);
+    out_depth = static_cast<int>(out_dims[1]);
+    out_height = static_cast<int>(out_dims[2]);
+    out_width = static_cast<int>(out_dims[3]);
   }
 
   if (mode == "reflect") {
@@ -489,10 +489,10 @@ void Pad3dKernel(const Context& dev_ctx,
                           "or replicate padding mode."));
   }
 
-  const int pad_left = pads[0];
-  const int pad_top = pads[2];
-  const int pad_front = pads[4];
-  const int num = in_dims[0];
+  const int pad_left = static_cast<int>(pads[0]);
+  const int pad_top = static_cast<int>(pads[2]);
+  const int pad_front = static_cast<int>(pads[4]);
+  const int num = static_cast<int>(in_dims[0]);
   if (data_format == "NCDHW") {
     std::map<std::string,
              void (*)(const T*,

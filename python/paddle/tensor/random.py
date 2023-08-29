@@ -183,10 +183,6 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
 
     """
 
-    assert (
-        not core.is_compiled_with_rocm()
-    ), "multinomial op is not supported on ROCM yet."
-
     if in_dynamic_mode():
         return _C_ops.multinomial(x, num_samples, replacement)
     else:

@@ -1026,7 +1026,7 @@ class _ExecutorCache:
         )
 
         pm = PassManager(3)
-        pm.add_pass('InplacePass')  # apply pass to elimitate dead code
+        pm.add_pass('inplace')  # apply pass to elimitate dead code
         pm.run(program)
 
         default_job = core.Job("default")

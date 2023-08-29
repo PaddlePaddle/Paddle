@@ -21,8 +21,7 @@
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/pass/pass.h"
-
-namespace ir {
+#include "paddle/ir/pass/pass_registry.h"
 
 bool ValueCanBeDeleted(ir::Value value) {
   bool is_persisable = false;
@@ -218,8 +217,12 @@ class InplacePass : public ir::Pass {
   }
 };
 
+namespace ir {
+
 std::unique_ptr<ir::Pass> CreateInplacePass() {
   return std::make_unique<InplacePass>();
 }
 
 }  // namespace ir
+
+REGISTER_PASS(inplace, InplacePass);
