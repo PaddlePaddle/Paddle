@@ -402,8 +402,8 @@ if %day_now% NEQ %day_before% (
 )
 
 echo set -ex > cache.sh
-echo md5_content=$(git submodule status ^|md5sum ^| awk '{print $1}') >> cache.sh
-echo echo ${md5_content}^>md5.txt >> cache.sh
+echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake^|md5sum^|awk '{print $1}')$(git submodule status^|md5sum^|awk '{print $1}')>>cache.sh
+echo echo ${md5_content}^>md5.txt>>cache.sh
 
 %cache_dir%\tools\busybox64.exe cat cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
