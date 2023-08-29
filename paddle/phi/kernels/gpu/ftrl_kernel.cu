@@ -21,5 +21,6 @@
 
 PD_REGISTER_KERNEL(ftrl, GPU, ALL_LAYOUT, phi::FTRLKernel, float) {}
 
-PD_REGISTER_KERNEL(ftrl_sparse, GPU, ALL_LAYOUT, phi::FTRLSparseKernel, float) {
-}
+// PD_REGISTER_KERNEL(ftrl_sparse, GPU, ALL_LAYOUT, phi::FTRLSparseKernel,
+// float) {
+// }
