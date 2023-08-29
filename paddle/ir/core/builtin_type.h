@@ -55,15 +55,12 @@ class IR_API VectorType : public Type {
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-class DenseTensorType : public ir::Type,  // Not inherite any more
-                        public ir::Type::TypeBase<DenseTensorType,
+class DenseTensorType : public ir::Type::TypeBase<DenseTensorType,
+                                                  ir::Type,
                                                   DenseTensorTypeStorage,
                                                   ir::ShapedTypeInterface> {
  public:
   using Base::Base;
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
 
   const ir::Type &dtype() const;
 

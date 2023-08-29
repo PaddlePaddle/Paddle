@@ -16,17 +16,19 @@
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type_storage.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/builtin_type_interfaces.h"
 #include "paddle/ir/core/type.h"
 
 namespace paddle {
 namespace dialect {
 
 using DenseTensorType = ir::DenseTensorType;
-class SelectedRowsType : public ir::Type {
+class SelectedRowsType : public ir::Type::TypeBase<SelectedRowsType,
+                                                   ir::Type,
+                                                   SelectedRowsTypeStorage,
+                                                   ir::ShapedTypeInterface> {
  public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(SelectedRowsType, SelectedRowsTypeStorage);
+  using Base::Base;
 
   const ir::Type &dtype() const;
 

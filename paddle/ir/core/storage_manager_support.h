@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/type.h"
 #include "paddle/ir/core/type_base.h"
 #include "paddle/ir/core/type_id.h"
 
@@ -48,19 +49,26 @@ inline bool hasTrait(TypeId traitID) {
 ///
 
 template <typename ConcreteT,
+          typename BaseT,
           typename StorageT,
           typename ManagerT,
           class... TraitOrInterface>  // Traits or Interface
-class StorageHelperBase {
+class StorageHelperBase : public BaseT {
  public:
-  using Base =
-      StorageHelperBase<ConcreteT, StorageT, ManagerT, TraitOrInterface...>;
+  using BaseT::BaseT;
+
+  using Base = StorageHelperBase<ConcreteT,
+                                 BaseT,
+                                 StorageT,
+                                 ManagerT,
+                                 TraitOrInterface...>;
   using HasTraitFn = bool (*)(TypeId);
-  using Stroage = StorageT;
+  using Storage = StorageT;
 
   /// Utility for easy access to the storage instance.
-  const Stroage *stroage() const {
-    return static_cast<Stroage *>(this->stroage_);
+  const Storage *storage() const {
+    return static_cast<const Storage *>(this->storage_);
+    return static_cast<const Storage *>(this->storage_);
   }
 
   /// Get the identifier for the concrete type.

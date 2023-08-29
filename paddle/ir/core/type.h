@@ -33,9 +33,11 @@ class Dialect;
 class IR_API Type {
  public:
   template <typename ConcreteType,
+            typename BaseType,
             typename StorageType,
-            class... TraitOrInterface>  // Traits or Interface
+            class... TraitOrInterface>
   using TypeBase = detail::StorageHelperBase<ConcreteType,
+                                             BaseType,
                                              StorageType,
                                              ir::TypeManager,
                                              TraitOrInterface...>;
