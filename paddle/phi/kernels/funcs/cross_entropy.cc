@@ -101,8 +101,8 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const int ignore_index,
     const int axis_dim) {
   if (softLabel) {
-    const int batch_size = prob->dims()[0];
-    const int num_classes = prob->dims()[1];
+    const int batch_size = static_cast<const int>(prob->dims()[0]);
+    const int num_classes = static_cast<const int>(prob->dims()[1]);
     const int num_remain = num_classes / axis_dim;
 
     Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);

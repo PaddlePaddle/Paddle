@@ -43,7 +43,7 @@ RpcAgent::RpcAgent(std::string name, std::vector<WorkerInfo> infos) {
   PADDLE_ENFORCE_EQ(
       server_.AddService(rpc_service_.get(), brpc::SERVER_DOESNT_OWN_SERVICE),
       0,
-      platform::errors::Fatal("Fail to add service: %s", name));
+      platform::errors::Fatal("Fail to add service: %s", name_));
 }
 
 int RpcAgent::StartWorker() {
