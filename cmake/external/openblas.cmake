@@ -18,7 +18,6 @@ set(CBLAS_PREFIX_DIR ${THIRD_PARTY_PATH}/openblas)
 set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 set(CBLAS_TAG v0.3.7)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
 
 # Why use v0.3.18?  The IDG business line encountered a random openblas error,
 # which can be resolved after upgrading openblas.
@@ -94,7 +93,7 @@ if(NOT WIN32)
     PREFIX ${CBLAS_PREFIX_DIR}
     INSTALL_DIR ${CBLAS_INSTALL_DIR}
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND make ${ARM_ARGS} -j${NPROC} ${COMMON_ARGS} ${OPTIONAL_ARGS}
+    BUILD_COMMAND make ${ARM_ARGS} -j${NPROC} ${COMMON_ARGS} ${OPTIONAL_ARGS} >/dev/null
     INSTALL_COMMAND make install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
