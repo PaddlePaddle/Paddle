@@ -29,52 +29,69 @@
 
 namespace phi {
 
+void Device::CheckInitialized() {
+  std::call_once(initialized_, [&]() { this->impl_->InitDevice(dev_id_); });
+}
+
+Device::~Device() { impl_->DeInitDevice(dev_id_); }
+
 void Device::CreateStream(stream::Stream* stream,
                           const stream::Stream::Priority& priority,
                           const stream::Stream::Flag& flag) {
+  CheckInitialized();
   impl_->CreateStream(dev_id_, stream, priority, flag);
 }
 
 void Device::DestroyStream(stream::Stream* stream) {
+  CheckInitialized();
   impl_->DestroyStream(dev_id_, stream);
 }
 
 void Device::SynchronizeStream(const stream::Stream* stream) {
+  CheckInitialized();
   impl_->SynchronizeStream(dev_id_, stream);
 }
 
 bool Device::QueryStream(const stream::Stream* stream) {
+  CheckInitialized();
   return impl_->QueryStream(dev_id_, stream);
 }
 
 void Device::AddCallback(stream::Stream* stream,
                          stream::Stream::Callback* callback) {
+  CheckInitialized();
   impl_->AddCallback(dev_id_, stream, callback);
 }
 
 void Device::CreateEvent(event::Event* event, event::Event::Flag flags) {
+  CheckInitialized();
   impl_->CreateEvent(dev_id_, event, flags);
 }
 
 void Device::DestroyEvent(event::Event* event) {
+  CheckInitialized();
   impl_->DestroyEvent(dev_id_, event);
 }
 
 void Device::RecordEvent(const event::Event* event,
                          const stream::Stream* stream) {
+  CheckInitialized();
   impl_->RecordEvent(dev_id_, event, stream);
 }
 
 void Device::SynchronizeEvent(const event::Event* event) {
+  CheckInitialized();
   impl_->SynchronizeEvent(dev_id_, event);
 }
 
 bool Device::QueryEvent(const event::Event* event) {
+  CheckInitialized();
   return impl_->QueryEvent(dev_id_, event);
 }
 
 void Device::StreamWaitEvent(const stream::Stream* stream,
                              const event::Event* event) {
+  CheckInitialized();
   impl_->StreamWaitEvent(dev_id_, stream, event);
 }
 
@@ -82,6 +99,7 @@ void Device::MemoryCopyH2D(void* dst,
                            const void* src,
                            size_t size,
                            const stream::Stream* stream) {
+  CheckInitialized();
   impl_->MemoryCopyH2D(dev_id_, dst, src, size, stream);
 }
 
@@ -89,6 +107,7 @@ void Device::MemoryCopyD2H(void* dst,
                            const void* src,
                            size_t size,
                            const stream::Stream* stream) {
+  CheckInitialized();
   impl_->MemoryCopyD2H(dev_id_, dst, src, size, stream);
 }
 
@@ -96,6 +115,7 @@ void Device::MemoryCopyD2D(void* dst,
                            const void* src,
                            size_t size,
                            const stream::Stream* stream) {
+  CheckInitialized();
   impl_->MemoryCopyD2D(dev_id_, dst, src, size, stream);
 }
 
@@ -104,34 +124,42 @@ void Device::MemoryCopyP2P(const Place& dst_place,
                            const void* src,
                            size_t size,
                            const stream::Stream* stream) {
+  CheckInitialized();
   impl_->MemoryCopyP2P(dst_place, dst, dev_id_, src, size, stream);
 }
 
 void* Device::MemoryAllocate(size_t size) {
+  CheckInitialized();
   return impl_->MemoryAllocate(dev_id_, size);
 }
 
 void Device::MemoryDeallocate(void* ptr, size_t size) {
+  CheckInitialized();
   impl_->MemoryDeallocate(dev_id_, ptr, size);
 }
 
 void* Device::MemoryAllocateHost(size_t size) {
+  CheckInitialized();
   return impl_->MemoryAllocateHost(dev_id_, size);
 }
 
 void Device::MemoryDeallocateHost(void* ptr, size_t size) {
+  CheckInitialized();
   impl_->MemoryDeallocateHost(dev_id_, ptr, size);
 }
 
 void* Device::MemoryAllocateUnified(size_t size) {
+  CheckInitialized();
   return impl_->MemoryAllocateUnified(dev_id_, size);
 }
 
 void Device::MemoryDeallocateUnified(void* ptr, size_t size) {
+  CheckInitialized();
   impl_->MemoryDeallocateUnified(dev_id_, ptr, size);
 }
 
 void Device::MemorySet(void* ptr, uint8_t value, size_t size) {
+  CheckInitialized();
   impl_->MemorySet(dev_id_, ptr, value, size);
 }
 
@@ -142,6 +170,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                        const T* x,
                        float beta,
                        T* y) {
+  CheckInitialized();
   impl_->BlasAXPBY(dev_id_,
                    stream,
                    phi::CppTypeToDataType<T>::Type(),
@@ -370,20 +399,6 @@ void DeviceManager::SynchronizeDevice(const Place& place) {
   dev_impl->SynchronizeDevice(device_id);
 }
 
-void DeviceManager::InitDevice(const Place& place) {
-  auto device_type = place.GetDeviceType();
-  auto device_id = place.GetDeviceId();
-  auto dev_impl = GetDeviceInterfaceWithType(device_type);
-  dev_impl->InitDevice(device_id);
-}
-
-void DeviceManager::DeInitDevice(const Place& place) {
-  auto device_type = place.GetDeviceType();
-  auto device_id = place.GetDeviceId();
-  auto dev_impl = GetDeviceInterfaceWithType(device_type);
-  dev_impl->DeInitDevice(device_id);
-}
-
 void DeviceManager::SetDevice(const std::string& device_type,
                               size_t device_id) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
@@ -465,21 +480,24 @@ std::vector<size_t> DeviceManager::GetDeviceList(
 
 std::vector<size_t> DeviceManager::GetSelectedDeviceList(
     const std::string& device_type) {
-  std::vector<size_t> devices;
-  std::string FLAGS = "FLAGS_selected_" + device_type + "s";
-  auto FLAGS_selected_devices = getenv(FLAGS.c_str());
-  if (FLAGS_selected_devices) {
-    auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
-    for (auto id : devices_str) {
-      devices.push_back(atoi(id.c_str()));
-    }
-  } else {
-    int count = DeviceManager::GetDeviceCount(device_type);
-    for (int i = 0; i < count; ++i) {
-      devices.push_back(i);
+  static std::unordered_map<std::string, std::vector<size_t>> device_list_map;
+  if (device_list_map.find(device_type) == device_list_map.end()) {
+    std::vector<size_t>& device_list = device_list_map[device_type];
+    std::string FLAGS = "FLAGS_selected_" + device_type + "s";
+    auto FLAGS_selected_devices = getenv(FLAGS.c_str());
+    if (FLAGS_selected_devices) {
+      auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
+      for (auto id : devices_str) {
+        device_list.push_back(atoi(id.c_str()));
+      }
+    } else {
+      int count = static_cast<int>(DeviceManager::GetDeviceCount(device_type));
+      for (int i = 0; i < count; ++i) {
+        device_list.push_back(i);
+      }
     }
   }
-  return devices;
+  return device_list_map[device_type];
 }
 
 void DeviceManager::CCLDestroyComm(const std::string& device_type,
@@ -699,7 +717,8 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
       std::string filename(ptr->d_name);
       if (std::regex_match(
               filename.begin(), filename.end(), results, express)) {
-        libraries.push_back(library_dir + '/' + filename);
+        libraries.push_back(
+            std::string(library_dir).append("/").append(filename));
         VLOG(4) << "Found lib: " << libraries.back();
       }
     }

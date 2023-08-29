@@ -330,6 +330,7 @@
   kernel :
     func : bitwise_and
     backend : x
+  inplace: (x -> out)
 
 - op : bitwise_not
   args : (Tensor x)
@@ -339,6 +340,7 @@
   kernel :
     func : bitwise_not
     backend : x
+  inplace: (x -> out)
 
 - op : bitwise_or
   args : (Tensor x, Tensor y)
@@ -348,6 +350,7 @@
   kernel :
     func : bitwise_or
     backend : x
+  inplace: (x -> out)
 
 - op : bitwise_xor
   args : (Tensor x, Tensor y)
@@ -357,6 +360,7 @@
   kernel :
     func : bitwise_xor
     backend : x
+  inplace: (x -> out)
 
 - op : bmm
   args : (Tensor x, Tensor y)
@@ -618,6 +622,7 @@
     func : UnchangedInferMetaCheckAxis
   kernel :
     func : cumprod
+  inplace: (x -> out)
   backward : cumprod_grad
 
 - op : cumsum
@@ -628,17 +633,18 @@
   kernel :
     func : cumsum
     data_type : x
+  inplace: (x -> out)
   backward : cumsum_grad
 
 - op : data
-  args : (int64_t index, DataType dtype, str name, Place place)
+  args : (str name, IntArray shape, DataType dtype, Place place)
   output : Tensor(out)
   infer_meta :
-    func : FeedWithPlaceInferMeta
-    param : [index, dtype]
+    func : DataInferMeta
+    param : [name, shape, dtype]
   kernel:
     func : data
-    param : [index, dtype]
+    param : [name, shape, dtype]
     data_type : dtype
     backend : place
 
@@ -1514,6 +1520,7 @@
     func : logical_and
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logical_not
   args : (Tensor x)
@@ -1524,6 +1531,7 @@
     func : logical_not
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logical_or
   args : (Tensor x, Tensor y)
@@ -1534,6 +1542,7 @@
     func : logical_or
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logical_xor
   args : (Tensor x, Tensor y)
@@ -1544,6 +1553,7 @@
     func : logical_xor
     data_type : x
     backend : x
+  inplace: (x -> out)
 
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
@@ -1607,14 +1617,14 @@
   backward : margin_cross_entropy_grad
 
 - op : masked_multihead_attention_
-  args : (Tensor x, Tensor cache_kv, Tensor src_mask, Tensor cum_offsets, Tensor sequence_lengths, Tensor rotary_tensor, Tensor beam_cache_offset, Tensor qkv_out_scale, Tensor out_shift, Tensor out_smooth, int seq_len, int rotary_emb_dims, bool use_neox_rotary_style=false, float out_scale=-1, int quant_round_type=1, float quant_max_bound=127.0, float quant_min_bound=-127.0)
+  args : (Tensor x, Tensor cache_kv, Tensor bias, Tensor src_mask, Tensor cum_offsets, Tensor sequence_lengths, Tensor rotary_tensor, Tensor beam_cache_offset, Tensor qkv_out_scale, Tensor out_shift, Tensor out_smooth, int seq_len, int rotary_emb_dims, bool use_neox_rotary_style=false, str compute_dtype = "default", float out_scale=-1, int quant_round_type=1, float quant_max_bound=127.0, float quant_min_bound=-127.0)
   output : Tensor(out), Tensor(cache_kv_out), Tensor(beam_cache_offset_out)
   infer_meta :
     func : MaskedMultiheadAttentionInferMeta
   kernel :
     func : masked_multihead_attention
-    data_type : cache_kv
-  optional : src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth
+    data_type : x
+  optional : bias, src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth
   inplace : (cache_kv -> cache_kv_out), (beam_cache_offset -> beam_cache_offset_out)
 
 - op : masked_select
@@ -2054,12 +2064,13 @@
 
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : renorm
+  inplace: (x -> out)
   backward : renorm_grad
 
 - op : reverse
@@ -2779,11 +2790,12 @@
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : WhereInferMeta
   kernel :
     func : where
+  inplace: (x -> out)
   backward : where_grad
 
 - op : yolo_box
