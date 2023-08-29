@@ -1,6 +1,8 @@
 # file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 # string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+add_subdirectory(spmd_rules)
+
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH multi cards and timeout
