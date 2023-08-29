@@ -626,3 +626,5 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
