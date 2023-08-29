@@ -1507,8 +1507,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     dtype_flag = False
     if dtype is not None:
-        dtype_flag = True
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        if paddle.ir.core._use_new_ir_api():
+            dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
+        else:
+            dtype_flag = True
+            dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)

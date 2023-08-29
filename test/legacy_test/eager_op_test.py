@@ -1313,7 +1313,6 @@ class OpTest(unittest.TestCase):
         ir_program = paddle.static.Program()
         with paddle.static.program_guard(ir_program):
             # prepare inps attributes feed
-            print("ir_program = ", ir_program)
             (
                 static_inputs,
                 attrs,
