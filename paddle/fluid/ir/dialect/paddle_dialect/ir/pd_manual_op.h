@@ -24,6 +24,7 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/infermeta.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/builder.h"
