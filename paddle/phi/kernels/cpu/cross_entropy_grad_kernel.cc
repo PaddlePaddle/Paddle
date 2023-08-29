@@ -43,7 +43,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
 
   const int rank = logit_grad->dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logit_grad->dims()[axis_v];
+  int axis_dim = static_cast<int>(logit_grad->dims()[axis_v]);
   PADDLE_ENFORCE_GT(
       axis_dim,
       0,
