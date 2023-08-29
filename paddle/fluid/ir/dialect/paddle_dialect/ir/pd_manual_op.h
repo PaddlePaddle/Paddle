@@ -51,6 +51,47 @@ class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class AddN_Op : public ir::Op<AddN_Op,
+                              paddle::dialect::OpYamlInfoInterface,
+                              paddle::dialect::InferMetaInterface,
+                              paddle::dialect::InplaceTrait> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.add_n_"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult inputs_);
+
+  void Verify();
+  ir::Value inputs() { return operand_source(0); }
+  ir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
+class AddNWithKernelOp : public ir::Op<AddNWithKernelOp,
+                                       paddle::dialect::OpYamlInfoInterface,
+                                       paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.add_n_with_kernel"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult inputs_);
+
+  void Verify();
+  ir::Value inputs() { return operand_source(0); }
+  ir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
  public:
   using Op::Op;
