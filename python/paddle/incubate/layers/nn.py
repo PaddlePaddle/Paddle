@@ -1344,7 +1344,7 @@ def fused_bn_add_act(
             >>> paddle.enable_static()
 
             >>> def build_program(main_program, startup_program):
-            ...     with paddle.program_guard(main_program, startup_program):
+            ...     with paddle.static.program_guard(main_program, startup_program):
             ...         x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
             ...         y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
             ...         conv1_1 = paddle.static.nn.conv2d(
@@ -1387,8 +1387,8 @@ def fused_bn_add_act(
             >>> batch_size = 16
             >>> support_gpu = paddle.is_compiled_with_cuda()
             >>> if support_gpu:
-            ...     main_program = paddle.Program()
-            ...     startup_program = paddle.Program()
+            ...     main_program = paddle.static.Program()
+            ...     startup_program = paddle.static.Program()
             ...     place = paddle.CUDAPlace(0)
             ...     x, y, loss = build_program(main_program, startup_program)
             ...
