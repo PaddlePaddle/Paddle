@@ -187,7 +187,7 @@ def append_fetch_ops(
         )
 
 
-def normalize_program(program, feed_vars, fetch_vars, skip_prune_program=False):
+def normalize_program(program, feed_vars, fetch_vars, **kwargs):
     """
 
     Normalize/Optimize a program according to feed_vars and fetch_vars.
@@ -196,6 +196,8 @@ def normalize_program(program, feed_vars, fetch_vars, skip_prune_program=False):
         program(Program): Specify a program you want to optimize.
         feed_vars(Tensor | list[Tensor]): Variables needed by inference.
         fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
+        kwargs: Supported keys including ``skip_prune_program``.
+            - skip_prune_program(bool): whether to skip prunning program. Defaults to False.
 
     Returns:
         Program: Normalized/Optimized program.
@@ -277,6 +279,8 @@ def normalize_program(program, feed_vars, fetch_vars, skip_prune_program=False):
     copy_program.desc.flush()
 
     feed_var_names = [var.name for var in feed_vars]
+
+    skip_prune_program = kwargs.get('skip_prune_program', False)
     if not skip_prune_program:
         copy_program = copy_program._prune_with_input(
             feeded_var_names=feed_var_names, targets=fetch_vars
@@ -570,7 +574,10 @@ def save_inference_model(
     program = _get_valid_program(kwargs.get('program', None))
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(
-        program, feed_vars, fetch_vars, kwargs.get('skip_prune_program', False)
+        program,
+        feed_vars,
+        fetch_vars,
+        skip_prune_program=kwargs.get('skip_prune_program', False),
     )
 
     # serialize and save program
