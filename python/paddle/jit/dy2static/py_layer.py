@@ -52,16 +52,16 @@ class StaticPyLayerContext:
             
         return out_list
         
-
+    # TODO(MarioLulab): support not_inplace
     def mark_not_inplace(self, *args):
-        # self.not_inplace_tensors = args
         raise NotImplementedError()
+    
+    # TODO(MarioLulab): support non_differentiable   
     def mark_non_differentiable(self, *args):
-        # self.non_differentiable = args
         raise NotImplementedError()
 
+    # TODO(MarioLulab): support materialize_grads
     def set_materialize_grads(self, value: bool):
-        # self.materialize_grads = value
         raise NotImplementedError()
 
 

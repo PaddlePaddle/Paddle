@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
 
 import numpy as np
-import functools
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
+
 np.random.seed(123)
 
 
@@ -283,7 +284,7 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             out = out_i + out_a
             loss = paddle.exp(out)
             append_backward(loss)
-            
+
         place = (
             fluid.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -295,26 +296,32 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             if feed_i < 5:
                 expected_out_i = feed_i
                 expected_out_a = expected_a + expected_a
-                expected_out = expected_out_a + expected_out_i 
+                expected_out = expected_out_a + expected_out_i
                 expected_out_grad = np.exp(expected_out)
             else:
                 expected_out_i = feed_i
                 expected_out_a = expected_a - expected_a
                 expected_out = expected_out_a + expected_out_i
                 expected_out_grad = np.exp(expected_out)
-            
+
             if expected_out_grad < 5:
                 expected_a_grad = -1 * expected_out_grad
                 expected_i_grad = 3 * expected_out_grad + 2 * expected_a_grad
             else:
                 expected_a_grad = expected_out_grad * expected_out_grad
                 expected_i_grad = 3 * expected_out_grad + 2 * expected_a_grad
-                
-            
+
             ret = exe.run(
                 main_program,
                 feed={'i': np.full((1), feed_i, dtype=np.float32)},
-                fetch_list=[out.name, out.grad_name, out_i.grad_name, out_a.grad_name, a.grad_name, i.grad_name],
+                fetch_list=[
+                    out.name,
+                    out.grad_name,
+                    out_i.grad_name,
+                    out_a.grad_name,
+                    a.grad_name,
+                    i.grad_name,
+                ],
             )
             np.testing.assert_allclose(
                 np.asarray(ret[0]), expected_out, rtol=1e-05
@@ -337,7 +344,7 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
 
 
 class TestStaticPyLayerBackward(unittest.TestCase):
-    def test_identity(self):
+    def test_identity_backward(self):
         paddle.enable_static()
 
         def forward_fn(x):
@@ -345,10 +352,10 @@ class TestStaticPyLayerBackward(unittest.TestCase):
 
         def backward_fn(dy):
             return dy
-                
+
         main_program = Program()
         start_program = Program()
-        input_shape = (2,4)
+        input_shape = (2, 4)
         with program_guard(main_program, start_program):
             data = paddle.static.data(
                 name="X", shape=input_shape, dtype="float32"
@@ -372,9 +379,9 @@ class TestStaticPyLayerBackward(unittest.TestCase):
             feed={
                 'X': randn_x,
             },
-            fetch_list=[out.name, data.grad_name]
+            fetch_list=[out.name, data.grad_name],
         )
-        
+
         np.testing.assert_allclose(
             np.asarray(ret),
             randn_x,
@@ -383,9 +390,71 @@ class TestStaticPyLayerBackward(unittest.TestCase):
 
         np.testing.assert_allclose(
             np.asarray(x_grad),
-            np.full(input_shape, 1.0 / functools.reduce(lambda x, y : x*y, input_shape), dtype=np.float32),
+            np.full(
+                input_shape,
+                1.0 / functools.reduce(lambda x, y: x * y, input_shape),
+                dtype=np.float32,
+            ),
             rtol=1e-05,
         )
-        
+
+    def test_static_pylayer_backward(self):
+        '''
+        pseudocode:
+
+        y = 3 * x
+        dx = tanh(dy)
+        '''
+
+        paddle.enable_static()
+
+        def forward_fn(x):
+            return 3 * x
+
+        def backward_fn(dy):
+            return paddle.tanh(dy)
+
+        main_program = Program()
+        start_program = Program()
+        input_shape = (3, 4)
+        with program_guard(main_program, start_program):
+            data = paddle.full(
+                shape=input_shape, dtype='float32', fill_value=-2.0
+            )
+            data.stop_gradient = False
+            out = paddle.static.nn.static_pylayer(
+                forward_fn, [data], backward_fn
+            )
+            loss = paddle.mean(out)
+            append_backward(loss)
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+        ret, x_grad = exe.run(
+            main_program, fetch_list=[out.name, data.grad_name]
+        )
+        np.testing.assert_allclose(
+            np.asarray(ret),
+            np.full(input_shape, -6.0, dtype=np.float32),
+            rtol=1e-05,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(x_grad),
+            np.full(
+                input_shape,
+                np.tanh(
+                    1.0 / functools.reduce(lambda x, y: x * y, input_shape)
+                ),
+                dtype=np.float32,
+            ),
+            rtol=1e-05,
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
