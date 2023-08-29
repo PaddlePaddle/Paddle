@@ -65,6 +65,9 @@ DenseTensor::DenseTensor(const DenseTensor& other) {
 }
 
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
+  if (this == &other) {
+    return *this;
+  }
   meta_ = other.meta();
   holder_ = other.holder_;
   storage_properties_ =

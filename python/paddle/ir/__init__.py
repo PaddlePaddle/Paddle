@@ -28,6 +28,7 @@ from paddle.fluid.libpaddle.ir import (
     reset_insertion_point_to_start,
     reset_insertion_point_to_end,
     check_unregistered_ops,
+    register_paddle_dialect,
     PassManager,
 )  # noqa: F401
 

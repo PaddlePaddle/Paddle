@@ -45,13 +45,15 @@ void StreamSafeCustomDeviceAllocation::RecordStream(
 
   auto it = outstanding_event_map_.find(stream);
   if (it == outstanding_event_map_.end()) {
-    outstanding_event_map_[stream].Init(place());
+    outstanding_event_map_.insert(
+        {stream, std::make_shared<phi::event::Event>()});
+    outstanding_event_map_[stream]->Init(place());
     VLOG(9) << "Create a new event "
-            << outstanding_event_map_[stream].raw_event();
+            << outstanding_event_map_[stream]->raw_event();
     auto stream_wrapper = phi::stream::Stream(place(), stream);
-    VLOG(8) << "Record event " << it->second.raw_event() << " to stream "
-            << stream;
-    outstanding_event_map_[stream].Record(&stream_wrapper);
+    VLOG(8) << "Record event " << outstanding_event_map_[stream]->raw_event()
+            << " to stream " << stream;
+    outstanding_event_map_[stream]->Record(&stream_wrapper);
   }
 }
 
@@ -65,14 +67,16 @@ void StreamSafeCustomDeviceAllocation::MarkAsWillBeFreed() {
             outstanding_event_map_.end()) {
       std::call_once(once_flag_,
                      [this] { phi::DeviceManager::SetDevice(place_); });
-      outstanding_event_map_[owning_stream_].Init(place_);
+      outstanding_event_map_.insert(
+          {owning_stream_, std::make_shared<phi::event::Event>()});
+      outstanding_event_map_[owning_stream_]->Init(place_);
       VLOG(9) << "Create a new event "
-              << outstanding_event_map_[owning_stream_].raw_event();
+              << outstanding_event_map_[owning_stream_]->raw_event();
       auto stream_wrapper = phi::stream::Stream(place_, owning_stream_);
       VLOG(8) << "Record event "
-              << outstanding_event_map_[owning_stream_].raw_event()
+              << outstanding_event_map_[owning_stream_]->raw_event()
               << " to stream " << owning_stream_;
-      outstanding_event_map_[owning_stream_].Record(&stream_wrapper);
+      outstanding_event_map_[owning_stream_]->Record(&stream_wrapper);
     }
   }
 }
@@ -87,15 +91,15 @@ bool StreamSafeCustomDeviceAllocation::CanBeFreed() {
        it != outstanding_event_map_.end();
        ++it) {
     auto& event = it->second;
-    if (!event.Query()) {
-      VLOG(9) << "Event " << event.raw_event() << " for " << ptr()
+    if (!event->Query()) {
+      VLOG(9) << "Event " << event->raw_event() << " for " << ptr()
               << " is not completed";
       return false;
     }
-    VLOG(8) << "Destroy event " << event.raw_event();
-    outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
-    event.Destroy();
+    VLOG(8) << "Destroy event " << event->raw_event();
+    event->Destroy();
   }
+  outstanding_event_map_.clear();
   return true;
 }
 
@@ -117,7 +121,7 @@ StreamSafeCustomDeviceAllocator::StreamSafeCustomDeviceAllocator(
       place_(std::move(place)),
       default_stream_(std::move(default_stream)) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
-  allocator_map_[place].emplace_back(this);
+  allocator_map_[place_].emplace_back(this);
 }
 
 StreamSafeCustomDeviceAllocator::~StreamSafeCustomDeviceAllocator() {
