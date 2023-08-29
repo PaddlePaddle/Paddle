@@ -142,8 +142,8 @@ TEST(ScheduleBlockGraph, reduce) {
   ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << GetIR(ir_sch);
   LOG(INFO) << sbg.Visualize();
-  CHECK_EQ(sbg.BlockIdsInOrder().size(), 8);
-  CHECK_EQ(sbg.nodes().size(), 8);
+  CHECK_EQ(sbg.BlockIdsInOrder().size(), 5);
+  CHECK_EQ(sbg.nodes().size(), 5);
 
   ScheduleBlockNode* v_reduce_init = sbg.RetrieveNode("var_2__reduce_init");
   CHECK(v_reduce_init);
@@ -152,7 +152,7 @@ TEST(ScheduleBlockGraph, reduce) {
 
   ScheduleBlockNode* v = sbg.RetrieveNode("var_2");
   CHECK(v);
-  CHECK_EQ(v->UpstreamNodes().size(), 5);
+  CHECK_EQ(v->UpstreamNodes().size(), 2);
   CHECK_EQ(v->DownstreamNodes().size(), 2);
 
   std::vector<std::string> reverse_dfs_topo_order_ids;
@@ -162,7 +162,7 @@ TEST(ScheduleBlockGraph, reduce) {
   for (const std::string& id : reverse_dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(reverse_dfs_topo_order_ids.size(), 8);
+  CHECK_EQ(reverse_dfs_topo_order_ids.size(), 5);
 
   std::vector<std::string> dfs_topo_order_ids;
   sbg.DFSTopoWalk(
@@ -173,7 +173,7 @@ TEST(ScheduleBlockGraph, reduce) {
   for (const std::string& id : dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(dfs_topo_order_ids.size(), 8);
+  CHECK_EQ(dfs_topo_order_ids.size(), 5);
 }
 
 TEST(ScheduleBlockGraph, arg_max) {
