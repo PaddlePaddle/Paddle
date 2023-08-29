@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <thread>
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
@@ -46,7 +46,8 @@ DEFINE_string(cinn_nvcc_cmd_path,
               "Setting nvcc default path!");
 
 DEFINE_int32(cinn_parallel_compile_thread,
-             Int32FromEnv("FLAGS_cinn_parallel_compile_thread", 16),
+             Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
+                          (std::thread::hardware_concurrency() >> 1)),
              "How much thread the parallel compile used.");
 
 DEFINE_bool(cinn_use_op_fusion,

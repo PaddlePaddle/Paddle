@@ -454,8 +454,9 @@ class TestSeResnet(unittest.TestCase):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                [img],
+                                [img, label],
                                 output_spec=[pred],
+                                input_names_after_prune=[img.name],
                             )
                         else:
                             paddle.save(
@@ -493,7 +494,7 @@ class TestSeResnet(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,

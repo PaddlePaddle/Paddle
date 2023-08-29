@@ -159,9 +159,9 @@ def train(
                 )
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None and not pure_bf16:
-                        fluid.io.save_inference_model(
+                        paddle.static.io.save_inference_model(
                             save_dirname,
-                            ['firstw', 'secondw', 'thirdw', 'forthw'],
+                            [first_word, second_word, third_word, forth_word],
                             [predict_word],
                             exe,
                         )
@@ -205,15 +205,16 @@ def infer(target, save_dirname=None):
     exe = fluid.Executor(place)
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
+
         [
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
@@ -272,7 +273,8 @@ def infer(target, save_dirname=None):
         infer_inputs = [to_infer_tensor(t) for t in infer_inputs]
 
         infer_config = fluid.core.NativeConfig()
-        infer_config.model_dir = save_dirname
+        infer_config.prog_file = save_dirname + ".pdmodel"
+        infer_config.param_file = save_dirname + ".pdiparams"
         if target == "cuda":
             infer_config.use_gpu = True
             infer_config.device = 0
@@ -300,7 +302,7 @@ def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):
 
     temp_dir = tempfile.TemporaryDirectory()
     if not is_parallel:
-        save_dirname = os.path.join(temp_dir.name, "word2vec.inference.model")
+        save_dirname = os.path.join(temp_dir.name, "word2vec_inference_model")
     else:
         save_dirname = None
 

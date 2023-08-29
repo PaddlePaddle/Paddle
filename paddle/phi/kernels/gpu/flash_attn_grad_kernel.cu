@@ -70,7 +70,6 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       phi::errors::InvalidArgument("The head_dim is expected to be either 32, "
                                    "64, or 128, but recieved %d.",
                                    head_size));
-
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
   uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
@@ -88,8 +87,13 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
   bool fa_zero_tensors = false;
 
   uint64_t workspace_size;
+
+  int64_t q_size = total_q * num_heads * head_size;
+  DenseTensor scaled_q = Empty<T>(ctx, {total_q, num_heads, head_size});
+  ComputeScaleQ(ctx, q_size, scale, q.data<T>(), scaled_q.data<T>());
+
   bool succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
-      static_cast<const void*>(q.data()),
+      static_cast<const void*>(scaled_q.data<T>()),
       static_cast<const void*>(k.data()),
       static_cast<const void*>(v.data()),
       static_cast<void*>(dq->data()),
@@ -124,7 +128,6 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       mask_dims.data() ? mask_dims.data() : nullptr,
       nullptr);
   CheckFlashAttnStatus(succ);
-
   DenseTensor workspace;
   if (workspace_size > 0) {
     workspace = Empty<float>(
@@ -132,7 +135,7 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
   }
 
   succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
-      static_cast<const void*>(q.data()),
+      static_cast<const void*>(scaled_q.data<T>()),
       static_cast<const void*>(k.data()),
       static_cast<const void*>(v.data()),
       static_cast<void*>(dq->data()),
@@ -168,7 +171,6 @@ void FlashAttnUnpaddedGradImpl(const Context& ctx,
       nullptr);
   CheckFlashAttnStatus(succ);
 
-  int64_t q_size = total_q * num_heads * head_size;
   ComputeScaleQ(ctx, q_size, scale, dq->data<T>(), dq->data<T>());
 #else
   RaiseNotSupportedError();

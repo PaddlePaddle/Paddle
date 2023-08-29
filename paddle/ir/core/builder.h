@@ -29,6 +29,7 @@ class BFloat16Type;
 class Float32Type;
 class Float64Type;
 class Int16Type;
+class IndexType;
 class BoolType;
 class Complex64Type;
 class Complex128Type;
@@ -114,6 +115,7 @@ class Builder {
   IR_API Int8Type int8_type();
   IR_API VectorType vec_type(const std::vector<Type> &);
   IR_API BFloat16Type bfloat16_type();
+  IR_API IndexType index_type();
   IR_API Float32Type float32_type();
   IR_API Float64Type float64_type();
   IR_API Int16Type int16_type();

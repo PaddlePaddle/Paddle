@@ -21,7 +21,6 @@ from .framework import (
     default_main_program,
     _current_expected_place,
 )
-from .lazy_init import lazy_init_helper
 from .framework import program_guard
 import numpy as np
 from .core import VarDesc

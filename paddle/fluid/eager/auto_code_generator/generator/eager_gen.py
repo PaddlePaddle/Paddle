@@ -1233,6 +1233,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             'end',
             'stop',
             'perm',
+            'paddings',
         ]
         heavily_sensitive_attr = ['data_format', 'data_layout']
         layout_autotune_attr = []

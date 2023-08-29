@@ -55,6 +55,13 @@ void PrimCommonUtils::AddSkipCompOps(const std::string& op_type) {
   StaticCompositeContext::Instance().AddSkipCompOps(op_type);
 }
 
+void PrimCommonUtils::SetPrimBackwardBlacklist(
+    const std::unordered_set<std::string>& op_types) {
+  for (const auto& item : op_types) {
+    StaticCompositeContext::Instance().AddSkipCompOps(item);
+  }
+}
+
 void PrimCommonUtils::RemoveSkipCompOps(const std::string& op_type) {
   StaticCompositeContext::Instance().RemoveSkipCompOps(op_type);
 }

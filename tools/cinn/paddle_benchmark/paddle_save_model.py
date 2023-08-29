@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import fluid, static
+from paddle import static
 
 # For paddlepaddle version >=2.0rc, we need to set paddle.enable_static()
 paddle.enable_static()
@@ -30,7 +30,7 @@ loss = exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
-fluid.io.save_inference_model(
-    "./elementwise_add_model", [a.name, b.name], [a1], exe
+paddle.static.io.save_inference_model(
+    "./elementwise_add_model", [a, b], [a1], exe
 )
 print('input and output names are: ', a.name, b.name, a1.name)

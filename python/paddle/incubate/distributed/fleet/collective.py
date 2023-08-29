@@ -18,7 +18,6 @@ import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
 from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
-from paddle.fluid import io
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
@@ -31,6 +30,7 @@ from paddle.incubate.distributed.fleet.base import (
     Fleet,
     Mode,
 )
+from paddle.static import io
 
 
 class Collective(Fleet):
@@ -77,11 +77,10 @@ class Collective(Fleet):
     def save_inference_model(
         self,
         executor,
-        dirname,
-        feeded_var_names=None,
-        target_vars=None,
-        main_program=None,
-        export_for_deployment=True,
+        path_prefix,
+        feeded_vas=None,
+        fetch_vars=None,
+        program=None,
         legacy_format=False,
     ):
         """
@@ -94,22 +93,19 @@ class Collective(Fleet):
             " Executor type."
         )
 
-        if main_program is None:
-            main_program = self._origin_program
-        assert isinstance(main_program, Program), (
+        if program is None:
+            program = self._origin_program
+        assert isinstance(program, Program), (
             "In fleet.save_inference_model() function, main_program "
             "must be as Program type."
         )
 
         io.save_inference_model(
-            dirname,
-            feeded_var_names,
-            target_vars,
+            path_prefix,
+            feeded_vas,
+            fetch_vars,
             executor,
-            main_program,
-            None,
-            None,
-            export_for_deployment,
+            program=program,
             legacy_format=legacy_format,
         )
 

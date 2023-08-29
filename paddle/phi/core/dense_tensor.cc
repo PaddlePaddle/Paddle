@@ -52,7 +52,8 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
+DenseTensor::DenseTensor(const DenseTensor& other) {
+  this->meta_ = other.meta();
   holder_ = other.holder_;
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));

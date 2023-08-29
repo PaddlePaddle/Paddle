@@ -114,6 +114,8 @@ class NewIrDependencyBuilder : public DependencyBuilder {
 
   void BuildDownstreamMap();
 
+  void ShareDependencyFrom(const NewIrDependencyBuilder& src);
+
  private:
   std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned
 };

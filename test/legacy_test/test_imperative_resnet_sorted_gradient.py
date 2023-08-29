@@ -63,7 +63,7 @@ def optimizer_setting(params, parameter_list=None):
         # TODO(minqiyang): Add learning rate scheduler support to dygraph mode
         #  optimizer = fluid.optimizer.Momentum(
         #  learning_rate=params["lr"],
-        #  learning_rate=fluid.layers.piecewise_decay(
+        #  learning_rate=paddle.optimizer.lr.piecewise_decay(
         #  boundaries=bd, values=lr),
         #  momentum=0.9,
         #  regularization=paddle.regularizer.L2Decay(1e-4))

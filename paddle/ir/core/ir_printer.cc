@@ -59,6 +59,8 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "i32";
   } else if (type.isa<Int64Type>()) {
     os << "i64";
+  } else if (type.isa<IndexType>()) {
+    os << "index";
   } else if (type.isa<Complex64Type>()) {
     os << "c64";
   } else if (type.isa<Complex128Type>()) {

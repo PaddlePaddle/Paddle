@@ -68,7 +68,6 @@ class TestDistMnistFleetSave(TestDistBase):
             if fluid_persistables[i] != fleet_persistables[i]:
                 self._rm_temp_files(dirname)
                 raise ValueError("Test Failed.")
-
         if len(fluid_infer_files) != len(fleet_infer_files):
             self._rm_temp_files(dirname)
             raise ValueError("Test Failed.")

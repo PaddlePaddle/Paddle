@@ -12,15 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+
 #include <algorithm>
 #include <iterator>
 
-#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
+
+using phi::distributed::auto_parallel::has_duplicates;
+using phi::distributed::auto_parallel::ProcessMeshProto;
+using phi::distributed::auto_parallel::str_join;
 
 ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
                          const std::vector<int64_t> &process_ids,
@@ -129,6 +133,5 @@ bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
   return true;
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

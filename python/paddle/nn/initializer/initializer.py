@@ -18,7 +18,7 @@ import math
 import numpy as np
 
 from ...fluid.framework import default_main_program, in_dygraph_mode
-from ...fluid.lazy_init import lazy_init_helper
+from .lazy_init import lazy_init_helper
 
 __all__ = []
 
@@ -42,7 +42,7 @@ class Initializer:
         return self._lazy_init(param, block)
 
     def forward(self, param, block=None):
-        """Add corresponding initialization operations to the network"""
+        """Add corresponding initialization operations to the network."""
         raise NotImplementedError()
 
     def _lazy_init(self, param, block=None):
