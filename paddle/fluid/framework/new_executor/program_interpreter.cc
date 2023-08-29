@@ -162,6 +162,31 @@ FetchList ProgramInterpreter::Run(
   }
 }
 
+void ProgramInterpreter::PreStaticRun() {
+  SetDeviceId(place_);
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+  if (!is_build_) {
+    PADDLE_ENFORCE_EQ(static_build_,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "ProgramInterpreter::PreStaticRun() "
+                          "should be called when static_build_ is true"));
+
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    paddle::framework::interpreter::BuildOpFuncList(
+        place_,
+        block_,
+        execution_config_.skip_gc_vars,
+        &op_func_nodes,
+        &var_scope_,
+        execution_config_,
+        HasLocalScope(),
+        static_build_);
+  }
+}
+
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch) {
   SetDeviceId(place_);

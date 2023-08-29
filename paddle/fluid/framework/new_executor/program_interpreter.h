@@ -48,6 +48,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
+  void PreStaticRun();
+
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
