@@ -1728,7 +1728,7 @@
   complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
-  backward : matmul_with_flatten (mul_grad)
+  backward : matmul_with_flatten_grad (mul_grad)
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
