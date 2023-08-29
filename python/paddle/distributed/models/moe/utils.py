@@ -27,6 +27,7 @@ def _number_count(numbers, upper_range):
         out (Tensor): The output expert count.
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> numbers = [
