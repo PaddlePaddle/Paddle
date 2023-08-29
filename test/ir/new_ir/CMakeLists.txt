@@ -4,7 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
-set(TEST_IR_SYSTEM_CASES test_build_model)
+set(TEST_IR_SYSTEM_CASES test_build_model test_pd_inplace_pass)
 list(REMOVE_ITEM TEST_INTERP_CASES ${TEST_IR_SYSTEM_CASES})
 
 foreach(target ${TEST_INTERP_CASES})
