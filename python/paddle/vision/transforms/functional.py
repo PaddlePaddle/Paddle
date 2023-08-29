@@ -427,7 +427,7 @@ def adjust_brightness(img, brightness_factor):
 
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
-             >>> print(fake_img.size)
+            >>> print(fake_img.size)
             (300, 256)
             >>> print(fake_img.load()[1,1])
             (61, 155, 171)
@@ -1025,7 +1025,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
 
             >>> normalized_img = F.normalize(fake_img, mean, std, data_format='HWC')
             >>> print(normalized_img.max(), normalized_img.min())
-            (0.99215686 -1.0)
+            0.99215686 -1.0
 
     """
 
@@ -1065,26 +1065,22 @@ def erase(img, i, j, h, w, v, inplace=False):
             >>> print(fake_img)
             Tensor(shape=[3, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[ 0.06132207,  1.11349595,  0.41906244, -0.24858207],
-            [-1.85169315, -1.50370061,  1.73954511,  0.13331604]],
-
+              [-1.85169315, -1.50370061,  1.73954511,  0.13331604]],
             [[ 1.66359663, -0.55764782, -0.59911072, -0.57773495],
-            [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
-
+             [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
             [[ 0.67233968, -1.07747352,  0.80170447, -0.06695852],
-            [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
+             [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
 
             >>> values = paddle.zeros((1,1,1), dtype=paddle.float32)
             >>> result = paddle.vision.transforms.erase(fake_img, 0, 1, 1, 2, values)
             >>> print(result)
             Tensor(shape=[3, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[ 0.06132207,  0.        ,  0.        , -0.24858207],
-            [-1.85169315, -1.50370061,  1.73954511,  0.13331604]],
-
+              [-1.85169315, -1.50370061,  1.73954511,  0.13331604]],
             [[ 1.66359663,  0.        ,  0.        , -0.57773495],
-            [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
-
+             [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
             [[ 0.67233968,  0.        ,  0.        , -0.06695852],
-            [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
+             [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
 
     """
     if _is_tensor_image(img):
