@@ -24,6 +24,11 @@ cc_test(
        scope
        device_context)
 
+cc_test(
+  test_conv_mkldnn_nhwc
+  SRCS test_conv_mkldnn_nhwc.cc
+  DEPS executor op_registry scope device_context enforce)
+
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry
     elementwise_mul_op
