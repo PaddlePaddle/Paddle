@@ -30,6 +30,7 @@
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
@@ -54,8 +55,10 @@ void CommContextManager::CreateNCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
     int rank,
-    int size) {
+    int size,
+    const std::string& hash_key) {
   auto& comm_context_manager = CommContextManager::GetInstance();
+  std::cout << "CommContextManager::GetInstance()" << std::endl;
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
   }
@@ -63,22 +66,35 @@ void CommContextManager::CreateNCCLCommContext(
   if (rank == 0) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
+  std::cout << "phi::dynload::ncclGetUniqueId: " << nccl_id.internal
+            << std::endl;
 
-  std::string unique_key = "NCCLCommContext/" + unique_comm_key;
+  std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
+  std::cout << "unique_key: " << unique_key << std::endl;
   if (rank == 0) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
         reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
+    std::cout << "nccl_id_wrapper" << std::endl;
     store->set(unique_key, nccl_id_wrapper);
+    std::cout << "store->set(unique_key, nccl_id_wrapper), unique_key: "
+              << unique_key << std::endl;
   } else {
     const auto& nccl_id_wrapper = store->get(unique_key);
+    std::cout << "store->get(unique_key)" << std::endl;
     std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
+    std::cout << "std::memcpy(&nccl_id, nccl_id_wrapper.data(), "
+                 "nccl_id_wrapper.size())"
+              << std::endl;
   }
 
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
-
+  std::cout << "std::make_unique<NCCLCommContext>(rank, size, nccl_id)"
+            << std::endl;
   if (CommContextManager::device_id != -1) {
+    // auto dev_ctx =
+    // std::make_unique<phi::GPUContext>(*static_cast<phi::GPUContext*>(phi::DeviceContextPool::Instance().Get(phi::GPUPlace(CommContextManager::device_id))));
     std::unique_ptr<phi::GPUContext> dev_ctx(
         new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));
     dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
@@ -89,18 +105,29 @@ void CommContextManager::CreateNCCLCommContext(
     dev_ctx->SetHostZeroAllocator(phi::memory_utils::GetHostZeroAllocator());
     dev_ctx->SetPinnedAllocator(phi::memory_utils::GetPinnedAllocator());
     dev_ctx->PartialInitWithAllocator();
+    std::cout << "PartialInitWithAllocator" << std::endl;
     auto compute_event =
         phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
     auto comm_event =
         phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
 
     nccl_comm_context->SetDevContext(std::move(dev_ctx));
+    std::cout << "nccl_comm_context->SetDevContext(std::move(dev_ctx))"
+              << std::endl;
     nccl_comm_context->SetComputeEvent(std::move(compute_event));
+    std::cout << "nccl_comm_context->SetComputeEvent(std::move(compute_event))"
+              << std::endl;
     nccl_comm_context->SetCommEvent(std::move(comm_event));
+    std::cout << "nccl_comm_context->SetCommEvent(std::move(comm_event))"
+              << std::endl;
   }
 
   comm_context_manager.SetStore(store);
+  std::cout << "comm_context_manager.SetStore(store)" << std::endl;
   comm_context_manager.Emplace(unique_comm_key, std::move(nccl_comm_context));
+  std::cout << "comm_context_manager.Emplace(unique_comm_key, "
+               "std::move(nccl_comm_context))"
+            << std::endl;
 }
 #endif
 

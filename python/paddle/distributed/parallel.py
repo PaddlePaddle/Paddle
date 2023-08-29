@@ -1107,6 +1107,7 @@ def init_parallel_env():
         # TODO(mine): support XPU and other backends.
         if backend in ["nccl", 'xccl', 'bkcl']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
+        print("Go here? paddle.distributed.barrier", "****" * 40)
         paddle.distributed.barrier(group=group)
         return group
 

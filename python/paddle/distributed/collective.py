@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import datetime
+import hashlib
 
 import paddle
 
@@ -330,9 +331,17 @@ def _init_parallel_env(backend):
             store, "0", rank, world_size
         )
     elif backend == "nccl":
+        endpoints_str = ""
+        for endpoint in global_env.trainer_endpoints:
+            endpoints_str += endpoint
+        endpoints_str += "ring_id:{}".format("0")
+        print("endpoints_str: ", endpoints_str)
+        endpoints_str_hash = hashlib.md5(
+            endpoints_str.encode(encoding='UTF-8')
+        ).hexdigest()
         core.CommContextManager.set_device_id(dev_id)
         core.CommContextManager.create_nccl_comm_context(
-            store, "0", rank, world_size
+            store, "0", rank, world_size, endpoints_str_hash
         )
     elif backend == "xccl":
         dev_type = global_env.device_type

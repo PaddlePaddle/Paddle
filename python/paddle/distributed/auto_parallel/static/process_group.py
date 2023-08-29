@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import hashlib
 import os
 from collections import OrderedDict
 
@@ -162,12 +163,32 @@ class ProcessGroup:
                 )
                 if use_new_comm in ["1", "True", "true"]:
                     store = core.create_or_get_global_tcp_store()
+                    endpoints_str = ""
+                    for endpoint in strategy.trainer_endpoints:
+                        endpoints_str += endpoint
+                    endpoints_str += f"ring_id:{ring_id}"
+                    print("endpoints_str: ", endpoints_str)
+                    endpoints_str_hash = hashlib.md5(
+                        endpoints_str.encode(encoding='UTF-8')
+                    ).hexdigest()
+
                     core.CommContextManager.set_device_id(genv.device_id)
+                    print(
+                        "Before create_nccl_comm_context. ring_id: {}, local_rank: {}, nranks: {}".format(
+                            ring_id, strategy.local_rank, strategy.nranks
+                        )
+                    )
                     core.CommContextManager.create_nccl_comm_context(
                         store,
                         str(ring_id),
                         strategy.local_rank,
                         strategy.nranks,
+                        endpoints_str_hash,
+                    )
+                    print(
+                        "After create_nccl_comm_context. ring_id: {}, local_rank: {}, nranks: {}".format(
+                            ring_id, strategy.local_rank, strategy.nranks
+                        )
                     )
                 else:
                     core.NCCLParallelContext(strategy, place).init_with_ring_id(

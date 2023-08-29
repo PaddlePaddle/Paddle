@@ -125,9 +125,14 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["use_comm_context"]:
+        if (
+            args["use_comm_context"]
+            or args["FLAGS_dynamic_static_unified_comm"]
+        ):
+            print("Go here? ", "****" * 40)
             paddle.distributed.collective._init_parallel_env(args["backend"])
         else:
+            print("Go here? init_parallel_env", "****" * 40)
             paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -142,6 +147,7 @@ class TestCollectiveAPIRunnerBase:
         indata = create_test_data(
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
+        print("args[dtype]: ", args["dtype"], "****" * 40)
         if args['static_mode']:
             result = (
                 self.get_model_new(
@@ -152,7 +158,9 @@ class TestCollectiveAPIRunnerBase:
                     reduce_type=args['reduce_type'],
                 )
                 if args["use_comm_context"]
-                else self.get_model(train_prog, startup_prog, rank)
+                else self.get_model(
+                    train_prog, startup_prog, rank, dtype=args['dtype']
+                )
             )
             exe = fluid.Executor(place)
             exe.run(startup_prog)
@@ -181,7 +189,11 @@ def runtime_main(test_class, col_type):
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
     args["reduce_type"] = os.getenv("REDUCE_TYPE")
-    args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
+    # args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
+    args["use_comm_context"] = False
+    args["FLAGS_dynamic_static_unified_comm"] = bool(
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+    )
     model.run_trainer(args)
 
 
@@ -297,6 +309,10 @@ class TestDistBase(unittest.TestCase):
         )
 
         tr0_out, tr0_err = tr0_proc.communicate()
+        print("tr0_out")
+        print(tr0_out)
+        print("tr0_err")
+        print(tr0_err)
         tr1_out, tr1_err = tr1_proc.communicate()
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
