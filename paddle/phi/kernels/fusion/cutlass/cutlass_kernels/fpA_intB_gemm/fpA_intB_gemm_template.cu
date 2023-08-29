@@ -150,10 +150,12 @@ void dispatch_gemm_to_cutlass(const T* A,
   // warpShapeM since those usually perform the best for mixed type gemms.
   switch (gemm_config.tile_config) {
     case CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64:
-      dispatch_gemm_config_CtaShape32x128x64_WarpShape32x32x64<T,
-                                                               WeightType,
-                                                               arch,
-                                                               EpilogueTag>(
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<32, 128, 64>,
+                           cutlass::gemm::GemmShape<32, 32, 64>>(
           A,
           B,
           weight_scales,
@@ -169,10 +171,12 @@ void dispatch_gemm_to_cutlass(const T* A,
           occupancy);
       break;
     case CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64:
-      dispatch_gemm_config_CtaShape64x128x64_WarpShape64x32x64<T,
-                                                               WeightType,
-                                                               arch,
-                                                               EpilogueTag>(
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<64, 128, 64>,
+                           cutlass::gemm::GemmShape<64, 32, 64>>(
           A,
           B,
           weight_scales,
@@ -188,10 +192,12 @@ void dispatch_gemm_to_cutlass(const T* A,
           occupancy);
       break;
     case CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64:
-      dispatch_gemm_config_CtaShape128x128x64_WarpShape128x32x64<T,
-                                                                 WeightType,
-                                                                 arch,
-                                                                 EpilogueTag>(
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<128, 128, 64>,
+                           cutlass::gemm::GemmShape<128, 32, 64>>(
           A,
           B,
           weight_scales,
@@ -208,10 +214,12 @@ void dispatch_gemm_to_cutlass(const T* A,
       break;
     // config for M_16000_N_12288_K_6144 in encoder
     case CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64:
-      dispatch_gemm_config_CtaShape256x128x64_WarpShape64x64x64<T,
-                                                                WeightType,
-                                                                arch,
-                                                                EpilogueTag>(
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<256, 128, 64>,
+                           cutlass::gemm::GemmShape<64, 64, 64>>(
           A,
           B,
           weight_scales,
@@ -227,10 +235,12 @@ void dispatch_gemm_to_cutlass(const T* A,
           occupancy);
       break;
     case CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64:
-      dispatch_gemm_config_CtaShape128x256x64_WarpShape64x64x64<T,
-                                                                WeightType,
-                                                                arch,
-                                                                EpilogueTag>(
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<128, 256, 64>,
+                           cutlass::gemm::GemmShape<64, 64, 64>>(
           A,
           B,
           weight_scales,

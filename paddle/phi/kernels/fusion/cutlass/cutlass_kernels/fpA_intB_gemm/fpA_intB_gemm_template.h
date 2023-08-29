@@ -220,6 +220,28 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
     throw std::runtime_error("[fpA_intB Runner] " + err_msg);
   }
 }
+
+template <typename T,
+          typename WeightType,
+          typename arch,
+          typename EpilogueTag,
+          typename ThreadblockShape,
+          typename WarpShape,
+          int Stages>
+void generic_mixed_gemm_kernelLauncher_template(const T* A,
+                                                const WeightType* B,
+                                                const float* weight_scales,
+                                                const T* biases,
+                                                T* C,
+                                                int m,
+                                                int n,
+                                                int k,
+                                                CutlassGemmConfig gemm_config,
+                                                char* workspace,
+                                                size_t workspace_bytes,
+                                                cudaStream_t stream,
+                                                int* occupancy);
+
 template <typename T,
           typename WeightType,
           typename arch,
@@ -277,25 +299,25 @@ struct dispatch_stages<T,
                        int* occupancy = nullptr) {
     // VLOG(3)<<__PRETTY_FUNCTION__;
 
-    generic_mixed_gemm_kernelLauncher<T,
-                                      WeightType,
-                                      arch,
-                                      EpilogueTag,
-                                      ThreadblockShape,
-                                      WarpShape,
-                                      2>(A,
-                                         B,
-                                         weight_scales,
-                                         biases,
-                                         C,
-                                         m,
-                                         n,
-                                         k,
-                                         gemm_config,
-                                         workspace,
-                                         workspace_bytes,
-                                         stream,
-                                         occupancy);
+    generic_mixed_gemm_kernelLauncher_template<T,
+                                               WeightType,
+                                               arch,
+                                               EpilogueTag,
+                                               ThreadblockShape,
+                                               WarpShape,
+                                               2>(A,
+                                                  B,
+                                                  weight_scales,
+                                                  biases,
+                                                  C,
+                                                  m,
+                                                  n,
+                                                  k,
+                                                  gemm_config,
+                                                  workspace,
+                                                  workspace_bytes,
+                                                  stream,
+                                                  occupancy);
   }
 };
 
@@ -326,107 +348,47 @@ struct dispatch_stages<T,
                        size_t workspace_bytes,
                        cudaStream_t stream,
                        int* occupancy = nullptr) {
-    generic_mixed_gemm_kernelLauncher<T,
-                                      WeightType,
-                                      cutlass::arch::Sm80,
-                                      EpilogueTag,
-                                      ThreadblockShape,
-                                      WarpShape,
-                                      Stages>(A,
-                                              B,
-                                              weight_scales,
-                                              biases,
-                                              C,
-                                              m,
-                                              n,
-                                              k,
-                                              gemm_config,
-                                              workspace,
-                                              workspace_bytes,
-                                              stream,
-                                              occupancy);
+    generic_mixed_gemm_kernelLauncher_template<T,
+                                               WeightType,
+                                               cutlass::arch::Sm80,
+                                               EpilogueTag,
+                                               ThreadblockShape,
+                                               WarpShape,
+                                               Stages>(A,
+                                                       B,
+                                                       weight_scales,
+                                                       biases,
+                                                       C,
+                                                       m,
+                                                       n,
+                                                       k,
+                                                       gemm_config,
+                                                       workspace,
+                                                       workspace_bytes,
+                                                       stream,
+                                                       occupancy);
   }
 };
 
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
-void dispatch_gemm_config_CtaShape32x128x64_WarpShape32x32x64(
-    const T* A,
-    const WeightType* B,
-    const float* weight_scales,
-    const T* biases,
-    T* C,
-    int m,
-    int n,
-    int k,
-    CutlassGemmConfig gemm_config,
-    char* workspace,
-    size_t workspace_bytes,
-    cudaStream_t stream,
-    int* occupancy);
-
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
-void dispatch_gemm_config_CtaShape64x128x64_WarpShape64x32x64(
-    const T* A,
-    const WeightType* B,
-    const float* weight_scales,
-    const T* biases,
-    T* C,
-    int m,
-    int n,
-    int k,
-    CutlassGemmConfig gemm_config,
-    char* workspace,
-    size_t workspace_bytes,
-    cudaStream_t stream,
-    int* occupancy);
-
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
-void dispatch_gemm_config_CtaShape128x128x64_WarpShape128x32x64(
-    const T* A,
-    const WeightType* B,
-    const float* weight_scales,
-    const T* biases,
-    T* C,
-    int m,
-    int n,
-    int k,
-    CutlassGemmConfig gemm_config,
-    char* workspace,
-    size_t workspace_bytes,
-    cudaStream_t stream,
-    int* occupancy);
-
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
-void dispatch_gemm_config_CtaShape128x256x64_WarpShape64x64x64(
-    const T* A,
-    const WeightType* B,
-    const float* weight_scales,
-    const T* biases,
-    T* C,
-    int m,
-    int n,
-    int k,
-    CutlassGemmConfig gemm_config,
-    char* workspace,
-    size_t workspace_bytes,
-    cudaStream_t stream,
-    int* occupancy);
-
-template <typename T, typename WeightType, typename arch, typename EpilogueTag>
-void dispatch_gemm_config_CtaShape256x128x64_WarpShape64x64x64(
-    const T* A,
-    const WeightType* B,
-    const float* weight_scales,
-    const T* biases,
-    T* C,
-    int m,
-    int n,
-    int k,
-    CutlassGemmConfig gemm_config,
-    char* workspace,
-    size_t workspace_bytes,
-    cudaStream_t stream,
-    int* occupancy);
+template <typename T,
+          typename WeightType,
+          typename arch,
+          typename EpilogueTag,
+          typename ThreadblockShape,
+          typename WarpShape>
+void dispatch_gemm_config(const T* A,
+                          const WeightType* B,
+                          const float* weight_scales,
+                          const T* biases,
+                          T* C,
+                          int m,
+                          int n,
+                          int k,
+                          CutlassGemmConfig gemm_config,
+                          char* workspace,
+                          size_t workspace_bytes,
+                          cudaStream_t stream,
+                          int* occupancy);
 
 template <typename T, typename WeightType, typename arch, typename EpilogueTag>
 void dispatch_gemm_to_cutlass(const T* A,

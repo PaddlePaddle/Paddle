@@ -25,16 +25,6 @@ file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
-# cutlass weight_only
-if(WITH_CUTLASS)
-  file(
-    GLOB weight_only
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
-  collect_srcs(kernels_srcs SRCS ${weight_only})
-  kernel_declare("${weight_only}")
-endif()
-
 # fusion ops would be included here
 file(
   GLOB kernel_cu
@@ -93,6 +83,15 @@ if(WITH_CUTLASS)
     )
   endif()
 
+  execute_process(
+    COMMAND
+      ${CMAKE_COMMAND} -E make_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
+    COMMAND ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py
+    WORKING_DIRECTORY
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
+  )
+
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -100,7 +99,9 @@ if(WITH_CUTLASS)
     "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
-    "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu")
+    "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
