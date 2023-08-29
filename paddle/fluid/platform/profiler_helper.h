@@ -116,9 +116,8 @@ void SynchronizeAllDevice() {
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto &dev_type : dev_types) {
     int pre_device_id = phi::DeviceManager::GetDevice(dev_type);
-    auto dev_cnt = phi::DeviceManager::GetDeviceCount(dev_type);
-    for (size_t i = 0; i < dev_cnt; i++) {
-      auto place = paddle::platform::CustomPlace(dev_type, i);
+    for (auto &dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
+      auto place = paddle::platform::CustomPlace(dev_type, dev_id);
       phi::DeviceManager::SetDevice(place);
       phi::DeviceManager::SynchronizeDevice(place);
     }

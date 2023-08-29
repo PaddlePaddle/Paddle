@@ -15,6 +15,7 @@
 import unittest
 
 import numpy
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 from paddle import fluid
@@ -47,6 +48,7 @@ class TestAssertVariable(unittest.TestCase):
         self._run(func, x, with_exception, True)
         self._run(func, x, with_exception, False)
 
+    @test_and_compare_with_new_ir(False)
     def test_non_variable(self):
         self._run_dy_static(
             dyfunc_assert_non_variable, x=False, with_exception=True
@@ -55,6 +57,7 @@ class TestAssertVariable(unittest.TestCase):
             dyfunc_assert_non_variable, x=True, with_exception=False
         )
 
+    @test_and_compare_with_new_ir(False)
     def test_bool_variable(self):
         self._run_dy_static(
             dyfunc_assert_variable, x=numpy.array([False]), with_exception=True
