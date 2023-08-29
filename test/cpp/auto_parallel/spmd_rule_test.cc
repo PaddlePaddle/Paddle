@@ -343,6 +343,73 @@ TEST(LayerNormSPMDRule, Ctor) {
   VLOG(4) << "test2 done.";
 }
 
+TEST(MatmulSPMDRuleInferBackward, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {512, 1024, 64, 32};
+  std::vector<int64_t> y_shape = {512, 1, 32, 48};
+  std::vector<int64_t> out_shape = {512, 1024, 64, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(
+      std::vector<int64_t>({-1, 1, 0, -1}));  // no affect
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr y_dist_attr = TensorDistAttr();
+  y_dist_attr.set_process_mesh(process_mesh);
+  y_dist_attr.set_dims_mapping(
+      std::vector<int64_t>({0, 1, -1, -1}));  // no affect
+  y_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr out_dist_attr = TensorDistAttr();
+  out_dist_attr.set_process_mesh(process_mesh);
+  out_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, 1, -1}));
+  out_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+  out_dist_attr.set_partial_status(std::vector<int64_t>({0}));
+
+  DistTensorSpec x_dist_tensor_spec = DistTensorSpec(x_shape, x_dist_attr);
+  DistTensorSpec y_dist_tensor_spec = DistTensorSpec(y_shape, y_dist_attr);
+  DistTensorSpec out_dist_tensor_spec =
+      DistTensorSpec(out_shape, out_dist_attr);
+
+  paddle::framework::AttributeMap attrs;
+  attrs["trans_x"] = false;
+  attrs["trans_y"] = false;
+
+  SPMDRuleBase* matmul_rule = SPMDRuleMap::Instance().Get("matmul");
+
+  // TODO(zyc) update in future: propogate the partial in inferbackward
+  // abmn[-1, -1, 1, -1] + partial[0] --> abmk[-1, -1, 1, -1], a1kn[-1, -1, -1,
+  // -1]
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+      infered_dist_attrs =
+          matmul_rule->InferBackward({x_dist_tensor_spec, y_dist_tensor_spec},
+                                     {out_dist_tensor_spec},
+                                     attrs);
+
+  size_t input_size = 2;
+  size_t output_size = 1;
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
+
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({-1, -1, 1, -1}));
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
+            std::vector<int64_t>({-1, -1, -1, -1}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
+            std::vector<int64_t>({-1, -1, 1, -1}));
+  EXPECT_EQ(infered_dist_attrs.first[0].is_partial(), false);
+  EXPECT_EQ(infered_dist_attrs.first[1].is_partial(), false);
+  EXPECT_EQ(infered_dist_attrs.second[0].is_partial(), true);
+
+  VLOG(4) << "test1 done." << std::endl << std::endl << std::endl;
+}
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle

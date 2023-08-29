@@ -154,7 +154,6 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
 #endif
 }  // namespace
 
-using inference::Singleton;
 #ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
@@ -1616,6 +1615,7 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
+  argument_->SetMixedWhiteList(config_.mixed_white_list_);
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
@@ -2526,6 +2526,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 }
 
 #ifdef PADDLE_WITH_TENSORRT
+using inference::Singleton;
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2580,7 +2581,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 }
 #endif
 
-AnalysisPredictor::~AnalysisPredictor() {
+AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
@@ -3097,7 +3098,8 @@ void ConvertToMixedPrecision(const std::string &model_file,
                              PrecisionType mixed_precision,
                              paddle_infer::PlaceType backend,
                              bool keep_io_types,
-                             std::unordered_set<std::string> black_list) {
+                             std::unordered_set<std::string> black_list,
+                             std::unordered_set<std::string> white_list) {
   auto phi_backend = paddle::ConvertBackend(backend);
   auto phi_precision = paddle::ConvertPrecision(mixed_precision);
   paddle::inference::analysis::ConvertToMixedPrecision(model_file,
@@ -3107,7 +3109,8 @@ void ConvertToMixedPrecision(const std::string &model_file,
                                                        phi_precision,
                                                        phi_backend,
                                                        keep_io_types,
-                                                       black_list);
+                                                       black_list,
+                                                       white_list);
 }
 
 }  // namespace paddle_infer
