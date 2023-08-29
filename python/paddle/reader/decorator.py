@@ -528,12 +528,12 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     Example:
 
         .. code-block:: python
-    
+
             >>> import paddle
             >>> import numpy as np
-    
+
             >>> sample_files = ['sample_file_1', 'sample_file_2']
-    
+
             >>> def fake_input_files():
             ...     with open(sample_files[0], 'wb') as f:
             ...         np.savez(f, a=np.array([1, 2]), b=np.array([3, 4]), c=np.array([5, 6]), d=np.array([7, 8]))
