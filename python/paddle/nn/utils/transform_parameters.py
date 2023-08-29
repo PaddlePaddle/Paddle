@@ -117,7 +117,7 @@ def parameters_to_vector(parameters, name=None):
             inputs={'X': parameters},
             outputs={'Out': [out]},
             attrs={'axis': 0},
-            stop_gradient=True,
+            stop_gradient=False,
         )
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])
