@@ -31,7 +31,8 @@ set(pd_op_forward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/pd_ops.yaml)
 
 set(parsed_op_dir
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/generated/)
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/paddle_dialect/ir/generated)
+
 set(op_yaml_file3 ${parsed_op_dir}/pd_ops.parsed.yaml)
 set(op_yaml_files
     ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3}
@@ -69,9 +70,13 @@ add_custom_command(
           ${op_vjp_source_file}
   COMMENT
     "copy_if_different ${op_header_file} ${op_source_file} ${op_vjp_source_file}"
-  DEPENDS ${op_gen_file} ${op_forward_yaml_file1} ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1} ${op_backward_yaml_file2}
+  DEPENDS ${op_gen_file}
+          ${op_forward_yaml_file1}
+          ${op_forward_yaml_file2}
+          ${op_backward_yaml_file1}
+          ${op_backward_yaml_file2}
           ${op_compat_yaml_file}
+          ${op_yaml_file3}
   VERBATIM)
 
 set(api_gen_file
@@ -93,9 +98,13 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
           ${api_source_file}
   COMMENT "copy_if_different ${api_header_file} ${api_source_file}"
-  DEPENDS ${api_gen_file} ${op_forward_yaml_file1} ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1} ${op_backward_yaml_file2}
+  DEPENDS ${api_gen_file}
+          ${op_forward_yaml_file1}
+          ${op_forward_yaml_file2}
+          ${op_backward_yaml_file1}
+          ${op_backward_yaml_file2}
           ${op_compat_yaml_file}
+          ${op_yaml_file3}
   VERBATIM)
 
 set(python_c_gen_file
@@ -119,9 +128,13 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_source_file_tmp}
           ${python_c_source_file}
   COMMENT "copy_if_different ${python_c_header_file} ${python_c_source_file}"
-  DEPENDS ${python_c_gen_file} ${op_forward_yaml_file1} ${op_forward_yaml_file2}
-          ${op_backward_yaml_file1} ${op_backward_yaml_file2}
+  DEPENDS ${python_c_gen_file}
+          ${op_forward_yaml_file1}
+          ${op_forward_yaml_file2}
+          ${op_backward_yaml_file1}
+          ${op_backward_yaml_file2}
           ${op_compat_yaml_file}
+          ${op_yaml_file3}
   VERBATIM)
 
 add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
