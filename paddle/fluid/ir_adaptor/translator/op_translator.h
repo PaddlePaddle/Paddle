@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
@@ -28,6 +29,88 @@
 
 namespace paddle {
 namespace translator {
+
+/// @brief This class is used to translate a OpDesc, it's a functor class and
+/// should have no non-static data member, since we expected it's stateless.
+struct OpTranscriber {
+ public:
+  virtual ~OpTranscriber() = default;
+
+ public:
+  using IdxInOp = size_t;
+  using IdxInVector = size_t;
+  using ResultIdx = std::tuple<IdxInOp, IdxInVector>;
+  using OpDesc = paddle::framework::OpDesc;
+  using OpOutputTypeList = std::vector<ir::Type>;
+  using OpOutputMapping = std::unordered_map<std::string, ResultIdx>;
+  using OpInputInfo = dialect::OpInputInfo;
+  using OpInputInfoList = std::vector<dialect::OpInputInfo>;
+  using OpAttributeInfo = dialect::OpAttributeInfo;
+  using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
+  using OpOutputInfo = dialect::OpOutputInfo;
+  using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
+  using InputHandlerFn = std::function<ir::OpResult(ir::IrContext*,
+                                                    TranslationContext*,
+                                                    const OpDesc&,
+                                                    const std::string&,
+                                                    const OpInputInfo&,
+                                                    ir::Program*)>;
+  using AttributeHandlerFn = std::function<ir::Attribute(
+      ir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
+
+ public:
+  virtual ir::Operation* operator()(ir::IrContext* ctx,
+                                    TranslationContext* param_map,
+                                    const OpDesc& op_desc,
+                                    ir::Program* program);
+
+ public:
+  virtual ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc);
+  virtual std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program);
+  virtual std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
+      ir::IrContext* ctx,
+      const OpDesc& op_desc,
+      const OpOutputInfoList& output_infos);
+  virtual void HandleNonexistentAttribute(ir::IrContext*,
+                                          ir::AttributeMap* attribute_map,
+                                          const OpAttributeInfo& info);
+  virtual ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc);
+  virtual ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
+                                           ir::Program* program,
+                                           const OpDesc& op_desc,
+                                           const OpInputInfo& input_info);
+
+  virtual void RecordOpResultMapping(ir::IrContext* ctx,
+                                     TranslationContext* param_map,
+                                     const OpDesc& op_desc,
+                                     ir::Operation* operation,
+                                     const OpOutputMapping& arg_to_idx);
+
+ public:
+  virtual InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) {
+    return nullptr;
+  }
+  virtual AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& input_name) {
+    return nullptr;
+  }
+  virtual void InsertSliceOperationForInput(ir::IrContext* ctx,
+                                            TranslationContext* param_map,
+                                            const OpDesc& op_desc,
+                                            const OpInputInfoList& input_infos,
+                                            ir::Program* program);
+};
 
 class OpTranslator {
  public:
@@ -60,6 +143,10 @@ class OpTranslator {
     } else {
       return special_handlers[op_type];
     }
+  }
+
+  bool HasSpecialHandler(const std::string& op_type) {
+    return special_handlers.count(op_type) != 0;
   }
 };
 

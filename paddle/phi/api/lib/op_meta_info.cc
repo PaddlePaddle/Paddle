@@ -39,7 +39,7 @@ std::string trim_spaces(const std::string& str) {
 }
 
 std::vector<std::string> ParseAttrStr(const std::string& attr) {
-  auto split_pos = attr.find_first_of(":");
+  auto split_pos = attr.find_first_of(':');
   PADDLE_ENFORCE_NE(split_pos,
                     std::string::npos,
                     phi::errors::InvalidArgument(

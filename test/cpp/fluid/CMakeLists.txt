@@ -20,7 +20,6 @@ add_subdirectory(nccl)
 if(WITH_PSCORE)
   add_subdirectory(pscore)
 endif()
-add_subdirectory(prim_ops)
 add_subdirectory(reader)
 add_subdirectory(reduce_ops)
 # TODO(gouzil): enable this after the bug is fixed. windows: Exit code 0xc000007b, pr: #53470

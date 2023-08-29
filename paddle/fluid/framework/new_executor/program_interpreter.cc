@@ -30,6 +30,9 @@
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -47,7 +50,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
-                  !execution_config.used_for_control_flow_op &&
                   interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -612,7 +614,6 @@ void ProgramInterpreter::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
 #ifdef PADDLE_WITH_CUDA
     if (FLAGS_new_executor_use_cuda_graph) {
       auto& op = op_func_node.operator_base_;
@@ -635,6 +636,7 @@ void ProgramInterpreter::Convert(
           .RecordCapturingDeviceContext(dev_ctx_);
     }
 #endif
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
   }
 
   BuildOperatorDependences();
@@ -1188,6 +1190,18 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
+// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
+// To support all the operators for communicating in the future.
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto operator_base_ptr = instr.OpBase();
+  if ((operator_base_ptr->Type() == "send_v2") &&
+      (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
+    stream = platform::NCCLCommContext::Instance()
+                 .Get(operator_base_ptr->Attr<int>("ring_id"),
+                      instr.DeviceContext().GetPlace())
+                 ->stream();
+  }
+#endif
   auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {

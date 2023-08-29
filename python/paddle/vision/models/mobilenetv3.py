@@ -41,11 +41,12 @@ class SqueezeExcitation(nn.Layer):
     Parameters ``activation``, and ``scale_activation`` correspond to ``delta`` and ``sigma`` in eq. 3.
     This code is based on the torchvision code with modifications.
     You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L127
+
     Args:
-        input_channels (int): Number of channels in the input image
-        squeeze_channels (int): Number of squeeze channels
-        activation (Callable[..., paddle.nn.Layer], optional): ``delta`` activation. Default: ``paddle.nn.ReLU``
-        scale_activation (Callable[..., paddle.nn.Layer]): ``sigma`` activation. Default: ``paddle.nn.Sigmoid``
+        input_channels (int): Number of channels in the input image.
+        squeeze_channels (int): Number of squeeze channels.
+        activation (Callable[..., paddle.nn.Layer], optional): ``delta`` activation. Default: ``paddle.nn.ReLU``.
+        scale_activation (Callable[..., paddle.nn.Layer]): ``sigma`` activation. Default: ``paddle.nn.Sigmoid``.
     """
 
     def __init__(
@@ -190,7 +191,7 @@ class MobileNetV3(nn.Layer):
         last_channel (int): The number of channels on the penultimate layer.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
         num_classes (int, optional): Output dim of last fc layer. If num_classes <=0, last fc layer
-                            will not be defined. Default: 1000.
+            will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
     """
 
@@ -280,7 +281,7 @@ class MobileNetV3Small(MobileNetV3):
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
-                            will not be defined. Default: 1000.
+            will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
@@ -289,17 +290,17 @@ class MobileNetV3Small(MobileNetV3):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import MobileNetV3Small
+            >>> import paddle
+            >>> from paddle.vision.models import MobileNetV3Small
 
-            # build model
-            model = MobileNetV3Small(scale=1.0)
+            >>> # Build model
+            >>> model = MobileNetV3Small(scale=1.0)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -333,7 +334,7 @@ class MobileNetV3Large(MobileNetV3):
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
-                            will not be defined. Default: 1000.
+            will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
     Returns:
@@ -342,17 +343,17 @@ class MobileNetV3Large(MobileNetV3):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import MobileNetV3Large
+            >>> import paddle
+            >>> from paddle.vision.models import MobileNetV3Large
 
-            # build model
-            model = MobileNetV3Large(scale=1.0)
+            >>> # Build model
+            >>> model = MobileNetV3Large(scale=1.0)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -427,8 +428,7 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 
     Args:
-        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
-                            on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Small <api_paddle_vision_MobileNetV3Small>`.
 
@@ -438,23 +438,23 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import mobilenet_v3_small
+            >>> import paddle
+            >>> from paddle.vision.models import mobilenet_v3_small
 
-            # build model
-            model = mobilenet_v3_small()
+            >>> # Build model
+            >>> model = mobilenet_v3_small()
 
-            # build model and load imagenet pretrained weight
-            # model = mobilenet_v3_small(pretrained=True)
+            >>> # Build model and load imagenet pretrained weight
+            >>> # model = mobilenet_v3_small(pretrained=True)
 
-            # build mobilenet v3 small model with scale=0.5
-            model = mobilenet_v3_small(scale=0.5)
+            >>> # Build mobilenet v3 small model with scale=0.5
+            >>> model = mobilenet_v3_small(scale=0.5)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model = _mobilenet_v3(
         "mobilenet_v3_small", scale=scale, pretrained=pretrained, **kwargs
@@ -467,8 +467,7 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 
     Args:
-        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
-                            on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Large <api_paddle_vision_MobileNetV3Large>`.
 
@@ -478,23 +477,23 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.models import mobilenet_v3_large
+            >>> import paddle
+            >>> from paddle.vision.models import mobilenet_v3_large
 
-            # build model
-            model = mobilenet_v3_large()
+            >>> # Build model
+            >>> model = mobilenet_v3_large()
 
-            # build model and load imagenet pretrained weight
-            # model = mobilenet_v3_large(pretrained=True)
+            >>> # Build model and load imagenet pretrained weight
+            >>> # model = mobilenet_v3_large(pretrained=True)
 
-            # build mobilenet v3 large model with scale=0.5
-            model = mobilenet_v3_large(scale=0.5)
+            >>> # Build mobilenet v3 large model with scale=0.5
+            >>> model = mobilenet_v3_large(scale=0.5)
 
-            x = paddle.rand([1, 3, 224, 224])
-            out = model(x)
+            >>> x = paddle.rand([1, 3, 224, 224])
+            >>> out = model(x)
 
-            print(out.shape)
-            # [1, 1000]
+            >>> print(out.shape)
+            [1, 1000]
     """
     model = _mobilenet_v3(
         "mobilenet_v3_large", scale=scale, pretrained=pretrained, **kwargs

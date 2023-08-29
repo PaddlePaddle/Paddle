@@ -91,7 +91,7 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
     """
     pp_degree = cur_cfg.get("pp_degree", None)
     num_layers = tuner_cfg["model_cfg"].get("num_layers", None)
-    num_nodes = tuner_cfg.get("num_nodes", 1)
+    num_nodes = tuner_cfg.get("nodes", 1)
 
     if pp_degree is None:
         return False

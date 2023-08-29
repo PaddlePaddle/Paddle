@@ -37,7 +37,7 @@ endfunction()
 add_subdirectory(core)
 add_subdirectory(pass)
 add_subdirectory(pattern_rewrite)
-add_subdirectory(builtin_transforms)
+add_subdirectory(transforms)
 add_subdirectory(dialect)
 
 if(WIN32)

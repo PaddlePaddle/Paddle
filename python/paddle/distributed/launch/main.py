@@ -295,6 +295,7 @@ def launch():
     elif ctx.is_auto_tuner_mode():
         import copy
         import json
+        import os
         import sys
         import time
 
@@ -333,12 +334,13 @@ def launch():
         tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
 
         if nnodes > 1:
-            import etcd3
+            from .utils.etcd_client import ETCDClient
 
             assert "etcd://" in ctx.args.master
             master_ip, port = ctx.args.master.strip("etcd://").split(':')
-            client = etcd3.client(host=master_ip, port=port)
+            client = ETCDClient(host=master_ip, port=port)
             client.delete("best_cfg")
+            client.delete_prefix("auto_tuner")
 
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
@@ -532,6 +534,45 @@ def launch():
                 target_metric=tuner_cfg["metric_cfg"]["name"],
                 memory_file=f"{ctx.args.job_id}.gpu.log",
             )
+            # sync sigint
+            timeout_flag = True
+
+            if nnodes > 1:
+                import socket
+
+                ip = None
+                try:
+                    hostname = socket.gethostname()
+                    ip = socket.gethostbyname(socket.getfqdn(hostname))
+                except:
+                    ip = '127.0.0.1'
+                assert ip != '127.0.0.1'
+                path = f"auto_tuner/{job_id}/{ip}"
+                OOM_flag = err & (1 << 1)
+                if OOM_flag:
+                    client.put(path, "OOM".encode('latin-1'))
+                    ctx.logger.info(f"Put OOM to {path}")
+                elif hasattr(c, 'sigint') and c.sigint == 14:
+                    client.put(path, "OK".encode('latin-1'))
+                    ctx.logger.info(f"Put OK to {path}")
+                else:
+                    client.put(path, "Error".encode('latin-1'))
+                    ctx.logger.info(f"Put Error to {path}")
+
+                result = list(client.get_prefix(f"auto_tuner/{job_id}/"))
+                size = len(result)
+                while size != nnodes:
+                    time.sleep(1)
+                    result = list(client.get_prefix(f"auto_tuner/{job_id}/"))
+                    size = len(result)
+
+                status = [i[0].decode() for i in result]
+                ctx.logger.info(f"Status of auto_tuner/{job_id}/: {status}")
+
+                if "OOM" in status:
+                    timeout_flag = False
+                elif "OK" not in status:
+                    timeout_flag = False
 
             if err & (1 << 0):
                 ctx.logger.warning(
@@ -556,11 +597,16 @@ def launch():
                 )
                 cur_cfg["max_mem_usage"] = None
 
-            if not err:
+            if not err and timeout_flag:
                 # for pruner use
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
                 cur_cfg["max_mem_usage"] = mem
+
+            if not err and not timeout_flag:
+                cur_cfg['time'] = -1
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+                cur_cfg["max_mem_usage"] = None
 
             # record history
             cur_cfg['job_id'] = job_id
@@ -586,6 +632,14 @@ def launch():
             auto_tuner.add_cfg(cur_cfg)
 
             # per task launch interval
+            self_pid = str(os.getpid())
+            processes = os.popen(
+                "fuser -v /dev/nvidia* |awk '{for(i=1;i<=NF;i++) print $i;}'"
+            ).readlines()
+            for process in processes:
+                pid = str(process.strip())
+                if pid != self_pid:
+                    os.system("kill -9 " + pid)
             time.sleep(3)
         recorder.store_history()
 
@@ -601,7 +655,10 @@ def launch():
                 ip = socket.gethostbyname(socket.getfqdn(hostname))
             except:
                 ip = '127.0.0.1'
-            if ip == master_ip:
+
+            collective_master_ip = os.environ.get("COLLECTIVE_MASTER_IP", None)
+            assert collective_master_ip is not None
+            if ip == collective_master_ip:
                 best_cfg, err = recorder.get_best(
                     metric=tuner_cfg['metric_cfg']['name'],
                     direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
