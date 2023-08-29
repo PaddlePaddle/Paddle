@@ -983,40 +983,40 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            format = "coo"
-            dense_x = paddle.randn((5, 5), dtype='float64')
+            >>> format = "coo"
+            >>> dense_x = paddle.randn((5, 5), dtype='float64')
 
-            if format == "coo":
-                sparse_x = dense_x.to_sparse_coo(len(dense_x.shape))
-            else:
-                sparse_x = dense_x.to_sparse_csr()
+            >>> if format == "coo":
+            ...     sparse_x = dense_x.to_sparse_coo(len(dense_x.shape))
+            >>> else:
+            ...     sparse_x = dense_x.to_sparse_csr()
 
-            print("sparse.pca_lowrank API only support CUDA 11.x")
-            U, S, V = None, None, None
-            # use code blow when your device CUDA version >= 11.0
-            # U, S, V = paddle.sparse.pca_lowrank(sparse_x)
+            >>> print("sparse.pca_lowrank API only support CUDA 11.x")
+            >>> U, S, V = None, None, None
+            >>> # use code blow when your device CUDA version >= 11.0
+            >>> # U, S, V = paddle.sparse.pca_lowrank(sparse_x)
 
-            print(U)
-            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [[ 0.02206024,  0.53170082, -0.22392168, -0.48450657,  0.65720625],
-            #         [ 0.02206024,  0.53170082, -0.22392168, -0.32690402, -0.74819812],
-            #         [ 0.02206024,  0.53170082, -0.22392168,  0.81141059,  0.09099187],
-            #         [ 0.15045792,  0.37840027,  0.91333217, -0.00000000,  0.00000000],
-            #         [ 0.98787775, -0.09325209, -0.12410317, -0.00000000, -0.00000000]])
+            >>> print(U)
+            Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [[ 0.02206024,  0.53170082, -0.22392168, -0.48450657,  0.65720625],
+                    [ 0.02206024,  0.53170082, -0.22392168, -0.32690402, -0.74819812],
+                    [ 0.02206024,  0.53170082, -0.22392168,  0.81141059,  0.09099187],
+                    [ 0.15045792,  0.37840027,  0.91333217, -0.00000000,  0.00000000],
+                    [ 0.98787775, -0.09325209, -0.12410317, -0.00000000, -0.00000000]])
 
-            print(S)
-            # Tensor(shape=[5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [2.28621761, 0.93618564, 0.53234942, 0.00000000, 0.00000000])
+            >>> print(S)
+            Tensor(shape=[5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [2.28621761, 0.93618564, 0.53234942, 0.00000000, 0.00000000])
 
-            print(V)
-            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [[ 0.26828910, -0.57116436, -0.26548201,  0.67342660, -0.27894114],
-            #         [-0.19592125, -0.31629129,  0.02001645, -0.50484498, -0.77865626],
-            #         [-0.82913017, -0.09391036,  0.37975388,  0.39938099, -0.00241046],
-            #         [-0.41163516,  0.27490410, -0.86666276,  0.03382656, -0.05230341],
-            #         [ 0.18092947,  0.69952818,  0.18385126,  0.36190987, -0.55959343]])
+            >>> print(V)
+            Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [[ 0.26828910, -0.57116436, -0.26548201,  0.67342660, -0.27894114],
+                    [-0.19592125, -0.31629129,  0.02001645, -0.50484498, -0.77865626],
+                    [-0.82913017, -0.09391036,  0.37975388,  0.39938099, -0.00241046],
+                    [-0.41163516,  0.27490410, -0.86666276,  0.03382656, -0.05230341],
+                    [ 0.18092947,  0.69952818,  0.18385126,  0.36190987, -0.55959343]])
     """
 
     def get_floating_dtype(x):

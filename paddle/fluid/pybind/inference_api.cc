@@ -981,11 +981,12 @@ void BindAnalysisConfig(py::module *m) {
                 None.
            Examples:
                .. code-block:: python
-                from paddle.inference import Config
 
-                config = Config("")
-                config.enable_mkldnn()
-                config.disable_mkldnn_fc_passes()
+                   >>> from paddle.inference import Config
+
+                   >>> config = Config("")
+                   >>> config.enable_mkldnn()
+                   >>> config.disable_mkldnn_fc_passes()
            )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)

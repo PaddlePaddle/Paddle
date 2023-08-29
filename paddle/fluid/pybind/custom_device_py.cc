@@ -561,18 +561,18 @@ void BindCustomDevicePy(py::module *m_ptr) {
       return the raw event of type CustomDeviceEvent as type int.
 
       Examples:
-        .. code-block:: python
+          .. code-block:: python
 
-            # required: custom_device
-            import paddle
-            import ctypes
-            place = paddle.CustomPlace('custom_cpu', 0)
-            event = paddle.device.custom.Event(place)
-            raw_event = event.raw_event
-            print(raw_event)
+              >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+              >>> import paddle
+              >>> import ctypes
+              >>> place = paddle.CustomPlace('custom_cpu', 0)
+              >>> event = paddle.device.custom.Event(place)
+              >>> raw_event = event.raw_event
+              >>> print(raw_event)
 
-            ptr = ctypes.c_void_p(raw_event)  # convert back to void*
-            print(ptr)
+              >>> ptr = ctypes.c_void_p(raw_event)  # convert back to void*
+              >>> print(ptr)
 
            )DOC")
       .def_property_readonly("place", [](const phi::event::Event &self) {

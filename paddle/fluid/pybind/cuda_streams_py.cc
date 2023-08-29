@@ -350,12 +350,13 @@ void BindCudaStream(py::module *m_ptr) {
             stream(CUDAStream, optional): The handle of CUDA stream. If None, the stream is the current stream. Default: None.
 
           Examples:
-            .. code-block:: python
+              .. code-block:: python
 
-              # required: gpu
-              import paddle
-              event = paddle.device.cuda.Event()
-              event.record()
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+                >>> paddle.device.set_device('gpu')
+                >>> event = paddle.device.cuda.Event()
+                >>> event.record()
 
         )DOC",
           py::arg("stream") = nullptr)
@@ -368,12 +369,13 @@ void BindCudaStream(py::module *m_ptr) {
           Returns: A boolean which indicates all work currently captured by the event has been completed.
 
           Examples:
-            .. code-block:: python
+              .. code-block:: python
 
-                # required: gpu
-                import paddle
-                event = paddle.device.cuda.Event()
-                is_done = event.query()
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> paddle.device.set_device('gpu')
+                  >>> event = paddle.device.cuda.Event()
+                  >>> is_done = event.query()
 
            )DOC")
       .def(
@@ -383,12 +385,13 @@ void BindCudaStream(py::module *m_ptr) {
             Waits for an event to complete.
 
             Examples:
-              .. code-block:: python
+                .. code-block:: python
 
-                # required: gpu
-                import paddle
-                event = paddle.device.cuda.Event()
-                event.synchronize()
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> paddle.device.set_device('gpu')
+                  >>> event = paddle.device.cuda.Event()
+                  >>> event.synchronize()
 
            )DOC")
 #endif
