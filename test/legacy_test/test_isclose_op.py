@@ -261,8 +261,12 @@ class TestIscloseOpFloat64(TestIscloseOp):
 
 class TestIscloseOpCp64(unittest.TestCase):
     def test_cp64(self):
-        x_data = np.random.rand(10, 10 * 2).view(np.complex64)
-        y_data = np.random.rand(10, 10 * 2).view(np.complex64)
+        x_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex64)
+        y_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex64)
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[10, 10], name='x', dtype=np.complex64)
             y = paddle.static.data(shape=[10, 10], name='y', dtype=np.complex64)
@@ -275,9 +279,13 @@ class TestIscloseOpCp64(unittest.TestCase):
 
 
 class TestIscloseOpCp128(unittest.TestCase):
-    def test_cp64(self):
-        x_data = np.random.rand(10, 10 * 2).view(np.complex128)
-        y_data = np.random.rand(10, 10 * 2).view(np.complex128)
+    def test_cp128(self):
+        x_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex128)
+        y_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex128)
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
                 shape=[10, 10], name='x', dtype=np.complex128
