@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/stft_kernel.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/stft_kernel_impl.h"
+#include "paddle/ir/pass/pass_registry.h"
 
-PD_REGISTER_KERNEL(stft, GPU, ALL_LAYOUT, phi::StftKernel, float, double) {
-  kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+namespace ir {
+PassRegistry &PassRegistry::Instance() {
+  static PassRegistry g_pass_info_map;
+  return g_pass_info_map;
 }
+
+}  // namespace ir

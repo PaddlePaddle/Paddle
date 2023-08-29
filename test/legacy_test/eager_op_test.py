@@ -40,7 +40,7 @@ from white_list import (
 
 import paddle
 from paddle import fluid
-from paddle.autograd.backward import grad as ir_grad
+from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.fluid import core, unique_name
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
