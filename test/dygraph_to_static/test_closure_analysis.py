@@ -195,7 +195,6 @@ class TestClosureAnalysis(unittest.TestCase):
             {'func': set('i'), 'test_normal_argument': set('x')},
         ]
 
-    @test_and_compare_with_new_ir(False)
     def test_main(self):
         if self.judge_type == 'push_pop_vars':
             for push_pop_vars, func in zip(

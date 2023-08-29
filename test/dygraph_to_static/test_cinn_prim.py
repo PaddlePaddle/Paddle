@@ -95,7 +95,6 @@ class TestPrimForward(unittest.TestCase):
         self.assertTrue('softmax' not in fwd_ops)
 
     @ast_only_test
-    @test_and_compare_with_new_ir(False)
     def test_cinn_prim_forward(self):
         dy_res = self.train(use_prim=False)
         cinn_res = self.train(use_prim=True)
@@ -163,7 +162,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 self.assertTrue("_grad" not in op)
 
     @ast_only_test
-    @test_and_compare_with_new_ir(False)
     def test_cinn_prim(self):
         dy_res = self.train(use_prim=False)
         cinn_res = self.train(use_prim=True)

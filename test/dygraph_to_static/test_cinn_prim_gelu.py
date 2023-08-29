@@ -15,11 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 import paddle.nn.functional as F
@@ -111,7 +107,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         self.assertTrue('gelu' not in fwd_ops)
 
     @ast_only_test
-    @test_and_compare_with_new_ir(False)
     def test_cinn_prim(self):
         for shape in self.shapes:
             for dtype in self.dtypes:

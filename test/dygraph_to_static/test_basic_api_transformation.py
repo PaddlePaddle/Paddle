@@ -92,6 +92,7 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
             res = self.dygraph_func(self.input).numpy()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         main_program = fluid.Program()
         main_program.random_seed = SEED
@@ -101,14 +102,13 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
         exe = fluid.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=static_out)
 
-        return static_res[0]
+        return static_res
 
-    @test_and_compare_with_new_ir(False)
     def test_transformed_static_result(self):
         for func in self.test_funcs:
             self.dygraph_func = func
             dygraph_res = self.get_dygraph_output()
-            static_res = self.get_static_output()
+            static_res = self.get_static_output()[0]
             np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
@@ -247,6 +247,7 @@ class TestDygraphBasicApi(unittest.TestCase):
 
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -259,12 +260,11 @@ class TestDygraphBasicApi(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        return static_res
 
-    @test_and_compare_with_new_ir(False)
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
-        static_res = self.get_static_output()
+        static_res = self.get_static_output()[0]
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
@@ -281,6 +281,7 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
             res = self.dygraph_func(self.input1, self.input2).numpy()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -294,7 +295,7 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        return static_res
 
 
 class TestDygraphBasicApi_Conv2D(TestDygraphBasicApi):
@@ -406,6 +407,7 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
             res = self.dygraph_func().numpy()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -417,12 +419,11 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        return static_res
 
-    @test_and_compare_with_new_ir(False)
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
-        static_res = self.get_static_output()
+        static_res = self.get_static_output()[0]
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
@@ -437,6 +438,7 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -449,7 +451,7 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        return static_res
 
 
 class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
@@ -463,6 +465,7 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -475,7 +478,7 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        return static_res
 
 
 class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
@@ -489,6 +492,7 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
             res = self.dygraph_func()
             return res
 
+    @test_and_compare_with_new_ir(True)
     def get_static_output(self):
         startup_program = fluid.Program()
         startup_program.random_seed = SEED
@@ -501,7 +505,7 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        return static_res
 
 
 class TestDygraphBasicApi_NoamDecay(TestDygraphBasicApi_CosineDecay):
@@ -546,7 +550,6 @@ class TestDygraphApiRecognition(unittest.TestCase):
     def _get_static_ast_node(self):
         return self.root.body[0].body[2].body[1].value
 
-    @test_and_compare_with_new_ir(False)
     def test_dygraph_api(self):
         self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
         self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)
