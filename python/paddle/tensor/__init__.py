@@ -43,6 +43,7 @@ from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
 from .creation import polar  # noqa: F401
+from .creation import histogram_bin_edges  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
@@ -657,6 +658,7 @@ tensor_method_func = [  # noqa
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
+    'histogram_bin_edges'
     'sigmoid',
     'sigmoid_',
     'vander',

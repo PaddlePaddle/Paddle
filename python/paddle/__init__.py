@@ -122,6 +122,7 @@ from .tensor.creation import clone  # noqa: F401
 from .tensor.creation import tril_indices  # noqa: F401
 from .tensor.creation import triu_indices  # noqa: F401
 from .tensor.creation import polar  # noqa: F401
+from .tensor.creation import histogram_bin_edges  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -827,6 +828,7 @@ __all__ = [  # noqa
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
+    'histogram_bin_edges',
     'vander',
     'unflatten',
     'as_strided',

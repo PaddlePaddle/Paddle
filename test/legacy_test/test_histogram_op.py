@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ from paddle.fluid import Program, program_guard
 
 class TestHistogramOpAPI(unittest.TestCase):
     """Test histogram api."""
-
     def test_static_graph(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -32,18 +31,23 @@ class TestHistogramOpAPI(unittest.TestCase):
             inputs = paddle.static.data(
                 name='input', dtype='int64', shape=[2, 3]
             )
-            output = paddle.histogram(inputs, bins=5, min=1, max=5)
+            weight = paddle.static.data(
+                name='weight', dtype='int64', shape=[2, 3]
+            )
+            output = paddle.histogram(inputs, weight, bins=5, min=1, max=5)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(startup_program)
             img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
+            w = np.array([[1, 3, 6], [2, 2, 8]]).astype(np.int64)
             res = exe.run(
-                train_program, feed={'input': img}, fetch_list=[output]
+                train_program, feed={'input': img, 'weight': w},
+                fetch_list=[output]
             )
             actual = np.array(res[0])
-            expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
+            expected = np.array([0, 9, 0, 11, 2]).astype(np.int64)
             self.assertTrue(
                 (actual == expected).all(),
                 msg='histogram output is wrong, out =' + str(actual),
@@ -53,8 +57,8 @@ class TestHistogramOpAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
             inputs = fluid.dygraph.to_variable(inputs_np)
-            actual = paddle.histogram(inputs, bins=5, min=1, max=5)
-            expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
+            actual = paddle.histogram(inputs, bins=5, min=1, max=5, density=True)
+            expected = np.array([0., 0.625, 0., 0.4166667, 0.20833334]).astype(np.float32)
             self.assertTrue(
                 (actual.numpy() == expected).all(),
                 msg='histogram output is wrong, out =' + str(actual.numpy()),
@@ -62,7 +66,7 @@ class TestHistogramOpAPI(unittest.TestCase):
 
             inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
             inputs = paddle.to_tensor(inputs_np)
-            actual = paddle.histogram(inputs, bins=5, min=1, max=5)
+            actual = paddle.histogram(inputs, bins=5, min=1, max=5, density=True)
             self.assertTrue(
                 (actual.numpy() == expected).all(),
                 msg='histogram output is wrong, out =' + str(actual.numpy()),
@@ -99,7 +103,7 @@ class TestHistogramOpError(unittest.TestCase):
             input_value = paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3.0
             )
-            paddle.histogram(input=input_value, bins=1, min=5, max=1)
+            paddle.histogram(input=input_value, bins=1, min=5, max=1, density=False)
 
         with self.assertRaises(ValueError):
             self.run_network(net_func)
@@ -122,6 +126,32 @@ class TestHistogramOpError(unittest.TestCase):
             self.assertRaises(
                 TypeError, paddle.histogram, 1, bins=5, min=1, max=5
             )
+            # The weight type must be Variable.
+            self.assertRaises(
+                TypeError, paddle.histogram, [1], weight=1, bins=5, min=1, max=5
+            )
+            # The weight type must be equal the input type.
+            x_int32 = paddle.static.data(
+                name='x_int32', shape=[4, 3], dtype='int32'
+            )
+            weight_float32 = paddle.static.data(
+                name='weight_float32', shape=[4, 3], dtype='float32'
+            )
+            self.assertRaises(
+                ValueError, paddle.histogram, x_int32, weight=weight_float32,
+                bins=5, min=1, max=5
+            )
+            # The weight shape must be equal the input shape.
+            x_shape = paddle.static.data(
+                name='x_shape', shape=[4, 3], dtype='int32'
+            )
+            w_shape = paddle.static.data(
+                name='w_shape', shape=[3, 4], dtype='int32'
+            )
+            self.assertRaises(
+                ValueError, paddle.histogram, x_shape, weight=w_shape,
+                bins=5, min=1, max=5
+            )
             # The input type must be 'int32', 'int64', 'float32', 'float64'
             x_bool = paddle.static.data(
                 name='x_bool', shape=[4, 3], dtype='bool'
@@ -134,35 +164,134 @@ class TestHistogramOpError(unittest.TestCase):
 class TestHistogramOp(OpTest):
     def setUp(self):
         self.op_type = "histogram"
-        self.init_test_case()
-        np_input = np.random.uniform(low=0.0, high=20.0, size=self.in_shape)
         self.python_api = paddle.histogram
+        self.init_test_case()
+        np_input = np.random.randint(low=0, high=20, size=self.in_shape).astype(self.dtype)
         self.inputs = {"X": np_input}
         self.init_attrs()
+        self.place = [paddle.CPUPlace()]
         Out, _ = np.histogram(
-            np_input, bins=self.bins, range=(self.min, self.max)
+            np_input, bins=self.bins, range=(self.min, self.max), density=self.density
         )
-        self.outputs = {"Out": Out.astype(np.int64)}
+        self.outputs = {"Out": Out}
 
     def init_test_case(self):
         self.in_shape = (10, 12)
         self.bins = 5
         self.min = 1
         self.max = 5
+        self.density = False
+        self.dtype = np.int32
 
     def init_attrs(self):
-        self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
+        self.attrs = {"bins": self.bins,
+                      "min": self.min, "max": self.max,
+                      "density": self.density}
 
     def test_check_output(self):
         self.check_output()
 
 
+class TestCase1(TestHistogramOp):
+    # with weights(FLOAT32)
+    def setUp(self):
+        self.op_type = "histogram"
+        self.init_test_case()
+        np_input = np.random.uniform(low=0.0, high=20.0, size=self.in_shape).astype(self.dtype)
+        self.np_weight = np.random.uniform(low=0, high=20, size=self.in_shape).astype(self.dtype)
+        self.python_api = paddle.histogram
+        self.inputs = {"X": np_input, "Weight": self.np_weight}
+        self.init_attrs()
+        self.place = [paddle.CPUPlace()]
+        Out, _ = np.histogram(
+            np_input, bins=self.bins, range=(self.min, self.max),
+            weights=self.np_weight, density=self.density
+        )
+        self.outputs = {"Out": Out}
+
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = False
+        self.dtype = np.float32
+
+
+class TestCase2(TestHistogramOp):
+    # with weights(FLOAT64)
+    def setUp(self):
+        self.op_type = "histogram"
+        self.init_test_case()
+        np_input = np.random.uniform(low=0.0, high=20.0, size=self.in_shape).astype(self.dtype)
+        self.np_weight = np.random.uniform(low=0.0, high=20.0, size=self.in_shape).astype(self.dtype)
+        self.python_api = paddle.histogram
+        self.inputs = {"X": np_input, "Weight": self.np_weight}
+        self.init_attrs()
+        self.place = [paddle.CPUPlace()]
+
+        Out, _ = np.histogram(
+            np_input, bins=self.bins, range=(self.min, self.max),
+            weights=self.np_weight, density=self.density
+        )
+        self.outputs = {"Out": Out}
+
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = True
+        self.dtype = np.float64
+
+
+class TestCase3(TestHistogramOp):
+    # with weights(INT64)
+    def setUp(self):
+        self.op_type = "histogram"
+        self.init_test_case()
+        np_input = np.random.randint(low=0, high=20, size=self.in_shape).astype(self.dtype)
+        self.np_weight = np.random.randint(low=0, high=20, size=self.in_shape).astype(self.dtype)
+        self.python_api = paddle.histogram
+        self.inputs = {"X": np_input, "Weight": self.np_weight}
+        self.init_attrs()
+        self.place = [paddle.CPUPlace()]
+        Out, _ = np.histogram(
+            np_input, bins=self.bins, range=(self.min, self.max),
+            weights=self.np_weight, density=self.density
+        )
+        self.outputs = {"Out": Out}
+
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = False
+        self.dtype = np.int64
+
+
 class TestHistogramOp_ZeroDim(TestHistogramOp):
+    def setUp(self):
+        self.op_type = "histogram"
+        self.python_api = paddle.histogram
+        self.init_test_case()
+        np_input = np.random.randint(low=0, high=20, size=self.in_shape).astype(self.dtype)
+        self.inputs = {"X": np_input}
+        self.init_attrs()
+        self.place = [paddle.CPUPlace()]
+        Out, _ = np.histogram(np_input, bins=self.bins, range=(self.min, self.max))
+        self.outputs = {"Out": Out}
+
     def init_test_case(self):
         self.in_shape = []
         self.bins = 5
         self.min = 1
         self.max = 5
+        self.dtype = np.float32
+    
+    def init_attrs(self):
+        self.attrs = {"bins": self.bins, "min": self.min, "max": self.max}
 
 
 if __name__ == "__main__":
