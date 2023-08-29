@@ -81,12 +81,12 @@ class ProcessMesh(core.ProcessMesh):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.distributed as dist
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-            assert mesh.shape == [2, 3]
-            assert mesh.process_ids == [2, 4, 5, 0, 1, 3]
+            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+            >>> assert mesh.shape == [2, 3]
+            >>> assert mesh.process_ids == [2, 4, 5, 0, 1, 3]
 
     """
 
