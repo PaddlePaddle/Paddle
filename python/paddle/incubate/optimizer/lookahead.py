@@ -56,7 +56,7 @@ class LookAhead(Optimizer):
 
             >>> BATCH_SIZE = 16
             >>> BATCH_NUM = 4
-            >>> EPOCH_NUM = 4
+            >>> EPOCH_NUM = 1
 
             >>> IMAGE_SIZE = 784
             >>> CLASS_NUM = 10
