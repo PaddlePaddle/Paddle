@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/stft_kernel.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/stft_kernel_impl.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-PD_REGISTER_KERNEL(stft, GPU, ALL_LAYOUT, phi::StftKernel, float, double) {
-  kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+namespace phi {
+
+KernelSignature LarsMomentumOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "lars_momentum",
+      {"Param", "Velocity", "LearningRate", "Grad", "MasterParam"},
+      {"lars_weight_decay",
+       "mu",
+       "lars_coeff",
+       "epsilon",
+       "multi_precision",
+       "rescale_grad"},
+      {"ParamOut", "VelocityOut", "MasterParamOut"});
 }
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(lars_momentum, phi::LarsMomentumOpArgumentMapping);
