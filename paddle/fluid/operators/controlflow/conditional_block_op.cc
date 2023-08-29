@@ -70,53 +70,57 @@ class ConditionalBlockOp : public ConditionalOp {
     }
 
     if (need_run) {
-      auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
-      PADDLE_ENFORCE_NOT_NULL(
-          scope_var,
-          platform::errors::PreconditionNotMet(
-              "Expect Scope variable to be set in conditional_block_op, but "
-              "got a null Scope variable. Please set the Scope variable."));
-
-      auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-      scopes->resize(1);
-      scopes->front() = &scope.NewScope();
-
-      auto &cur_scope = *scopes->front();
-#ifdef PADDLE_WITH_DNNL
-      // Executor on being destroyed clears oneDNN cache and resets
-      // registered model data layout. This is unwanted for nested
-      // Executors (executors declared inside control ops)
-      platform::DontClearMKLDNNCache(dev_place);
-#endif
-      auto *block = Attr<framework::BlockDesc *>("sub_block");
-      VLOG(3) << "Conditional block.idx = " << block->ID()
-              << ", scope = " << &cur_scope;
-
-      auto &skip_vars =
-          Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
-
-      LOG_FIRST_N(INFO, 1)
-          << "[ControlFlow][ConditionalBlock] New Executor is Running.";
-      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-        VLOG(10) << "[interpreterCore cache]" << core_.get();
-        VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
-                                                      dev_place);
-
-        framework::interpreter::ExecutionConfig execution_config;
-        execution_config.create_local_scope = false;
-        execution_config.used_for_control_flow_op = true;
-        execution_config.skip_gc_vars =
-            std::set<std::string>(skip_vars.begin(), skip_vars.end());
-
-        core_.reset(new InterpreterCore(
-            dev_place, *block, &cur_scope, execution_config));
-        VLOG(10) << "[interpreterCore] created:" << core_;
-      } else {
-        BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
-        core_->reset_scope(&cur_scope);
-      }
-
+      SetSubBlockCore(scope, dev_place);
       core_->Run({}, false);
+    }
+  }
+
+  void SetSubBlockCore(const framework::Scope &scope,
+                       const platform::Place &dev_place) const {
+    auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
+    PADDLE_ENFORCE_NOT_NULL(
+        scope_var,
+        platform::errors::PreconditionNotMet(
+            "Expect Scope variable to be set in conditional_block_op, but "
+            "got a null Scope variable. Please set the Scope variable."));
+
+    auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
+    scopes->resize(1);
+    scopes->front() = &scope.NewScope();
+
+    auto &cur_scope = *scopes->front();
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    platform::DontClearMKLDNNCache(dev_place);
+#endif
+    auto *block = Attr<framework::BlockDesc *>("sub_block");
+    VLOG(3) << "Conditional block.idx = " << block->ID()
+            << ", scope = " << &cur_scope;
+
+    auto &skip_vars =
+        Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
+
+    LOG_FIRST_N(INFO, 1)
+        << "[ControlFlow][ConditionalBlock] New Executor is Running.";
+    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+      VLOG(10) << "[interpreterCore cache]" << core_.get();
+      VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
+                                                    dev_place);
+
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.used_for_control_flow_op = true;
+      execution_config.skip_gc_vars =
+          std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+      core_.reset(
+          new InterpreterCore(dev_place, *block, &cur_scope, execution_config));
+      VLOG(10) << "[interpreterCore] created:" << core_;
+    } else {
+      BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
+      core_->reset_scope(&cur_scope);
     }
   }
 

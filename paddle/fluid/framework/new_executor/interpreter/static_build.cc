@@ -325,7 +325,7 @@ bool FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           Scope* scope) {
   const std::string& op_type = op.Type();
   if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
-    return true;
+    return false;
   }
 
   phi::DeviceContext* dev_ctx =

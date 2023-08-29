@@ -539,7 +539,7 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->kernel_func_ = nullptr;
   if (static_build) {
     bool init_success = FakeInitializeOutputsForOperatorBase(*op, place, scope);
-    if (!init_success || OperatorBasesMustRunInStaticBuild.count(op->Type())) {
+    if (!init_success) {
       op->Run(*scope, place);  // Run op when fake init failed.
     }
   } else {
