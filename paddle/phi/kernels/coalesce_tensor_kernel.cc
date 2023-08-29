@@ -203,8 +203,9 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   if (copy_data) {
     for (auto item : input) {
       size_t len = static_cast<size_t>(item->numel());
-      auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
-                                            static_cast<int64_t>(offset + len));
+      auto sub_tensor = fused_output->Slice(
+          static_cast<int64_t>(offset),
+          static_cast<int64_t>(offset) + static_cast<int64_t>(len));
       phi::Copy(dev_ctx, *item, dev_ctx.GetPlace(), false, &sub_tensor);
 
       offset += use_align
@@ -219,8 +220,9 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   } else if (persist_output) {
     for (auto &item : output) {
       size_t len = static_cast<size_t>(item->numel());
-      auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
-                                            static_cast<int64_t>(offset + len));
+      auto sub_tensor = fused_output->Slice(
+          static_cast<int64_t>(offset),
+          static_cast<int64_t>(offset) + static_cast<int64_t>(len));
       // some var may not persistable, or persistable var may not init
       if (item->initialized()) {
         phi::Copy(dev_ctx, *item, dev_ctx.GetPlace(), false, &sub_tensor);
@@ -243,8 +245,9 @@ void CoalesceTensorKernel(const Context &dev_ctx,
     auto dim = output[i]->dims();
     VLOG(4) << len << " " << dim << " " << offset;
     output[i]
-        ->ShareDataWith(fused_output->Slice(static_cast<int64_t>(offset),
-                                            static_cast<int64_t>(offset + len)))
+        ->ShareDataWith(fused_output->Slice(
+            static_cast<int64_t>(offset),
+            static_cast<int64_t>(offset) + static_cast<int64_t>(len)))
         .Resize(dim);
     len = use_align ? phi::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
