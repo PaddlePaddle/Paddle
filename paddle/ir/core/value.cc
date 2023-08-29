@@ -133,7 +133,7 @@ bool Value::HasOneUse() const {
 
 size_t Value::use_count() const {
   size_t count = 0;
-  for (auto it = begin(); it != end(); ++it) count++;
+  for (auto it = use_begin(); it != use_end(); ++it) count++;
   return count;
 }
 

@@ -124,7 +124,9 @@ class DrrRewritePattern : public ir::RewritePattern {
             continue;
           }
           std::pair<bool, ir::Operation*> found{false, nullptr};
-          for (auto& it : ir_input_value) {
+          for (auto it = ir_input_value.use_begin();
+               it != ir_input_value.use_end();
+               ++it) {
             auto* ir_op = it.owner();
             if (ir_visited.count(ir_op)) {
               continue;
@@ -196,7 +198,9 @@ class DrrRewritePattern : public ir::RewritePattern {
             continue;
           }
           std::pair<bool, ir::Operation*> found{false, nullptr};
-          for (auto& it : ir_output_value) {
+          for (auto it = ir_output_value.use_begin();
+               it != ir_output_value.use_end();
+               ++it) {
             auto* ir_op = it.owner();
             if (ir_visited.count(ir_op)) {
               continue;
