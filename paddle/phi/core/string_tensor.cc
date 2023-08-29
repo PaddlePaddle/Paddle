@@ -43,6 +43,7 @@ StringTensor::StringTensor(const StringTensor& other) {
 }
 
 StringTensor& StringTensor::operator=(const StringTensor& other) {
+  if (this == &other) return *this;
   meta_ = other.meta();
   holder_ = other.holder_;
   return *this;
