@@ -19,11 +19,7 @@ namespace paddle {
 namespace operators {
 
 using dnnl::memory;
-using dnnl::primitive;
-using dnnl::reorder;
 using dnnl::resampling_forward;
-using dnnl::stream;
-using phi::DataLayout;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T = float>
