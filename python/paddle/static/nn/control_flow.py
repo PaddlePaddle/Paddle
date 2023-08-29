@@ -961,9 +961,16 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             ...    exe = paddle.static.Executor(paddle.CPUPlace())
             ...    res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
-            ...    print(res_1, res_2, res_3)
-            [[1. 1.]] [[2 2]
-             [2 2]] [3 3 3]
+
+            >>> print(res_1)
+            [[1. 1.]]
+
+            >>> print(res_2)
+            [[2 2]
+             [2 2]]
+            
+            >>> print(res_3)
+            [3 3 3]
     '''
     helper = LayerHelper('switch_case', **locals())
 
@@ -1136,39 +1143,44 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
             >>> import paddle
 
-            #
-            # pseudocode:
-            # if 0.1 < 0.23:
-            #     return 1, True
-            # else:
-            #     return 3, 2
-            #
+            >>> # pseudocode:
+            >>> # if 0.1 < 0.23:
+            >>> #     return 1, True
+            >>> # else:
+            >>> #     return 3, 2
 
             >>> def true_func():
-            ...     return paddle.full(shape=[1, 2], dtype='int32',
-            ...                         fill_value=1), paddle.full(shape=[2, 3],
-            ...                                                     dtype='bool',
-            ...                                                     fill_value=True)
+            ...     return paddle.full(shape=[1, 2], 
+            ...                        dtype='int32',
+            ...                        fill_value=1
+            ...         ), paddle.full(shape=[2, 3],
+            ...                        dtype='bool',
+            ...                        fill_value=True
+            ...         )
 
 
             >>> def false_func():
-            ...     return paddle.full(shape=[3, 4], dtype='float32',
-            ...                         fill_value=3), paddle.full(shape=[4, 5],
-            ...                                                     dtype='int64',
-            ...                                                     fill_value=2)
+            ...     return paddle.full(shape=[3, 4], 
+            ...                        dtype='float32',
+            ...                        fill_value=3
+            ...         ), paddle.full(shape=[4, 5],
+            ...                        dtype='int64',
+            ...                        fill_value=2
+            ...         )
 
 
             >>> x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
             >>> y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
             >>> pred = paddle.less_than(x=x, y=y, name=None)
-            >>> ret = paddle.static.nn.cond(pred, true_func, false_func)
-            >>> # ret is a tuple containing 2 tensors
-            >>> print(ret)
-            (Tensor(shape=[1, 2], dtype=int32, place=Place(gpu:0), stop_gradient=True,
-                [[1, 1]]), Tensor(shape=[2, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
-                [[True, True, True],
-                    [True, True, True]]))
+            >>> a, b = paddle.static.nn.cond(pred, true_func, false_func)
 
+            >>> print(a)
+            Tensor(shape=[1, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+                [[1, 1]])
+            >>> print(b)
+            Tensor(shape=[2, 3], dtype=bool, place=Place(cpu), stop_gradient=True,
+                [[True, True, True],
+                 [True, True, True]])
     """
     if in_dygraph_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"

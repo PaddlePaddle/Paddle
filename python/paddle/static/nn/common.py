@@ -410,6 +410,7 @@ def continuous_value_model(input, cvm, use_cvm=True):
         A Tensor with same type as input.
     Examples:
         .. code-block:: python
+
             >>> import paddle.fluid as fluid
             >>> import paddle
 
@@ -516,7 +517,7 @@ def data_norm(
             >>> import paddle
             >>> paddle.enable_static()
 
-            >>> x = paddle.randn(shape=[32,100])
+            >>> x = paddle.randn(shape=[32, 100])
             >>> hidden2 = paddle.static.nn.data_norm(input=x)
     """
     helper = LayerHelper('data_norm', **locals())
@@ -887,13 +888,13 @@ def conv2d(
     Examples:
         .. code-block:: python
 
-          >>> import paddle
-          >>> paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-          >>> data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          >>> conv2d = paddle.static.nn.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
-          >>> print(conv2d.shape)
-          (-1, 2, 30, 30)
+            >>> data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+            >>> conv2d = paddle.static.nn.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+            >>> print(conv2d.shape)
+            (-1, 2, 30, 30)
     """
 
     check_variable_and_dtype(
@@ -1206,13 +1207,9 @@ def conv3d(
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
             >>> x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
-            >>> output = exe.run(feed={"data": x}, fetch_list=[res])
-            >>> print(output[-1][0,0,0,0])
-            [0.42333853 0.9939462  0.9195221  0.5289302  0.5495782  0.45294872
-             0.64201427 0.75898516 0.58121884 1.0984561  1.4629304  0.83571714
-             1.0676675  1.0190431  1.0154897  0.682743   1.1180054  0.58617026
-             1.0602262  1.3465025  0.69385093 1.018848   0.40356764 0.71823955
-             0.8591948  1.0549321  0.6444106  0.976143   0.9044679  0.9282274 ]
+            >>> output,  = exe.run(feed={"data": x}, fetch_list=[res])
+            >>> print(output.shape)
+            (1, 2, 10, 30, 30)
     """
 
     l_type = 'conv3d'
@@ -2990,7 +2987,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
             >>> import paddle
             >>> paddle.enable_static()
 
-            >>> x = paddle.static.data(name="x", shape=[None,5,10,10], dtype="float32")
+            >>> x = paddle.static.data(name="x", shape=[None, 5, 10, 10], dtype="float32")
             >>> mode = 'channel'
             >>> output = paddle.static.nn.prelu(
             ...     x,mode,param_attr=paddle.ParamAttr(name='alpha'))
@@ -3189,16 +3186,18 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             >>> paddle.seed(1107)
 
             >>> paddle.enable_static()
-            # Creates a forward function, Tensor can be input directly without
-            # being converted into numpy array.
+            >>> # Creates a forward function, Tensor can be input directly without
+            >>> # being converted into numpy array.
             >>> def tanh(x):
             ...     return np.tanh(x)
-            # Skip x in backward function and return the gradient of x
-            # Tensor must be actively converted to numpy array, otherwise,
-            # operations such as +/- can't be used.
+
+            >>> # Skip x in backward function and return the gradient of x
+            >>> # Tensor must be actively converted to numpy array, otherwise,
+            >>> # operations such as +/- can't be used.
             >>> def tanh_grad(y, dy):
             ...     return np.array(dy) * (1 - np.square(np.array(y)))
-            # Creates a forward function for debugging running networks(print value)
+            
+            >>> # Creates a forward function for debugging running networks(print value)
             >>> def debug_func(x):
             ...     # print(x)
             ...     pass
@@ -3240,8 +3239,8 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             >>> import paddle
             >>> import numpy as np
 
-            >>> np.random.seed()
-            >>> paddle.seed()
+            >>> np.random.seed(1107)
+            >>> paddle.seed(1107)
 
             >>> paddle.enable_static()
             >>> def element_wise_add(x, y):
@@ -3465,7 +3464,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             >>> weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
             >>> x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
             >>> print(x.shape)
-            (2, 8, 32, 32)>>> 
+            (2, 8, 32, 32)
     """
     helper = LayerHelper('spectral_norm', **locals())
     check_variable_and_dtype(
@@ -3775,20 +3774,16 @@ def embedding(
             >>> exe.run(paddle.static.default_startup_program())
 
             >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
-
-            # x is a Numpy.
-            # x.data = [[7, 2, 4, 5], [4, 3, 2, 9]]
-            # x.shape = [2, 4]
-
             >>> out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
+            >>> print(out)
             [[[1. 1. 1.]
-            [1. 1. 1.]
-            [1. 1. 1.]
-            [1. 1. 1.]]
-            [[1. 1. 1.]
-            [1. 1. 1.]
-            [1. 1. 1.]
-            [1. 1. 1.]]]
+              [1. 1. 1.]
+              [1. 1. 1.]
+              [1. 1. 1.]]
+             [[1. 1. 1.]
+              [1. 1. 1.]
+              [1. 1. 1.]
+              [1. 1. 1.]]]
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -3932,7 +3927,7 @@ def sparse_embedding(
             >>> sparse_feature_dim = 1024
             >>> embedding_size = 64
 
-            # Only when the feature appear more than 10 times or more will be participated in the training.
+            >>> # Only when the feature appear more than 10 times or more will be participated in the training.
             >>> entry = paddle.distributed.CountFilterEntry(10)
 
             >>> input = paddle.static.data(name='ins', shape=[1], dtype='int64')
