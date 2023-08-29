@@ -42,19 +42,19 @@ epoch_num = 1
 #     8.438933372497559,
 #     10.305074691772461,
 
-
+# note: Version 2.0 momentum is fused to OP when L2Decay is available, and the results are different from the fluid version.
 # The results in ci as as follows:
 DY2ST_CINN_GT = [
-    5.828789710998535,
-    8.340764999389648,
-    4.998944282531738,
-    8.474305152893066,
-    8.09157943725586,
-    7.440057754516602,
-    9.907357215881348,
-    8.304681777954102,
-    8.383116722106934,
-    10.120304107666016,
+    5.847333908081055,
+    8.347576141357422,
+    5.1415300369262695,
+    8.373777389526367,
+    8.05331802368164,
+    7.437496185302734,
+    9.630914688110352,
+    8.547889709472656,
+    8.343082427978516,
+    10.203847885131836,
 ]
 
 if core.is_compiled_with_cuda():
@@ -93,11 +93,11 @@ class TransedFlowerDataSet(paddle.io.Dataset):
 
 
 def optimizer_setting(parameter_list=None):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=base_lr,
         momentum=momentum_rate,
-        regularization=paddle.regularizer.L2Decay(l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer

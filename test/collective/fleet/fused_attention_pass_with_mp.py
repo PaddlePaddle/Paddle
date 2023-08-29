@@ -175,7 +175,7 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
             out = multi_head_attn(attn_input, attn_mask)
             loss = paddle.mean(out)
 
-            sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
         startup_block = startup_prog.global_block()

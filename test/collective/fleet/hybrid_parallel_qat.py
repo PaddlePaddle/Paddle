@@ -235,7 +235,7 @@ class SimpleDPNet(nn.Layer):
         return x
 
 
-class TestDistMPTraning(unittest.TestCase):
+class TestDistMPTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2

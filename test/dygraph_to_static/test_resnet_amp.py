@@ -16,6 +16,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
@@ -70,7 +71,7 @@ def train(to_static, build_strategy=None):
 
                 with paddle.amp.auto_cast():
                     pred = resnet(img)
-                    # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
+                    # FIXME(Aurelius84): The following cross_entropy seems to bring out a
                     # precision problem, need to figure out the underlying reason.
                     # If we remove it, the loss between dygraph and dy2stat is exactly same.
                     loss = paddle.nn.functional.cross_entropy(
@@ -117,6 +118,7 @@ class TestResnet(unittest.TestCase):
         paddle.jit.enable_to_static(to_static)
         return train(to_static)
 
+    @test_and_compare_with_new_ir(False)
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

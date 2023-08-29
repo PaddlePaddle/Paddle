@@ -138,7 +138,7 @@ class NewIrStreamAnalyzer {
   platform::DeviceType GetWaiterType(
       const paddle::framework::InstructionBase* instr) const;
 
-  void ShareEventInfoFrom(const StreamAnalyzer& src);
+  void ShareEventInfoFrom(const NewIrStreamAnalyzer& src);
 
   std::shared_ptr<
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>>

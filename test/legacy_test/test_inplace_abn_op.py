@@ -78,7 +78,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 sigmoid = paddle.nn.functional.sigmoid(bn)
                 out = paddle.sum(sigmoid)
                 if not only_forward:
-                    sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                    sgd_opt = paddle.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
         return main, startup, [out, bn]
 

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from test_fetch_feed import Linear
 
 import paddle
@@ -52,6 +53,7 @@ def fake_data(shape):
     return fluid.dygraph.to_variable(x_data)
 
 
+@dy2static_unittest
 class TestWithNestedInput(unittest.TestCase):
     def setUp(self):
         self.x = None
@@ -88,6 +90,7 @@ class TestWithNestedInput(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
+@dy2static_unittest
 class TestWithNestedOutput(unittest.TestCase):
     def setUp(self):
         self.x = None
@@ -124,10 +127,13 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(dy_var, st_var)
 
 
+@dy2static_unittest
 class TestWithTrainAndEval(unittest.TestCase):
+    @ast_only_test
     def test_switch_eval_and_train(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
+            linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((4, 10)).astype('float32')
             x = fluid.dygraph.to_variable(x_data)
             linear_net(x)
@@ -154,16 +160,20 @@ class TestWithTrainAndEval(unittest.TestCase):
             )
 
 
+@dy2static_unittest
 class TestWithNoGrad(unittest.TestCase):
+    @ast_only_test
     def test_with_no_grad(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
+            linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((5, 10)).astype('float32')
             x = fluid.dygraph.to_variable(x_data)
 
             with paddle.no_grad():
                 linear_net.train()
                 linear_net(x)
+                # BUG: 我们希望这里 是 ASTStaticFunction(StaticFunction):
                 _, partial_layer = linear_net.forward.program_cache.last()[-1]
                 self.assertEqual(
                     partial_layer.program, partial_layer._train_program
@@ -186,6 +196,7 @@ class GPT2LMHeadModel(paddle.nn.Layer):
         return x1
 
 
+@dy2static_unittest
 class TestPruneUnusedParamInProgram(unittest.TestCase):
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")

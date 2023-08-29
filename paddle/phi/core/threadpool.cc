@@ -38,7 +38,7 @@ ThreadPool* ThreadPool::GetInstance() {
 void ThreadPool::Init() {
   if (threadpool_.get() == nullptr) {
     // TODO(Yancey1989): specify the max threads number
-    int num_threads = std::thread::hardware_concurrency();
+    int num_threads = static_cast<int>(std::thread::hardware_concurrency());
     if (FLAGS_dist_threadpool_size > 0) {
       num_threads = FLAGS_dist_threadpool_size;
       VLOG(1) << "set dist_threadpool_size to " << num_threads;
@@ -55,8 +55,7 @@ ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
     // TODO(Yancey1989): binding the thread on the specify CPU numberw
-    thread =
-        std::make_unique<std::thread>(std::bind(&ThreadPool::TaskLoop, this));
+    thread = std::make_unique<std::thread>([this] { ThreadPool::TaskLoop(); });
   }
 }
 

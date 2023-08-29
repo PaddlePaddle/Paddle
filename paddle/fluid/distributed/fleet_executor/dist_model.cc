@@ -374,7 +374,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
 }
 
 bool DistModel::PrepareScope() {
-  scope_.reset(new framework::Scope());
+  scope_ = std::make_unique<framework::Scope>();
   return true;
 }
 
@@ -412,7 +412,7 @@ bool DistModel::LoadProgram() {
   fin.close();
   program_proto.ParseFromString(pb_content);
   VLOG(5) << pb_content;
-  program_.reset(new framework::ProgramDesc(program_proto));
+  program_ = std::make_unique<framework::ProgramDesc>(program_proto);
   return true;
 }
 
@@ -469,7 +469,7 @@ bool DistModel::LoadParameters() {
 }
 
 bool DistModel::PrepareFleetExe() {
-  task_node_.reset(new TaskNode(program_.get(), config_.local_rank));
+  task_node_ = std::make_unique<TaskNode>(program_.get(), config_.local_rank);
   // With auto cut, there is no concept of pp, no need to add dependency.
   task_node_->SetType("Compute");
   task_node_->Init();
@@ -487,7 +487,7 @@ bool DistModel::PrepareFleetExe() {
     }
     id_to_rank.insert({i, i});
   }
-  fleet_exe.reset(new FleetExecutor(executor_desc_));
+  fleet_exe = std::make_unique<FleetExecutor>(executor_desc_);
   fleet_exe->Init(carrier_id_,
                   *(program_.get()),
                   scope_.get(),

@@ -249,7 +249,7 @@ TEST(test_prepare_op, test_complex_eager) {
   TestHandleComplexGradToRealGradEager(outs);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
   TestPrepareDataSamePlace({{"use_mkldnn", true}});
 }
@@ -259,6 +259,6 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 
 USE_OP_ITSELF(split);
 USE_OP_ITSELF(relu);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 #endif

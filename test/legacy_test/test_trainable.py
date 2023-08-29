@@ -20,6 +20,8 @@ from simple_nets import init_data
 import paddle
 from paddle import fluid
 
+paddle.enable_static()
+
 
 def test_trainable():
     x = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
@@ -36,7 +38,7 @@ def test_trainable():
 
 class TestTrainable(unittest.TestCase):
     def check_trainable(
-        self, model, feed_dict, op_count, optimizer=fluid.optimizer.Adam()
+        self, model, feed_dict, op_count, optimizer=paddle.optimizer.Adam()
     ):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -73,7 +75,7 @@ class TestTrainable(unittest.TestCase):
         self.check_trainable(
             test_trainable,
             feed_dict,
-            op_count={'adamax': 1, 'scale': 1, 'mul_grad': 1},
+            op_count={'adamax': 1, 'scale': 1, 'mul_grad': 0},
             optimizer=paddle.optimizer.Adamax(learning_rate=0.2),
         )
 

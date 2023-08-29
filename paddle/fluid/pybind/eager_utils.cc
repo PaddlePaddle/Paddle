@@ -51,6 +51,7 @@ extern PyTypeObject* p_string_tensor_type;
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_ir_opresult_pytype;
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
@@ -60,9 +61,7 @@ extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 extern PyTypeObject* g_jit_function_pytype;
-#ifdef PADDLE_WITH_DISTRIBUTE
 extern PyTypeObject* g_tensor_dist_attr_pytype;
-#endif
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
@@ -134,6 +133,10 @@ bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj) {
 }
 
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
+
+bool PyObject_CheckIROpResult(PyObject* obj) {
+  return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
+}
 
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
   if (obj == Py_None) {
@@ -544,13 +547,12 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
+using phi::distributed::TensorDistAttr;
+TensorDistAttr CastPyArg2DistAttr(PyObject* obj, ssize_t arg_pos) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-using phi::distributed::auto_parallel::TensorDistAttr;
-std::shared_ptr<TensorDistAttr> CastPyArg2DistAttr(PyObject* obj,
-                                                   ssize_t arg_pos) {
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_tensor_dist_attr_pytype))) {
-    return ::pybind11::handle(obj).cast<std::shared_ptr<TensorDistAttr>>();
+    return ::pybind11::handle(obj).cast<TensorDistAttr>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -558,8 +560,13 @@ std::shared_ptr<TensorDistAttr> CastPyArg2DistAttr(PyObject* obj,
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "The parsing of `DistAttr` is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
@@ -638,6 +645,28 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
         "argument (position %d) must be "
         "one of core.VarDesc.VarType, "
         "but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return dtype;
+}
+
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos) {
+  if (obj == Py_None) {
+    return phi::DataType::UNDEFINED;
+  }
+
+  paddle::DataType dtype;
+  if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
+    dtype = ::pybind11::handle(obj).cast<paddle::DataType>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s: argument (position %d) must be "
+        "one of core.VarDesc.VarType, "
+        "but got %s",
+        op_type,
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
@@ -865,20 +894,41 @@ PyObject* ToPyObject(const ir::OpResult& value) {
   return obj.ptr();
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
-  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
-  obj.inc_ref();
-  return obj.ptr();
+PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+  }
+
+  return result;
 }
 
-PyObject* ToPyObject(
-    const phi::distributed::auto_parallel::TensorDistAttr* value) {
+PyObject* ToPyObject(const phi::distributed::DistTensor* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
-}
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "DistTensor to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
+
+PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "TensorDistAttr to PyObject is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
+#endif
+}
 
 PyObject* ToPyObject(const phi::SelectedRows* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
@@ -1435,8 +1485,8 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
-ir::OpResult CastPyArg2OpResult(const std::string& op_type,
-                                PyObject* obj,
+ir::OpResult CastPyArg2OpResult(PyObject* obj,
+                                const std::string& op_type,
                                 size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<ir::OpResult>();
@@ -1448,6 +1498,63 @@ ir::OpResult CastPyArg2OpResult(const std::string& op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
+}
+
+std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
+                                                     const std::string& op_type,
+                                                     size_t arg_pos) {
+  std::vector<ir::OpResult> result_list;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
+        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+      } else if (item == Py_None) {
+        continue;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "vector<OpResult>, but got vector<%s>",
+            op_type,
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)
+                ->tp_name));  // NOLINT
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
+        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+      } else if (item == Py_None) {
+        continue;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "%s(): argument (position %d) must be "
+            "vector<OpResult>, but got vector<%s>",
+            op_type,
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)
+                ->tp_name));  // NOLINT
+      }
+    }
+  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return {::pybind11::handle(obj).cast<ir::OpResult>()};
+  } else if (obj == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "Vector<>, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+  return result_list;
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
@@ -1727,7 +1834,7 @@ void PyVoidHook::operator()() {
 
 PyObjectHolder::PyObjectHolder(PyObject* ptr) { ptr_ = ptr; }
 
-PyObjectHolder::~PyObjectHolder() {
+PyObjectHolder::~PyObjectHolder() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ptr_);
 }
@@ -1753,7 +1860,7 @@ void PyObjectHolder::dec_ref() {
 
 PackHook::PackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-PackHook::~PackHook() {
+PackHook::~PackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }
@@ -1792,7 +1899,7 @@ void* PackHook::operator()(void* py_tensor) {
 
 UnPackHook::UnPackHook(PyObject* hook) : hook_(hook) { Py_INCREF(hook_); }
 
-UnPackHook::~UnPackHook() {
+UnPackHook::~UnPackHook() {  // NOLINT
   ::pybind11::gil_scoped_acquire gil;
   Py_DECREF(hook_);
 }

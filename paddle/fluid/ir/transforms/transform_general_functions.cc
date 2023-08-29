@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/ir/transforms/transform_general_functions.h"
 
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/parameter.h"
 #include "paddle/ir/core/program.h"

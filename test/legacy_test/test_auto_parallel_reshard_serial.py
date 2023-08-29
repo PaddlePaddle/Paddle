@@ -138,7 +138,7 @@ def get_dist_prog_with_parallelizer(
 
     print("mlp_forward after", flush=True)
 
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
+    optimizer = paddle.optimizer.Adam(
         learning_rate=0.00001,
         beta1=0.9,
         beta2=0.999,

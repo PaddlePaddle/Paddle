@@ -75,7 +75,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="query_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        q_emb = fluid.layers.embedding(
+        q_emb = paddle.static.nn.embedding(
             input=q,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -109,7 +109,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="pos_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        pt_emb = fluid.layers.embedding(
+        pt_emb = paddle.static.nn.embedding(
             input=pt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -142,7 +142,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="neg_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        nt_emb = fluid.layers.embedding(
+        nt_emb = paddle.static.nn.embedding(
             input=nt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -196,7 +196,7 @@ class TestPSPassWithBow(unittest.TestCase):
         fleet.init(role)
         loss, acc, _ = self.net()
 
-        optimizer = fluid.optimizer.Adam(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=base_lr,
                 gamma=0.969,

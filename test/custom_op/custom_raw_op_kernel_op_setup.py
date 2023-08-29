@@ -37,7 +37,7 @@ else:
 
 macros = []
 if core.is_compiled_with_mkldnn():
-    macros.append(("PADDLE_WITH_MKLDNN", None))
+    macros.append(("PADDLE_WITH_DNNL", None))
 if core.is_compiled_with_nccl():
     macros.append(("PADDLE_WITH_NCCL", None))
 macros.append(("THRUST_IGNORE_CUB_VERSION_CHECK", None))

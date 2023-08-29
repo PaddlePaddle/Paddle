@@ -195,7 +195,7 @@ class TestPSPassWithBow(unittest.TestCase):
         configs = {"use_ps_gpu": 1, "launch_barrier": False}
         strategy.a_sync_configs = configs
         strategy.a_sync = True
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
 

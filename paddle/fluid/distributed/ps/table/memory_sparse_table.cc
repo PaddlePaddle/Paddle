@@ -46,8 +46,8 @@ int32_t MemorySparseTable::Initialize() {
   profiler.register_profiler("pserver_sparse_select_all");
   InitializeValue();
   _shards_task_pool.resize(_task_pool_size);
-  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
-    _shards_task_pool[i].reset(new ::ThreadPool(1));
+  for (auto &shards_task : _shards_task_pool) {
+    shards_task.reset(new ::ThreadPool(1));
   }
   VLOG(0) << "initalize MemorySparseTable succ";
   return 0;
@@ -97,7 +97,7 @@ int32_t MemorySparseTable::InitializeValue() {
     LOG(INFO) << "merged shard info: [" << _m_sparse_table_shard_num << "|"
               << _m_avg_local_shard_num << "|" << _m_real_local_shard_num
               << "]";
-    _local_shards_new.reset(new shard_type[_real_local_shard_num]);
+    _local_shards_new.reset(new shard_type[_real_local_shard_num]);  // NOLINT
   }
   return 0;
 }
@@ -322,7 +322,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
   // patch model
   if (save_param == 5) {
     _local_shards_patch_model.reset(_local_shards_new.release());
-    _local_shards_new.reset(new shard_type[_real_local_shard_num]);
+    _local_shards_new.reset(new shard_type[_real_local_shard_num]);  // NOLINT
     _save_patch_model_thread = std::thread(std::bind(
         &MemorySparseTable::SavePatch, this, std::string(dirname), save_param));
     return 0;
@@ -556,8 +556,7 @@ int64_t MemorySparseTable::CacheShuffle(
         writers[i];
     writer.Reset(tmp_channels[i].get());
 
-    for (size_t idx = 0; idx < table_ptrs.size(); idx++) {
-      Table *table_ptr = table_ptrs[idx];
+    for (auto table_ptr : table_ptrs) {
       auto value_accesor = table_ptr->ValueAccesor();
       shard_type *shard_ptr = static_cast<shard_type *>(table_ptr->GetShard(i));
 
@@ -779,8 +778,8 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
               float *data_buffer_ptr = data_buffer;
 
               auto &keys = task_keys[shard_id];
-              for (size_t i = 0; i < keys.size(); i++) {
-                uint64_t key = keys[i].first;
+              for (auto &item : keys) {
+                uint64_t key = item.first;
                 auto itr = local_shard.find(key);
                 size_t data_size = value_size - mf_value_size;
                 if (itr == local_shard.end()) {
@@ -804,7 +803,7 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
                 for (size_t mf_idx = data_size; mf_idx < value_size; ++mf_idx) {
                   data_buffer[mf_idx] = 0.0;
                 }
-                auto offset = keys[i].second;
+                auto offset = item.second;
                 float *select_data = pull_values + select_value_size * offset;
                 _value_accesor->Select(
                     &select_data, (const float **)&data_buffer_ptr, 1);
@@ -814,8 +813,8 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
             });
   }
 
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto &task : tasks) {
+    task.wait();
   }
   return 0;
 }
@@ -851,8 +850,8 @@ int32_t MemorySparseTable::PullSparsePtr(int shard_id,  // fake num
               auto &local_shard = _local_shards[shard_id];
               float data_buffer[value_size];  // NOLINT
               float *data_buffer_ptr = data_buffer;
-              for (size_t i = 0; i < keys.size(); ++i) {
-                uint64_t key = keys[i].first;
+              for (auto &item : keys) {
+                uint64_t key = item.first;
                 auto itr = local_shard.find(key);
                 size_t data_size = value_size - mf_value_size;
                 FixedFeatureValue *ret = NULL;
@@ -867,14 +866,14 @@ int32_t MemorySparseTable::PullSparsePtr(int shard_id,  // fake num
                 } else {
                   ret = itr.value_ptr();
                 }
-                int pull_data_idx = keys[i].second;
+                int pull_data_idx = item.second;
                 pull_values[pull_data_idx] = reinterpret_cast<char *>(ret);
               }
               return 0;
             });
   }
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto &task : tasks) {
+    task.wait();
   }
   return 0;
 }
@@ -912,9 +911,9 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
           auto &local_shard_new = _local_shards_new[shard_id];
           float data_buffer[value_col];  // NOLINT
           float *data_buffer_ptr = data_buffer;
-          for (size_t i = 0; i < keys.size(); ++i) {
-            uint64_t key = keys[i].first;
-            uint64_t push_data_idx = keys[i].second;
+          for (auto &item : keys) {
+            uint64_t key = item.first;
+            uint64_t push_data_idx = item.second;
             const float *update_data =
                 values + push_data_idx * update_value_col;
             auto itr = local_shard.find(key);
@@ -964,8 +963,8 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
         });
   }
 
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto &task : tasks) {
+    task.wait();
   }
   return 0;
 }
@@ -1000,9 +999,9 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
           auto &local_shard = _local_shards[shard_id];
           float data_buffer[value_col];  // NOLINT
           float *data_buffer_ptr = data_buffer;
-          for (size_t i = 0; i < keys.size(); ++i) {
-            uint64_t key = keys[i].first;
-            uint64_t push_data_idx = keys[i].second;
+          for (auto &item : keys) {
+            uint64_t key = item.first;
+            uint64_t push_data_idx = item.second;
             const float *update_data = values[push_data_idx];
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
@@ -1040,8 +1039,8 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
         });
   }
 
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto &task : tasks) {
+    task.wait();
   }
   return 0;
 }

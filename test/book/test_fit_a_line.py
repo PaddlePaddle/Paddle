@@ -75,7 +75,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         avg_cost = paddle.mean(cost)
 
     lr = 5e-3 if use_bf16 else 1e-3
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=lr)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=lr)
 
     if use_bf16:
         sgd_optimizer = amp.bf16.decorate_bf16(

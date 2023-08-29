@@ -37,7 +37,7 @@ VariableScope::VariableScope(Scope* scope) {
           "You have passed a nullptr to construct VariableScope."));
 }
 
-VariableScope::~VariableScope() {}
+VariableScope::~VariableScope() = default;
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 

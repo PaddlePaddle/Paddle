@@ -24,7 +24,7 @@ namespace inference {
 
 using paddle::PaddleTensor;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 void SetInt8Config(AnalysisConfig *cfg,
                    std::vector<paddle::PaddleTensor> data) {
   cfg->SetModel(FLAGS_infer_model);

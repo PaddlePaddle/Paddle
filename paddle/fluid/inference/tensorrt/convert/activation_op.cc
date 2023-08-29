@@ -29,7 +29,7 @@ namespace tensorrt {
 
 class ActivationOpConverter : public OpConverter {
  public:
-  ActivationOpConverter() {}
+  ActivationOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {

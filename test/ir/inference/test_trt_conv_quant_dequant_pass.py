@@ -72,7 +72,7 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(
@@ -182,7 +182,7 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(
@@ -290,7 +290,7 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(

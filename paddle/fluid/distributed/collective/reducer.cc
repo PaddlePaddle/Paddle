@@ -609,8 +609,8 @@ void EagerReducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->origin_shapes_.push_back(IntArray(tensor.shape()));
-    p_group->dense_tensors_.push_back(phi::DenseTensor());
+    p_group->origin_shapes_.emplace_back(tensor.shape());
+    p_group->dense_tensors_.emplace_back();
 
     const auto &dtype = tensor.dtype();
     const auto &inner_place = tensor.impl()->place();
@@ -651,8 +651,8 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
                                egr::kSlotSmallVectorSize> &metas =
         node->OutputMeta();
     for (size_t i = 0; i < metas.size(); i++) {
-      for (size_t j = 0; j < metas[i].size(); j++) {
-        const egr::Edge &edge = metas[i][j].GetEdge();
+      for (const auto &item : metas[i]) {
+        const egr::Edge &edge = item.GetEdge();
         auto next_node_shared = edge.GetMutableGradNode();
         if (!next_node_shared || !next_node_shared.get()) {
           continue;

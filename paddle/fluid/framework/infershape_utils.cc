@@ -706,8 +706,8 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             if (vars.size() == 1) {
               num_ele = 1;
               const auto& tensor_dims = vars[0]->GetShape();
-              for (size_t i = 0; i < tensor_dims.size(); ++i) {
-                num_ele *= tensor_dims[i];
+              for (auto tensor_dim : tensor_dims) {
+                num_ele *= tensor_dim;
               }
 
               if (num_ele <= 0) {

@@ -34,7 +34,8 @@ class CommunicationTestDistBase(unittest.TestCase):
 
     def run_test_case(self, script_file, user_defined_envs=None):
         runtime_envs = os.environ
-        runtime_envs.update(user_defined_envs)
+        if user_defined_envs is not None:
+            runtime_envs.update(user_defined_envs)
         runtime_envs["CUDA_VISIBLE_DEVICES"] = self._devices
         start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
         start_command_list = start_command.strip().split()

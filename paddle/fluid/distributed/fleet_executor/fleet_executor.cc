@@ -48,7 +48,7 @@ FleetExecutor::FleetExecutor(const FleetExecutorDesc& exe_desc)
   InitMessageBus();
 }
 
-FleetExecutor::~FleetExecutor() {
+FleetExecutor::~FleetExecutor() {  // NOLINT
   for (const auto& carrier_id : carrier_ids_) {
     GlobalMap<std::string, Carrier>::Get(carrier_id)->Release();
   }

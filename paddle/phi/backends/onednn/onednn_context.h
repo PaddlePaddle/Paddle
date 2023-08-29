@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include <memory>
 #include <mutex>     // NOLINT
 #include "dnnl.hpp"  // NOLINT

@@ -57,7 +57,7 @@ def static_train_net(img, label):
     )
     avg_loss = paddle.mean(loss)
 
-    optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
     return prediction, avg_loss
@@ -125,13 +125,11 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                     param.name
                 )
 
-            fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 self.save_dirname,
-                ["img"],
+                [img],
                 [prediction],
                 exe,
-                model_filename=self.model_filename,
-                params_filename=self.params_filename,
             )
 
         return static_param_dict

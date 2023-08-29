@@ -90,7 +90,7 @@ __global__ void KeLinearInterpFw(const T* in,
 
     if (data_layout == DataLayout::kNCHW) {
       const T* in_pos =
-          &in[out_id_h * out_id_w + channel_id * in_img_size + in_img_idx];
+          &in[out_id_h * input_w + channel_id * in_img_size + in_img_idx];
       // linear interpolation
       out[out_id_h * output_w + out_id_w] =
           static_cast<T>(w2lambda * static_cast<MT>(in_pos[0]) +
@@ -985,11 +985,7 @@ static void Interpolate2DCUDAFwd(
               interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
-#ifdef __HIPCC__
-    constexpr int thread_per_block = 256;
-#else
     constexpr int thread_per_block = 512;
-#endif
     KeBicubicInterpFw<T>
         <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
             input_data,

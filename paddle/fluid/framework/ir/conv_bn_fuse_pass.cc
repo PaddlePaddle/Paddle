@@ -756,7 +756,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_conv_bn_count);
 }
 
-ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
+ConvTransposeBNFusePass::ConvTransposeBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -800,7 +800,8 @@ ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
       .End();
 }
 
-ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
+ConvTransposeEltwiseAddBNFusePass::
+    ConvTransposeEltwiseAddBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -844,7 +845,7 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
       .End();
 }
 
-DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {
+DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("depthwise_conv2d"))
       .AddInput("Input")
       .IsTensor()

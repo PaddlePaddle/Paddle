@@ -19,6 +19,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -131,10 +132,12 @@ class BottleneckBlock(paddle.nn.Layer):
 
         y = paddle.add(x=short, y=conv2)
 
-        layer_helper = paddle.fluid.layer_helper.LayerHelper(
-            self.full_name(), act='relu'
-        )
-        return layer_helper.append_activation(y)
+        # TODO: uncomment this lines to reproduce the oneDNN segment fault error.
+        # layer_helper = paddle.fluid.layer_helper.LayerHelper(
+        # self.full_name(), act='relu'
+        # )
+        # return layer_helper.append_activation(y)
+        return paddle.nn.functional.relu(y)
 
 
 class ResNet(paddle.nn.Layer):
@@ -426,6 +429,19 @@ class TestResnet(unittest.TestCase):
             rtol=1e-05,
             err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
                 predictor_pre, st_pre
+            ),
+        )
+
+    @test_with_new_ir
+    def test_resnet_new_ir(self):
+        static_loss = self.train(to_static=True)
+        dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
             ),
         )
 

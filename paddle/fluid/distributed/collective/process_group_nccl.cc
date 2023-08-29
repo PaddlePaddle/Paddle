@@ -47,7 +47,7 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
       comm_event_(place),
       task_place_(place) {}
 
-ProcessGroupNCCL::NCCLTask::~NCCLTask() {}
+ProcessGroupNCCL::NCCLTask::~NCCLTask() = default;
 
 bool ProcessGroupNCCL::NCCLTask::IsCompleted() { return comm_event_.Query(); }
 
@@ -625,7 +625,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
   for (size_t i = 0; i < places.size(); ++i) {
     platform::CUDADeviceGuard guard(places[i]);
 
-    dev_ctx[i].reset(new phi::GPUContext(places[i]));
+    dev_ctx[i] = std::make_unique<phi::GPUContext>(places[i]);
     ncclComm_t nccl_comm;
     NCCL_CHECK(phi::dynload::ncclCommInitRank(
         &nccl_comm, GetSize(), nccl_id, GetRank()));

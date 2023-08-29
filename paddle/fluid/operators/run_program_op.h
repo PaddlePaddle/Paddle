@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
@@ -143,7 +143,8 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == "Fake_var") {
+    if (var_names[i] == framework::kFakeVarName ||
+        var_names[i] == paddle::framework::kEmptyVarName) {
       continue;
     }
     auto *var = scope->Var(var_names[i]);
@@ -162,7 +163,8 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     // because we can't findthem in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     if (var_names[i] == framework::kEmptyVarName ||
-        var_names[i] == "Fake_var" || !global_block.HasVar(var_names[i])) {
+        var_names[i] == framework::kFakeVarName ||
+        !global_block.HasVar(var_names[i])) {
       VLOG(2) << "find variable name is " << var_names[i] << ", skip it!";
       continue;
     }
@@ -389,7 +391,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     }
     VLOG(2) << "The number of sub scopes after forward: "
             << target_scope->kids().size();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) platform::DontClearMKLDNNCache(ctx.GetPlace());
 #endif
     return pe_and_graph;

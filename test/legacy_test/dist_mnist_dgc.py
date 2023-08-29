@@ -97,7 +97,7 @@ class TestDistMnistDGC(TestDistRunnerBase):
 
         inference_program = fluid.default_main_program().clone()
         if not use_dgc:
-            opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+            opt = paddle.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
             opt = paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
                 learning_rate=self.lr,

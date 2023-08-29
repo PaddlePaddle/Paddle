@@ -115,11 +115,11 @@ int32_t CoordinatorClient::Initialize(
     fl_client_list[i].rank = i;  // TO CHECK
   }
   std::string fl_client_ip_port;
-  for (size_t i = 0; i < fl_client_list.size(); ++i) {
-    fl_client_ip_port.assign(fl_client_list[i].ip);
+  for (auto& fl_client : fl_client_list) {
+    fl_client_ip_port.assign(fl_client.ip);
     fl_client_ip_port.append(":");
-    fl_client_ip_port.append(std::to_string(fl_client_list[i].port));
-    uint32_t rank = fl_client_list[i].rank;
+    fl_client_ip_port.append(std::to_string(fl_client.port));
+    uint32_t rank = fl_client.rank;
     VLOG(0) << "fl-ps > coordinator connect to fl_client: " << rank;
     _fl_client_channels[rank].reset(new brpc::Channel());
     if (_fl_client_channels[rank]->Init(
@@ -127,7 +127,7 @@ int32_t CoordinatorClient::Initialize(
       LOG(ERROR) << "CoordinatorClient connect to FLClient:"
                  << fl_client_ip_port << " Failed! Try again.";
       std::string int_ip_port =
-          GetIntTypeEndpoint(fl_client_list[i].ip, fl_client_list[i].port);
+          GetIntTypeEndpoint(fl_client.ip, fl_client.port);
       if (_fl_client_channels[rank]->Init(int_ip_port.c_str(), "", &options) !=
           0) {
         LOG(ERROR) << "CoordinatorClient connect to PSClient:" << int_ip_port

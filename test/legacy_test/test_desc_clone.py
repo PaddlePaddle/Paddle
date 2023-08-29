@@ -89,9 +89,7 @@ def get_model(batch_size):
 
     inference_program = fluid.default_main_program().clone()
     # Optimization
-    opt = fluid.optimizer.AdamOptimizer(
-        learning_rate=0.001, beta1=0.9, beta2=0.999
-    )
+    opt = paddle.optimizer.Adam(learning_rate=0.001, beta1=0.9, beta2=0.999)
 
     # Reader
     train_reader = paddle.batch(

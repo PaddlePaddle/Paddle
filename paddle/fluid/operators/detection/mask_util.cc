@@ -167,12 +167,12 @@ void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
     float y0 = std::numeric_limits<float>::max();
     float y1 = std::numeric_limits<float>::min();
     // each list may have more than one polys
-    for (size_t j = 0; j < polys[i].size(); ++j) {
-      for (size_t k = 0; k < polys[i][j].size() / 2; ++k) {
-        x0 = std::min(x0, polys[i][j][2 * k]);
-        x1 = std::max(x1, polys[i][j][2 * k]);
-        y0 = std::min(y0, polys[i][j][2 * k + 1]);
-        y1 = std::max(y1, polys[i][j][2 * k + 1]);
+    for (const auto& item : polys[i]) {
+      for (size_t k = 0; k < item.size() / 2; ++k) {
+        x0 = std::min(x0, item[2 * k]);
+        x1 = std::max(x1, item[2 * k]);
+        y0 = std::min(y0, item[2 * k + 1]);
+        y1 = std::max(y1, item[2 * k + 1]);
       }
     }
     boxes[i * 4] = x0;

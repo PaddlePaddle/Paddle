@@ -59,6 +59,8 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "i32";
   } else if (type.isa<Int64Type>()) {
     os << "i64";
+  } else if (type.isa<IndexType>()) {
+    os << "index";
   } else if (type.isa<Complex64Type>()) {
     os << "c64";
   } else if (type.isa<Complex128Type>()) {
@@ -165,16 +167,15 @@ void IrPrinter::PrintFullOperation(const Operation* op) {
 }
 
 void IrPrinter::PrintRegion(const Region& region) {
-  for (auto it = region.begin(); it != region.end(); ++it) {
-    auto* block = *it;
+  for (auto block : region) {
     PrintBlock(block);
   }
 }
 
 void IrPrinter::PrintBlock(const Block* block) {
   os << "{\n";
-  for (auto it = block->begin(); it != block->end(); ++it) {
-    PrintOperation(*it);
+  for (auto item : *block) {
+    PrintOperation(item);
     os << newline;
   }
   os << "}\n";
@@ -258,7 +259,7 @@ void IrPrinter::PrintOperandsType(const Operation* op) {
     if (op_operand) {
       op_operand_types.push_back(op_operand.type());
     } else {
-      op_operand_types.push_back(Type());
+      op_operand_types.emplace_back();
     }
   }
   os << " (";
@@ -279,7 +280,7 @@ void IrPrinter::PrintOpReturnType(const Operation* op) {
     if (op_result) {
       op_result_types.push_back(op_result.type());
     } else {
-      op_result_types.push_back(Type(nullptr));
+      op_result_types.emplace_back(nullptr);
     }
   }
   PrintInterleave(

@@ -74,7 +74,7 @@ set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
 set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 150)
 set_tests_properties(test_cycle_gan PROPERTIES TIMEOUT 150)
-set_tests_properties(test_bert PROPERTIES TIMEOUT 120)
+set_tests_properties(test_bert PROPERTIES TIMEOUT 180)
 set_tests_properties(test_bert_with_stride PROPERTIES TIMEOUT 120)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)

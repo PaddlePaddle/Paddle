@@ -121,7 +121,7 @@ void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
 }
 
 void OpInfoImpl::Destroy() {
-  VLOG(6) << "Destroy op_info impl at " << this;
+  VLOG(10) << "Destroy op_info impl at " << this;
   // (1) free interfaces
   char *base_ptr = reinterpret_cast<char *>(this) -
                    sizeof(ir::TypeId) * num_traits_ -
@@ -134,7 +134,7 @@ void OpInfoImpl::Destroy() {
     }
   }
   // (2) free memeory
-  VLOG(6) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
+  VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
   free(base_ptr);
 }
 

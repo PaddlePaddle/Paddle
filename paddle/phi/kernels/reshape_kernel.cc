@@ -95,4 +95,6 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_infer,
                                          phi::ReshapeInferKernel) {}
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
                                          ALL_LAYOUT,
-                                         phi::ReshapeKernel) {}
+                                         phi::ReshapeKernel) {
+  kernel->OutputAt(1).SetBackend(phi::Backend::UNDEFINED);
+}

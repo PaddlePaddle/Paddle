@@ -152,7 +152,7 @@ class SimpleNetPipe(PipelineLayer):
         super().__init__(layers=self.descs, loss_fn=LossNet(), **kwargs)
 
 
-class TestDistEmbeddingTraning(unittest.TestCase):
+class TestDistEmbeddingTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1

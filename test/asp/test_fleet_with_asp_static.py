@@ -71,7 +71,7 @@ class TestFleetWithASPStatic(unittest.TestCase):
         )
 
         with fluid.program_guard(train_prog, startup_prog):
-            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )

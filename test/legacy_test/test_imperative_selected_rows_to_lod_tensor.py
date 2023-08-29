@@ -21,7 +21,6 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Embedding
 
 
@@ -125,9 +124,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         dtype=dtype,
                     )
 
-                    sgd = SGDOptimizer(
+                    sgd = paddle.optimizer.SGD(
                         learning_rate=1e-3,
-                        parameter_list=simple_net.parameters(),
+                        parameters=simple_net.parameters(),
                     )
                     dy_param_updated = {}
                     dy_param_init = {}
@@ -172,7 +171,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     )
 
                     exe = fluid.Executor(place)
-                    sgd = SGDOptimizer(learning_rate=1e-3)
+                    sgd = paddle.optimizer.SGD(learning_rate=1e-3)
                     x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )

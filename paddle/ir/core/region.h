@@ -31,8 +31,6 @@ class IR_API Region {
   using reverse_iterator = std::list<Block *>::reverse_iterator;
   using const_iterator = std::list<Block *>::const_iterator;
   ~Region();
-  Region() = default;
-
   bool empty() const { return blocks_.empty(); }
   size_t size() const { return blocks_.size(); }
 
@@ -59,6 +57,8 @@ class IR_API Region {
   IrContext *ir_context() const;
 
  private:
+  // region only support construncted by operation.
+  Region() = delete;
   Region(Region &) = delete;
   Region &operator=(const Region &) = delete;
   friend class Operation;

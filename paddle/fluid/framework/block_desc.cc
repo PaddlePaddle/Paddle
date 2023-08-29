@@ -236,7 +236,7 @@ proto::BlockDesc *BlockDesc::Proto() {
 BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
     : prog_(prog), desc_(desc), need_update_(false) {
   for (const proto::VarDesc &var_desc : desc_->vars()) {
-    vars_[var_desc.name()].reset(new VarDesc(var_desc));
+    vars_[var_desc.name()] = std::make_unique<VarDesc>(var_desc);
   }
 
   for (const proto::OpDesc &op_desc : desc_->ops()) {

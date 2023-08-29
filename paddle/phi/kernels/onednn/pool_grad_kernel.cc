@@ -76,7 +76,7 @@ phi::KernelKey PoolOpGradGetKernelTypeForVar(
     const GetKernelTypeForVarContext* ctx) {
   const DenseTensor& tensor = ctx->GetTensor();
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     const AttributeMap& attrs = ctx->GetAttrs();

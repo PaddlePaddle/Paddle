@@ -56,7 +56,7 @@ class InplaceTestBase(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             with fluid.unique_name.guard():
                 loss = simple_fc_net()
-                adam = fluid.optimizer.Adam(learning_rate=1e-3)
+                adam = paddle.optimizer.Adam(learning_rate=1e-3)
                 adam.minimize(loss)
 
                 with fluid.scope_guard(scope):

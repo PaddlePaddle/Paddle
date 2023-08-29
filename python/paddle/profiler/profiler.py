@@ -237,7 +237,7 @@ def export_chrome_tracing(
             with profiler.Profiler(
                     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
                     scheduler = (3, 10),
-                    on_trace_ready=profiler.export_protobuf('./log')) as p:
+                    on_trace_ready=profiler.export_chrome_tracing('./log')) as p:
                 for iter in range(10):
                     #train()
                     p.step()
@@ -860,20 +860,21 @@ class Profiler:
 
         Examples:
             .. code-block:: python
-                :name: code-example8
 
-                # required: gpu
-                import paddle.profiler as profiler
-                prof = profiler.Profiler(
-                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
-                    scheduler = (3, 7),
-                    on_trace_ready = profiler.export_chrome_tracing('./log'))
-                prof.start()
-                for iter in range(10):
-                    #train()
-                    prof.step()
-                prof.stop()
-                prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+                >>> paddle.device.set_device('gpu')
+                >>> import paddle.profiler as profiler
+                >>> prof = profiler.Profiler(
+                ...     targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+                ...     scheduler = (3, 7),
+                ...     on_trace_ready = profiler.export_chrome_tracing('./log'))
+                >>> prof.start()
+                >>> for iter in range(10):
+                ...     #train()
+                ...     prof.step()
+                >>> prof.stop()
+                >>> prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
         """
         if isinstance(views, SummaryView):
             views = [views]

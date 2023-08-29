@@ -89,7 +89,7 @@ class Operation1 : public ir::Op<Operation1> {
   using Op::Op;
   static const char *name() { return "test.operation1"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
+  static const char *attributes_name[attributes_num];  // NOLINT
   void Verify() {
     auto &attributes = this->attributes();
     if (attributes.count("op1_attr1") == 0 ||
@@ -114,8 +114,9 @@ class Operation1 : public ir::Op<Operation1> {
     argument.AddAttributes(attributes.begin(), attributes.end());
   }
 };
-const char *Operation1::attributes_name[attributes_num] = {"op1_attr1",
-                                                           "op1_attr2"};
+const char *Operation1::attributes_name[attributes_num] = {  // NOLINT
+    "op1_attr1",
+    "op1_attr2"};
 
 IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
@@ -127,7 +128,7 @@ class Operation2
   using Op::Op;
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];
+  static const char *attributes_name[attributes_num];  // NOLINT
   void Verify() {
     auto &attributes = this->attributes();
     if (attributes.count("op2_attr1") == 0 ||
@@ -141,8 +142,9 @@ class Operation2
   }
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
 };
-const char *Operation2::attributes_name[attributes_num] = {"op2_attr1",
-                                                           "op2_attr2"};
+const char *Operation2::attributes_name[attributes_num] = {  // NOLINT
+    "op2_attr1",
+    "op2_attr2"};
 IR_DECLARE_EXPLICIT_TYPE_ID(Operation2)
 IR_DEFINE_EXPLICIT_TYPE_ID(Operation2)
 
@@ -234,24 +236,26 @@ TEST(op_test, region_test) {
   argument.attributes = CreateAttributeMap({"op2_attr1", "op2_attr2"},
                                            {"op2_attr1", "op2_attr2"});
   argument.output_types = {ir::Float32Type::get(ctx)};
-  argument.regions.emplace_back(std::make_unique<ir::Region>());
-  ir::Region *region = argument.regions.back().get();
-  EXPECT_EQ(region->empty(), true);
+  argument.num_regions = 1;
+
+  ir::Operation *op3 = ir::Operation::Create(std::move(argument));
+  // argument.regions.emplace_back(std::make_unique<ir::Region>());
+
+  ir::Region &region = op3->region(0);
+  EXPECT_EQ(region.empty(), true);
 
   // (3) Test custom operation printer
   std::stringstream ss;
   op1->Print(ss);
   EXPECT_EQ(ss.str(), " (%0) = \"test.operation1\" ()");
 
-  region->push_back(new ir::Block());
-  region->push_front(new ir::Block());
-  region->insert(region->begin(), new ir::Block());
-  ir::Block *block = region->front();
+  region.push_back(new ir::Block());
+  region.push_front(new ir::Block());
+  region.insert(region.begin(), new ir::Block());
+  ir::Block *block = region.front();
   block->push_front(op1);
   block->insert(block->begin(), op1_2);
-  ir::Operation *op2 = ir::Operation::Create(std::move(argument));
-  EXPECT_EQ(op2->region(0).ir_context(), ctx);
-  op2->Destroy();
+  op3->Destroy();
 }
 
 TEST(op_test, module_op_death) {

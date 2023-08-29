@@ -16,6 +16,7 @@ import unittest
 from collections import Counter
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 from test_fetch_feed import Linear, Pool2D
 
 import paddle
@@ -24,6 +25,7 @@ from paddle.jit.api import to_static
 from paddle.jit.dy2static import convert_to_static
 
 
+@dy2static_unittest
 class TestCacheProgram(unittest.TestCase):
     def setUp(self):
         self.batch_num = 5
@@ -36,7 +38,7 @@ class TestCacheProgram(unittest.TestCase):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             static_net = self.dygraph_class()
             for batch_id in range(self.batch_num):
-                out = static_net(self.data)
+                out = static_net(paddle.to_tensor(self.data))
                 # Check outputs
                 prev_out = cur_out
                 cur_out = out
@@ -94,8 +96,8 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
-            adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=0.001, parameter_list=dygraph_net.parameters()
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=dygraph_net.parameters()
             )
             loss_data = []
             for batch_id in range(self.batch_num):

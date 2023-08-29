@@ -31,7 +31,7 @@ class EntryAttrChecks(unittest.TestCase):
                 input = paddle.static.data(
                     name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
                 )
-                emb = fluid.layers.embedding(
+                emb = paddle.static.nn.embedding(
                     input=input,
                     size=[100, 10],
                     is_sparse=True,

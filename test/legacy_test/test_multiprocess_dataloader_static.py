@@ -90,7 +90,7 @@ def simple_fc_net_static():
                 )
             )
 
-            optimizer = fluid.optimizer.Adam()
+            optimizer = paddle.optimizer.Adam()
             optimizer.minimize(loss)
     return startup_prog, main_prog, image, label, loss
 

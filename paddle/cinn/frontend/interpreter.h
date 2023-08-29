@@ -43,7 +43,7 @@ class Interpreter final {
    */
   void LoadPaddleModel(const std::string& model_dir,
                        const Target& target,
-                       bool params_combined = false,
+                       bool params_combined,
                        const std::string& model_name = "");
 
   /**

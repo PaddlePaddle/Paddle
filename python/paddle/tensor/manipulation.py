@@ -178,9 +178,9 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
@@ -228,6 +228,18 @@ def cast(x, dtype):
             attrs={'in_dtype': x.dtype, 'out_dtype': out.dtype},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def cast_(x, dtype):
+    """
+    Inplace version of ``cast`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cast`.
+    """
+    if in_dynamic_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.cast_(x, dtype)
 
 
 def slice(input, axes, starts, ends):
@@ -1120,6 +1132,10 @@ def concat(x, axis=0, name=None):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            if not isinstance(input, paddle.ir.Value):
+                input = [t for t in input if t.shape.count(0) == 0]
+            return paddle._ir_ops.concat(input, axis)
         check_type(input, 'input', (list, tuple, Variable), 'concat')
         if not isinstance(input, Variable):
             for id, x in enumerate(input):
@@ -1499,7 +1515,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             end_axis = 2
 
           We get:
-            Out.shape = (3, 1000 * 100, 2)
+            Out.shape = (3, 100 * 100, 4)
 
         Case 2:
 
@@ -1972,6 +1988,14 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            if not isinstance(num_or_sections, int):
+                return paddle._ir_ops.split(input, num_or_sections, dim)
+            else:
+                raise NotImplementedError(
+                    "_ir_ops.split_with_num is not implemented, please change sections as list"
+                )
+
         check_variable_and_dtype(
             input,
             'input',
@@ -2038,7 +2062,7 @@ def split(x, num_or_sections, axis=0, name=None):
             attrs['axis'] = dim
 
         if isinstance(num_or_sections, int):
-            assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+            assert num_or_sections > 0, 'num_or_sections must be than 0.'
             if isinstance(dim, int) and input_shape[dim] > 0:
                 assert input_shape[dim] % num_or_sections == 0, (
                     "The input's size along the split dimension "

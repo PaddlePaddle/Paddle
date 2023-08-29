@@ -124,6 +124,8 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
 
 void SetDeviceCommContext(::ir::Operation* op,
                           platform::DeviceContext* dev_ctx);
+
+std::unordered_set<std::string> GetSpecialOpNames();
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

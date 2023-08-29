@@ -17,14 +17,15 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from test_fetch_feed import Linear
 
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid, nn
 from paddle.fluid import core
-from paddle.fluid.optimizer import AdamOptimizer
 from paddle.nn import BatchNorm
+from paddle.optimizer import Adam
 
 np.random.seed(2020)
 
@@ -74,9 +75,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             paddle.jit.enable_to_static(True)
             x = fluid.dygraph.to_variable(x_data)
             net = Linear(32, 64)
-            adam = AdamOptimizer(
-                learning_rate=0.1, parameter_list=net.parameters()
-            )
+            adam = Adam(learning_rate=0.1, parameters=net.parameters())
 
             for i in range(batch_num):
                 static_out, static_loss = net(x)
@@ -114,6 +113,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
         )
 
+    @ast_only_test
     def test_save_load_prim(self):
         with fluid.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -154,6 +154,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             self.assertIn("pool2d", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
+    @ast_only_test
     def test_save_load_prim_with_hook(self):
         with fluid.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")

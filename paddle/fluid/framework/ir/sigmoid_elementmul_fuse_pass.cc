@@ -67,7 +67,7 @@ SigmoidElementmulFusePattern::SigmoidElementmulFusePattern(
 
 }  // namespace patterns
 
-SigmoidElementmulFusePass::SigmoidElementmulFusePass() {}
+SigmoidElementmulFusePass::SigmoidElementmulFusePass() = default;
 
 void SigmoidElementmulFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(

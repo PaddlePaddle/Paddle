@@ -88,7 +88,10 @@ class TRTConvertValidation {
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_),
                       0,
                       platform::errors::External("cudaStreamCreate error."));
-    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size));
+    TensorRTEngine::ConstructionParams params;
+    params.max_batch_size = max_batch_size;
+    params.max_workspace_size = workspace_size;
+    engine_ = std::make_unique<TensorRTEngine>(params);
     engine_->InitNetwork();
   }
 
@@ -155,7 +158,7 @@ class TRTConvertValidation {
     engine_->FreezeNetwork();
 
     // Declare outputs.
-    op_desc_.reset(new framework::OpDesc(desc, nullptr));
+    op_desc_ = std::make_unique<framework::OpDesc>(desc, nullptr);
   }
 
   // We use the set 'neglected_output' here, because some Ops like batch norm,

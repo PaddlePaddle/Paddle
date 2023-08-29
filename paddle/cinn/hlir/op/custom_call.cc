@@ -996,7 +996,7 @@ bool RegisteryCustomCallArgsFunc() {
       CustomCallArgsForCudnnPoolBackward);
 #endif
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
 
 #endif
 

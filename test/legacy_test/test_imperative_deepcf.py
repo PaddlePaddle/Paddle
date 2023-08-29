@@ -269,7 +269,7 @@ class TestDygraphDeepCF(unittest.TestCase):
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
             loss = paddle.sum(paddle.nn.functional.log_loss(prediction, labels))
-            adam = fluid.optimizer.AdamOptimizer(0.01)
+            adam = paddle.optimizer.Adam(0.01)
             adam.minimize(loss)
 
             exe = fluid.Executor(
@@ -307,9 +307,7 @@ class TestDygraphDeepCF(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             deepcf = DeepCF(num_users, num_items, matrix)
-            adam = fluid.optimizer.AdamOptimizer(
-                0.01, parameter_list=deepcf.parameters()
-            )
+            adam = paddle.optimizer.Adam(0.01, parameters=deepcf.parameters())
             for e in range(self.num_epoches):
                 sys.stderr.write('epoch %d\n' % e)
                 for slice in range(
@@ -340,9 +338,7 @@ class TestDygraphDeepCF(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             deepcf2 = DeepCF(num_users, num_items, matrix)
-            adam2 = fluid.optimizer.AdamOptimizer(
-                0.01, parameter_list=deepcf2.parameters()
-            )
+            adam2 = paddle.optimizer.Adam(0.01, parameters=deepcf2.parameters())
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             for e in range(self.num_epoches):
                 sys.stderr.write('epoch %d\n' % e)
@@ -376,9 +372,7 @@ class TestDygraphDeepCF(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             deepcf = DeepCF(num_users, num_items, matrix)
-            adam = fluid.optimizer.AdamOptimizer(
-                0.01, parameter_list=deepcf.parameters()
-            )
+            adam = paddle.optimizer.Adam(0.01, parameters=deepcf.parameters())
 
             for e in range(self.num_epoches):
                 sys.stderr.write('epoch %d\n' % e)

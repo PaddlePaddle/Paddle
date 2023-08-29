@@ -63,7 +63,7 @@ class TestExceptionNoCStack(unittest.TestCase):
         loss = paddle.nn.functional.square_error_cost(input=predict, label=y)
         avg_loss = paddle.mean(loss)
 
-        fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
+        paddle.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

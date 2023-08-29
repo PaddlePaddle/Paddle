@@ -32,7 +32,7 @@ class Graph;
   PADDLE_ENFORCE_NOT_NULL(                                       \
       id, platform::errors::InvalidArgument("Subgraph has no node %s.", #id));
 
-DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {
+DepthwiseConvMKLDNNPass::DepthwiseConvMKLDNNPass() {  // NOLINT
   AddOpCompat(OpCompat("depthwise_conv2d"))
       .AddInput("Input")
       .IsTensor()

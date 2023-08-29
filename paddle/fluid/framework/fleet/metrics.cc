@@ -30,8 +30,8 @@ void BasicAucCalculator::init(int table_size) {
   set_table_size(table_size);
 
   // init CPU memory
-  for (int i = 0; i < 2; i++) {
-    _table[i] = std::vector<double>();
+  for (auto& item : _table) {
+    item = std::vector<double>();
   }
 
   // reset
@@ -40,8 +40,8 @@ void BasicAucCalculator::init(int table_size) {
 
 void BasicAucCalculator::reset() {
   // reset CPU counter
-  for (int i = 0; i < 2; i++) {
-    _table[i].assign(_table_size, 0.0);
+  for (auto& item : _table) {
+    item.assign(_table_size, 0.0);
   }
   _local_abserr = 0;
   _local_sqrerr = 0;

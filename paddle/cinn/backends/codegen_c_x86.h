@@ -91,16 +91,17 @@ class CodeGenCX86 : public CodeGenC {
 
   template <typename Op>
   void PrintAbsAddr(const Op *op) {
-    os() << op->tensor.template As<ir::_Tensor_>()->name << " + ";
+    str_ += op->tensor.template As<ir::_Tensor_>()->name;
+    str_ += " + ";
 
     auto index = op->index();
     auto *ramp_n = index.template As<ir::Ramp>();
     if (ramp_n) {
       CHECK(!ramp_n->base.template As<ir::Ramp>())
           << "base of a Ramp node should not be Ramp type";
-      Print(ramp_n->base);
+      IrPrinter::Visit(ramp_n->base);
     } else {
-      Print(op->index());
+      IrPrinter::Visit(op->index());
     }
   }
 
@@ -125,17 +126,21 @@ void CodeGenCX86::VisitBinaryOp(const Op *op,
   // TODO(Superjomn) Consider support BLAS.
   int bits = a.type().bits() * a.type().lanes();
   if (SupportsAVX512() && bits == 512) {
-    os() << "cinn_avx512_" << op_repr << "(";
+    str_ += "cinn_avx512_";
+    str_ += op_repr;
+    str_ += "(";
     PrintVecInputArgument(&a);
-    os() << ", ";
+    str_ += ", ";
     PrintVecInputArgument(&b);
-    os() << ")";
+    str_ += ")";
   } else if (SupportsAVX256() && bits == 256) {
-    os() << "cinn_avx256_" << op_repr << "(";
+    str_ += "cinn_avx256_";
+    str_ += op_repr;
+    str_ += "(";
     PrintVecInputArgument(&a);
-    os() << ", ";
+    str_ += ", ";
     PrintVecInputArgument(&b);
-    os() << ")";
+    str_ += ")";
   } else {
     CodeGenC::Visit(op);
   }

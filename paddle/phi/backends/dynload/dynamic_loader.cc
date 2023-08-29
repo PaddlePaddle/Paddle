@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
@@ -109,7 +110,7 @@ namespace phi {
 namespace dynload {
 
 struct PathNode {
-  PathNode() {}
+  PathNode() = default;
   std::string path = "";
 };
 
@@ -400,7 +401,7 @@ void* GetROCFFTDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipfft.so");
 #endif
 }
 #endif

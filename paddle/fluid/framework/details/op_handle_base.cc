@@ -30,7 +30,7 @@ std::string OpHandleBase::DebugString() const {
   return ss.str();
 }
 
-OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
+OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {  // NOLINT
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   for (auto &ev : events_) {
     if (ev.second) {

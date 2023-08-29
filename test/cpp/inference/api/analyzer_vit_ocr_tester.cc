@@ -88,11 +88,11 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_vit_ocr, compare) { compare(); }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 // Check the fuse status
 TEST(Analyzer_vit_ocr, fuse_status) {
   AnalysisConfig cfg;

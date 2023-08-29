@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle import fluid
@@ -25,12 +26,14 @@ SEED = 2020
 np.random.seed(SEED)
 
 
+@dy2static_unittest
 class TestDy2staticException(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
         self.error = "Your if/else have different number of return value."
 
+    @ast_only_test
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):

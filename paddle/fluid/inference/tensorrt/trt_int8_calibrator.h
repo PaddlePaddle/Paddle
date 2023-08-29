@@ -43,7 +43,7 @@ class TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
                     const platform::Place place);
 
   explicit TRTInt8Calibrator(const std::string& calibration_data);
-  ~TRTInt8Calibrator();
+  ~TRTInt8Calibrator() override;
 
   int getBatchSize() const TRT_NOEXCEPT override;
 
@@ -91,7 +91,7 @@ class TRTCalibratorEngine {
  */
 class TRTCalibratorEngineManager {
  public:
-  bool Has() const { return res_.size() > 0; }
+  bool Has() const { return !res_.empty(); }
   bool Has(const std::string& name) const {
     if (res_.count(name) == 0) return false;
     return res_.at(name).get() != nullptr;

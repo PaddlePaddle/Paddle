@@ -64,7 +64,7 @@ class TestFleetWithQAT(unittest.TestCase):
             mse = paddle.nn.MSELoss()
             out = model(input_x)
             loss = mse(out, input_y)
-            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )

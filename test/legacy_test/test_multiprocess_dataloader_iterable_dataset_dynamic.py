@@ -81,7 +81,7 @@ class TestDygraphDataLoader(unittest.TestCase):
         fluid.default_main_program().random_seed = 1
         with fluid.dygraph.guard(places[0]):
             fc_net = SimpleFCNet()
-            optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
+            optimizer = paddle.optimizer.Adam(parameters=fc_net.parameters())
 
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(
@@ -150,7 +150,7 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
         fluid.default_main_program().random_seed = 1
         with fluid.dygraph.guard(places[0]):
             fc_net = SimpleFCNet()
-            optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
+            optimizer = paddle.optimizer.Adam(parameters=fc_net.parameters())
 
             dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(

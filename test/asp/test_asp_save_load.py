@@ -153,7 +153,7 @@ class TestASPStaticOptimize(unittest.TestCase):
                     use_softmax=False,
                 )
             )
-            self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+            self.optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
             self.optimizer.minimize(self.loss, self.startup_program)
 

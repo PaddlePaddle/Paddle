@@ -65,6 +65,8 @@ PHI_DECLARE_int32(inner_op_parallelism);
 namespace paddle {
 namespace framework {
 
+constexpr char kFakeVarName[] = "Fake_var";
+
 /// If a variable is a empty variable, that name will be used.
 constexpr char kEmptyVarName[] = "@EMPTY@";
 

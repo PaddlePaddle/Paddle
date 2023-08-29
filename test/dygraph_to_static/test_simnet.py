@@ -141,12 +141,12 @@ def train(conf_dict, to_static):
 
         net = BOW(conf_dict)
         loss = HingeLoss(conf_dict)
-        optimizer = fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.001,
             beta1=0.9,
             beta2=0.999,
             epsilon=1e-08,
-            parameter_list=net.parameters(),
+            parameters=net.parameters(),
         )
 
         metric = paddle.metric.Auc(name="auc")

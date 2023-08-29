@@ -50,6 +50,7 @@ class TestAST2Func(unittest.TestCase):
         self.assertEqual(func(x, y), self._ast2func(func)(x, y))
 
     def test_ast2func_dygraph(self):
+        paddle.disable_static()
         funcs = [dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else]
         x_data = np.random.random([10, 16]).astype('float32')
         for func in funcs:
@@ -60,6 +61,8 @@ class TestAST2Func(unittest.TestCase):
                 self.assertTrue((true_ret == test_ret).all())
 
     def test_ast2func_static(self):
+        paddle.enable_static()
+
         def func(x):
             y = F.relu(x)
             loss = paddle.mean(y)

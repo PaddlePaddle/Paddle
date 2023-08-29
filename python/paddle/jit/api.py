@@ -25,6 +25,7 @@ from collections import OrderedDict
 import inspect
 import threading
 from typing import Any
+import types
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -46,6 +47,8 @@ from .dy2static.convert_call_func import (
 from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
+    ASTStaticFunction,
+    SymbolicStaticFunction,
     unwrap_decorators,
 )
 from paddle.jit.translated_layer import (
@@ -71,7 +74,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.io import save_inference_model
+from paddle.static.io import save_inference_model
 from paddle.framework import in_dynamic_mode
 
 
@@ -232,6 +235,7 @@ def to_static(
     input_spec=None,
     build_strategy=None,
     backend=None,
+    enable_fallback=None,
     **kwargs,
 ):
     """
@@ -283,15 +287,29 @@ def to_static(
 
     def decorated(python_func):
         """
-        Decorates a python function into a StaticFunction object.
+        Decorates a python function into a ASTStaticFunction object.
         """
+
+        nonlocal enable_fallback
+        if enable_fallback is None:
+            flag = os.environ.get("ENABLE_FALL_BACK", None)
+            if flag == "True":
+                enable_fallback = True
+            else:  # None or True
+                enable_fallback = False
+
+        StaticClass = StaticFunctionClass = {
+            True: SymbolicStaticFunction,
+            False: ASTStaticFunction,
+        }[enable_fallback]
+
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
 
         # Step 2. copy some attributes from original python function.
         static_layer = copy_decorator_attrs(
             original_func=python_func,
-            decorated_obj=StaticFunction(
+            decorated_obj=StaticClass(
                 function=python_func,
                 input_spec=input_spec,
                 build_strategy=build_strategy,
@@ -397,6 +415,9 @@ class _SaveLoadConfig:
         # if True, multi `StaticFunction` will share params in one file.
         self.combine_params = False
 
+        # when need to save a prune model, use input_names_after_prune to specify the inputs left after pruning
+        self.input_names_after_prune = None
+
     @property
     def output_spec(self):
         return self._output_spec
@@ -470,11 +491,12 @@ class _SaveLoadConfig:
 
 def _parse_save_configs(configs):
     supported_configs = [
-        'output_spec',
+        "output_spec",
         "with_hook",
         "combine_params",
         "clip_extra",
         "skip_forward",
+        "input_names_after_prune",
     ]
 
     # input check
@@ -487,11 +509,14 @@ def _parse_save_configs(configs):
 
     # construct inner config
     inner_config = _SaveLoadConfig()
-    inner_config.output_spec = configs.get('output_spec', None)
-    inner_config.with_hook = configs.get('with_hook', False)
+    inner_config.output_spec = configs.get("output_spec", None)
+    inner_config.with_hook = configs.get("with_hook", False)
     inner_config.combine_params = configs.get("combine_params", False)
     inner_config.clip_extra = configs.get("clip_extra", True)
     inner_config.skip_forward = configs.get("skip_forward", False)
+    inner_config.input_names_after_prune = configs.get(
+        "input_names_after_prune", None
+    )
 
     return inner_config
 
@@ -515,7 +540,7 @@ def _parse_load_config(configs):
     return inner_config
 
 
-def _get_input_var_names(inputs, input_spec):
+def _get_input_var_names(inputs, input_spec, input_names_after_prune):
     name_none_error = (
         "The %s's name is None. "
         "When using jit.save, please set InputSepc's name in "
@@ -528,6 +553,14 @@ def _get_input_var_names(inputs, input_spec):
         "in input_spec is the same as the name of InputSpec in "
         "`to_static` decorated on the Layer.forward method."
     )
+    if input_names_after_prune is not None:
+        input_spec = [
+            x
+            for x in input_spec
+            if isinstance(x, paddle.static.InputSpec)
+            and x.name in input_names_after_prune
+        ]
+
     result_list = []
     input_var_names = [
         var.name
@@ -1033,7 +1066,9 @@ def save(layer, path, input_spec=None, **configs):
     concrete_program = None
     for attr_func in functions:
         if isinstance(layer, Layer):
-            static_func = getattr(inner_layer, attr_func, None)
+            static_func = get_ast_static_function(
+                getattr(inner_layer, attr_func, None)
+            )
             if isinstance(static_func, StaticFunction):
                 if static_func.is_property:
                     # property method to be exported
@@ -1066,7 +1101,9 @@ def save(layer, path, input_spec=None, **configs):
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
-                    inner_layer.forward, input_spec=inner_input_spec
+                    inner_layer.forward,
+                    input_spec=inner_input_spec,
+                    enable_fallback=False,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
@@ -1082,24 +1119,29 @@ def save(layer, path, input_spec=None, **configs):
         else:
             # When layer is a function
             if isinstance(attr_func, StaticFunction):
-                if attr_func.is_property:
+                static_func = get_ast_static_function(attr_func)
+
+                if static_func.is_property:
                     # property method to be exported
-                    immediate_val = attr_func()
-                    property_vals.append((immediate_val, attr_func))
+                    immediate_val = static_func()
+                    property_vals.append((immediate_val, static_func))
                     continue
 
                 concrete_program = (
-                    attr_func.concrete_program_specify_input_spec(
+                    static_func.concrete_program_specify_input_spec(
                         inner_input_spec, is_prim_infer=is_prim_infer
                     )
                 )
             else:
+                static_func = get_ast_static_function(attr_func)
                 if inner_input_spec:
                     inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_function = to_static(
-                    attr_func, input_spec=inner_input_spec
+                    static_func,
+                    input_spec=inner_input_spec,
+                    enable_fallback=False,
                 )
                 concrete_program = static_function.concrete_program
 
@@ -1115,9 +1157,9 @@ def save(layer, path, input_spec=None, **configs):
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
-            if attr_func._class_instance:
+            if static_func._class_instance:
                 dygraph_state_dict = (
-                    attr_func._class_instance.to_static_state_dict()
+                    static_func._class_instance.to_static_state_dict()
                 )
 
         if dygraph_state_dict:
@@ -1174,7 +1216,9 @@ def save(layer, path, input_spec=None, **configs):
         #   - the input_spec length < len((concrete_program.inputs) - 1
         #   - the input_spec's name should be in concrete_program.inputs
         input_var_names = _get_input_var_names(
-            concrete_program.inputs, inner_input_spec
+            concrete_program.inputs,
+            inner_input_spec,
+            configs.input_names_after_prune,
         )
 
         # NOTE(chenweihang): [ Get output variables ]
@@ -1195,23 +1239,25 @@ def save(layer, path, input_spec=None, **configs):
         if 'forward' == attr_func or not isinstance(layer, Layer):
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
+            path_prefix = file_prefix
         else:
             model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
             params_filename = (
                 file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
             )
-
+            file_prefix = file_prefix + '.' + attr_func
+        file_prefix = os.path.join(model_path, file_prefix)
         with scope_guard(scope):
+            input_vars = []
+            for var in concrete_program.main_program.clone().list_vars():
+                if var.name in input_var_names:
+                    input_vars.append(var)
             save_inference_model(
-                dirname=model_path,
-                feeded_var_names=input_var_names,
-                target_vars=output_vars,
+                path_prefix=file_prefix,
+                feed_vars=input_vars,
+                fetch_vars=output_vars,
                 executor=Executor(_current_expected_place()),
-                main_program=concrete_program.main_program.clone(),
-                model_filename=model_filename,
-                params_filename=params_filename,
-                export_for_deployment=configs._export_for_deployment,
-                program_only=configs._program_only,
+                program=concrete_program.main_program.clone(),
                 clip_extra=configs.clip_extra,
             )
 
@@ -1866,24 +1912,50 @@ class TracedLayer:
         with scope_guard(self._scope):
             feeded_var_names = get_feed_fetch(self._feed_names, feed)
             target_var_names = get_feed_fetch(self._fetch_names, fetch)
+            feed_vars = []
+            for name in feeded_var_names:
+                feed_var = self._program.global_block().vars.get(name, None)
+                assert feed_var is not None, f"{name} cannot be found"
+                feed_vars.append(feed_var)
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
                 assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
-
-            model_filename = file_prefix + INFER_MODEL_SUFFIX
-            params_filename = file_prefix + INFER_PARAMS_SUFFIX
-
             legacy_format = kwargs.get('legacy_format', False)
+            file_prefix = os.path.join(dirname, file_prefix)
             save_inference_model(
-                dirname=dirname,
-                feeded_var_names=feeded_var_names,
-                target_vars=target_vars,
+                path_prefix=file_prefix,
+                feed_vars=feed_vars,
+                fetch_vars=target_vars,
                 executor=self._exe,
-                main_program=self._program.clone(),
-                model_filename=model_filename,
-                params_filename=params_filename,
+                program=self._program.clone(),
                 clip_extra=clip_extra,
                 legacy_format=legacy_format,
             )
+
+
+def get_ast_static_function(function):
+    if isinstance(function, SymbolicStaticFunction):
+        if function._class_instance:
+            dygraph_function = types.MethodType(
+                function._dygraph_function, function._class_instance
+            )
+        else:
+            dygraph_function = function._dygraph_function
+
+        if function._function_spec._input_spec is None:
+            ast_static_function = ASTStaticFunction(
+                dygraph_function,
+                function.last_call_input_spec,
+                **function._kwargs,
+            )
+            return ast_static_function
+        else:
+            ast_static_function = ASTStaticFunction(
+                dygraph_function,
+                function._function_spec._input_spec,
+                **function._kwargs,
+            )
+            return ast_static_function
+    return function

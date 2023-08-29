@@ -57,7 +57,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
       if (arg_type == std::type_index(typeid(const CPUContext&))
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
           || arg_type == std::type_index(typeid(const OneDNNContext&))
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

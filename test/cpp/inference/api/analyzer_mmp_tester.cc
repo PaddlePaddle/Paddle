@@ -109,7 +109,7 @@ void compare(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_mmp, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_mmp, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

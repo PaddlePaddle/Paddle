@@ -31,7 +31,7 @@ namespace ir {
   GET_IR_NODE(reshape2_op);   \
   GET_IR_NODE(reshape2_out);
 
-ShuffleChannelDetectPass::ShuffleChannelDetectPass() {
+ShuffleChannelDetectPass::ShuffleChannelDetectPass() {  // NOLINT
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()

@@ -67,7 +67,7 @@ def net():
     acc_top1 = paddle.static.accuracy(input=y_predict, label=y, k=1)
     avg_cost = paddle.mean(cost)
 
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.05)
     sgd_optimizer.minimize(avg_cost)
     return y_predict, avg_cost, acc_top1
 

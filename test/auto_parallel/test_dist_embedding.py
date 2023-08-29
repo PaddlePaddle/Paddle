@@ -31,13 +31,26 @@ def make_program_lookup_table_v1_mp_dp():
             name='src_ids', shape=[12, 512, 1], dtype='int64'
         )
         src_ids.stop_gradient = True
-        emb_out = paddle.fluid.layers.embedding(
-            input=src_ids,
-            size=[64, 128],
-            param_attr=paddle.fluid.ParamAttr(name="emb_weight"),
-            dtype="float32",
-            is_sparse=False,
+
+        emb_out = block.create_var(name='emb_out', dtype='float32')
+        w = paddle.create_parameter(
+            attr=paddle.fluid.ParamAttr(name="emb_weight"),
+            shape=[64, 128],
+            dtype='float32',
+            is_bias=False,
         )
+        block.append_op(
+            type='lookup_table',
+            outputs={'Out': emb_out},
+            inputs={'Ids': src_ids, 'W': w},
+            attrs={
+                'is_sparse': False,
+                'is_distributed': False,
+                'remote_prefetch': False,
+                'padding_idx': None,
+            },
+        )
+
         loss = paddle.mean(emb_out)
 
         auto.shard_tensor(

@@ -43,11 +43,13 @@ def segment_sum(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_sum(data, segment_ids)
-            #Outputs: [[4., 4., 4.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_sum(data, segment_ids)
+            >>> print(out.numpy())
+            [[4. 4. 4.]
+             [4. 5. 6.]]
 
     """
     if in_dynamic_mode():
@@ -99,11 +101,13 @@ def segment_mean(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_mean(data, segment_ids)
-            #Outputs: [[2., 2., 2.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_mean(data, segment_ids)
+            >>> print(out.numpy())
+            [[2. 2. 2.]
+             [4. 5. 6.]]
 
     """
 
@@ -155,11 +159,13 @@ def segment_min(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_min(data, segment_ids)
-            #Outputs:  [[1., 2., 1.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_min(data, segment_ids)
+            >>> print(out.numpy())
+            [[1. 2. 1.]
+             [4. 5. 6.]]
 
     """
 
@@ -211,11 +217,13 @@ def segment_max(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_max(data, segment_ids)
-            #Outputs: [[3., 2., 3.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_max(data, segment_ids)
+            >>> print(out.numpy())
+            [[3. 2. 3.]
+             [4. 5. 6.]]
 
     """
 

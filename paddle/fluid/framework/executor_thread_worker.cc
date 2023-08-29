@@ -345,7 +345,7 @@ void ExecutorThreadWorker::SetPlace(const platform::Place& place) {
 
 void ExecutorThreadWorker::SetMainProgram(
     const ProgramDesc& main_program_desc) {
-  main_program_.reset(new ProgramDesc(main_program_desc));
+  main_program_ = std::make_unique<ProgramDesc>(main_program_desc);
 }
 
 void ExecutorThreadWorker::SetRootScope(Scope* g_scope) {

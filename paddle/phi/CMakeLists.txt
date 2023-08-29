@@ -92,6 +92,10 @@ if(WITH_XPU)
   endif()
 endif()
 
+if(WITH_DGC)
+  list(APPEND PHI_DEPS dgc)
+endif()
+
 set(PHI_SRCS
     ${common_srcs}
     ${api_srcs}

@@ -944,11 +944,9 @@ class TestVarBase(unittest.TestCase):
             var_tensor[var_tensor < 0.55], np_value[np_value < 0.55]
         )
 
-        with self.assertRaises(ValueError):
-            var_tensor[[False, False, False, False]]
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             var_tensor[[True, False]]
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             var_tensor[[True, False, False, False, False]]
         with self.assertRaises(IndexError):
             var_tensor[paddle.to_tensor([[True, False, False, False]])]

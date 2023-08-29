@@ -1409,8 +1409,6 @@ def _get_lr_scheduler_program(lr_scheduler, lr_param_dict, lr_decay_steps):
         InverseTimeDecay,
         NaturalExpDecay,
         NoamDecay,
-    )
-    from paddle.static.learning_rate_scheduler import (
         exponential_decay,
         inverse_time_decay,
         natural_exp_decay,

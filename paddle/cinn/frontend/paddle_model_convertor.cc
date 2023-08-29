@@ -27,6 +27,8 @@
 #include "paddle/cinn/frontend/var_type_utils.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 
+DECLARE_double(cinn_infer_model_version);
+
 namespace cinn {
 namespace frontend {
 
@@ -123,14 +125,25 @@ Program PaddleModelConvertor::LoadModel(
     bool is_combined,
     const std::unordered_map<std::string, std::vector<int64_t>>& feed) {
   paddle::cpp::ProgramDesc program_desc;
-  paddle::LoadModelPb(model_dir,
-                      "__model__",
-                      "",
-                      scope_.get(),
-                      &program_desc,
-                      is_combined,
-                      false,
-                      target_);
+  if (FLAGS_cinn_infer_model_version < 2.0) {
+    paddle::LoadModelPb(model_dir,
+                        "/__model__",
+                        "/params",
+                        scope_.get(),
+                        &program_desc,
+                        is_combined,
+                        false,
+                        target_);
+  } else {
+    paddle::LoadModelPb(model_dir,
+                        ".pdmodel",
+                        ".pdiparams",
+                        scope_.get(),
+                        &program_desc,
+                        is_combined,
+                        false,
+                        target_);
+  }
   CHECK_EQ(program_desc.BlocksSize(), 1)
       << "CINN can only support the model with a single block";
   auto* block_desc = program_desc.GetBlock<paddle::cpp::BlockDesc>(0);

@@ -126,9 +126,10 @@ void BasicEngine::Init(
                                     [init_grad_var];
     if (!accumulator) {
       if (FLAGS_sort_sum_gradient) {
-        accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+        accumulator =
+            std::make_unique<SortedGradientAccumulator>(init_grad_var);
       } else {
-        accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+        accumulator = std::make_unique<EagerGradientAccumulator>(init_grad_var);
       }
     }
     accumulator->IncreaseRefCnt();
@@ -225,9 +226,11 @@ void BasicEngine::PrepareGradAccumulators(
 
             if (!accumulator) {
               if (FLAGS_sort_sum_gradient) {
-                accumulator.reset(new SortedGradientAccumulator(var.get()));
+                accumulator =
+                    std::make_unique<SortedGradientAccumulator>(var.get());
               } else {
-                accumulator.reset(new EagerGradientAccumulator(var.get()));
+                accumulator =
+                    std::make_unique<EagerGradientAccumulator>(var.get());
               }
             }
 
@@ -255,9 +258,10 @@ void BasicEngine::PrepareGradAccumulators(
         auto& accumulator = accumulators_[var.get()];
         if (!accumulator) {
           if (FLAGS_sort_sum_gradient) {
-            accumulator.reset(new SortedGradientAccumulator(var.get()));
+            accumulator =
+                std::make_unique<SortedGradientAccumulator>(var.get());
           } else {
-            accumulator.reset(new EagerGradientAccumulator(var.get()));
+            accumulator = std::make_unique<EagerGradientAccumulator>(var.get());
           }
         }
 
@@ -282,9 +286,9 @@ void BasicEngine::PrepareDeps() {
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
 
-  for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    q.push(init_nodes_[i].get());
-    visited.insert(init_nodes_[i].get());
+  for (auto& init_node : init_nodes_) {
+    q.push(init_node.get());
+    visited.insert(init_node.get());
   }
 
   while (!q.empty()) {
@@ -409,9 +413,9 @@ void BasicEngine::Execute() {
   PrepareDeps();
   // Start execute Computation graph
   std::queue<std::shared_ptr<GradOpNode>> q;
-  for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    if (node_deps_[init_nodes_[i].get()] == 0) {
-      q.push(std::move(init_nodes_[i]));
+  for (auto& init_node : init_nodes_) {
+    if (node_deps_[init_node.get()] == 0) {
+      q.push(std::move(init_node));
     }
   }
 

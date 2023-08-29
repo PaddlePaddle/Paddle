@@ -69,8 +69,8 @@ void NCCLParallelContext::Init() {
 
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
-    for (size_t i = 0; i < nccl_ids.size(); ++i) {
-      platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
+    for (auto &nccl_id : nccl_ids) {
+      platform::dynload::ncclGetUniqueId(&nccl_id);
     }
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server

@@ -25,7 +25,6 @@ from op import Operator
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
@@ -168,7 +167,7 @@ class TestEmbedOpError(unittest.TestCase):
 
                 def test_Variable():
                     # the input type must be Variable
-                    fluid.layers.embedding(input=input_data, size=(10, 64))
+                    paddle.static.nn.embedding(input=input_data, size=(10, 64))
 
                 self.assertRaises(TypeError, test_Variable)
 
@@ -177,7 +176,7 @@ class TestEmbedOpError(unittest.TestCase):
                     input = paddle.static.data(
                         name='x', shape=[4, 1], dtype='float32'
                     )
-                    fluid.layers.embedding(input=input, size=(10, 64))
+                    paddle.static.nn.embedding(input=input, size=(10, 64))
 
                 self.assertRaises(TypeError, test_input_dtype)
 
@@ -186,7 +185,7 @@ class TestEmbedOpError(unittest.TestCase):
                     input2 = paddle.static.data(
                         name='x2', shape=[4, 1], dtype='int64'
                     )
-                    fluid.layers.embedding(
+                    paddle.static.nn.embedding(
                         input=input2, size=(10, 64), dtype='int64'
                     )
 
@@ -195,7 +194,7 @@ class TestEmbedOpError(unittest.TestCase):
                 input3 = paddle.static.data(
                     name='x3', shape=[4, 1], dtype='int64'
                 )
-                fluid.layers.embedding(
+                paddle.static.nn.embedding(
                     input=input3, size=(10, 64), dtype='float16'
                 )
 

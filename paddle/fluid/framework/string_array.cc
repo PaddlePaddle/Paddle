@@ -63,9 +63,9 @@ void StringMapToStream(std::ostream& os,
   }
   {
     // then write the data
-    for (auto it = data.begin(); it != data.end(); ++it) {
-      std::string token = it->first;
-      int32_t token_id = it->second;
+    for (const auto& item : data) {
+      std::string token = item.first;
+      int32_t token_id = item.second;
       // write the token
       size_t length = token.size();
       os.write(reinterpret_cast<const char*>(&length), sizeof(length));

@@ -1497,6 +1497,7 @@ def get_setup_parameters():
         'paddle.geometric.message_passing',
         'paddle.geometric.sampling',
         'paddle.ir',
+        'paddle.decomposition',
     ]
 
     paddle_bins = ''

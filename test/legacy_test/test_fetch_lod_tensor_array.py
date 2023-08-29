@@ -34,7 +34,7 @@ class TestFetchLoDTensorArray(unittest.TestCase):
                 )
                 loss = simple_fc_net_with_inputs(img, label, class_num=10)
                 loss = simple_fc_net()
-                opt = fluid.optimizer.SGD(learning_rate=0.001)
+                opt = paddle.optimizer.SGD(learning_rate=0.001)
                 opt.minimize(loss)
 
                 array = paddle.tensor.array_write(x=img, i=i)

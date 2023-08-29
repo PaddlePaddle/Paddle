@@ -59,7 +59,7 @@ class FleetCollectiveTest(unittest.TestCase):
         hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
 
-        optimizer = fluid.optimizer.AdamOptimizer()
+        optimizer = paddle.optimizer.Adam()
 
         role = role_maker.UserDefinedCollectiveRoleMaker(0, ['127.0.0.1:6170'])
         fleet.init(role)

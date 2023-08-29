@@ -109,7 +109,7 @@ class RecordedXPUMallocHelper {
   explicit RecordedXPUMallocHelper(int dev_id, uint64_t limit_size = 0)
       : dev_id_(dev_id), limit_size_(limit_size) {
     if (NeedRecord()) {
-      mtx_.reset(new std::mutex());
+      mtx_ = std::make_unique<std::mutex>();
     }
   }
 

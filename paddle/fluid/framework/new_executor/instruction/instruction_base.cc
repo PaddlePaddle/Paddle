@@ -13,8 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/ir/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
@@ -91,6 +97,60 @@ void InstructionBase::SetInputs(
 void InstructionBase::SetOutputs(
     const std::unordered_map<ir::Value, std::vector<int>>& outputs) {
   output_index_ = outputs;
+}
+
+void InstructionBase::InitInputsOutputsIds(
+    ::ir::Operation* op,
+    Scope* inner_scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_var_name,
+    const std::map<std::string, int>& var_name_2_id,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
+        variable_2_var_name) {
+  auto op_attributes = op->attributes();
+  auto op_name =
+      op_attributes.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
+  std::unordered_map<ir::Value, std::vector<int>> inputs;
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    ir::Value value = op->operand_source(i);
+    if (value) {
+      PADDLE_ENFORCE_NE(
+          value_2_var_name.find(value),
+          value_2_var_name.end(),
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              op_name));
+      std::vector<int> inputs_id = GetValueIds(value,
+                                               inner_scope,
+                                               value_2_var_name,
+                                               var_name_2_id,
+                                               variable_2_var_name);
+      inputs.emplace(value, inputs_id);
+    }
+  }
+  SetInputs(inputs);
+  VLOG(8) << "finish process inputs_index";
+  std::unordered_map<ir::Value, std::vector<int>> outputs;
+  for (size_t i = 0; i < op->num_results(); i++) {
+    ir::Value value = op->result(i);
+    if (value && value.type()) {
+      PADDLE_ENFORCE_NE(
+          value_2_var_name.find(value),
+          value_2_var_name.end(),
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              op_name));
+      std::vector<int> outputs_id = GetValueIds(value,
+                                                inner_scope,
+                                                value_2_var_name,
+                                                var_name_2_id,
+                                                variable_2_var_name);
+      outputs.emplace(value, outputs_id);
+    }
+  }
+  SetOutputs(outputs);
+  VLOG(8) << "finish process outputs_index";
 }
 
 }  // namespace framework

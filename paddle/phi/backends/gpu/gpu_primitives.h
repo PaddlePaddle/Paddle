@@ -711,7 +711,7 @@ __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
   using NVT = typename VecAtomicAddHelper<T>::NVT;
   using NVVec2T = typename VecAtomicAddHelper<T>::NVVec2T;
   bool aligned_half2 =
-      (reinterpret_cast<std::uintptr_t>(out) % sizeof(NVT) == 0);
+      (reinterpret_cast<std::uintptr_t>(out) % sizeof(NVVec2T) == 0);
 
   if (aligned_half2) {
     for (i = tid * 2; i < loops; i += threads_per_block * 2) {

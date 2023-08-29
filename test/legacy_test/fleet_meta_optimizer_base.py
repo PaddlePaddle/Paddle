@@ -145,16 +145,16 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         with fluid.program_guard(train_prog, startup_prog):
             with fluid.unique_name.guard():
                 if name == 'momentum':
-                    optimizer = paddle.fluid.optimizer.Momentum(
+                    optimizer = paddle.optimizer.Momentum(
                         learning_rate=0.01,
                         momentum=0.9,
-                        regularization=regularization,
+                        weight_decay=regularization,
                         grad_clip=grad_clip,
                     )
                 elif name == 'adam':
-                    optimizer = paddle.fluid.optimizer.Adam(
+                    optimizer = paddle.optimizer.Adam(
                         learning_rate=0.01,
-                        regularization=regularization,
+                        weight_decay=regularization,
                         grad_clip=grad_clip,
                     )
                 elif name == 'adamw':

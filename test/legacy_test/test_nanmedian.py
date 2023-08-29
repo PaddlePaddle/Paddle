@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -241,6 +242,51 @@ class TestNanmedian(unittest.TestCase):
         y.backward()
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(0.0))
+
+
+class TestNanmedianFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = paddle.nanmedian
+        self.public_python_api = paddle.nanmedian
+        self.dtype = np.float16
+        self.python_out_sig = ["Out"]
+        X = np.random.random((100, 100)).astype('float16')
+        Out = np.nanmedian(X)
+        self.inputs = {'X': X}
+        self.outputs = {'Out': Out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestNanmedianBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "nanmedian"
+        self.python_api = paddle.nanmedian
+        self.public_python_api = paddle.nanmedian
+        self.dtype = np.uint16
+        self.python_out_sig = ["Out"]
+        X = np.random.random((100, 100)).astype('float32')
+        Out = np.nanmedian(X)
+        self.inputs = {'X': convert_float_to_uint16(X)}
+        self.outputs = {'Out': convert_float_to_uint16(Out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
