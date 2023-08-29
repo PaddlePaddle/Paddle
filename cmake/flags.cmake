@@ -142,8 +142,8 @@ if(NOT WIN32)
       -fPIC
       -fno-omit-frame-pointer
       -W
-	-Wl
-	-gc-sections
+      -Wl
+      -gc-sections
       -Werror
       -Wall
       -Wextra
