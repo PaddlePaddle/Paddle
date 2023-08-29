@@ -41,22 +41,6 @@ set(BRPC_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/brpc)
 set(BRPC_URL https://github.com/apache/brpc.git)
 set(BRPC_TAG 1.4.0)
 
-if(NOT EXISTS ${BRPC_SOURCE_DIR})
-  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${BRPC_TAG} ${BRPC_URL}
-                          ${BRPC_SOURCE_DIR})
-else()
-  # check git tag
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} -C ${BRPC_SOURCE_DIR} describe --tags
-    OUTPUT_VARIABLE CURRENT_TAG
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(NOT ${CURRENT_TAG} STREQUAL ${BRPC_TAG})
-    message(STATUS "Checkout brpc to ${BRPC_TAG}")
-    execute_process(COMMAND ${GIT_EXECUTABLE} -C ${BRPC_SOURCE_DIR} checkout -q
-                            ${BRPC_TAG})
-  endif()
-endif()
-
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
 set(prefix_path
     "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib|${THIRD_PARTY_PATH}/install/glog"

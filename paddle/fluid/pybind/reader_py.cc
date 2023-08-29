@@ -46,19 +46,16 @@ namespace pybind {
 namespace py = pybind11;
 namespace reader = operators::reader;
 
-// Check whether the tensor shape matches the VarDesc shape
-// Return the different shape if exists
-static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+static paddle::optional<std::vector<int64_t>> DiffTensorShape(
     const phi::DenseTensor &tensor,
-    const framework::VarDesc &var_desc,
+    const std::vector<int64_t> &target_shape,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
-  auto desc_shape = var_desc.GetShape();
 
   int64_t rank = tensor_shape.size();
 
   if (UNLIKELY(rank == 0)) {
-    if (!desc_shape.empty()) {  // Tensor rank = 0 but desc does not match
+    if (!target_shape.empty()) {  // Tensor rank = 0 but desc does not match
       return phi::vectorize<int64_t>(tensor_shape);
     } else {
       return paddle::none;
@@ -76,8 +73,8 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     int64_t split_size = (tensor_shape[0] + num_places - 1) / num_places;
     int64_t remainder = (split_size == 0 ? 0 : tensor_shape[0] % split_size);
     tensor_shape[0] = split_size;
-    if (desc_shape[0] >= 0) {  // need check dim 0
-      if (tensor_shape[0] != desc_shape[0]) {
+    if (target_shape[0] >= 0) {  // need check dim 0
+      if (tensor_shape[0] != target_shape[0]) {
         return phi::vectorize<int64_t>(tensor_shape);
       }
 
@@ -94,12 +91,22 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
         0,
         platform::errors::InvalidArgument(
             "Tensor shape at dim %d must not be less than 0", idx));
-    if (desc_shape[idx] >= 0 && tensor_shape[idx] != desc_shape[idx]) {
+    if (target_shape[idx] >= 0 && tensor_shape[idx] != target_shape[idx]) {
       return phi::vectorize<int64_t>(tensor_shape);
     }
   }
 
   return paddle::none;
+}
+
+// Check whether the tensor shape matches the VarDesc shape
+// Return the different shape if exists
+static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+    const phi::DenseTensor &tensor,
+    const framework::VarDesc &var_desc,
+    size_t num_places) {
+  auto desc_shape = var_desc.GetShape();
+  return DiffTensorShape(tensor, desc_shape, num_places);
 }
 
 static const std::shared_ptr<reader::LoDTensorBlockingQueue> &GetQueue(
@@ -392,6 +399,18 @@ void BindReader(py::module *module) {
            const framework::VarDesc &var_desc,
            size_t num_places) -> py::object {
           auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
+          if (diff) {
+            return py::cast(std::move(diff.get()));
+          } else {
+            return py::cast(nullptr);
+          }
+        });
+
+  m.def("diff_tensor_shape",
+        [](const phi::DenseTensor &tensor,
+           const std::vector<int64_t> &target_shape,
+           size_t num_places) -> py::object {
+          auto diff = DiffTensorShape(tensor, target_shape, num_places);
           if (diff) {
             return py::cast(std::move(diff.get()));
           } else {

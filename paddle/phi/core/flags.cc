@@ -1073,6 +1073,11 @@ PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,
     "enable hash collisions stat for hbm table, default false");
+PHI_DEFINE_EXPORTED_bool(
+    cache_inference_while_scope,
+    false,
+    "Cache the scope of the while op to avoid repeated creation of the scope "
+    "for each iteration and improve inference performance.");
 PHI_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
                            0.75,
                            "the load factor of hbm table, default 0.75");
@@ -1283,25 +1288,13 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
 
 /**
  * Using new IR in executor  FLAG
- * Name: enable_new_ir_in_executor_beta_run
- * Since Version: 2.6.0
- * Value Range: bool, default=true
- * Example:
- * Note: If Ture, executor will use new IR and run in beta version.
- */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_beta_run,
-                         true,
-                         "Enable new IR in executor");
-
-/**
- * Using new IR in executor  FLAG
- * Name: enable_new_ir_in_executor_loop_run
+ * Name: enable_new_ir_in_executor_trace_run
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, executor will use new IR and run in beta version by for loop
+ * Note: If Ture, executor will use new IR and run in beta version by for trace
  * version.
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_loop_run,
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");

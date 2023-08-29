@@ -64,27 +64,35 @@ def get_sin_cos_tensor(seq_len, head_dim, sign):
 
     tensor_sin = paddle.reshape(
         paddle.to_tensor(sin_sin),
-        [1, 1, seq_len, head_dim],
+        [1, seq_len, 1, head_dim],
     )
     tensor_cos = paddle.reshape(
         paddle.to_tensor(cos_cos),
-        [1, 1, seq_len, head_dim],
+        [1, seq_len, 1, head_dim],
     )
 
     return tensor_sin, tensor_cos
 
 
 def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
+    # permute q, k, v from [batch_size, seq_len, num_heads, head_dim]
+    # to [batch_size, num_heads, seq_len, head_dim]
     q, k, v = deal_qkv(init_q, init_k, init_v)
 
     sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], -1)
+
+    # permute sin, cos from [1, seq_len, 1, head_dim]
+    # to [1, 1, seq_len, head_dim]
+    perm = [0, 2, 1, 3]
+    sin_tensor = paddle.transpose(x=sin_tensor, perm=perm)
+    cos_tensor = paddle.transpose(x=cos_tensor, perm=perm)
 
     query = mult_qkv(q, cos_tensor, sin_tensor)
     value = mult_qkv(v, cos_tensor, sin_tensor)
     key = mult_qkv(k, cos_tensor, sin_tensor)
 
+    # permute the result back to [batch_size, seq_len, num_heads, head_dim]
     r_query, r_key, r_value = deal_qkv(query, key, value)
-
     return r_query, r_key, r_value
 
 
@@ -94,7 +102,7 @@ def paddle_fused_rotary_position_embedding(init_q, init_k, init_v):
 )
 class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def setUp(self):
-        self.shape = [1, 16, 1, 16]
+        self.shape = [1, 8, 2, 16]
         self.dtype = 'float32'
         self.training = True
         self.seed = 1203
@@ -138,7 +146,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         return fw, bw
 
-    def test_fused_dropout_add(self):
+    def test_fused_rope(self):
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding, seed=self.seed
         )
@@ -153,7 +161,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 p_bw[i].numpy(), f_bw[i].numpy(), rtol=1e-05
             )
 
-    def test_fused_dropout_add_sin_cos(self):
+    def test_fused_rope_with_sin_cos(self):
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding, seed=self.seed
         )

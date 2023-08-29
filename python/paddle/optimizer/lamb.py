@@ -63,11 +63,11 @@ class Lamb(Optimizer):
         parameters (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            then the parameters are list of dict. Note that the learning_rate in parameter groups \
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
             :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
             to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
@@ -79,18 +79,18 @@ class Lamb(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inp = paddle.uniform(shape=[10, 10], dtype='float32', min=-0.1, max=0.1)
-            linear = paddle.nn.Linear(10, 10)
-            out = linear(inp)
-            loss = paddle.mean(out)
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.85], dtype="float32")
-            lamb = paddle.optimizer.Lamb(learning_rate=0.002, parameters=linear.parameters(), lamb_weight_decay=0.01)
-            back = out.backward()
-            lamb.step()
-            lamb.clear_grad()
+            >>> inp = paddle.uniform(shape=[10, 10], dtype='float32', min=-0.1, max=0.1)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
+            >>> beta2 = paddle.to_tensor([0.85], dtype="float32")
+            >>> lamb = paddle.optimizer.Lamb(learning_rate=0.002, parameters=linear.parameters(), lamb_weight_decay=0.01)
+            >>> back = out.backward()
+            >>> lamb.step()
+            >>> lamb.clear_grad()
 
     """
     _moment1_acc_str = "moment1"

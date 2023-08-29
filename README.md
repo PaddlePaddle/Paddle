@@ -20,7 +20,7 @@ PaddlePaddle is originated from industrial practices with dedication and commitm
 
 ## Installation
 
-### Latest PaddlePaddle Release: [v2.4](https://github.com/PaddlePaddle/Paddle/tree/release/2.4)
+### Latest PaddlePaddle Release: [v2.5](https://github.com/PaddlePaddle/Paddle/tree/release/2.5)
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest features of PaddlePaddle.

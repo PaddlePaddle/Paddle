@@ -49,6 +49,7 @@ BFloat16Type Builder::bfloat16_type() { return BFloat16Type::get(context_); }
 Float32Type Builder::float32_type() { return Float32Type::get(context_); }
 
 Float64Type Builder::float64_type() { return Float64Type::get(context_); }
+IndexType Builder::index_type() { return IndexType::get(context_); }
 Int16Type Builder::int16_type() { return Int16Type::get(context_); }
 BoolType Builder::bool_type() { return BoolType::get(context_); }
 Complex64Type Builder::complex64_type() { return Complex64Type::get(context_); }

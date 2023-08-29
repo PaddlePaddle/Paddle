@@ -548,16 +548,6 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
       conv_op->Op()->SetAttr("force_fp32_output", true);
     }
 
-    // change threshold in bounded ReLu
-    if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
-        "relu6") {
-      float scale_out =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("Scale_out"));
-      float threshold =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("fuse_alpha"));
-      conv_op->Op()->SetAttr("fuse_alpha", scale_out * threshold);
-    }
-
     ++quantize_conv_count;
   };
 

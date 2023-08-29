@@ -290,10 +290,8 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, optimizer, strategy=None):
-        if (
-            not isinstance(optimizer, SGD.__bases__)
-            and not isinstance(optimizer, fluid.optimizer.Optimizer)
-            and not isinstance(optimizer, OptimizerWithMixedPrecision)
+        if not isinstance(optimizer, SGD.__bases__) and not isinstance(
+            optimizer, OptimizerWithMixedPrecision
         ):
             raise TypeError("optimizer must be an instance of Optimizer")
 
@@ -345,12 +343,13 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         Examples:
             .. code-block:: python
 
-                loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                params_grads = optimizer.backward(loss)
-                # you may append operations for params_grads here
-                # ...
-                optimizer.apply_gradients(params_grads)
+                >>> # doctest: +SKIP('The network is not defined.')
+                >>> loss = network()
+                >>> optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                >>> params_grads = optimizer.backward(loss)
+                >>> # you may append operations for params_grads here
+                >>> # ...
+                >>> optimizer.apply_gradients(params_grads)
         """
         pass
 

@@ -265,11 +265,6 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(*in);
-      out_tensor.push_back(*out);
-
       distributed::AllreduceOptions opts;
       switch (red_type) {
         case kRedSum:
@@ -293,7 +288,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
               "Invalid reduce type: %d", red_type));
       }
 
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+      auto task = pg->AllReduce(out, *in, opts, false, true);
       task->Wait();
       return;
     }

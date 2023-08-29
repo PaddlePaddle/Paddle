@@ -59,7 +59,7 @@ void TrainerBase::DumpWork(int tid) {
   // GetDumpPath is implemented in each Trainer
   std::string path = GetDumpPath(tid);
   std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
-  while (1) {
+  while (true) {
     std::string out_str;
     if (!queue_->Get(out_str)) {
       break;

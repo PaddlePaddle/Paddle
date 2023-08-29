@@ -67,12 +67,12 @@ class FakeQuanterWithAbsMaxObserver(QuanterFactory):
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
     """
 
     def __init__(

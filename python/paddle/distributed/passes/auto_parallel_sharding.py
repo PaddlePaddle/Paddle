@@ -295,12 +295,12 @@ class ShardingPass(PassBase):
         self._insert_optimizer_broadcasts(main_block, startup_block)
 
     def _shard_amp_related_op_and_vars(self, main_block):
-        if self.stage < 2:
+        if self.stage < 1:
             return
 
         for idx, op in reversed(list(enumerate(main_block.ops))):
             # shard amp related param_grad cast
-            if _is_param_grad_fp32_cast_op(main_block, op):
+            if _is_param_grad_fp32_cast_op(main_block, op) and self.stage > 1:
                 output_name = op.output_arg_names[0]
                 param_name = output_name[: output_name.find("@")]
                 if not self._is_parameter_in_local_shard(param_name):

@@ -51,29 +51,6 @@ set(ROCKSDB_CMAKE_C_FLAGS
 )
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
-file(GLOB ROCKSDB_SOURCE_FILE_LIST ${ROCKSDB_SOURCE_DIR})
-list(LENGTH ROCKSDB_SOURCE_FILE_LIST RES_LEN)
-if(RES_LEN EQUAL 0)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} clone -b ${ROCKSDB_TAG}
-            "https://github.com/Thunderbrook/rocksdb" ${ROCKSDB_SOURCE_DIR})
-else()
-  # check git tag
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
-    OUTPUT_VARIABLE VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
-    WORKING_DIRECTORY ${ROCKSDB_SOURCE_DIR})
-  if(NOT ${VERSION} STREQUAL ${ROCKSDB_TAG})
-    file(REMOVE_RECURSE ${ROCKSDB_PREFIX_DIR})
-    file(REMOVE_RECURSE ${ROCKSDB_INSTALL_DIR})
-    message(
-      WARNING "rocksdb version is not ${VERSION}, checkout to ${ROCKSDB_TAG}")
-    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${ROCKSDB_TAG}
-                    WORKING_DIRECTORY ${ROCKSDB_SOURCE_DIR})
-  endif()
-endif()
-
 set(CMAKE_CXX_LINK_EXECUTABLE
     "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -Wl,--no-as-needed -ldl -lrt -lz")
 if(WITH_ARM)
