@@ -25,12 +25,14 @@
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace auto_schedule {
 
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
 using ::cinn::hlir::framework::Graph;
 using ::cinn::hlir::framework::GraphCompiler;
 
@@ -62,7 +64,8 @@ class TestMeasurer : public ::testing::Test {
     auto program = CreateAddReluProgram();
     auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
     auto scope = BuildScope(target, graph);
-    graph_compiler = std::make_unique<GraphCompiler>(target, scope, graph);
+    CompilationContext context(graph, scope, target);
+    graph_compiler = std::make_unique<GraphCompiler>(context);
     TaskCreator task_creator;
     tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
     const auto& dtype_dict =

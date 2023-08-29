@@ -28,11 +28,12 @@ class QAT(Quantization):
 
     Examples:
         .. code-block:: python
-            from paddle.quantization import QAT, QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
-            qat = QAT(q_config)
+
+            >>> from paddle.quantization import QAT, QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> qat = QAT(q_config)
     """
 
     def __init__(self, config: QuantConfig):
@@ -52,17 +53,60 @@ class QAT(Quantization):
         Return: The prepared model for quantization-aware training.
 
         Examples:
-        .. code-block:: python
-            from paddle.quantization import QAT, QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            from paddle.vision.models import LeNet
+            .. code-block:: python
 
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
-            qat = QAT(q_config)
-            model = LeNet()
-            quant_model = qat.quantize(model)
-            print(quant_model)
+                >>> from paddle.quantization import QAT, QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.vision.models import LeNet
+
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+                >>> qat = QAT(q_config)
+                >>> model = LeNet()
+                >>> quant_model = qat.quantize(model)
+                >>> print(quant_model)
+                LeNet(
+                  (features): Sequential(
+                    (0): QuantedConv2D(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (1): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): ReLU()
+                    )
+                    (2): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                    )
+                    (3): QuantedConv2D(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (4): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): ReLU()
+                    )
+                    (5): ObserveWrapper(
+                      (_observer): FakeQuanterWithAbsMaxObserverLayer()
+                      (_observed): MaxPool2D(kernel_size=2, stride=2, padding=0)
+                    )
+                  )
+                  (fc): Sequential(
+                    (0): QuantedLinear(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (1): QuantedLinear(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                    (2): QuantedLinear(
+                      (weight_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                      (activation_quanter): FakeQuanterWithAbsMaxObserverLayer()
+                    )
+                  )
+                )
         """
         assert (
             model.training

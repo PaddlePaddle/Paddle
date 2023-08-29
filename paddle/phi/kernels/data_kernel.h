@@ -14,15 +14,16 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void DataKernel(const Context& ctx,
-                int64_t index,
+                const std::string& name,
+                const phi::IntArray& shape,
                 phi::DataType data_type,
-                // std::string name,
                 DenseTensor* out);
 
 template <typename T, typename Context>
