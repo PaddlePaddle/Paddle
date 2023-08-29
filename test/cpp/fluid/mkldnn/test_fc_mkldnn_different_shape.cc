@@ -28,8 +28,6 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_DECLARE_KERNEL(fc, CPU, ALL_LAYOUT);
-
 paddle::framework::VarDesc *Data(
     paddle::framework::BlockDesc *block,
     std::string name,
@@ -150,3 +148,5 @@ TEST(FCMklDNNOp, ChangeSrcLayout) {
 
   exe.Run();
 }
+
+USE_OP_ITSELF(fc);
