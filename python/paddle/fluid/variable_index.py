@@ -898,6 +898,7 @@ def _setitem_static(x, indices, values):
             attrs["shape"] = shape
 
         elif isinstance(values, Variable):
+            values = values.astype(dtype)
             inputs["ValueTensor"] = values
         else:
             raise TypeError(
