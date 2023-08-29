@@ -141,7 +141,6 @@ if(NOT WIN32)
   set(COMMON_FLAGS
       -fPIC
       -fno-omit-frame-pointer
-      -fno-rtti
       -pipe
       -ffunction-sections
       -fdata-sections
