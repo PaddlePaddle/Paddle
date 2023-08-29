@@ -13,16 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 
 namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    "pd.fused_softmax_mask_upper_triangle",
-    "pd.fused_softmax_mask_upper_triangle_grad",
     "pd.load_combine",
     "pd.c_concat",
-    "pd.load_combine"};
+    "pd.c_broadcast_",
+    "pd.fused_bn_add_activation_",
+    "pd.fused_bn_add_activation_grad",
+};
 
 enum class AttrType {
   UNDEFINED = 0,

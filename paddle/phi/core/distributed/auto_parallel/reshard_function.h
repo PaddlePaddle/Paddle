@@ -14,6 +14,9 @@
 
 #pragma once
 #include <memory>
+#include <vector>
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 class DeviceContext;
@@ -31,11 +34,35 @@ class ReshardFunction {
   virtual bool IsSuitable(const DistTensor& in,
                           const TensorDistAttr& out_dist_attr) = 0;
 
-  virtual std::shared_ptr<DistTensor> Eval(
-      DeviceContext* dev_ctx,
-      const DistTensor& in,
-      const TensorDistAttr& out_dist_attr) = 0;
+  std::shared_ptr<DistTensor> Eval(DeviceContext* dev_ctx,
+                                   const DistTensor& in,
+                                   const TensorDistAttr& out_dist_attr);
+
+  virtual void Eval(DeviceContext* dev_ctx,
+                    const DistTensor& in,
+                    const TensorDistAttr& out_dist_attr,
+                    DistTensor* out) = 0;
+
+ protected:
+  void set_dist_props(DistTensor* tensor,
+                      const DenseTensor& value,
+                      const DDim& dims,
+                      const TensorDistAttr& dist_attr);
 };
+
+std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList();
+
+#define REGISTER_RESHARD_FUNC(func_type)                                    \
+  class __RegisterReshard_##func_type {                                     \
+   public:                                                                  \
+    __RegisterReshard_##func_type() {                                       \
+      GetReshardFunctionList().emplace_back(std::make_unique<func_type>()); \
+    }                                                                       \
+  };                                                                        \
+  static __RegisterReshard_##func_type local_reshard_func_##func_type
+
+ReshardFunction* ChooseProperReshardFunction(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr);
 
 }  // namespace distributed
 }  // namespace phi

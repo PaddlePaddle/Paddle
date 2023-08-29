@@ -897,7 +897,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 shape = paddle.utils.convert_shape_to_list(shape)
 
             if not isinstance(dtype, core.DataType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
 
             if out is None:
                 out = paddle._ir_ops.full(shape, float(value), dtype, place)

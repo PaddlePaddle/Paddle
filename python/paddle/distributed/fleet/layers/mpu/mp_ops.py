@@ -14,6 +14,7 @@
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.framework import LayerHelper, _create_tensor, in_dynamic_mode
@@ -21,6 +22,30 @@ from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
+
+
+class c_identity_eager(PyLayer):
+    @staticmethod
+    def forward(ctx, tensor, group, skip_c_identity_dynamic):
+        ctx.group = group
+        if skip_c_identity_dynamic:
+            return tensor
+        else:
+            return _legacy_C_ops.c_identity(
+                tensor,
+                'use_calc_stream',
+                True,
+                'ring_id',
+                group.id,
+                'use_model_parallel',
+                True,
+            )
+
+    @staticmethod
+    def backward(ctx, dy):
+        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        ctx.group.process_group.all_reduce_on_calc_stream(dy, op_type)
+        return dy
 
 
 def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
@@ -40,31 +65,7 @@ def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
     ring_id = 0 if group is None else group.id
 
     if in_dynamic_mode():
-        from paddle.autograd import PyLayer
-
-        class c_identity_eager(PyLayer):
-            @staticmethod
-            def forward(ctx, tensor):
-                if skip_c_identity_dynamic:
-                    return tensor
-                else:
-                    return _legacy_C_ops.c_identity(
-                        tensor,
-                        'use_calc_stream',
-                        True,
-                        'ring_id',
-                        group.id,
-                        'use_model_parallel',
-                        True,
-                    )
-
-            @staticmethod
-            def backward(ctx, dy):
-                op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                group.process_group.all_reduce_on_calc_stream(dy, op_type)
-                return dy
-
-        return c_identity_eager.apply(tensor)
+        return c_identity_eager.apply(tensor, group, skip_c_identity_dynamic)
     else:
         op_type = 'c_identity'
         helper = LayerHelper(op_type, **locals())
@@ -218,6 +219,49 @@ def _c_split(tensor, group=None):
         return out
 
 
+class mp_allreduce_eager(PyLayer):
+    @staticmethod
+    def forward(
+        ctx,
+        tensor,
+        group,
+        use_calc_stream,
+        use_model_parallel,
+        op,
+        skip_c_identity_dynamic,
+    ):
+        ctx.ring_id = group.id
+        ctx.skip_c_identity_dynamic = skip_c_identity_dynamic
+
+        if use_calc_stream:
+            op_type = _get_reduce_op(op, "_mp_allreduce")
+            group.process_group.all_reduce_on_calc_stream(tensor, op_type)
+            return tensor
+        else:
+            return _legacy_C_ops.c_allreduce_sum_(
+                tensor,
+                'use_calc_stream',
+                use_calc_stream,
+                'ring_id',
+                group.id,
+            )
+
+    @staticmethod
+    def backward(ctx, dy):
+        if ctx.skip_c_identity_dynamic:
+            return dy
+        else:
+            return _legacy_C_ops.c_identity(
+                dy,
+                'use_calc_stream',
+                True,
+                'ring_id',
+                ctx.ring_id,
+                'use_model_parallel',
+                True,
+            )
+
+
 def _mp_allreduce(
     tensor,
     op=ReduceOp.SUM,
@@ -233,48 +277,13 @@ def _mp_allreduce(
     if in_dynamic_mode():
         group = collective._get_default_group() if group is None else group
         assert op == ReduceOp.SUM, f"Unknown parameter: {op}."
-
-        from paddle.autograd import PyLayer
-
-        class mp_allreduce_eager(PyLayer):
-            @staticmethod
-            def forward(
-                ctx, tensor, group, use_calc_stream, use_model_parallel
-            ):
-                ctx.ring_id = group.id
-
-                if use_calc_stream:
-                    op_type = _get_reduce_op(op, "_mp_allreduce")
-                    group.process_group.all_reduce_on_calc_stream(
-                        tensor, op_type
-                    )
-                    return tensor
-                else:
-                    return _legacy_C_ops.c_allreduce_sum_(
-                        tensor,
-                        'use_calc_stream',
-                        use_calc_stream,
-                        'ring_id',
-                        ring_id,
-                    )
-
-            @staticmethod
-            def backward(ctx, dy):
-                if skip_c_identity_dynamic:
-                    return dy
-                else:
-                    return _legacy_C_ops.c_identity(
-                        dy,
-                        'use_calc_stream',
-                        True,
-                        'ring_id',
-                        ctx.ring_id,
-                        'use_model_parallel',
-                        True,
-                    )
-
         return mp_allreduce_eager.apply(
-            tensor, group, use_calc_stream, use_model_parallel
+            tensor,
+            group,
+            use_calc_stream,
+            use_model_parallel,
+            op,
+            skip_c_identity_dynamic,
         )
     else:
         ring_id = 0 if group is None else group.id
