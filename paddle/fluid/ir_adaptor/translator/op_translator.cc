@@ -1143,7 +1143,7 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
 
 struct MulOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    const std::string& target_op_name = "pd.matmul";
+    const std::string& target_op_name = "pd.matmul"; // <----------- 这个名字从哪里看 op_compat.yaml
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW("Op %d should have corresponding OpInfo %d",
@@ -1151,6 +1151,175 @@ struct MulOpTranscriber : public OpTranscriber {
                target_op_name);
     }
     return op_info;
+  }
+  std::vector<ir::OpResult> GenerateOperationInput(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
+
+    int x_num_col_dims = paddle::get<int>(op_desc.GetAttr("x_num_col_dims"));
+    int y_num_col_dims = paddle::get<int>(op_desc.GetAttr("y_num_col_dims"));
+
+    if (1 == x_num_col_dims && 1 == y_num_col_dims) {
+      return OpTranscriber::GenerateOperationInput(
+          ctx, param_map, op_desc, normalized_op_name, input_infos, program);
+    }
+
+    // ---------- 进行 X shape 的检查 ----------
+    auto x_names = op_desc.Input("X", true);
+    IR_ENFORCE(x_names.size() == 1,
+               "Expected op[%s]'s input X has only 1 variable, but got %d",
+               op_desc.Type(),
+               x_names.size());
+    auto x_name = x_names[0];
+    IR_ENFORCE(param_map->count(x_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               x_name);
+    auto x_defining_info = param_map->at(x_name);
+    if (x_defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, program, x_defining_info, x_name);
+      x_defining_info = param_map->at(x_name);
+    }
+    ir::OpResult x_value = x_defining_info.value;
+    IR_ENFORCE(x_value,
+               "Expected op[%s]'s input %s is not null",
+               op_desc.Type(),
+               x_name);
+    ir::Type x_type = x_value.type();
+    IR_ENFORCE(x_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               x_name,
+               x_type);
+    dialect::DenseTensorType x_tensor_type =
+        x_type.dyn_cast<dialect::DenseTensorType>();
+    std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
+    IR_ENFORCE(x_num_col_dims <= x_shape.size(),
+               "Expected op[%s]'s attr `x_num_col_dims` less than or equal to dim of input X %s, but got %d",
+               op_desc.Type(),
+               x_shape.size(),
+               x_num_col_dims);
+
+    // ---------- 进行 Y shape 的检查 ----------
+    auto y_names = op_desc.Input("Y", true);
+    IR_ENFORCE(y_names.size() == 1,
+               "Expected op[%s]'s input Y has only 1 variable, but got %d",
+               op_desc.Type(),
+               y_names.size());
+    auto y_name = y_names[0];
+    IR_ENFORCE(param_map->count(y_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               y_name);
+    auto y_defining_info = param_map->at(y_name);
+    if (y_defining_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, program, y_defining_info, y_name);
+      y_defining_info = param_map->at(y_name);
+    }
+    ir::OpResult y_value = y_defining_info.value;
+    IR_ENFORCE(y_value,
+               "Expected op[%s]'s input %s is not null",
+               op_desc.Type(),
+               y_name);
+    ir::Type y_type = y_value.type();
+    IR_ENFORCE(y_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               y_name,
+               y_type);
+    dialect::DenseTensorType y_tensor_type =
+        y_type.dyn_cast<dialect::DenseTensorType>();
+    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+    IR_ENFORCE(y_num_col_dims <= y_shape.size(),
+               "Expected op[%s]'s attr `y_num_col_dims` less than or equal to dim of input Y %s, but got %d",
+               op_desc.Type(),
+               y_shape.size(),
+               y_num_col_dims);
+
+    ir::Builder builder(ctx, program->block());
+    ir::OpResult x_new, y_new;
+
+    // 给 x y 做 resize 
+    if (1 != x_num_col_dims) { 
+      std::vector<int64_t> x_new_shape(
+        {
+          std::accumulate(x_shape.begin(), 
+                          x_shape.begin()+x_num_col_dims, 
+                          1, 
+                          std::multiplies<int64_t>());
+          std::accumulate(x_shape.begin()+x_num_col_dims, 
+                          x_shape.end(), 
+                          1, 
+                          std::multiplies<int64_t>());
+        }
+      );
+      dialect::ReshapeOp reshape_op_x =
+          builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
+      x_new = reshape_op_x.out();
+      VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
+              << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
+    } else {
+      x_new = x_value;
+    }
+
+    // -------------- 这里会有静态图涉及到的问题吗 --------------
+    // if (std::find(x_shape.begin(), x_shape.end(), -1) == x_shape.end()) 
+    // else {
+    //   auto shape_op = builder.Build<dialect::ShapeOp>(x_value);
+    //   auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
+    //       std::vector<int64_t>(append_size, 1),
+    //       phi::DataType::INT64,
+    //       phi::CPUPlace());
+    //   auto y_true_shape_op = builder.Build<ir::CombineOp>(
+    //       std::vector<ir::OpResult>{shape_op.out(), append_shape_op.out()});
+    //   auto concat_op =
+    //       builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
+    //   auto y_new_shape = concat_op.out();
+    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
+    //   y_new = reshape_op.out();
+    // }
+
+
+    if (1 != y_num_col_dims) {
+      std::vector<int64_t> y_new_shape(
+        {
+          std::accumulate(y_shape.begin(), y_shape.begin()+y_num_col_dims, 1, std::multiplies<int64_t>());
+          std::accumulate(y_shape.begin()+y_num_col_dims, y_shape.end(), 1, std::multiplies<int64_t>());
+        }
+      );
+
+      dialect::ReshapeOp reshape_op =
+          builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
+      y_new = reshape_op.out();
+      VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
+              << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
+    } else {
+      y_new = y_value;
+    }
+
+    // -------------- 这里会有静态图涉及到的问题吗 --------------
+    // if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end()) 
+    // else {
+    //   auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
+    //   auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
+    //       std::vector<int64_t>(append_size, 1),
+    //       phi::DataType::INT64,
+    //       phi::CPUPlace());
+    //   auto y_true_shape_op = builder.Build<ir::CombineOp>(
+    //       std::vector<ir::OpResult>{shape_op.out(), append_shape_op.out()});
+    //   auto concat_op =
+    //       builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
+    //   auto y_new_shape = concat_op.out();
+    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
+    //   y_new = reshape_op.out();
+    // }
+    return {x_value, y_new};
   }
 };
 
@@ -1166,6 +1335,119 @@ struct MulGradOpTranscriber : public OpTranscriber {
                target_op_name);
     }
     return op_info;
+  }
+
+  void RecordOpResultMapping(ir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             ir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+
+
+
+
+    const auto& x_grad_output = op_desc.Output("X@GRAD");
+    if (x_grad_output.size() < 1) {
+      return;
+    }
+    IR_ENFORCE(
+        x_grad_output.size() == 1,
+        "Expected op[%s]'s output X@GRAD has only 1 variable, but got %d",
+        op_desc.Type(),
+        x_grad_output.size());
+    const auto& x_grad_var_name = x_grad_output[0];
+
+    auto idx_iter_x = arg_to_idx.find(x_grad_var_name);
+    if (idx_iter_x == arg_to_idx.end()) {
+      IR_THROW("op[%s] should have got its x_grad", op_desc.Type());
+    }
+    auto [idx_in_op_x, idx_in_vec_x] = idx_iter_x->second;
+    VLOG(10) << "[output recording]"
+             << "[" << op_desc.Type() << "]" << x_grad_var_name << " "
+             << idx_in_op_x << " " << idx_in_vec_x;
+
+    auto x_names = op_desc.Input("X", true);
+    auto x_name = x_names[0];
+    IR_ENFORCE(param_map->count(x_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               x_name);
+    auto x_defining_info = param_map->at(x_name);
+    ir::OpResult x_value = x_defining_info.value;
+    IR_ENFORCE(x_value,
+               "Expected op[%s]'s input %s is not null",
+               op_desc.Type(),
+               x_name);
+    ir::Type x_type = x_value.type();
+    IR_ENFORCE(x_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               x_name,
+               x_type);
+
+    dialect::DenseTensorType x_tensor_type =
+        x_type.dyn_cast<dialect::DenseTensorType>();
+    std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
+
+
+    ir::OpResult x_value = operation->result(idx_in_op_x);
+    ir::Builder builder(ctx, operation->GetParent());
+    auto reshape_op_x = builder.Build<dialect::ReshapeOp>(x_value, x_shape);
+    (*param_map)[x_grad_var_name] =
+        VariableDefiningInfo(reshape_op_x.out(), false, -1);
+
+
+
+    const auto& y_grad_output = op_desc.Output("Y@GRAD");
+    if (y_grad_output.size() < 1) {
+      return;
+    }
+    IR_ENFORCE(
+        y_grad_output.size() == 1,
+        "Expected op[%s]'s output Y@GRAD has only 1 variable, but got %d",
+        op_desc.Type(),
+        y_grad_output.size());
+    const auto& y_grad_var_name = y_grad_output[0];
+
+    auto idx_iter_y = arg_to_idx.find(y_grad_var_name);
+    if (idx_iter_y == arg_to_idx.end()) {
+      IR_THROW("op[%s] should have got its y_grad", op_desc.Type());
+    }
+    auto [idx_in_op_y, idx_in_vec_y] = idx_iter_y->second;
+    VLOG(10) << "[output recording]"
+             << "[" << op_desc.Type() << "]" << y_grad_var_name << " "
+             << idx_in_op_y << " " << idx_in_vec_y;
+
+    auto y_names = op_desc.Input("Y", true);
+    auto y_name = y_names[0];
+    IR_ENFORCE(param_map->count(y_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               y_name);
+    auto y_defining_info = param_map->at(y_name);
+    ir::OpResult y_value = y_defining_info.value;
+    IR_ENFORCE(y_value,
+               "Expected op[%s]'s input %s is not null",
+               op_desc.Type(),
+               y_name);
+    ir::Type y_type = y_value.type();
+    IR_ENFORCE(y_type.isa<dialect::DenseTensorType>(),
+               "Expected op[%s]'s input %s is DenseTensor but got %s",
+               op_desc.Type(),
+               y_name,
+               y_type);
+
+    dialect::DenseTensorType y_tensor_type =
+        y_type.dyn_cast<dialect::DenseTensorType>();
+    std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
+
+
+    ir::OpResult y_value = operation->result(idx_in_op_y);
+    auto reshape_op_y = builder.Build<dialect::ReshapeOp>(y_value, y_shape);
+    (*param_map)[y_grad_var_name] =
+        VariableDefiningInfo(reshape_op_y.out(), false, -1);
   }
 };
 
