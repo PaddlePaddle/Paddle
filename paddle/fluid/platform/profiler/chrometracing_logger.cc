@@ -60,7 +60,7 @@ ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr) {
   StartLog();
 }
 
-ChromeTracingLogger::~ChromeTracingLogger() {
+ChromeTracingLogger::~ChromeTracingLogger() {  // NOLINT
   EndLog();
   output_file_stream_.close();
 }

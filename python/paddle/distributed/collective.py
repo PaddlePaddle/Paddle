@@ -188,12 +188,13 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
 
-            paddle.distributed.init_parallel_env()
-            tindata = paddle.randn(shape=[2, 3])
-            gp = paddle.distributed.new_group([2,4,6])
-            paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
+            >>> paddle.distributed.init_parallel_env()
+            >>> tindata = paddle.randn(shape=[2, 3])
+            >>> gp = paddle.distributed.new_group([2, 4, 6])
+            >>> paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
 
     """
     global _custom_gid
@@ -310,9 +311,8 @@ def is_available():
     Examples:
         .. code-block:: python
 
-            import paddle
-
-            print(paddle.distributed.is_available())
+            >>> import paddle
+            >>> print(paddle.distributed.is_available())
 
     """
     return core.is_compiled_with_dist()
@@ -333,4 +333,10 @@ def _init_parallel_env(backend):
         core.CommContextManager.set_cuda_device_id(dev_id)
         core.CommContextManager.create_nccl_comm_context(
             store, "0", rank, world_size
+        )
+    elif backend == "xccl":
+        dev_type = global_env.device_type
+        paddle.device.set_device(f"{dev_type}:{dev_id}")
+        core.CommContextManager.create_xccl_comm_context(
+            store, "0", rank, world_size, dev_type
         )
