@@ -60,13 +60,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/pybind.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 PHI_DECLARE_bool(set_to_1d);
 DECLARE_bool(use_stride_kernel);
@@ -258,8 +256,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            place,
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
-#ifdef PADDLE_WITH_DISTRIBUTE
     } else if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
       // TODO(chenweihang): deal with DistTensor as local DenseTensor now,
       // if the local DenseTensor is shard or partial, do gather or reduce?
       VLOG(6) << "Getting DistTensor's numpy value";
@@ -278,6 +276,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            place,
                            dense_tensor.Holder()->ptr(),
                            dense_tensor.Holder()->size());
+#else
+      PADDLE_THROW(
+          platform::errors::Unavailable("The `numpy()` method of (Dist)Tensor "
+                                        "is not supported in the current "
+                                        "PaddlePaddle, please recompile and "
+                                        "installPaddlePaddle with the option "
+                                        "of `WITH_DISTRIBUTE=ON`."));
 #endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -320,8 +325,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       dense_tensor->Holder()->ptr(),
                                       dense_tensor->Holder()->size(),
                                       kind);
-#ifdef PADDLE_WITH_DISTRIBUTE
     } else if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
       VLOG(6) << "Getting DistTensor's numpy value";
       auto* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
@@ -335,6 +340,13 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                                       dense_tensor.Holder()->ptr(),
                                       dense_tensor.Holder()->size(),
                                       kind);
+#else
+      PADDLE_THROW(
+          platform::errors::Unavailable("The `numpy()` method of (Dist)Tensor "
+                                        "is not supported in the current "
+                                        "PaddlePaddle, please recompile and "
+                                        "installPaddlePaddle with the option "
+                                        "of `WITH_DISTRIBUTE=ON`."));
 #endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -1133,7 +1145,10 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     VLOG(6) << "dist tensor: " << tensor->defined();
     return ToPyObject(tensor);
 #else
-    RETURN_PY_NONE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `get_tensor()` method of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle "
+        "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
     RETURN_PY_NONE

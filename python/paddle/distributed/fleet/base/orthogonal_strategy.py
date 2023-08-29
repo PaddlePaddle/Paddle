@@ -36,14 +36,14 @@ class OrthogonalStrategy:
     Examples:
         .. code-block:: python
 
-        # required: distributed
-        import paddle
-        import paddle.distributed as dist
-        from paddle.distributed.fleet.base.strategy_group import DPGroup, MPGroup, PPGroup
-        from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed.fleet.base.strategy_group import DPGroup, MPGroup, PPGroup
+            >>> from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
 
-        dist.init_parallel_env()
-        strategy = OrthogonalStrategy([("dp", 2, DPGroup), ("mp", 2, MPGroup), ("pp", 2, PPGroup)], fused_strategy_dict={"check": ["mp", "pp"]})
+            >>> dist.init_parallel_env()
+            >>> strategy = OrthogonalStrategy([("dp", 2, DPGroup), ("mp", 2, MPGroup), ("pp", 2, PPGroup)], fused_strategy_dict={"check": ["mp", "pp"]})
 
     """
 

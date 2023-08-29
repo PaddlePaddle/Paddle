@@ -591,7 +591,7 @@ MemEvenRecorder::RecordMemEvent::RecordMemEvent(const Place &place,
   PushMemEvent(start_ns_, end_ns_, bytes_, place_, alloc_in_);
 }
 
-MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {
+MemEvenRecorder::RecordMemEvent::~RecordMemEvent() {  // NOLINT
   phi::DeviceTracer *tracer = phi::GetDeviceTracer();
   end_ns_ = PosixInNsec();
 
@@ -815,7 +815,7 @@ std::string OpName(const framework::VariableNameMap &name_map,
   for (const auto &map_item : name_map) {
     auto name_outputs = map_item.second;
     if (!name_outputs.empty()) {
-      ret = ret + name_outputs[0];
+      ret.append(name_outputs[0]);
       break;
     }
   }
@@ -906,7 +906,8 @@ static void EmulateEventPushAndPop(
           evt_stk.push(iter->second);
           std::string prefix = thr_evts[iter->second].name;
           if (!prefix_stk.empty()) {
-            prefix = prefix_stk.top() + "/" + prefix;
+            // prefix = prefix_stk.top() + "/" + prefix;
+            prefix.insert(0, "/").insert(0, prefix_stk.top());
           }
           prefix_stk.push(prefix);
         }
