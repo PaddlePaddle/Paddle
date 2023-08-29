@@ -493,6 +493,8 @@ phi::KernelKey GetKernelKey(
 
 std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                                                    phi::Place place) {
+  prog->Print(std::cout);
+  std::cout << "=========================" << std::endl;
   auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
 
   auto block = prog->block();
