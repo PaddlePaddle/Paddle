@@ -431,7 +431,7 @@ class While:
 
     Examples:
         .. code-block:: python
-            :name: example-1
+            :name: Examples 1
 
             >>> import paddle
             >>> import numpy as np
@@ -456,7 +456,7 @@ class While:
             [array([10], dtype=int64)]
 
         .. code-block:: python
-            :name: example-2
+            :name: Examples 2
 
             >>> import paddle
             >>> import numpy as np
@@ -1104,7 +1104,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
         Examples:
             .. code-block:: python
-                :name: example-1
+                :name: code-example-1
 
                 >>> import paddle
 
@@ -1139,7 +1139,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     Examples:
         .. code-block:: python
-            :name: example-2
+            :name: code-example-2
 
             >>> import paddle
 

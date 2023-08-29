@@ -3177,7 +3177,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
     Examples:
         .. code-block:: python
-            :name: example1
+            :name: code-example1
 
             >>> import paddle
             >>> import numpy as np
@@ -3232,7 +3232,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             >>> print(out)
 
         .. code-block:: python
-            :name: example2
+            :name: code-example2
 
             # This example shows how to turn Tensor into numpy array and
             # use numpy API to register an Python OP
@@ -3262,17 +3262,17 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             ...     start_program = paddle.static.default_startup_program()
             ...     main_program = paddle.static.default_main_program()
             ...     # Input of the forward function
-            ...     x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
-            ...     y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
+            ...     x = paddle.static.data(name='x', shape=[2, 3], dtype='int32')
+            ...     y = paddle.static.data(name='y', shape=[2, 3], dtype='int32')
             ...     # Output of the forward function, name/dtype/shape must be specified
-            ...     output = create_tmp_var('output','int32', [3,1])
+            ...     output = create_tmp_var('output','int32', [3, 1])
             ...     # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
-            ...     paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
+            ...     paddle.static.py_func(func=element_wise_add, x=[x, y], out=output)
             ...     exe=paddle.static.Executor(paddle.CPUPlace())
             ...     exe.run(start_program)
             ...     # Feed numpy array to main_program
-            ...     input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
-            ...     input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+            ...     input1 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
+            ...     input2 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
             ...     out = exe.run(main_program,
             ...                feed={'x':input1, 'y':input2},
             ...                fetch_list=[output.name])
