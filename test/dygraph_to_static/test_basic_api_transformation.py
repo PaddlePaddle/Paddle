@@ -102,13 +102,13 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
         exe = fluid.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=static_out)
 
-        return static_res
+        return static_res[0]
 
     def test_transformed_static_result(self):
         for func in self.test_funcs:
             self.dygraph_func = func
             dygraph_res = self.get_dygraph_output()
-            static_res = self.get_static_output()[0]
+            static_res = self.get_static_output()
             np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
@@ -260,11 +260,11 @@ class TestDygraphBasicApi(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res
+        return static_res[0]
 
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
-        static_res = self.get_static_output()[0]
+        static_res = self.get_static_output()
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
@@ -295,7 +295,7 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res
+        return static_res[0]
 
 
 class TestDygraphBasicApi_Conv2D(TestDygraphBasicApi):
@@ -419,11 +419,11 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res
+        return static_res[0]
 
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
-        static_res = self.get_static_output()[0]
+        static_res = self.get_static_output()
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
@@ -451,7 +451,7 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res
+        return static_res[0]
 
 
 class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
@@ -478,7 +478,7 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res
+        return static_res[0]
 
 
 class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
@@ -505,7 +505,7 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res
+        return static_res[0]
 
 
 class TestDygraphBasicApi_NoamDecay(TestDygraphBasicApi_CosineDecay):
