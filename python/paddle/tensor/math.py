@@ -5711,12 +5711,12 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         out[i] = x[i+1] - x[i]
 
     Higher-order differences are computed by using paddle.diff() recursively.
-    Only n=1 is currently supported.
+    The number of n supports any positive integer value.
 
     Args:
         x (Tensor): The input tensor to compute the forward difference on, the data type is float16, float32, float64, bool, int32, int64.
         n (int, optional): The number of times to recursively compute the difference.
-                          Only support n=1. Default:1
+                            Supports any positive integer value. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
         prepend (Tensor, optional): The tensor to prepend to input along axis before computing the difference.
                                    It's dimensions must be equivalent to that of x,
@@ -5739,6 +5739,12 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             >>> out
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 3,  1, -3])
+
+            >>> x_2 = paddle.to_tensor([1, 4, 5, 2])
+            >>> out = paddle.diff(x_2, n=2)
+            >>> out
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [ -2,  -4])
 
             >>> y = paddle.to_tensor([7, 9])
             >>> out = paddle.diff(x, append=y)
