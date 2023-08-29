@@ -71,7 +71,7 @@ inline dynload::Tensor::Type ToCudnnDataType(const phi::DataType& t) {
       type = dynload::Tensor::Type::DOUBLE;
       break;
     default:
-      PD_THROW("Don't support this data type ");
+      PD_THROW("Don't support this data type ", t);
   }
   return type;
 }

@@ -491,7 +491,7 @@ void ConvCudnnGradKernel(const Context& ctx,
 #if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = phi::backends::gpu::DataLayout::kNCHW;
-#else  // MUSA & CUDA
+#else
 #if CUDNN_VERSION_MIN(8, 1, 0)
   const bool compute_in_nhwc =
       (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
@@ -806,10 +806,6 @@ void DepthwiseConvCudnnGradKernel(const Context& dev_ctx,
                                   int groups,
                                   const std::vector<int>& dilations,
                                   const std::string& data_format,
-                                  bool use_addto,
-                                  int workspace_size_MB,
-                                  bool exhaustive_search,
-                                  bool fuse_relu,
                                   DenseTensor* input_grad,
                                   DenseTensor* filter_grad) {
   ConvCudnnGradKernel<T>(dev_ctx,
