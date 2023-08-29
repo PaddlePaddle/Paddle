@@ -48,8 +48,10 @@ class MultiHeadMatmulFusePattern
               {&src.Tensor("reshape_1_out"), &src.Tensor("reshape_1_xshape")});
     const auto &transpose_1 = src.Op("pd.transpose");
     src.Tensor("transpose_1_out") = transpose_1(src.Tensor("reshape_1_out"));
+    const auto &full_1 =
+        src.Op("pd.full", {{"value", src.Attr("full_1_value")}});
     const auto &scale = src.Op("pd.scale");
-    src.Tensor("scale_out") = scale(src.Tensor("transpose_1_out"));
+    src.Tensor("scale_out") = scale(src.Tensor("transpose_1_out"), full_1());
 
     // The second path to matmul (k).
     const auto &matmul_2 =
@@ -100,7 +102,7 @@ class MultiHeadMatmulFusePattern
                {{"transpose_x", src.Attr("matmul_5_transpose_x")},
                 {"transpose_y", src.Attr("matmul_5_transpose_y")}});
     src.Tensor("matmul_5_out") =
-        matmul_4(src.Tensor("softmax_out"), src.Tensor("transpose_3_out"));
+        matmul_5(src.Tensor("softmax_out"), src.Tensor("transpose_3_out"));
     const auto &transpose_4 = src.Op("pd.transpose");
     src.Tensor("transpose_4_out") = transpose_4(src.Tensor("matmul_5_out"));
     const auto &full_int_array_4 = src.Op("pd.full_int_array");
@@ -128,37 +130,37 @@ class MultiHeadMatmulFusePattern
           match_ctx.Attr<int>("matmul_1_transpose_x");
       const auto &matmul_1_transpose_y =
           match_ctx.Attr<int>("matmul_1_transpose_y");
-      if (matmul_1_transpose_x || matmul_1_transpose_y) retrun false;
+      if (matmul_1_transpose_x || matmul_1_transpose_y) return false;
 
       const auto &matmul_2_transpose_x =
           match_ctx.Attr<int>("matmul_2_transpose_x");
       const auto &matmul_2_transpose_y =
           match_ctx.Attr<int>("matmul_2_transpose_y");
-      if (matmul_2_transpose_x || matmul_2_transpose_y) retrun false;
+      if (matmul_2_transpose_x || matmul_2_transpose_y) return false;
 
       const auto &matmul_3_transpose_x =
           match_ctx.Attr<int>("matmul_3_transpose_x");
       const auto &matmul_3_transpose_y =
           match_ctx.Attr<int>("matmul_3_transpose_y");
-      if (matmul_3_transpose_x || matmul_3_transpose_y) retrun false;
+      if (matmul_3_transpose_x || matmul_3_transpose_y) return false;
 
       const auto &matmul_4_transpose_x =
           match_ctx.Attr<int>("matmul_4_transpose_x");
       const auto &matmul_4_transpose_y =
           match_ctx.Attr<int>("matmul_4_transpose_y");
-      if (matmul_4_transpose_x || !matmul_4_transpose_y) retrun false;
+      if (matmul_4_transpose_x || !matmul_4_transpose_y) return false;
 
       const auto &matmul_5_transpose_x =
           match_ctx.Attr<int>("matmul_5_transpose_x");
       const auto &matmul_5_transpose_y =
           match_ctx.Attr<int>("matmul_5_transpose_y");
-      if (matmul_5_transpose_x || matmul_5_transpose_y) retrun false;
+      if (matmul_5_transpose_x || matmul_5_transpose_y) return false;
 
       const auto &matmul_6_transpose_x =
           match_ctx.Attr<int>("matmul_6_transpose_x");
       const auto &matmul_6_transpose_y =
           match_ctx.Attr<int>("matmul_6_transpose_y");
-      if (matmul_6_transpose_x || matmul_6_transpose_y) retrun false;
+      if (matmul_6_transpose_x || matmul_6_transpose_y) return false;
 
       return true;
     });
@@ -173,8 +175,13 @@ class MultiHeadMatmulFusePattern
               match_ctx.Attr<std::vector<int64_t>>("full_int_array_1_value");
           return full_int_array_1_value.at(2);
         });
+    const auto &alpha =
+        res.Attr([](const ir::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<float>("full_1_value");
+        });
     const auto &multihead_matmul =
-        res.Op("pd.multihead_matmul", {{"head_number", head_number}});
+        res.Op("pd.multihead_matmul",
+               {{"head_number", head_number}, {"alpha", alpha}});
     res.Tensor("add_4_out") = multihead_matmul(res.Tensor("matmul_1_in_1"));
   }
 };
