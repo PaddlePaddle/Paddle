@@ -1272,6 +1272,11 @@ void NewIRInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
+void NewIRInterpreter::PreStaticRun() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "PreStaticRun is not implemented in NewIRInterpreter."));
+}
+
 ::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
   for (auto kv : value_2_var_name_) {
     if (kv.second == var_name) {

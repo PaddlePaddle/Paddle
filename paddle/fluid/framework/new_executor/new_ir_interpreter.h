@@ -98,6 +98,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
   void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
   void PrepareForCUDAGraphCapture();
 
+  void PreStaticRun() override;
+
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 

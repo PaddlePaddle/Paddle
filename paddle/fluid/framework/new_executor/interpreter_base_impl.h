@@ -97,6 +97,8 @@ class InterpreterBaseImpl {
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
+
+  virtual void PreStaticRun() = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

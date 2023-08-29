@@ -74,6 +74,8 @@ class InterpreterCore {
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
+  void PreStaticRun();
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 
