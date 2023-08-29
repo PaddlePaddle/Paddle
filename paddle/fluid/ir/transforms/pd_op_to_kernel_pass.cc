@@ -126,34 +126,67 @@ bool SkipFeedOp(ir::Operation* op, const std::set<std::string>& feed_names) {
       op->attributes().at("name").dyn_cast<ir::StrAttribute>().AsString());
 }
 
-std::vector<phi::DenseTensor> GetFakeTensorList(ir::Value new_input_tmp) {
-  std::vector<phi::DenseTensor> vec_res;
+std::vector<std::shared_ptr<phi::TensorBase>> GetFakeTensorList(
+    ir::Value new_input_tmp) {
+  std::vector<std::shared_ptr<phi::TensorBase>> vec_res;
   auto input_type = new_input_tmp.type();
-  std::vector<dialect::AllocatedDenseTensorType> types;
+
+  auto build_fake_dense_tensor =
+      [](const dialect::AllocatedDenseTensorType& type) {
+        auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+        std::shared_ptr<phi::Allocation> holder(ptr);
+
+        auto dtype = TransToPhiDataType(type.dtype());
+
+        phi::DenseTensorMeta meta(
+            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+        return std::make_shared<phi::DenseTensor>(holder, meta);
+      };
+
+  auto build_fake_selected_rows =
+      [](const dialect::AllocatedSelectedRowsType& type) {
+        auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+        std::shared_ptr<phi::Allocation> holder(ptr);
+
+        auto dtype = TransToPhiDataType(type.dtype());
+
+        phi::DenseTensorMeta meta(
+            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+        std::vector<int64_t> rows;
+        int64_t height = 0;
+        rows.clear();
+
+        auto sr = std::make_shared<phi::SelectedRows>(rows, height);
+
+        phi::DenseTensor dense_tensor(holder, meta);
+        *(sr->mutable_value()) = dense_tensor;
+
+        return sr;
+      };
+
   if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
-    types.push_back(input_type.dyn_cast<dialect::AllocatedDenseTensorType>());
+    vec_res.push_back(build_fake_dense_tensor(
+        input_type.dyn_cast<dialect::AllocatedDenseTensorType>()));
+  } else if (input_type.isa<dialect::AllocatedSelectedRowsType>()) {
+    vec_res.push_back(build_fake_selected_rows(
+        input_type.dyn_cast<dialect::AllocatedSelectedRowsType>()));
   } else if (input_type.isa<ir::VectorType>()) {
     auto vec_inner_types = input_type.dyn_cast<ir::VectorType>().data();
     for (size_t i = 0; i < vec_inner_types.size(); ++i) {
-      types.push_back(
-          vec_inner_types[0].dyn_cast<dialect::AllocatedDenseTensorType>());
+      if (vec_inner_types[i].isa<dialect::AllocatedDenseTensorType>()) {
+        vec_res.push_back(build_fake_dense_tensor(
+            vec_inner_types[i].dyn_cast<dialect::AllocatedDenseTensorType>()));
+      } else if (vec_inner_types[i].isa<dialect::AllocatedSelectedRowsType>()) {
+        vec_res.push_back(build_fake_selected_rows(
+            vec_inner_types[i].dyn_cast<dialect::AllocatedSelectedRowsType>()));
+      }
     }
   }
 
-  for (auto& type : types) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-
-    std::shared_ptr<phi::Allocation> holder(ptr);
-
-    auto dtype = TransToPhiDataType(type.dtype());
-
-    phi::DenseTensorMeta meta(
-        dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-
-    phi::DenseTensor fake_tensor(holder, meta);
-
-    vec_res.push_back(fake_tensor);
-  }
   return vec_res;
 }
 
@@ -443,7 +476,7 @@ phi::KernelKey GetKernelKey(
 
       auto fake_tensors = GetFakeTensorList(new_input_tmp);
       for (auto& fake_tensor : fake_tensors) {
-        kernel_key_parser.AssignKernelKeySet(fake_tensor);
+        kernel_key_parser.AssignKernelKeySet(*fake_tensor);
       }
 
       // Because we can't make sure the place when build data op
@@ -540,6 +573,12 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                 new_in.type()
                     .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
                     .place());
+          } else if (new_in.type()
+                         .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+            out_places.push_back(
+                new_in.type()
+                    .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+                    .place());
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support dense tensor type for now"));
@@ -566,6 +605,13 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                           out_places[idx],
                           base_type.dyn_cast<dialect::DenseTensorType>());
                   vec_inner_types.push_back(allocated_dense_tensor_dtype);
+                } else if (base_type.isa<dialect::SelectedRowsType>()) {
+                  auto allocated_dense_tensor_dtype =
+                      paddle::dialect::AllocatedSelectedRowsType::get(
+                          ctx,
+                          out_places[idx],
+                          base_type.dyn_cast<dialect::SelectedRowsType>());
+                  vec_inner_types.push_back(allocated_dense_tensor_dtype);
                 } else {
                   PADDLE_THROW(phi::errors::Unimplemented(
                       "only support dense tensor in vector type for now"));
@@ -587,7 +633,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "builtin.combine Result type only support "
-                "VectorType<DenseTensorType>"));
+                "VectorType<DenseTensorType> and "
+                "VectorType<SelectedRowsType>"));
           }
         }
       }
@@ -765,6 +812,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
     }
+
+    if (op_item->name() == "pd.add_n_" ||
+        op_item->name() == "pd.add_n_with_kernel") {
+      if (op_item->result(0).type().isa<dialect::SelectedRowsType>()) {
+        kernel_fn_str = "add_n_sr";
+      }
+    }
+
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());
     VLOG(6) << "kernel type " << kernel_key;
@@ -939,9 +994,22 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
               for (size_t j = 0; j < pre_define_op->num_operands(); ++j) {
                 auto in_i = map_value_pair.at(pre_define_op->operand_source(j));
                 auto in_i_type = in_i.type();
-                auto place =
-                    in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>()
-                        .place();
+                phi::Place place;
+                if (in_i_type.isa<dialect::AllocatedDenseTensorType>()) {
+                  place =
+                      in_i_type.dyn_cast<dialect::AllocatedDenseTensorType>()
+                          .place();
+                } else if (in_i_type
+                               .isa<dialect::AllocatedSelectedRowsType>()) {
+                  place =
+                      in_i_type.dyn_cast<dialect::AllocatedSelectedRowsType>()
+                          .place();
+                } else {
+                  PADDLE_THROW(phi::errors::Unimplemented(
+                      "builtin.combine Input type only support "
+                      "VectorType<DenseTensorType> and "
+                      "VectorType<SelectedRowsType>"));
+                }
 
                 // get input args def type
                 auto args_def = kernel.args_def();
@@ -959,12 +1027,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                   // build memcopy op
                   auto out_place =
                       phi::TransToPhiPlace(kernel.InputAt(i).backend);
-                  auto out_type = dialect::AllocatedDenseTensorType::get(
-                      ctx,
-                      out_place,
-                      pre_define_op->operand_source(j)
-                          .type()
-                          .dyn_cast<dialect::DenseTensorType>());
+
+                  ir::Type out_type;
+                  if (in_i_type.isa<dialect::AllocatedDenseTensorType>()) {
+                    out_type = dialect::AllocatedDenseTensorType::get(
+                        ctx,
+                        out_place,
+                        pre_define_op->operand_source(j)
+                            .type()
+                            .dyn_cast<dialect::DenseTensorType>());
+                  } else if (in_i_type
+                                 .isa<dialect::AllocatedSelectedRowsType>()) {
+                    out_type = dialect::AllocatedSelectedRowsType::get(
+                        ctx,
+                        out_place,
+                        pre_define_op->operand_source(j)
+                            .type()
+                            .dyn_cast<dialect::SelectedRowsType>());
+                  } else {
+                    PADDLE_THROW(phi::errors::Unimplemented(
+                        "builtin.combine Input type only support "
+                        "VectorType<DenseTensorType> and "
+                        "VectorType<SelectedRowsType>"));
+                  }
+
                   in_i = AddPlaceTransferOp(in_i,
                                             out_type,
                                             place,
@@ -994,7 +1080,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
             }
 
           } else if (new_in_type.isa<dialect::AllocatedSelectedRowsType>()) {
-            // do nothing here
+            PADDLE_THROW(phi::errors::Unimplemented(
+                "only support allocated selected tensor type for now"));
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support allocated dense tensor type for now"));
