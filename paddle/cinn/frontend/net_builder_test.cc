@@ -26,6 +26,7 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/utils/data_util.h"
@@ -76,6 +77,16 @@ TEST(net_build, basic) {
   }
 }
 
+TEST(net_build, TestTransValidVarName) {
+  std::string a_val_id = "A";
+  std::string b_val_id = "B___";
+  frontend::NetBuilder builder("net_builder");
+  auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "@A");
+  auto b = builder.CreateInput(Float(32), {64}, "B/");
+  EXPECT_EQ(a.id(), a_val_id);
+  EXPECT_EQ(b.id(), b_val_id);
+}
+
 TEST(net_build, program_execute_multi_elementwise_add) {
   auto program = CreateAddProgram();
 #ifdef CINN_WITH_CUDA
@@ -89,7 +100,8 @@ TEST(net_build, program_execute_multi_elementwise_add) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -129,7 +141,8 @@ TEST(net_build, program_execute_fc) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(a.id()));
@@ -173,7 +186,8 @@ TEST(net_build, program_execute_multi_elementwise_add_bf16) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>("A");
@@ -214,7 +228,8 @@ TEST(net_build, program_execute_fc_bf16) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(a.id()));
@@ -275,7 +290,8 @@ TEST(net_build, program_execute_pool2d) {
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -308,7 +324,8 @@ TEST(net_build, program_execute_reverse) {
   LOG(INFO) << "graph:\n" << graph->Visualize();
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -339,7 +356,8 @@ TEST(net_build, program_execute_gather) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input1.id()));
@@ -399,7 +417,8 @@ TEST(net_build, program_execute_gather_nd) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input1.id()));
@@ -459,7 +478,8 @@ TEST(net_build, program_execute_cast) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -513,7 +533,8 @@ TEST(net_build, program_execute_squeeze_case0) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -572,7 +593,8 @@ TEST(net_build, program_execute_squeeze_case1) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -631,7 +653,8 @@ TEST(net_build, program_execute_squeeze_case2) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -689,7 +712,8 @@ TEST(net_build, program_execute_squeeze_case3) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -747,7 +771,8 @@ TEST(net_build, program_execute_squeeze_case4) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -803,7 +828,8 @@ TEST(net_build, program_execute_argsort) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -864,7 +890,8 @@ TEST(net_build, program_execute_sort) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -924,7 +951,8 @@ TEST(net_build, program_execute_arange_float) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(out->id));
@@ -965,7 +993,8 @@ TEST(net_build, program_execute_arange_int) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(out->id));
@@ -1008,7 +1037,8 @@ TEST(net_build, program_argmax_case1) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -1082,7 +1112,8 @@ TEST(net_build, program_argmax_case2) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -1160,7 +1191,8 @@ TEST(net_build, program_argmin_case1) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -1237,7 +1269,8 @@ TEST(net_build, program_argmin_case2) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -1314,7 +1347,8 @@ TEST(net_build, program_execute_repeat_axis_0) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -1369,7 +1403,8 @@ TEST(net_build, program_execute_repeat_axis_1) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));
@@ -1430,7 +1465,8 @@ TEST(net_build, program_execute_one_hot) {
   auto graph = Optimize(&program, fetch_ids, target);
 
   auto scope = BuildScope(target, graph);
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   scope->Var<hlir::framework::Tensor>(std::string(input.id()));

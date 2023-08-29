@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import OrderedDict
 
 from paddle.distributed.auto_parallel.static.utils import (
+    get_logger,
     is_backward_op,
     is_forward_op,
     is_lr_sched_op,
@@ -228,7 +230,12 @@ def set_skip_gc_vars(num_micro_batches, type_to_program, jobs):
         type_to_required_vars[type] = set()
         for block in program.blocks:
             for op in block.ops:
-                if op.type in ["conditional_block", "while"]:
+                if op.type in [
+                    "c_sync_comm_stream",
+                    "conditional_block",
+                    "nop",
+                    "while",
+                ]:
                     continue
 
                 op_info = OpInOutInfo()
@@ -244,11 +251,20 @@ def set_skip_gc_vars(num_micro_batches, type_to_program, jobs):
     num_jobs = len(jobs)
     for job_id in reversed(range(num_jobs)):
         job = jobs[job_id]
-        required_vars = type_to_required_vars[job.type()]
+        job_type = job.type()
+        required_vars = type_to_required_vars[job_type]
         micro_batch_id = job.micro_batch_id()
-        job.set_skip_gc_vars(
-            required_vars & suffixed_required_vars[micro_batch_id]
+        skip_gc_vars = required_vars & suffixed_required_vars[micro_batch_id]
+        get_logger(logging.INFO).info(
+            f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
         )
+
+        if job_type == "backward":
+            assert (
+                len(skip_gc_vars) == 0
+            ), f"When enabling pipeline parallelism stategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
+
+        job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
 
 
@@ -430,38 +446,86 @@ def _program_for_fthenb_and_1f1b(program):
     bwd_prog = Program()
     opt_prog = Program()
 
-    for idx, src_block in enumerate(program.blocks):
-        if idx == 0:
-            lr_block = lr_prog.block(0)
-            fwd_block = fwd_prog.block(0)
-            bwd_block = bwd_prog.block(0)
-            opt_block = opt_prog.block(0)
-        else:
-            lr_block = lr_prog._create_block(parent_idx=src_block.parent_idx)
-            fwd_block = fwd_prog._create_block(parent_idx=src_block.parent_idx)
-            bwd_block = bwd_prog._create_block(parent_idx=src_block.parent_idx)
-            opt_block = opt_prog._create_block(parent_idx=src_block.parent_idx)
-            lr_block._set_forward_block_idx(src_block.forward_block_idx)
-            fwd_block._set_forward_block_idx(src_block.forward_block_idx)
-            bwd_block._set_forward_block_idx(src_block.forward_block_idx)
-            opt_block._set_forward_block_idx(src_block.forward_block_idx)
-
-        # split the program based on the op_role
+    # split the program based on the op_role
+    def _split_ops(block):
+        lr_ops = []
+        fwd_ops = []
+        bwd_ops = []
+        opt_ops = []
         for op in src_block.ops:
             if is_lr_sched_op(op):
-                _create_program(src_block, lr_block, op)
-            if is_forward_op(op):
-                _create_program(src_block, fwd_block, op)
+                lr_ops.append(op)
+            elif is_forward_op(op):
+                fwd_ops.append(op)
             elif is_backward_op(op):
-                _create_program(src_block, bwd_block, op)
+                bwd_ops.append(op)
             elif is_optimize_op(op):
-                _create_program(src_block, opt_block, op)
+                opt_ops.append(op)
             else:
                 raise ValueError(
                     "The op role: "
                     + str(op.attr('op_role'))
                     + " isn't one of LRSched, Forward, Backward or Optimizer."
                 )
+        return lr_ops, fwd_ops, bwd_ops, opt_ops
+
+    def _add_ops_into_block(src_block, dst_block, ops):
+        for op in ops:
+            _create_program(src_block, dst_block, op)
+
+    for idx, src_block in enumerate(program.blocks):
+        lr_ops, fwd_ops, bwd_ops, opt_ops = _split_ops(src_block)
+        if idx == 0:
+            lr_block = lr_prog.block(0)
+            _add_ops_into_block(src_block, lr_block, lr_ops)
+
+            fwd_block = fwd_prog.block(0)
+            _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            bwd_block = bwd_prog.block(0)
+            _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            opt_block = opt_prog.block(0)
+            _add_ops_into_block(src_block, opt_block, opt_ops)
+        else:
+            if len(lr_ops):
+                lr_block = lr_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                lr_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, lr_block, lr_ops)
+
+            if len(fwd_ops):
+                fwd_block = fwd_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                fwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            if len(bwd_ops):
+                bwd_block = bwd_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            if len(opt_ops):
+                opt_block = opt_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                opt_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, opt_block, opt_ops)
+
+        for fetch_op in src_block.ops:
+            if fetch_op.type in ["fetch", "fetch_v2"]:
+                in_name = fetch_op.input_arg_names[0]
+                dst_block = None
+                for block in [lr_block, fwd_block, bwd_block, opt_block]:
+                    if block._find_var_recursive(in_name):
+                        dst_block = block
+                        break
+                if dst_block:
+                    _create_program(src_block, dst_block, fetch_op)
 
     lr_prog._sync_with_cpp()
     fwd_prog._sync_with_cpp()

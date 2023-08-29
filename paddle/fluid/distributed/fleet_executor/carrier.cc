@@ -35,6 +35,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Use standalone executor to run ops. Temporary FLAGS, will be removed "
     "after all fleet executor cases are modified to run ops with standalone "
     "executor.");
+PHI_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace distributed {
@@ -194,14 +195,17 @@ void Carrier::Start() {
   // TODO(wangxi): async step
   Wait();
   dev_ctx_->Wait();
-  for (auto* micro_scope : microbatch_scopes_) {
-    // By default, we should delete all kid scopes after run executor because
-    // some operators may create local scope when running, such as while_op.
-    // But when while_op also create a local executor to run it's sub block,
-    // the sub scopes it created should not be dropped immediately, because
-    // while_grad_op will use some variables created during while_op run, so
-    // we need to keep the kids and wait for the outer executor to drop them.
-    micro_scope->DropKids();
+  if (!FLAGS_cache_inference_while_scope) {
+    // don't drop_kids when cache_inference_while_scope
+    for (auto* micro_scope : microbatch_scopes_) {
+      // By default, we should delete all kid scopes after run executor because
+      // some operators may create local scope when running, such as while_op.
+      // But when while_op also create a local executor to run it's sub block,
+      // the sub scopes it created should not be dropped immediately, because
+      // while_grad_op will use some variables created during while_op run, so
+      // we need to keep the kids and wait for the outer executor to drop them.
+      micro_scope->DropKids();
+    }
   }
 }
 

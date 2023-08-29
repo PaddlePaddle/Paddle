@@ -802,7 +802,7 @@ class FP16Pass(AMPPass):
             cast_startup_program()
 
         if is_train:
-            if self.target_dtype == "fp16":
+            if self.target_dtype == "float16":
                 with paddle.static.program_guard(main_program, startup_program):
                     # TODO (JZ-LIANG)support cast forward program only when inference
                     self._init_amp_var()
@@ -870,7 +870,7 @@ class FP16Pass(AMPPass):
                             # found_inf = paddle.fluid.layers.reduce_any(all_infs)
                             found_inf = block.create_var(
                                 name=paddle.utils.unique_name.generate_with_ignorable_key(
-                                    ".".join(['reduce_any', 'tmp'])
+                                    ".".join(['find_infinite_scale', 'tmp'])
                                 ),
                                 dtype=all_infs.dtype,
                                 shape=None,
@@ -915,7 +915,7 @@ class FP16Pass(AMPPass):
             if self.use_optimizer_fp16:
                 base_opt._multi_precision = False
 
-            if self.target_dtype == "fp16":
+            if self.target_dtype == "float16":
                 if isinstance(
                     base_opt, (paddle.optimizer.Adam, paddle.optimizer.AdamW)
                 ):
