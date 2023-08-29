@@ -21,9 +21,7 @@
 
 namespace ir {
 ///
-/// \brief Define built-in parameterless types. Please add the necessary
-/// interface functions for built-in types through the macro
-/// DECLARE_TYPE_UTILITY_FUNCTOR.
+/// \brief Define built-in parameterless types.
 ///
 /// NOTE(zhangbo9674): If you need to directly
 /// cache the object of this built-in type in IrContext, please overload the get
@@ -40,11 +38,12 @@ namespace ir {
 // NOTE(dev): Currently Int8 are not considered as a cached member
 // in IrContextImpl because it is not widely used.
 
-class IR_API VectorType : public Type {
+class IR_API VectorType : public ir::Type::TypeBase<VectorType,
+                                                    ir::Type,
+                                                    VectorTypeStorage,
+                                                    ir::ShapedTypeInterface> {
  public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(VectorType, VectorTypeStorage);
+  using Base::Base;
 
   std::vector<Type> data() const;
 
@@ -73,14 +72,12 @@ class DenseTensorType : public ir::Type::TypeBase<DenseTensorType,
   const size_t &offset() const;
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                   \
-  class IR_API __name : public Type {                  \
-   public:                                             \
-    using Type::Type;                                  \
-                                                       \
-    DECLARE_TYPE_UTILITY_FUNCTOR(__name, TypeStorage); \
-                                                       \
-    static __name get(IrContext *context);             \
+#define DECLARE_BUILTIN_TYPE(__name)                                         \
+  class IR_API __name                                                        \
+      : public ::ir::Type::TypeBase<__name, ::ir::Type, ::ir::TypeStorage> { \
+   public:                                                                   \
+    using Base::Base;                                                        \
+    static __name get(IrContext *context);                                   \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \

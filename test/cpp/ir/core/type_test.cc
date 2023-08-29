@@ -189,10 +189,10 @@ struct IntegerTypeStorage : public ir::TypeStorage {
 
 // Customize a parameterized type: IntegerType, storage type is
 // IntegerTypeStorage.
-class IntegerType : public ir::Type {
+class IntegerType
+    : public ir::Type::TypeBase<IntegerType, ir::Type, IntegerTypeStorage> {
  public:
-  using Type::Type;
-  DECLARE_TYPE_UTILITY_FUNCTOR(IntegerType, IntegerTypeStorage);
+  using Base::Base;
 };
 IR_DECLARE_EXPLICIT_TYPE_ID(IntegerType)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerType)

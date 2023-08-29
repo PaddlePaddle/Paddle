@@ -238,26 +238,4 @@ struct IR_API TypeManager {
   }
 };
 
-///
-/// \brief This macro definition is used to add some necessary functions to the
-/// custom Type class.
-///
-#define DECLARE_TYPE_UTILITY_FUNCTOR(concrete_type, storage_type)          \
-  using Storage = storage_type;                                            \
-                                                                           \
-  const Storage *storage() const {                                         \
-    return static_cast<const Storage *>(this->storage_);                   \
-  }                                                                        \
-                                                                           \
-  static ir::TypeId type_id() { return ir::TypeId::get<concrete_type>(); } \
-                                                                           \
-  template <typename T>                                                    \
-  static bool classof(T val) {                                             \
-    return val.type_id() == type_id();                                     \
-  }                                                                        \
-                                                                           \
-  template <typename... Args>                                              \
-  static concrete_type get(ir::IrContext *ctx, Args... args) {             \
-    return ir::TypeManager::template get<concrete_type>(ctx, args...);     \
-  }
 }  // namespace ir
