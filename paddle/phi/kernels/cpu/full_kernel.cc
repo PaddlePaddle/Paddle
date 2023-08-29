@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/impl/full_whit_tensor_kernel_impl.h"
 
 namespace phi {
 
@@ -130,3 +131,23 @@ PD_REGISTER_KERNEL(full_like,
 
 PD_REGISTER_KERNEL(
     full_int_array, CPU, ALL_LAYOUT, phi::FullIntArrayKernel, int, int64_t) {}
+
+PD_REGISTER_KERNEL(full_with_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FullWithTensorKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
+}

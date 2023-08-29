@@ -41,7 +41,7 @@
 #endif
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
@@ -346,7 +346,79 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 
 void NewIRInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
-      "pd.sync_batch_norm_", "pd.sync_batch_norm", "pd.sync_batch_norm_grad"};
+      "pd.c_softmax_with_cross_entropy",
+      "pd.c_allgather",
+      "pd.c_allreduce_max",
+      "pd.c_allreduce_min",
+      "pd.c_allreduce_sum",
+      "pd.c_allreduce_prod",
+      "pd.c_reduce_max",
+      "pd.c_reduce_min",
+      "pd.c_reduce_prod",
+      "pd.c_reducescatter",
+      "pd.c_broadcast",
+      "pd.c_broadcast_",
+      "pd.c_scatter",
+      "pd.partial_send",
+      "pd.partial_recv",
+      "pd.partial_allgather",
+      "pd.recv_v2",
+      "pd.send_v2",
+      "pd.mp_allreduce_sum",
+      "pd.barrier",
+      "pd.alltoall",
+      "pd.global_gather",
+      "pd.distributed_fused_lamb",
+      "pd.margin_cross_entropy",
+      "pd.sync_batch_norm",
+      "pd.sync_batch_norm_",
+      "pd.data_norm",
+      "pd.class_center_sample",
+      "pd.all_to_all",
+      "pd.dist_concat",
+      "pd.all_gather",
+      "pd.broadcast",
+      "pd.p_recv",
+      "pd.p_send",
+      "pd.reduce_scatter",
+      "pd.all_reduce",
+      "pd.reduce",
+      "pd.c_softmax_with_cross_entropy_grad",
+      "pd.c_allgather_grad",
+      "pd.c_allreduce_max_grad",
+      "pd.c_allreduce_min_grad",
+      "pd.c_allreduce_sum_grad",
+      "pd.c_allreduce_prod_grad",
+      "pd.c_reduce_max_grad",
+      "pd.c_reduce_min_grad",
+      "pd.c_reduce_prod_grad",
+      "pd.c_reducescatter_grad",
+      "pd.c_broadcast_grad",
+      "pd.c_scatter_grad",
+      "pd.partial_send_grad",
+      "pd.partial_recv_grad",
+      "pd.partial_allgather_grad",
+      "pd.recv_v2_grad",
+      "pd.send_v2_grad",
+      "pd.mp_allreduce_sum_grad",
+      "pd.barrier_grad",
+      "pd.alltoall_grad",
+      "pd.global_gather_grad",
+      "pd.distributed_fused_lamb_grad",
+      "pd.margin_cross_entropy_grad",
+      "pd.margin_cross_entropy_grad_"
+      "pd.sync_batch_norm_grad",
+      "pd.data_norm_grad",
+      "pd.class_center_sample_grad",
+      "pd.all_to_all_grad",
+      "pd.dist_concat_grad",
+      "pd.all_gather_grad",
+      "pd.broadcast_grad",
+      "pd.p_recv_grad",
+      "pd.p_send_grad",
+      "pd.reduce_scatter_grad",
+      "pd.all_reduce_grad",
+      "pd.reduce_grad"};
   int64_t nccl_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {

@@ -31,7 +31,7 @@
 
 PADDLE_DEFINE_EXPORTED_bool(
     use_stride_kernel,
-    false,
+    true,
     "Whether to use strdie kernel if op support stride.");
 
 DECLARE_int32(low_precision_op_list);
@@ -216,7 +216,9 @@ KernelFactory::GetLowPrecisionKernelList() {
 }
 
 KernelResult KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name, const KernelKey& const_kernel_key) const {
+    const std::string& kernel_name,
+    const KernelKey& const_kernel_key,
+    bool use_strided_kernel) const {
   auto iter = kernels_.find(kernel_name);
 
   PADDLE_ENFORCE_NE(
@@ -224,7 +226,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
-  if (FLAGS_use_stride_kernel) {
+  if (FLAGS_use_stride_kernel && use_strided_kernel) {
     auto stride_kernel_iter = iter->second.find(
         {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
              ? paddle::experimental::Backend::GPU

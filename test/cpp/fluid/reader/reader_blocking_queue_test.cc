@@ -204,7 +204,13 @@ struct MyClass {
   explicit MyClass(int val) : val_(val) {}
   MyClass(const MyClass& b) { val_ = b.val_; }
   MyClass(MyClass&& b) { val_ = b.val_; }
-  void operator=(const MyClass& b) { val_ = b.val_; }
+  MyClass& operator=(const MyClass& b) {
+    if (this != &b) {
+      val_ = b.val_;
+      return *this;
+    }
+    return *this;
+  }
 
   int val_;
 };
@@ -212,7 +218,7 @@ struct MyClass {
 TEST(BlockingQueue, MyClassTest) {
   BlockingQueue<MyClass> q(2);
   MyClass a(200);
-  q.Send(std::move(a));
+  q.Send(a);
   MyClass b;
   q.Receive(&b);
   EXPECT_EQ(a.val_, b.val_);
