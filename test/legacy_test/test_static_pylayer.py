@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+import functools
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
-
 np.random.seed(123)
 
 
@@ -336,5 +336,56 @@ class TestControlFlowNestedStaticPyLayer(unittest.TestCase):
             )
 
 
+class TestStaticPyLayerBackward(unittest.TestCase):
+    def test_identity(self):
+        paddle.enable_static()
+
+        def forward_fn(x):
+            return x
+
+        def backward_fn(dy):
+            return dy
+                
+        main_program = Program()
+        start_program = Program()
+        input_shape = (2,4)
+        with program_guard(main_program, start_program):
+            data = paddle.static.data(
+                name="X", shape=input_shape, dtype="float32"
+            )
+            data.stop_gradient = False
+            out = paddle.static.nn.static_pylayer(
+                forward_fn, [data], backward_fn
+            )
+            loss = paddle.mean(out)
+            append_backward(loss)
+
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        exe = fluid.Executor(place)
+        randn_x = np.random.random(size=input_shape).astype(np.float32)
+        ret, x_grad = exe.run(
+            main_program,
+            feed={
+                'X': randn_x,
+            },
+            fetch_list=[out.name, data.grad_name]
+        )
+        
+        np.testing.assert_allclose(
+            np.asarray(ret),
+            randn_x,
+            rtol=1e-05,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(x_grad),
+            np.full(input_shape, 1.0 / functools.reduce(lambda x, y : x*y, input_shape), dtype=np.float32),
+            rtol=1e-05,
+        )
+        
 if __name__ == '__main__':
     unittest.main()

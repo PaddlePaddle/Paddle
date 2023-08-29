@@ -203,6 +203,24 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
                     sub_block = cur_block.program.block(sub_block_id)
                     _rename_var_recursively_(sub_block, var_old_to_new)                    
 
+def copy_var_from_parent_block(parent_block_var, layer_helper):
+    if not isinstance(parent_block_var, Variable):
+        return parent_block_var
+    prog = layer_helper.main_program
+    current_block = prog.current_block()
+
+    if (
+        parent_block_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        and current_block._find_var_recursive(parent_block_var.name)
+    ):
+        current_block_var = parent_block_var
+    else:
+        current_block_var = current_block.create_var(
+            dtype=parent_block_var.dtype, shape=parent_block_var.shape, type=parent_block_var.type
+        )
+        paddle.assign(parent_block_var, current_block_var)
+    return current_block_var
+
 # TODO(MarioLulab):
 # Need to support non-Variable in ``inputs``
 def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
@@ -335,24 +353,34 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         for fwd_var in flatten(output):
             fwd_var_name = fwd_var.name
             bwd_var_name = _append_grad_suffix_(fwd_var_name)
-            var = current_block.create_var(name=bwd_var_name)
             if not current_block.desc.has_var_recursive(fwd_var_name.encode()):
                 raise ValueError(
                     "Grad var {} , we can't find its related forward var {}".format(
                         bwd_var_name, fwd_var_name
                     )
                 )
-
-            var.desc.set_dtype(fwd_var.dtype)
-            var.desc.set_shape(fwd_var.shape)
+                
+            var = current_block.create_var(
+                dtype=fwd_var.dtype, shape=fwd_var.shape, type=fwd_var.type, name=bwd_var_name)
 
             grad_var_ins.append(var)
 
+        copy_from_parent_func = lambda var: copy_var_from_parent_block(var, helper)
         assert isinstance(grad_var_ins, list)
         with pylayer_block_manager.block(is_backward_block=True) as mgr:
-            grad_origin_output = backward_fn(*grad_var_ins)
+            # Step1. Copy var from parent block
+            inside_block_inputs = map_structure(
+                copy_from_parent_func, grad_var_ins
+            )
+            
+            # Step2. Do backward propgation
+            grad_origin_output = backward_fn(*inside_block_inputs)
+            
             if grad_origin_output is not None:
+                # Step3. Check the number of inputs to ``forward_fn`` the 
+                # same as the number of outputs to ``backward_fn``
                 flat_grad_origin = flatten(grad_origin_output)
+                
                 # NOTE(MarioLulab): ``current_block`` was defined outside
                 forward_input_names = current_block.ops[
                     pylayer_block_manager.fwd_op_index
@@ -362,6 +390,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                 ), f"needs to keep the number of inputs to ``forward_fn`` the same as the number of outputs to ``backward_fn``, \
                     but got {len(forward_input_names)} and {len(flat_grad_origin)}"
 
+                # Step4. Rename var name with suffix of "@GRAD"
                 for bwd_output_name, fwd_input_name in zip(
                     flat_grad_origin, forward_input_names
                 ):
@@ -391,6 +420,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     mgr.var_old_to_new[
                         bwd_output_name.name
                     ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+            
 
         # **Delete the backward input**
         for bwd_var in grad_var_ins:
