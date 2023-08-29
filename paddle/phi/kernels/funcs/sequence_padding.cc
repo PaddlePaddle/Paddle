@@ -33,7 +33,7 @@ void CopyValidData(phi::DenseTensor* dst_tensor,
                    bool norm_by_len,
                    CopyType type,
                    PadLayout layout) {
-  int seq_num = seq_offsets.size() - 1;
+  int seq_num = static_cast<int>(seq_offsets.size() - 1);
   const T* src_data = src_tensor->data<T>();
   T* dst_data = dst_tensor->data<T>();
 
@@ -41,7 +41,8 @@ void CopyValidData(phi::DenseTensor* dst_tensor,
   int pad_cpy_gap =
       layout == kBatchLengthWidth ? step_width : seq_num * step_width;
   for (int seq_idx = 0; seq_idx < seq_num; ++seq_idx) {
-    int valid_seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
+    int valid_seq_len =
+        static_cast<int>(seq_offsets[seq_idx + 1] - seq_offsets[seq_idx]);
     PADDLE_ENFORCE_GE(
         pad_seq_len,
         valid_seq_len,
@@ -53,7 +54,7 @@ void CopyValidData(phi::DenseTensor* dst_tensor,
             valid_seq_len,
             pad_seq_len,
             valid_seq_len));
-    int seq_data_offset = seq_offsets[seq_idx] * step_width;
+    int seq_data_offset = static_cast<int>(seq_offsets[seq_idx] * step_width);
     int pad_data_offset = layout == kBatchLengthWidth
                               ? seq_idx * pad_seq_len * step_width
                               : seq_idx * step_width;
@@ -110,9 +111,9 @@ class PaddingLoDTensorFunctor<phi::CPUContext, T> {
     const auto& seq_tensor_dims = seq_tensor.dims();
     const auto& pad_tensor_dims = pad_tensor->dims();
     if (pad_seq_len == -1) {
-      pad_seq_len = MaximumSequenceLength(seq_offsets);
+      pad_seq_len = static_cast<int>(MaximumSequenceLength(seq_offsets));
     }
-    int step_width = seq_tensor.numel() / seq_tensor_dims[0];
+    int step_width = static_cast<int>(seq_tensor.numel() / seq_tensor_dims[0]);
 
     CheckDims(seq_tensor_dims,
               pad_tensor_dims,
@@ -168,9 +169,9 @@ class UnpaddingLoDTensorFunctor<phi::CPUContext, T> {
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
     if (pad_seq_len == -1) {
-      pad_seq_len = MaximumSequenceLength(seq_offsets);
+      pad_seq_len = static_cast<int>(MaximumSequenceLength(seq_offsets));
     }
-    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+    int step_width = static_cast<int>(seq_tensor->numel() / seq_tensor_dims[0]);
 
     CheckDims(seq_tensor_dims,
               pad_tensor_dims,
