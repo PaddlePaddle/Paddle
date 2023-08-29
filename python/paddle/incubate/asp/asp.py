@@ -250,7 +250,7 @@ def decorate(optimizer):
 
                 >>> my_layer = MyLayer()
                 >>> optimizer = paddle.optimizer.SGD(
-                    learning_rate=0.01, parameters=my_layer.parameters())
+                ...     learning_rate=0.01, parameters=my_layer.parameters())
 
                 >>> # Calling paddle.incubate.asp.decorate() to wrap step() in optimizer, which
                 >>> # will apply necessary masking operations for ASP workflow.
