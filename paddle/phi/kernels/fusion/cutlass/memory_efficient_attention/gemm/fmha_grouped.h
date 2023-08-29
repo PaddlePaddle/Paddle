@@ -72,7 +72,6 @@ template <typename MM0_,  ///! Structure for computing P = Q @ K
                                                  /// perform
           bool kAddMask,
           // This is quite faster when mask need broadcast at row axis
-          bool kMaskBroadcastRow,
           bool kMaskIsAligned>
 struct FMHAGrouped {
  public:
@@ -191,6 +190,7 @@ struct FMHAGrouped {
 
     // Whether causal masking is to be performed
     bool causal;
+    bool mask_broadcast_head;
 
     // Only used by device-level operator
     GemmCoord *host_problem_sizes;
@@ -224,6 +224,7 @@ struct FMHAGrouped {
           kElementV(0),
           kElementO(0),
           causal(false),
+          mask_broadcast_head(true),
           host_problem_sizes(nullptr) {}
 
     /// Ctor
@@ -250,6 +251,7 @@ struct FMHAGrouped {
               int64_t kElementV,
               int64_t kElementO,
               bool causal,
+              bool mask_broadcast_head,
               ElementAccumulator scale,
               GemmCoord *host_problem_sizes = nullptr)
         : problem_sizes0(problem_sizes0),
@@ -276,6 +278,7 @@ struct FMHAGrouped {
           kElementV(kElementV),
           kElementO(kElementO),
           causal(causal),
+          mask_broadcast_head(mask_broadcast_head),
           scale(scale),
           host_problem_sizes(host_problem_sizes) {}
 
@@ -327,6 +330,7 @@ struct FMHAGrouped {
 
     ElementAccumulator scale;
     bool causal;
+    bool mask_broadcast_head;
 
     //
     // Methods
@@ -352,6 +356,7 @@ struct FMHAGrouped {
           kElementV(0),
           kElementO(0),
           causal(false),
+          mask_broadcast_head(true),
           scale(0) {}
 
     explicit CUTLASS_HOST_DEVICE Params(Arguments const &args,
@@ -384,6 +389,7 @@ struct FMHAGrouped {
           kElementV(args.kElementV),
           kElementO(args.kElementO),
           causal(args.causal),
+          mask_broadcast_head(args.mask_broadcast_head),
           scale(args.scale) {}
 
     //   CUTLASS_HOST_DEVICE
@@ -704,6 +710,8 @@ struct FMHAGrouped {
 
         // apply attention mask if applicable
         if (kAddMask) {
+          const int mask_id =
+              params.mask_broadcast_head ? batch_idx : problem_idx;
           accum = cutlass::multiplies<typename MM0::Mma::FragmentC>()(
               params.scale, accum);
           // load mask tile Bij into shared memory
@@ -711,7 +719,7 @@ struct FMHAGrouped {
               {cutlass::layout::RowMajor(params.ldm)},
               // attn_mask_pointer points to matrix of size (n_queries, n_keys)
               // for the relevant batch_id and head_id
-              params.ptr_M + batch_idx * params.kElementM +
+              params.ptr_M + mask_id * params.kElementM +
                   TileParams::query_start(threadblock_idx) * params.ldm +
                   iter_key_start,
               {problem_size_0_m, problem_size_0_n},
