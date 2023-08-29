@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "paddle/ir/core/builtin_type_interfaces.h"
 #include "paddle/ir/core/builtin_type_storage.h"
 #include "paddle/ir/core/type.h"
 
@@ -59,6 +60,7 @@ class DenseTensorType : public ir::Type,  // Not inherite any more
                                                   DenseTensorTypeStorage,
                                                   ir::ShapedTypeInterface> {
  public:
+  using Base::Base;
   using Type::Type;
 
   DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);

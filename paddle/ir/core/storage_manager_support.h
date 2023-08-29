@@ -69,15 +69,14 @@ class StorageHelperBase {
   /// Provide an implementation of 'classof' that compares the type id of the
   /// provided value with that of the concrete type.
   template <typename T>
-  static bool classof_name(T val) {
+  static bool classof(T val) {
     return val.type_id() == type_id();
   }
 
   /// Get or create a new ConcreteT instance within the ctx.
   template <typename... Args>
   static ConcreteT get(ir::IrContext *ctx, Args... args) {
-    // return ManagerT::template get<ConcreteT>(ctx, args...);
-    return ir::TypeManager::template get<ConcreteT>(ctx, args...);
+    return ManagerT::template get<ConcreteT>(ctx, args...);
   }
 
   /// Returns the function that returns true if the given Trait ID matches the
