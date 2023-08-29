@@ -51,9 +51,6 @@ void PyLayerOp::CreateInterpreter(
         dev_place, block, cur_scope, execution_config));
     VLOG(10) << "[interpreterCore] created:" << core_;
   } else {
-    // NOTE: Borrowed from
-    // `paddle/fluid/operators/controlflow/control_flow_op_helper.h`
-    // TODO(MarioLulab): Add PyLayer Helper ?
     BuildScopeForControlFlowOp(*core_, block, cur_scope);
     core_->reset_scope(cur_scope);
   }
@@ -66,7 +63,6 @@ class PyLayerForwardOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddOutput(PyLayerOp::kOutputs, "The output variables of the sub-block.")
         .AsDuplicable();
-    // TODO(MarioLulab): Must Use std::vector here ?
     AddOutput(
         PyLayerOp::kScope,
         "(std::vector<Scope*>) The scope of static pylayer block, used for "
@@ -134,7 +130,7 @@ class PyLayerForwardOp : public PyLayerOp {
 class PyLayerForwardInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    // TODO(MarioLulab): do nothing.
+    // NOTE(MarioLulab): do nothing.
   }
 };
 
