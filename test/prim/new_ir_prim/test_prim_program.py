@@ -22,7 +22,6 @@ from paddle.decomposition import decompose
 from paddle.framework import core
 
 paddle.enable_static()
-paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
 
 
 class TestPrimMode(unittest.TestCase):
