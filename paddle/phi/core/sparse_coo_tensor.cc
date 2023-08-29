@@ -57,11 +57,15 @@ SparseCooTensor::SparseCooTensor(const SparseCooTensor& other) {
   set_meta(other.meta());
 }
 
-SparseCooTensor SparseCooTensor::operator=(const SparseCooTensor& other) {
-  this->non_zero_elements_ = other.non_zero_elements_;
-  this->non_zero_indices_ = other.non_zero_indices_;
-  this->coalesced_ = other.coalesced_;
-  set_meta(other.meta());
+SparseCooTensor& SparseCooTensor::operator=(const SparseCooTensor& other) {
+  if (this != &other) {
+    this->non_zero_elements_ = other.non_zero_elements_;
+    this->non_zero_indices_ = other.non_zero_indices_;
+    this->coalesced_ = other.coalesced_;
+    set_meta(other.meta());
+    return *this;
+  }
+
   return *this;
 }
 
