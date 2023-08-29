@@ -1727,8 +1727,8 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   complex_promote : [X, Y]
 
-- op : matmul (mul)
-  backward : matmul (mul_grad)
+- op : matmul_with_flatten (mul)
+  backward : matmul_with_flatten (mul_grad)
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
