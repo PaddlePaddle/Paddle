@@ -1143,7 +1143,8 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
 
 struct MulOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
-    const std::string& target_op_name = "pd.matmul"; // <----------- 这个名字从哪里看 op_compat.yaml
+    const std::string& target_op_name =
+        "pd.matmul";  // <----------- 这个名字从哪里看 op_compat.yaml
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW("Op %d should have corresponding OpInfo %d",
@@ -1159,7 +1160,6 @@ struct MulOpTranscriber : public OpTranscriber {
       const std::string& normalized_op_name,
       const OpInputInfoList& input_infos,
       ir::Program* program) override {
-
     int x_num_col_dims = paddle::get<int>(op_desc.GetAttr("x_num_col_dims"));
     int y_num_col_dims = paddle::get<int>(op_desc.GetAttr("y_num_col_dims"));
 
@@ -1200,7 +1200,8 @@ struct MulOpTranscriber : public OpTranscriber {
         x_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
     IR_ENFORCE(x_num_col_dims <= x_shape.size(),
-               "Expected op[%s]'s attr `x_num_col_dims` less than or equal to dim of input X %s, but got %d",
+               "Expected op[%s]'s attr `x_num_col_dims` less than or equal to "
+               "dim of input X %s, but got %d",
                op_desc.Type(),
                x_shape.size(),
                x_num_col_dims);
@@ -1237,7 +1238,8 @@ struct MulOpTranscriber : public OpTranscriber {
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
     IR_ENFORCE(y_num_col_dims <= y_shape.size(),
-               "Expected op[%s]'s attr `y_num_col_dims` less than or equal to dim of input Y %s, but got %d",
+               "Expected op[%s]'s attr `y_num_col_dims` less than or equal to "
+               "dim of input Y %s, but got %d",
                op_desc.Type(),
                y_shape.size(),
                y_num_col_dims);
@@ -1245,20 +1247,18 @@ struct MulOpTranscriber : public OpTranscriber {
     ir::Builder builder(ctx, program->block());
     ir::OpResult x_new, y_new;
 
-    // 给 x y 做 resize 
-    if (1 != x_num_col_dims) { 
-      std::vector<int64_t> x_new_shape(
-        {
-          std::accumulate(x_shape.begin(), 
-                          x_shape.begin()+x_num_col_dims, 
-                          1, 
-                          std::multiplies<int64_t>());
-          std::accumulate(x_shape.begin()+x_num_col_dims, 
-                          x_shape.end(), 
-                          1, 
-                          std::multiplies<int64_t>());
-        }
-      );
+    // 给 x y 做 resize
+    if (1 != x_num_col_dims) {
+      std::vector<int64_t> x_new_shape({
+        std::accumulate(x_shape.begin(),
+                        x_shape.begin() + x_num_col_dims,
+                        1,
+                        std::multiplies<int64_t>());
+        std::accumulate(x_shape.begin() + x_num_col_dims,
+                        x_shape.end(),
+                        1,
+                        std::multiplies<int64_t>());
+      });
       dialect::ReshapeOp reshape_op_x =
           builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
       x_new = reshape_op_x.out();
@@ -1269,7 +1269,7 @@ struct MulOpTranscriber : public OpTranscriber {
     }
 
     // -------------- 这里会有静态图涉及到的问题吗 --------------
-    // if (std::find(x_shape.begin(), x_shape.end(), -1) == x_shape.end()) 
+    // if (std::find(x_shape.begin(), x_shape.end(), -1) == x_shape.end())
     // else {
     //   auto shape_op = builder.Build<dialect::ShapeOp>(x_value);
     //   auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
@@ -1281,18 +1281,21 @@ struct MulOpTranscriber : public OpTranscriber {
     //   auto concat_op =
     //       builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
     //   auto y_new_shape = concat_op.out();
-    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
-    //   y_new = reshape_op.out();
+    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value,
+    //   y_new_shape); y_new = reshape_op.out();
     // }
 
-
     if (1 != y_num_col_dims) {
-      std::vector<int64_t> y_new_shape(
-        {
-          std::accumulate(y_shape.begin(), y_shape.begin()+y_num_col_dims, 1, std::multiplies<int64_t>());
-          std::accumulate(y_shape.begin()+y_num_col_dims, y_shape.end(), 1, std::multiplies<int64_t>());
-        }
-      );
+      std::vector<int64_t> y_new_shape({
+        std::accumulate(y_shape.begin(),
+                        y_shape.begin() + y_num_col_dims,
+                        1,
+                        std::multiplies<int64_t>());
+        std::accumulate(y_shape.begin() + y_num_col_dims,
+                        y_shape.end(),
+                        1,
+                        std::multiplies<int64_t>());
+      });
 
       dialect::ReshapeOp reshape_op =
           builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
@@ -1304,7 +1307,7 @@ struct MulOpTranscriber : public OpTranscriber {
     }
 
     // -------------- 这里会有静态图涉及到的问题吗 --------------
-    // if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end()) 
+    // if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end())
     // else {
     //   auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
     //   auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
@@ -1316,8 +1319,8 @@ struct MulOpTranscriber : public OpTranscriber {
     //   auto concat_op =
     //       builder.Build<dialect::ConcatOp>(y_true_shape_op.out(), 0);
     //   auto y_new_shape = concat_op.out();
-    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
-    //   y_new = reshape_op.out();
+    //   auto reshape_op = builder.Build<dialect::ReshapeOp>(y_value,
+    //   y_new_shape); y_new = reshape_op.out();
     // }
     return {x_value, y_new};
   }
@@ -1344,9 +1347,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              const OpOutputMapping& arg_to_idx) override {
     OpTranscriber::RecordOpResultMapping(
         ctx, param_map, op_desc, operation, arg_to_idx);
-
-
-
 
     const auto& x_grad_output = op_desc.Output("X@GRAD");
     if (x_grad_output.size() < 1) {
@@ -1391,14 +1391,11 @@ struct MulGradOpTranscriber : public OpTranscriber {
         x_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> x_shape = phi::vectorize(x_tensor_type.dims());
 
-
     ir::OpResult x_value = operation->result(idx_in_op_x);
     ir::Builder builder(ctx, operation->GetParent());
     auto reshape_op_x = builder.Build<dialect::ReshapeOp>(x_value, x_shape);
     (*param_map)[x_grad_var_name] =
         VariableDefiningInfo(reshape_op_x.out(), false, -1);
-
-
 
     const auto& y_grad_output = op_desc.Output("Y@GRAD");
     if (y_grad_output.size() < 1) {
@@ -1442,7 +1439,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
     dialect::DenseTensorType y_tensor_type =
         y_type.dyn_cast<dialect::DenseTensorType>();
     std::vector<int64_t> y_shape = phi::vectorize(y_tensor_type.dims());
-
 
     ir::OpResult y_value = operation->result(idx_in_op_y);
     auto reshape_op_y = builder.Build<dialect::ReshapeOp>(y_value, y_shape);
