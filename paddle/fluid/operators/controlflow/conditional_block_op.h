@@ -23,8 +23,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+PHI_DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace operators {
+
+using Executor = framework::Executor;
+using ExecutorPrepareContext = framework::ExecutorPrepareContext;
+
+using InterpreterCore = framework::InterpreterCore;
 
 class ConditionalOp : public framework::OperatorBase {
  public:
@@ -136,6 +147,99 @@ tensor, run the operators in sub-block if all of input variables are not empty.
 
 )DOC");
   }
+};
+
+class ConditionalBlockOp : public ConditionalOp {
+ public:
+  ConditionalBlockOp(const std::string &type,
+                     const framework::VariableNameMap &inputs,
+                     const framework::VariableNameMap &outputs,
+                     const framework::AttributeMap &attrs)
+      : ConditionalOp(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    bool need_run;
+    if (Attr<bool>("is_scalar_condition")) {
+      // When is_scalar_condition is True, the conditional variable is a scalar,
+      // whether need to execute the operators in sub-block depends on the
+      // conditional variable (Cond).
+      auto xs = InputTensors(scope, ConditionalOp::kCondition);
+      need_run = ScalarCondition(xs);
+    } else {
+      // When is_scalar_condition is False, the conditional variable maybe a
+      // vector or tensor, whether need to execute the operators in sub-block
+      // depends on the input variables (Input).
+      auto xs = InputTensors(scope, ConditionalOp::kInputs);
+      need_run =
+          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
+            return t->numel() != 0;
+          });
+    }
+
+    if (need_run) {
+      SetSubBlockCore(scope, dev_place);
+      core_->Run({}, false);
+    }
+  }
+
+ public:
+  void SetSubBlockCore(const framework::Scope &scope,
+                       const platform::Place &dev_place) const {
+    auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
+    PADDLE_ENFORCE_NOT_NULL(
+        scope_var,
+        platform::errors::PreconditionNotMet(
+            "Expect Scope variable to be set in conditional_block_op, but "
+            "got a null Scope variable. Please set the Scope variable."));
+
+    auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
+    scopes->resize(1);
+    scopes->front() = &scope.NewScope();
+
+    auto &cur_scope = *scopes->front();
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    platform::DontClearMKLDNNCache(dev_place);
+#endif
+    auto *block = Attr<framework::BlockDesc *>("sub_block");
+    VLOG(3) << "Conditional block.idx = " << block->ID()
+            << ", scope = " << &cur_scope;
+
+    auto &skip_vars =
+        Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
+
+    LOG_FIRST_N(INFO, 1)
+        << "[ControlFlow][ConditionalBlock] New Executor is Running.";
+    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+      VLOG(10) << "[interpreterCore cache]" << core_.get();
+      VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
+                                                    dev_place);
+
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.used_for_control_flow_op = true;
+      execution_config.skip_gc_vars =
+          std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
+      core_.reset(
+          new InterpreterCore(dev_place, *block, &cur_scope, execution_config));
+      VLOG(10) << "[interpreterCore] created:" << core_;
+    } else {
+      BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
+      core_->reset_scope(&cur_scope);
+    }
+  }
+
+  void PreStaticBuild() const { core_->PreStaticBuild(); }
+
+ private:
+  mutable std::shared_ptr<Executor> exec_{nullptr};
+  mutable std::unique_ptr<ExecutorPrepareContext> ctx_{nullptr};
+  mutable std::shared_ptr<InterpreterCore> core_{nullptr};
 };
 
 }  // namespace operators

@@ -23,7 +23,14 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
+bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
+                           const phi::Place& place,
+                           Scope* scope);
+
+bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
+                                         const std::string& op_type,
+                                         const phi::Place& place,
+                                         Scope* scope);
 
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const platform::Place& place,

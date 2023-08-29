@@ -121,7 +121,7 @@ void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 
-void InterpreterCore::PreStaticRun() { impl_->PreStaticRun(); }
+void InterpreterCore::PreStaticBuild() { impl_->PreStaticBuild(); }
 
 }  // namespace framework
 }  // namespace paddle

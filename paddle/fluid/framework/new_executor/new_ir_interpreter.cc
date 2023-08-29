@@ -1272,9 +1272,9 @@ void NewIRInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-void NewIRInterpreter::PreStaticRun() {
+void NewIRInterpreter::PreStaticBuild() {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "PreStaticRun is not implemented in NewIRInterpreter."));
+      "PreStaticBuild is not implemented in NewIRInterpreter."));
 }
 
 ::ir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {

@@ -50,7 +50,7 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
-                  interpreter::BlockCanBeStaticBuilt(block);
+                  interpreter::BlockCanBeStaticBuilt(block, place, scope);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -162,7 +162,7 @@ FetchList ProgramInterpreter::Run(
   }
 }
 
-void ProgramInterpreter::PreStaticRun() {
+void ProgramInterpreter::PreStaticBuild() {
   SetDeviceId(place_);
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -171,7 +171,7 @@ void ProgramInterpreter::PreStaticRun() {
     PADDLE_ENFORCE_EQ(static_build_,
                       true,
                       phi::errors::InvalidArgument(
-                          "ProgramInterpreter::PreStaticRun() "
+                          "ProgramInterpreter::PreStaticBuild() "
                           "should be called when static_build_ is true"));
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;

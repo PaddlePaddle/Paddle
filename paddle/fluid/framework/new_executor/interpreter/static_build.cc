@@ -13,14 +13,16 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {"read",
-                                                           "conditional_block"};
+std::set<std::string> OperatorBasesCanHandledInStaticBuild = {
+    "read", "conditional_block"};
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
@@ -64,7 +66,11 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
+namespace ops = paddle::operators;
+
+bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
+                           const phi::Place& place,
+                           Scope* scope) {
   // in_black_list = (kernelCode >> 7) & 1
   // is_operator_base = (kernelCode >> 6) & 1
   // is_custom_op = (kernelCode >> 5) & 1
@@ -107,7 +113,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
-           !OperatorBasesHandledInStaticBuild.count(op_type)) ||
+           !IsOperatorBasesHandledInStaticBuild(op, op_type, place, scope)) ||
           is_custom_op || use_mkldnn || need_move_to_phi) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
@@ -130,6 +136,31 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   }
 
   return invalid_ops.empty();
+}
+
+bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
+                                         const std::string& op_type,
+                                         const phi::Place& place,
+                                         Scope* scope) {
+  if (!OperatorBasesCanHandledInStaticBuild.count(op_type)) {
+    return false;
+  }
+
+  if (op_type == "read") {
+    return true;
+  } else if (op_type == "conditional_block") {
+    // Note(sonder): For conditional_block, static build is only supported
+    // when the op has the same place, dtype and layout of the output for two
+    // conditional branches.
+    CreateOpFromOpDesc<ops::ConditionalBlockOp>(op);
+    // VLOG(4) << op_base->DebugStringEx(scope);
+    // op_base->SetSubBlockCore(*scope, place);
+    // op_base->PreStaticBuild();
+    // VLOG(4) << op_base->DebugStringEx(scope);
+    return false;
+  } else {
+    return false;
+  }
 }
 
 inline bool IsExtendedTensor(const phi::TensorBase& tensor) {

@@ -98,7 +98,7 @@ class InterpreterBaseImpl {
 
   virtual bool IsSharedResultsBuild() const = 0;
 
-  virtual void PreStaticRun() = 0;
+  virtual void PreStaticBuild() = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

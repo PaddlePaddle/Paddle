@@ -321,42 +321,47 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
 void CreateAllOps(const framework::BlockDesc& block,
                   std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
-    auto op_type = op->Type();
-    VLOG(8) << "CreateOp from : " << op_type;
+    ops->emplace_back(
+        std::unique_ptr<OperatorBase>(CreateOpFromOpDesc<OperatorBase>(op)));
+  }
+}
 
-    auto& info = OpInfoMap::Instance().Get(op_type);
+template <typename T>
+T* CreateOpFromOpDesc(OpDesc* op) {
+  auto op_type = op->Type();
+  VLOG(8) << "CreateOp from : " << op_type;
 
-    const VariableNameMap& inputs_names = op->Inputs();
-    const VariableNameMap& outputs_names = op->Outputs();
+  auto& info = OpInfoMap::Instance().Get(op_type);
 
-    AttributeMap op_attr_map = op->GetAttrMap();
-    AttributeMap op_runtime_attr_map = op->GetRuntimeAttrMap();
+  const VariableNameMap& inputs_names = op->Inputs();
+  const VariableNameMap& outputs_names = op->Outputs();
 
-    if (info.Checker() != nullptr) {
-      info.Checker()->Check(&op_attr_map);
-    }
+  AttributeMap op_attr_map = op->GetAttrMap();
+  AttributeMap op_runtime_attr_map = op->GetRuntimeAttrMap();
 
-    const auto& extra_attr_checkers =
-        operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(op_type);
-    for (const auto& checker : extra_attr_checkers) {
-      checker(&op_runtime_attr_map, false);
-    }
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(&op_attr_map);
+  }
 
-    auto op_base =
-        info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
-    op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
+  const auto& extra_attr_checkers =
+      operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(op_type);
+  for (const auto& checker : extra_attr_checkers) {
+    checker(&op_runtime_attr_map, false);
+  }
+
+  auto op_base =
+      info.Creator()(op_type, inputs_names, outputs_names, op_attr_map);
+  op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
 #ifdef PADDLE_WITH_DNNL
-    if (FLAGS_use_mkldnn) {
-      if (op->HasAttr("use_mkldnn")) {
-        VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
-        op_base->SetAttr("use_mkldnn", true);
-      }
+  if (FLAGS_use_mkldnn) {
+    if (op->HasAttr("use_mkldnn")) {
+      VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
+      op_base->SetAttr("use_mkldnn", true);
     }
-#endif
-
-    ops->emplace_back(std::unique_ptr<OperatorBase>(op_base));
   }
+#endif
+  return dynamic_cast<T*>(op_base);
 }
 
 std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
