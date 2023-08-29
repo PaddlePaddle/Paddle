@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(fc);
+PD_DECLARE_KERNEL(fc, CPU, ALL_LAYOUT);
 
 paddle::framework::VarDesc *Data(
     paddle::framework::BlockDesc *block,
@@ -43,6 +43,64 @@ paddle::framework::VarDesc *Data(
   var->SetShape(shape);
   var->SetPersistable(is_persistable);
   return var;
+}
+TEST(FCMklDNNOp, ChangeSrcShape) {
+  paddle::platform::Place place = paddle::platform::CPUPlace();
+  paddle::framework::Scope scope;
+  paddle::framework::ProgramDesc program;
+
+  auto *block = program.MutableBlock(0);
+  auto *x = Data(block, "Input", {2, 3});
+  auto *w = Data(block, "W", {3, 2});
+  auto *out = Data(block, "Out", {2, 2});
+  auto *fc_op = block->AppendOp();
+  auto x_value = scope.Var(x->Name())->GetMutable<phi::DenseTensor>();
+  x_value->Resize({2, 3});
+
+  auto *w_value = scope.Var(w->Name())->GetMutable<phi::DenseTensor>();
+  w_value->Resize({3, 2});
+  float a_original_arr[] = {0, 1, 2, 3, 4, 5};
+  float b_original_arr[] = {0.0, .1, .2, .3, .4, .5};
+
+  std::copy_n(a_original_arr, 4, x_value->mutable_data<float>(place));
+  std::copy_n(b_original_arr, 4, w_value->mutable_data<float>(place));
+
+  auto *var_out = scope.Var(out->Name())->GetMutable<phi::DenseTensor>();
+  var_out->Resize({2, 2});
+  auto *out_data = var_out->mutable_data<float>(paddle::platform::CPUPlace());
+  for (int i = 0; i < 4; ++i) {
+    out_data[i] = i;
+  }
+
+  fc_op->SetType("fc");
+  fc_op->SetInput("Input", {x->Name()});
+  fc_op->SetInput("W", {w->Name()});
+  fc_op->SetOutput("Out", {out->Name()});
+  fc_op->SetAttr("in_num_col_dims", 1);
+  fc_op->SetAttr("use_mkldnn", {true});
+  paddle::framework::NaiveExecutor exe(place);
+  exe.CreateVariables(program, 0, true, &scope);
+  exe.Prepare(&scope, program, 0, false);
+  exe.Run();
+
+  auto *x_tensor = exe.FindTensor("Input");
+  auto *w_tensor = exe.FindTensor("W");
+
+  x_tensor->Resize({2, 2});
+  w_tensor->Resize({2, 2});
+
+  float a_arr[] = {0, 1, 2, 3};
+  float b_arr[] = {0.0, .1, .2, .3};
+  float c_arr[] = {.2, .3, .6, 1.1};
+
+  std::copy_n(a_arr, 4, x_tensor->mutable_data<float>(place));
+  std::copy_n(b_arr, 4, w_tensor->mutable_data<float>(place));
+  exe.Run();
+  auto *out_tensor = exe.FindTensor("Out");
+  auto *c_data = out_tensor->mutable_data<float>(place);
+  for (int i = 0; i < 4; i++) {
+    CHECK_EQ(c_data[i], c_arr[i]) << "Fc output is wrong value!";
+  }
 }
 TEST(FCMklDNNOp, ChangeSrcLayout) {
   paddle::platform::Place place = paddle::platform::CPUPlace();
