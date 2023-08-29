@@ -179,52 +179,41 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     pruned op in total_ops is uneffective_ops, else is effective_ops
 
     '''
-    relevant_op_flags = [True] * len(total_ops)
+    intersection_op_flags = [True] * len(total_ops)
+    union_op_flags = [False] * len(total_ops)
     # from input to output
     if inputs_set:
         for i, op in enumerate(total_ops):
             if some_in_set(op.results(), inputs_set):
+                union_op_flags[i] = True
                 continue
 
             if some_in_set(op.operands_source(), inputs_set):
+                union_op_flags[i] = True
                 for value in op.results():
                     if value not in no_grad_set:
                         inputs_set.add(value)
             else:
-                relevant_op_flags[i] = False
+                intersection_op_flags[i] = False
 
     # from output to input
     for i, op in reversed(list(enumerate(total_ops))):
         if some_in_set(op.results(), outputs_set):
+            union_op_flags[i] = True
             for operand in op.operands_source():
                 if operand not in no_grad_set:
                     outputs_set.add(operand)
         else:
-            relevant_op_flags[i] = False
-
-    # recover full op or full_Intarray op created by mutable attribute.
-    total_ops_list = list(total_ops)
-    for i, op in enumerate(total_ops_list):
-        if relevant_op_flags[i] is False:
-            for result in op.results():
-                if result.has_one_use():
-                    next_op = result.first_use().owner()
-                    if (
-                        next_op in total_ops
-                        and relevant_op_flags[total_ops_list.index(next_op)]
-                        is True
-                    ):
-                        relevant_op_flags[i] = True
-                else:
-                    continue
+            union_op_flags[i] = False
+            intersection_op_flags[i] = False
 
     effective_ops = [
-        total_ops[i] for i in range(len(total_ops)) if relevant_op_flags[i]
+        total_ops[i] for i in range(len(total_ops)) if intersection_op_flags[i]
     ]
     uneffective_ops = [
         total_ops[i]
         for i in reversed(range(len(total_ops)))
-        if not relevant_op_flags[i]
+        if not union_op_flags[i]
     ]
 
     return effective_ops, uneffective_ops
@@ -354,12 +343,16 @@ def append_backward_ops(
 
     def make_output_grad(op):
         zero_flag = [False] * op.num_results()
+        output_grads = []
         for i, value in enumerate(op.results()):
             if (
                 value not in state.value_to_valuegrad
                 or state.value_to_valuegrad[value] is None
             ):
-                if value.first_use().owner().name() == "builtin.split":
+                if (
+                    not value.use_empty()
+                    and value.first_use().owner().name() == "builtin.split"
+                ):
                     # pattern case:
                     # this fwd_op's output is vectorType, it will split to
                     # Type by builtin.split op, so need get from split op's ouput
@@ -367,7 +360,7 @@ def append_backward_ops(
                         value.first_use().owner()
                     )
                     zero_flag[i] = all(split_zero_flag)
-                    grad_value = [op_list[0] for op_list in split_output_grad]
+                    state.value_to_valuegrad[value] = [split_output_grad]
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
@@ -388,7 +381,7 @@ def append_backward_ops(
                     )
                     zero_flag[i] = True
 
-                state.value_to_valuegrad[value] = [[grad_value]]
+                    state.value_to_valuegrad[value] = [[grad_value]]
 
             if len(state.value_to_valuegrad[value]) > 1:
                 # one value is input of more than one fwd_op,
@@ -411,8 +404,8 @@ def append_backward_ops(
                     value
                 ]
 
-            output_grad = state.value_to_valuegrad[value][0]
-        return zero_flag, output_grad
+            output_grads.append(state.value_to_valuegrad[value][0][0])
+        return zero_flag, output_grads
 
     def make_input_stopgradient(op):
         input_grad_stopgradients = []
@@ -529,8 +522,9 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
             inputs_set.add(state.value_to_valuegrad[output][0][0])
     inputs_set_tmp = set()
     for out_grad in inputs_set:
-        for item in out_grad.first_use().owner().operands_source():
-            inputs_set_tmp.add(item)
+        if not out_grad.use_empty():
+            for item in out_grad.first_use().owner().operands_source():
+                inputs_set_tmp.add(item)
     inputs_set.update(inputs_set_tmp)
 
     no_gradvar_set = set()  # grad_value of value in no_grad_set

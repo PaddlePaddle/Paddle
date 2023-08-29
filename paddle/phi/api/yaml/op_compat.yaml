@@ -3034,6 +3034,18 @@
   outputs :
     out : Out
 
+- op: c_sync_calc_stream
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: c_sync_comm_stream
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: channel_shuffle
   inputs:
     {x: X}
@@ -3071,6 +3083,10 @@
   outputs :
     out : Out
 
+- op: recv_v2
+  outputs :
+    out : Out
+
 - op: reindex_graph (graph_reindex)
   inputs :
     {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
@@ -3082,6 +3098,44 @@
     {x: X}
   outputs:
     {out: Out, noise: Noise}
+
+- op: send_v2
+  inputs :
+    x : X
+
+- op: set_value
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
+
+- op: set_value_with_tensor
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
 
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad

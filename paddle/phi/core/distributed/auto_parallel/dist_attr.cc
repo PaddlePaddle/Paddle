@@ -186,7 +186,7 @@ bool TensorDistAttr::verify_dims_mapping(
 bool TensorDistAttr::verify_batch_dim(
     int64_t dim, const std::vector<int64_t>& tensor_shape) const {
   VLOG(4) << "[TensorDistAttr verify_batch_dim] " << dim;
-  int64_t ndim = tensor_shape.size();
+  int64_t ndim = static_cast<int64_t>(tensor_shape.size());
   if (ndim > 0) {
     if (dim < 0) {
       dim = dim + ndim;
@@ -270,12 +270,12 @@ std::string TensorDistAttr::to_string() const {
 void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
   process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
   dims_mapping_.resize(proto.dims_mapping_size());
-  for (int64_t i = 0; i < proto.dims_mapping_size(); ++i) {
+  for (int i = 0; i < proto.dims_mapping_size(); ++i) {
     dims_mapping_[i] = proto.dims_mapping(i);
   }
   batch_dim_ = proto.batch_dim();
   dynamic_dims_.resize(proto.dynamic_dims_size());
-  for (int64_t i = 0; i < proto.dynamic_dims_size(); ++i) {
+  for (int i = 0; i < proto.dynamic_dims_size(); ++i) {
     dynamic_dims_[i] = proto.dynamic_dims(i);
   }
 }
