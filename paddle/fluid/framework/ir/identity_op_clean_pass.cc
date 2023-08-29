@@ -123,23 +123,18 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
                            return true;
                          });
 
-  auto* cast_op_1 =
-      pattern->NewNode(cast_op_1_repr())
-          ->assert_is_op("cast")
-          ->assert_more([](Node* node) {
-            auto* op_desc = node->Op();
-            auto in_dtype = op_desc->GetAttrIfExists<int>("in_dtype");
-            auto out_dtype = op_desc->GetAttrIfExists<int>("out_dtype");
-            if ((in_dtype == static_cast<int>(proto::VarType::FP16) ||
-                 in_dtype == static_cast<int>(proto::VarType::FP32)) &&
-                (out_dtype == static_cast<int>(proto::VarType::INT32) ||
-                 out_dtype == static_cast<int>(proto::VarType::INT64))) {
-              return false;
-            } else {
-              return true;
-            }
-          });
-  auto* cast_op_1_out = pattern->NewNode(cast_op_1_out_repr())->assert_is_var();
+  auto* cast_op_1 = pattern->NewNode(cast_op_1_repr())->assert_is_op("cast");
+  auto* cast_op_1_out = pattern->NewNode(cast_op_1_out_repr())
+                            ->assert_is_var()
+                            ->assert_is_op_output("cast", "Out")
+                            ->assert_more([](Node* x) {
+                              const auto& var_type = x->Var()->GetDataType();
+                              if (var_type == proto::VarType::INT32 ||
+                                  var_type == proto::VarType::INT64) {
+                                return false;
+                              }
+                              return true;
+                            });
   auto* cast_op_2 = pattern->NewNode(cast_op_2_repr())->assert_is_op("cast");
   auto* cast_op_2_out = pattern->NewNode(cast_op_2_out_repr())->assert_is_var();
 
