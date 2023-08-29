@@ -125,7 +125,7 @@ class Graph final {
         /*OutputVariablesVisitor=*/GetOutputVariablesVisitor());
   }
 
-  std::unordered_set<Variable> getVariables() const {
+  std::unordered_set<Variable> GetVariables() const {
     return this->variables_;
   }
 
