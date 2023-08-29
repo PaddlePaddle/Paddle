@@ -2090,7 +2090,7 @@ def margin_cross_entropy(
     .. code-block:: python
         :name: code-example1
 
-        >>> # doctest: +REQUIRES(env: GPU)
+        >>> # doctest: +REQUIRES(env:GPU)
         >>> # Single GPU
         >>> import paddle
         >>> m1 = 1.0
