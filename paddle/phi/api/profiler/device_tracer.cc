@@ -797,8 +797,8 @@ void ClearCurAnnotation() {
   if (!main_thread_annotation_stack.empty()) {
     std::string name = annotation_stack.back()->name();
     std::string main_name = main_thread_annotation_stack.back()->name();
-    int main_name_len = main_name.length();
-    int name_len = name.length();
+    int main_name_len = static_cast<int>(main_name.length());
+    int name_len = static_cast<int>(name.length());
     int prefix_len = main_name_len - name_len;
 
     if ((prefix_len > 0 && main_name.at(prefix_len - 1) == '/' &&
@@ -825,7 +825,7 @@ void SetCurBlock(int block_id) { block_id_stack.push_back(block_id); }
 
 void ClearCurBlock() { block_id_stack.pop_back(); }
 
-int BlockDepth() { return block_id_stack.size(); }
+int BlockDepth() { return static_cast<int>(block_id_stack.size()); }
 
 uint32_t GetCurSystemThreadId() {
   std::stringstream ss;

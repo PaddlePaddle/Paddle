@@ -33,7 +33,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace framework {
 
-Scope::~Scope() { DropKids(); }
+Scope::~Scope() { DropKids(); }  // NOLINT
 
 Scope& Scope::NewScope() const {
   Scope* child = new Scope(this);

@@ -33,6 +33,9 @@ std::vector<Tensor> concat_grad(const std::vector<Tensor>& x,
                                 const Tensor& out_grad,
                                 const Tensor& axis);
 
+template <typename T>
+Tensor split_grad(const std::vector<Tensor>& out_grads, const Tensor& axis);
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

@@ -1666,7 +1666,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         if (!output.dispensable()) {
           std::string input_name =
               output_name.substr(0, output_name.size() - 3);
-          const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ins[\"%s\"] },";
+          const char* FWD_OUTS_CONTENT_TEMPLATE = R"({ "%s", ins["%s"] },)";
           outs_contents_str += paddle::string::Sprintf(
               FWD_OUTS_CONTENT_TEMPLATE, output_name, input_name);
         }
@@ -1690,7 +1690,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
               "Inplace op %s has no input corresponding to output %s.",
               op_type,
               output_name));
-      const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ins[\"%s\"] },";
+      const char* FWD_OUTS_CONTENT_TEMPLATE = R"({ "%s", ins["%s"] },)";
       auto inplace_input_name = forward_inplace_map[output_name];
       outs_contents_str += paddle::string::Sprintf(
           FWD_OUTS_CONTENT_TEMPLATE, output_name, inplace_input_name);
@@ -3299,7 +3299,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
 }  // namespace framework
 }  // namespace paddle
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 3) {
     std::cerr << "argc must be 3" << std::endl;
     return -1;
