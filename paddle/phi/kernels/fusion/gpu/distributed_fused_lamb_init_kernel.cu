@@ -580,10 +580,14 @@ void DistributedFusedLambInitOpKernel(
         dev_ctx, info.param_t, fp32_p_t, info.numel_offset);
     master_param_out[info.idx]->Resize(info.param_t->dims());
     master_param_out[info.idx]->ShareBufferWith(sliced_tensor);
-    // PADDLE_ENFORCE_EQ(
-    //     dev_ctx.template Alloc<float>(master_param_out[info.idx]),
-    //     sliced_tensor.data<float>(),
-    //     errors::InvalidArgument("Invalid master weight tensor pointer."));
+    float *master_param_tmp =
+        dev_ctx.template Alloc<float>(master_param_out[info.idx]);
+    float *sliced_tensor_tmp = reinterpret_cast<float *>(sliced_tensor.data());
+    PADDLE_ENFORCE_EQ(
+        master_param_tmp,
+        sliced_tensor_tmp,
+        errors::InvalidArgument("Invalid master weight tensor pointer."));
+
     if (info.grad_t->IsInitialized()) {
       CopyAndShareBufferForInitedTensor(
           dev_ctx, info.grad_t, fp32_g_t, info.numel_offset);
@@ -609,10 +613,13 @@ void DistributedFusedLambInitOpKernel(
 
     CopyAndShareBufferForInitedTensor(
         dev_ctx, info.param_t, fp16_p_t, info.numel_offset);
-    // PADDLE_ENFORCE_EQ(
-    //     dev_ctx.template Alloc<float>(master_param_out[info.idx]),
-    //     sliced_tensor.data<float>(),
-    //     errors::InvalidArgument("Invalid master weight tensor pointer."));
+    float *master_param_tmp =
+        dev_ctx.template Alloc<float>(master_param_out[info.idx]);
+    float *sliced_tensor_tmp = reinterpret_cast<float *>(sliced_tensor.data());
+    PADDLE_ENFORCE_EQ(
+        master_param_tmp,
+        sliced_tensor_tmp,
+        errors::InvalidArgument("Invalid master weight tensor pointer."));
 
     if (info.grad_t->IsInitialized()) {
       CopyAndShareBufferForInitedTensor(
