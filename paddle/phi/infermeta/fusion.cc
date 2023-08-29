@@ -821,4 +821,30 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void SqueezeExcitationInferMeta(const MetaTensor& x,
+                                const MetaTensor& w,
+                                const MetaTensor& w_max,
+                                const MetaTensor& bias,
+                                const MetaTensor& branch,
+                                const std::vector<int>& act_type,
+                                const std::vector<float>& act_param,
+                                const std::vector<int>& filter_dims,
+                                MetaTensor* out) {
+  auto in_dims = x.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The input should be a 4-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  std::vector<int64_t> out_shape(
+      {in_dims[0], filter_dims[1], in_dims[2], in_dims[3]});
+  // set output dims
+  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+}
+
 }  // namespace phi

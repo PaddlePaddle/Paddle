@@ -201,4 +201,14 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                float epsilon,
                                MetaTensor* out);
 
+void SqueezeExcitationInferMeta(const MetaTensor& x,
+                                const MetaTensor& w,
+                                const MetaTensor& w_max,
+                                const MetaTensor& bias,
+                                const MetaTensor& branch,
+                                const std::vector<int>& act_type,
+                                const std::vector<float>& act_param,
+                                const std::vector<int>& filter_dims,
+                                MetaTensor* out);
+
 }  // namespace phi
