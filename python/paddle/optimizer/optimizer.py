@@ -193,7 +193,7 @@ class Optimizer:
             self._parameter_list = None
 
         self._name = name
-        if framework.in_dygraph_mode(False):
+        if framework.in_dygraph_mode():
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
