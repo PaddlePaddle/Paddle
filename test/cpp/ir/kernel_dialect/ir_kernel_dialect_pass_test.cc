@@ -109,6 +109,7 @@ TEST(program_test, program) {
 }
 
 TEST(legacy_op_test, program) {
+  VLOG(0) << "TEST legacy_op_test begin";
   // (1) Init environment.
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::Program program((ctx));
@@ -117,11 +118,9 @@ TEST(legacy_op_test, program) {
 
   ir::Builder builder = ir::Builder(ctx, program.block());
 
-  paddle::dialect::DenseTensorType x =
-      [1, 1].type().dyn_cast<paddle::dialect::DenseTensorType>();
-
-  paddle::dialect::CConcatOp op = builder.Build<paddle::dialect::CConcatOp>(
-      x, 1, 1, 1, false, false);
+  paddle::dialect::RecvV2Op op =
+      builder.Build<paddle::dialect::RecvV2Op>(
+        std::vector<int32_t>{2, 2}, phi::DataType::FLOAT32, 0, 0, false, false);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -136,18 +135,12 @@ TEST(legacy_op_test, program) {
                 ->front()
                 ->dyn_cast<paddle::dialect::LegacyKernelOp>()
                 .op_name(),
-            "pd.c_concat");
+            "pd.recv_v2");
   EXPECT_EQ(kernel_program->block()
                 ->front()
                 ->dyn_cast<paddle::dialect::LegacyKernelOp>()
                 .kernel_name(),
-            "c_concat");
-  EXPECT_EQ(kernel_program->block()
-                ->front()
-                ->dyn_cast<paddle::dialect::LegacyKernelOp>()
-                .kernel_key()
-                .dtype(),
-            paddle::dialect::DenseTensorType);
+            "recv_v2");
 }
 
 TEST(dialect_attr, attr) {
