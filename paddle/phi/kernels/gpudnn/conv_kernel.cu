@@ -24,7 +24,7 @@
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #elif defined(PADDLE_WITH_MUSA)
-
+#include "paddle/phi/kernels/gpudnn/conv_mudnn_helper.h"
 #else
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
@@ -82,11 +82,11 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                 groups,
                 compute_format};
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   // MIOPEN need to set groups in cdesc in miopen_desc.h
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn(), groups);
-#else  // CUDA & MUSA
+#else
   args.cdesc.set(
       dtype, padding_common, strides, dilations, phi::AllowTF32Cudnn());
 #endif
@@ -99,7 +99,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
       phi::dynload::cudnnSetConvolutionGroupCount(args.cdesc.desc(), groups));
   groups = 1;
 #endif
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   // MIOPEN do not set groups in wdesc after set groups in cdesc
   groups = 1;
 #endif
@@ -153,7 +153,12 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   workspace_size = search::GetWorkspaceSize(args);
   fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+  SearchResult<dynload::Convolution::Algorithm> fwd_result;
+  using search = SearchAlgorithm<dynload::Convolution::Algorithm>;
+  fwd_result.algo =
+      search::Find(args, exhaustive_search, deterministic, workspace_size, ctx);
+#else
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search = SearchAlgorithm<ConvKind::kForward>;
   fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
@@ -197,7 +202,18 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                                                    workspace_size));
       },
       workspace_size);
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+  workspace_handle.RunFunc(
+      [&](void* workspace_ptr) {
+        args.cdesc.desc()->Run(*handle,
+                               *args.odesc.desc(),
+                               *args.idesc.desc(),
+                               *args.wdesc.desc(),
+                               fwd_result.algo,
+                               InternalMemAlloc);
+      },
+      workspace_size);
+#else
   ConvRunner<T, ConvKind::kForward>::Apply(ctx,
                                            args,
                                            fwd_result,
@@ -365,7 +381,7 @@ void ConvCudnnKernel(const Context& ctx,
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
-#if defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = phi::backends::gpu::DataLayout::kNCHW;
 #else
@@ -612,7 +628,7 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -653,7 +669,7 @@ PD_REGISTER_KERNEL(conv3d,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
                    ALL_LAYOUT,

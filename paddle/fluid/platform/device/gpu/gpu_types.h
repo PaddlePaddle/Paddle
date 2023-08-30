@@ -27,7 +27,8 @@
 #elif defined(PADDLE_WITH_MUSA)
 #include <musa_runtime.h>
 #include "paddle/fluid/platform/dynload/mublas.h"
-using mudnnHandle_t = class Handle*;
+#include "paddle/fluid/platform/dynload/mudnn.h"
+#include "paddle/phi/backends/gpu/forwards.h"
 #else
 #include <cuda_runtime.h>
 

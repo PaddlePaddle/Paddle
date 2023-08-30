@@ -568,7 +568,7 @@ void BatchNormGradRawKernel(const Context &ctx,
           scale.dims()[0]));
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -650,7 +650,13 @@ void BatchNormGradRawKernel(const Context &ctx,
 //     platform::dynload::miopenCreateTensorDescriptor(&data_desc_));
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+    backends::gpu::TensorDescriptor data_desc_;
+    backends::gpu::TensorDescriptor output_grad_desc_;
+    backends::gpu::TensorDescriptor data_grad_desc_;
+    dynload::BatchNorm batch_norm_desc_;
+    dynload::BatchNorm::Mode mode_;
+#else
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
     cudnnBatchNormMode_t mode_;
@@ -670,7 +676,11 @@ void BatchNormGradRawKernel(const Context &ctx,
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // mode_ = miopenBNSpatial;
 #elif defined(PADDLE_WITH_MUSA)
-
+    if (H == 1 && W == 1) {
+      mode_ = dynload::BatchNorm::Mode::PER_ACTIVATION;
+    } else {
+      mode_ = dynload::BatchNorm::Mode::PER_CHANNEL;
+    }
 #elif CUDNN_VERSION_MIN(7, 0, 1)
     if (FLAGS_cudnn_batchnorm_spatial_persistent) {
       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
@@ -696,7 +706,14 @@ void BatchNormGradRawKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDeriveBNTensorDescriptor(bn_param_desc_,
 //                                                       data_desc_, mode_));
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+    auto layout_format = data_layout == DataLayout::kNHWC
+                             ? dynload::Tensor::Format::NHWC
+                             : dynload::Tensor::Format::NCHW;
+    data_desc_.set(transformed_x, layout_format);
+    data_grad_desc_.set(transformed_d_x, layout_format);
+    output_grad_desc_.set(transformed_d_y, layout_format);
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
         data_desc_,
         CudnnDataType<T>::type,
@@ -779,7 +796,44 @@ void BatchNormGradRawKernel(const Context &ctx,
 //         d_bias->template mutable_data<BatchNormParamType<T>>(
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+      backends::gpu::TensorDescriptor scale_desc_;
+      backends::gpu::TensorDescriptor bias_desc_;
+      backends::gpu::TensorDescriptor saved_mean_desc_;
+      backends::gpu::TensorDescriptor saved_variance_desc_;
+
+      backends::gpu::TensorDescriptor mean_grad_desc_;      // unused
+      backends::gpu::TensorDescriptor variance_grad_desc_;  // unused
+      backends::gpu::TensorDescriptor scale_grad_desc_;
+      backends::gpu::TensorDescriptor bias_grad_desc_;
+
+      scale_desc_.set<BatchNormParamType<T>>(
+          scale, scale.template data<BatchNormParamType<T>>());
+      bias_desc_.set<BatchNormParamType<T>>(
+          bias, bias.template data<BatchNormParamType<T>>());
+      saved_mean_desc_.set<BatchNormParamType<T>>(
+          saved_mean, saved_mean.template data<BatchNormParamType<T>>());
+      saved_variance_desc_.set<BatchNormParamType<T>>(
+          saved_variance,
+          saved_variance.template data<BatchNormParamType<T>>());
+      scale_grad_desc_.set<BatchNormParamType<T>>(
+          *d_scale, ctx.template Alloc<BatchNormParamType<T>>(d_scale));
+      bias_grad_desc_.set<BatchNormParamType<T>>(
+          *d_bias, ctx.template Alloc<BatchNormParamType<T>>(d_bias));
+      batch_norm_desc_.SetEpsilon(epsilon);
+      batch_norm_desc_.RunBwd(*(ctx.cudnn_handle()),
+                              *data_grad_desc_.desc(),       // grad input
+                              *mean_grad_desc_.desc(),       // grad mean
+                              *variance_grad_desc_.desc(),   // grad variance
+                              *scale_grad_desc_.desc(),      // grad scale
+                              *bias_grad_desc_.desc(),       // grad bias
+                              *data_desc_.desc(),            // input
+                              *output_grad_desc_.desc(),     // grad y
+                              *saved_mean_desc_.desc(),      // saved mean
+                              *saved_variance_desc_.desc(),  // saved variance
+                              *scale_desc_.desc(),           // scale
+                              backends::gpu::InternalMemAlloc);
+#else
     }
     // CUDNN only support small batch size
     bool use_native_nhwc =
@@ -1361,7 +1415,7 @@ void BatchNormDoubleGradKernel(
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1409,7 +1463,7 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
   }
 }
-#else  // CUDA
+#else
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -1447,7 +1501,7 @@ PD_REGISTER_KERNEL(batch_norm_double_grad,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(batch_norm_double_grad,
                    GPU,
                    ALL_LAYOUT,

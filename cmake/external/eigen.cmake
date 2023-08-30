@@ -117,6 +117,18 @@ if(CMAKE_COMPILER_IS_GNUCC)
         ${EIGEN_PATCH_COMMAND} && patch -Nd
         ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/ <
         ${tensor_reduction_header})
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Eigen_CORE.patch
+         eigen_core)
+    set(EIGEN_PATCH_COMMAND ${EIGEN_PATCH_COMMAND} && patch -Nd
+                            ${SOURCE_DIR}/Eigen/ < ${eigen_core})
+    file(
+      TO_NATIVE_PATH
+      ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported_Eigen_CXX11_src_Tensor_TensorDeviceGpu.h.patch
+      tensor_device_gpu_header)
+    set(EIGEN_PATCH_COMMAND
+        ${EIGEN_PATCH_COMMAND} && patch -Nd
+        ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/ <
+        ${tensor_device_gpu_header})
   endif()
 endif()
 

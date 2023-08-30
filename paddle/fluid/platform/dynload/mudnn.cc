@@ -11,31 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#ifdef PADDLE_WITH_MUSA
+
+#include "paddle/fluid/platform/dynload/mudnn.h"
+
 #include "paddle/phi/backends/dynload/mudnn.h"
 
-namespace phi {
+namespace paddle {
+namespace platform {
 namespace dynload {
 
-bool HasCUDNN() {
-  // note: mudnn.so is not imported by dlopen, which will be linked
-  // in cmakelist.txt.
-  return true;
-}
+MUDNN_DNN_ROUTINE_EACH(DEFINE_WRAP);
 
-void mudnnCreate(Handle** handle, int device) { *handle = new Handle(device); }
-
-void mudnnSetStream(Handle* handle, musaStream_t stream) {
-  handle->SetStream(stream);
-}
-
-void mudnnDestroy(Handle* handle) {
-  if (handle != nullptr) {
-    delete handle;
-    handle = nullptr;
-  }
-}
+bool HasCUDNN() { return phi::dynload::HasCUDNN(); }
 
 }  // namespace dynload
-}  // namespace phi
-#endif
+}  // namespace platform
+}  // namespace paddle

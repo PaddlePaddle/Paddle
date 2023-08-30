@@ -554,7 +554,7 @@ void BatchNormKernel(const Context &ctx,
 
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
 
@@ -597,7 +597,14 @@ void BatchNormKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenCreateTensorDescriptor(&bn_param_desc_));
 #elif defined(PADDLE_WITH_MUSA)
-
+  backends::gpu::TensorDescriptor data_desc_;
+  backends::gpu::TensorDescriptor output_desc_;
+  backends::gpu::TensorDescriptor mean_desc_;
+  backends::gpu::TensorDescriptor variance_desc_;
+  backends::gpu::TensorDescriptor scale_desc_;
+  backends::gpu::TensorDescriptor bias_desc_;
+  dynload::BatchNorm batch_norm_desc_;
+  dynload::BatchNorm::Mode mode_;
 #else
   cudnnTensorDescriptor_t data_desc_;
   cudnnTensorDescriptor_t bn_param_desc_;
@@ -620,7 +627,11 @@ void BatchNormKernel(const Context &ctx,
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // mode_ = miopenBNSpatial;
 #elif defined(PADDLE_WITH_MUSA)
-
+  if (H == 1 && W == 1) {
+    mode_ = dynload::BatchNorm::Mode::PER_ACTIVATION;
+  } else {
+    mode_ = dynload::BatchNorm::Mode::PER_CHANNEL;
+  }
 #elif CUDNN_VERSION_MIN(7, 0, 1)
   if (FLAGS_cudnn_batchnorm_spatial_persistent) {
     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
@@ -648,7 +659,7 @@ void BatchNormKernel(const Context &ctx,
     strides = {H * W * D * C, 1, W * D * C, D * C, C};
   }
 
-#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
+#if defined(PADDLE_WITH_HIP)
 // TODO(wangran16): wait for MIOpen to improve the performance of BN
 // PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetTensorDescriptor(
 //     data_desc_, CudnnDataType<T>::type,
@@ -658,6 +669,12 @@ void BatchNormKernel(const Context &ctx,
 // PADDLE_ENFORCE_GPU_SUCCESS(
 //     platform::dynload::miopenDeriveBNTensorDescriptor(
 //         bn_param_desc_, data_desc_, test_mode ? miopenBNSpatial : mode_));
+#elif defined(PADDLE_WITH_MUSA)
+  auto layout_format = data_layout == DataLayout::kNHWC
+                           ? dynload::Tensor::Format::NHWC
+                           : dynload::Tensor::Format::NCHW;
+  data_desc_.set(transformed_x, layout_format);
+  output_desc_.set(transformed_y, layout_format);
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
       data_desc_,
@@ -773,6 +790,24 @@ void BatchNormKernel(const Context &ctx,
 //         const_cast<void *>(static_cast<const void *>(
 //             est_var->template data<BatchNormParamType<T>>())),
 //         epsilon));
+#elif defined(PADDLE_WITH_MUSA)
+    scale_desc_.set<BatchNormParamType<T>>(
+        scale, scale.template data<BatchNormParamType<T>>());
+    bias_desc_.set<BatchNormParamType<T>>(
+        bias, bias.template data<BatchNormParamType<T>>());
+    mean_desc_.set<BatchNormParamType<T>>(
+        *est_mean, mean.template data<BatchNormParamType<T>>());
+    variance_desc_.set<BatchNormParamType<T>>(
+        *est_var, est_var->template data<BatchNormParamType<T>>());
+    batch_norm_desc_.SetEpsilon(epsilon);
+    batch_norm_desc_.SetMode(mode_);
+    batch_norm_desc_.RunPure(*handle,
+                             *output_desc_.desc(),
+                             *data_desc_.desc(),
+                             *mean_desc_.desc(),
+                             *variance_desc_.desc(),
+                             *scale_desc_.desc(),
+                             *bias_desc_.desc());
 #else
     const bool use_native_kernel =
         (x_dims.size() == 2 ||
@@ -949,8 +984,39 @@ void BatchNormKernel(const Context &ctx,
 //                 ctx.GetPlace())),
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
-#else  // CUDA & MUSA
-       // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+#elif defined(PADDLE_WITH_MUSA)
+      backends::gpu::TensorDescriptor mean_out_desc_;
+      backends::gpu::TensorDescriptor variance_out_desc_;
+      backends::gpu::TensorDescriptor saved_mean_desc_;
+      backends::gpu::TensorDescriptor saved_variance_desc_;
+      scale_desc_.set<BatchNormParamType<T>>(
+          scale, scale.template data<BatchNormParamType<T>>());
+      bias_desc_.set<BatchNormParamType<T>>(
+          bias, bias.template data<BatchNormParamType<T>>());
+      mean_desc_.set<BatchNormParamType<T>>(
+          mean, mean.template data<BatchNormParamType<T>>());
+      variance_desc_.set<BatchNormParamType<T>>(
+          variance, variance.template data<BatchNormParamType<T>>());
+      saved_mean_desc_.set<BatchNormParamType<T>>(
+          *saved_mean, saved_mean->template data<BatchNormParamType<T>>());
+      saved_variance_desc_.set<BatchNormParamType<T>>(
+          *saved_variance,
+          saved_variance->template data<BatchNormParamType<T>>());
+      batch_norm_desc_.SetEpsilon(epsilon);
+      batch_norm_desc_.SetMode(mode_);
+      batch_norm_desc_.RunComposite(*handle,
+                                    *output_desc_.desc(),
+                                    *data_desc_.desc(),
+                                    *mean_desc_.desc(),
+                                    *variance_desc_.desc(),
+                                    *saved_mean_desc_.desc(),
+                                    *saved_variance_desc_.desc(),
+                                    *scale_desc_.desc(),
+                                    *bias_desc_.desc(),
+                                    this_factor,
+                                    backends::gpu::InternalMemAlloc);
+#else
+      // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));

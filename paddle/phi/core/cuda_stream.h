@@ -80,7 +80,7 @@ class CUDAStream {
         &stream, static_cast<unsigned int>(flag), priority));
 #elif defined(PADDLE_WITH_MUSA)
     PADDLE_ENFORCE_GPU_SUCCESS(musaStreamCreateWithPriority(
-        &stream, static_cast<unsigned int>(flag), priority));
+        &stream, static_cast<unsigned int>(flag), priority + 1));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
         &stream, static_cast<unsigned int>(flag), priority));

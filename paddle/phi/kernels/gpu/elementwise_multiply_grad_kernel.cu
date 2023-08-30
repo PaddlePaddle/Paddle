@@ -39,44 +39,50 @@ void MultiplyGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(multiply_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MultiplyGradKernel,
-                   float,
-                   phi::dtype::float16,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(
+    multiply_grad,
+    GPU,
+    ALL_LAYOUT,
+    phi::MultiplyGradKernel,
+    float,
+    /* phi::dtype::float16, */  // error
+                                // paddle/phi/backends/gpu/musa/musa_device_function.h
+    double,
+    int,
+    int64_t,
+    bool,
+    phi::dtype::bfloat16,
+    phi::dtype::complex<float>,
+    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(multiply_double_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MultiplyDoubleGradKernel,
-                   float,
-                   phi::dtype::float16,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(
+    multiply_double_grad,
+    GPU,
+    ALL_LAYOUT,
+    phi::MultiplyDoubleGradKernel,
+    float,
+    /* phi::dtype::float16, */  // error
+                                // paddle/phi/backends/gpu/musa/musa_device_function.h
+    double,
+    int,
+    int64_t,
+    bool,
+    phi::dtype::bfloat16,
+    phi::dtype::complex<float>,
+    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(multiply_triple_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MultiplyTripleGradKernel,
-                   float,
-                   phi::dtype::float16,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(
+    multiply_triple_grad,
+    GPU,
+    ALL_LAYOUT,
+    phi::MultiplyTripleGradKernel,
+    float,
+    /* phi::dtype::float16, */  // error
+                                // paddle/phi/backends/gpu/musa/musa_device_function.h
+    double,
+    int,
+    int64_t,
+    bool,
+    phi::dtype::bfloat16,
+    phi::dtype::complex<float>,
+    phi::dtype::complex<double>) {}

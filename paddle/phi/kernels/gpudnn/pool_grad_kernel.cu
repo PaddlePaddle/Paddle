@@ -210,6 +210,9 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor input_desc;
   ScopedTensorDescriptor output_desc;
+#if defined(PADDLE_WITH_MUSA)
+  ScopedTensorDescriptor indices_desc;
+#endif
   ScopedPoolingDescriptor pool_desc;
 
 #ifdef PADDLE_WITH_HIP
@@ -217,7 +220,14 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
       layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
       layout, vectorize<int>(transformed_output.dims()));
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+  auto& cudnn_input_desc = input_desc.descriptor<T>(
+      transformed_input_grad, layout, vectorize<int>(transformed_input.dims()));
+  auto& cudnn_output_desc =
+      output_desc.descriptor<T>(transformed_output_grad,
+                                layout,
+                                vectorize<int>(transformed_output.dims()));
+#else
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
       layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
@@ -238,7 +248,10 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   miopenPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+  auto& cudnn_pool_desc =
+      pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
+#else
   cudnnPoolingDescriptor_t cudnn_pool_desc =
       pool_desc.descriptor(pooling_mode, kernel_size_, paddings_, strides);
 #endif
@@ -269,7 +282,10 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                                                               input_grad_data,
                                                               pool_workspace));
     PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+    cudnn_pool_desc.RunBwd(
+        *handle, cudnn_input_desc, cudnn_output_desc, indices_desc.desc());
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnPoolingBackward(handle,
                                                              cudnn_pool_desc,
                                                              &alpha,
@@ -404,7 +420,7 @@ void Pool3dGradGPUDNNKernel(const Context& ctx,
 
 using phi::dtype::float16;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(pool2d_grad,
                    GPUDNN,
@@ -424,7 +440,7 @@ PD_REGISTER_KERNEL(pool3d_grad,
                    phi::Pool3dGradGPUDNNKernel,
                    float,
                    float16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(pool2d_grad,
                    GPUDNN,
                    ALL_LAYOUT,

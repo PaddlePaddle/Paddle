@@ -18,9 +18,6 @@ namespace phi {
 namespace backends {
 namespace gpu {
 
-#define CUDNN_VERSION_MIN(major, minor, patch) \
-  (0 >= ((major)*1000 + (minor)*100 + (patch)))
-
 #define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                    \
   int64_t __index__ =                                                \
       static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;   \

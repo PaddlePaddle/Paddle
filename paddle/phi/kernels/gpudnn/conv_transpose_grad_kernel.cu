@@ -32,7 +32,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+#include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_mudnn_helper.h"
+#else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
@@ -167,7 +170,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   int iwo_groups = groups;
   int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || \
+    defined(PADDLE_WITH_MUSA)
   iwo_groups = 1;
   c_groups = groups;
   groups = 1;
@@ -200,7 +204,10 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+  SearchResult<dynload::Convolution::Algorithm> fwd_result;
+  SearchResult<dynload::Convolution::AlgorithmBwdFilter> filter_result;
+#else
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif
@@ -228,7 +235,11 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     workspace_size = std::max(workspace_size, search1::GetWorkspaceSize(args1));
     fwd_result.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
-#else  // MUSA & CUDA
+#elif defined(PADDLE_WITH_MUSA)
+    using search1 = SearchAlgorithm<dynload::Convolution::Algorithm>;
+    fwd_result.algo =
+        search1::Find(args1, false, deterministic, workspace_size, ctx);
+#else
     using search1 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = std::max(
@@ -253,7 +264,11 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
     filter_result.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    using search2 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdFilter>;
+    filter_result.algo =
+        search2::Find(args2, false, deterministic, workspace_size, ctx);
+#else
     using search2 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
@@ -292,7 +307,17 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
-#else   // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    auto cudnn_func = [&](void* cudnn_workspace) {
+      args1.cdesc.desc()->Run(*handle,
+                              *args1.odesc.desc(),
+                              *args1.idesc.desc(),
+                              *args1.wdesc.desc(),
+                              fwd_result.algo,
+                              InternalMemAlloc);
+    };
+    workspace_handle.RunFunc(cudnn_func, workspace_size);
+#else
     ConvRunner<T, ConvKind::kForward>::Apply(ctx,
                                              args1,
                                              fwd_result,
@@ -349,7 +374,17 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
       };
       workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
-#else  // CUDA & MUSA
+#elif PADDLE_WITH_MUSA
+    auto cudnn_func = [&](void* cudnn_workspace) {
+      args2.cdesc.desc()->RunBwdFilter(*handle,
+                                       *args2.wdesc.desc(),
+                                       *args2.idesc.desc(),
+                                       *args2.odesc.desc(),
+                                       filter_result.algo,
+                                       InternalMemAlloc);
+    };
+    workspace_handle.RunFunc(cudnn_func, workspace_size);
+#else
     ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
                                                     args2,
                                                     filter_result,
@@ -613,7 +648,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 
   int iwo_group = groups;
   int c_group = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
+#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1) || \
+    defined(PADDLE_WITH_MUSA)
   iwo_group = 1;
   c_group = groups;
   groups = 1;
@@ -670,7 +706,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
-#elif defined(PADDLE_WITH_CUDA)
+#elif defined(PADDLE_WITH_MUSA)
+  SearchResult<dynload::Convolution::AlgorithmBwdData> bwd_result1;
+  SearchResult<dynload::Convolution::AlgorithmBwdData> bwd_result2;
+  SearchResult<dynload::Convolution::AlgorithmBwdFilter> filter_result;
+  SearchResult<dynload::Convolution::Algorithm> fwd_result;
+#else
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result1;
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result2;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
@@ -700,7 +741,11 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = search1::GetWorkspaceSize(args1);
     bwd_result1.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    using search1 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdData>;
+    bwd_result1.algo =
+        search1::Find(args1, false, deterministic, workspace_size, ctx);
+#else
     using search1 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
@@ -722,7 +767,11 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
     bwd_result2.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    using search2 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdData>;
+    bwd_result2.algo =
+        search2::Find(args2, false, deterministic, workspace_size, ctx);
+#else
     using search2 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
@@ -747,7 +796,11 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = std::max(workspace_size, search3::GetWorkspaceSize(args3));
     filter_result.algo =
         search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    using search3 = SearchAlgorithm<dynload::Convolution::AlgorithmBwdFilter>;
+    filter_result.algo =
+        search3::Find(args3, false, deterministic, workspace_size, ctx);
+#else
     using search3 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
     workspace_size = std::max(
@@ -773,7 +826,11 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     workspace_size = std::max(workspace_size, search4::GetWorkspaceSize(args4));
     fwd_result.algo =
         search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    using search4 = SearchAlgorithm<dynload::Convolution::Algorithm>;
+    fwd_result.algo =
+        search4::Find(args4, false, deterministic, workspace_size, ctx);
+#else
     using search4 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
     workspace_size = std::max(
@@ -833,7 +890,18 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
     }
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          args1.cdesc.desc()->RunBwdData(*handle,
+                                         *args1.idesc.desc(),
+                                         *args1.odesc.desc(),
+                                         *args1.wdesc.desc(),
+                                         bwd_result1.algo,
+                                         InternalMemAlloc);
+        },
+        workspace_size);
+#else
     ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                   args1,
                                                   bwd_result1,
@@ -886,7 +954,18 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           args2.idesc.desc(),
           transformed_ddout_channel_ + i * group_offset_out));
     }
-#else  // CUDA & MUSA
+#elif defined(PADDLE_WITH_MUSA)
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          args2.cdesc.desc()->RunBwdData(*handle,
+                                         *args2.idesc.desc(),
+                                         *args2.odesc.desc(),
+                                         *args2.wdesc.desc(),
+                                         bwd_result2.algo,
+                                         InternalMemAlloc);
+        },
+        workspace_size);
+#else
     ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
                                                   args2,
                                                   bwd_result2,
@@ -956,7 +1035,18 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
     }
-#else  // MUSA & CUDA
+#elif defined(PADDLE_WITH_MUSA)
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          args3.cdesc.desc()->RunBwdFilter(*handle,
+                                           *args3.wdesc.desc(),
+                                           *args3.idesc.desc(),
+                                           *args3.odesc.desc(),
+                                           filter_result.algo,
+                                           InternalMemAlloc);
+        },
+        workspace_size);
+#else
     ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
                                                     args3,
                                                     filter_result,
@@ -996,7 +1086,18 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
     }
-#else  // MUSA & CUDA
+#elif defined(PADDLE_WITH_MUSA)
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          args4.cdesc.desc()->Run(*handle,
+                                  *args4.idesc.desc(),
+                                  *args4.wdesc.desc(),
+                                  *args4.odesc.desc(),
+                                  fwd_result.algo,
+                                  InternalMemAlloc);
+        },
+        workspace_size);
+#else
     ConvRunner<T, ConvKind::kForward>::Apply(ctx,
                                              args4,
                                              fwd_result,
@@ -1051,7 +1152,7 @@ void Conv3dTransposeGradGPUDNNKernel(const Context& ctx,
 
 using float16 = phi::dtype::float16;
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    GPUDNN,
@@ -1097,7 +1198,7 @@ PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    double,
                    float16,
                    phi::dtype::bfloat16) {}
-#else  // CUDA & MUSA
+#else
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    GPUDNN,
                    ALL_LAYOUT,
