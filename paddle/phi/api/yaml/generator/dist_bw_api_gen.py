@@ -35,6 +35,10 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dense_out_{} = const_cast<phi::DenseTensor*>(&dist_out_{}->value());
 """
 
+# 8. Reshard Output
+SINGLE_OUTPUT_RESHARD_TEMPLATE = """
+    phi::distributed::ReshardDistTensor(dev_ctx, {}, {}->dist_attr());"""
+
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     def __init__(self, backward_item_yaml):
@@ -119,6 +123,36 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     # override BaseAPI's method
     def gene_api_declaration(self) -> str:
         return BackwardAPI.gene_api_declaration(self)
+
+    def generate_reshard_input_code(self) -> str:
+        return "\n    // backward apis do not need to reshard input"
+
+    def generate_reshard_output_code(self) -> str:
+        output_num = len(self.outputs['types'])
+        output_reshard_code = ""
+        if output_num == 1:
+            if self.outputs['types'][0] == 'Tensor':
+                out_name = self.outputs['names'][0]
+                assert out_name.endswith('_grad')
+                output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
+                    'dist_out', 'dist_input_' + out_name[:-5]
+                )
+            else:
+                self.vector_output_size_assertion_check()
+        elif output_num > 1:
+            for i, out_name in enumerate(self.outputs['names']):
+                assert out_name.endswith('_grad')
+                output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
+                    f'dist_out_{i}', 'dist_input_' + out_name[:-5]
+                )
+        else:
+            raise ValueError(
+                "{} : Output error: the output should not be empty.".format(
+                    self.api
+                )
+            )
+
+        return output_reshard_code
 
 
 def header_include():

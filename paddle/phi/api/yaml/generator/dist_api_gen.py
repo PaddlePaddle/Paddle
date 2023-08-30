@@ -47,11 +47,11 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 1. Create API Output & Prepare Dist and Dense Output{}
     // 2. InferSPMD (Infer Global Shape and DistAttr of Inputs&Outputs){}
     // 3. Select Kernel{}
-    // 4. Reshard Input{}
+    // 4. Reshard Input{}\n
     // 5. PrepareData (DataTransform & Prepare Dist and Dense Input){}
     // 6. Infer Local DenseTensor Meta{}
     // 7. DenseTensor Kernel Call{}
-    // 8. Reshard Output{}
+    // 8. Reshard Output{}\n
     // 9. Return
     {}
   }}
@@ -644,14 +644,13 @@ class DistForwardAPI(ForwardAPI):
 
     def generate_reshard_output_code(self) -> str:
         output_num = len(self.outputs['types'])
-        return_type = self.get_return_type_with_intermediate(self.inplace_flag)
         output_reshard_code = ""
         if output_num == 1:
             output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
                 'dist_out', 0
             )
         elif output_num > 1:
-            for i, out_type in enumerate(self.outputs['types']):
+            for i in len(self.outputs['types']):
                 output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
                     f'dist_out_{i}', i
                 )
