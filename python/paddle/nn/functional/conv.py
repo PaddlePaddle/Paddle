@@ -449,6 +449,9 @@ def conv1d(
         )
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    from ...tensor.creation import assign as paddle_assign
+
+    weight = paddle_assign(weight)
     weight = unsqueeze(weight, axis=[-2])
 
     l_type = "conv2d"

@@ -148,66 +148,30 @@ bool PassPrinter::End() {
 }
 
 bool MakeDirectory(const std::string& dirname, mode_t mode) {
-  auto len = dirname.length();
-  std::vector<char> dir_path(len + 1, '\0');
-  strncpy(dir_path.data(), dirname.c_str(), len);
-  char* path = dir_path.data();
-  for (char* p = strchr(path + 1, '/'); p; p = strchr(p + 1, '/')) {
-    *p = '\0';
-    if (mkdir(path, mode) == -1) {
-      if (errno != EEXIST) {
-        *p = '/';
+  struct stat st;
+  std::string path;
+  for (int i = 0; i < dirname.size(); ++i) {
+    path.push_back(dirname[i]);
+    if (!(dirname[i] == '/' || i + 1 == dirname.size())) {
+      continue;
+    }
+    if (stat(path.c_str(), &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        continue;
+      } else {
+        LOG(WARNING) << path << " is not a directory, please check your path.";
+        return false;
+      }
+    } else {
+      if (mkdir(path.c_str(), mode) == 0) {
+        continue;
+      } else {
+        LOG(WARNING) << "Make directory fail: " << path;
         return false;
       }
     }
-    *p = '/';
   }
   return true;
-}
-
-std::string GetFilePathForGroup(const std::vector<std::vector<Node*>>& groups,
-                                const int group_id,
-                                const std::string& viz_path) {
-  std::string filename = "";
-  for (auto* node : groups[group_id]) {
-    filename += "_" + node->id();
-  }
-
-  int max_len = 50;
-  std::string simplified_filename = filename;
-  if (filename.size() > max_len) {
-    static std::unordered_map<std::string, std::string> funcname_map = {
-        {"const_scalar", "scalar"},
-        {"fill_constant", "fill"},
-        {"identity", "copy"},
-        {"broadcast_to", "broadcast"},
-        {"elementwise_add", "add"},
-        {"subtract", "sub"},
-        {"elementwise_mul", "mul"},
-        {"divide", "div"},
-        {"reduce_sum", "reduce"},
-        {"reduce_prod", "reduce"},
-        {"reduce_max", "reduce"},
-        {"reduce_min", "reduce"}};
-    for (auto& item : funcname_map) {
-      size_t index = 0;
-      while (true) {
-        index = simplified_filename.find(item.first, index);
-        if (index == std::string::npos) {
-          break;
-        }
-        simplified_filename.replace(index, item.first.size(), item.second);
-        index += item.second.size();
-      }
-    }
-  }
-
-  int width = std::to_string(groups.size()).size();
-  std::stringstream ss;
-  ss << viz_path;
-  ss << std::setw(width) << std::setfill('0') << group_id;
-  ss << simplified_filename.substr(0, 50) << ".dot";
-  return ss.str();
 }
 
 std::string GenNodeDataLabel(
@@ -313,7 +277,7 @@ void Summary(const std::vector<std::vector<Node*>>& groups,
      << "Numbers\n";
   print_table(fusion_group_detail);
 
-  std::string filepath = viz_path + "summary.txt";
+  std::string filepath = viz_path + "/summary.txt";
   WriteToFile(filepath, ss.str());
 }
 

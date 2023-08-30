@@ -83,7 +83,7 @@ void SgdJitCode::genCode() {
 
     Label inner_loop;
     Label escape_loop;
-    mov(rax, 0);
+    mov(rax, 0);  // NOLINT
     L(inner_loop);
     {
       cmp(rax, num_groups);

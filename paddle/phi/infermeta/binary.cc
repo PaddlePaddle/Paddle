@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
@@ -271,27 +271,27 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
                         "but received Y's shape: [%s].",
                         y_ndims));
-  PADDLE_ENFORCE_EQ(
+  std::vector<int64_t> dim_out;
+  auto cal_shape_fn = [](int64_t x, int64_t y, const std::string& error_str) {
+    if (x == -1) {
+      return y;
+    } else if (y == -1) {
+      return x;
+    }
+    PADDLE_ENFORCE_EQ(x, y, phi::errors::InvalidArgument(error_str, x, y));
+    return x;
+  };
+  cal_shape_fn(x_dims[2],
+               y_dims[1],
+               "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+               "but receive X's width: [%s],"
+               "Y's height: [%s].");
+  dim_out.push_back(cal_shape_fn(
       x_dims[0],
       y_dims[0],
-      phi::errors::InvalidArgument(
-          "Input(X) and Input(Y) must have the same batch size in BmmOp, "
-          "but received X's batch size: [%s],"
-          "Y's batch size [%s]",
-          x_dims[0],
-          y_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[2],
-      y_dims[1],
-      phi::errors::InvalidArgument(
-          "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
-          "but receive X's width: [%s],"
-          "Y's height: [%s].",
-          x_dims[2],
-          y_dims[1]));
-
-  std::vector<int64_t> dim_out;
-  dim_out.push_back(x_dims[0]);
+      "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+      "but received X's batch size: [%s],"
+      "Y's batch size [%s]"));
   dim_out.push_back(x_dims[1]);
   dim_out.push_back(y_dims[2]);
   out->set_dims(phi::make_ddim(dim_out));
@@ -380,8 +380,9 @@ void CompareRawInferMeta(const MetaTensor& x,
     out->set_dims(make_ddim(out_dims_array));
     out->share_lod(x);
   }
-
-  out->set_dtype(DataType::BOOL);
+  if (!out->is_same_tensor(x)) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void CompareInferMeta(const MetaTensor& x,
@@ -1025,27 +1026,27 @@ void DistributeFpnProposalsInferMeta(
           max_level,
           min_level));
   // Set the output shape
-  for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
+  for (auto& multi_fpn_roi : multi_fpn_rois) {
     DDim out_dim = {-1, 4};
-    if (multi_fpn_rois[i] == nullptr) {
+    if (multi_fpn_roi == nullptr) {
       continue;
     }
-    multi_fpn_rois[i]->set_dims(out_dim);
-    multi_fpn_rois[i]->set_dtype(fpn_rois.dtype());
+    multi_fpn_roi->set_dims(out_dim);
+    multi_fpn_roi->set_dtype(fpn_rois.dtype());
   }
   restore_index->set_dims({-1, 1});
   restore_index->set_dtype(DataType::INT32);
-  for (size_t i = 0; i < multi_level_rois_num.size(); ++i) {
-    if (multi_level_rois_num[i] == nullptr) {
+  for (auto& item : multi_level_rois_num) {
+    if (item == nullptr) {
       continue;
     }
-    multi_level_rois_num[i]->set_dims({-1});
-    multi_level_rois_num[i]->set_dtype(DataType::INT32);
+    item->set_dims({-1});
+    item->set_dtype(DataType::INT32);
   }
 
   if (!config.is_runtime) {
-    for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
-      multi_fpn_rois[i]->share_lod(fpn_rois);
+    for (auto& multi_fpn_roi : multi_fpn_rois) {
+      multi_fpn_roi->share_lod(fpn_rois);
     }
   }
 }
@@ -1204,7 +1205,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     bool should_rotate =
         config.is_run_mkldnn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -1230,7 +1231,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (should_rotate) {
       std::rotate(out_dims_array.begin() + 1,
                   out_dims_array.end() - 1,
@@ -1785,6 +1786,33 @@ void IndexSelectInferMeta(const MetaTensor& x,
   output->share_lod(x);
 }
 
+void IndexSelectStridedInferMeta(const MetaTensor& x,
+                                 int64_t index,
+                                 int dim,
+                                 MetaTensor* output) {
+  auto input_dim = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  auto output_dim = phi::vectorize(input_dim);
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  output_dim.erase(output_dim.begin() + dim);
+  output->set_dims(phi::make_ddim(output_dim));
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        const MetaTensor& add_value,
@@ -1912,6 +1940,15 @@ void LogLossInferMeta(const MetaTensor& input,
   out->set_dims({pred_dims[0], 1});
   out->set_dtype(input.dtype());
   out->share_lod(input);
+}
+
+void LogicalBinaryInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            MetaTensor* out) {
+  ElementwiseInferMeta(x, y, out);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void LUUnpackInferMeta(const MetaTensor& x,
@@ -2485,11 +2522,10 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
   constexpr float epsilon = 1e-6;
   output_aspect_ratior->clear();
   output_aspect_ratior->push_back(1.0f);
-  for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
-    float ar = input_aspect_ratior[i];
+  for (auto ar : input_aspect_ratior) {
     bool already_exist = false;
-    for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
-      if (fabs(ar - output_aspect_ratior->at(j)) < epsilon) {
+    for (auto item : *output_aspect_ratior) {
+      if (fabs(ar - item) < epsilon) {
         already_exist = true;
         break;
       }
@@ -2636,6 +2672,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            MetaTensor* out) {
   auto sequences_dims = sorted_sequence.dims();
   auto values_dims = value.dims();
+  PADDLE_ENFORCE_GE(
+      sequences_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "Input sequences's dimension(%d) must be greater or equal than 1",
+          sequences_dims.size()));
 
   bool flag = true;
   if (sequences_dims.size() != values_dims.size()) {
@@ -3205,38 +3247,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
     out->set_dims(phi::make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
-}
-
-void RmsNormInferMeta(const MetaTensor& x,
-                      const MetaTensor& weight,
-                      const MetaTensor& bias,
-                      const float epsilon,
-                      const int begin_norm_axis,
-                      MetaTensor* out) {
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
-  auto x_dims_size = x_dims_vec.size();
-
-  size_t normalized_dims = 1;
-  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
-    normalized_dims *= x_dims_vec[i];
-  }
-
-  PADDLE_ENFORCE_EQ(normalized_dims,
-                    weight.dims()[0],
-                    phi::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be"
-                        "the size of Weight, but received"
-                        "normalized size of Input(X) is [%d], received size"
-                        "of Weight is [%d]",
-                        normalized_dims,
-                        weight.dims()[0]));
-
-  auto out_dims = phi::make_ddim(x_dims_vec);
-
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  out->share_lod(x);
 }
 
 }  // namespace phi

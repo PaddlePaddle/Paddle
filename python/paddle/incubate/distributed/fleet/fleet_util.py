@@ -965,28 +965,26 @@ class FleetUtil:
         """
         day = str(day)
         pass_id = str(pass_id)
-        feeded_var_names = [i.name for i in feeded_vars]
         model_name = "inference_model"
         # pull dense before save
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_inference_model(
-                        dirname=model_name,
-                        feeded_var_names=feeded_var_names,
-                        target_vars=target_vars,
-                        executor=executor,
-                        main_program=program.clone(),
-                        params_filename="params",
+                    paddle.static.io.save_inference_model(
+                        model_name,
+                        feeded_vars,
+                        target_vars,
+                        executor,
+                        program=program.clone(),
                     )
                 else:
-                    fluid.io.save_inference_model(
-                        dirname=model_name,
-                        feeded_var_names=feeded_var_names,
-                        target_vars=target_vars,
-                        executor=executor,
-                        main_program=program.clone(),
+                    paddle.static.io.save_inference_model(
+                        model_name,
+                        feeded_vars,
+                        target_vars,
+                        executor,
+                        program=program.clone(),
                     )
 
             configs = {

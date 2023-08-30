@@ -17,12 +17,12 @@ import unittest
 
 sys.path.append("../../legacy_test")
 
-from hybrid_parallel_pp_alexnet import TestDistPPTraning
+from hybrid_parallel_pp_alexnet import TestDistPPTraining
 
 import paddle
 
 
-class TestPPClipGrad(TestDistPPTraning):
+class TestPPClipGrad(TestDistPPTraining):
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(0.5)
         scheduler = paddle.optimizer.lr.PiecewiseDecay(
@@ -36,7 +36,7 @@ class TestPPClipGrad(TestDistPPTraning):
         return scheduler, optimizer
 
 
-class TestPPClipGradParamGroup(TestDistPPTraning):
+class TestPPClipGradParamGroup(TestDistPPTraining):
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(0.5)
         scheduler = paddle.optimizer.lr.PiecewiseDecay(

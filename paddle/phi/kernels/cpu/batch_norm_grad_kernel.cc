@@ -36,26 +36,26 @@ using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context& ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& scale,
-                            const DenseTensor& bias,
-                            const paddle::optional<DenseTensor>& mean,
-                            const paddle::optional<DenseTensor>& variance,
-                            const DenseTensor& saved_mean,
-                            const DenseTensor& saved_variance,
-                            const paddle::optional<DenseTensor>& reserve_space,
-                            const DenseTensor& y_grad,
-                            float momentum,
-                            float epsilon,
-                            const std::string& data_layout_str,
-                            bool is_test,
-                            bool use_global_stats,
-                            bool trainable_statistics,
-                            bool is_inplace,
-                            DenseTensor* x_grad,
-                            DenseTensor* scale_grad,
-                            DenseTensor* bias_grad) {
+void BatchNormGradFunctor(const Context& ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& scale,
+                          const DenseTensor& bias,
+                          const paddle::optional<DenseTensor>& mean,
+                          const paddle::optional<DenseTensor>& variance,
+                          const DenseTensor& saved_mean,
+                          const DenseTensor& saved_variance,
+                          const paddle::optional<DenseTensor>& reserve_space,
+                          const DenseTensor& y_grad,
+                          float momentum,
+                          float epsilon,
+                          const std::string& data_layout_str,
+                          bool is_test,
+                          bool use_global_stats,
+                          bool trainable_statistics,
+                          bool is_inplace,
+                          DenseTensor* x_grad,
+                          DenseTensor* scale_grad,
+                          DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
   DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
@@ -104,10 +104,10 @@ void BatchNormGradRawKernel(const Context& ctx,
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
-  const int N = x_dims[0];
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int sample_size = x.numel() / N / C;
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int sample_size = static_cast<int>(x.numel() / N / C);
 
   // input dimension is 2 and the format is NCHW. The input can be regarded as
   // NHWC format
@@ -312,26 +312,26 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
-  BatchNormGradRawKernel<T, Context>(dev_ctx,
-                                     x,
-                                     scale,
-                                     bias,
-                                     mean,
-                                     variance,
-                                     saved_mean,
-                                     saved_variance,
-                                     reserve_space,
-                                     y_grad,
-                                     momentum,
-                                     epsilon,
-                                     data_layout,
-                                     is_test,
-                                     use_global_stats,
-                                     trainable_statistics,
-                                     false,
-                                     x_grad,
-                                     scale_grad,
-                                     bias_grad);
+  BatchNormGradFunctor<T, Context>(dev_ctx,
+                                   x,
+                                   scale,
+                                   bias,
+                                   mean,
+                                   variance,
+                                   saved_mean,
+                                   saved_variance,
+                                   reserve_space,
+                                   y_grad,
+                                   momentum,
+                                   epsilon,
+                                   data_layout,
+                                   is_test,
+                                   use_global_stats,
+                                   trainable_statistics,
+                                   false,
+                                   x_grad,
+                                   scale_grad,
+                                   bias_grad);
 }
 
 template <typename T, typename Context>
@@ -382,9 +382,9 @@ void BatchNormDoubleGradKernel(
   ctx.template Alloc<T>(ddY);
 
   const auto& x_dims = X->dims();
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int sample_size = X->numel() / C;
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int sample_size = static_cast<int>(X->numel() / C);
   phi::funcs::SetConstant<Context, T> set_constant;
 
   const T* mean_data = Saved_mean->data<T>();
@@ -653,16 +653,12 @@ void BatchNormDoubleGradKernel(
 
 }  // namespace phi
 
+PD_DECLARE_BN_GRAD_FUNCTOR(float, CPU);
+PD_DECLARE_BN_GRAD_FUNCTOR(double, CPU);
+
 PD_REGISTER_KERNEL(
     batch_norm_grad, CPU, ALL_LAYOUT, phi::BatchNormGradKernel, float, double) {
 }
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   double) {}
 
 PD_REGISTER_KERNEL(batch_norm_double_grad,
                    CPU,

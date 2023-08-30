@@ -510,7 +510,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   m.def("is_float16_supported",
         [](const platform::CPUPlace &place) -> bool { return false; });
   m.def("is_bfloat16_supported", [](const platform::CPUPlace &place) -> bool {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
     return false;
 #else
     if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))

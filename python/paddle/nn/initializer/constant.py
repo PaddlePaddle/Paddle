@@ -88,18 +88,20 @@ class Constant(ConstantInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            data = paddle.rand([30, 10, 2], dtype='float32')
-            linear = nn.Linear(2,
-                                4,
-                                weight_attr=nn.initializer.Constant(value=2.0))
-            res = linear(data)
-            print(linear.weight)
-            # Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[2., 2., 2., 2.],
-            #         [2., 2., 2., 2.]])
+            >>> paddle.seed(2023)
+            >>> data = paddle.rand([30, 10, 2], dtype='float32')
+            >>> linear = nn.Linear(2,
+            ...                     4,
+            ...                     weight_attr=nn.initializer.Constant(value=2.0))
+            >>> res = linear(data)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[2., 2., 2., 2.],
+             [2., 2., 2., 2.]])
 
     """
 

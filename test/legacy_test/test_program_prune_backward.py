@@ -105,7 +105,7 @@ def optimization_in_cond_net(with_optimize=False):
             opt.minimize(avg_loss)
         return avg_loss
 
-    sgd = fluid.optimizer.SGD(learning_rate=0.1)
+    sgd = paddle.optimizer.SGD(learning_rate=0.1)
     two = paddle.tensor.fill_constant([1], 'int32', 2)
     pred = two == 0
     avg_loss = paddle.static.nn.case(
@@ -165,9 +165,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_simple_fc_net(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -181,9 +181,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_simple_fc_net_with_accuracy(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -197,9 +197,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_batchnorm_fc(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -221,9 +221,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_transformer(self):
         def optimizer():
-            optimizer = fluid.optimizer.Adam(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -238,7 +238,7 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_cond(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             return optimizer
 
         with self.program_scope_guard():

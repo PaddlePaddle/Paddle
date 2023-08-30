@@ -34,8 +34,8 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/ir_copy.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 
 namespace cinn {

@@ -94,12 +94,13 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> # doctest: +SKIP('ValueError: var fc.b not in this block')
+            >>> import paddle
+            >>> import paddle.fluid as fluid
 
-            paddle.enable_static()
-            param = fluid.default_main_program().global_block().var('fc.b')
-            res = fluid.io.is_persistable(param)
+            >>> paddle.enable_static()
+            >>> param = fluid.default_main_program().global_block().var('fc.b')
+            >>> res = fluid.io.is_persistable(param)
     """
     if (
         var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
@@ -124,12 +125,13 @@ def is_parameter(var):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> # doctest: +SKIP('ValueError: var fc.w not in this block')
+            >>> import paddle
+            >>> import paddle.fluid as fluid
 
-            paddle.enable_static()
-            param = fluid.default_main_program().global_block().var('fc.w')
-            res = fluid.io.is_parameter(param)
+            >>> paddle.enable_static()
+            >>> param = fluid.default_main_program().global_block().var('fc.w')
+            >>> res = fluid.io.is_parameter(param)
     """
     return isinstance(var, Parameter)
 

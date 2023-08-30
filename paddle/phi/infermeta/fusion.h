@@ -34,13 +34,26 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               const MetaTensor& scale,
                               const MetaTensor& bias,
-                              int64_t m,
-                              int64_t n,
+                              int begin_norm_axis,
                               float epsilon,
-                              MetaTensor* out,
-                              MetaTensor* mean,
-                              MetaTensor* variance,
-                              MetaTensor* z_add);
+                              MetaTensor* out);
+
+void Conv1dXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& filter,
+                        const MetaTensor& filter_max,
+                        const MetaTensor& bias,
+                        const MetaTensor& branch,
+                        const MetaTensor& branch_max,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        int dilations,
+                        int strides,
+                        int groups,
+                        int act_type,
+                        float act_param,
+                        MetaTensor* out,
+                        MetaTensor* out_max);
 
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
@@ -130,11 +143,11 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& ffn2_bias,
     const std::vector<const MetaTensor*>& cache_kv,
     const std::vector<const MetaTensor*>& pre_caches,
-    const std::vector<const MetaTensor*>& rotary_pos_emb,
-    const std::vector<const MetaTensor*>& time_step,
-    const std::vector<const MetaTensor*>& seq_lengths,
-    const std::vector<const MetaTensor*>& src_mask,
-    const std::vector<const MetaTensor*>& gather_index,
+    const MetaTensor& rotary_pos_emb,
+    const MetaTensor& time_step,
+    const MetaTensor& seq_lengths,
+    const MetaTensor& src_mask,
+    const MetaTensor& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -175,4 +188,17 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                                  const std::string& act_type,
                                  MetaTensor* out,
                                  MetaTensor* out_max);
+
+void FastWhereXPUInferMeta(const MetaTensor& condition,
+                           const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out);
+
+void FastLayernormXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               int begin_norm_axis,
+                               float epsilon,
+                               MetaTensor* out);
+
 }  // namespace phi

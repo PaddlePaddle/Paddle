@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
@@ -178,6 +178,9 @@ struct OpFuncNode {
   phi::InferMetaContext infer_meta_context_;
   std::string phi_op_name_;
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{nullptr};
+
+  bool fluid_op{false};
+  std::shared_ptr<RuntimeContext> runtime_ctx_{nullptr};
 };
 
 class Instruction {

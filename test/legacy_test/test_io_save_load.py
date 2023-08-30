@@ -79,12 +79,12 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError, "not involved in the target_vars calculation"
         ):
-            fluid.io.save_inference_model(
-                dirname=os.path.join(self.temp_dir.name, 'model'),
-                feeded_var_names=['x', 'y'],
-                target_vars=[z],
+            paddle.static.io.save_inference_model(
+                path_prefix=os.path.join(self.temp_dir.name, 'model'),
+                feed_vars=[x, y],
+                fetch_vars=[z],
                 executor=exe,
-                main_program=main_prog,
+                program=main_prog,
             )
 
 

@@ -180,7 +180,7 @@ class SimpleDPNet(paddle.nn.Layer):
         return x
 
 
-class TestDistMPTraning(unittest.TestCase):
+class TestDistMPTraining(unittest.TestCase):
     def setUp(self):
         random.seed(2021)
         np.random.seed(2021)

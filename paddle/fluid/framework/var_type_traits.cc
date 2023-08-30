@@ -114,7 +114,7 @@ struct VarIdToTypeIndexMapHolder {
   }
 
  private:
-  VarIdToTypeIndexMapHolder() {
+  VarIdToTypeIndexMapHolder() {  // NOLINT
     VarIdToTypeIndexMapInitializer::Init(&id_to_type_map_, &type_to_id_map_);
   }
 

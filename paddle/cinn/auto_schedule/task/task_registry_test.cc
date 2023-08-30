@@ -29,7 +29,6 @@
 #include "paddle/cinn/utils/type_defs.h"
 
 DECLARE_bool(auto_schedule_use_cost_model);
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace auto_schedule {
@@ -70,7 +69,6 @@ std::shared_ptr<hlir::framework::Graph> CreateAddProgram(
 
 TEST(TestTaskRegistry, basic) {
   FLAGS_auto_schedule_use_cost_model = true;
-  FLAGS_cinn_ir_schedule = true;
 
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();

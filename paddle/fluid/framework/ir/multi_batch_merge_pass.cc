@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static const char kNumRepeats[] = "num_repeats";
+static const char kNumRepeats[] = "num_repeats";  // NOLINT
 typedef std::unordered_map<std::string, std::vector<ir::Node*>> SSAVarList;
 
 ir::Node* SameNameVar(std::unordered_set<ir::Node*> all, ir::Node* target) {

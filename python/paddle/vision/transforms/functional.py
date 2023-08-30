@@ -104,7 +104,7 @@ def resize(img, size, interpolation='bilinear'):
     Resizes the image to given size
 
     Args:
-        input (PIL.Image|np.ndarray): Image to be resized.
+        input (PIL.Image|np.ndarray|paddle.Tensor): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
         interpolation (int|str, optional): Interpolation method. when use pil backend,
             support method are as following:
@@ -122,7 +122,7 @@ def resize(img, size, interpolation='bilinear'):
             - "lanczos": cv2.INTER_LANCZOS4
 
     Returns:
-        PIL.Image or np.array: Resized image.
+        PIL.Image|np.array|paddle.Tensor: Resized image.
 
     Examples:
         .. code-block:: python
@@ -162,10 +162,10 @@ def resize(img, size, interpolation='bilinear'):
 
 def pad(img, padding, fill=0, padding_mode='constant'):
     """
-    Pads the given PIL.Image or numpy.array on all sides with specified padding mode and fill value.
+    Pads the given PIL.Image or numpy.array or paddle.Tensor on all sides with specified padding mode and fill value.
 
     Args:
-        img (PIL.Image|np.array): Image to be padded.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be padded.
         padding (int|list|tuple): Padding on each border. If a single int is provided this
             is used to pad all borders. If list/tuple of length 2 is provided this is the padding
             on left/right and top/bottom respectively. If a list/tuple of length 4 is provided
@@ -191,7 +191,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
                          will result in [2, 1, 1, 2, 3, 4, 4, 3]
 
     Returns:
-        PIL.Image or np.array: Padded image.
+        PIL.Image|np.array|paddle.Tensor: Padded image.
 
     Examples:
         .. code-block:: python
@@ -231,7 +231,7 @@ def crop(img, top, left, height, width):
     """Crops the given Image.
 
     Args:
-        img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left
+        img (PIL.Image|np.array|paddle.Tensor): Image to be cropped. (0,0) denotes the top left
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -239,7 +239,7 @@ def crop(img, top, left, height, width):
         width (int): Width of the crop box.
 
     Returns:
-        PIL.Image or np.array: Cropped image.
+        PIL.Image|np.array|paddle.Tensor: Cropped image.
 
     Examples:
         .. code-block:: python
@@ -277,12 +277,12 @@ def center_crop(img, output_size):
     """Crops the given Image and resize it to desired size.
 
     Args:
-        img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be cropped. (0,0) denotes the top left corner of the image.
         output_size (sequence or int): (height, width) of the crop box. If int,
             it is used for both directions
 
     Returns:
-        PIL.Image or np.array: Cropped image.
+        PIL.Image|np.array|paddle.Tensor: Cropped image.
 
     Examples:
         .. code-block:: python
@@ -316,13 +316,13 @@ def center_crop(img, output_size):
 
 
 def hflip(img):
-    """Horizontally flips the given Image or np.array.
+    """Horizontally flips the given Image or np.array or paddle.Tensor.
 
     Args:
-        img (PIL.Image|np.array): Image to be flipped.
+        img (PIL.Image|np.array|Tensor): Image to be flipped.
 
     Returns:
-        PIL.Image or np.array:  Horizontall flipped image.
+        PIL.Image|np.array|paddle.Tensor:  Horizontall flipped image.
 
     Examples:
         .. code-block:: python
@@ -357,13 +357,13 @@ def hflip(img):
 
 
 def vflip(img):
-    """Vertically flips the given Image or np.array.
+    """Vertically flips the given Image or np.array or paddle.Tensor.
 
     Args:
-        img (PIL.Image|np.array): Image to be flipped.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be flipped.
 
     Returns:
-        PIL.Image or np.array:  Vertically flipped image.
+        PIL.Image|np.array|paddle.Tensor:  Vertically flipped image.
 
     Examples:
         .. code-block:: python
@@ -760,7 +760,7 @@ def rotate(
 
 
     Args:
-        img (PIL.Image|np.array): Image to be rotated.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
         interpolation (str, optional): Interpolation method. If omitted, or if the
             image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST
@@ -784,7 +784,7 @@ def rotate(
 
 
     Returns:
-        PIL.Image or np.array: Rotated image.
+        PIL.Image|np.array|paddle.Tensor: Rotated image.
 
     Examples:
         .. code-block:: python
@@ -934,11 +934,11 @@ def to_grayscale(img, num_output_channels=1):
     """Converts image to grayscale version of image.
 
     Args:
-        img (PIL.Image|np.array): Image to be converted to grayscale.
+        img (PIL.Image|np.array|paddle.Tensor): Image to be converted to grayscale.
         num_output_channels (int, optional): The number of channels for the output
             image. Single channel. Default: 1.
     Returns:
-        PIL.Image or np.array: Grayscale version of the image.
+        PIL.Image|np.array|paddle.Tensor: Grayscale version of the image.
             if num_output_channels = 1 : returned image is single channel
 
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
@@ -988,7 +988,7 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
             this option will be igored. Default: False.
 
     Returns:
-        np.ndarray or Tensor: Normalized mage. Data format is same as input img.
+        PIL.Image|np.array|paddle.Tensor: Normalized mage. Data format is same as input img.
 
     Examples:
         .. code-block:: python

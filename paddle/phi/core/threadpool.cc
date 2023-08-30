@@ -16,14 +16,14 @@
 
 #include <thread>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_int32(dist_threadpool_size);
-DEFINE_int32(io_threadpool_size,
-             100,
-             "number of threads used for doing IO, default 100");
+PD_DECLARE_int32(dist_threadpool_size);
+PD_DEFINE_int32(io_threadpool_size,
+                100,
+                "number of threads used for doing IO, default 100");
 
 namespace phi {
 
@@ -38,7 +38,7 @@ ThreadPool* ThreadPool::GetInstance() {
 void ThreadPool::Init() {
   if (threadpool_.get() == nullptr) {
     // TODO(Yancey1989): specify the max threads number
-    int num_threads = std::thread::hardware_concurrency();
+    int num_threads = static_cast<int>(std::thread::hardware_concurrency());
     if (FLAGS_dist_threadpool_size > 0) {
       num_threads = FLAGS_dist_threadpool_size;
       VLOG(1) << "set dist_threadpool_size to " << num_threads;
@@ -47,15 +47,15 @@ void ThreadPool::Init() {
         num_threads,
         0,
         phi::errors::InvalidArgument("The number of threads is 0."));
-    threadpool_.reset(new ThreadPool(num_threads));
+    threadpool_ = std::make_unique<ThreadPool>(num_threads);
   }
 }
 
 ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
-    // TODO(Yancey1989): binding the thread on the specify CPU number
-    thread.reset(new std::thread(std::bind(&ThreadPool::TaskLoop, this)));
+    // TODO(Yancey1989): binding the thread on the specify CPU numberw
+    thread = std::make_unique<std::thread>([this] { ThreadPool::TaskLoop(); });
   }
 }
 
@@ -111,7 +111,7 @@ ThreadPool* ThreadPoolIO::GetInstanceIO() {
 void ThreadPoolIO::InitIO() {
   if (io_threadpool_.get() == nullptr) {
     // TODO(typhoonzero1986): make this configurable
-    io_threadpool_.reset(new ThreadPool(FLAGS_io_threadpool_size));
+    io_threadpool_ = std::make_unique<ThreadPool>(FLAGS_io_threadpool_size);
   }
 }
 }  // namespace phi

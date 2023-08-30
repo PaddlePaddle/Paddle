@@ -83,7 +83,7 @@ class TestNanInf(TestNanInfBase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"The number of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
+                f"The number of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
         print("")
 

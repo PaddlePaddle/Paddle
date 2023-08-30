@@ -56,7 +56,7 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -83,7 +83,7 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog, dtype='float16')
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

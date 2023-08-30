@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core, optimizer
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -613,7 +613,7 @@ class TestMutiTask(unittest.TestCase):
         )
 
         one = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=1)
-        adam = optimizer.Adam(learning_rate=0.001)
+        adam = paddle.optimizer.Adam(learning_rate=0.001)
         adagrad = paddle.optimizer.Adagrad(learning_rate=0.001)
 
         def fn_1():

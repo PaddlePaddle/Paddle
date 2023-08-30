@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <array>
 #include <set>
 
 #include "gtest/gtest.h"
@@ -41,16 +42,16 @@ TEST(math_function, gemm_notrans_cblas) {
 
   input1.Resize({2, 3});
   float* input1_ptr = dev_ctx->template Alloc<float>(&input1);
-  float arr1[6] = {0, 1, 2, 3, 4, 5};
-  memcpy(input1_ptr, arr1, 6 * sizeof(float));
+  std::array<float, 6> arr1 = {0, 1, 2, 3, 4, 5};
+  memcpy(input1_ptr, arr1.data(), 6 * sizeof(float));
   input2.Resize({3, 4});
   float* input2_ptr = dev_ctx->template Alloc<float>(&input2);
-  float arr2[12] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-  memcpy(input2_ptr, arr2, 12 * sizeof(float));
+  std::array<float, 12> arr2 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+  memcpy(input2_ptr, arr2.data(), 12 * sizeof(float));
   input3.Resize({2, 4});
   float* input3_ptr = dev_ctx->template Alloc<float>(&input3);
-  float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-  memcpy(input3_ptr, arr3, 8 * sizeof(float));
+  std::array<float, 8> arr3 = {0, 1, 2, 3, 4, 5, 6, 7};
+  memcpy(input3_ptr, arr3.data(), 8 * sizeof(float));
 
   GetBlas<float>(*dev_ctx).GEMM(false,
                                 false,
@@ -172,16 +173,16 @@ TEST(math_function, gemm_trans_cblas) {
 
   input1.Resize({2, 3});
   float* input1_ptr = dev_ctx->template Alloc<float>(&input1);
-  float arr1[6] = {0, 1, 2, 3, 4, 5};
-  memcpy(input1_ptr, arr1, 6 * sizeof(float));
+  std::array<float, 6> arr1 = {0, 1, 2, 3, 4, 5};
+  memcpy(input1_ptr, arr1.data(), 6 * sizeof(float));
   input2.Resize({4, 3});
   float* input2_ptr = dev_ctx->template Alloc<float>(&input2);
-  float arr2[12] = {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11};
-  memcpy(input2_ptr, arr2, 12 * sizeof(float));
+  std::array<float, 12> arr2 = {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11};
+  memcpy(input2_ptr, arr2.data(), 12 * sizeof(float));
   input3.Resize({2, 4});
   float* input3_ptr = dev_ctx->template Alloc<float>(&input3);
-  float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-  memcpy(input3_ptr, arr3, 8 * sizeof(float));
+  std::array<float, 8> arr3 = {0, 1, 2, 3, 4, 5, 6, 7};
+  memcpy(input3_ptr, arr3.data(), 8 * sizeof(float));
 
   GetBlas<float>(*dev_ctx).GEMM(false,
                                 true,

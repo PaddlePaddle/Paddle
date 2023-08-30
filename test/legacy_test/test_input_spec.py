@@ -295,7 +295,13 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
         # jit.save and jit.load with prune y and loss
         prune_specs = [self.x_spec, True]
-        paddle.jit.save(net, path, prune_specs, output_spec=[st_out])
+        paddle.jit.save(
+            net,
+            path,
+            prune_specs,
+            output_spec=[st_out],
+            input_names_after_prune=[self.x_spec.name],
+        )
         load_net = paddle.jit.load(path)
         load_net.eval()
         load_out = load_net(self.x)  # no y and no loss

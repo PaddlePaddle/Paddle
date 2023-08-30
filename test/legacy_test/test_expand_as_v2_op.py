@@ -280,7 +280,7 @@ class TestExpandAsV2API(unittest.TestCase):
             feed={"x": input1, "target_tensor": input2},
             fetch_list=[out_1],
         )
-        assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+        np.testing.assert_array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
 if __name__ == "__main__":

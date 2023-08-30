@@ -56,7 +56,7 @@ class TestASPStaticOptimize(unittest.TestCase):
                     use_softmax=False,
                 )
             )
-            self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+            self.optimizer = paddle.optimizer.SGD(learning_rate=0.01)
 
     def test_get_not_ASP_relevant_vars(self):
         def check_params(params, params_from_asp):

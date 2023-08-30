@@ -53,7 +53,7 @@ class Linear(paddle.nn.Layer):
         )
         self.act = paddle.nn.ReLU()
 
-    @to_static
+    # @to_static
     def forward(self, x):
         pre = self.fc(x)
         pre = self.act(pre)

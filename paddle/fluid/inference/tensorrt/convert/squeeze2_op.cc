@@ -57,13 +57,13 @@ class Squeeze2OpConverter : public OpConverter {
             axes.size()));
 
     std::vector<bool> should_squeeze(input_dims.nbDims, false);
-    for (size_t i = 0; i < axes.size(); i++) {
+    for (int& axis : axes) {
       if (engine_->with_dynamic_shape()) {
-        axes[i] += (axes[i] < 0) ? input_dims.nbDims : 0;
+        axis += (axis < 0) ? input_dims.nbDims : 0;
       } else {
-        axes[i] += (axes[i] < 0) ? input_dims.nbDims : -1;
+        axis += (axis < 0) ? input_dims.nbDims : -1;
       }
-      should_squeeze[axes[i]] = true;
+      should_squeeze[axis] = true;
     }
 
     nvinfer1::Dims trt_out_dims;

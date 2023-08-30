@@ -59,7 +59,7 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         value = paddle.to_tensor(self.topk_value)
         prob = paddle.to_tensor(self.prob)
         out = utils._random_routing(x, value, prob)
-        assert np.allclose(out.numpy(), self.out)
+        np.testing.assert_allclose(out.numpy(), self.out)
 
 
 @unittest.skipIf(

@@ -28,7 +28,7 @@ struct ParametricStorageManager {
   explicit ParametricStorageManager(std::function<void(StorageBase *)> destroy)
       : destroy_(destroy) {}
 
-  ~ParametricStorageManager() {
+  ~ParametricStorageManager() {  // NOLINT
     for (const auto &instance : parametric_instances_) {
       destroy_(instance.second);
     }
@@ -66,7 +66,7 @@ struct ParametricStorageManager {
   std::function<void(StorageBase *)> destroy_;
 };
 
-StorageManager::StorageManager() {}
+StorageManager::StorageManager() = default;
 
 StorageManager::~StorageManager() = default;
 

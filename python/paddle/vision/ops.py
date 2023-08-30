@@ -1218,7 +1218,15 @@ def distribute_fpn_proposals(
                 rois_num=rois_num)
 
     """
+    assert (
+        max_level > 0 and min_level > 0
+    ), "min_level and max_level should be greater than 0"
+
     num_lvl = max_level - min_level + 1
+    assert num_lvl > 1, "max_level should be greater than min_level"
+    assert (
+        num_lvl < 100
+    ), "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
 
     if in_dygraph_mode():
         assert (

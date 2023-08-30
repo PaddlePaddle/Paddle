@@ -42,7 +42,7 @@ TEST(Gather, GatherData) {
   phi::CPUContext ctx(*cpu_place);
   phi::funcs::CPUGather<int>(ctx, *src, *index, output);
   delete cpu_place;
-  cpu_place = NULL;
+  cpu_place = nullptr;
   for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);
   for (int i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], i - 4);
 

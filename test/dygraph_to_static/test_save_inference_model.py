@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 from paddle import fluid
@@ -53,6 +54,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @ast_only_test
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -62,8 +64,8 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
             x = fluid.dygraph.to_variable(x_data)
             layer = SimpleFcLayer(fc_size)
-            adam = fluid.optimizer.SGD(
-                learning_rate=0.1, parameter_list=layer.parameters()
+            adam = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=layer.parameters()
             )
 
             for i in range(5):
@@ -128,8 +130,8 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            dirname=model_path,
+        ] = paddle.static.io.load_inference_model(
+            path_prefix=model_path,
             executor=exe,
             model_filename=model_filename,
             params_filename=params_filename,
@@ -144,6 +146,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
 
 class TestPartialProgramRaiseError(unittest.TestCase):
+    @ast_only_test
     def test_param_type(self):
         paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')

@@ -30,7 +30,7 @@ using platform::MemEvent;
 
 const double CostData::NOT_MEASURED = -1;
 
-CostData::~CostData() {
+CostData::~CostData() {  // NOLINT
   // TODO(zhhsplendid): when we save a copy of program/graph, we should delete
   // here.
 }

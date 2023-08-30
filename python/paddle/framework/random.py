@@ -34,8 +34,8 @@ def seed(seed):
     Examples:
         .. code-block:: python
 
-            import paddle
-            gen = paddle.seed(102)
+            >>> import paddle
+            >>> gen = paddle.seed(102)
 
     """
     # TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
@@ -75,8 +75,8 @@ def get_rng_state(device=None):
         GeneratorState:  object.
     Examples:
         .. code-block:: python
-            import paddle
-            sts = paddle.get_rng_state()
+            >>> import paddle
+            >>> sts = paddle.get_rng_state()
     """
     state_list = []
     if device is None:
@@ -129,8 +129,8 @@ def get_cuda_rng_state():
     Examples:
         .. code-block:: python
 
-            import paddle
-            sts = paddle.get_cuda_rng_state()
+            >>> import paddle
+            >>> sts = paddle.get_cuda_rng_state()
 
     """
     state_list = []
@@ -158,9 +158,9 @@ def set_rng_state(state_list, device=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            sts = paddle.get_rng_state()
-            paddle.set_rng_state(sts)
+            >>> import paddle
+            >>> sts = paddle.get_rng_state()
+            >>> paddle.set_rng_state(sts)
 
     """
     if device is None:
@@ -223,9 +223,9 @@ def set_cuda_rng_state(state_list):
     Examples:
         .. code-block:: python
 
-            import paddle
-            sts = paddle.get_cuda_rng_state()
-            paddle.set_cuda_rng_state(sts)
+            >>> import paddle
+            >>> sts = paddle.get_cuda_rng_state()
+            >>> paddle.set_cuda_rng_state(sts)
 
     """
     if core.is_compiled_with_cuda():

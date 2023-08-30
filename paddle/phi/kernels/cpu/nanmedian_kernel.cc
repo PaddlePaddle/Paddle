@@ -35,7 +35,7 @@ void CalcMedianFunc(const Context& dev_ctx,
   DenseTensor sort_indices;
   auto sort_dim = x.dims();
   int64_t rank = sort_dim.size();
-  sort_dim[rank - 1] = sort_k;
+  sort_dim[static_cast<int>(rank - 1)] = sort_k;
   sort_out.Resize(sort_dim);
   sort_indices.Resize(sort_dim);
 
@@ -115,7 +115,15 @@ void ProcessMedianKernel(const Context& dev_ctx,
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
-  int64_t stride = x_dim[x_rank - 1];
+  int64_t stride = x_dim[static_cast<int>(x_rank - 1)];
+
+  PADDLE_ENFORCE_NE(
+      stride,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-1] should not "
+                                   "be 0, but shape is %s now.",
+                                   x_dim));
+
   int64_t pre_dim = numel / stride;
   int64_t i = 0;
 

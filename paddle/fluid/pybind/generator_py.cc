@@ -72,7 +72,7 @@ void BindGenerator(py::module* m_ptr) {
         return ostr.str();
       });
 
-  py::class_<std::mt19937_64>(m, "mt19937_64", "");
+  py::class_<std::mt19937_64>(m, "mt19937_64", "");  // NOLINT
   py::class_<phi::Generator, std::shared_ptr<phi::Generator>>(m, "Generator")
       .def("__init__",
            [](phi::Generator& self) { new (&self) phi::Generator(); })

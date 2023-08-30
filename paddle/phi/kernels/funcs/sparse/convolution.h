@@ -163,17 +163,20 @@ inline void SubmPreProcess(const Context& dev_ctx,
                            DenseTensor* kernel_grad,
                            DenseTensor* x_grad) {
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  T* d_kernel_ptr = kernel_grad->data<T>();
-  blas.GEMM(CblasTrans,
-            CblasNoTrans,
-            x.non_zero_elements().dims()[1],
-            out_grad.dims()[1],
-            x.non_zero_elements().dims()[0],
-            static_cast<T>(1),
-            x.non_zero_elements().data<T>(),
-            out_grad.data<T>(),
-            static_cast<T>(0),
-            d_kernel_ptr + half_kernel_size * in_channels * out_channels);
+  const bool is_params_freezing = kernel_grad == nullptr;
+  if (!is_params_freezing) {
+    T* d_kernel_ptr = kernel_grad->data<T>();
+    blas.GEMM(CblasTrans,
+              CblasNoTrans,
+              x.non_zero_elements().dims()[1],
+              out_grad.dims()[1],
+              x.non_zero_elements().dims()[0],
+              static_cast<T>(1),
+              x.non_zero_elements().data<T>(),
+              out_grad.data<T>(),
+              static_cast<T>(0),
+              d_kernel_ptr + half_kernel_size * in_channels * out_channels);
+  }
 
   // call gemm: d_x = out_grad * transpose(kernel)
   // (n, out_channels) * (out_channels, in_channels)

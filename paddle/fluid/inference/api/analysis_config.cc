@@ -53,18 +53,18 @@ PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
-      pass_builder_.reset(new GpuPassStrategy);
+      pass_builder_ = std::make_unique<GpuPassStrategy>();
     } else if (use_xpu_) {
-      pass_builder_.reset(new XpuPassStrategy);
+      pass_builder_ = std::make_unique<XpuPassStrategy>();
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
-      pass_builder_.reset(new IpuPassStrategy);
+      pass_builder_ = std::make_unique<IpuPassStrategy>();
     } else if (use_custom_device_) {
       LOG(INFO) << "Create CUSTOM DEVICE IR passes";
-      pass_builder_.reset(new CustomDevicePassStrategy);
+      pass_builder_ = std::make_unique<CustomDevicePassStrategy>();
     } else {
       LOG(INFO) << "Create CPU IR passes";
-      pass_builder_.reset(new CpuPassStrategy);
+      pass_builder_ = std::make_unique<CpuPassStrategy>();
     }
   } else if (pass_builder_->use_gpu() ^ use_gpu()) {
     LOG(WARNING) << "The use_gpu flag is not compatible between Config and "
@@ -287,15 +287,13 @@ void AnalysisConfig::SetIpuCustomInfo(
     const std::vector<std::vector<std::string>> &ipu_custom_ops_info,
     const std::map<std::string, bool> &ipu_custom_patterns) {
   ipu_custom_ops_info_ = ipu_custom_ops_info;
-  for (auto iter = ipu_custom_patterns.begin();
-       iter != ipu_custom_patterns.end();
-       iter++) {
-    if (iter->second == true) {
+  for (const auto &ipu_custom_pattern : ipu_custom_patterns) {
+    if (ipu_custom_pattern.second == true) {
       ipu_custom_patterns_.push_back(
-          std::vector<std::string>{iter->first, "True"});
-    } else if (iter->second == false) {
+          std::vector<std::string>{ipu_custom_pattern.first, "True"});
+    } else if (ipu_custom_pattern.second == false) {
       ipu_custom_patterns_.push_back(
-          std::vector<std::string>{iter->first, "False"});
+          std::vector<std::string>{ipu_custom_pattern.first, "False"});
     }
   }
 
@@ -450,6 +448,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(mixed_white_list_);
   CP_MEMBER(enable_gpu_mixed_);
   CP_MEMBER(mixed_precision_mode_);
   CP_MEMBER(enable_low_precision_io_);
@@ -461,6 +460,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_max_batchsize_);
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
+  CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
   CP_MEMBER(trt_dla_core_);
@@ -476,6 +477,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   // Dlnne related
@@ -577,20 +579,20 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                       false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
-    pass_builder_.reset(new GpuPassStrategy(
-        *static_cast<GpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<GpuPassStrategy>(
+        *static_cast<GpuPassStrategy *>(other.pass_builder()));
   } else if (use_ipu_) {
-    pass_builder_.reset(new IpuPassStrategy(
-        *static_cast<IpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<IpuPassStrategy>(
+        *static_cast<IpuPassStrategy *>(other.pass_builder()));
   } else if (use_xpu_) {
-    pass_builder_.reset(new XpuPassStrategy(
-        *static_cast<XpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<XpuPassStrategy>(
+        *static_cast<XpuPassStrategy *>(other.pass_builder()));
   } else if (use_custom_device_) {
-    pass_builder_.reset(new CustomDevicePassStrategy(
-        *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<CustomDevicePassStrategy>(
+        *static_cast<CustomDevicePassStrategy *>(other.pass_builder()));
   } else {
-    pass_builder_.reset(new CpuPassStrategy(
-        *static_cast<CpuPassStrategy *>(other.pass_builder())));
+    pass_builder_ = std::make_unique<CpuPassStrategy>(
+        *static_cast<CpuPassStrategy *>(other.pass_builder()));
   }
 
 #undef CP_MEMBER
@@ -641,7 +643,7 @@ void AnalysisConfig::EnableCUDNN() {
 }
 
 void AnalysisConfig::EnableMKLDNN() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   use_mkldnn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
@@ -652,7 +654,7 @@ void AnalysisConfig::EnableMKLDNN() {
 }
 
 void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mkldnn_cache_capacity_ = capacity;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
@@ -661,9 +663,9 @@ void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 }
 
 void AnalysisConfig::EnableMkldnnQuantizer() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!mkldnn_quantizer_config_)
-    mkldnn_quantizer_config_.reset(new MkldnnQuantizerConfig());
+    mkldnn_quantizer_config_ = std::make_unique<MkldnnQuantizerConfig>();
   use_mkldnn_quantizer_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
@@ -674,7 +676,7 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 }
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
     LOG(INFO) << "Hardware support for BFLOAT16"
@@ -695,7 +697,7 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
 }
 
 void AnalysisConfig::DisableMkldnnFcPasses() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   disable_mkldnn_fc_passes_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
@@ -706,7 +708,7 @@ void AnalysisConfig::DisableMkldnnFcPasses() {
 
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   use_mkldnn_int8_ = true;
   use_fc_padding_ = false;
   if (!op_list.empty())
@@ -757,6 +759,12 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "To use Paddle-TensorRT, please compile with TENSORRT first."));
 #endif
+}
+
+void AnalysisConfig::MarkTrtEngineOutputs(
+    const std::vector<std::string> &output_tensor_names) {
+  trt_mark_output_ = true;
+  trt_output_tensor_names_ = output_tensor_names;
 }
 
 void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
@@ -832,6 +840,11 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
+void AnalysisConfig::EnableTensorRtExplicitQuantization() {
+  trt_use_explicit_quantization_ = true;
+  Update();
+}
+
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
@@ -850,54 +863,54 @@ void AnalysisConfig::Update() {
       ((use_ipu() ^ pass_builder_->use_ipu())) ||
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
-      pass_builder_.reset(new GpuPassStrategy);
+      pass_builder_ = std::make_unique<GpuPassStrategy>();
     } else if (use_ipu()) {
-      pass_builder_.reset(new IpuPassStrategy);
+      pass_builder_ = std::make_unique<IpuPassStrategy>();
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
-      pass_builder_.reset(new XpuPassStrategy);
+      pass_builder_ = std::make_unique<XpuPassStrategy>();
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and CustomDevice."));
-      pass_builder_.reset(new CustomDevicePassStrategy);
+      pass_builder_ = std::make_unique<CustomDevicePassStrategy>();
     } else {
-      pass_builder_.reset(new CpuPassStrategy);
+      pass_builder_ = std::make_unique<CpuPassStrategy>();
     }
 
   } else {
     if (use_gpu()) {
-      pass_builder_.reset(new GpuPassStrategy(
-          *static_cast<GpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<GpuPassStrategy>(
+          *static_cast<GpuPassStrategy *>(pass_builder_.get()));
     } else if (use_ipu()) {
       VLOG(1) << "IpuPassStrategy has been used.";
-      pass_builder_.reset(new IpuPassStrategy(
-          *static_cast<IpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<IpuPassStrategy>(
+          *static_cast<IpuPassStrategy *>(pass_builder_.get()));
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
-      pass_builder_.reset(new XpuPassStrategy(
-          *static_cast<XpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<XpuPassStrategy>(
+          *static_cast<XpuPassStrategy *>(pass_builder_.get()));
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
           false,
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and CustomDevice."));
-      pass_builder_.reset(new CustomDevicePassStrategy(
-          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<CustomDevicePassStrategy>(
+          *static_cast<CustomDevicePassStrategy *>(pass_builder_.get()));
     } else {
-      pass_builder_.reset(new CpuPassStrategy(
-          *static_cast<CpuPassStrategy *>(pass_builder_.get())));
+      pass_builder_ = std::make_unique<CpuPassStrategy>(
+          *static_cast<CpuPassStrategy *>(pass_builder_.get()));
     }
   }
 
@@ -906,6 +919,13 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       if (tensorrt_precision_mode_ == Precision::kInt8 &&
           (pass == "conv_bn_fuse_pass")) {
+        continue;
+      }
+      // The following two IR pass will remove QDQ nodes. For explicit
+      // quantization, they are unnecessary.
+      if (trt_use_explicit_quantization_ &&
+          (pass == "trt_delete_weight_dequant_linear_op_pass" ||
+           pass == "delete_quant_dequant_linear_op_pass")) {
         continue;
       }
       pass_builder()->AppendPass(pass);
@@ -938,7 +958,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_mkldnn_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
       LOG(ERROR)
           << "EnableMKLDNN() only works when IR optimization is enabled.";
@@ -954,19 +974,19 @@ void AnalysisConfig::Update() {
       LOG(ERROR) << "EnableMkldnnQuantizer() only works when IR optimization "
                     "is enabled.";
     }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnQuantizer();
 #endif
   }
 
   if (use_mkldnn_bfloat16_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnBfloat16();
 #endif
   }
 
   if (use_mkldnn_int8_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
       LOG(ERROR) << "EnableMkldnnInt8() only works when IR optimization "
                     "is enabled.";
@@ -980,7 +1000,7 @@ void AnalysisConfig::Update() {
   }
 
   if (disable_mkldnn_fc_passes_) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     pass_builder()->DisableMkldnnFcPasses();
 #endif
   }
@@ -1052,6 +1072,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_workspace_size_;
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
+  ss << trt_mark_output_;
 
   ss << use_dlnne_;
   ss << dlnne_min_subgraph_size_;
@@ -1134,6 +1155,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
     for (auto attr : pattern) ss << attr;
   ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
+  for (auto &op : mixed_white_list_) ss << op.c_str();
   return ss.str();
 }
 
@@ -1333,6 +1355,7 @@ std::string AnalysisConfig::Summary() {
       }
       os.InsertRow({"trt_engine_memory_sharing",
                     trt_engine_memory_sharing_ ? "true" : "false"});
+      os.InsertRow({"trt_mark_output", trt_mark_output_ ? "true" : "false"});
 #endif
     }
   }
@@ -1512,6 +1535,11 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
 void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableMixedPrecisionOps(
+    const std::unordered_set<std::string> &white_list) {
+  mixed_white_list_ = white_list;
 }
 
 void AnalysisConfig::Exp_EnableCINNCompiler() {

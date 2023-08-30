@@ -38,7 +38,7 @@ namespace operators {
 
 class CCommInitAllInferShape : public framework::InferShapeBase {
  public:
-  ~CCommInitAllInferShape() {}
+  ~CCommInitAllInferShape() override = default;
   void operator()(framework::InferShapeContext* ctx) const override{};
 };
 

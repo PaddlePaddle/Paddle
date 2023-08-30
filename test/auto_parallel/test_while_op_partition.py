@@ -145,8 +145,18 @@ def get_program():
         auto.shard_tensor(label, _g_process_mesh, [None, None, None])
 
         # fill constant bsz like
-        tmp = paddle.fluid.layers.fill_constant_batch_size_like(
-            input=input, shape=[-1, 16, 0, 48], dtype='float32', value=0
+        block = train_program.current_block()
+        fill_shape = [-1, 16, 0, 48]
+        tmp = block.create_var(name='tmp', dtype='float32')
+        block.append_op(
+            type='fill_constant_batch_size_like',
+            outputs={'Out': [tmp]},
+            inputs={'Input': [input]},
+            attrs={
+                'shape': fill_shape,
+                'value': 0,
+            },
+            stop_gradient=True,
         )
         auto.shard_tensor(tmp, _g_process_mesh, [None, 'x', None, None])
 
@@ -369,7 +379,6 @@ class TestMLP(unittest.TestCase):
             train_program, start_program, dist_context
         )
         dist_context.block_state.parse_forward_blocks(train_program)
-
         dist_main_prog, dist_startup_prog = partition(
             train_program, start_program, dist_context
         )
@@ -388,8 +397,8 @@ class TestMLP(unittest.TestCase):
         self.assertTrue("c_allreduce_sum" in sub_block_ops)
 
         # test fill_constant_batch_size_like
-
         self.assertIsNotNone(fill_op)
+
         ref_shape = [-1, 8, 0, 48]
         shape = fill_op.attr("shape")
         self.assertTrue(ref_shape == shape)

@@ -58,8 +58,8 @@ class AMPTest(unittest.TestCase):
         out = model(x)
         loss = mse(out, label)
 
-        opt = paddle.fluid.optimizer.Adam(
-            learning_rate=0.0001, parameter_list=model.parameters()
+        opt = paddle.optimizer.Adam(
+            learning_rate=0.0001, parameters=model.parameters()
         )  # 定义优化器
         opt = paddle.static.amp.decorate(
             opt, init_loss_scaling=128.0, use_dynamic_loss_scaling=True

@@ -22,10 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(convert_all_blocks);
 PHI_DECLARE_bool(use_mkldnn);
 #ifdef PADDLE_WITH_CINN
-DECLARE_bool(use_cinn);
+PD_DECLARE_bool(use_cinn);
 #endif
 
 namespace paddle {
@@ -303,7 +303,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void AppendPassToSetMkldnnAttr(const std::string &pass_name) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       AppendPass(pass_name);
     } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
@@ -542,7 +542,7 @@ USE_PASS(build_cinn_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_feedforward_pass);
 #endif
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 USE_PASS(mkldnn_placement_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \

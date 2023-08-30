@@ -43,17 +43,17 @@ namespace patterns {
 fuse ele_add + activation block in to xpu_ele_fusion op
 For example:
 graph:
-                    ele_x
+                    add_x
                       |
-                 elementwise_add -----ele_y
+                 elementwise_add -----add_y
                       |
                   layernorm
                       |
                     output
 ------------------------------------------------------
 After the pass is applied:
-                    ele_x
-                      |     ele_y
+                    add_x
+                      |     add_y
                       |    /
                       |   /
    scale---- add_layernorm_fusion ---- bias
@@ -68,8 +68,8 @@ struct AddLayernormXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(ele_add);
   PATTERN_DECL_NODE(l_norm);
   // declare variable node's name
-  PATTERN_DECL_NODE(ele_x);
-  PATTERN_DECL_NODE(ele_y);
+  PATTERN_DECL_NODE(add_x);
+  PATTERN_DECL_NODE(add_y);
   PATTERN_DECL_NODE(ele_out);
   PATTERN_DECL_NODE(norm_bias);
   PATTERN_DECL_NODE(norm_scale);
@@ -83,17 +83,17 @@ AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
     : PatternBase(pattern, name_scope, name_scope) {
   auto ele_add =
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
-  auto ele_x = pattern->NewNode(ele_x_repr())
+  auto add_x = pattern->NewNode(add_x_repr())
                    ->assert_is_op_input("elementwise_add", "X")
                    ->AsInput();
-  auto ele_y = pattern->NewNode(ele_y_repr())
+  auto add_y = pattern->NewNode(add_y_repr())
                    ->assert_is_op_input("elementwise_add", "Y")
                    ->AsInput();
   auto ele_out = pattern->NewNode(ele_out_repr())
                      ->assert_is_op_output("elementwise_add", "Out")
                      ->assert_is_op_input("layer_norm", "X")
                      ->assert_has_n_outputs(1);
-  ele_add->LinksFrom({ele_x, ele_y}).LinksTo({ele_out});
+  ele_add->LinksFrom({add_x, add_y}).LinksTo({ele_out});
   auto l_norm = pattern->NewNode(l_norm_repr())->assert_is_op("layer_norm");
   auto norm_bias = pattern->NewNode(norm_bias_repr())
                        ->AsInput()
@@ -105,10 +105,12 @@ AddLayernormXPUPattern::AddLayernormXPUPattern(PDPattern* pattern,
                         ->assert_is_op_input("layer_norm", "Scale");
   auto norm_mean = pattern->NewNode(norm_mean_repr())
                        ->AsOutput()
-                       ->assert_is_op_output("layer_norm", "Mean");
+                       ->assert_is_op_output("layer_norm", "Mean")
+                       ->assert_has_n_outputs(0);
   auto norm_variance = pattern->NewNode(norm_variance_repr())
                            ->AsOutput()
-                           ->assert_is_op_output("layer_norm", "Variance");
+                           ->assert_is_op_output("layer_norm", "Variance")
+                           ->assert_has_n_outputs(0);
   auto norm_out = pattern->NewNode(norm_out_repr())
                       ->AsOutput()
                       ->assert_is_op_output("layer_norm", "Y");
@@ -169,8 +171,8 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     GET_IR_NODE(ele_add);
     GET_IR_NODE(l_norm);
     // declare variable node's name
-    GET_IR_NODE(ele_x);
-    GET_IR_NODE(ele_y);
+    GET_IR_NODE(add_x);
+    GET_IR_NODE(add_y);
     GET_IR_NODE(ele_out);
     GET_IR_NODE(norm_bias);
     GET_IR_NODE(norm_scale);
@@ -178,49 +180,43 @@ void AddLayernormXPUFusePass::FuseAddLayernorm(ir::Graph* graph) const {
     GET_IR_NODE(norm_variance);
     GET_IR_NODE(norm_out);
 
-    auto* block = ele_add->Op()->Block();
+    auto* block = l_norm->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+    auto x_shape = add_x->Var()->GetShape();
+    auto x_rank = x_shape.size();
+    auto y_shape = add_y->Var()->GetShape();
+    auto y_rank = y_shape.size();
+    if (x_rank != y_rank) return;
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;
 
     float eps = PADDLE_GET_CONST(float, l_norm->Op()->GetAttr("epsilon"));
     int begin_norm_axis =
         PADDLE_GET_CONST(int, l_norm->Op()->GetAttr("begin_norm_axis"));
-    auto layer_norm_x_dims = ele_out->Var()->GetShape();
-    auto layer_norm_x_mat_dims =
-        phi::flatten_to_2d(phi::make_ddim(layer_norm_x_dims), begin_norm_axis);
-    int64_t m = layer_norm_x_mat_dims[0];
-    int64_t n = layer_norm_x_mat_dims[1];
 
     std::string fused_op_out_name;
     fused_op_out_name = norm_out->Name();
     // Generate add_layernorm fused op
     framework::OpDesc fused_op_desc(block);
+
     fused_op_desc.SetType("add_layernorm_xpu");
     // set attrs for fused op
-    fused_op_desc.SetInput("x", {ele_x->Name()});
-    fused_op_desc.SetInput("y", {ele_y->Name()});
+    fused_op_desc.SetInput("x", {add_x->Name()});
+    fused_op_desc.SetInput("y", {add_y->Name()});
     fused_op_desc.SetInput("scale", {norm_scale->Name()});
     fused_op_desc.SetInput("bias", {norm_bias->Name()});
-    fused_op_desc.SetAttr("m", m);
-    fused_op_desc.SetAttr("n", n);
     fused_op_desc.SetAttr("epsilon", eps);
+    fused_op_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     fused_op_desc.SetOutput("out", {fused_op_out_name});
-    setIntermediateOut(&fused_op_desc, "mean", name_scope_);
-    setIntermediateOut(&fused_op_desc, "variance", name_scope_);
-    setIntermediateOut(&fused_op_desc, "z_add", name_scope_);
     // relink fused op
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
-    IR_NODE_LINK_TO(ele_x, fused_op);
-    IR_NODE_LINK_TO(ele_y, fused_op);
+    IR_NODE_LINK_TO(add_x, fused_op);
+    IR_NODE_LINK_TO(add_y, fused_op);
     IR_NODE_LINK_TO(norm_scale, fused_op);
     IR_NODE_LINK_TO(norm_bias, fused_op);
     IR_NODE_LINK_TO(fused_op, norm_out);
-    addIntermediateOut(fused_op, "mean", name_scope_, graph);
-    addIntermediateOut(fused_op, "variance", name_scope_, graph);
-    addIntermediateOut(fused_op, "z_add", name_scope_, graph);
 
     delete_nodes.insert({ele_add, l_norm, ele_out, norm_mean, norm_variance});
     GraphSafeRemoveNodes(graph, delete_nodes);

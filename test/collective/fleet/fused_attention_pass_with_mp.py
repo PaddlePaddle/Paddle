@@ -175,7 +175,7 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
             out = multi_head_attn(attn_input, attn_mask)
             loss = paddle.mean(out)
 
-            sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
         startup_block = startup_prog.global_block()
@@ -234,7 +234,7 @@ class TestFusedAttentionPassWithMP(unittest.TestCase):
     def test_pass(self):
         fused_rst = self.get_rst(use_pass=True)
         non_fused_rst = self.get_rst()
-        assert np.allclose(fused_rst, non_fused_rst, atol=1e-5)
+        np.testing.assert_allclose(fused_rst, non_fused_rst, atol=1e-5)
 
 
 if __name__ == "__main__":

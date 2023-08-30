@@ -29,6 +29,10 @@ class Program;
 class OpOperand;
 class OpResult;
 
+namespace detial {
+class BlockOperandImpl;
+}  // namespace detial
+
 class IR_API alignas(8) Operation final {
  public:
   ///
@@ -41,7 +45,8 @@ class IR_API alignas(8) Operation final {
                            const AttributeMap &attributes,
                            const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info,
-                           size_t num_regions = 0);
+                           size_t num_regions = 0,
+                           const std::vector<Block *> &successors = {});
   static Operation *Create(OperationArgument &&op_argument);
 
   ///
@@ -55,13 +60,20 @@ class IR_API alignas(8) Operation final {
 
   OpResult result(uint32_t index) const;
 
-  OpOperand op_operand(uint32_t index) const;
+  OpOperand operand(uint32_t index) const;
 
-  Value operand(uint32_t index) const;
+  Value operand_source(uint32_t index) const;
+
+  uint32_t num_successors() const { return num_successors_; }
+  BlockOperand block_operand(uint32_t index) const;
+  Block *successor(uint32_t index) const;
+  void set_successor(Block *block, unsigned index);
+  bool HasSuccessors() { return num_successors_ != 0; }
 
   /// Returns the region held by this operation at position 'index'.
   Region &region(unsigned index);
   const Region &region(unsigned index) const;
+  uint32_t num_regions() const { return num_regions_; }
 
   void Print(std::ostream &os) const;
 
@@ -90,8 +102,6 @@ class IR_API alignas(8) Operation final {
 
   uint32_t num_operands() const { return num_operands_; }
 
-  uint32_t num_regions() const { return num_regions_; }
-
   std::string name() const;
 
   template <typename T>
@@ -109,13 +119,23 @@ class IR_API alignas(8) Operation final {
     return info_.HasInterface<Interface>();
   }
 
-  Block *GetParent() const { return parent_; }
+  const Block *GetParent() const { return parent_; }
 
-  Region *GetParentRegion() const;
+  Block *GetParent() {
+    return const_cast<Block *>(
+        const_cast<const Operation *>(this)->GetParent());
+  }
+
+  Region *GetParentRegion();
 
   Operation *GetParentOp() const;
 
-  Program *GetParentProgram();
+  const Program *GetParentProgram() const;
+
+  Program *GetParentProgram() {
+    return const_cast<Program *>(
+        const_cast<const Operation *>(this)->GetParentProgram());
+  }
 
   operator Block::iterator() { return position_; }
 
@@ -124,11 +144,17 @@ class IR_API alignas(8) Operation final {
   /// Replace all uses of results of this operation with the provided 'values'.
   void ReplaceAllUsesWith(const std::vector<Value> &values);
 
+  void ReplaceAllUsesWith(const std::vector<OpResult> &op_results);
+
   inline void ReplaceAllUsesWith(Value value) {
     ReplaceAllUsesWith(std::vector<Value>{value});
   }
 
   void Verify();
+
+  std::vector<OpOperand> operands() const;
+
+  std::vector<OpResult> results() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
@@ -136,7 +162,8 @@ class IR_API alignas(8) Operation final {
             ir::OpInfo op_info,
             uint32_t num_results,
             uint32_t num_operands,
-            uint32_t num_regions);
+            uint32_t num_regions,
+            uint32_t num_successors);
 
   template <typename T, typename Enabler = void>
   struct CastUtil {
@@ -163,7 +190,9 @@ class IR_API alignas(8) Operation final {
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
+  const uint32_t num_successors_ = 0;
 
+  detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};
   Block *parent_{nullptr};
   Block::iterator position_;

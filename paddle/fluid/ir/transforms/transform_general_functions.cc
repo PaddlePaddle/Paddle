@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/ir/transforms/transform_general_functions.h"
 
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/parameter.h"
 #include "paddle/ir/core/program.h"
@@ -64,7 +64,7 @@ Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
       index < op->num_operands(),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
-  return op->operand(index).GetDefiningOp();
+  return op->operand_source(index).GetDefiningOp();
 }
 
 Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index) {

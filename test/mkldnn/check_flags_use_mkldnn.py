@@ -38,7 +38,7 @@ def check():
         a = fluid.dygraph.to_variable(a_np)
         res1 = func(a)
         res2 = np.maximum(a_np, 0)
-    assert np.array_equal(res1.numpy(), res2)
+    np.testing.assert_array_equal(res1.numpy(), res2)
 
 
 if __name__ == '__main__':

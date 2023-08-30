@@ -73,123 +73,8 @@ static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
 }
 
 template <int tTHREADS_PER_BLOCK>
-__global__ void groupNormNHWCSumKernel(const GroupNormNHWCParams params) {
-  // The object in charge of doing the sums for the different blocks.
-  typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
-
-  // Allocate shared memory for BlockScan.
-  __shared__ typename BlockScan::TempStorage tempStorage;
-  // Allocate shared memory for the groups. We could reduce the amount of shared
-  // memory reserved.
-  __shared__ float2 smem[tTHREADS_PER_BLOCK];
-
-  // The instance in the batch.
-  int32_t ni = blockIdx.z;
-  // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
-
-  // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
-  // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
-
-  // The sums.
-  float sum = 0.F;
-  float sumSq = 0.F;
-
-  // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
-    // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc +
-                     static_cast<int64_t>(hwi) * params.c + ci;
-
-    // Fetch two channels per thread.
-    __half2 h2(0, 0);
-    if (ci < params.c) {
-      h2 = *reinterpret_cast<__half2 const *>(&params.srcX[offset]);
-    }
-
-    // Extract the two half values.
-    float2 f2 = __half22float2(h2);
-
-    // Update the sum.
-    sum += f2.x + f2.y;
-    // Update the sum of squares.
-    sumSq += f2.x * f2.x + f2.y * f2.y;
-  }
-
-  // The group that thread works on and the channel in the group (modulus).
-  int32_t gi = threadIdx.x * 2 / params.cPerGroup;
-  int32_t cj = threadIdx.x * 2 - params.cPerGroup * gi;
-
-  // The data for the summations.
-  GroupSums inp{cj == 0 ? 1 : 0, sum, sumSq};
-
-  // Do the segmented scan.
-  GroupSums out;
-  BlockScan(tempStorage).InclusiveScan(inp, out, GroupSumsOp());
-
-  // Store the results for the groups in shared memory (to produce coalesced
-  // stores later).
-  // 2 channels per thread
-  if (cj == params.cPerGroup - 2) {
-    smem[gi] = make_float2(out.sum, out.sumSq);
-  }
-
-  // Make sure the data is in shared memory.
-  __syncthreads();
-
-  // The global group index.
-  int32_t gj = blockIdx.x * params.groupsPerBlock + threadIdx.x;
-
-  // Threads that have nothing left to do, exit.
-  if (threadIdx.x >= params.groupsPerBlock || gj >= params.groups) {
-    return;
-  }
-
-  // The first threads (those storing to global memory, load the values).
-  float2 sums = smem[threadIdx.x];
-
-  // Store to global memory.
-  atomicAdd(&params.redBuffer[(2 * ni + 0) * params.groups + gj], sums.x);
-  atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
-}
-
-void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
-  dim3 grid;
-
-  // The number of blocks to compute all the channels.
-  grid.x = divUp(params.c, params.cPerBlock);
-  // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
-  // The number of instances.
-  grid.z = params.n;
-
-  switch (params.cPerBlock) {
-    case 320:
-      groupNormNHWCSumKernel<160><<<grid, 160, 0, stream>>>(params);
-      break;
-    case 480:
-      groupNormNHWCSumKernel<256><<<grid, 256, 0, stream>>>(params);
-      break;
-    case 256:
-      groupNormNHWCSumKernel<128><<<grid, 128, 0, stream>>>(params);
-      break;
-    case 128:
-      groupNormNHWCSumKernel<64><<<grid, 64, 0, stream>>>(params);
-      break;
-    case 8:
-      groupNormNHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Fatal(
-          "The function groupNormNHWCSum of GroupNormPlugin TRT Plugin "
-          "encounter error"));
-  }
-}
-
-template <int tTHREADS_PER_BLOCK>
-__global__ void groupNormNCHW32SumKernelQDQ(const GroupNormNHWCParams params) {
+__global__ void groupNormNCHW32SumKernelQDQ(
+    const GroupNormNHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -281,7 +166,7 @@ __global__ void groupNormNCHW32SumKernelQDQ(const GroupNormNHWCParams params) {
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void groupNormNCHW32SumQDQ(const GroupNormNHWCParams &params,
+void groupNormNCHW32SumQDQ(const GroupNormNHWCParams<__half> &params,
                            cudaStream_t stream) {
   dim3 grid;
 
@@ -313,7 +198,7 @@ void groupNormNCHW32SumQDQ(const GroupNormNHWCParams &params,
 
 template <int tTHREADS_PER_BLOCK>
 __global__ void groupNormNCHW32ScaleKernelQDQ(
-    const GroupNormNHWCParams params) {
+    const GroupNormNHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -405,7 +290,7 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   }
 }
 
-void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams &params,
+void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams<__half> &params,
                              cudaStream_t stream) {
   dim3 grid;
 
@@ -436,112 +321,6 @@ void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams &params,
       PADDLE_THROW(
           platform::errors::Fatal("The function groupNormNCHW32ScaleQDQ of "
                                   "GroupNorm TRT Plugin encounter error"));
-  }
-}
-
-template <int tTHREADS_PER_BLOCK>
-__global__ void groupNormNHWCScaleKernel(const GroupNormNHWCParams params) {
-  // The instance in the batch.
-  int32_t ni = blockIdx.z;
-  // The channel loaded by that thread (2 channels per thread for F16x2).
-  int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
-  // The group that thread works on and the channel in the group (modulus).
-  int32_t gi = ci / params.cPerGroup;
-
-  // Load the sum and sum of squares for the group.
-  float sum = 0.F, sumSq = 0.F;
-  if (gi < params.groups) {
-    sum = params.redBuffer[(2 * ni + 0) * params.groups + gi];
-    sumSq = params.redBuffer[(2 * ni + 1) * params.groups + gi];
-  }
-
-  // Load gamma/beta.
-  float2 gammaF2, betaF2;
-  if (ci < params.c) {
-    gammaF2 = __half22float2(*reinterpret_cast<half2 const *>(
-        reinterpret_cast<half const *>(params.gamma) + ci));
-    betaF2 = __half22float2(*reinterpret_cast<half2 const *>(
-        reinterpret_cast<half const *>(params.beta) + ci));
-  }
-
-  // Compute the mean.
-  float mean = sum * params.invHWC;
-  // Compute the variance.
-  float var = sumSq * params.invHWC - (mean * mean);
-  // Compute the inverse of the stddev.
-  float invStdDev = rsqrtf(var + params.eps);
-
-  // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
-  // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
-
-  // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
-    // The src/dst offset.
-    int64_t offset = (int64_t)ni * params.hwc + hwi * params.c + ci;
-
-    // Fetch two channels per thread.
-    __half2 h2(0, 0);
-    if (ci < params.c) {
-      h2 = *reinterpret_cast<__half2 const *>(&params.srcX[offset]);
-    }
-
-    // Extract the two half values.
-    float2 f2 = __half22float2(h2);
-
-    // Normalize the channels.
-    f2.x = (f2.x - mean) * invStdDev;
-    f2.y = (f2.y - mean) * invStdDev;
-
-    // Scale by gamma and add beta.
-    f2.x = gammaF2.x * f2.x + betaF2.x;
-    f2.y = gammaF2.y * f2.y + betaF2.y;
-
-    // Apply Silu if needed.
-    if (params.withSilu) {
-      f2.x = f2.x * sigmoid(f2.x);
-      f2.y = f2.y * sigmoid(f2.y);
-    }
-
-    // Store the scaled values.
-    if (ci < params.c) {
-      *reinterpret_cast<__half2 *>(&params.dst[offset]) = __float22half2_rn(f2);
-    }
-  }
-}
-
-void groupNormNHWCScale(const GroupNormNHWCParams &params,
-                        cudaStream_t stream) {
-  dim3 grid;
-
-  // The number of blocks to compute all the channels.
-  grid.x = divUp(params.c, params.cPerBlock);
-  // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
-  // The number of instances.
-  grid.z = params.n;
-
-  switch (params.cPerBlock) {
-    case 320:
-      groupNormNHWCScaleKernel<160><<<grid, 160, 0, stream>>>(params);
-      break;
-    case 480:
-      groupNormNHWCScaleKernel<256><<<grid, 256, 0, stream>>>(params);
-      break;
-    case 256:
-      groupNormNHWCScaleKernel<128><<<grid, 128, 0, stream>>>(params);
-      break;
-    case 128:
-      groupNormNHWCScaleKernel<64><<<grid, 64, 0, stream>>>(params);
-      break;
-    case 8:
-      groupNormNHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Fatal(
-          "The function groupNormNHWCScale of GroupNormPlugin TRT Plugin "
-          "encounter error"));
   }
 }
 
@@ -886,9 +665,10 @@ int GroupNormPluginDynamic::enqueue(
       params_.withSilu = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
-      params_.gamma = scale_gpu_;
-      params_.beta = bias_gpu_;
+      params_.gamma = reinterpret_cast<half *>(scale_gpu_);
+      params_.beta = reinterpret_cast<half *>(bias_gpu_);
       params_.redBuffer = static_cast<float *>(workspace);
+      params_.var_data = nullptr;
       params_.n = input_desc[0].dims.d[0];
       params_.h = input_desc[0].dims.d[2];
       params_.w = input_desc[0].dims.d[3];
@@ -903,13 +683,17 @@ int GroupNormPluginDynamic::enqueue(
       params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
       params_.eps = eps_;
+      params_.var_data = nullptr;
 
       cudaMemsetAsync(params_.redBuffer,
                       0,
                       2 * sizeof(float) * params_.n * groups_,
                       stream);
-      groupNormNHWCSum(params_, stream);
-      groupNormNHWCScale(params_, stream);
+
+      phi::groupNormNHWCSum<half> nhwc_sum;
+      nhwc_sum(&params_, stream);
+      phi::groupNormNHWCScale<half> nhwc_scale;
+      nhwc_scale(params_, stream);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));

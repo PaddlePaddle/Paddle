@@ -21,6 +21,7 @@ import unittest
 import numpy as np
 from simple_nets import simple_fc_net
 
+import paddle
 from paddle import fluid
 from paddle.fluid import compiler, core
 
@@ -34,7 +35,7 @@ class TestPassBuilder(unittest.TestCase):
             loss = simple_fc_net()
             test_program = main.clone(for_test=True)
 
-            opt = fluid.optimizer.SGD(learning_rate=0.001)
+            opt = paddle.optimizer.SGD(learning_rate=0.001)
             opt.minimize(loss)
 
             batch_size = 32

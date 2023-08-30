@@ -25,10 +25,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-const char kSumGradOpName[] = "sum";
+const char kSumGradOpName[] = "sum";  // NOLINT
 // TODO(minqiyang): only support sgd at current time, please add
 // other optimizers later.
-const char kOptimizerType[] = "sgd";
+const char kOptimizerType[] = "sgd";  // NOLINT
 
 void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(

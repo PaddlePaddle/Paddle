@@ -40,8 +40,8 @@ struct TestGatherOpHandle {
   std::vector<std::unique_ptr<ir::Node>> nodes_;
 
   void WaitAll() {
-    for (size_t j = 0; j < ctxs_.size(); ++j) {
-      ctxs_[j]->Wait();
+    for (auto& ctx : ctxs_) {
+      ctx->Wait();
     }
   }
 

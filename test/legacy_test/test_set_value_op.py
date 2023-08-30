@@ -1343,13 +1343,6 @@ class TestError(TestSetValueBase):
             x[::one] = self.value
 
     def _bool_list_error(self):
-        with self.assertRaises(TypeError):
-            x = paddle.ones(shape=self.shape, dtype=self.dtype)
-            if paddle.in_dynamic_mode():
-                x[[True, False, 0]] = 0
-            else:
-                x = paddle.static.setitem(x, [True, False, 0], 0)
-
         with self.assertRaises(IndexError):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             if paddle.in_dynamic_mode():
@@ -1380,7 +1373,6 @@ class TestError(TestSetValueBase):
         paddle.enable_static()
         with paddle.static.program_guard(self.program):
             self._value_type_error()
-            self._step_error()
             self._bool_list_error()
             self._bool_tensor_error()
         self._broadcast_mismatch()

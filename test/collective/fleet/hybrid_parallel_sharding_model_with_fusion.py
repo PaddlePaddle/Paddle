@@ -99,6 +99,8 @@ class TestDistSharding(unittest.TestCase):
             "pp_degree": 1,
         }
         self.strategy.hybrid_configs["sharding_configs"].tensor_fusion = True
+        self.strategy.hybrid_configs["sharding_configs"].comm_overlap = True
+        self.strategy.hybrid_configs["sharding_configs"].accumulate_steps = 1
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = np.random.randint(
             0,

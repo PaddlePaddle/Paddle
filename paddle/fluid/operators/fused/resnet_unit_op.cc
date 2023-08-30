@@ -35,7 +35,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     // Check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitOp");
     OP_INOUT_CHECK(
@@ -201,7 +201,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
 
  protected:
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
@@ -223,7 +223,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
 
 class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "The input 1 tensor");
     AddInput("FilterX", "Filter tensor of input 1");
     AddInput("ScaleX", "Scale tensor of input 1 used in batchnorm");
@@ -283,7 +283,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitGradOp");
     OP_INOUT_CHECK(
@@ -390,7 +390,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
 
  protected:
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(
         ctx.InputVar(framework::GradVarName("Y")),
         platform::errors::NotFound(

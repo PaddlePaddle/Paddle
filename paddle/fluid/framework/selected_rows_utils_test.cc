@@ -26,7 +26,7 @@ class SelectedRowsTester : public ::testing::Test {
     std::vector<int64_t> rows{0, 4, 7};
     int64_t height = 10;
     int64_t row_numel = 100;
-    selected_rows_.reset(new phi::SelectedRows(rows, height));
+    selected_rows_ = std::make_unique<phi::SelectedRows>(rows, height);
 
     phi::DenseTensor* value = selected_rows_->mutable_value();
     auto* data = value->mutable_data<float>(

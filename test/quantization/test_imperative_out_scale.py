@@ -133,7 +133,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         self.root_path.cleanup()
 
     def test_out_scale_acc(self):
-        seed = 1000
+        seed = 1
         lr = 0.001
 
         weight_quantize_type = 'abs_max'

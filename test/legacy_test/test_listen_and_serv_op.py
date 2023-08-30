@@ -40,7 +40,7 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     avg_cost = paddle.mean(cost)
 
     # optimizer
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -77,7 +77,7 @@ def run_pserver_with_empty_block(
     avg_cost = paddle.mean(cost)
 
     # optimizer
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()

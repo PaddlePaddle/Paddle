@@ -323,12 +323,12 @@ class TestSplitAPI(unittest.TestCase):
         )
 
         out = np.split(input_1, [2, 3], 1)
-        assert np.array_equal(res_0, out[0])
-        assert np.array_equal(res_1, out[1])
-        assert np.array_equal(res_2, out[2])
-        assert np.array_equal(res_3, out[0])
-        assert np.array_equal(res_4, out[1])
-        assert np.array_equal(res_5, out[2])
+        np.testing.assert_array_equal(res_0, out[0])
+        np.testing.assert_array_equal(res_1, out[1])
+        np.testing.assert_array_equal(res_2, out[2])
+        np.testing.assert_array_equal(res_3, out[0])
+        np.testing.assert_array_equal(res_4, out[1])
+        np.testing.assert_array_equal(res_5, out[2])
 
 
 class TestSplitOpError(unittest.TestCase):

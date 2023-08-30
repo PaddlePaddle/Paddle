@@ -175,7 +175,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
 
     def get_optimizer(self):
         # SGD optimizer
-        optimizer = fluid.optimizer.SGD(learning_rate=self.base_lr)
+        optimizer = paddle.optimizer.SGD(learning_rate=self.base_lr)
         return optimizer
 
     def train_network(

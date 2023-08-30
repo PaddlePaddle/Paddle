@@ -113,8 +113,8 @@ class TestDistMnist2x2(TestDistRunnerBase):
         steps_per_pass = 10
         bd = [steps_per_pass * p for p in passes]
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
-        opt = fluid.optimizer.Momentum(learning_rate=lr_val, momentum=0.9)
+        lr_val = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd, values=lr)
+        opt = paddle.optimizer.Momentum(learning_rate=lr_val, momentum=0.9)
 
         # Reader
         train_reader = paddle.batch(

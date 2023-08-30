@@ -70,10 +70,10 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
             )
 
         def generate_scores(batch, num_boxes, num_classes):
-            return np.arange(
-                batch * num_classes * num_boxes, dtype=np.float32
+            max_value = batch * num_classes * num_boxes
+            return (1 / max_value) * np.arange(
+                max_value, dtype=np.float32
             ).reshape([batch, num_classes, num_boxes])
-            # return np.random.rand(batch, num_classes, num_boxes).astype(np.float32)
 
         for batch in [1, 2]:
             self.batch = batch
@@ -160,10 +160,12 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-2
@@ -171,6 +173,7 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5

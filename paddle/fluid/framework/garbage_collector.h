@@ -20,9 +20,9 @@
 #include <mutex>  // NOLINT
 #include <utility>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace framework {
@@ -204,7 +204,7 @@ void GarbageCollector::Add(Container &&objs, Callback &&callback) {
     if (cur_memory_size_ >= max_memory_size_) {
       cur_memory_size_ = 0;
       garbage_queue = garbages_.release();
-      garbages_.reset(new GarbageQueue());
+      garbages_ = std::make_unique<GarbageQueue>();
     }
   }
 

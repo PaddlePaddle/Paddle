@@ -46,9 +46,6 @@ GetDNNLScales(const ExecutionContext& ctx) {
   auto scale_in_data = ctx.Attr<float>("Scale_in");
   auto scale_out = ctx.Attr<float>("Scale_out");
   auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-  auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
-                                   ? ctx.Attr<float>("Scale_in_eltwise")
-                                   : 1.0f;
 
   std::vector<float> dnnl_src_scales = {1.f / scale_in_data};
   size_t count = scale_weights_data.size();
@@ -57,7 +54,7 @@ GetDNNLScales(const ExecutionContext& ctx) {
   for (size_t i = 0; i < count; i++) {
     dnnl_wei_scales[i] = 1.f / scale_weights_data[i];
   }
-  std::vector<float> dnnl_psum_scales = {1.f / scale_in_eltwise_data};
+  std::vector<float> dnnl_psum_scales = {1.f};
   std::vector<float> dnnl_dst_scales = {1.f / scale_out};
 
   return std::make_tuple(
@@ -127,7 +124,6 @@ class FCMKLDNNHandler
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
-    float sum_scale = 1.0f;
     float activation_scale = 1.0f;
     if (phi::funcs::is_int8<T_w>()) {
       std::vector<float> src_scales, wei_scales, psum_scales, dst_scales;
@@ -168,13 +164,6 @@ class FCMKLDNNHandler
                dst_scales.data(),
                dst_scales.size() * sizeof(float));
       }
-
-      sum_scale = psum_scales[0];
-    }
-
-    if (ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
-      post_operations.append_sum(sum_scale);
     }
 
     // ReLU from "fc_fuse_pass"
@@ -332,22 +321,6 @@ class FCMKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
       const ExecutionContext& ctx, phi::DenseTensor* out) {
-    if (ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
-
-      PADDLE_ENFORCE_EQ(
-          out->dims(),
-          residual_param->dims(),
-          phi::errors::InvalidArgument(
-              "Output and elementwise parameter need to have the "
-              "same dimension sizes, but got output's dimension = %d"
-              " and residual param's dimension =%d .",
-              out->dims().size(),
-              residual_param->dims().size()));
-
-      out->ShareDataWith(*residual_param);
-    }
     return this->template AcquireDstMemory<T_out>(out);
   }  // namespace operators
 
@@ -458,11 +431,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
       dst_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
-      if (ctx.HasAttr("fuse_residual_connection") &&
-          ctx.Attr<bool>("fuse_residual_connection")) {
-        auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
-        out->ShareDataWith(*residual_param);
-      }
+
       auto out_ptr = out->mutable_data<T_out>(
           ctx.GetPlace(), dst_memory_p->get_desc().get_size());
       dst_memory_p->set_data_handle(out_ptr);

@@ -228,13 +228,13 @@ cc_test(
 
 set(BRPC_DEPS "")
 if(WITH_PSCORE)
-  set(BRPC_DEPS brpc ssl crypto)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
 endif()
 if(WITH_PSLIB)
   if(WITH_PSLIB_BRPC)
     set(BRPC_DEPS pslib_brpc)
   elseif(NOT WITH_HETERPS)
-    set(BRPC_DEPS brpc ssl crypto)
+    set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
   endif()
   if(WITH_ARM_BRPC)
     set(BRPC_DEPS arm_brpc)
@@ -350,7 +350,8 @@ cc_library(
        selected_rows_utils
        data_device_transform
        data_type_transform
-       data_layout_transform)
+       data_layout_transform
+       phi)
 
 cc_library(
   attribute
@@ -832,7 +833,7 @@ if(WITH_DISTRIBUTE)
            heter_service_proto
            fleet
            heter_server
-           brpc
+           ${${EXTERNAL_BRPC_DEPS}}
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -1033,7 +1034,8 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor)
+  DEPS parallel_executor standalone_executor phi_kernel_adaptor
+       pd_op_to_kernel_pass ir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)

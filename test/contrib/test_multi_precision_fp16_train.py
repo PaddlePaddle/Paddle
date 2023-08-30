@@ -126,7 +126,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 multi_precision=True,
             )
         elif optimizer == "Lars":
-            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+            optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9, multi_precision=use_pure_fp16
             )
         else:
@@ -282,12 +282,6 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 )
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
-                )
-                py_reader = fluid.io.DataLoader.from_generator(
-                    feed_list=[image, label],
-                    capacity=4,
-                    iterable=False,
-                    use_double_buffer=False,
                 )
                 zero_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='int64', value=0

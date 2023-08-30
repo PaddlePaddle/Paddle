@@ -17,7 +17,7 @@ import numpy as np
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
+from paddle.fluid.framework import Variable
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
 
@@ -100,7 +100,7 @@ class Categorical(distribution.Distribution):
             check_type(
                 logits,
                 'logits',
-                (np.ndarray, tensor.Variable, list, tuple),
+                (np.ndarray, Variable, list, tuple),
                 'Categorical',
             )
 

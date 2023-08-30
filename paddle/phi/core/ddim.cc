@@ -19,15 +19,15 @@
 namespace phi {
 
 DDim make_ddim(std::initializer_list<int64_t> dims) {
-  return DDim(dims.begin(), dims.size());
+  return DDim(dims.begin(), static_cast<int>(dims.size()));
 }
 
 DDim make_ddim(const std::vector<int64_t>& dims) {
-  return DDim(dims.data(), dims.size());
+  return DDim(dims.data(), static_cast<int>(dims.size()));
 }
 
 DDim make_ddim(const std::vector<int>& dims) {
-  return DDim(dims.data(), dims.size());
+  return DDim(dims.data(), static_cast<int>(dims.size()));
 }
 
 struct DDimEqualityVisitor {
@@ -42,8 +42,14 @@ struct DDimEqualityVisitor {
 };
 
 bool DDim::operator==(const DDim& d) const {
-  return size() == d.size() &&
-         this->apply_visitor(DDimEqualityVisitor(d.Get()));
+  if (size() == -1 && d.size() == -1) {
+    return true;
+  } else if (size() == -1 || d.size() == -1) {
+    return false;
+  } else {
+    return size() == d.size() &&
+           this->apply_visitor(DDimEqualityVisitor(d.Get()));
+  }
 }
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
@@ -66,6 +72,9 @@ struct ProductVisitor {
 };
 
 int64_t product(const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return 0;
+  }
   return ddim.apply_visitor(ProductVisitor());
 }
 
@@ -105,6 +114,9 @@ struct DDimPrinter {
 };
 
 std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return os;
+  }
   ddim.apply_visitor(DDimPrinter(os));
   return os;
 }
@@ -174,19 +186,19 @@ DDim stride_numel(const DDim& ddim) {
 DDim DDim::reshape(std::vector<int>& shape) const {
   const DDim& in_dims = *this;
 
-  for (uint64_t i = 0; i < shape.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(shape.size()); ++i) {
     if (shape[i] == 0) {
-      shape[i] = in_dims.at(i);
+      shape[i] = static_cast<int>(in_dims.at(i));
     }
   }
 
   // Dim marked as "-1" must be inferred
   auto it = std::find(shape.begin(), shape.end(), -1);
   if (it != shape.end()) {
-    int index = std::distance(shape.begin(), it);
+    int index = static_cast<int>(std::distance(shape.begin(), it));
     int reshape_out_product =
         std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
-    shape[index] = product(in_dims) / reshape_out_product;
+    shape[index] = static_cast<int>(product(in_dims)) / reshape_out_product;
   }
 
   return phi::make_ddim(shape);
@@ -196,7 +208,7 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
   const DDim& in_dims = *this;
 
   DDim out_dims(in_dims);
-  for (size_t i = 0; i < axis.size(); i++) {
+  for (int i = 0; i < static_cast<int>(axis.size()); i++) {
     out_dims[i] = in_dims[axis[i]];
   }
   return out_dims;

@@ -257,10 +257,6 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[2] == expected[2]).all())
         self.assertTrue((result[3] == expected[3]).all())
 
-        with self.assertRaises(IndexError):
-            one = paddle.ones(shape=[1])
-            res = x[one, [0, 0]]
-
     def _test_slice_index_list(self, place):
         data = np.random.rand(2, 3).astype("float32")
         prog = paddle.static.Program()
@@ -323,9 +319,6 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[5] == expected[5]).all())
         self.assertTrue((result[6] == expected[6]).all())
 
-        with self.assertRaises(IndexError):
-            res = x[[1.2, 0]]
-
     def _test_slice_index_list_bool(self, place):
         data = np.random.rand(2, 3, 4).astype("float32")
         np_idx = np.array([[True, False, False], [True, False, True]])
@@ -375,9 +368,6 @@ class TestVariable(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             res = x[[True, False, False]]
-        with self.assertRaises(ValueError):
-            with paddle.static.program_guard(prog):
-                res = x[[False, False]]
 
     def _test_slice_index_scalar_bool(self, place):
         data = np.random.rand(1, 3, 4).astype("float32")

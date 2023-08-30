@@ -72,7 +72,7 @@ class TestBackward(unittest.TestCase):
             loss = net.build_model()
             self._check_backward(loss, main)
 
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
             exe.run(startup)
             exe.run(feed=net.init_data())
@@ -161,7 +161,7 @@ class TestBackward(unittest.TestCase):
 
         with fluid.program_guard(main, startup):
             loss = net.build_model()
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss, parameter_list=parameter_list)
             exe.run(startup)
             exe.run(feed=net.init_data())
@@ -179,7 +179,7 @@ class TestBackward(unittest.TestCase):
 
         with fluid.program_guard(main, startup):
             loss = net.build_model()
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss, no_grad_set=no_grad_set)
             exe.run(startup)
             exe.run(feed=net.init_data())

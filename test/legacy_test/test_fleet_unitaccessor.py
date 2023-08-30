@@ -59,7 +59,7 @@ class TestFleet1(unittest.TestCase):
             show = paddle.static.data(
                 name="show", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=show,
                 size=[1, 1],
                 is_sparse=True,
@@ -78,17 +78,17 @@ class TestFleet1(unittest.TestCase):
         strategy["embedding"]["sparse_accessor_class"] = "DownpourUnitAccessor"
         strategy["embedding"]["embed_sparse_optimizer"] = "naive"
         try:
-            adam1 = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam1 = paddle.optimizer.Adam(learning_rate=0.000005)
             adam1 = fleet.distributed_optimizer(adam1, strategy=strategy)
             adam1.minimize([cost], [scope])
 
             strategy["embedding"]["embed_sparse_optimizer"] = "adagrad"
-            adam2 = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam2 = paddle.optimizer.Adam(learning_rate=0.000005)
             adam2 = fleet.distributed_optimizer(adam2, strategy=strategy)
             adam2.minimize([cost], [scope])
 
             strategy["embedding"]["embed_sparse_optimizer"] = "adam"
-            adam3 = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam3 = paddle.optimizer.Adam(learning_rate=0.000005)
             adam3 = fleet.distributed_optimizer(adam3, strategy=strategy)
             adam3.minimize([cost], [scope])
         except:

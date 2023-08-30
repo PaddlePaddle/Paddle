@@ -300,7 +300,7 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
 
 def train(layer, input_size=784, label_size=1):
     # create optimizer
-    sgd = fluid.optimizer.SGDOptimizer(
+    sgd = paddle.optimizer.SGD(
         learning_rate=0.01, parameter_list=layer.parameters()
     )
     # create data loader
@@ -328,8 +328,8 @@ def train(layer, input_size=784, label_size=1):
 
 def train_with_label(layer, input_size=784, label_size=1):
     # create optimizer
-    sgd = fluid.optimizer.SGDOptimizer(
-        learning_rate=0.01, parameter_list=layer.parameters()
+    sgd = paddle.optimizer.SGD(
+        learning_rate=0.01, parameters=layer.parameters()
     )
     # create data loader
     train_loader = fluid.io.DataLoader.from_generator(capacity=5)
@@ -647,7 +647,13 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
             self.temp_dir.name, "multi_inout1.output_spec2/model"
         )
         output_spec = net.forward.outputs[:1]
-        paddle.jit.save(net, model_path, (input_x,), output_spec=output_spec)
+        paddle.jit.save(
+            net,
+            model_path,
+            net.forward.inputs,
+            output_spec=output_spec,
+            input_names_after_prune=[input_x.name],
+        )
         # 2. load again
         infer_layer2 = paddle.jit.load(model_path)
         # 3. predict
@@ -671,8 +677,8 @@ class TestJitSaveLoadConfig(unittest.TestCase):
 
     def test_output_spec(self):
         train_layer = LinearNetReturnLoss(8, 8)
-        adam = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.1, parameter_list=train_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.1, parameters=train_layer.parameters()
         )
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32')
@@ -779,8 +785,8 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
     def train_and_save(self):
         train_layer = LinearNetReturnHidden(8, 8)
-        adam = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.1, parameter_list=train_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.1, parameters=train_layer.parameters()
         )
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32')
@@ -945,9 +951,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
             layer,
             model_path,
             input_spec=[
-                InputSpec(shape=[None, 784], dtype='float32', name="image")
+                InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                True,
             ],
             output_spec=[out],
+            input_names_after_prune=["image"],
         )
 
         self.verify_inference_correctness(
@@ -967,9 +975,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
             layer,
             model_path,
             input_spec=[
-                InputSpec(shape=[None, 784], dtype='float32', name="image")
+                InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                True,
             ],
             output_spec=output_spec,
+            input_names_after_prune=["image"],
         )
 
         self.verify_inference_correctness(
@@ -1082,9 +1092,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 layer,
                 model_path,
                 input_spec=[
-                    InputSpec(shape=[None, 784], dtype='float32', name="image")
+                    InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                    True,
                 ],
                 output_spec=[out],
+                input_names_after_prune=["image"],
             )
 
 

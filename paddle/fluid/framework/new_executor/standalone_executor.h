@@ -50,6 +50,8 @@ class StandaloneExecutor {
   std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 
   Scope* scope_;
+
+  std::vector<std::string> fetch_var_names_;
 };
 
 }  // namespace framework

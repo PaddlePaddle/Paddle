@@ -34,7 +34,7 @@ class SparseLoadOp(unittest.TestCase):
                 'input', shape=[None, 1], dtype="int64"
             )
 
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=dense_input,
                 is_sparse=True,
                 size=[10, 10],
@@ -62,7 +62,7 @@ class SparseLoadOp(unittest.TestCase):
         with fluid.framework.program_guard(test_program, startup_program):
             with fluid.unique_name.guard():
                 loss = self.net(emb_array, fc_array)
-                optimizer = fluid.optimizer.Adam(1e-3)
+                optimizer = paddle.optimizer.Adam(1e-3)
                 optimizer.minimize(loss)
 
                 exe = fluid.Executor(fluid.CPUPlace())
@@ -107,7 +107,7 @@ class TestSparseLoadOpCase1(SparseLoadOp):
         loss = self.net(emb_array, fc_array)
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        optimizer = fluid.optimizer.Adam(1e-3)
+        optimizer = paddle.optimizer.Adam(1e-3)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
         fleet.init_server(model_path)

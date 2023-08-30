@@ -43,9 +43,11 @@ class ParallelMode:
     Examples:
         .. code-block:: python
 
-            import paddle
-            parallel_mode = paddle.distributed.ParallelMode
-            print(parallel_mode.DATA_PARALLEL)  # 0
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> parallel_mode = paddle.distributed.ParallelMode
+            >>> print(parallel_mode.DATA_PARALLEL)
+            0
 
     """
 
@@ -187,10 +189,11 @@ class HybridCommunicateGroup:
             "data"
         )
 
-        (
-            self.sharding_check_group,
-            self.sharding_check_comm_group,
-        ) = self._set_check_group("sharding")
+        if self._sharding_degree > 1:
+            (
+                self.sharding_check_group,
+                self.sharding_check_comm_group,
+            ) = self._set_check_group("sharding")
 
         # create p2p group
         self.is_first_stage = self.stage_id == 0

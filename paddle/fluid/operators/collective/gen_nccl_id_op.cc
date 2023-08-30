@@ -36,9 +36,8 @@ namespace operators {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
-  for (size_t i = 0; i < nccl_ids->size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::ncclGetUniqueId(&(*nccl_ids)[i]));
+  for (auto& nccl_id : *nccl_ids) {
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetUniqueId(&nccl_id));
   }
 }
 
@@ -118,8 +117,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
     }
 
     std::ostringstream ss;
-    for (size_t i = 0; i < trainers.size(); i++) {
-      ss << trainers[i] << ",";
+    for (auto& trainer : trainers) {
+      ss << trainer << ",";
     }
 
     VLOG(1) << "trainer_id:" << trainer_id

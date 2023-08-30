@@ -35,13 +35,11 @@ class TestSaveModelWithoutVar(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            fluid.io.save_inference_model(
-                dirname='test',
-                feeded_var_names=['data'],
-                target_vars=[data_plus],
-                executor=exe,
-                model_filename='model',
-                params_filename='params',
+            paddle.static.io.save_inference_model(
+                'test',
+                data,
+                [data_plus],
+                exe,
             )
             expected_warn = "no variable in your model, please ensure there are any variables in your model to save"
             self.assertTrue(len(w) > 0)

@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {
+Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()

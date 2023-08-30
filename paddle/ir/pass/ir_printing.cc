@@ -45,7 +45,7 @@ class IRPrinting : public PassInstrumentation {
   explicit IRPrinting(std::unique_ptr<PassManager::IRPrinterOption> option)
       : option_(std::move(option)) {}
 
-  ~IRPrinting() = default;
+  ~IRPrinting() override = default;
 
   void RunBeforePass(Pass *pass, Operation *op) override {
     if (option_->print_on_change()) {

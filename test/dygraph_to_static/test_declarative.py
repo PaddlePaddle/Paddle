@@ -30,6 +30,8 @@ from paddle.jit.dy2static.program_translator import (
 from paddle.nn import Layer
 from paddle.static import InputSpec
 
+os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
+
 
 class SimpleNet(Layer):
     def __init__(self):

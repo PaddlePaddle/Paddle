@@ -269,7 +269,7 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
                     platform::errors::Unavailable(
                         "Fruncate a file to a specified length failed!"));
 
-  void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void *ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr,
                     MAP_FAILED,
                     platform::errors::Unavailable(
@@ -391,7 +391,7 @@ void MemoryMapAllocationPool::Clear() {
   memory_map_allocations_.clear();
 }
 
-MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
+MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
 }  // namespace allocation
 }  // namespace memory

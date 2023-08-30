@@ -72,7 +72,7 @@ def create_program(data_format="NCHW"):
 
         loss = paddle.sum(y)
 
-        sgd = fluid.optimizer.SGD(learning_rate=0.01)
+        sgd = paddle.optimizer.SGD(learning_rate=0.01)
         sgd.minimize(loss)
 
     return loss, main, startup, conv._conv.weight

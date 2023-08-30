@@ -63,10 +63,14 @@ def train_static(args, batch_generator):
             ]
             input_field = util.InputField(input_slots)
             # Define DataLoader
-            data_loader = fluid.io.DataLoader.from_generator(
-                input_field.feed_list, capacity=60
+            data_loader = paddle.io.DataLoader(
+                batch_generator,
+                feed_list=input_field.feed_list,
+                return_list=False,
+                batch_size=None,
+                places=place,
             )
-            data_loader.set_batch_generator(batch_generator, places=place)
+
             # define model
             transformer = Transformer(
                 args.src_vocab_size,
@@ -183,8 +187,11 @@ def train_dygraph(args, batch_generator):
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
         # define data loader
-        train_loader = fluid.io.DataLoader.from_generator(capacity=10)
-        train_loader.set_batch_generator(batch_generator, places=place)
+
+        train_loader = paddle.io.DataLoader(
+            batch_generator, batch_size=None, places=place
+        )
+
         # define model
         transformer = Transformer(
             args.src_vocab_size,
@@ -322,8 +329,9 @@ def predict_dygraph(args, batch_generator):
         paddle.framework.random._manual_program_seed(SEED)
 
         # define data loader
-        test_loader = fluid.io.DataLoader.from_generator(capacity=10)
-        test_loader.set_batch_generator(batch_generator, places=place)
+        test_loader = paddle.io.DataLoader(
+            batch_generator, batch_size=None, places=place
+        )
 
         # define model
         transformer = Transformer(
@@ -433,8 +441,13 @@ def predict_static(args, batch_generator):
 
         input_field = util.InputField(input_slots)
         feed_list = input_field.feed_list
-        loader = fluid.io.DataLoader.from_generator(
-            feed_list=feed_list, capacity=10
+
+        loader = paddle.io.DataLoader(
+            batch_generator,
+            feed_list=feed_list,
+            return_list=False,
+            batch_size=None,
+            places=place,
         )
 
         # define model
@@ -533,6 +546,14 @@ class TestTransformer(unittest.TestCase):
         )
         args.output_file = os.path.join(self.temp_dir.name, args.output_file)
         batch_generator = util.get_feed_data_reader(args, mode)
+        if mode == 'train':
+            batch_generator = util.TransedWMT16TrainDataSet(
+                batch_generator, args.batch_size * (args.epoch + 1)
+            )
+        else:
+            batch_generator = util.TransedWMT16TestDataSet(
+                batch_generator, args.batch_size * (args.epoch + 1)
+            )
         return args, batch_generator
 
     def _test_train(self):

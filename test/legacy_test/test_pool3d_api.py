@@ -391,7 +391,7 @@ class TestPool3D_API(unittest.TestCase):
                     fetch_list=[y],
                 )
 
-                assert np.array_equal(res[0].shape, [1, 2, 1, 16, 16])
+                np.testing.assert_array_equal(res[0].shape, [1, 2, 1, 16, 16])
 
     def test_static_bf16_gpu(self):
         paddle.enable_static()
@@ -421,7 +421,7 @@ class TestPool3D_API(unittest.TestCase):
                     fetch_list=[y],
                 )
 
-                assert np.array_equal(res[0].shape, [1, 2, 1, 16, 16])
+                np.testing.assert_array_equal(res[0].shape, [1, 2, 1, 16, 16])
 
 
 class TestPool3DError_API(unittest.TestCase):

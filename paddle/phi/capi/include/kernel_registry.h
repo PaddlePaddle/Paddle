@@ -187,6 +187,30 @@ inline std::vector<phi::capi::DenseTensor> PD_MultiOutputAt(
   return ret;
 }
 
+inline std::vector<phi::capi::MetaTensor> PD_InferMetaMultiInputAt(
+    PD_InferMetaContext *ctx, size_t index) {
+  std::vector<phi::capi::MetaTensor> ret;
+  auto list = PD_InferMetaContextMultiInputAt(ctx, index);
+  auto data = reinterpret_cast<PD_MetaTensor **>(list.data);
+  for (size_t i = 0; i < list.size; ++i) {
+    ret.emplace_back(data[i]);
+  }
+  PD_DeletePointerList(list);
+  return ret;
+}
+
+inline std::vector<phi::capi::MetaTensor> PD_InferMetaMultiOutputAt(
+    PD_InferMetaContext *ctx, size_t index) {
+  std::vector<phi::capi::MetaTensor> ret;
+  auto list = PD_InferMetaContextMultiOutputAt(ctx, index);
+  auto data = reinterpret_cast<PD_MetaTensor **>(list.data);
+  for (size_t i = 0; i < list.size; ++i) {
+    ret.emplace_back(data[i]);
+  }
+  PD_DeletePointerList(list);
+  return ret;
+}
+
 template <typename T>
 inline std::vector<T *> PD_GetPointerVector(std::vector<T> *vec) {
   std::vector<T *> ret;
@@ -336,6 +360,152 @@ inline std::vector<bool> PD_AttrAt<std::vector<bool>>(PD_KernelContext *ctx,
   return list;
 }
 
+template <typename T>
+inline T PD_InferMetaAttrAt(PD_InferMetaContext *ctx, size_t index);
+
+template <>
+inline bool PD_InferMetaAttrAt<bool>(PD_InferMetaContext *ctx, size_t index) {
+  return PD_InferMetaContextBoolAttrAt(ctx, index);
+}
+
+template <>
+inline int32_t PD_InferMetaAttrAt<int32_t>(PD_InferMetaContext *ctx,
+                                           size_t index) {
+  return PD_InferMetaContextInt32AttrAt(ctx, index);
+}
+
+template <>
+inline int64_t PD_InferMetaAttrAt<int64_t>(PD_InferMetaContext *ctx,
+                                           size_t index) {
+  return PD_InferMetaContextInt64AttrAt(ctx, index);
+}
+
+template <>
+inline float PD_InferMetaAttrAt<float>(PD_InferMetaContext *ctx, size_t index) {
+  return PD_InferMetaContextFloatAttrAt(ctx, index);
+}
+
+template <>
+inline double PD_InferMetaAttrAt<double>(PD_InferMetaContext *ctx,
+                                         size_t index) {
+  return PD_InferMetaContextDoubleAttrAt(ctx, index);
+}
+
+template <>
+inline std::string PD_InferMetaAttrAt<std::string>(PD_InferMetaContext *ctx,
+                                                   size_t index) {
+  return PD_InferMetaContextStringAttrAt(ctx, index);
+}
+
+template <>
+inline PD_DataType PD_InferMetaAttrAt<PD_DataType>(PD_InferMetaContext *ctx,
+                                                   size_t index) {
+  return PD_InferMetaContextDataTypeAttrAt(ctx, index);
+}
+
+template <>
+inline PD_DataLayout PD_InferMetaAttrAt<PD_DataLayout>(PD_InferMetaContext *ctx,
+                                                       size_t index) {
+  return PD_InferMetaContextDataLayoutAttrAt(ctx, index);
+}
+
+template <>
+inline std::vector<int32_t> PD_InferMetaAttrAt<std::vector<int32_t>>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto list = PD_InferMetaContextListInt32AttrAt(ctx, index);
+  auto data = reinterpret_cast<int32_t *>(list.data);
+  std::vector<int32_t> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline std::vector<int64_t> PD_InferMetaAttrAt<std::vector<int64_t>>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto list = PD_InferMetaContextListInt64AttrAt(ctx, index);
+  auto data = reinterpret_cast<int64_t *>(list.data);
+  std::vector<int64_t> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline std::vector<float> PD_InferMetaAttrAt<std::vector<float>>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto list = PD_InferMetaContextListFloatAttrAt(ctx, index);
+  auto data = reinterpret_cast<float *>(list.data);
+  std::vector<float> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline std::vector<double> PD_InferMetaAttrAt<std::vector<double>>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto list = PD_InferMetaContextListDoubleAttrAt(ctx, index);
+  auto data = reinterpret_cast<double *>(list.data);
+  std::vector<double> cc_list(data, data + list.size);
+  return cc_list;
+}
+
+template <>
+inline phi::capi::Scalar PD_InferMetaAttrAt<phi::capi::Scalar>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto scalar = PD_InferMetaContextScalarAttrAt(ctx, index);
+  return phi::capi::Scalar(scalar);
+}
+
+template <>
+inline phi::capi::IntArray PD_InferMetaAttrAt<phi::capi::IntArray>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto int_array = PD_InferMetaContextIntArrayAttrAt(ctx, index);
+  return phi::capi::IntArray(int_array);
+}
+
+template <>
+inline phi::capi::Place PD_InferMetaAttrAt<phi::capi::Place>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto place = PD_InferMetaContextPlaceAttrAt(ctx, index);
+  return phi::capi::Place(place);
+}
+
+template <>
+inline std::vector<phi::capi::Scalar>
+PD_InferMetaAttrAt<std::vector<phi::capi::Scalar>>(PD_InferMetaContext *ctx,
+                                                   size_t index) {
+  auto c_list = PD_InferMetaContextListScalarAttrAt(ctx, index);
+  auto data = reinterpret_cast<PD_Scalar **>(c_list.data);
+  std::vector<phi::capi::Scalar> list;
+  for (size_t i = 0; i < c_list.size; ++i) {
+    list.emplace_back(data[i]);
+  }
+  PD_DeletePointerList(c_list);
+  return list;
+}
+
+template <>
+inline std::vector<std::string> PD_InferMetaAttrAt<std::vector<std::string>>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto c_list = PD_InferMetaContextListStringAttrAt(ctx, index);
+  auto data = reinterpret_cast<char **>(c_list.data);
+  std::vector<std::string> list;
+  for (size_t i = 0; i < c_list.size; ++i) {
+    list.emplace_back(data[i]);
+  }
+  PD_DeletePointerList(c_list);
+  return list;
+}
+
+template <>
+inline std::vector<bool> PD_InferMetaAttrAt<std::vector<bool>>(
+    PD_InferMetaContext *ctx, size_t index) {
+  auto c_list = PD_InferMetaContextListBoolAttrAt(ctx, index);
+  std::vector<bool> list;
+  auto data = reinterpret_cast<uint8_t *>(c_list.data);
+  for (size_t i = 0; i < c_list.size; ++i) {
+    list[i] = static_cast<bool>(data[i]);
+  }
+  PD_DeleteUInt8List(c_list);
+  return list;
+}
+
 #define CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(_)                                 \
   _(phi::capi::DenseTensor, ::PD_KernelArgumentType::PD_ARG_TYPE_TENSOR)    \
   _(phi::capi::DeviceContext, ::PD_KernelArgumentType::PD_ARG_TYPE_CONTEXT) \
@@ -391,12 +561,81 @@ using IntArray = capi::IntArray;
 using Place = capi::Place;
 using DataType = ::PD_DataType;
 using DataLayout = ::PD_DataLayout;
-
+using DenseTensor = capi::DenseTensor;
+using MetaTensor = capi::MetaTensor;
 }  // namespace phi
 
 #include "paddle/phi/capi/include/kernel_utils.h"
 
 // clang-format off
+
+#define PD_BUILD_NEW_PHI_KERNEL(kernel_name,                        \
+                            backend,                                \
+                            layout,                                 \
+                            meta_kernel_fn,                         \
+                            infer_shape_fn,                         \
+                            ...)                                    \
+  static void                                                       \
+      __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout(      \
+          const PD_KernelKey* kernel_key, PD_Kernel* kernel);       \
+  template <typename kernel_type>                                   \
+  struct __##kernel_name##_##backend##_##layout##__ {               \
+    __##kernel_name##_##backend##_##layout##__() {                  \
+      ::phi::capi::CustomKernelArgsParseFunctor<decltype(           \
+          &meta_kernel_fn<kernel_type>)>                            \
+          parser;                                                   \
+      PD_RegisterOperator(#kernel_name,                             \
+          parser.in_args_type.size(),                               \
+          parser.in_args_type.data(),                               \
+          parser.attr_args_type.size(),                             \
+          parser.attr_args_type.data(),                             \
+          parser.out_args_type.size(),                              \
+          parser.out_args_type.data(),                              \
+          PHI_CAPI_INFER_META(infer_shape_fn));                     \
+      PD_RegisterPhiKernel(                                         \
+          #kernel_name,                                             \
+          #backend,                                                 \
+          ::phi::capi::CppTypeToPDType<kernel_type>::Type(),        \
+          PD_DATALAYOUT(layout),                                    \
+          parser.in_args_type.size(),                               \
+          parser.in_args_type.data(),                               \
+          parser.attr_args_type.size(),                             \
+          parser.attr_args_type.data(),                             \
+          parser.out_args_type.size(),                              \
+          parser.out_args_type.data(),                              \
+          __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout,  \
+          CUSTOM_PHI_KERNEL(meta_kernel_fn<kernel_type>),           \
+          CUSTOM_PHI_VARIADIC_KERNEL(                               \
+            meta_kernel_fn<kernel_type>));                          \
+    }                                                               \
+    static void Touch() {}                                          \
+  };                                                                \
+  PD_CUSTOM_PHI_KERNEL_STATIC_ASSERT_GLOBAL_NAMESPACE(              \
+      CUSTOM_tp_ns_check_##kernel_name##_##backend##_##layout,      \
+      "PD_BUILD_KERNEL must be called in global namespace.");       \
+  static void                                                       \
+      __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(       \
+          const ::phi::capi::KernelKey &kernel_key,                 \
+          ::phi::capi::Kernel* kernel);                             \
+  _PD_BUILD_PHI_KERNEL(__##kernel_name##_##backend##_##layout##__,  \
+                       kernel_name,                                 \
+                       backend,                                     \
+                       layout,                                      \
+                       meta_kernel_fn,                              \
+                       __VA_ARGS__)                                 \
+  void                                                              \
+      __CUSTOM_adefs_CFN_##kernel_name##_##backend##_##layout(      \
+          const PD_KernelKey* kernel_key, PD_Kernel* kernel) {      \
+          auto cc_kernel = ::phi::capi::Kernel(kernel);             \
+          __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(   \
+            ::phi::capi::KernelKey(                                 \
+              const_cast<PD_KernelKey*>(kernel_key)),               \
+            &cc_kernel);                                            \
+      }                                                             \
+  void                                                              \
+      __CUSTOM_adefs_FN_##kernel_name##_##backend##_##layout(       \
+          const ::phi::capi::KernelKey &kernel_key,                 \
+          ::phi::capi::Kernel* kernel)
 
 #define PD_BUILD_PHI_KERNEL(kernel_name,                            \
                             backend,                                \

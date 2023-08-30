@@ -20,7 +20,6 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -57,9 +56,9 @@ class TestSimpleNet(unittest.TestCase):
                     input = paddle.to_tensor(input_word)
 
                     simplenet = SimpleNet(20, 32, dtype)
-                    adam = SGDOptimizer(
+                    adam = paddle.optimizer.SGD(
                         learning_rate=0.001,
-                        parameter_list=simplenet.parameters(),
+                        parameters=simplenet.parameters(),
                     )  # grad_clip=grad_clip
                     input_emb, emb = simplenet(input)
                     input_emb.retain_grads()
@@ -95,9 +94,9 @@ class TestSimpleNet(unittest.TestCase):
                     input = to_variable(input_word)
 
                     simplenet = SimpleNet(20, 32, "float32")
-                    adam = SGDOptimizer(
+                    adam = paddle.optimizer.SGD(
                         learning_rate=0.001,
-                        parameter_list=simplenet.parameters(),
+                        parameters=simplenet.parameters(),
                         grad_clip=grad_clip,
                     )
                     input_emb, emb = simplenet(input)

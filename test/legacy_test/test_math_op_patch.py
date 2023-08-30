@@ -23,7 +23,9 @@ from paddle import fluid
 
 
 class TestMathOpPatches(unittest.TestCase):
+    @classmethod
     def setUp(self):
+        np.random.seed(1024)
         paddle.enable_static()
 
     @prog_scope()

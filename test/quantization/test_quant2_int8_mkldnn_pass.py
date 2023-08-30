@@ -92,7 +92,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
             param.set(self.variables_mul["mul_weights"], self.place)
             qpass._dequantize_op_weights(graph, op_node, "Y", "Out")
 
-            assert np.allclose(
+            np.testing.assert_allclose(
                 self.scope.find_var("mul_weights").get_tensor(),
                 [
                     [

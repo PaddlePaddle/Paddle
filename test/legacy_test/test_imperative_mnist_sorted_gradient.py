@@ -22,7 +22,6 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import SGDOptimizer
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
@@ -36,8 +35,8 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
             mnist2 = MNIST()
-            sgd2 = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=mnist2.parameters()
+            sgd2 = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=mnist2.parameters()
             )
             train_reader2 = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True
@@ -93,7 +92,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             )
 
             mnist = MNIST()
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True
             )

@@ -23,7 +23,7 @@ namespace ir {
 
 class FuseQuantTranspose2DequantOneDNNPass : public FusePassBase {
  public:
-  virtual ~FuseQuantTranspose2DequantOneDNNPass() {}
+  virtual ~FuseQuantTranspose2DequantOneDNNPass() = default;
   FuseQuantTranspose2DequantOneDNNPass();
 
  protected:

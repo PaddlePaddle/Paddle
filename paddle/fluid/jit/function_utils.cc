@@ -44,8 +44,7 @@ void FetchOuts(const std::vector<std::string> &names,
                const framework::Scope &scope,
                std::vector<DenseTensor> *outs) {
   outs->reserve(names.size());
-  for (size_t i = 0; i < names.size(); ++i) {
-    auto &out_name = names[i];
+  for (const auto &out_name : names) {
     VLOG(3) << "fetch out: " << out_name;
     auto *var = scope.FindVar(out_name);
     auto &src_tensor = var->Get<DenseTensor>();
@@ -73,8 +72,7 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
                           const std::shared_ptr<VariableMap> &params_dict,
                           framework::Scope *scope) {
-  for (size_t i = 0; i < param_names.size(); ++i) {
-    std::string name = param_names[i];
+  for (auto name : param_names) {
     PADDLE_ENFORCE_EQ(params_dict->count(name),
                       1,
                       phi::errors::InvalidArgument(

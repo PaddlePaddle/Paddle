@@ -117,6 +117,9 @@ class MLPLayer(nn.Layer):
 
 
 def train_high_level(fetch):
+    paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
+        None
+    )
     global is_fetch
     is_fetch = fetch
     mlp = MLPLayer(
@@ -169,6 +172,9 @@ def train_high_level(fetch):
 
 
 def train_low_level():
+    paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
+        None
+    )
     mlp = MLPLayer(
         hidden_size=hidden_size,
         intermediate_size=4 * hidden_size,
@@ -194,7 +200,7 @@ def train_low_level():
     for feed_var, shape in my_feed_vars:
         feed_dict[feed_var.name] = np.zeros(shape, dtype="float32")
 
-    # Build normal normal dataloader
+    # Build normal dataloader
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     train_dataloader = engine.dataloader(
@@ -266,6 +272,9 @@ def train_low_level():
 
 
 def train_builtin_data_vars():
+    paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
+        None
+    )
     mlp = MLPLayer(
         hidden_size=hidden_size,
         intermediate_size=4 * hidden_size,
@@ -314,6 +323,9 @@ def train_builtin_data_vars():
 
 
 def train_non_builtin_data_vars():
+    paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
+        None
+    )
     main_program = static.Program()
     startup_program = static.Program()
     with static.program_guard(
@@ -373,6 +385,9 @@ def train_non_builtin_data_vars():
 
 
 def get_cost():
+    paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
+        None
+    )
     main_program = static.Program()
     startup_program = static.Program()
     with static.program_guard(
@@ -424,6 +439,9 @@ def get_cost():
 
 
 def get_cost_by_default_program():
+    paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
+        None
+    )
     main_program = static.default_main_program()
     startup_program = static.default_startup_program()
     with static.program_guard(
@@ -433,6 +451,9 @@ def get_cost_by_default_program():
             name="input", shape=[batch_size, image_size], dtype='float32'
         )
         label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
+        auto.shard_tensor(
+            input, process_mesh=PP_MESH_0, shard_spec=[None, None]
+        )
 
         loader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=False
@@ -468,6 +489,9 @@ def get_cost_by_default_program():
 
 
 def get_cost_by_spec():
+    paddle.distributed.auto_parallel.static.dist_context.set_default_distributed_context(
+        None
+    )
     mlp = MLPLayer(
         hidden_size=hidden_size,
         intermediate_size=4 * hidden_size,

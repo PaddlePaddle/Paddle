@@ -18,15 +18,16 @@ import unittest
 from time import time
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.optimizer import AdamOptimizer
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
+from paddle.optimizer import Adam
 
 SEED = 2020
 
@@ -158,6 +159,7 @@ class TestMNISTWithToStatic(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @ast_only_test
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -194,9 +196,7 @@ class TestMNISTWithToStatic(TestMNIST):
             mnist = MNIST()
             if to_static:
                 mnist = paddle.jit.to_static(mnist)
-            adam = AdamOptimizer(
-                learning_rate=0.001, parameter_list=mnist.parameters()
-            )
+            adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
             for epoch in range(self.epoch_num):
                 start = time()
@@ -238,12 +238,25 @@ class TestMNISTWithToStatic(TestMNIST):
                         loss_data.append(float(avg_loss))
                         # new save load check
                         self.check_jit_save_load(
-                            mnist, [dy_x_data], [img], to_static, prediction
+                            mnist,
+                            [dy_x_data],
+                            [img, label],
+                            to_static,
+                            prediction,
+                            [img.name],
                         )
                         break
         return loss_data
 
-    def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
+    def check_jit_save_load(
+        self,
+        model,
+        inputs,
+        input_spec,
+        to_static,
+        gt_out,
+        input_names_after_prune,
+    ):
         if to_static:
             infer_model_path = os.path.join(
                 self.temp_dir.name, 'test_mnist_inference_model_by_jit_save'
@@ -257,6 +270,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 path=model_save_prefix,
                 input_spec=input_spec,
                 output_spec=[gt_out],
+                input_names_after_prune=input_names_after_prune,
             )
             # load in static graph mode
             static_infer_out = self.jit_load_and_run_inference_static(
@@ -292,8 +306,8 @@ class TestMNISTWithToStatic(TestMNIST):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            dirname=model_path,
+        ] = paddle.static.io.load_inference_model(
+            path_prefix=model_path,
             executor=exe,
             model_filename=model_filename,
             params_filename=params_filename,

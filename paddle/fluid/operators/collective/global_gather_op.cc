@@ -58,7 +58,7 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
 
 class GlobalGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor send.");
     AddInput("local_count",
              "(Tensor) Tensor which has n_expert * world_size elements that "

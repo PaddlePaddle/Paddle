@@ -219,9 +219,9 @@ class TestTileAPI(unittest.TestCase):
             out_2 = paddle.tile(x, repeat_times=[positive_2, 3])
             out_3 = paddle.tile(x, repeat_times=repeat_times)
 
-            assert np.array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
-            assert np.array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
-            assert np.array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
+            np.testing.assert_array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
+            np.testing.assert_array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
+            np.testing.assert_array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
 
 
 class TestTileAPI_ZeroDim(unittest.TestCase):

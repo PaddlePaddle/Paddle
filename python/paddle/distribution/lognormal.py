@@ -49,36 +49,44 @@ class LogNormal(TransformedDistribution):
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle.distribution import LogNormal
+            >>> import paddle
+            >>> from paddle.distribution import LogNormal
 
-          # Define a single scalar LogNormal distribution.
-          dist = LogNormal(loc=0., scale=3.)
-          # Define a batch of two scalar valued LogNormals.
-          # The underlying Normal of first has mean 1 and standard deviation 11, the underlying Normal of second 2 and 22.
-          dist = LogNormal(loc=[1., 2.], scale=[11., 22.])
-          # Get 3 samples, returning a 3 x 2 tensor.
-          dist.sample((3, ))
+            >>> # Define a single scalar LogNormal distribution.
+            >>> dist = LogNormal(loc=0., scale=3.)
+            >>> # Define a batch of two scalar valued LogNormals.
+            >>> # The underlying Normal of first has mean 1 and standard deviation 11, the underlying Normal of second 2 and 22.
+            >>> dist = LogNormal(loc=[1., 2.], scale=[11., 22.])
+            >>> # Get 3 samples, returning a 3 x 2 tensor.
+            >>> dist.sample((3, ))
 
-          # Define a batch of two scalar valued LogNormals.
-          # Their underlying Normal have mean 1, but different standard deviations.
-          dist = LogNormal(loc=1., scale=[11., 22.])
+            >>> # Define a batch of two scalar valued LogNormals.
+            >>> # Their underlying Normal have mean 1, but different standard deviations.
+            >>> dist = LogNormal(loc=1., scale=[11., 22.])
 
-          # Complete example
-          value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            >>> # Complete example
+            >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-          lognormal_a = LogNormal([0.], [1.])
-          lognormal_b = LogNormal([0.5], [2.])
-          sample = lognormal_a.sample((2, ))
-          # a random tensor created by lognormal distribution with shape: [2, 1]
-          entropy = lognormal_a.entropy()
-          # [1.4189385] with shape: [1]
-          lp = lognormal_a.log_prob(value_tensor)
-          # [-0.72069150] with shape: [1]
-          p = lognormal_a.probs(value_tensor)
-          # [0.48641577] with shape: [1]
-          kl = lognormal_a.kl_divergence(lognormal_b)
-          # [0.34939718] with shape: [1]
+            >>> lognormal_a = LogNormal([0.], [1.])
+            >>> lognormal_b = LogNormal([0.5], [2.])
+            >>> sample = lognormal_a.sample((2, ))
+            >>> # a random tensor created by lognormal distribution with shape: [2, 1]
+            >>> entropy = lognormal_a.entropy()
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1.41893852])
+            >>> lp = lognormal_a.log_prob(value_tensor)
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-0.72069150])
+            >>> p = lognormal_a.probs(value_tensor)
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.48641577])
+            >>> kl = lognormal_a.kl_divergence(lognormal_b)
+            >>> print(kl)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.34939718])
     """
 
     def __init__(self, loc, scale):

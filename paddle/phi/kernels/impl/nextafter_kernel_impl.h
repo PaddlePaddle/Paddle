@@ -76,6 +76,15 @@ void NextafterKernel(const Context& ctx,
   auto y_data = y.data<T>();
   auto x_numel = x.numel();
 
+  if (x.dims().size() != 0 && y.dims().size() != 0) {
+    PADDLE_ENFORCE_EQ(
+        x.dims(),
+        y.dims(),
+        errors::InvalidArgument(
+            "x and y must have same shape, but x.shape = %s, y.shape = %s.",
+            x.dims(),
+            y.dims()));
+  }
   phi::funcs::ForRange<Context> for_range(ctx, x_numel);
   phi::NextafterFunctor<T> functor(x_data, y_data, out_data, x_numel);
   for_range(functor);

@@ -20,7 +20,6 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import init_data
 
 import paddle
-from paddle import fluid
 from paddle.fluid import core
 
 batch_size = 12
@@ -66,7 +65,7 @@ def conv_net(use_feed):
 
 
 def _optimizer(learning_rate=1e-6):
-    optimizer = fluid.optimizer.SGD(learning_rate=learning_rate)
+    optimizer = paddle.optimizer.SGD(learning_rate=learning_rate)
     return optimizer
 
 

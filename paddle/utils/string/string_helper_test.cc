@@ -33,7 +33,7 @@ TEST(StringHelper, EndsWith) {
 
 TEST(StringHelper, FormatStringAppend) {
   std::string str("hello");
-  char fmt[] = "%d";
+  char fmt[] = "%d";  // NOLINT
 
   paddle::string::format_string_append(str, fmt, 10);
   EXPECT_EQ(str, "hello10");
@@ -41,8 +41,8 @@ TEST(StringHelper, FormatStringAppend) {
 
 TEST(StringHelper, JoinStrings) {
   std::vector<std::string> v;
-  v.push_back("hello");
-  v.push_back("world");
+  v.emplace_back("hello");
+  v.emplace_back("world");
 
   std::string result = paddle::string::join_strings(v, ' ');
   EXPECT_EQ(result, "hello world");

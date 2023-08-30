@@ -23,12 +23,10 @@ try:
 except:
     from .utils import tqdm
 
-from inspect import isgeneratorfunction
 
 from paddle.fluid.framework import IrGraph, _get_var
 
 from ... import io, static
-from ...fluid import reader
 from ...framework import core
 from ...utils import unique_name
 from ..log_helper import get_logger
@@ -171,16 +169,16 @@ class PostTrainingQuantization:
                 When all parameters were saved in a single binary file, set it
                 as the real filename. If parameters were saved in separate files,
                 set it as 'None'. Default is 'None'.
-            batch_generator(Python Generator): The batch generator provides
+            batch_generator(Python Generator, depreceated): The batch generator provides
                 calibrate data for DataLoader, and it returns a batch every
                 time. Note that, sample_generator and batch_generator, only one
                 should be set. Beisdes, batch_generator supports lod tensor.
-            sample_generator(Python Generator): The sample generator provides
+            sample_generator(Python Generator, depreceated): The sample generator provides
                 calibrate data for DataLoader, and it only returns a sample every
                 time. Note that, sample_generator and batch_generator, only one
                 should be set. Beisdes, sample_generator dose not support lod tensor.
-            data_loader(Python Generator, Paddle.io.DataLoader, optional): The
-                Generator or Dataloader provides calibrate data, and it could
+            data_loader(Paddle.io.DataLoader): The
+                Dataloader provides calibrate data, and it could
                 return a batch every time.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
             batch_nums(int, optional): If batch_nums is not None, the number of
@@ -309,22 +307,12 @@ class PostTrainingQuantization:
 
         # Check inputs
         assert executor is not None, "The executor cannot be None."
-        assert any(
-            [gen is not None]
-            for gen in [sample_generator, batch_generator, data_loader]
-        ), (
-            "The sample_generator, batch_generator "
-            "and data_loader cannot be None in the same time."
-        )
-        if data_loader is not None:
-            assert isinstance(
-                data_loader,
-                (
-                    io.DataLoader,
-                    type(isgeneratorfunction),
-                    reader.GeneratorLoader,
-                ),
-            ), "data_loader only accepts `paddle.io.DataLoader` or Generator instance."
+        assert data_loader is not None, "data_loader cannot be None."
+
+        assert isinstance(
+            data_loader, io.DataLoader
+        ), "data_loader only accepts `paddle.io.DataLoader`."
+
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert (
             algo in self._support_algo_type
@@ -615,29 +603,8 @@ class PostTrainingQuantization:
             for var_name in self._feed_list
         ]
 
-        if self._data_loader is not None:
-            self._batch_nums = (
-                self._batch_nums if self._batch_nums else len(self._data_loader)
-            )
-            return
-        self._data_loader = reader.DataLoader.from_generator(
-            feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True
-        )
-        if self._sample_generator is not None:
-            self._data_loader.set_sample_generator(
-                self._sample_generator,
-                batch_size=self._batch_size,
-                drop_last=True,
-                places=self._place,
-            )
-        elif self._batch_generator is not None:
-            self._data_loader.set_batch_generator(
-                self._batch_generator, places=self._place
-            )
         self._batch_nums = (
-            self._batch_nums
-            if self._batch_nums
-            else len(list(self._data_loader))
+            self._batch_nums if self._batch_nums else len(self._data_loader)
         )
 
     def _optimize_fp32_model(self):

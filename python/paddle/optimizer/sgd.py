@@ -39,14 +39,14 @@ class SGD(Optimizer):
             This parameter is required in dygraph mode. \
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-            It canbe a float value as coeff of L2 regularization or \
+            It can be a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
@@ -56,17 +56,17 @@ class SGD(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
-            out = linear(inp)
-            loss = paddle.mean(out)
-            sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
-            out.backward()
-            sgd.step()
-            sgd.clear_grad()
+            >>> inp = paddle.uniform(min=-0.1, max=0.1, shape=[10, 10], dtype='float32')
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.to_tensor(inp)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+            >>> out.backward()
+            >>> sgd.step()
+            >>> sgd.clear_grad()
 
     """
 

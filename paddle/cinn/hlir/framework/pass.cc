@@ -15,7 +15,6 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
-#include "paddle/cinn/hlir/pass/use_general_pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 
 namespace cinn {

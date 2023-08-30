@@ -93,7 +93,7 @@ def bow_net(
         name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
     label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = paddle.static.nn.sequence_lod.sequence_pool(

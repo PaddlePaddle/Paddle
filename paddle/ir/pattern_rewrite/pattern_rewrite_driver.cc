@@ -46,9 +46,9 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
     worklist_.reserve(128);
     matcher_.ApplyDefaultCostModel();
     if (config.strict_mode != ir::GreedyRewriteStrictness::AnyOp) {
-      for (auto it = region_.begin(); it != region_.end(); ++it) {
-        for (auto op_it = (*it)->begin(); op_it != (*it)->end(); ++op_it) {
-          strict_mode_filtered_ops_.insert(*op_it);
+      for (auto& block : region_) {
+        for (auto& op_item : *block) {
+          strict_mode_filtered_ops_.insert(op_item);
         }
       }
     }
@@ -66,11 +66,9 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
       worklist_.clear();
       worklist_map_.clear();
 
-      for (auto block_it = region_.begin(); block_it != region_.end();
-           ++block_it) {
-        for (auto op_it = (*block_it)->begin(); op_it != (*block_it)->end();
-             ++op_it) {
-          worklist_.push_back(*op_it);
+      for (auto& block_item : region_) {
+        for (auto& op_item : *block_item) {
+          worklist_.push_back(op_item);
         }
       }
       if (config_.use_top_down_traversal) {
@@ -131,13 +129,13 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
 
   void NotifyOperationRemoved(ir::Operation* op) override {
     for (uint32_t i = 0; i < op->num_operands(); ++i) {
-      AddOperandToWorklist(op->operand(i));
+      AddOperandToWorklist(op->operand_source(i));
     }
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
-      for (auto it = region.begin(); it != region.end(); ++it) {
-        for (auto op_it = (*it)->begin(); op_it != (*it)->end(); ++op_it) {
-          RemoveFromWorklist(*op_it);
+      for (auto& block : region) {
+        for (auto& op_item : *block) {
+          RemoveFromWorklist(op_item);
         }
       }
     }

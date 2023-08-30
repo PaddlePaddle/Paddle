@@ -91,17 +91,17 @@ TEST(value_test, value_test) {
 
   // Test 2: op1_first_output -> op4_first_input
   ir::OpResult op1_first_output = op1->result(0);
-  ir::OpOperand op4_first_input = op4->op_operand(0);
+  ir::OpOperand op4_first_input = op4->operand(0);
 
   EXPECT_EQ(op1_first_output.first_use(), op4_first_input);
-  ir::OpOperand op3_first_input = op3->op_operand(0);
+  ir::OpOperand op3_first_input = op3->operand(0);
 
   EXPECT_EQ(op4_first_input.next_use(), op3_first_input);
   EXPECT_EQ(op3_first_input.next_use(), nullptr);
 
   // Test 3: Value iterator
-  using my_iterator = ir::Value::use_iterator;
-  my_iterator iter = op1->result(0).begin();
+  using my_iterator = ir::Value::UseIterator;
+  my_iterator iter = op1->result(0).use_begin();
   EXPECT_EQ(iter.owner(), op4);
   ++iter;
   EXPECT_EQ(iter.owner(), op3);
@@ -110,11 +110,11 @@ TEST(value_test, value_test) {
   // a = OP1(); b = OP2(); c = OP3(a, b); d, e, f, g, h, i, j = OP4(a, c);
   //
   c.ReplaceUsesWithIf(b, [](ir::OpOperand) { return true; });
-  EXPECT_EQ(op4->operand(1), b);
+  EXPECT_EQ(op4->operand_source(1), b);
   EXPECT_TRUE(c.use_empty());
 
   b.ReplaceAllUsesWith(a);
-  EXPECT_EQ(op4->operand(1), a);
+  EXPECT_EQ(op4->operand_source(1), a);
   EXPECT_TRUE(b.use_empty());
 
   // destroy

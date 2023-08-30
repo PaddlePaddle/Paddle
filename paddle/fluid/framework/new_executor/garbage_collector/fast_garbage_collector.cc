@@ -22,6 +22,11 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var,
   Add(var);
 }
 
+void InterpreterCoreFastGarbageCollector::Add(Variable* var,
+                                              const InstructionBase*) {
+  Add(var);
+}
+
 void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
   if (UNLIKELY(max_memory_size_ < 0) || var == nullptr) {
     return;

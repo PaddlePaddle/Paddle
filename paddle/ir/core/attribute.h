@@ -17,6 +17,9 @@
 #include "paddle/ir/core/cast_utils.h"
 #include "paddle/ir/core/type_id.h"
 
+constexpr char kAttrStopGradients[] = "stop_gradient";
+constexpr char kAttrIsPersisable[] = "is_persisable";
+
 namespace ir {
 class AttributeStorage;
 class AbstractAttribute;

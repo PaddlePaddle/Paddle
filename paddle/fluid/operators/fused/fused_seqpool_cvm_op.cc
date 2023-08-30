@@ -135,11 +135,11 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 0;
+    bool flag = false;
     for (auto* input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
-        flag = 1;
+        flag = true;
         break;
       }
     }
@@ -281,7 +281,6 @@ class FusedSeqpoolCVMGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(fused_seqpool_cvm,
                   ops::FusedSeqpoolCVMOp,

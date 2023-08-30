@@ -191,15 +191,15 @@ def weight_norm(layer, name='weight', dim=0):
     Examples:
         .. code-block:: python
 
-          from paddle.nn import Conv2D
-          from paddle.nn.utils import weight_norm
+          >>> from paddle.nn import Conv2D
+          >>> from paddle.nn.utils import weight_norm
 
-          conv = Conv2D(3, 5, 3)
-          wn = weight_norm(conv)
-          print(conv.weight_g.shape)
-          # [5]
-          print(conv.weight_v.shape)
-          # [5, 3, 3, 3]
+          >>> conv = Conv2D(3, 5, 3)
+          >>> wn = weight_norm(conv)
+          >>> print(conv.weight_g.shape)
+          [5]
+          >>> print(conv.weight_v.shape)
+          [5, 3, 3, 3]
     """
     WeightNorm.apply(layer, name, dim)
     return layer
@@ -219,22 +219,21 @@ def remove_weight_norm(layer, name='weight'):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Conv2D
-            from paddle.nn.utils import weight_norm, remove_weight_norm
+            >>> import paddle
+            >>> from paddle.nn import Conv2D
+            >>> from paddle.nn.utils import weight_norm, remove_weight_norm
+            >>> paddle.seed(2023)
 
-            conv = Conv2D(3, 5, 3)
-            wn = weight_norm(conv)
-            print(conv.weight_g)
-            # Parameter containing:
-            # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [0., 0., 0., 0., 0.])
-            # Conv2D(3, 5, kernel_size=[3, 3], data_format=NCHW)
-
-            remove_weight_norm(conv)
-            # The following is the effect after removing the weight norm:
-            # print(conv.weight_g)
-            # AttributeError: 'Conv2D' object has no attribute 'weight_g'
+            >>> conv = Conv2D(3, 5, 3)
+            >>> wn = weight_norm(conv)
+            >>> print(conv.weight_g)
+            Parameter containing:
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=False,
+                   [1.35883713, 1.32126212, 1.56303072, 1.20874095, 1.22893476])
+            >>> remove_weight_norm(conv)
+            >>> # The following is the effect after removing the weight norm:
+            >>> # print(conv.weight_g)
+            >>> # AttributeError: 'Conv2D' object has no attribute 'weight_g'
     """
     for k, hook in layer._forward_pre_hooks.items():
         if isinstance(hook, WeightNorm) and hook.name == name:

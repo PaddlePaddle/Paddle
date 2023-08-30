@@ -23,10 +23,8 @@ from paddle.distributed import fleet
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import fused_parameters
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 1))
-logger.info(f"g_shard_norm_align_dp {g_shard_norm_align_dp}")
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
+g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
 
 if g_shard_norm_align_dp:
     assert (
@@ -78,42 +76,54 @@ class DygraphShardingOptimizer:
         self.tensor_fusion = strategy.hybrid_configs[
             'sharding_configs'
         ].tensor_fusion
+        self.accumulate_steps = strategy.hybrid_configs[
+            'sharding_configs'
+        ].accumulate_steps
+        self.comm_overlap = strategy.hybrid_configs[
+            'sharding_configs'
+        ].comm_overlap
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
-        if self.tensor_fusion:
+        if self.tensor_fusion or self.comm_overlap:
             assert (
                 not pp_overlap
             ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
 
+        self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
+        self._rank2decay = {}
+        self._rank2fused = {}
+        self._comm_buffers = []
+
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
-        if not self.tensor_fusion:
-            self._set_inner_opt_attr(
-                '_parameter_list', self._rank2params[self._sharding_rank]
-            )
-            self._set_inner_opt_attr(
-                '_param_groups', self._rank2params[self._sharding_rank]
-            )
+        if not self.tensor_fusion and not self.comm_overlap:
+            local_params = self._rank2params[self._sharding_rank]
+            self._set_inner_opt_attr('_parameter_list', local_params)
+            self._set_inner_opt_attr('_param_groups', local_params)
         else:
-            self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
-            self._rank2decay = {}
-            self._rank2fused = {}
             self._tensor_fusion()
 
             decay_params = [
                 p.name for p in self._rank2decay[self._sharding_rank]
             ]
-            all_params = self._rank2fused[self._sharding_rank]
+            local_fused_params = self._rank2fused[self._sharding_rank]
             apply_decay_param_fun = lambda x: x in decay_params
 
-            params = []
+            all_fused_params = []
             for v in self._rank2fused.values():
-                params += v
-            self._parameter_list = params
-            self._param_groups = params
+                all_fused_params += v
+            self._parameter_list = all_fused_params
+            self._param_groups = all_fused_params
 
-            self._set_inner_opt_attr('_parameter_list', all_params)
-            self._set_inner_opt_attr('_param_groups', all_params)
+            self._set_inner_opt_attr('_parameter_list', local_fused_params)
+            self._set_inner_opt_attr('_param_groups', local_fused_params)
+            if self.comm_overlap:
+                # Only set local param for check finite when comm overlap.
+                # Under comm overlap, all grads will be communicated before check_finite.
+                # Therefore, each sharding rank can get all grads' info at check_finite.
+                # Without comm overlap, all grads will be communicated after check_finite,
+                # which means each sharding rank should do check_finite to all grads.
+                self._local_parameter_list = local_fused_params
             origin_decay_param_fun = getattr(
                 self._inner_opt, '_apply_decay_param_fun', None
             )
@@ -121,6 +131,14 @@ class DygraphShardingOptimizer:
                 self._set_inner_opt_attr(
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
+            # Note: during the tensor fusion for parameters, the allocator will apply for
+            # some extra GPU memory for the fused big paramters. This extra GPU memory will
+            # be useless at once the fusion has done. But the Paddle's allocator won't
+            # release those memory, it will hold that part in the memory poll. So after
+            # tensor fusion, the 'reserved' memory will increase but the 'allocate' memory
+            # won't change. To avoid failure on some other applications (such as some nvtx
+            # operations), here we manulay let the allocator release the cached memory.
+            paddle.device.cuda.empty_cache()
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -145,11 +163,23 @@ class DygraphShardingOptimizer:
                     p.clear_gradient(set_to_zero)
 
     def _tensor_fusion(self):
+        comm_group = self._hcg.get_sharding_parallel_group()
         for i in range(self._sharding_world_size):
             params = self._rank2params[i]
-            decay_fused, all_fused = fused_parameters(
-                params, self._use_main_grad
+            dst = comm_group.ranks[i]
+            # TODO(sharding dev): make scale_after_comm a field to be configured by user
+            decay_fused, all_fused, all_buffer = fused_parameters(
+                params,
+                use_main_grad=self._use_main_grad,
+                fuse_param=True,
+                comm_overlap=self.comm_overlap,
+                comm_group=comm_group,
+                dst=dst,
+                acc_step=self.accumulate_steps,
+                scale_after_comm=False,
             )
+            if self.comm_overlap:
+                self._comm_buffers += all_buffer
             self._rank2decay[i] = decay_fused
             self._rank2fused[i] = all_fused
             for p in all_fused:
@@ -199,6 +229,10 @@ class DygraphShardingOptimizer:
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
+        if self.comm_overlap:
+            for buffer in self._comm_buffers:
+                buffer.scale_grads()
+            return
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:

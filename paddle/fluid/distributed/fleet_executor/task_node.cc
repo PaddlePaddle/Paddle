@@ -144,8 +144,8 @@ bool TaskNode::AddDownstreamTask(int64_t task_id,
 std::string TaskNode::DebugString() const {
   std::ostringstream os;
   os << "role: " << role_ << ", task_id: " << task_id_ << "\n";
-  for (std::size_t i = 0; i < ops_.size(); ++i) {
-    os << ops_[i]->Type() << " ";
+  for (auto op : ops_) {
+    os << op->Type() << " ";
   }
   os << "\n";
   return os.str();

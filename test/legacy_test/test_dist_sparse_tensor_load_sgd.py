@@ -49,7 +49,7 @@ class TestSparseLoadProgram(unittest.TestCase):
                     inputs = paddle.static.data(
                         'input', shape=[None, 1], dtype="int64"
                     )
-                    emb = fluid.layers.embedding(
+                    emb = paddle.static.nn.embedding(
                         inputs, is_sparse=True, size=[10000, 128]
                     )
                     fc1 = paddle.static.nn.fc(
@@ -65,7 +65,7 @@ class TestSparseLoadProgramSGD(TestSparseLoadProgram):
         scope, train_program, startup_program, loss = self.net()
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
-                optimizer = fluid.optimizer.SGD(1e-3)
+                optimizer = paddle.optimizer.SGD(1e-3)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, self.strategy
                 )

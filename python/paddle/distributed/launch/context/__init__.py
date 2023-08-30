@@ -97,8 +97,9 @@ class Context:
 
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
+            attr, attr_type = v
             if k in self.envs:
                 print(
-                    f"LAUNCH WARNNING args {v} is override by env {self.envs[k]}"
+                    f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
                 )
-                setattr(self.args, v, self.envs[k])
+                setattr(self.args, attr, attr_type(self.envs[k]))

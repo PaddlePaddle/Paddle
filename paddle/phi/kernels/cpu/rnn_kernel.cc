@@ -34,7 +34,7 @@ namespace phi {
 
 template <typename T>
 struct Cell {
-  virtual ~Cell() {}
+  virtual ~Cell() = default;
   virtual void operator()(const CPUContext* dev_ctx UNUSED,
                           DenseTensor* input UNUSED,
                           const DenseTensor* weight_hh UNUSED,
@@ -208,7 +208,7 @@ struct LSTMCell : Cell<T> {
 template <typename T, typename CellType>
 struct Layer {
   explicit Layer(const CellType& cell) : cell_(cell) {}
-  virtual ~Layer() {}
+  virtual ~Layer() = default;
   void preprocess(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& weight,

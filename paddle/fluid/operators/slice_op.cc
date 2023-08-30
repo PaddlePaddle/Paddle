@@ -129,7 +129,7 @@ class SliceOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", out_dims);
-    if (axes.size() > 0 && axes[0] != 0) {
+    if (!axes.empty() && axes[0] != 0) {
       ctx->ShareLoD("Input", /*->*/ "Out");
     }
   }
@@ -151,7 +151,7 @@ class SliceOp : public framework::OperatorWithKernel {
                               ctx.GetPlace());
       }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
       auto vec_dims = phi::vectorize(in_tensor.dims());
@@ -204,8 +204,7 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto x_name = "Input";
     auto out_name = "Out";
     auto decrease_axis = ctx->GetAttr("decrease_axis");
-    auto not_decrease =
-        paddle::get<std::vector<int>>(decrease_axis).size() == 0;
+    auto not_decrease = paddle::get<std::vector<int>>(decrease_axis).empty();
     if (not_decrease) {
       // The default type of out is phi::DenseTensor.
       // However, if no axis is decreased and the type of input is not
@@ -333,7 +332,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or

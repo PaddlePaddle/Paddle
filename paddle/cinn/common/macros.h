@@ -67,17 +67,6 @@
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
-#define CINN_REGISTER_FUSION_PASS(pass_name, pass_class)               \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
-      __reg_pass__##pass_name,                                         \
-      "CINN_REGISTER_FUSION_PASS must be called in global namespace"); \
-  static ::cinn::hlir::pass::FusionPassRegistrar<pass_class>           \
-      __pass_registrar_##pass_name##__(#pass_name);                    \
-  int TouchFusionPassRegistrar_##pass_name() {                         \
-    __pass_registrar_##pass_name##__.Touch();                          \
-    return 0;                                                          \
-  }
-
 #define USE_FUSION_PASS(pass_name)                               \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
       __use_fusion_pass_##pass_name,                             \

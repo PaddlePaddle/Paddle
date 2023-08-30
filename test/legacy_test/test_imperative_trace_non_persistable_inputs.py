@@ -44,8 +44,8 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
             batch_size = 4
             fc_size = 2
             layer = SimpleFCLayer(feature_size, batch_size, fc_size)
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=layer.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=layer.parameters()
             )
 
             expected_persistable_vars = {

@@ -35,8 +35,8 @@ def set_default_dtype(d):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.set_default_dtype("float32")
+            >>> import paddle
+            >>> paddle.set_default_dtype("float32")
 
     """
     if isinstance(d, type):
@@ -76,7 +76,7 @@ def get_default_dtype():
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.get_default_dtype()
+            >>> import paddle
+            >>> paddle.get_default_dtype()
     """
     return LayerHelperBase.get_default_dtype()

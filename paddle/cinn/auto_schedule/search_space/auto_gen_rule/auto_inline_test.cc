@@ -40,8 +40,6 @@
 #include "paddle/cinn/utils/string.h"
 #include "test/cpp/cinn/concrete_program_builder.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace auto_schedule {
 
@@ -155,7 +153,6 @@ TEST(AutoInline, AddReluInline) {
 
   frontend::Program program = builder.Build();
 
-  FLAGS_cinn_ir_schedule = true;
   auto graph = std::make_shared<Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 

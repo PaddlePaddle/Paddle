@@ -45,7 +45,7 @@ TEST(Analyzer_ernie, profile) {
 #endif
   profile();
 }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_ernie, profile_mkldnn) { profile(true, false); }
 #endif
 
@@ -103,7 +103,7 @@ TEST(Analyzer_ernie, compare) {
 #endif
   compare();
 }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_ernie, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

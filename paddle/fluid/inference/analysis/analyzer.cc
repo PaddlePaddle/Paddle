@@ -23,7 +23,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-Analyzer::Analyzer() {}
+Analyzer::Analyzer() = default;
 
 void Analyzer::Run(Argument *argument) { RunAnalysis(argument); }
 

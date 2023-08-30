@@ -38,7 +38,7 @@ def main_test_func(place, dtype):
             )
             avg_cost = paddle.mean(cost)
 
-            adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
+            adam_optimizer = paddle.optimizer.Adam(0.01)
             adam_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]

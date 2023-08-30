@@ -49,17 +49,19 @@ class TestPSPassWithBow(unittest.TestCase):
             return acc
 
         def get_loss(cos_q_pt, cos_q_nt):
+            fill_shape = [-1, 1]
+            fill_shape[0] = paddle.shape(cos_q_pt)[0].item()
             loss_op1 = paddle.subtract(
-                fluid.layers.fill_constant_batch_size_like(
-                    input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
+                paddle.full(
+                    shape=fill_shape, fill_value=margin, dtype='float32'
                 ),
                 cos_q_pt,
             )
             loss_op2 = paddle.add(loss_op1, cos_q_nt)
+            fill_shape = [-1, 1]
+            fill_shape[0] = paddle.shape(loss_op2)[0].item()
             loss_op3 = paddle.maximum(
-                fluid.layers.fill_constant_batch_size_like(
-                    input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
-                ),
+                paddle.full(shape=fill_shape, fill_value=0.0, dtype='float32'),
                 loss_op2,
             )
             avg_cost = paddle.mean(loss_op3)
@@ -73,7 +75,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="query_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        q_emb = fluid.layers.embedding(
+        q_emb = paddle.static.nn.embedding(
             input=q,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -107,7 +109,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="pos_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        pt_emb = fluid.layers.embedding(
+        pt_emb = paddle.static.nn.embedding(
             input=pt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -140,7 +142,7 @@ class TestPSPassWithBow(unittest.TestCase):
             name="neg_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        nt_emb = fluid.layers.embedding(
+        nt_emb = paddle.static.nn.embedding(
             input=nt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
@@ -194,7 +196,7 @@ class TestPSPassWithBow(unittest.TestCase):
         fleet.init(role)
         loss, acc, _ = self.net()
 
-        optimizer = fluid.optimizer.Adam(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=base_lr,
                 gamma=0.969,

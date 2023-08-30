@@ -54,7 +54,7 @@ class CodeGenCUDA_Dev : public CodeGenC {
   //! Compile on NVRTC.
   std::string Compile(const ir::Module& module, bool for_nvrtc = true);
 
-  std::string Compile(const ir::LoweredFunc& func);
+  void Compile(const ir::LoweredFunc& func);
 
   /**
    * \brief Print a function argument in CUDA syntax. Currently, just some

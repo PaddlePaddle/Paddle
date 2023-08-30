@@ -96,12 +96,22 @@ struct SplitDenseTensor<platform::CustomDeviceContext, T> {
                                       const phi::Scalar &,
                                       std::vector<phi::DenseTensor *>);
     auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+    auto in_dims = phi::vectorize(in.dims());
+    auto origin_out_dims = phi::vectorize(out->at(0)->dims());
+    for (auto *tensor : *out) {
+      if (origin_out_dims.size() != in_dims.size()) {
+        std::vector<int> new_dims({1});
+        new_dims.insert(
+            new_dims.end(), origin_out_dims.begin(), origin_out_dims.end());
+        tensor->Resize(phi::make_ddim(new_dims));
+      }
+    }
     (*kernel_fn)(context, in, out->size(), phi::Scalar(0), *out);
     for (auto *tensor : *out) {
-      auto dim_vec = phi::vectorize<int>(tensor->dims());
-      if (dim_vec.size() > 0 && dim_vec[0] == 1) {
-        tensor->Resize(phi::make_ddim(
-            std::vector<int>(dim_vec.begin() + 1, dim_vec.end())));
+      auto tensor_dims = phi::vectorize(tensor->dims());
+      if (tensor_dims.size() != origin_out_dims.size()) {
+        tensor->Resize(phi::make_ddim(origin_out_dims));
       }
     }
   }

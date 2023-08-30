@@ -36,7 +36,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             name='x1', shape=[-1, 1], dtype='int64', lod_level=1
         )
 
-        emb = fluid.layers.embedding(
+        emb = paddle.static.nn.embedding(
             input=x1,
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
@@ -47,7 +47,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         )
 
         pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=emb, pool_type="sum"
+            input=emb.squeeze(-2), pool_type="sum"
         )
         z = paddle.concat([x, pool], axis=1)
 
@@ -70,7 +70,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def run_pserver(self, role, strategy):
         fleet.init(role)
         avg_cost, x, z, y = self.net()
-        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = paddle.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
@@ -83,7 +83,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
         fleet.init(role)
         avg_cost, x, z, y = self.net()
-        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = paddle.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 

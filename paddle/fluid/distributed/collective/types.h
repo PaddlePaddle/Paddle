@@ -24,7 +24,8 @@ namespace paddle {
 namespace distributed {
 
 // TODO(shenliang03): To support AVG for reduce
-enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
+// TODO(liyurui): remove this reduce op, use phi reduce op instead.
+enum class ReduceOp : std::uint8_t { SUM = 0, MAX, MIN, PRODUCT, AVG };
 
 struct AllreduceOptions {
   ReduceOp reduce_op = ReduceOp::SUM;

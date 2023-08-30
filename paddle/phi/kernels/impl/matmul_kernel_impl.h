@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -1078,6 +1079,38 @@ void MatMulInt8Function(const Context& ctx,
 #endif
 }
 
+template <typename Context, typename T>
+typename std::enable_if<std::is_integral<T>::value>::type
+MatmulJudgeDtypeKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const std::vector<std::int64_t>& x_dims,
+                       const std::vector<std::int64_t>& y_dims,
+                       DenseTensor* out,
+                       bool transpose_x,
+                       bool transpose_y) {
+  auto x_tmp = phi::Cast<T, Context>(ctx, x, phi::DataType::FLOAT32);
+  auto y_tmp = phi::Cast<T, Context>(ctx, y, phi::DataType::FLOAT32);
+  DenseTensor out_tmp;
+  MatMulFunction<Context, float>(
+      ctx, x_tmp, y_tmp, x_dims, y_dims, &out_tmp, transpose_x, transpose_y);
+  phi::CastKernel<float>(ctx, out_tmp, x.dtype(), out);
+}
+
+template <typename Context, typename T>
+typename std::enable_if<!std::is_integral<T>::value>::type
+MatmulJudgeDtypeKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const std::vector<std::int64_t>& x_dims,
+                       const std::vector<std::int64_t>& y_dims,
+                       DenseTensor* out,
+                       bool transpose_x,
+                       bool transpose_y) {
+  MatMulFunction<Context, T>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+}
+
 template <typename T, typename Context>
 void MatmulKernel(const Context& ctx,
                   const DenseTensor& x,
@@ -1097,7 +1130,7 @@ void MatmulKernel(const Context& ctx,
                                    " but reviced dims size is 0. "));
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
-  MatMulFunction<Context, T>(
+  MatmulJudgeDtypeKernel<Context, T>(
       ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }
 

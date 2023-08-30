@@ -77,7 +77,7 @@ class AutoCheckpointBase(unittest.TestCase):
                 fc_tmp, label
             )
             loss = paddle.mean(cross_entropy)
-            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             if minimize:
                 sgd.minimize(loss)
             return sgd, loss, image, label

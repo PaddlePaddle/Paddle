@@ -85,14 +85,14 @@ void GraphPyService::set_up(std::string ips_str,
     std::vector<std::vector<int32_t>> table_feat_conf_feat_shape;
     */
   id_to_edge = edge_types;
-  for (size_t table_id = 0; table_id < edge_types.size(); table_id++) {
+  for (const auto& edge_type : edge_types) {
     int res = static_cast<int>(edge_to_id.size());
-    edge_to_id[edge_types[table_id]] = res;
+    edge_to_id[edge_type] = res;
   }
   id_to_feature = node_types;
-  for (size_t table_id = 0; table_id < node_types.size(); table_id++) {
+  for (const auto& node_type : node_types) {
     int res = static_cast<int>(feature_to_id.size());
-    feature_to_id[node_types[table_id]] = res;
+    feature_to_id[node_type] = res;
   }
   table_feat_mapping.resize(node_types.size());
   this->table_feat_conf_feat_name.resize(node_types.size());

@@ -197,7 +197,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                 amp_init = None
 
             if gm_steps > 1 and not use_distributed_lamb:
-                optimizer = paddle.fluid.optimizer.GradientMergeOptimizer(
+                optimizer = paddle.incubate.optimizer.GradientMergeOptimizer(
                     optimizer, k_steps=gm_steps, avg=False
                 )
 

@@ -28,7 +28,7 @@ namespace ir {
 
 class Node;
 
-TrtMapOpsToMatrixMultiplyPass::TrtMapOpsToMatrixMultiplyPass() {}
+TrtMapOpsToMatrixMultiplyPass::TrtMapOpsToMatrixMultiplyPass() = default;
 
 void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(

@@ -186,10 +186,6 @@ add_custom_target(paddle_python ALL
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 
-if(WITH_TESTING)
-  add_subdirectory(paddle/fluid/tests)
-endif()
-
 if(NOT WITH_SETUP_INSTALL)
   install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
           DESTINATION opt/paddle/share/wheels)

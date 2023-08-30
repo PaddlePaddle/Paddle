@@ -20,7 +20,7 @@
 
 namespace ir {
 
-const char *ModuleOp::attributes_name[attributes_num] = {"program"};
+const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
 
 Program *ModuleOp::program() {
   const AttributeMap &attr = this->attributes();
@@ -40,9 +40,11 @@ Block *ModuleOp::block() {
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   ir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
-  argument.AddRegion()->emplace_back();
+  argument.num_regions = 1;
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  return ModuleOp(Operation::Create(std::move(argument)));
+  Operation *op = Operation::Create(std::move(argument));
+  op->region(0).emplace_back();
+  return ModuleOp(op);
 }
 
 void ModuleOp::Destroy() {
@@ -67,7 +69,7 @@ void ModuleOp::Verify() const {
   IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
 }
 
-const char *GetParameterOp::attributes_name[attributes_num] = {
+const char *GetParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
 void GetParameterOp::Build(Builder &builder,
@@ -94,7 +96,7 @@ void GetParameterOp::Verify() const {
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 }
 
-const char *SetParameterOp::attributes_name[attributes_num] = {
+const char *SetParameterOp::attributes_name[attributes_num] = {  // NOLINT
     "parameter_name"};
 
 void SetParameterOp::Build(Builder &builder,             // NOLINT
@@ -161,7 +163,18 @@ void CombineOp::Verify() const {
   }
 }
 
-const char *SliceOp::attributes_name[attributes_num] = {"index"};
+const char *SliceOp::attributes_name[attributes_num] = {"index"};  // NOLINT
+
+void SliceOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    const ir::OpResult &input,
+                    int index) {
+  argument.inputs = {input};
+  argument.output_types.emplace_back(input.type()
+                                         .dyn_cast<ir::VectorType>()
+                                         .data()[static_cast<size_t>(index)]);
+}
+
 void SliceOp::Verify() const {
   // inputs.size() == 1
   auto input_size = num_operands();
@@ -207,7 +220,46 @@ void SliceOp::Verify() const {
       output_type);
 }
 
-const char *ConstantOp::attributes_name[attributes_num] = {"value"};
+void SplitOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    const ir::OpResult &input) {
+  argument.inputs = {input};
+  for (size_t idx = 0; idx < input.type().dyn_cast<ir::VectorType>().size();
+       ++idx) {
+    argument.output_types.emplace_back(
+        input.type().dyn_cast<ir::VectorType>().data()[idx]);
+  }
+}
+
+void SplitOp::Verify() const {
+  // inputs.size() == 1
+  IR_ENFORCE(num_operands() == 1u, "The size of inputs must be equal to 1.");
+
+  // input_type == Vector<Type>
+  auto input_type = (*this)->operand(0).type().dyn_cast<VectorType>();
+  IR_ENFORCE(input_type, "The type of inputs[0] must be equal to VectorType.");
+
+  // inputs[0].size() == outputs.size()
+  auto output_num = num_results();
+  IR_ENFORCE(input_type.size() == output_num,
+             "The size %d of output must be equal to size %d of inputs.",
+             output_num,
+             input_type.size());
+
+  // for all i in outputs.size(): outputs[i].type == inputs[0][i].type
+  for (size_t i = 0; i < output_num; ++i) {
+    auto type = (*this)->result(i).type();
+    IR_ENFORCE(input_type[i] == type,
+               "The type %s of inputs[0][%d] must be "
+               "equal to type %s of outputs[%d].",
+               input_type[i],
+               i,
+               type,
+               i);
+  }
+}
+
+const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT
 
 void ConstantOp::Build(Builder &builder,
                        OperationArgument &argument,
@@ -232,5 +284,6 @@ IR_DEFINE_EXPLICIT_TYPE_ID(ir::GetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::SetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::CombineOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::SliceOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(ir::ConstantOp)

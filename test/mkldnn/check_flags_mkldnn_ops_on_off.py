@@ -54,7 +54,7 @@ def check():
         np_res = np.add(a_np, b_np)
         np_res = np.matmul(np_res, np.transpose(b_np, (0, 2, 1)))
         np_res = np.maximum(np_res, 0)
-    assert np.allclose(res1.numpy(), np_res, atol=1e-3)
+    np.testing.assert_allclose(res1.numpy(), np_res, atol=1e-3)
 
 
 if __name__ == '__main__':

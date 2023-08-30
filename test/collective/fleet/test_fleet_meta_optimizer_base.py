@@ -51,7 +51,7 @@ class TestFleetMetaOptimizerBase(unittest.TestCase):
                 )
                 avg_cost = paddle.mean(x=cost)
 
-                optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.01)
                 opt = MetaOptimizerBase(optimizer)
                 opt_ops, params_grads = opt.minimize(avg_cost)
                 opt.apply_optimize(

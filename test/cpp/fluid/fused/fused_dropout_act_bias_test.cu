@@ -89,7 +89,7 @@ struct TestFusedDropoutActBias {
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
 
-  ~TestFusedDropoutActBias() {}
+  ~TestFusedDropoutActBias() = default;
 
   void SetUp() {
     const int n = rows * cols;

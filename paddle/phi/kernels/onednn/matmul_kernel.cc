@@ -23,7 +23,6 @@ using dnnl::engine;
 using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
-using dnnl::stream;
 using phi::ReshapeToMatrix;
 
 namespace phi {
@@ -35,7 +34,7 @@ KernelKey MatmulGetkernelTypeForVar(const GetKernelTypeForVarContext *ctx) {
     // only promote inputs’s types when contains complex input
     return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
   } else {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
     // op previously) then we also need to rotate shape NHWC -> NCWH
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
@@ -407,7 +406,7 @@ class MulPrimitiveFactory {
   memory Reorder(const memory::desc &src_desc,
                  const memory::desc &dst_desc,
                  void *src_data,
-                 void *dst_data = NULL) {
+                 void *dst_data = nullptr) {
     auto src_mem = memory(src_desc, engine_, src_data);
     auto dst_mem = dst_data ? memory(dst_desc, engine_, dst_data)
                             : memory(dst_desc, engine_);

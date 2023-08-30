@@ -242,6 +242,11 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             self.assertTrue(int(a) == 100)
             self.assertTrue(int(a) == 100)
 
+        a = paddle.to_tensor(1000000.0, dtype='bfloat16')
+        self.assertTrue(float(a) == 999424.0)
+        self.assertTrue(int(a) == 999424)
+        self.assertTrue(int(a) == 999424)
+
     def test_len(self):
         a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -259,6 +264,16 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             self.assertTrue(list1[var1] == 3)
             str1 = "just test"
             self.assertTrue(str1[var1] == 's')
+
+        var1 = paddle.to_tensor(2.0, dtype='bfloat16')
+        i_tmp = 0
+        for i in range(var1):
+            self.assertTrue(i == i_tmp)
+            i_tmp = i_tmp + 1
+        list1 = [1, 2, 3, 4, 5]
+        self.assertTrue(list1[var1] == 3)
+        str1 = "just test"
+        self.assertTrue(str1[var1] == 's')
 
     def test_np_left_mul(self):
         with fluid.dygraph.guard():

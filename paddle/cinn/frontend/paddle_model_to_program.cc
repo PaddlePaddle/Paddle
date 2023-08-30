@@ -21,6 +21,8 @@
 #include "paddle/cinn/frontend/paddle/pb/program_desc.h"
 #include "paddle/cinn/hlir/framework/node.h"
 
+DECLARE_double(cinn_infer_model_version);
+
 namespace cinn {
 namespace frontend {
 using utils::Join;
@@ -398,12 +400,6 @@ void PaddleModelToProgram::AddOpMapper_relu6() {
     CHECK_EQ(op_desc.Output("Out").size(), 1UL);
     auto out_name = op_desc.Output("Out").front();
 
-    absl::flat_hash_map<std::string, hlir::framework::NodeAttr::attr_t> attrs;
-    CHECK(op_desc.HasAttr("threshold"));
-    CHECK_EQ(op_desc.GetAttr<float>("threshold"), 6.0f)
-        << "Threshold of Relu6 is not 6! To be implemented.";
-    attrs["threshold"] = op_desc.GetAttr<float>("threshold");
-
     auto x = GetVar(TransValidVarName(x_name));
     auto out = net_builder_->Relu6(x);
     AddVar(TransValidVarName(out_name), out);
@@ -746,14 +742,25 @@ Variable PaddleModelToProgram::GetVar(const std::string& name) {
 std::unique_ptr<Program> PaddleModelToProgram::operator()(
     const std::string& model_dir, bool is_combined) {
   paddle::cpp::ProgramDesc program_desc;
-  paddle::LoadModelPb(model_dir,
-                      "__model__",
-                      "",
-                      scope_,
-                      &program_desc,
-                      is_combined,
-                      false,
-                      target_);
+  if (FLAGS_cinn_infer_model_version < 2.0) {
+    paddle::LoadModelPb(model_dir,
+                        "/__model__",
+                        "/params",
+                        scope_,
+                        &program_desc,
+                        is_combined,
+                        false,
+                        target_);
+  } else {
+    paddle::LoadModelPb(model_dir,
+                        ".pdmodel",
+                        ".pdiparams",
+                        scope_,
+                        &program_desc,
+                        is_combined,
+                        false,
+                        target_);
+  }
   CHECK_EQ(program_desc.BlocksSize(), 1)
       << "CINN can only support the model with a single block";
   auto* block_desc = program_desc.GetBlock<paddle::cpp::BlockDesc>(0);

@@ -57,7 +57,7 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(
@@ -131,7 +131,7 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(
@@ -207,7 +207,7 @@ class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
         with fluid.unique_name.guard():
             with fluid.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
-                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
         with fluid.unique_name.guard():
             with fluid.program_guard(

@@ -24,7 +24,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid
-from paddle.fluid import core, layers
+from paddle.fluid import core
 from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import Program, default_main_program, program_guard
 from paddle.incubate.layers.nn import (
@@ -609,8 +609,8 @@ class TestLayer(LayerTest):
                 name='word', shape=[-1, 1], dtype='int64'
             )
             data_t.desc.set_need_check_feed(False)
-            emb = layers.embedding(
-                input=data_t,
+            emb = paddle.static.nn.embedding(
+                input=data_t.squeeze(-2),
                 size=[dict_size, 32],
                 param_attr='emb.w',
                 is_sparse=False,
@@ -637,8 +637,8 @@ class TestLayer(LayerTest):
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
-        self.assertTrue(np.allclose(static_rlt2, static_rlt))
-        self.assertTrue(np.allclose(dy_rlt_value, static_rlt))
+        np.testing.assert_allclose(static_rlt2[0], static_rlt)
+        np.testing.assert_allclose(dy_rlt_value[0], static_rlt)
 
         with self.dynamic_graph():
             custom_weight = np.random.randn(dict_size, 32).astype("float32")
@@ -1662,26 +1662,26 @@ class TestBook(LayerTest):
             forth_word = self._get_data(name='forthw', shape=[1], dtype='int64')
             next_word = self._get_data(name='nextw', shape=[1], dtype='int64')
 
-            embed_first = layers.embedding(
+            embed_first = paddle.static.nn.embedding(
                 input=first_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
                 param_attr='shared_w',
             )
-            embed_second = layers.embedding(
+            embed_second = paddle.static.nn.embedding(
                 input=second_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
                 param_attr='shared_w',
             )
 
-            embed_third = layers.embedding(
+            embed_third = paddle.static.nn.embedding(
                 input=third_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
                 param_attr='shared_w',
             )
-            embed_forth = layers.embedding(
+            embed_forth = paddle.static.nn.embedding(
                 input=forth_word,
                 size=[dict_size, embed_size],
                 dtype='float32',
@@ -1754,7 +1754,7 @@ class TestBook(LayerTest):
             if i == label_word:
                 continue
 
-            emb = layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=words[i],
                 size=[dict_size, 32],
                 param_attr='emb.w',
@@ -2130,16 +2130,6 @@ class TestBook(LayerTest):
             )
             out = paddle.strided_slice(
                 x, axes=axes, starts=starts, ends=ends, strides=strides
-            )
-            return out
-
-    def test_fill_constant_batch_size_like(self):
-        with self.static_graph():
-            like = paddle.tensor.fill_constant(
-                shape=[1, 200], value=10, dtype='int64'
-            )
-            out = layers.fill_constant_batch_size_like(
-                input=like, shape=[2, 3300], value=1315454564656, dtype='int64'
             )
             return out
 
