@@ -264,21 +264,18 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.static as static
-
-            paddle.enable_static()
-
-            data = static.data(name="x", shape=[None, 1], dtype="float32")
-            hidden = static.nn.fc(data, size=10)
-            loss = paddle.mean(hidden)
-            paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-
-            build_strategy = static.BuildStrategy()
-            build_strategy.enable_inplace = True
-            build_strategy.memory_optimize = True
-            build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
-            program = static.CompiledProgram(static.default_main_program(), build_strategy=build_strategy)
+            >>> import paddle
+            >>> import paddle.static as static
+            >>> paddle.enable_static()
+            >>> data = static.data(name="x", shape=[None, 1], dtype="float32")
+            >>> hidden = static.nn.fc(data, size=10)
+            >>> loss = paddle.mean(hidden)
+            >>> paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+            >>> build_strategy = static.BuildStrategy()
+            >>> build_strategy.enable_inplace = True
+            >>> build_strategy.memory_optimize = True
+            >>> build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
+            >>> program = static.CompiledProgram(static.default_main_program(), build_strategy=build_strategy)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -316,13 +313,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
                   )DOC")
       .def_property(
           "gradient_scale_strategy",
@@ -345,37 +340,30 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import numpy
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        use_cuda = True
-                        place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-                        exe = static.Executor(place)
-
-                        data = static.data(name='X', shape=[None, 1], dtype='float32')
-                        hidden = static.nn.fc(data, size=10)
-                        loss = paddle.mean(hidden)
-                        paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-
-                        exe.run(static.default_startup_program())
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.gradient_scale_strategy = \
-                                    static.BuildStrategy.GradientScaleStrategy.Customized
-                        compiled_prog = static.CompiledProgram(
-                                    static.default_main_program(),
-                                    build_strategy=build_strategy,
-                        )
-
-                        x = numpy.random.random(size=(10, 1)).astype('float32')
-                        loss_grad = numpy.ones((1)).astype("float32") * 0.01
-                        loss_grad_name = loss.name+"@GRAD"
-                        loss_data = exe.run(compiled_prog,
-                                                feed={"X": x, loss_grad_name : loss_grad},
-                                                fetch_list=[loss.name, loss_grad_name])
+                        >>> import numpy
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> use_cuda = True
+                        >>> place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+                        >>> exe = static.Executor(place)
+                        >>> data = static.data(name='X', shape=[None, 1], dtype='float32')
+                        >>> hidden = static.nn.fc(data, size=10)
+                        >>> loss = paddle.mean(hidden)
+                        >>> paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
+                        >>> exe.run(static.default_startup_program())
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.gradient_scale_strategy = \
+                        ...             static.BuildStrategy.GradientScaleStrategy.Customized
+                        >>> compiled_prog = static.CompiledProgram(
+                        ...             static.default_main_program(),
+                        ...             build_strategy=build_strategy)
+                        >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+                        >>> loss_grad = numpy.ones((1)).astype("float32") * 0.01
+                        >>> loss_grad_name = loss.name+"@GRAD"
+                        >>> loss_data = exe.run(compiled_prog,
+                        ...                         feed={"X": x, loss_grad_name : loss_grad},
+                        ...                         fetch_list=[loss.name, loss_grad_name])
                    )DOC")
       .def_property(
           "debug_graphviz_path",
@@ -395,13 +383,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.debug_graphviz_path = "./graph"
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.debug_graphviz_path = "./graph"
                     )DOC")
       .def_property(
           "enable_sequential_execution",
@@ -422,13 +408,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.enable_sequential_execution = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.enable_sequential_execution = True
           )DOC")
       .def_property(
           "remove_unnecessary_lock",
@@ -449,13 +433,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.remove_unnecessary_lock = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.remove_unnecessary_lock = True
           )DOC")
       .def_property(
           "num_trainers",
@@ -527,13 +509,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                       Examples:
                           .. code-block:: python
 
-                              import paddle
-                              import paddle.static as static
-
-                              paddle.enable_static()
-
-                              build_strategy = static.BuildStrategy()
-                              build_strategy.build_cinn_pass = True
+                              >>> import paddle
+                              >>> import paddle.static as static
+                              >>> paddle.enable_static()
+                              >>> build_strategy = static.BuildStrategy()
+                              >>> build_strategy.build_cinn_pass = True
                     )DOC")
       .def_property(
           "fuse_elewise_add_act_ops",
@@ -555,13 +535,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fuse_elewise_add_act_ops = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
           "fuse_gemm_epilogue",
@@ -581,13 +559,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fuse_gemm_epilogue = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fuse_gemm_epilogue = True
                      )DOC")
       .def_property(
           "fuse_adamw",
@@ -605,11 +581,12 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 it may make the execution faster. Default is False.
                 Examples:
                     .. code-block:: python
-                        import paddle
-                        import paddle.static as static
-                        paddle.enable_static()
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fuse_adamw = True
+
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fuse_adamw = True
                      )DOC")
       .def_property(
           "fused_attention",
@@ -629,13 +606,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fused_attention = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fused_attention = True
                      )DOC")
       .def_property(
           "fused_feedforward",
@@ -655,13 +630,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fused_feedforward = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fused_feedforward = True
                      )DOC")
       .def_property(
           "sequential_run",
@@ -680,13 +653,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.sequential_run = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.sequential_run = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",
@@ -706,13 +677,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fuse_bn_act_ops = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fuse_bn_act_ops = True
                      )DOC")
       .def_property(
           "fuse_bn_add_act_ops",
@@ -732,13 +701,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fuse_bn_add_act_ops = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fuse_bn_add_act_ops = True
                      )DOC")
       .def_property(
           "enable_auto_fusion",
@@ -759,13 +726,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.enable_auto_fusion = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.enable_auto_fusion = True
                     )DOC")
       .def_property(
           "fuse_relu_depthwise_conv",
@@ -789,13 +754,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.fuse_relu_depthwise_conv = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.fuse_relu_depthwise_conv = True
           )DOC")
       .def_property(
           "fuse_broadcast_ops",
@@ -821,13 +784,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                       Examples:
                           .. code-block:: python
 
-                              import paddle
-                              import paddle.static as static
-
-                              paddle.enable_static()
-
-                              build_strategy = static.BuildStrategy()
-                              build_strategy.fuse_broadcast_ops = True
+                              >>> import paddle
+                              >>> import paddle.static as static
+                              >>> paddle.enable_static()
+                              >>> build_strategy = static.BuildStrategy()
+                              >>> build_strategy.fuse_broadcast_ops = True
                     )DOC")
       .def_property(
           "fuse_all_optimizer_ops",
@@ -864,13 +825,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.sync_batch_norm = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.sync_batch_norm = True
                 )DOC")
       .def_property(
           "memory_optimize",
@@ -904,13 +863,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Examples:
                     .. code-block:: python
 
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        build_strategy = static.BuildStrategy()
-                        build_strategy.memory_optimize = True
+                        >>> import paddle
+                        >>> import paddle.static as static
+                        >>> paddle.enable_static()
+                        >>> build_strategy = static.BuildStrategy()
+                        >>> build_strategy.memory_optimize = True
 
                 )DOC")
       .def_property(
