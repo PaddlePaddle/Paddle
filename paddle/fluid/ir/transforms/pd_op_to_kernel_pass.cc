@@ -99,10 +99,10 @@ phi::Backend GetDstBackend(const std::string& op_name,
                            OpYamlInfoParser* op_yaml_info_parser,
                            phi::Backend kernel_def_backend,
                            size_t input_index) {
-  if (op_name == "builtin.set_parameter") {
+  if (op_name == "builtin.set_parameter" &&
+      place.GetType() == phi::AllocationType::GPU) {
     // NOTE: align old executor, all the paramter are initilizered
     // on backend of executor place defined
-    std::cerr << "set parameter to gpu place " << place << std::endl;
     return phi::TransToPhiBackend(place);
   }
 
