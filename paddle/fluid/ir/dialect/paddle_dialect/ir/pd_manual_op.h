@@ -14,7 +14,7 @@
 
 #ifdef GET_MANUAL_OP_LIST
 #undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp
+paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 
 #else
 
@@ -116,6 +116,23 @@ class SplitGradOp : public ir::Op<SplitGradOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class IfOp : public ir::Op<IfOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.if"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult cond,
+                    std::vector<ir::Type> &&output_types);
+
+  void Verify();
+  ir::Value cond() { return operand_source(0); }
+  ir::Block *true_block();
+  ir::Block *false_block();
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -123,5 +140,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
-
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 #endif
