@@ -359,6 +359,56 @@ struct SimplifyForLoopsMutator : public ir::IRMutator<> {
   }
 };
 
+struct SimplifyLoadStoreMutator : public ir::IRMutator<ir::Expr*> {
+  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+
+  void Visit(const Store* expr, Expr* op) override {
+    auto* node = op->As<Store>();
+
+    for (auto& idx : node->indices) {
+      if (common::IsPureMath(idx)) {
+        PartialSimplify(&idx, var_intervals_);
+      } else {
+        SimplifyButStoreLoadMutator mutator(var_intervals_);
+        mutator(&idx);
+      }
+    }
+  }
+
+  void Visit(const Load* expr, Expr* op) override {
+    auto* node = op->As<Load>();
+    for (auto& idx : node->indices) {
+      if (common::IsPureMath(idx)) {
+        PartialSimplify(&idx, var_intervals_);
+      } else {
+        SimplifyButStoreLoadMutator mutator(var_intervals_);
+        mutator(&idx);
+      }
+    }
+  }
+
+  void Visit(const For* op, Expr* expr) override {
+    auto* min_i = op->min.As<IntImm>();
+    auto* extent_i = op->extent.As<IntImm>();
+    if (min_i && extent_i) {
+      var_intervals_.emplace(
+          op->loop_var->name,
+          common::CasInterval{min_i->value, extent_i->value - 1});
+    }
+
+    auto* node = expr->As<For>();
+
+    operator()(&node->body);
+    operator()(&node->extent);
+
+    if (min_i && extent_i) {
+      var_intervals_.erase(op->loop_var->name);
+    }
+  }
+
+  common::cas_intervals_t var_intervals_;
+};
+
 }  // namespace
 
 void Simplify(Expr* expr) {
@@ -367,6 +417,22 @@ void Simplify(Expr* expr) {
   SimplifyRampMutator()(expr);
   SimplifyLoadMutator()(expr);
   SimplifyStoreMutator()(expr);
+  SimplifyIfThenElseMutator()(expr);
+
+  common::cas_intervals_t var_intervals;
+  SimplifyButStoreLoadMutator mutator(var_intervals);
+  mutator(expr);
+
+  ReplaceFracWithDivMutator()(expr);
+}
+
+void IrSimplify(Expr* expr) {
+  VLOG(3) << "Begin Simplify " << *expr;
+  optim::CastSimplify(expr);
+  SimplifyForLoopsMutator()(expr);
+  SimplifyBlocksMutator()(expr);
+  SimplifyRampMutator()(expr);
+  SimplifyLoadStoreMutator()(expr);
   SimplifyIfThenElseMutator()(expr);
 
   common::cas_intervals_t var_intervals;
