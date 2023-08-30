@@ -213,7 +213,7 @@ def in_dygraph_mode():
 
 
 def in_new_ir_mode():
-    return ir.core._use_new_ir_api()
+    return ir.core._use_new_ir_api() and not in_dygraph_mode()
 
 
 def in_dygraph_or_new_ir_mode():
