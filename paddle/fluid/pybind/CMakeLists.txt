@@ -536,6 +536,7 @@ if(WITH_PYTHON)
   #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   # endif()
 
+  add_dependencies(${SHARD_LIB_NAME} ops_api_gen)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
     add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)
