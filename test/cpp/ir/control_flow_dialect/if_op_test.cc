@@ -17,6 +17,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/program.h"
 
 TEST(if_op_test, base) {
@@ -25,10 +26,11 @@ TEST(if_op_test, base) {
 
   ir::Program program(&ctx);
   ir::Block* block = program.block();
-
   ir::Builder builder(&ctx, block);
-  auto data_op = builder.Build<paddle::dialect::DataOp>(ir::AttributeMap{});
-  builder.Build<paddle::dialect::IfOp>(data_op.out(), std::vector<ir::Type>{});
-  std::stringstream ss;
-  program.Print(ss);
+
+  std::vector<int64_t> shape{1};
+  auto full_op =
+      builder.Build<paddle::dialect::FullOp>(shape, true, phi::DataType::BOOL);
+  builder.Build<paddle::dialect::IfOp>(full_op.out(), std::vector<ir::Type>{});
+  program.Print(std::cout);
 }
