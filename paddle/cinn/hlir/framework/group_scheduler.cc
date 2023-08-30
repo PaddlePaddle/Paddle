@@ -786,33 +786,54 @@ void GroupScheduler::AllocateStorage() {
   auto GetCoefficientAndRange = [&for_map](ir::Expr indice_value,
                                            const ir::ForType& for_type,
                                            const std::string& block_name) {
-    ir::Expr indice_copy = optim::IRCopy(indice_value);
-    Range range{1, 1};
+    std::vector<std::pair<int, Range>> coef_and_ranges(3);
+    std::vector<ir::Expr> indice_copies;
+    for (int i = 0; i < 3; ++i) {
+      indice_copies.push_back(optim::IRCopy(indice_value));
+    }
     std::set<ir::Expr> var_set = ir::CollectIRNodesWithoutTensor(
-        indice_copy, [](const ir::Expr* x) { return x->as_var(); });
+        indice_value, [](const ir::Expr* x) { return x->as_var(); });
+    std::unordered_set<std::string> visited_var_names;
     for (ir::Expr var : var_set) {
       std::string name = var.as_var_ref()->name;
+      if (visited_var_names.count(name) > 0) {
+        continue;
+      }
+      visited_var_names.insert(name);
       CHECK(for_map.find(block_name) != for_map.end());
       CHECK(for_map[block_name].find(name) != for_map[block_name].end());
       ir::Expr for_expr = for_map[block_name][name];
-      if (for_type == for_expr.As<ir::For>()->for_type() &&
-          for_expr.As<ir::For>()->extent.get_constant() > 1) {
-        optim::ReplaceVarWithExpr(&indice_copy, var.as_var_ref(), ir::Expr(1));
-        range.min *= for_expr.As<ir::For>()->min.get_constant();
-        range.max *= for_expr.As<ir::For>()->min.get_constant() +
-                     for_expr.As<ir::For>()->extent.get_constant();
-      } else {
-        optim::ReplaceVarWithExpr(&indice_copy, var.as_var_ref(), ir::Expr(0));
+      for (int i = 0; i < 3; ++i) {
+        if (for_type == for_expr.As<ir::For>()->for_type() &&
+            for_expr.As<ir::For>()->bind_info().offset == i &&
+            for_expr.As<ir::For>()->extent.get_constant() > 1) {
+          optim::ReplaceVarWithExpr(
+              &(indice_copies[i]), var.as_var_ref(), ir::Expr(1));
+          coef_and_ranges[i].second.min =
+              for_expr.As<ir::For>()->min.get_constant();
+          coef_and_ranges[i].second.max =
+              for_expr.As<ir::For>()->min.get_constant() +
+              for_expr.As<ir::For>()->extent.get_constant();
+        } else {
+          optim::ReplaceVarWithExpr(
+              &(indice_copies[i]), var.as_var_ref(), ir::Expr(0));
+        }
       }
     }
-    VLOG(6) << "before simplify, the coefficient of " << indice_value << " = "
-            << indice_copy << ", range = (" << range.min << ", " << range.max
-            << ")";
-    indice_copy = common::AutoSimplify(indice_copy);
-    VLOG(6) << "after simplify, the coefficient of " << indice_value << " = "
-            << indice_copy << ", range = (" << range.min << ", " << range.max
-            << ")";
-    return std::make_pair(static_cast<int>(indice_copy.get_constant()), range);
+    for (int i = 0; i < 3; ++i) {
+      VLOG(6) << "before simplify [" << i << "], the coefficient of "
+              << indice_value << " = " << indice_copies[i] << ", range = ("
+              << coef_and_ranges[i].second.min << ", "
+              << coef_and_ranges[i].second.max << ")";
+      indice_copies[i] = common::AutoSimplify(indice_copies[i]);
+      VLOG(6) << "after simplify [" << i << "], the coefficient of "
+              << indice_value << " = " << indice_copies << ", range = ("
+              << coef_and_ranges[i].second.min << ", "
+              << coef_and_ranges[i].second.max << ")";
+      coef_and_ranges[i].first =
+          static_cast<int>(indice_copies[i].get_constant());
+    }
+    return coef_and_ranges;
   };
 
   // Determine whether the indice of a pair of Store and Load cross CUDA threads
@@ -842,25 +863,55 @@ void GroupScheduler::AllocateStorage() {
             << store_serial_overall_range.max << ")";
     VLOG(6) << "load_serial_overall_range = (" << load_serial_overall_range.min
             << ", " << load_serial_overall_range.max << ")";
-    VLOG(6) << "store_thread_coefficient_and_range = <"
-            << store_thread_coefficient_and_range.first << ", ("
-            << store_thread_coefficient_and_range.second.min << ", "
-            << store_thread_coefficient_and_range.second.max << ")>";
-    VLOG(6) << "load_thread_coefficient_and_range = <"
-            << load_thread_coefficient_and_range.first << ", ("
-            << load_thread_coefficient_and_range.second.min << ", "
-            << load_thread_coefficient_and_range.second.max << ")>";
+    VLOG(6) << "store_thread_coefficient_and_range[0] = <"
+            << store_thread_coefficient_and_range[0].first << ", ("
+            << store_thread_coefficient_and_range[0].second.min << ", "
+            << store_thread_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "load_thread_coefficient_and_range[0] = <"
+            << load_thread_coefficient_and_range[0].first << ", ("
+            << load_thread_coefficient_and_range[0].second.min << ", "
+            << load_thread_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "store_thread_coefficient_and_range[1] = <"
+            << store_thread_coefficient_and_range[1].first << ", ("
+            << store_thread_coefficient_and_range[1].second.min << ", "
+            << store_thread_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "load_thread_coefficient_and_range[1] = <"
+            << load_thread_coefficient_and_range[1].first << ", ("
+            << load_thread_coefficient_and_range[1].second.min << ", "
+            << load_thread_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "store_thread_coefficient_and_range[2] = <"
+            << store_thread_coefficient_and_range[2].first << ", ("
+            << store_thread_coefficient_and_range[2].second.min << ", "
+            << store_thread_coefficient_and_range[2].second.max << ")>";
+    VLOG(6) << "load_thread_coefficient_and_range[2] = <"
+            << load_thread_coefficient_and_range[2].first << ", ("
+            << load_thread_coefficient_and_range[2].second.min << ", "
+            << load_thread_coefficient_and_range[2].second.max << ")>";
     return !(store_thread_overall_range.min <= load_thread_overall_range.min &&
              store_thread_overall_range.max >= load_thread_overall_range.max &&
              store_serial_overall_range.min <= load_serial_overall_range.min &&
              store_serial_overall_range.max >= load_serial_overall_range.max &&
-             (store_thread_coefficient_and_range.first ==
-                  load_thread_coefficient_and_range.first ||
-              load_thread_coefficient_and_range.first == 0) &&
-             store_thread_coefficient_and_range.second.min <=
-                 load_thread_coefficient_and_range.second.min &&
-             store_thread_coefficient_and_range.second.max >=
-                 load_thread_coefficient_and_range.second.max);
+             (store_thread_coefficient_and_range[0].first ==
+                  load_thread_coefficient_and_range[0].first ||
+              load_thread_coefficient_and_range[0].first == 0) &&
+             store_thread_coefficient_and_range[0].second.min <=
+                 load_thread_coefficient_and_range[0].second.min &&
+             store_thread_coefficient_and_range[0].second.max >=
+                 load_thread_coefficient_and_range[0].second.max &&
+             (store_thread_coefficient_and_range[1].first ==
+                  load_thread_coefficient_and_range[1].first ||
+              load_thread_coefficient_and_range[1].first == 0) &&
+             store_thread_coefficient_and_range[1].second.min <=
+                 load_thread_coefficient_and_range[1].second.min &&
+             store_thread_coefficient_and_range[1].second.max >=
+                 load_thread_coefficient_and_range[1].second.max &&
+             (store_thread_coefficient_and_range[2].first ==
+                  load_thread_coefficient_and_range[2].first ||
+              load_thread_coefficient_and_range[2].first == 0) &&
+             store_thread_coefficient_and_range[2].second.min <=
+                 load_thread_coefficient_and_range[2].second.min &&
+             store_thread_coefficient_and_range[2].second.max >=
+                 load_thread_coefficient_and_range[2].second.max);
   };
 
   // Determine whether the indice of a pair of Store and Load cross CUDA block
@@ -892,27 +943,57 @@ void GroupScheduler::AllocateStorage() {
     VLOG(6) << "load_thread_and_serial_overall_range = ("
             << load_thread_and_serial_overall_range.min << ", "
             << load_thread_and_serial_overall_range.max << ")";
-    VLOG(6) << "store_block_coefficient_and_range = <"
-            << store_block_coefficient_and_range.first << ", ("
-            << store_block_coefficient_and_range.second.min << ", "
-            << store_block_coefficient_and_range.second.max << ")>";
-    VLOG(6) << "load_block_coefficient_and_range = <"
-            << load_block_coefficient_and_range.first << ", ("
-            << load_block_coefficient_and_range.second.min << ", "
-            << load_block_coefficient_and_range.second.max << ")>";
+    VLOG(6) << "store_block_coefficient_and_range[0] = <"
+            << store_block_coefficient_and_range[0].first << ", ("
+            << store_block_coefficient_and_range[0].second.min << ", "
+            << store_block_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "load_block_coefficient_and_range[0] = <"
+            << load_block_coefficient_and_range[0].first << ", ("
+            << load_block_coefficient_and_range[0].second.min << ", "
+            << load_block_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "store_block_coefficient_and_range[1] = <"
+            << store_block_coefficient_and_range[1].first << ", ("
+            << store_block_coefficient_and_range[1].second.min << ", "
+            << store_block_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "load_block_coefficient_and_range[1] = <"
+            << load_block_coefficient_and_range[1].first << ", ("
+            << load_block_coefficient_and_range[1].second.min << ", "
+            << load_block_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "store_block_coefficient_and_range[2] = <"
+            << store_block_coefficient_and_range[2].first << ", ("
+            << store_block_coefficient_and_range[2].second.min << ", "
+            << store_block_coefficient_and_range[2].second.max << ")>";
+    VLOG(6) << "load_block_coefficient_and_range[2] = <"
+            << load_block_coefficient_and_range[2].first << ", ("
+            << load_block_coefficient_and_range[2].second.min << ", "
+            << load_block_coefficient_and_range[2].second.max << ")>";
     return !(store_block_overall_range.min <= load_block_overall_range.min &&
              store_block_overall_range.max >= load_block_overall_range.max &&
              store_thread_and_serial_overall_range.min <=
                  load_thread_and_serial_overall_range.min &&
              store_thread_and_serial_overall_range.max >=
                  load_thread_and_serial_overall_range.max &&
-             (store_block_coefficient_and_range.first ==
-                  load_block_coefficient_and_range.first ||
-              load_block_coefficient_and_range.first == 0) &&
-             store_block_coefficient_and_range.second.min <=
-                 load_block_coefficient_and_range.second.min &&
-             store_block_coefficient_and_range.second.max >=
-                 load_block_coefficient_and_range.second.max);
+             (store_block_coefficient_and_range[0].first ==
+                  load_block_coefficient_and_range[0].first ||
+              load_block_coefficient_and_range[0].first == 0) &&
+             store_block_coefficient_and_range[0].second.min <=
+                 load_block_coefficient_and_range[0].second.min &&
+             store_block_coefficient_and_range[0].second.max >=
+                 load_block_coefficient_and_range[0].second.max &&
+             (store_block_coefficient_and_range[1].first ==
+                  load_block_coefficient_and_range[1].first ||
+              load_block_coefficient_and_range[1].first == 0) &&
+             store_block_coefficient_and_range[1].second.min <=
+                 load_block_coefficient_and_range[1].second.min &&
+             store_block_coefficient_and_range[1].second.max >=
+                 load_block_coefficient_and_range[1].second.max &&
+             (store_block_coefficient_and_range[2].first ==
+                  load_block_coefficient_and_range[2].first ||
+              load_block_coefficient_and_range[2].first == 0) &&
+             store_block_coefficient_and_range[2].second.min <=
+                 load_block_coefficient_and_range[2].second.min &&
+             store_block_coefficient_and_range[2].second.max >=
+                 load_block_coefficient_and_range[2].second.max);
   };
 
   // function to set storage of each tensor
