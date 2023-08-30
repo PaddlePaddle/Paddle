@@ -329,7 +329,6 @@
   view: null
   backward: null
 
-
 - name: shadow_feed
   inputs:
   - typename: Tensor
@@ -353,5 +352,134 @@
     data_type: null
     dispatch: {fetch: null}
     force_backend: null
+  inplace: null
+  backward: null
+
+- name: send_v2
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: int, name: peer, default_value: '0'}
+  - {typename: bool, name: use_calc_stream, default_value: 'false'}
+  - {typename: bool, name: dynamic_shape, default_value: 'false'}
+  outputs: []
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: SendV2InferMeta
+    param: [peer, ring_id]
+  kernel:
+    func: [send_v2]
+    param: [x, ring_id, dynamic_shape, peer, use_calc_stream]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {send_v2: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+
+- name: recv_v2
+  inputs: []
+  attrs:
+  - {typename: 'int[]', name: out_shape, default_value: '{}'}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT32'}
+  - {typename: int, name: peer, default_value: '0'}
+  - {typename: int, name: ring_id, default_value: '0'}
+  - {typename: bool, name: use_calc_stream, default_value: 'false'}
+  - {typename: bool, name: dynamic_shape, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: RecvV2InferMeta
+    param: [peer, dtype, out_shape]
+  kernel:
+    func: [recv_v2]
+    param: [ring_id, dynamic_shape, peer, out_shape, dtype, use_calc_stream]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {recv_v2: null}
+    force_backend: null
+  inplace: null
+  view: null
+
+- name : set_value
+  inputs:
+    - {typename: Tensor, name: x, optional: false, no_need_buffer: false, data_transform: {} }
+  attrs:
+    - {typename: 'int64_t[]', name: starts}
+    - {typename: 'int64_t[]', name: ends}
+    - {typename: 'int64_t[]', name: steps}
+    - {typename: 'int64_t[]', name: axes}
+    - {typename: 'int64_t[]', name: decrease_axes}
+    - {typename: 'int64_t[]', name: none_axes}
+    - {typename: 'int64_t[]', name: shape}
+    - {typename: 'Scalar[]', name: values}
+  outputs:
+    - {typename: Tensor, name: out, optional: false, intermediate: false}
+  infer_meta:
+    func: SetValueInferMeta
+    param: [x]
+  kernel:
+    func: [set_value]
+    param: [x, starts, ends, steps, axes, decrease_axes, none_axes, shape, values]
+  inplace: {out: x}
+  backward: set_value_grad
+
+- name : set_value_with_tensor
+  inputs:
+    - {typename: Tensor, name: x, optional: false, no_need_buffer: false, data_transform: {} }
+    - {typename: Tensor, name: values, optional: false, no_need_buffer: false, data_transform: {} }
+  attrs:
+    - {typename: 'int64_t[]', name: starts}
+    - {typename: 'int64_t[]', name: ends}
+    - {typename: 'int64_t[]', name: steps}
+    - {typename: 'int64_t[]', name: axes}
+    - {typename: 'int64_t[]', name: decrease_axes}
+    - {typename: 'int64_t[]', name: none_axes}
+  outputs:
+    - {typename: Tensor, name: out, optional: false, intermediate: false}
+  infer_meta:
+    func: SetValueInferMeta
+    param: [x]
+  kernel:
+    func: [set_value_with_tensor]
+    param: [x, values, starts, ends, steps, axes, decrease_axes, none_axes]
+  inplace: {out: x}
+  backward: set_value_grad
+
+
+- name : set_value_grad
+  inputs:
+    - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false, data_transform: {} }
+    - {typename: Tensor, name: values, optional: false, no_need_buffer: false, data_transform: {} }
+  attrs:
+    - {typename: 'int64_t[]', name: starts}
+    - {typename: 'int64_t[]', name: ends}
+    - {typename: 'int64_t[]', name: steps}
+    - {typename: 'int64_t[]', name: axes}
+    - {typename: 'int64_t[]', name: decrease_axes}
+    - {typename: 'int64_t[]', name: none_axes}
+  outputs:
+    - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+    - {typename: Tensor, name: values_grad, optional: false, intermediate: false}
+  infer_meta:
+    func: SetValueGradInferMeta
+    param: [out_grad, values]
+  kernel:
+    func: [set_value_grad]
+    param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
   inplace: null
   backward: null

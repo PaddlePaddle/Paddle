@@ -154,7 +154,6 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
 #endif
 }  // namespace
 
-using inference::Singleton;
 #ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
@@ -1572,6 +1571,8 @@ void AnalysisPredictor::PrepareArgument() {
         }
       } else if (config_.use_xpu()) {
         // All passes support fp16. Not reset pass_builder.
+      } else if (config_.use_custom_device()) {
+        // All passes support fp16. Not reset pass_builder.
       } else {
         pass_builder->ClearPasses();
       }
@@ -1707,10 +1708,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 
   auto SetGflags = [](const AnalysisConfig &config) {
     auto SetGflag = [](const char *name, const char *value) {
-      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      bool success = paddle::flags::SetFlagValue(name, value);
       PADDLE_ENFORCE_EQ(
-          ret.empty(),
-          false,
+          success,
+          true,
           platform::errors::InvalidArgument(
               "Fail to set gflag: %s, please make sure the gflag exists.",
               name));
@@ -2527,6 +2528,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
 }
 
 #ifdef PADDLE_WITH_TENSORRT
+using inference::Singleton;
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2581,7 +2583,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 }
 #endif
 
-AnalysisPredictor::~AnalysisPredictor() {
+AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
@@ -3087,8 +3089,8 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 #endif
 }
 
-std::string UpdateDllFlag(const char *name, const char *value) {
-  return paddle::UpdateDllFlag(name, value);
+void UpdateDllFlag(const char *name, const char *value) {
+  paddle::UpdateDllFlag(name, value);
 }
 
 void ConvertToMixedPrecision(const std::string &model_file,

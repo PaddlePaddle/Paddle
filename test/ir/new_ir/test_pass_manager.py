@@ -51,11 +51,12 @@ class TestShadowOutputSlice(unittest.TestCase):
         self.assertTrue('pd.uniform' in op_names)
         pm = ir.PassManager()
         pm.add_pass(
-            'DeadCodeEliminationPass'
+            'dead_code_elimination'
         )  # apply pass to elimitate dead code
         pm.run(new_program)
         op_names = [op.name() for op in new_program.block().ops]
         # print(op_names)
+        # TODO(zhiqiu): unify the name of pass
         self.assertEqual(pm.passes(), ['DeadCodeEliminationPass'])
         self.assertFalse(pm.empty())
         self.assertTrue(

@@ -29,6 +29,7 @@ vjp_interface_declare_gen_op_list = [
     "sum",
     "add",
     "concat",
+    "split",
 ]
 vjp_interface_implementation_gen_op_list = [
     "tanh",
@@ -36,4 +37,5 @@ vjp_interface_implementation_gen_op_list = [
     "divide",
     "add",
     "concat",
+    "split",
 ]
