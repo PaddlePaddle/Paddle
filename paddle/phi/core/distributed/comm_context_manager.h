@@ -62,6 +62,14 @@ class CommContextManager {
                                     int size);
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  static void CreateXCCLCommContext(const std::shared_ptr<Store>& store,
+                                    const std::string& unique_comm_key,
+                                    const std::string& device_type,
+                                    int rank,
+                                    int size);
+#endif
+
  private:
   DISABLE_COPY_AND_ASSIGN(CommContextManager);
 
