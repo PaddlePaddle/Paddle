@@ -199,7 +199,6 @@ class PipelineParallel(MetaParallelBase):
 
         p2p.initialize_p2p_groups(
             hcg,
-            # self._using_cache,
             self._enable_partial_send_recv,
             self._enable_timer,
         )
@@ -879,6 +878,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
             assert (
                 not forward_only
             ), "compute_loss can only be set to False when forward_only is set to True"
+
+        # NOTE(shenliang03): Due to ring_exchange for pipeline with interleave, cache should be enabled
+        assert (
+            self._using_cache
+        ), "cache should be enabled for pipeline with interleave"
 
         # init some attributes for this batch run
         self.scaler = scaler
