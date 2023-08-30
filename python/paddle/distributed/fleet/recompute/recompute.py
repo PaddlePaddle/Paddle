@@ -52,11 +52,15 @@ def detach_variable(inputs):
 
 
 def check_recompute_necessary(inputs):
-    if not any(
-        not input_.stop_gradient
-        for input_ in inputs
-        if isinstance(input_, (core.eager.Tensor, paddle.Tensor))
-    ):
+    necessary_for_each_input = []
+    for input_ in inputs:
+        if isinstance(input_, (core.eager.Tensor, paddle.Tensor)):
+            necessary_for_each_input.append(input_.stop_gradient)
+        elif type(input_) is tuple:
+            for i in input_:
+                if isinstance(input_, (core.eager.Tensor, paddle.Tensor)):
+                    necessary_for_each_input.append(i.stop_gradient)
+    if not any(necessary_for_each_input):
         logger.warning(
             "[Recompute]: None of the inputs to current recompute block need grad, "
             "therefore there is NO need to recompute this block in backward !"
