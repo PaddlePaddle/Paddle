@@ -1313,7 +1313,6 @@ class OpTest(unittest.TestCase):
         ir_program = paddle.static.Program()
         with paddle.static.program_guard(ir_program):
             # prepare inps attributes feed
-            print("ir_program = ", ir_program)
             (
                 static_inputs,
                 attrs,
@@ -2457,18 +2456,22 @@ class OpTest(unittest.TestCase):
             self.op_type
             in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
         ):
-            print("Before new ir checker...........")
-            from paddle.new_ir_utils import IrChange
+            if (
+                type(place) is paddle.fluid.libpaddle.CPUPlace
+                or type(place) is paddle.fluid.libpaddle.CUDAPlace
+            ):
+                print("New IR checker begins...........")
+                from paddle.new_ir_utils import IrChange
 
-            ir_change = IrChange()
-            set_flags({"FLAGS_enable_new_ir_api": True})
-            ir_change._switch_to_new_ir()
+                ir_change = IrChange()
+                set_flags({"FLAGS_enable_new_ir_api": True})
+                ir_change._switch_to_new_ir()
 
-            new_ir_checker = NewIRChecker(self, self.outputs)
-            new_ir_checker.check()
-            set_flags({"FLAGS_enable_new_ir_api": False})
-            ir_change._switch_to_old_ir()
-            print("New ir checker finish...........")
+                new_ir_checker = NewIRChecker(self, self.outputs)
+                new_ir_checker.check()
+                set_flags({"FLAGS_enable_new_ir_api": False})
+                ir_change._switch_to_old_ir()
+                print("New IR checker ends...........")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -3019,31 +3022,35 @@ class OpTest(unittest.TestCase):
             self.op_type
             in new_ir_python_api_grad_white_list.new_ir_python_api_grad_white_list
         ):
-            print("Before new ir gradient...........")
-            from paddle.new_ir_utils import IrChange
+            if (
+                type(place) is paddle.fluid.libpaddle.CPUPlace
+                or type(place) is paddle.fluid.libpaddle.CUDAPlace
+            ):
+                print("New IR gradient begins...........")
+                from paddle.new_ir_utils import IrChange
 
-            ir_change = IrChange()
-            set_flags({"FLAGS_enable_new_ir_api": True})
+                ir_change = IrChange()
+                set_flags({"FLAGS_enable_new_ir_api": True})
 
-            ir_change._switch_to_new_ir()
-            new_ir_grad = self._get_ir_gradient(
-                inputs_to_check,
-                place,
-                output_names,
-                user_defined_grad_outputs,
-                no_grad_set,
-            )
-            set_flags({"FLAGS_enable_new_ir_api": False})
-            ir_change._switch_to_old_ir()
-            print("new ir gradient finish...........")
-            self._assert_is_close(
-                numeric_grads,
-                [new_ir_grad],
-                inputs_to_check,
-                max_relative_error,
-                "Gradient Check On %s" % str(place),
-                atol=atol,
-            )
+                ir_change._switch_to_new_ir()
+                new_ir_grad = self._get_ir_gradient(
+                    inputs_to_check,
+                    place,
+                    output_names,
+                    user_defined_grad_outputs,
+                    no_grad_set,
+                )
+                set_flags({"FLAGS_enable_new_ir_api": False})
+                ir_change._switch_to_old_ir()
+                print("New IR gradient ends...........")
+                self._assert_is_close(
+                    numeric_grads,
+                    [new_ir_grad],
+                    inputs_to_check,
+                    max_relative_error,
+                    "Gradient Check On %s" % str(place),
+                    atol=atol,
+                )
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
