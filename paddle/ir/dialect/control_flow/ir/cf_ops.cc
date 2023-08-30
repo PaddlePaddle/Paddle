@@ -18,7 +18,7 @@ namespace ir {
 
 void YieldOp::Build(Builder &builder,
                     OperationArgument &argument,
-                    std::vector<OpResult> &inputs) {
+                    std::vector<OpResult> &&inputs) {
   argument.AddOperands(inputs.begin(), inputs.end());
 }
 }  // namespace ir
