@@ -1633,7 +1633,7 @@ def kl_div(input, label, reduction='mean', name=None):
 
             >>> target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [1]
+            >>> # 'batchmean' reduction, loss shape will be [1]
             >>> pred_loss = F.kl_div(x, target, reduction='batchmean')
             >>> print(pred_loss.shape)
             []
