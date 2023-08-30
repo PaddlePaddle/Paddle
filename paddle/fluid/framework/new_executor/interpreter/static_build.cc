@@ -61,7 +61,8 @@ namespace ops = paddle::operators;
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
                            const phi::Place& place,
-                           Scope* scope) {
+                           VariableScope* var_scope,
+                           bool use_local_scope) {
   // in_black_list = (kernelCode >> 7) & 1
   // is_operator_base = (kernelCode >> 6) & 1
   // is_custom_op = (kernelCode >> 5) & 1
@@ -98,7 +99,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
-           !IsOperatorBasesHandledInStaticBuild(op, op_type, place, scope)) ||
+           !IsOperatorBasesHandledInStaticBuild(
+               op, op_type, place, var_scope, use_local_scope)) ||
           is_custom_op || use_mkldnn) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
@@ -125,7 +127,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
 bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
                                          const std::string& op_type,
                                          const phi::Place& place,
-                                         Scope* scope) {
+                                         VariableScope* var_scope,
+                                         bool use_local_scope) {
   if (!OperatorBasesCanHandledInStaticBuild.count(op_type)) {
     return false;
   }
@@ -136,10 +139,13 @@ bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
     // Note(sonder): For conditional_block, static build is only supported
     // when the op has the same place, dtype and layout of the output for two
     // conditional branches.
+    VLOG(3) << "use_local_scope: " << use_local_scope;
+    Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
+                                         : var_scope->GetMutableScope();
     auto op_base = CreateOpFromOpDesc(op);
-    VLOG(4) << op_base->DebugStringEx(scope);
-    op_base->RunPreStaticBuild(*scope, place);
-    VLOG(4) << op_base->DebugStringEx(scope);
+    VLOG(4) << op_base->DebugStringEx(local_scope);
+    op_base->RunPreStaticBuild(*local_scope, place);
+    VLOG(4) << op_base->DebugStringEx(local_scope);
     return false;
   } else {
     return false;

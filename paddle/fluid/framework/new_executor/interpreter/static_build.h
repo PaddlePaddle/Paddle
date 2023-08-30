@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -25,12 +26,14 @@ namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
                            const phi::Place& place,
-                           Scope* scope);
+                           VariableScope* var_scope,
+                           bool use_local_scope);
 
 bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
                                          const std::string& op_type,
                                          const phi::Place& place,
-                                         Scope* scope);
+                                         VariableScope* var_scope,
+                                         bool use_local_scope);
 
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const platform::Place& place,

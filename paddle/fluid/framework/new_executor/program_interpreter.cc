@@ -48,10 +48,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
       var_scope_(scope) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
-  static_build_ = FLAGS_new_executor_static_build &&
-                  !FLAGS_new_executor_use_cuda_graph &&
-                  interpreter::BlockCanBeStaticBuilt(block, place, scope);
-
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
@@ -68,6 +64,11 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
     local_scope_ = local_scope;
   }
   var_scope_.SetLocalScope(local_scope_);
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  !FLAGS_new_executor_use_cuda_graph &&
+                  interpreter::BlockCanBeStaticBuilt(
+                      block, place, &var_scope_, HasLocalScope());
 
   instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
     SchedulingPriority lhs_scheduling_priority =
