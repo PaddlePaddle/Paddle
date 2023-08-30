@@ -89,7 +89,7 @@ class MultiHeadMatmulFusePattern
     const auto &transpose_3 = src.Op("pd.transpose");
     src.Tensor("transpose_3_out") = transpose_3(src.Tensor("reshape_3_out"));
 
-    // softmax(qk)v + matmul
+    // softmax(qk)v
     const auto &matmul_4 =
         src.Op("pd.matmul",
                {{"transpose_x", src.Attr("matmul_4_transpose_x")},
@@ -198,62 +198,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
                                              0.9,
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
-
-  // left
-  paddle::dialect::FullOp full_mat1_y_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256, 256},
-                                             1.1,
-                                             phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
-  paddle::dialect::MatmulOp matmul_op1 =
-      builder.Build<paddle::dialect::MatmulOp>(
-          full_input_op.out(), full_mat1_y_op.out(), false, false);
-
-  paddle::dialect::FullOp full_eleadd1_y_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
-                                             1.5,
-                                             phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
-
-  paddle::dialect::AddOp add_op1 = builder.Build<paddle::dialect::AddOp>(
-      matmul_op1.out(), full_eleadd1_y_op.out());
-
-  paddle::dialect::ReshapeOp reshape_op1 =
-      builder.Build<paddle::dialect::ReshapeOp>(
-          add_op1.out(), std::vector<int64_t>{0, 0, 8, 32});
-
-  paddle::dialect::TransposeOp transpose_op1 =
-      builder.Build<paddle::dialect::TransposeOp>(reshape_op1.out(),
-                                                  std::vector<int>{0, 2, 1, 3});
-
-  // middle
-  paddle::dialect::FullOp full_mat2_y_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256, 256},
-                                             1.1,
-                                             phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
-
-  paddle::dialect::MatmulOp matmul_op2 =
-      builder.Build<paddle::dialect::MatmulOp>(
-          full_input_op.out(), full_mat2_y_op.out(), false, false);
-
-  paddle::dialect::FullOp full_eleadd2_y_op =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
-                                             1.5,
-                                             phi::DataType::FLOAT32,
-                                             phi::CPUPlace());
-  paddle::dialect::AddOp add_op2 = builder.Build<paddle::dialect::AddOp>(
-      matmul_op2.out(), full_eleadd2_y_op.out());
-
-  paddle::dialect::ReshapeOp reshape_op2 =
-      builder.Build<paddle::dialect::ReshapeOp>(
-          add_op2.out(), std::vector<int64_t>{0, 0, 8, 32});
-
-  paddle::dialect::TransposeOp transpose_op2 =
-      builder.Build<paddle::dialect::TransposeOp>(reshape_op2.out(),
-                                                  std::vector<int>{0, 2, 1, 3});
-
-  // right
+  // The first path to matmul with scale (q).
   paddle::dialect::FullOp full_mat3_y_op =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256, 256},
                                              1.1,
@@ -284,14 +229,66 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   paddle::dialect::ScaleOp scale_op1 = builder.Build<paddle::dialect::ScaleOp>(
       transpose_op3.out(), 0.1767766922712326, 0.0, true);
 
+  // The second path to matmul (k).
+  paddle::dialect::FullOp full_mat2_y_op =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256, 256},
+                                             1.1,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::MatmulOp matmul_op2 =
+      builder.Build<paddle::dialect::MatmulOp>(
+          full_input_op.out(), full_mat2_y_op.out(), false, false);
+
+  paddle::dialect::FullOp full_eleadd2_y_op =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+  paddle::dialect::AddOp add_op2 = builder.Build<paddle::dialect::AddOp>(
+      matmul_op2.out(), full_eleadd2_y_op.out());
+
+  paddle::dialect::ReshapeOp reshape_op2 =
+      builder.Build<paddle::dialect::ReshapeOp>(
+          add_op2.out(), std::vector<int64_t>{0, 0, 8, 32});
+
+  paddle::dialect::TransposeOp transpose_op2 =
+      builder.Build<paddle::dialect::TransposeOp>(reshape_op2.out(),
+                                                  std::vector<int>{0, 2, 1, 3});
+
+  // The third path to matmul (v).
+  paddle::dialect::FullOp full_mat1_y_op =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256, 256},
+                                             1.1,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+  paddle::dialect::MatmulOp matmul_op1 =
+      builder.Build<paddle::dialect::MatmulOp>(
+          full_input_op.out(), full_mat1_y_op.out(), false, false);
+
+  paddle::dialect::FullOp full_eleadd1_y_op =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::AddOp add_op1 = builder.Build<paddle::dialect::AddOp>(
+      matmul_op1.out(), full_eleadd1_y_op.out());
+
+  paddle::dialect::ReshapeOp reshape_op1 =
+      builder.Build<paddle::dialect::ReshapeOp>(
+          add_op1.out(), std::vector<int64_t>{0, 0, 8, 32});
+
+  paddle::dialect::TransposeOp transpose_op1 =
+      builder.Build<paddle::dialect::TransposeOp>(reshape_op1.out(),
+                                                  std::vector<int>{0, 2, 1, 3});
+
+  // softmax(qk)v
   paddle::dialect::MatmulOp matmul_op4 =
       builder.Build<paddle::dialect::MatmulOp>(
           scale_op1.out(), transpose_op2.out(), false, true);
-
   paddle::dialect::SoftmaxOp softmax_op1 =
       builder.Build<paddle::dialect::SoftmaxOp>(matmul_op4.out(), -1);
-
-  // tail
   paddle::dialect::MatmulOp matmul_op5 =
       builder.Build<paddle::dialect::MatmulOp>(
           softmax_op1.out(), transpose_op1.out(), false, false);
