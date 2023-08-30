@@ -33,7 +33,7 @@ def is_pylayer_func(func):
 class StaticPyLayerContext:
     def __init__(self):
         self.saved_vars = []
-    
+
     def save_for_backward(self, *tensors):
         for tensor in tensors:
             assert isinstance(tensor, Variable)
@@ -46,17 +46,17 @@ class StaticPyLayerContext:
             out = helper.create_variable(
                 name=saved_var.name,
                 dtype=saved_var.dtype,
-                shape=saved_var.shape
+                shape=saved_var.shape,
             )
             out_list.append(out)
             
         return out_list
-        
+
     # TODO(MarioLulab): support not_inplace
     def mark_not_inplace(self, *args):
         raise NotImplementedError()
-    
-    # TODO(MarioLulab): support non_differentiable   
+
+    # TODO(MarioLulab): support non_differentiable
     def mark_non_differentiable(self, *args):
         raise NotImplementedError()
 

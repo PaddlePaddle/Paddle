@@ -1015,8 +1015,9 @@ else()
          monitor)
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper
-                      recurrent_op_helper conditional_block_op_helper pylayer_op_helper)
+target_link_libraries(
+  executor while_op_helper executor_gc_helper recurrent_op_helper
+  conditional_block_op_helper pylayer_op_helper)
 
 cc_library(
   parallel_executor

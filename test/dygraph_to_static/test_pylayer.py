@@ -26,6 +26,7 @@ from paddle.autograd.py_layer import PyLayer
 SEED = 2023
 np.random.seed(SEED)
 
+
 def compare_result(dygraph_res, static_res, rtol=1e-5, atol=0):
     np.testing.assert_allclose(
         dygraph_res.detach().numpy(),
@@ -49,6 +50,7 @@ class scaled_layer_1(PyLayer):
         dx = paddle.sin(dy)
         return dx
 
+
 class scaled_layer_2(PyLayer):
     @staticmethod
     def forward(ctx, x1, x2):
@@ -61,18 +63,20 @@ class scaled_layer_2(PyLayer):
         dx2 = paddle.cos(dy)
         return dx1, dx2
 
+
 class cus_tanh_1(PyLayer):
     @staticmethod
-    def forward(ctx, x): 
+    def forward(ctx, x):
         y = paddle.tanh(x)
         ctx.save_for_backward(y)
         return y
 
     @staticmethod
     def backward(ctx, dy):
-        y, = ctx.saved_tensor()
+        (y,) = ctx.saved_tensor()
         grad = dy * (1 - paddle.square(y))
         return grad
+
 
 class SimpleNet_1(paddle.nn.Layer):
     def __init__(self):
@@ -85,13 +89,14 @@ class SimpleNet_1(paddle.nn.Layer):
         z = cus_tanh_1.apply(hidden)
         return z
 
+
 class SimpleNetInplace(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
     @paddle.jit.to_static
     def forward(self, data):
-        data = data ** 2
+        data = data**2
         z = paddle.tanh(data)
         z = cus_tanh_1.apply(z)
         return z
@@ -107,8 +112,10 @@ class TestPyLayerBase(unittest.TestCase):
         self.to_static = False
 
     def _run(self, *input_args, **input_kwargs):
-        assert getattr(self, "dygraph_func", None), "Please setting `self.dygraph_func` before calling `self._run`"
-        
+        assert getattr(
+            self, "dygraph_func", None
+        ), "Please setting `self.dygraph_func` before calling `self._run`"
+
         paddle.jit.enable_to_static(self.to_static)
         with fluid.dygraph.guard(self.place):
             result = self.dygraph_func(*input_args, **input_kwargs)
@@ -122,15 +129,17 @@ class TestPyLayerBase(unittest.TestCase):
     def _run_static(self, *args, **kwargs):
         self.to_static = True
         return self._run(*args, **kwargs)
-    
-    # TODO(MarioLulab): In the future, this will be supported: not only `paddle.Tensor` 
+
+    # TODO(MarioLulab): In the future, this will be supported: not only `paddle.Tensor`
     # but also non-Tensor objects will be included in the parameter list.
     def _run_and_compare(self, *args, **kwargs):
         # Step1. Clone args and kwargs to avoid dygraph and static overwriting with each other
-        dygraph_inp_args = list()
-        static_inp_args = list()
+        dygraph_inp_args = []
+        static_inp_args = []
         for v in args:
-            assert isinstance(v, paddle.Tensor), "Only Support `paddle.Tensor` now"
+            assert isinstance(
+                v, paddle.Tensor
+            ), "Only Support `paddle.Tensor` now"
             stop_gradient = v.stop_gradient
             # detach from the compute graph to turn `dygraph_inp_args` and `static_inp_args` into leaf nodes
             v = v.detach()
@@ -139,12 +148,14 @@ class TestPyLayerBase(unittest.TestCase):
             if not stop_gradient:
                 dygraph_inp_args[-1].stop_gradient = False
                 static_inp_args[-1].stop_gradient = False
-        
-        dygraph_inp_kwargs = dict()
-        static_inp_kwargs = dict()
+
+        dygraph_inp_kwargs = {}
+        static_inp_kwargs = {}
         for k, v in kwargs.items():
             stop_gradient = v.stop_gradient
-            assert isinstance(v, paddle.Tensor), "Only Support `paddle.Tensor` now"
+            assert isinstance(
+                v, paddle.Tensor
+            ), "Only Support `paddle.Tensor` now"
             # detach from the compute graph to turn `dygraph_inp_kwargs` and `static_inp_kwargs` into leaf nodes
             v = v.detach()
             dygraph_inp_kwargs[k] = v.clone()
@@ -152,11 +163,11 @@ class TestPyLayerBase(unittest.TestCase):
             if not stop_gradient:
                 dygraph_inp_kwargs[k].stop_gradient = False
                 static_inp_kwargs[k].stop_gradient = False
-        
+
         # Step2. Run the dygraph and the static seperately
         dygraph_res = self._run_dygraph(*dygraph_inp_args, **dygraph_inp_kwargs)
         static_res = self._run_static(*static_inp_args, **static_inp_kwargs)
-        
+
         # Step3. Compare forward result between dygraph and static
         if not isinstance(dygraph_res, tuple):
             dygraph_res = (dygraph_res,)
@@ -165,37 +176,44 @@ class TestPyLayerBase(unittest.TestCase):
 
         for d, s in zip(dygraph_res, static_res):
             compare_result(d, s)
-        
-        # Step4. Compare grad between dygraph and static                
+
+        # Step4. Compare grad between dygraph and static
         for i in range(len(dygraph_inp_args)):
-            self.assertEqual(dygraph_inp_args[i].stop_gradient, static_inp_args[i].stop_gradient)
+            self.assertEqual(
+                dygraph_inp_args[i].stop_gradient,
+                static_inp_args[i].stop_gradient,
+            )
             if dygraph_inp_args[i].stop_gradient:
                 continue
-            
+
             compare_result(dygraph_inp_args[i].grad, static_inp_args[i].grad)
-            
+
         for key in dygraph_inp_kwargs.keys():
-            self.assertEqual(dygraph_inp_kwargs[key].stop_gradient, static_inp_kwargs[key].stop_gradient)
+            self.assertEqual(
+                dygraph_inp_kwargs[key].stop_gradient,
+                static_inp_kwargs[key].stop_gradient,
+            )
             if dygraph_inp_kwargs[key].stop_gradient:
                 continue
-            
-            compare_result(dygraph_inp_kwargs[key].grad, static_inp_kwargs[key].grad)
-        
-            
 
-class TestPyLayerWithoutContext(TestPyLayerBase):                    
+            compare_result(
+                dygraph_inp_kwargs[key].grad, static_inp_kwargs[key].grad
+            )
+
+
+class TestPyLayerWithoutContext(TestPyLayerBase):
     def test_single_in_single_out(self):
         @paddle.jit.to_static
         def test_func(x):
             y = scaled_layer_1.apply(x)
             return y
+
         self.dygraph_func = test_func
 
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
         self._run_and_compare(input1)
-            
 
     def test_multi_in_single_out(self):
         @paddle.jit.to_static
@@ -212,24 +230,25 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
 
         self._run_and_compare(input1, input2)
 
-                
+
 class TestPyLayerWithContext(TestPyLayerBase):
     def test_single_in_single_out(self):
         @paddle.jit.to_static
         def test_func(x):
             y = cus_tanh_1.apply(x)
             return y
+
         self.dygraph_func = test_func
 
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
-        
-        self._run_and_compare(input1)        
+
+        self._run_and_compare(input1)
 
     def test_inplace(self):
         simple_net = SimpleNetInplace()
         self.dygraph_func = simple_net
-        
+
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
         self._run_and_compare(input1)
@@ -237,14 +256,12 @@ class TestPyLayerWithContext(TestPyLayerBase):
 
 class TestPyLayerInsideNet(TestPyLayerBase):
     def test_single_in_single_out(self):
-                
         simple_net = SimpleNet_1()
         self.dygraph_func = simple_net
 
         input1 = paddle.randn([3, 4]).astype("float32")
         self._run_and_compare(input1)
-    
+
 
 if __name__ == "__main__":
     unittest.main()
-    

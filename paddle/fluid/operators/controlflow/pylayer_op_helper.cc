@@ -25,8 +25,8 @@ class ProgramDesc;
 namespace paddle {
 namespace operators {
 
-static bool IsMatchedPyLayerOpAndPyLayerGradGradOp(
-    const OpVariant &fwd_op, const OpVariant &bwd_op) {
+static bool IsMatchedPyLayerOpAndPyLayerGradGradOp(const OpVariant &fwd_op,
+                                                   const OpVariant &bwd_op) {
   return fwd_op.Outputs().at(PyLayerOp::kScope) ==
          bwd_op.Inputs().at(PyLayerOp::kScope);
 }
@@ -67,8 +67,7 @@ static void FindAllPyLayerOpAndPyLayerGradOp(
           bwd_ops->size()));
 }
 
-static void SetSkipVarsForPyLayerOp(OpVariant *fwd_op,
-                                             OpVariant *bwd_op) {
+static void SetSkipVarsForPyLayerOp(OpVariant *fwd_op, OpVariant *bwd_op) {
   auto *grad_block = bwd_op->Attr<framework::BlockDesc *>("backward_block");
   auto is_skippable_in_fwd = [grad_block](const std::string &var_name) {
     return var_name != framework::kEmptyVarName &&
@@ -102,8 +101,7 @@ static void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
     const framework::ProgramDesc &program,
     std::vector<OpVariant> *pylayer_ops,
     std::vector<OpVariant> *pylayer_grad_ops) {
-  FindAllPyLayerOpAndPyLayerGradOp(
-      program, pylayer_ops, pylayer_grad_ops);
+  FindAllPyLayerOpAndPyLayerGradOp(program, pylayer_ops, pylayer_grad_ops);
 
   VLOG(2) << "Found pylayer op num: " << pylayer_ops->size()
           << ", pylayer_grad op num: " << pylayer_grad_ops->size();
@@ -118,7 +116,7 @@ static void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
   for (auto &bwd_op : *pylayer_grad_ops) {
     const OpVariant *matched_fwd_op = nullptr;
     for (auto &fwd_op : pylayer_op_set) {
-      if (IsMatchedPyLayerOpAndPyLayerGradGradOp(fwd_op,bwd_op)) {
+      if (IsMatchedPyLayerOpAndPyLayerGradGradOp(fwd_op, bwd_op)) {
         PADDLE_ENFORCE_EQ(matched_fwd_op,
                           nullptr,
                           platform::errors::PreconditionNotMet(
@@ -127,13 +125,11 @@ static void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
       }
     }
 
-    PADDLE_ENFORCE_NOT_NULL(
-        matched_fwd_op,
-        platform::errors::PreconditionNotMet(
-            "Cannot find matched forward pylayer op."));
+    PADDLE_ENFORCE_NOT_NULL(matched_fwd_op,
+                            platform::errors::PreconditionNotMet(
+                                "Cannot find matched forward pylayer op."));
 
-    SetSkipVarsForPyLayerOp(const_cast<OpVariant *>(matched_fwd_op),
-                                     &bwd_op);
+    SetSkipVarsForPyLayerOp(const_cast<OpVariant *>(matched_fwd_op), &bwd_op);
     pylayer_op_set.erase(*matched_fwd_op);
   }
 }

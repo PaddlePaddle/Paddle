@@ -294,8 +294,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   conditional_block_op_eager_deletion_pass->Apply(graph);
 
   auto pylayer_op_eager_deletion_pass =
-      ir::PassRegistry::Instance().Get(
-          "pylayer_op_eager_deletion_pass");
+      ir::PassRegistry::Instance().Get("pylayer_op_eager_deletion_pass");
   pylayer_op_eager_deletion_pass->Apply(graph);
 
   auto while_op_eager_deletion_pass =

@@ -243,7 +243,8 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
 
   const char *kSubBlock = "sub_block";
   const char *kSkipEagerDeletionVars = "skip_eager_deletion_vars";
-  // NOTE: pylayer op contains may contain two blocks: forward block and backward block 
+  // NOTE: pylayer op contains may contain two blocks: forward block and
+  // backward block
   const char *kBlocks = "blocks";
 
   for (size_t i = 0; i < block_num; ++i) {
@@ -251,22 +252,24 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
     size_t op_num = block.OpSize();
     for (size_t j = 0; j < op_num; ++j) {
       auto *op = block.Op(j);
-      if (!op->HasAttr(kSubBlock) || !op->HasAttr(kSkipEagerDeletionVars) || !op->HasAttr(kBlocks)) {
+      if (!op->HasAttr(kSubBlock) || !op->HasAttr(kSkipEagerDeletionVars) ||
+          !op->HasAttr(kBlocks)) {
         continue;
       }
 
       std::vector<int32_t> sub_block_ids;
-      if (op->HasAttr(kSubBlock)){
-        sub_block_ids.push_back(op->GetAttrIfExists<BlockDesc *>(kSubBlock)->ID());
-      }
-      else if (op->HasAttr(kBlocks)){
-        const auto &blocks = op->GetAttrIfExists<std::vector<BlockDesc *>>(kBlocks);
-        for (const auto & block : blocks){
+      if (op->HasAttr(kSubBlock)) {
+        sub_block_ids.push_back(
+            op->GetAttrIfExists<BlockDesc *>(kSubBlock)->ID());
+      } else if (op->HasAttr(kBlocks)) {
+        const auto &blocks =
+            op->GetAttrIfExists<std::vector<BlockDesc *>>(kBlocks);
+        for (const auto &block : blocks) {
           sub_block_ids.push_back(block->ID());
         }
       }
-      
-      for (auto sub_block_id : sub_block_ids){
+
+      for (auto sub_block_id : sub_block_ids) {
         PADDLE_ENFORCE_GE(sub_block_id,
                           0,
                           platform::errors::PermissionDenied(
@@ -284,7 +287,8 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
 
         found_skip_vars[sub_block_id] = true;
         auto sub_block_skip_vars =
-            op->GetAttrIfExists<std::vector<std::string>>(kSkipEagerDeletionVars);
+            op->GetAttrIfExists<std::vector<std::string>>(
+                kSkipEagerDeletionVars);
         skip_vars_on_each_block[sub_block_id] = std::move(sub_block_skip_vars);
       }
     }

@@ -8,8 +8,8 @@ cc_library(
   DEPS conditional_block_op_helper graph_helper pass computation_op_handle)
 cc_library(
   pylayer_op_eager_deletion_pass
-    SRCS pylayer_op_eager_deletion_pass.cc
-    DEPS pylayer_op_helper graph_helper pass computation_op_handle)
+  SRCS pylayer_op_eager_deletion_pass.cc
+  DEPS pylayer_op_helper graph_helper pass computation_op_handle)
 cc_library(
   while_op_eager_deletion_pass
   SRCS while_op_eager_deletion_pass.cc

@@ -29,9 +29,9 @@
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -626,7 +626,6 @@ void BuildOpFuncList(const platform::Place& place,
 
     // ops in the control flow block may not find its inputs or outputs
     // in VariableScope of the sub-block, so we need search it in parent scope.
-    // Questions(MarioLulab): not append before, but pylayer op run successfully ???
 
     framework::VariableNameMap& input_name_map = op->Inputs();
     VariableValueMap ins_map;

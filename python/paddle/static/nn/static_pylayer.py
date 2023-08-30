@@ -125,39 +125,43 @@ class StaticPyLayerBlock:
         parent_block.ops[self.fwd_op_index].desc.set_blocks_attr(
             "blocks", [forward_block_desc, backward_block_desc]
         )
-        
+
         # remove temporary vars created by `StaticPyLayerContext.saved_tensor`
         if self.context:
             for var in self.context.saved_vars:
                 if not inside_block.has_var(var.name):
-                    raise ValueError(f"{var.name} was saved in forward block but could not be found in backward block. Maybe {var.name} was renamed somewhere.")
+                    raise ValueError(
+                        f"{var.name} was saved in forward block but could not be found in backward block. Maybe {var.name} was renamed somewhere."
+                    )
                 inside_block._remove_var(var.name)
-                
+
     def complete(self):
         if not self.is_backward_block:
             return self.complete_forward_block()
         else:
             return self.complete_backward_block()
 
+
 def _get_ctx_from_func_(func):
     if func is None:
         return None
-    
+
     fn_bind_args = getattr(func, "args", None)
     if fn_bind_args is None:
         return None
 
     fn_ctx = None
-    if len(fn_bind_args) > 0 and isinstance(fn_bind_args[0], paddle.jit.dy2static.py_layer.StaticPyLayerContext):
+    if len(fn_bind_args) > 0 and isinstance(
+        fn_bind_args[0], paddle.jit.dy2static.py_layer.StaticPyLayerContext
+    ):
         fn_ctx = fn_bind_args[0]
-        
-    return fn_ctx
 
+    return fn_ctx
 
 
 def _rename_var_recursively_(cur_block, var_old_to_new):
     """
-    Rename the var name both the Variable instances and the input and output arg names of 
+    Rename the var name both the Variable instances and the input and output arg names of
     all ops in `cur_block` based on `var_old_to_new`.
     `var_old_to_new` maybe the following format:
     {
@@ -167,11 +171,11 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
         old_name_n : new_name_n,
     }
     """
-    
+
     for old_var_name, new_var_name in var_old_to_new.items():
         # NOTE(MarioLulab): The reason why not using Block._rename_var is that `old_var_name` does not correspond to a Variable instance in Block
         # and Block._rename_var will raise ValueError.
-        
+
         if cur_block.has_var(old_var_name):
             # `Block.desc._rename_var` can rename var in block and then rename var name in all ops
             cur_block.desc._rename_var(
@@ -182,17 +186,17 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
             # In this case, we should traverse all ops and perform renaming manually.
             for op in cur_block.ops:
                 op._rename_input(old_var_name, new_var_name)
-                op._rename_output(old_var_name, new_var_name)            
-        
+                op._rename_output(old_var_name, new_var_name)
+
     # NOTE(MarioLulab): block attr type with the name of "blocks" or "sub_block" indicates
     # the block might be excuted. We should rename the var name in these blocks recursively
     block_attr_names = ["blocks", "sub_block"]
-        
+
     for op in cur_block.ops:
         for attr_name in op.all_attrs():
             if attr_name not in block_attr_names:
                 continue
-            
+
             if op.attr_type(attr_name) == core.AttrType.BLOCK:
                 sub_block_id = op._block_attr_id(attr_name)
                 sub_block = cur_block.program.block(sub_block_id)
@@ -201,7 +205,8 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
                 sub_blocks_ids = op._blocks_attr_ids(attr_name)
                 for sub_block_id in sub_blocks_ids:
                     sub_block = cur_block.program.block(sub_block_id)
-                    _rename_var_recursively_(sub_block, var_old_to_new)                    
+                    _rename_var_recursively_(sub_block, var_old_to_new)
+
 
 def copy_var_from_parent_block(parent_block_var, layer_helper):
     if not isinstance(parent_block_var, Variable):
@@ -216,10 +221,13 @@ def copy_var_from_parent_block(parent_block_var, layer_helper):
         current_block_var = parent_block_var
     else:
         current_block_var = current_block.create_var(
-            dtype=parent_block_var.dtype, shape=parent_block_var.shape, type=parent_block_var.type
+            dtype=parent_block_var.dtype,
+            shape=parent_block_var.shape,
+            type=parent_block_var.type,
         )
         paddle.assign(parent_block_var, current_block_var)
     return current_block_var
+
 
 # TODO(MarioLulab):
 # Need to support non-Variable in ``inputs``
@@ -323,15 +331,18 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
     fwd_fn_ctx = _get_ctx_from_func_(forward_fn)
     bwd_fn_ctx = _get_ctx_from_func_(backward_fn)
-    static_pylayer_context = fwd_fn_ctx if fwd_fn_ctx and (fwd_fn_ctx == bwd_fn_ctx) else None
-    
+    static_pylayer_context = (
+        fwd_fn_ctx if fwd_fn_ctx and (fwd_fn_ctx == bwd_fn_ctx) else None
+    )
 
     check_type(name, "name", (str, type(None)), "fluid.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
 
     assert forward_fn is not None and callable(forward_fn)
-    pylayer_block_manager = StaticPyLayerBlock(inputs, pylayer_context=static_pylayer_context)
+    pylayer_block_manager = StaticPyLayerBlock(
+        inputs, pylayer_context=static_pylayer_context
+    )
     with pylayer_block_manager.block(is_backward_block=False) as mgr:
         origin_output = forward_fn(*inputs)
         if origin_output is not None:
@@ -359,28 +370,34 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                         bwd_var_name, fwd_var_name
                     )
                 )
-                
+
             var = current_block.create_var(
-                dtype=fwd_var.dtype, shape=fwd_var.shape, type=fwd_var.type, name=bwd_var_name)
+                dtype=fwd_var.dtype,
+                shape=fwd_var.shape,
+                type=fwd_var.type,
+                name=bwd_var_name,
+            )
 
             grad_var_ins.append(var)
 
-        copy_from_parent_func = lambda var: copy_var_from_parent_block(var, helper)
+        copy_from_parent_func = lambda var: copy_var_from_parent_block(
+            var, helper
+        )
         assert isinstance(grad_var_ins, list)
         with pylayer_block_manager.block(is_backward_block=True) as mgr:
             # Step1. Copy var from parent block
             inside_block_inputs = map_structure(
                 copy_from_parent_func, grad_var_ins
             )
-            
-            # Step2. Do backward propgation
+
+            # Step2. Do backward propagation
             grad_origin_output = backward_fn(*inside_block_inputs)
-            
+
             if grad_origin_output is not None:
-                # Step3. Check the number of inputs to ``forward_fn`` the 
+                # Step3. Check the number of inputs to ``forward_fn`` the
                 # same as the number of outputs to ``backward_fn``
                 flat_grad_origin = flatten(grad_origin_output)
-                
+
                 # NOTE(MarioLulab): ``current_block`` was defined outside
                 forward_input_names = current_block.ops[
                     pylayer_block_manager.fwd_op_index
@@ -420,7 +437,6 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     mgr.var_old_to_new[
                         bwd_output_name.name
                     ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
-            
 
         # **Delete the backward input**
         for bwd_var in grad_var_ins:
