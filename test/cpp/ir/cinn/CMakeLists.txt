@@ -21,17 +21,17 @@ if(WITH_TESTING AND WITH_CINN)
     new_ir_compiler
     convert_to_dialect)
   set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
-endif()
 
-cc_test_old(
-  ir_op_fusion_test
-  SRCS
-  ir_op_fusion_test.cc
-  DEPS
-  general_fusion_merge_pass
-  fusion_merge_pass
-  pd_dialect
-  cinn_dialect
-  ir
-  gtest
-  glog)
+  cc_test_old(
+    ir_op_fusion_test
+    SRCS
+    ir_op_fusion_test.cc
+    DEPS
+    general_fusion_merge_pass
+    fusion_merge_pass
+    pd_dialect
+    cinn_dialect
+    ir
+    gtest
+    glog)
+endif()
