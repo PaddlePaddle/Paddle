@@ -514,4 +514,21 @@ void EagerUtils::FillZeroForEmptyGradInput(
   }
 }
 
+void memcheck(const std::string& str) {
+  auto* dev_ctx = static_cast<phi::GPUContext*>(
+      paddle::platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+  void* mem;
+  void* cpu;
+  cudaMalloc(&mem, 100);
+  cudaMemset(mem, 0, 100);
+  cudaMallocHost(&cpu, 100);
+
+  std::cout << str << "begin " << std::endl;
+  dev_ctx->Wait();
+  cudaMemcpy(cpu, mem, 100, cudaMemcpyDeviceToHost);
+  std::cout << str << "end " << std::endl;
+
+  cudaFreeHost(cpu);
+  cudaFree(mem);
+}
 }  // namespace egr

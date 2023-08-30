@@ -176,6 +176,7 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+  egr::memcheck(\"{} begin..\");
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
@@ -204,6 +205,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Create Grad Node
 {}
   VLOG(4) << \"Finish AD API GRAD: {}";
+  egr::memcheck(\"{} begin..\");
   // LOG IF DEBUG
   {}
   // Return
@@ -215,6 +217,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+  egr::memcheck(\"{} begin..\");
   // Dygraph Record Event
 {}
   // AMP Logic
@@ -251,6 +254,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 {}
 
   VLOG(4) << \"Finish AD API: {}";
+  egr::memcheck(\"{} end..\");
   // LOG IF DEBUG
   {}
   // Returns
@@ -1752,6 +1756,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_ad_function_name,
                 inputs_args_definition_str,
                 forward_api_name,
+                forward_api_name,
                 dygraph_event_str,
                 amp_logic_str,
                 layout_logic_str,
@@ -1768,6 +1773,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 check_inplace_str,
                 bump_inplace_version_str,
                 node_creation_after_call_str,
+                forward_api_name,
                 forward_api_name,
                 log_str,
                 returns_str,
@@ -2506,6 +2512,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name,
             self.backward_api_name,
+            self.backward_api_name,
             fill_zero_str,
             get_grad_in_args_str,
             grad_function_prepare_str,
@@ -2518,6 +2525,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             check_nan_inf_str,
             outputs_autograd_meta_str,
             next_grad_node_creation_str,
+            self.backward_api_name,
             self.backward_api_name,
             log_str,
             returns_str,

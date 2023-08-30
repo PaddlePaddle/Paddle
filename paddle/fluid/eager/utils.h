@@ -455,4 +455,6 @@ class EagerUtils {
   }
 };
 
+void memcheck(const std::string& str);
+
 }  // namespace egr
