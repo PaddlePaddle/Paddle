@@ -151,8 +151,8 @@ class NameloadJstTransformer(BaseTransformer):
         """
         Can't convert name of function call, bacause this will affect CallTransformer.
         """
-        node.args = [self.generic_visit(arg) for arg in node.args]
-        node.func = self.generic_visit(node.func)
+        node.args = [self.visit(arg) for arg in node.args]
+        node.func = self.visit(node.func)
         return node
 
     def visit_Attribute(self, node):
