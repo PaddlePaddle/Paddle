@@ -173,22 +173,12 @@ class ProcessGroup:
                     ).hexdigest()
 
                     core.CommContextManager.set_device_id(genv.device_id)
-                    print(
-                        "Before create_nccl_comm_context. ring_id: {}, local_rank: {}, nranks: {}".format(
-                            ring_id, strategy.local_rank, strategy.nranks
-                        )
-                    )
                     core.CommContextManager.create_nccl_comm_context(
                         store,
                         str(ring_id),
                         strategy.local_rank,
                         strategy.nranks,
                         endpoints_str_hash,
-                    )
-                    print(
-                        "After create_nccl_comm_context. ring_id: {}, local_rank: {}, nranks: {}".format(
-                            ring_id, strategy.local_rank, strategy.nranks
-                        )
                     )
                 else:
                     core.NCCLParallelContext(strategy, place).init_with_ring_id(
