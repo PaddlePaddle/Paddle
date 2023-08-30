@@ -256,13 +256,13 @@ def fluid_softmax_with_cross_entropy(
     """
     input_dims = len(list(logits.shape))
     if input_dims == 0:
-        raise ValueError('The dimention of input should be larger than zero!')
+        raise ValueError('The dimension of input should be larger than zero!')
 
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{}, label_dims{})'.format(
+            'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{}, label_dims{})'.format(
                 input_dims, label_dims
             )
         )

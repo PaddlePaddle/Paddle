@@ -15,6 +15,7 @@
 #include <ostream>
 
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/block_operand_impl.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/op_info.h"
@@ -26,16 +27,12 @@
 
 namespace ir {
 Operation *Operation::Create(OperationArgument &&argument) {
-  Operation *op = Create(argument.inputs,
-                         argument.attributes,
-                         argument.output_types,
-                         argument.info,
-                         argument.regions.size());
-
-  for (size_t index = 0; index < argument.regions.size(); ++index) {
-    op->region(index).TakeBody(std::move(*argument.regions[index]));
-  }
-  return op;
+  return Create(argument.inputs,
+                argument.attributes,
+                argument.output_types,
+                argument.info,
+                argument.num_regions,
+                argument.successors);
 }
 
 // Allocate the required memory based on the size and number of inputs, outputs,
@@ -43,13 +40,15 @@ Operation *Operation::Create(OperationArgument &&argument) {
 // OpInlineResult, Operation, operand.
 Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                              const AttributeMap &attributes,
-                             const std::vector<ir::Type> &output_types,
+                             const std::vector<Type> &output_types,
                              ir::OpInfo op_info,
-                             size_t num_regions) {
+                             size_t num_regions,
+                             const std::vector<Block *> &successors) {
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
   uint32_t num_operands = inputs.size();
+  uint32_t num_successors = successors.size();
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
   size_t result_mem_size =
@@ -58,11 +57,12 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                     (num_results - max_inline_result_num) +
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results;
-  size_t operand_mem_size = sizeof(detail::OpOperandImpl) * num_operands;
   size_t op_mem_size = sizeof(Operation);
+  size_t operand_mem_size = sizeof(detail::OpOperandImpl) * num_operands;
+  size_t block_operand_size = num_successors * sizeof(detail::BlockOperandImpl);
   size_t region_mem_size = num_regions * sizeof(Region);
-  size_t base_size =
-      result_mem_size + op_mem_size + operand_mem_size + region_mem_size;
+  size_t base_size = result_mem_size + op_mem_size + operand_mem_size +
+                     region_mem_size + block_operand_size;
   // 2. Malloc memory.
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
   // 3.1. Construct OpResults.
@@ -77,8 +77,12 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
     }
   }
   // 3.2. Construct Operation.
-  Operation *op = new (base_ptr)
-      Operation(attributes, op_info, num_results, num_operands, num_regions);
+  Operation *op = new (base_ptr) Operation(attributes,
+                                           op_info,
+                                           num_results,
+                                           num_operands,
+                                           num_regions,
+                                           num_successors);
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
@@ -88,7 +92,17 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-  // 3.4. Construct Regions
+  // 3.4. Construct BlockOperands.
+  if (num_successors > 0) {
+    op->block_operands_ =
+        reinterpret_cast<detail::BlockOperandImpl *>(base_ptr);
+    for (size_t idx = 0; idx < num_successors; idx++) {
+      new (base_ptr) detail::BlockOperandImpl(successors[idx], op);
+      base_ptr += sizeof(detail::BlockOperandImpl);
+    }
+  }
+
+  // 3.5. Construct Regions
   if (num_regions > 0) {
     op->regions_ = reinterpret_cast<Region *>(base_ptr);
     for (size_t idx = 0; idx < num_regions; idx++) {
@@ -118,8 +132,6 @@ void Operation::Destroy() {
   // 2. Deconstruct Result.
   for (size_t idx = 0; idx < num_results_; ++idx) {
     detail::OpResultImpl *impl = result(idx).impl();
-    IR_ENFORCE(impl->use_empty(),
-               name() + " operation destroyed but still has uses.");
     if (detail::OpOutlineResultImpl::classof(*impl)) {
       static_cast<detail::OpOutlineResultImpl *>(impl)->~OpOutlineResultImpl();
     } else {
@@ -132,8 +144,20 @@ void Operation::Destroy() {
 
   // 4. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
-    operand(idx).impl()->~OpOperandImpl();
+    detail::OpOperandImpl *op_operand_impl = operand(idx).impl_;
+    if (op_operand_impl) {
+      op_operand_impl->~OpOperandImpl();
+    }
   }
+
+  // 5. Deconstruct BlockOperand.
+  for (size_t idx = 0; idx < num_successors_; idx++) {
+    detail::BlockOperandImpl *block_operand_impl = block_operands_ + idx;
+    if (block_operand_impl) {
+      block_operand_impl->~BlockOperandImpl();
+    }
+  }
+
   // 5. Free memory.
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
@@ -158,12 +182,14 @@ Operation::Operation(const AttributeMap &attributes,
                      ir::OpInfo op_info,
                      uint32_t num_results,
                      uint32_t num_operands,
-                     uint32_t num_regions)
+                     uint32_t num_regions,
+                     uint32_t num_successors)
     : attributes_(attributes),
       info_(op_info),
       num_results_(num_results),
       num_operands_(num_operands),
-      num_regions_(num_regions) {}
+      num_regions_(num_regions),
+      num_successors_(num_successors) {}
 
 ir::OpResult Operation::result(uint32_t index) const {
   if (index >= num_results_) {
@@ -226,14 +252,26 @@ const Program *Operation::GetParentProgram() const {
   ModuleOp module_op = op->dyn_cast<ModuleOp>();
   return module_op ? module_op.program() : nullptr;
 }
+BlockOperand Operation::block_operand(uint32_t index) const {
+  IR_ENFORCE(index < num_successors_, "Invalid block_operand index");
+  return block_operands_ + index;
+}
+Block *Operation::successor(uint32_t index) const {
+  return block_operand(index).source();
+}
+
+void Operation::set_successor(Block *block, unsigned index) {
+  IR_ENFORCE(index < num_operands_, "Invalid block_operand index");
+  (block_operands_ + index)->set_source(block);
+}
 
 Region &Operation::region(unsigned index) {
-  assert(index < num_regions_ && "invalid region index");
+  IR_ENFORCE(index < num_regions_, "invalid region index");
   return regions_[index];
 }
 
 const Region &Operation::region(unsigned index) const {
-  assert(index < num_regions_ && "invalid region index");
+  IR_ENFORCE(index < num_regions_, "invalid region index");
   return regions_[index];
 }
 

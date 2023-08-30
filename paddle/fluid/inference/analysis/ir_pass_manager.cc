@@ -33,7 +33,6 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-using string::PrettyLog;
 using string::PrettyLogEndl;
 using string::Style;
 

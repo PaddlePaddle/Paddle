@@ -259,6 +259,9 @@ Status::Status(const Status& status) : impl_(std::make_shared<Impl>()) {
 }
 
 Status& Status::operator=(const Status& status) noexcept {
+  if (this == &status) {
+    return *this;
+  }
   *impl_ = *status.impl_;
   return *this;
 }
