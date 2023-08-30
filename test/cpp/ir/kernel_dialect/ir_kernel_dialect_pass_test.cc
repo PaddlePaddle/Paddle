@@ -26,6 +26,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/init.h"
@@ -43,6 +44,7 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
+
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -104,6 +106,48 @@ TEST(program_test, program) {
                 .kernel_key()
                 .dtype(),
             phi::DataType::FLOAT32);
+}
+
+TEST(legacy_op_test, program) {
+  // (1) Init environment.
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+  ir::Builder builder = ir::Builder(ctx, program.block());
+
+  paddle::dialect::DenseTensorType x = 
+      [1, 1].type().dyn_cast<paddle::dialect::DenseTensorType>();
+
+  paddle::dialect::CConcatOp op = builder.Build<paddle::dialect::CConcatOp>(
+      x, 1, 1, 1, false, false);
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
+  paddle::framework::Scope scope;
+  PhiKernelAdaptor phi_kernel_adaptor(&scope);
+  phi_kernel_adaptor.run_kernel_prog(kernel_program.get());
+
+  auto out_tensor =
+      scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
+
+  EXPECT_EQ(kernel_program->block()
+                ->front()
+                ->dyn_cast<paddle::dialect::LegacyKernelOp>()
+                .op_name(),
+            "pd.c_concat");
+  EXPECT_EQ(kernel_program->block()
+                ->front()
+                ->dyn_cast<paddle::dialect::LegacyKernelOp>()
+                .kernel_name(),
+            "c_concat");
+  EXPECT_EQ(kernel_program->block()
+                ->front()
+                ->dyn_cast<paddle::dialect::LegacyKernelOp>()
+                .kernel_key()
+                .dtype(),
+            paddle::dialect::DenseTensorType);
 }
 
 TEST(dialect_attr, attr) {

@@ -103,6 +103,7 @@ std::vector<ir::LoweredFunc> NewIRCompiler::GetOpFunc(const ::ir::Operation& op,
   std::vector<std::vector<int>> out_shapes;
   for (int i = 0; i < op.num_results(); ++i) {
     auto out_value = op.result(i);
+    VLOG(0) << "=================" << out_value << out_value.type();
     auto type_info =
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     out_types.push_back(utils::ConvertIRType(type_info.dtype()));
