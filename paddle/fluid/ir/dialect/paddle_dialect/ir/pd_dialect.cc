@@ -20,6 +20,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type_storage.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/transforms/param_to_variable.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/utils.h"
 
 namespace paddle {
@@ -48,7 +49,9 @@ void PaddleDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"  // NOLINT
       >();
-  RegisterOps<paddle::dialect::AddNOp, paddle::dialect::SplitGradOp>();
+  RegisterOps<paddle::dialect::AddNOp,
+              paddle::dialect::SplitGradOp,
+              paddle::dialect::IfOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }
@@ -94,6 +97,15 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
     os << data_layout_attr.data();
   } else {
     os << "<#AttrNotImplemented>";
+  }
+}
+
+void PaddleDialect::PrintOperation(const ir::Operation *op,
+                                   ir::IrPrinter &printer) const {
+  if (op->isa<IfOp>()) {
+    printer.PrintFullOperation(op);
+  } else {
+    printer.PrintGeneralOperation(op);
   }
 }
 
