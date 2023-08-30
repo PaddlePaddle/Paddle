@@ -33,34 +33,35 @@ def unzip(input, lod):
     Examples:
 
         .. code-block:: python
-          import numpy as np
-          import paddle
-          import paddle.fluid as fluid
-          paddle.enable_static()
-          input_np = np.array([
-                        [1.0, 2.0, 3.0, 4.0],
-                        [10.0, 20.0, 30.0, 40.0],
-                        [100.0, 200.0, 300.0, 400.0]
-                    ])
-          lod_np = np.array([0, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12])
-          input = paddle.to_tensor(input_np, "int64")
-          lod = paddle.to_tensor(lod_np, "int64")
 
-          unzipped_input = paddle.incubate.unzip(input, lod)
-          '''
-          unzipped_input is [
-                        [1.0, 2.0, 3.0, 4.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                        [10.0, 20.0, 30.0, 40.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                        [100.0, 200.0, 300.0, 400.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                        [0.0, 0.0, 0.0, 0.0]
-                    ]
-          '''
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> paddle.enable_static()
+            >>> input_np = np.array([
+            ...               [1.0, 2.0, 3.0, 4.0],
+            ...               [10.0, 20.0, 30.0, 40.0],
+            ...               [100.0, 200.0, 300.0, 400.0]
+            ...           ])
+            >>> lod_np = np.array([0, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12])
+            >>> input = paddle.to_tensor(input_np, "int64")
+            >>> lod = paddle.to_tensor(lod_np, "int64")
+            >>> # doctest: +SKIP('No such attribute')
+            >>> unzipped_input = paddle.incubate.unzip(input, lod)
+            >>> '''
+            >>> unzipped_input is [
+            ...               [1.0, 2.0, 3.0, 4.0],
+            ...               [0.0, 0.0, 0.0, 0.0],
+            ...               [10.0, 20.0, 30.0, 40.0],
+            ...               [0.0, 0.0, 0.0, 0.0],
+            ...               [0.0, 0.0, 0.0, 0.0],
+            ...               [0.0, 0.0, 0.0, 0.0],
+            ...               [100.0, 200.0, 300.0, 400.0],
+            ...               [0.0, 0.0, 0.0, 0.0],
+            ...               [0.0, 0.0, 0.0, 0.0],
+            ...               [0.0, 0.0, 0.0, 0.0]
+            ...           ]
+            >>> '''
     """
     helper = LayerHelper('unzip', **locals())
     out = helper.create_variable(dtype=input.dtype)
