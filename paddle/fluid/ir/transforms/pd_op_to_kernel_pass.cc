@@ -210,7 +210,7 @@ ir::OpResult AddPlaceTransferOp(ir::OpResult in,
 }
 
 ir::Type BuildOutputType(ir::Type type,
-                         phi::Place place,
+                         const phi::Place& place,
                          phi::DataType data_type,
                          ir::IrContext* ctx) {
   if (type.isa<dialect::DenseTensorType>()) {
