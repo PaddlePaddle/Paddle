@@ -42,14 +42,14 @@ void BindCommContextManager(py::module *m) {
       py::class_<phi::distributed::CommContextManager,
                  std::shared_ptr<phi::distributed::CommContextManager>>(
           *m, "CommContextManager")
+          .def_static("set_device_id",
+                      &phi::distributed::CommContextManager::SetDeviceId,
+                      py::call_guard<py::gil_scoped_release>())
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
           .def_static(
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
               py::call_guard<py::gil_scoped_release>())
-          .def_static("set_cuda_device_id",
-                      &phi::distributed::CommContextManager::SetCUDADeviceId,
-                      py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_GLOO)
           .def_static(

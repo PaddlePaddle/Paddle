@@ -1056,19 +1056,21 @@ PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microseconds,
                            0,
                            "Enable new executor log deps every n microseconds");
 
-DEFINE_int32(record_pool_max_size,
-             2000000,
-             "SlotRecordDataset slot record pool max size");
-DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
-DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
-            false,
-            "enable slotrecord object wait release, default false");
-DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
-            false,
-            "enable slotrecord object reset shrink memory, default false");
-DEFINE_bool(enable_ins_parser_file,  // NOLINT
-            false,
-            "enable parser ins file, default false");
+PD_DEFINE_int32(record_pool_max_size,
+                2000000,
+                "SlotRecordDataset slot record pool max size");
+PD_DEFINE_int32(slotpool_thread_num,
+                1,
+                "SlotRecordDataset slot pool thread num");
+PD_DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
+               false,
+               "enable slotrecord object wait release, default false");
+PD_DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
+               false,
+               "enable slotrecord object reset shrink memory, default false");
+PD_DEFINE_bool(enable_ins_parser_file,  // NOLINT
+               false,
+               "enable parser ins file, default false");
 PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,

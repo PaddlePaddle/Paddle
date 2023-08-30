@@ -15,6 +15,8 @@
 
 import paddle
 
+from .fluid.wrapped_decorator import signature_safe_contextmanager
+
 
 class IrChange:
     def __init__(self):
@@ -59,3 +61,15 @@ class IrChange:
                 "IrChange._switch_to_old_ir only work when paddle.ir.core._use_new_ir_api() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )
+
+
+@signature_safe_contextmanager
+def _newir_guard():
+    ir_change = IrChange()
+    paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
+    ir_change._switch_to_new_ir()
+    try:
+        yield
+    finally:
+        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
+        ir_change._switch_to_old_ir()
