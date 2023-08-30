@@ -33,8 +33,8 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace paddle {
 namespace framework {
@@ -112,20 +112,13 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
-      // if (std::getenv("FLAGS_dynamic_static_unified_comm") == "1") {
-      if (std::getenv("FLAGS_dynamic_static_unified_comm") != nullptr) {
-        auto nccl_comm_context =
-            std::make_unique<phi::distributed::NCCLCommContext>(
-                rank_id, nranks, *comm_id);
-        auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        std::shared_ptr<phi::distributed::Store> store =
-            std::make_shared<phi::distributed::TCPStore>(
-                "127.0.0.1", 6173, true, 1, 1);
-        comm_context_manager.SetStore(store);
-        std::string unique_comm_key = std::to_string(rid);
-        comm_context_manager.Emplace(unique_comm_key,
-                                     std::move(nccl_comm_context));
+      const char* dynamic_static_unified_comm =
+          getenv("FLAGS_dynamic_static_unified_comm");
+      if (dynamic_static_unified_comm &&
+          std::string(dynamic_static_unified_comm) == "1") {
+        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+        phi::distributed::CommContextManager::CreateNCCLCommContext(
+            store, std::to_string(rid), rank_id, nranks);
       } else {
         CommContext::Instance().CreateComm(
             comm_id, nranks, rank_id, device_id, rid);

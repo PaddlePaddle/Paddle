@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace paddle {
 namespace operators {
@@ -71,26 +70,10 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
-    std::string unique_comm_key = std::to_string(ring_id);
-    // if (std::getenv("FLAGS_dynamic_static_unified_comm") == "1") {
-    if (std::getenv("FLAGS_dynamic_static_unified_comm") != nullptr) {
-      if (rank == 0) {
-        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_ids[0]));
-      }
-      phi::distributed::Store store =
-          phi::distributed::TCPStore("127.0.0.1", 6173, true, 1, 1);
-      std::string unique_key = "NCCLCommContext/" + unique_comm_key;
-      if (rank == 0) {
-        std::vector<uint8_t> nccl_id_wrapper(
-            reinterpret_cast<uint8_t*>(&nccl_ids[0]),
-            reinterpret_cast<uint8_t*>(&nccl_ids[0]) + NCCL_UNIQUE_ID_BYTES);
-        store.set(unique_key, nccl_id_wrapper);
-      } else {
-        const auto& nccl_id_wrapper = store.get(unique_key);
-        std::memcpy(
-            &nccl_ids[0], nccl_id_wrapper.data(), nccl_id_wrapper.size());
-      }
-    } else {
+    const char* dynamic_static_unified_comm =
+        getenv("FLAGS_dynamic_static_unified_comm");
+    if (!dynamic_static_unified_comm ||
+        std::string(dynamic_static_unified_comm) != "1") {
       if (rank == 0) {
         GenNCCLID(&nccl_ids);
         std::vector<std::string> endpoint_list =

@@ -39,6 +39,47 @@ class TestCCommInitOp(unittest.TestCase):
             wait_server_ready(self.other_endpoints)
 
     def test_specifying_devices(self):
+        os.environ['FLAGS_dynamic_static_unified_comm'] = "0"
+        print(
+            "FLAGS_dynamic_static_unified_comm",
+            os.environ["FLAGS_dynamic_static_unified_comm"],
+        )
+        program = fluid.Program()
+        block = program.global_block()
+        nccl_id_var = block.create_var(
+            name=fluid.unique_name.generate('nccl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+        block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': nccl_id_var},
+            attrs={
+                'rank': self.rank,
+                'endpoint': self.current_endpoint,
+                'other_endpoints': self.other_endpoints,
+            },
+        )
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': nccl_id_var},
+            outputs={},
+            attrs={
+                'nranks': self.nranks,
+                'rank': self.rank,
+                'ring_id': 0,
+                'device_id': self.gpu_id,
+            },
+        )
+        self.exe.run(program)
+
+    def test_specifying_devices_with_new_comm_lib(self):
+        os.environ['FLAGS_dynamic_static_unified_comm'] = "1"
+        print(
+            "FLAGS_dynamic_static_unified_comm",
+            os.environ["FLAGS_dynamic_static_unified_comm"],
+        )
         program = fluid.Program()
         block = program.global_block()
         nccl_id_var = block.create_var(
