@@ -161,6 +161,6 @@ target_include_directories(pd_dialect_api PRIVATE ${PD_DIALECT_BINARY_DIR})
 
 cc_library(
   pd_dialect
-  SRCS pd_dialect.cc pd_op_vjp_manual.cc ${op_vjp_source_file}
+  SRCS pd_dialect.cc pd_manual_op_vjp.cc ${op_vjp_source_file}
   DEPS pd_dialect_api param_to_variable primitive_vjp_experimental
        pd_dialect_utils op_yaml_info_parser)
