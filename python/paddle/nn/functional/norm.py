@@ -74,7 +74,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
             >>> print(y)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 0.24253564, 0.37139067],
-            [1.        , 0.97014254, 0.92847669]])
+             [1.        , 0.97014254, 0.92847669]])
 
     """
 
@@ -528,14 +528,14 @@ def local_response_norm(
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        >>> import paddle
+            >>> import paddle
 
-        >>> x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
-        >>> y = paddle.nn.functional.local_response_norm(x, size=5)
-        >>> print(y.shape)
-        [3, 3, 112, 112]
+            >>> x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+            >>> y = paddle.nn.functional.local_response_norm(x, size=5)
+            >>> print(y.shape)
+            [3, 3, 112, 112]
 
     """
     if not in_dynamic_mode():
