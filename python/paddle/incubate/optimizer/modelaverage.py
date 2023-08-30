@@ -93,7 +93,7 @@ class ModelAverage(Optimizer):
         ...         return image, label
         ...     def __len__(self):
         ...         return self.num_samples
-
+        ...
         >>> class LinearNet(nn.Layer):
         ...     def __init__(self):
         ...         super().__init__()
@@ -102,7 +102,7 @@ class ModelAverage(Optimizer):
         ...     @paddle.jit.to_static
         ...     def forward(self, x):
         ...         return self._linear(x)
-
+        ...
         >>> def train(layer, loader, loss_fn, opt, model_average):
         ...     for epoch_id in range(EPOCH_NUM):
         ...         for batch_id, (image, label) in enumerate(loader()):
@@ -122,7 +122,7 @@ class ModelAverage(Optimizer):
         ...         loss.backward()
         ...         print("Evaluate batch {}: loss = {}, bias = {}".format(
         ...             batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
-
+        ...
         >>> # create network
         >>> layer = LinearNet()
         >>> loss_fn = nn.CrossEntropyLoss()
@@ -131,7 +131,7 @@ class ModelAverage(Optimizer):
         ...                                             parameters=layer.parameters(),
         ...                                             min_average_window=2,
         ...                                             max_average_window=10)
-
+        ...
         >>> # create data loader
         >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
         >>> loader = paddle.io.DataLoader(dataset,
@@ -145,7 +145,7 @@ class ModelAverage(Optimizer):
         ...     shuffle=True,
         ...     drop_last=True,
         ...     num_workers=1)
-
+        ...
         >>> # train
         >>> train(layer, loader, loss_fn, optimizer, model_average)
 
