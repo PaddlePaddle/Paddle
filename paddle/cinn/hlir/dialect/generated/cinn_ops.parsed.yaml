@@ -1,31 +1,84 @@
-- name: add
+- name: broadcast
   inputs:
   - typename: Tensor
     name: x
     optional: false
     no_need_buffer: false
     data_transform: {}
-  - typename: Tensor
-    name: y
-    optional: false
-    no_need_buffer: false
-    data_transform: {}
-  attrs: []
+  attrs:
+  - {typename: 'int64_t[]', name: broadcast_axes}
+  - {typename: 'int64_t[]', name: out_shape}
   outputs:
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
   infer_meta:
-    func: ElementwiseInferMeta
-    param: [x, y]
+    func: CINNBroadcastInferMeta
+    param: [x, broadcast_axes, out_shape]
   kernel:
-    func: [add]
-    param: [x, y]
+    func: [expand]
+    param: [x, broadcast_axes]
     backend: null
     layout: null
     data_type: null
-    dispatch: {add: null}
+    dispatch: {expand: null}
     force_backend: null
-  inplace: {out: x}
+  inplace: null
+  view: null
+  backward: null
+- name: reduce_max
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int64_t[]', name: axis}
+  - {typename: bool, name: keep_dim}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceInferMeta
+    param: [x, axis, keep_dim]
+  kernel:
+    func: [frobenius_norm]
+    param: [x, axis, keep_dim]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {frobenius_norm: null}
+    force_backend: null
+  inplace: null
+  view: null
+  backward: null
+- name: reduce_sum
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int64_t[]', name: axis}
+  - {typename: bool, name: keep_dim}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: ReduceInferMeta
+    param: [x, axis, keep_dim]
+  kernel:
+    func: [frobenius_norm]
+    param: [x, axis, keep_dim]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {frobenius_norm: null}
+    force_backend: null
+  inplace: null
   view: null
   backward: null

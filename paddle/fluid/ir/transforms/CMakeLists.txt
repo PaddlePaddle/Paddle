@@ -1,5 +1,3 @@
-add_subdirectory(cinn)
-
 cc_library(
   transform_general_functions
   SRCS transform_general_functions.cc

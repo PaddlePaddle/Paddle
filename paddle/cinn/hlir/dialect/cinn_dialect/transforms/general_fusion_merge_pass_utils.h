@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/ir/transforms/cinn/fusion_merge_util.h"
-#include "paddle/fluid/ir/transforms/cinn/op_group.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_group.h"
 
 namespace ir {
 
@@ -88,7 +88,7 @@ static std::unordered_set<api::OpNode> GetOutputOps(
     for (size_t i = 0; i < ir_op->num_results(); ++i) {
       auto out = ir_op->result(i);
       if (out) {
-        for (auto it = out.begin(); it != out.end(); ++it) {
+        for (auto it = out.use_begin(); it != out.use_end(); ++it) {
           auto* op = it->owner();
           if (!ops_set.count(op)) {
             output_ops.insert(api::OpNode(op));

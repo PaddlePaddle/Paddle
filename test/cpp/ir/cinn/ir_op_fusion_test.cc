@@ -16,14 +16,14 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/ir/cinn_dialect.h"
 #include "paddle/cinn/hlir/dialect/cinn_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
-#include "paddle/fluid/ir/transforms/cinn/fusion_merge_pass.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_pass.h"
 
 std::vector<ir::OpResult> BuildInput(
     ::ir::Builder* builder,

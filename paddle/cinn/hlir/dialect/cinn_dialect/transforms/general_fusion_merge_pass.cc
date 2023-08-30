@@ -16,14 +16,14 @@
 #include <set>
 #include <unordered_map>
 
-#include "paddle/fluid/ir/transforms/cinn/op_group.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_group.h"
 #include "paddle/ir/core/value.h"
 
-#include "paddle/fluid/ir/transforms/cinn/fusion_merge_pass.h"
-#include "paddle/fluid/ir/transforms/cinn/general_fusion_merge_pass_utils.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_pass.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/general_fusion_merge_pass_utils.h"
 
-#include "paddle/fluid/ir/transforms/cinn/fusion_merge_util.h"
-#include "paddle/fluid/ir/transforms/cinn/group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/group_merge_util.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(enhance_vertical_fusion_with_recompute);

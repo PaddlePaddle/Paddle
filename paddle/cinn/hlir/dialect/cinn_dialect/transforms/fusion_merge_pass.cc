@@ -19,7 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/ir/transforms/cinn/fusion_merge_pass.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_pass.h"
 
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/operation.h"
@@ -274,7 +274,8 @@ class OpFusionPassHelper {
 
         // find all the op use by
         size_t producer_data_used_num = 0;
-        for (auto it = producer_data.begin(); it != producer_data.end(); ++it) {
+        for (auto it = producer_data.use_begin(); it != producer_data.use_end();
+             ++it) {
           auto consumer_node = it->owner();
           producer_data_used_num++;
           // if fusion group can't find node, can't merge

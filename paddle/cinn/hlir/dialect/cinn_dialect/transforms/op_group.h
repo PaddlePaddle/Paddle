@@ -16,8 +16,8 @@
 
 #include <memory>
 
-#include "paddle/fluid/ir/transforms/cinn/fusion_merge_util.h"
-#include "paddle/fluid/ir/transforms/cinn/op_node.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_node.h"
 
 namespace ir {
 namespace api {

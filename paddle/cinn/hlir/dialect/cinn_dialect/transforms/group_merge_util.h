@@ -26,7 +26,7 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
-#include "paddle/fluid/ir/transforms/cinn/fusion_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
 
 namespace ir {
 
@@ -184,7 +184,8 @@ inline bool elementwise_fuse_reduce(
 
     // TODO(phlrain) : why only deal with first output
     auto first_output = candidate->result(0);
-    for (auto it = first_output.begin(); it != first_output.end(); ++it) {
+    for (auto it = first_output.use_begin(); it != first_output.use_end();
+         ++it) {
       auto consumer = (*it).owner();
       if (visited.count(consumer)) {
         continue;
@@ -470,7 +471,8 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<::ir::Group>& first,
         candidates.pop();
         // TODO(phlrain) : why only deal with first output
         auto first_output = candidate->result(0);
-        for (auto it = first_output.begin(); it != first_output.end(); ++it) {
+        for (auto it = first_output.use_begin(); it != first_output.use_end();
+             ++it) {
           auto consumer = (*it).owner();
 
           if (!visited_set.count(consumer)) {
