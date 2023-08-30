@@ -60,3 +60,12 @@ if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
     interceptor_ping_pong_with_brpc_test SRCS
     interceptor_ping_pong_with_brpc_test.cc DEPS fleet_executor ${BRPC_DEPS})
 endif()
+
+if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
+  set_source_files_properties(
+    interceptor_ping_pong_with_brpc_test.cc
+    PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  cc_test_old(
+    interceptor_ping_pong_with_brpc_test SRCS
+    interceptor_ping_pong_with_brpc_test.cc DEPS fleet_executor ${BRPC_DEPS})
+endif()
