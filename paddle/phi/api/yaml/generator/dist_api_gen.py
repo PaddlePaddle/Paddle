@@ -89,16 +89,19 @@ TUPLE_OUT_CREATION_TEMPLATE = """
 # 2. InferSPMD
 # Call InferMeta now, replace by InferSPMD function later
 # TODO(chenweihang): InferSPMD function design
-SINGLE_DIST_META_IN_TEMPLATE = """MakeMetaTensor(*{}.impl()), """
+SINGLE_DIST_META_IN_TEMPLATE = """
+    auto& meta_dist_{} = MakeDistMetaTensor(*{}.impl());"""
 # TODO(chenweihang): support vector and optional args later
 VECTOR_DIST_META_IN_TEMPLATE = """
 """
 OPTIONAL_DIST_VECTOR_META_IN_TEMPLATE = """
 """
 SINGLE_DIST_META_OUT_DECL_TEMPLATE = """
-    phi::MetaTensor meta_{}({});"""
+    phi::distributed::DistMetaTensor meta_{}({});"""
+INFER_GLOBAL_META_TEMPLATE = """
+    phi::{}({}{});"""
 INFER_SPMD_TEMPLATE = """
-    phi::{}({}{});
+    auto spmd_info = phi::distributed::{}({});
 """
 
 # 3. Select Kernel
@@ -112,8 +115,8 @@ KERNEL_SELECTION_TEMPLATE = """
 """
 
 # 4. Reshard Input
-INPUT_RESHARD_TEMPLATE = """
-"""
+SINGLE_INPUT_RESHARD_TEMPLATE = """
+    phi::distributed::ReshardDistTensor(dev_ctx, const_cast<phi::Distributed::DistTensor*>({}.impl().get()), spmd_info.first[{}]);"""
 
 # 5. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
@@ -160,8 +163,8 @@ KERNEL_CALL_TEMPLATE = """
 """
 
 # 8. Reshard Output
-OUTPUT_RESHARD_TEMPLATE = """
-"""
+SINGLE_OUTPUT_RESHARD_TEMPLATE = """
+    phi::distributed::ReshardDistTensor(dev_ctx, {}, spmd_info.second[{}]);"""
 
 # BaseAPI members:
 # inputs:
@@ -194,6 +197,18 @@ class DistForwardAPI(ForwardAPI):
         self.inplace_flag = False
         self.dist_output_args = []
         self.dense_output_args = []
+
+    def parse_infer_meta(self, infer_meta_config):
+        infer_meta = infer_meta_config
+        if 'param' not in infer_meta_config:
+            infer_meta['param'] = None
+        if 'spmd_rule' not in infer_meta_config:
+            infer_meta['spmd_rule'] = None
+        else:
+            # debuf info
+            print(infer_meta)
+
+        return infer_meta
 
     def need_to_generate_code_for_inplace_impl(self, i):
         return (
@@ -323,7 +338,6 @@ class DistForwardAPI(ForwardAPI):
     def generate_infer_spmd_code(self) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
-        output_names = self.outputs['names']
 
         # 1. get infer meta func name
         infer_meta = self.infer_meta
@@ -335,13 +349,15 @@ class DistForwardAPI(ForwardAPI):
             if infer_meta['param'] is not None
             else input_names + attr_names
         )
+        input_decl_code = ""
         input_args_code = ""
         for param in infer_meta_params:
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
-                    input_args_code += SINGLE_DIST_META_IN_TEMPLATE.format(
-                        param
+                    input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
+                        param, param
                     )
+                    input_args_code += "meta_dist_" + param + ", "
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
@@ -374,8 +390,22 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        return output_decl_code + INFER_SPMD_TEMPLATE.format(
+        infer_global_meta_code = INFER_GLOBAL_META_TEMPLATE.format(
             infer_meta_func_code, input_args_code, output_args_code
+        )
+        # TODO(chenweihang): add general spmd rule here
+        infer_spmd_code = ""
+        if self.infer_meta['spmd_rule'] is not None:
+            infer_spmd_func_code = infer_meta['spmd_rule']
+            infer_spmd_code = INFER_SPMD_TEMPLATE.format(
+                infer_spmd_func_code, input_args_code[:-2]
+            )
+
+        return (
+            input_decl_code
+            + output_decl_code
+            + infer_global_meta_code
+            + infer_spmd_code
         )
 
     def generate_kernel_selection_code(self) -> str:
@@ -384,7 +414,29 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def generate_reshard_input_code(self) -> str:
-        return INPUT_RESHARD_TEMPLATE.format()
+        input_names = self.inputs['names']
+
+        infer_meta = self.infer_meta
+        infer_meta_params = (
+            infer_meta['param']
+            if infer_meta['param'] is not None
+            else input_names
+        )
+        input_reshard_code = ""
+        for i, param in enumerate(infer_meta_params):
+            if param in input_names:
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    input_reshard_code += SINGLE_INPUT_RESHARD_TEMPLATE.format(
+                        param, i
+                    )
+                else:
+                    raise ValueError(
+                        f"{self.api} : Param of reshard input error : {self.inputs['input_info'][param]} type is not supported."
+                    )
+            else:
+                # do nothing
+                pass
+        return input_reshard_code
 
     # override BaseAPI's method
     def generate_dense_input(
@@ -591,7 +643,26 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def generate_reshard_output_code(self) -> str:
-        return OUTPUT_RESHARD_TEMPLATE.format()
+        output_num = len(self.outputs['types'])
+        return_type = self.get_return_type_with_intermediate(self.inplace_flag)
+        output_reshard_code = ""
+        if output_num == 1:
+            output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
+                'dist_out', 0
+            )
+        elif output_num > 1:
+            for i, out_type in enumerate(self.outputs['types']):
+                output_reshard_code += SINGLE_OUTPUT_RESHARD_TEMPLATE.format(
+                    f'dist_out_{i}', i
+                )
+        else:
+            raise ValueError(
+                "{} : Output error: the output should not be empty.".format(
+                    self.api
+                )
+            )
+
+        return output_reshard_code
 
     def generate_return_code(self) -> str:
         return self.gene_return_code()

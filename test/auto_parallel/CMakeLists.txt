@@ -162,6 +162,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
+  py_test_modules(test_semi_auto_parallel_basic MODULES
+                  test_semi_auto_parallel_basic)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

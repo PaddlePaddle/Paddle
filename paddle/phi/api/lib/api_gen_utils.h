@@ -27,6 +27,7 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 class DistTensor;
+class DistMetaTensor;
 }  // namespace distributed
 }  // namespace phi
 
@@ -140,6 +141,14 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
 /* ------------------ for auto parallel ----------------------- */
 
 phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
+
+phi::distributed::DistMetaTensor MakeDistMetaTensor(
+    const phi::distributed::DistTensor& tensor);
+
+void ReshardDistTensor(phi::DeviceContext* dev_ctx,
+                       phi::distributed::DistTensor* tensor,
+                       const phi::distributed::TensorDistAttr& dist_attr);
+)
 
 }  // namespace experimental
 }  // namespace paddle
