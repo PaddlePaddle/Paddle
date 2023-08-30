@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <string>
 
-PHI_DECLARE_bool(enable_new_ir_api);
-
 namespace paddle {
 namespace operators {
 
@@ -98,6 +96,9 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("CUDAGraph", "The output CUDA Graph when use_cuda_graph=True.")
         .AsDispensable();
+    AddAttr<BlockDesc*>("global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed program desc.");
     AddAttr<int64_t>("start_op_index",
                      "(int64_t)"
                      "The index of the op to start execution");
@@ -122,11 +123,6 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_interpretorcore",
                   "(bool, default false) Set to true for use interpretercore.")
         .SetDefault(false);
-
-    // VLOG(1) << "Old ir run program node is registered.";
-    AddAttr<BlockDesc*>("global_block",
-                        "(BlockDesc *)"
-                        "The global block of executed program desc.");
     AddAttr<BlockDesc*>("forward_global_block",
                         "(BlockDesc *)"
                         "The global block of executed forward program desc.")
@@ -151,7 +147,6 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                                       "std::vector<std::string>"
                                       "The names of input gradients.")
         .SetDefault({});
-
     AddComment(R"DOC(
 RunProgram operator.
 
