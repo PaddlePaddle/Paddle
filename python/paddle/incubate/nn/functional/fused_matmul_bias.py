@@ -51,7 +51,7 @@ def fused_matmul_bias(
             >>> bias = paddle.randn([5])
             >>> out = fused_matmul_bias(x, y, bias)
             >>> print(out.shape)
-            >>> [3, 5]
+            [3, 5]
     """
     if bias is None:
         return matmul(x, y, transpose_x, transpose_y, name)
