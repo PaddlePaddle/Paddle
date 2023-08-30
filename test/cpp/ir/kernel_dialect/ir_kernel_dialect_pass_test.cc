@@ -117,7 +117,7 @@ TEST(legacy_op_test, program) {
 
   ir::Builder builder = ir::Builder(ctx, program.block());
 
-  paddle::dialect::DenseTensorType x = 
+  paddle::dialect::DenseTensorType x =
       [1, 1].type().dyn_cast<paddle::dialect::DenseTensorType>();
 
   paddle::dialect::CConcatOp op = builder.Build<paddle::dialect::CConcatOp>(
