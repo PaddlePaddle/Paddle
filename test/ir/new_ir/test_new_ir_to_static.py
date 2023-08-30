@@ -42,6 +42,33 @@ class TestDy2staticNewIR(unittest.TestCase):
             out.numpy(), ans.numpy(), rtol=1e-05, atol=1e-8
         )
 
+    def test_basic_network_backward(self):
+        def func(x):
+            out = paddle.mean(x)
+            return out
+
+        # ==== dygraph computation ====
+        static_func = paddle.jit.to_static(func)
+        x = paddle.randn((3, 3))
+        y = paddle.randn((3, 3))
+        x.stop_gradient = False
+        y.stop_gradient = False
+        loss = func(x) * 2
+        loss.backward()
+        x_grad_ans = x.grad.numpy()
+        x.clear_gradient()
+
+        # ==== to static compuatation ====
+
+        out = static_func(x)
+        out = out * 2
+        out.backward()
+        st_grad = x.grad
+
+        np.testing.assert_allclose(
+            x_grad_ans, st_grad.numpy(), rtol=1e-05, atol=1e-8
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

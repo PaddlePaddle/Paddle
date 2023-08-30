@@ -33,6 +33,8 @@
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/ir/core/block.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/common/complex.h"
 
 namespace py = pybind11;
@@ -830,6 +832,50 @@ void CastPyArg2AttrBlock(PyObject* obj,
   attrs[key] = reinterpret_cast<paddle::framework::BlockDesc*&>(vh[0]);
 }
 
+void CastPyArg2AttrIRBlock(PyObject* obj,
+                           paddle::framework::AttributeMap& attrs,  // NOLINT
+                           const std::string& key,
+                           const std::string& op_type,
+                           ssize_t arg_pos) {
+  VLOG(1) << "After Process ir::Block*";
+  ::pybind11::detail::instance* inst =
+      (::pybind11::detail::instance*)obj;  // NOLINT
+  void** vh = inst->simple_layout ? inst->simple_value_holder
+                                  : &inst->nonsimple.values_and_holders[0];
+  attrs[key] = reinterpret_cast<::ir::Block*&>(vh[0]);
+}
+
+void CastPyArg2AttrValues(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  std::vector<::ir::Value> results;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      // TODO(xiongkun): judge OpResult or Value;
+      item = PyList_GetItem(obj, i);
+      ::pybind11::detail::instance* inst =
+          (::pybind11::detail::instance*)item;  // NOLINT
+      void** vh = inst->simple_layout ? inst->simple_value_holder
+                                      : &inst->nonsimple.values_and_holders[0];
+      ::ir::OpResult* opresult = reinterpret_cast<::ir::OpResult*>(vh[0]);
+      results.emplace_back(ir::Value(opresult->value_impl()));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "a list of int, float, complex, or bool, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+  attrs[key] = results;
+  VLOG(1) << "Pybind: Cast " << results.size() << " Value Finished.";
+}
+
 void ConstructAttrMapFromPyArgs(
     const std::string& op_type,
     PyObject* args,
@@ -848,6 +894,7 @@ void ConstructAttrMapFromPyArgs(
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
+    VLOG(1) << "Start Process " << arg_pos;
     Py_ssize_t key_len;
     const char* key_ptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
@@ -863,6 +910,7 @@ void ConstructAttrMapFromPyArgs(
     }
 
     std::string key(key_ptr, (size_t)key_len);  // NOLINT
+    VLOG(1) << "Start Process " << key;
     auto iter = attr_type_map->find(key);
     if (iter == attr_type_map->end()) {
       continue;
@@ -915,6 +963,12 @@ void ConstructAttrMapFromPyArgs(
         break;
       case paddle::framework::proto::AttrType::SCALARS:
         CastPyArg2AttrScalars(obj, attrs, key, op_type, arg_pos);
+        break;
+      case paddle::framework::proto::AttrType::IR_BLOCK:
+        CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+        break;
+      case paddle::framework::proto::AttrType::IR_VALUES:
+        CastPyArg2AttrValues(obj, attrs, key, op_type, arg_pos);
         break;
       default:
         break;

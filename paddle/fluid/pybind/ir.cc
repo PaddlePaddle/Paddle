@@ -590,13 +590,59 @@ SplitedResult ForwardBackwardSplit(
     counter += 1;
     backward_value_map[v] = op->results()[0].value_impl();
   };
+
+  auto create_output_fn_forward = [&ctx,
+                                   &forward_value_map,
+                                   &counter,
+                                   &forward_program](const ir::Value &v) {
+    auto op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
+    ir::AttributeMap attribute_map = {
+        {"parameter_name",
+         ir::StrAttribute::get(
+             ctx, std::string("output_") + std::to_string(counter))},
+    };
+    ir::Operation *operation = ir::Operation::Create(
+        {OpResult(forward_value_map[v].impl())}, attribute_map, {}, op_info);
+    forward_program->block()->push_back(operation);
+    counter += 1;
+  };
+
+  auto create_output_fn_backward = [&ctx,
+                                    &backward_value_map,
+                                    &counter,
+                                    &backward_program](const ir::Value &v) {
+    auto op_info = ctx->GetRegisteredOpInfo(ir::SetParameterOp::name());
+    ir::AttributeMap attribute_map = {
+        {"parameter_name",
+         ir::StrAttribute::get(
+             ctx, std::string("output_") + std::to_string(counter))},
+    };
+    ir::Operation *operation =
+        ir::Operation::Create({OpResult(backward_value_map.at(v).impl())},
+                              attribute_map,
+                              {},
+                              op_info);
+    backward_program->block()->push_back(operation);
+    counter += 1;
+  };
+
+  counter = 0;
   std::for_each(forward_inputs.begin(), forward_inputs.end(), create_data_fn);
-  std::for_each(forward_outputs.begin(), forward_outputs.end(), create_data_fn);
+  // std::for_each(forward_outputs.begin(), forward_outputs.end(),
+  // create_data_fn);
   std::for_each(middle_values.begin(), middle_values.end(), create_data_fn);
   std::for_each(forward_outputs_grads.begin(),
                 forward_outputs_grads.end(),
                 create_data_fn);
   VLOG(1) << "After call create_data_fn";
+
+  counter = 0;
+  std::for_each(
+      middle_values.begin(), middle_values.end(), create_output_fn_forward);
+  std::for_each(
+      forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
+
+  VLOG(1) << "After call create_output_fn";
 
   // Step2. copy backward ops .
   range_block_do(program.block(),
@@ -606,6 +652,11 @@ SplitedResult ForwardBackwardSplit(
                    backward_program->block()->push_back(cloned_op);
                  });
   VLOG(1) << "After call backward copy";
+  counter = 0;
+  std::for_each(forward_inputs_grads.begin(),
+                forward_inputs_grads.end(),
+                create_output_fn_backward);
+  // TODO(xiongkun): add forward parameter grads.
 
   VLOG(1) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(1) << "backward_value_map.size() is " << backward_value_map.size();
@@ -618,22 +669,14 @@ SplitedResult ForwardBackwardSplit(
   VLOG(1) << "Splited Program (fwd | bwd): \n" << print_stream.str();
 
   // construct all attributes we needed.
-  mapping_value(middle_values, forward_value_map, fm);  // write 'fm'
-  VLOG(1) << "XKXKXK";
-  mapping_value(middle_values, backward_value_map, bm);  // write 'bm'
-  VLOG(1) << "XKXKXK";
-  mapping_value(forward_inputs, forward_value_map, fx);  // write 'bm'
-  VLOG(1) << "XKXKXK";
-  mapping_value(forward_inputs, backward_value_map, bx);  // write 'bm'
-  VLOG(1) << "XKXKXK";
-  mapping_value(forward_outputs, forward_value_map, fo);  // write 'bm'
-  VLOG(1) << "XKXKXK";
-  mapping_value(forward_inputs_grads, backward_value_map, bx_g);  // write 'bm'
-  VLOG(1) << "XKXKXK";
+  mapping_value(middle_values, forward_value_map, fm);             // write 'fm'
+  mapping_value(middle_values, backward_value_map, bm);            // write 'bm'
+  mapping_value(forward_inputs, forward_value_map, fx);            // write 'bm'
+  mapping_value(forward_inputs, backward_value_map, bx);           // write 'bm'
+  mapping_value(forward_outputs, forward_value_map, fo);           // write 'bm'
+  mapping_value(forward_inputs_grads, backward_value_map, bx_g);   // write 'bm'
   mapping_value(forward_outputs_grads, backward_value_map, bo_g);  // write 'bm'
-  VLOG(1) << "XKXKXK";
-  mapping_value(forward_outputs, backward_value_map, bo);  // write 'bm'
-  VLOG(1) << "After mapping values.";
+  // mapping_value(forward_outputs, backward_value_map, bo);  // write 'bm'
 
   std::map<std::string, std::vector<ir::Value>> attr = {{"fx", fx},
                                                         {"fp", fp},

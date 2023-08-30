@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/ir/core/block.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/utils/blank.h"
 
@@ -962,7 +964,12 @@ struct SetAttrDescVisitor {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
-
+  void operator()(const std::vector<ir::Value> &v) const {
+    // just do nothing.
+  }
+  void operator()(const std::vector<ir::Block *> &v) const {
+    // just do nothing.
+  }
   void operator()(const std::vector<VarDesc *> &v) const {
     std::vector<std::string> var_names;
     for (auto var : v) {

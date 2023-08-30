@@ -219,7 +219,12 @@ class PartialProgramLayer:
 
         # self._sync_lr_value_with_scheduler()
 
-        _legacy_C_ops.run_program(
+        c_run_program_fn = None
+        if ir_static._use_new_ir_api():
+            c_run_program_fn = _legacy_C_ops.newir_run_program
+        else:
+            c_run_program_fn = _legacy_C_ops.run_program
+        c_run_program_fn(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
             self._valid_vars(out_vars),
@@ -1009,7 +1014,7 @@ class PartialProgramLayer:
         # Update stop_gradient for all outputs
         def set_stop_gradient(var_id, eager_tensor):
             var = self._outputs[var_id]
-            assert isinstance(var, framework.Variable)
+            assert isinstance(var, OpResult)
             eager_tensor.stop_gradient = var.stop_gradient
             return None
 
