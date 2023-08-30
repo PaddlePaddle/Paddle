@@ -283,7 +283,7 @@ class OperatorBase {
 
   // Only run BuildOpFuncList
   virtual void RunPreStaticBuild(const Scope& scope,
-                                 const platform::Place& place) {}
+                                 const platform::Place& place) const {}
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
