@@ -17,7 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/phi/core/flags.h"
-DECLARE_bool(benchmark);
+PHI_DECLARE_bool(benchmark);
 
 PHI_DECLARE_bool(eager_delete_scope);
 

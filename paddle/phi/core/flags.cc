@@ -1301,7 +1301,9 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");
 
-DEFINE_bool(enable_record_memory, false, "enable memory recorder");  // NOLINT
+PD_DEFINE_bool(enable_record_memory,
+               false,
+               "enable memory recorder");  // NOLINT
 
 PHI_DEFINE_EXPORTED_bool(
     eager_delete_scope,
