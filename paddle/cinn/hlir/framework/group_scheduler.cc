@@ -233,7 +233,6 @@ void GroupScheduler::DoLoopAlignment() {
 
   std::unordered_set<std::string> reduce_var_names =
       GetReduceVarNames(master_block);
-  if (reduce_var_names.empty()) return;
   if (!reduce_var_names.empty()) {
     std::set<ir::Expr> reduce_loads = ir::CollectIRNodesWithoutTensor(
         master_block,
@@ -298,6 +297,14 @@ void GroupScheduler::DoLoopAlignment() {
       }
     }
     CHECK_EQ(original_master_loop_order.size(), recover_loop_order.size());
+  } else {
+    for (int i = 0; i < master_loops.size(); ++i) {
+      original_master_loop_extents.push_back(
+          ir::GetLoopExtent(master_loops[i]));
+      spacial_master_loop_extents.push_back(ir::GetLoopExtent(master_loops[i]));
+      original_master_loop_order.push_back(i);
+      recover_loop_order.push_back(i);
+    }
   }
 
   int total_master_loop_extents = 1;
@@ -339,7 +346,21 @@ void GroupScheduler::DoLoopAlignment() {
 
     // 2. Split source loop to align with the target loops
     std::vector<int> target_loop_extents;
-    if (total_source_extent == total_spacial_loop_extents) {
+    if (total_source_extent < total_spacial_loop_extents) {
+      int cur_extent = 1;
+      for (int extent : spacial_master_loop_extents) {
+        cur_extent *= extent;
+        if (cur_extent == total_source_extent) {
+          target_loop_extents.push_back(extent);
+          break;
+        } else if (cur_extent > total_source_extent) {
+          target_loop_extents.push_back(-1);
+          break;
+        } else {
+          target_loop_extents.push_back(extent);
+        }
+      }
+    } else if (total_source_extent == total_spacial_loop_extents) {
       target_loop_extents = spacial_master_loop_extents;
     } else if (total_source_extent < total_master_loop_extents) {
       target_loop_extents = spacial_master_loop_extents;
@@ -360,27 +381,6 @@ void GroupScheduler::DoLoopAlignment() {
       ir_sch_->Reorder(node->id(), recover_loop_order);
     }
 
-    // 3. Copy bind info from target loops
-    // for (int idx = 0; idx < target_loops.size(); ++idx) {
-    //   std::string thread_axis = "";
-    //   ir::ForType target_for_type =
-    //   target_loops[idx].As<ir::For>()->for_type(); if (target_for_type ==
-    //   ir::ForType::GPUBlock) {
-    //     thread_axis += "blockIdx.";
-    //   } else if (target_for_type == ir::ForType::GPUThread) {
-    //     thread_axis += "threadIdx.";
-    //   } else {
-    //     continue;
-    //   }
-    //   int offset = target_loops[idx].As<ir::For>()->bind_info().offset;
-    //   thread_axis += ('x' + offset);
-    //   if (idx >= source_loops.size()) {
-    //     ir::Expr unit_loop = ir_sch_->AddUnitLoop(node->Block());
-    //     ir_sch_->Bind(unit_loop, thread_axis);
-    //   } else {
-    //     ir_sch_->Bind(source_loops[idx], thread_axis);
-    //   }
-    // }
     return true;
   };
 
