@@ -252,6 +252,7 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         self.dygraph_func = simple_net
 
         input1 = paddle.randn([3, 4]).astype("float32")
+        input1.stop_gradient = False
         self._run_and_compare(input1)
 
     def test_inplace(self):
