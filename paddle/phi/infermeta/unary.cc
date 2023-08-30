@@ -17,7 +17,6 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -31,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 
