@@ -41,8 +41,6 @@ enum AttrType {
   FLOAT64 = 15;
   SCALAR = 16;
   SCALARS = 17;
-  IR_BLOCK = 18;
-  IR_VALUES = 19;
 }
 
 

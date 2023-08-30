@@ -744,20 +744,6 @@ class PartialProgramLayer:
             attrs.append(key)
             attrs.append(val)
 
-        if self.training:
-            # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
-            # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
-            # the correct names of the parameter grads from program. And out grads are similar to above.
-            attrs.extend(
-                (
-                    'param_grad_names',
-                    self._grad_var_names.get('param', []),
-                    'out_grad_names',
-                    self._grad_var_names.get('out', []),
-                    'x_grad_names',
-                    self._grad_var_names.get('x', []),
-                )
-            )
         if self._cuda_graph_capture_mode:
             attrs.extend(
                 (

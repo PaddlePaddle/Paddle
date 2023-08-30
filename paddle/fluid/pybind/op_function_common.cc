@@ -963,14 +963,79 @@ void ConstructAttrMapFromPyArgs(
       case paddle::framework::proto::AttrType::SCALARS:
         CastPyArg2AttrScalars(obj, attrs, key, op_type, arg_pos);
         break;
-      case paddle::framework::proto::AttrType::IR_BLOCK:
-        CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
-        break;
-      case paddle::framework::proto::AttrType::IR_VALUES:
-        CastPyArg2AttrValues(obj, attrs, key, op_type, arg_pos);
-        break;
       default:
         break;
+    }
+  }
+}
+
+void ConstructAttrMapForRunProgram(
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t attr_start,
+    ssize_t attr_end,
+    paddle::framework::AttributeMap& attrs) {  // NOLINT
+  PADDLE_ENFORCE_EQ((attr_end - attr_start) % 2,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The number of arguments for attributes should be even "
+                        "but attr_start = %d, attr_end = %d.",
+                        attr_start,
+                        attr_end));
+
+  PyObject* obj = nullptr;
+  for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
+    VLOG(1) << "Start Process " << arg_pos;
+    Py_ssize_t key_len;
+    const char* key_ptr;
+    obj = PyTuple_GET_ITEM(args, arg_pos);
+    if (PyObject_CheckString(obj)) {
+      key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be str, but got "
+          "%s",
+          op_type,
+          arg_pos,
+          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    }
+
+    std::string key(key_ptr, (size_t)key_len);  // NOLINT
+    VLOG(1) << "Start Process " << key;
+    obj = PyTuple_GET_ITEM(args, arg_pos + 1);
+
+    if (std::set<std::string>({"cuda_graph_capture_mode"}).count(key)) {
+      CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"global_block",
+                                      "forward_global_block",
+                                      "backward_global_block"})
+                   .count(key)) {
+      CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
+                   .count(key)) {
+      CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"start_op_index",
+                                      "end_op_index",
+                                      "program_id",
+                                      "cuda_graph_pool_id"})
+                   .count(key)) {
+      CastPyArg2AttrLong(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"fx",
+                                      "fp",
+                                      "fm",
+                                      "fo",
+                                      "bx",
+                                      "bp",
+                                      "bm",
+                                      "bo_g",
+                                      "bx_g",
+                                      "bp_g",
+                                      "bo"})
+                   .count(key)) {
+      CastPyArg2AttrValues(obj, attrs, key, op_type, arg_pos);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s is not defined in this function.", key));  // NOLINT
     }
   }
 }

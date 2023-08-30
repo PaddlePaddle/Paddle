@@ -123,95 +123,34 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for use interpretercore.")
         .SetDefault(false);
 
-    if (true) {
-      // VLOG(1) << "New ir run program node is registered.";
-      AddAttr<::ir::Block*>("global_block",
-                            "(ir::Block *)"
-                            "The global block of executed program desc.");
-      AddAttr<::ir::Block*>(
-          "forward_global_block",
-          "(ir::Block *)"
-          "The global block of executed forward program desc.")
-          .SetDefault(nullptr);
-      AddAttr<::ir::Block*>(
-          "backward_global_block",
-          "(ir::Block *)"
-          "The global block of executed backward program desc.")
-          .SetDefault(nullptr);
-      AddAttr<std::vector<::ir::Value>>("fx",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("fp",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("fm",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("fo",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("bx",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("bp",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("bm",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("bo_g",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("bx_g",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("bp_g",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<::ir::Value>>("bo",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-    } else {
-      // VLOG(1) << "Old ir run program node is registered.";
-      AddAttr<BlockDesc*>("global_block",
-                          "(BlockDesc *)"
-                          "The global block of executed program desc.");
-      AddAttr<BlockDesc*>("forward_global_block",
-                          "(BlockDesc *)"
-                          "The global block of executed forward program desc.")
-          .SetDefault(nullptr);
-      AddAttr<BlockDesc*>("backward_global_block",
-                          "(BlockDesc *)"
-                          "The global block of executed backward program desc.")
-          .SetDefault(nullptr);
-      AddAttr<std::vector<std::string>>("param_grad_names",
-                                        "std::vector<std::string>"
-                                        "The names of parameter gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<std::string>>("out_grad_names",
-                                        "std::vector<std::string>"
-                                        "The names of output gradients.")
-          .SetDefault({});
-      AddAttr<std::vector<std::string>>("x_names",
-                                        "std::vector<std::string>"
-                                        "The names of input tensors.")
-          .SetDefault({});
-      AddAttr<std::vector<std::string>>("x_grad_names",
-                                        "std::vector<std::string>"
-                                        "The names of input gradients.")
-          .SetDefault({});
-    }
+    // VLOG(1) << "Old ir run program node is registered.";
+    AddAttr<BlockDesc*>("global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed program desc.");
+    AddAttr<BlockDesc*>("forward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed forward program desc.")
+        .SetDefault(nullptr);
+    AddAttr<BlockDesc*>("backward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed backward program desc.")
+        .SetDefault(nullptr);
+    AddAttr<std::vector<std::string>>("param_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of parameter gradients.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("out_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of output gradients.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("x_names",
+                                      "std::vector<std::string>"
+                                      "The names of input tensors.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("x_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of input gradients.")
+        .SetDefault({});
 
     AddComment(R"DOC(
 RunProgram operator.

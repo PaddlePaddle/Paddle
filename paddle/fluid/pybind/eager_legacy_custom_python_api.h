@@ -76,7 +76,7 @@ static PyObject *newir_eager_api_run_program(PyObject *self,
     // TODO(zengjinle): support CUDA Graph on eager mode
     VLOG(1) << "Start NewIR ConstructAttrMapFromPyArgs";
 
-    ConstructAttrMapFromPyArgs(
+    ConstructAttrMapForRunProgram(
         "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
 
     VLOG(1) << "Finish NewIR ConstructAttrMapFromPyArgs";
