@@ -53,6 +53,15 @@ class SimpleNet(nn.Layer):
             data_format='NHWC',
         )
         self.relu3 = nn.ReLU()
+        self.conv4 = nn.Conv2D(
+            in_channels=2,
+            out_channels=1,
+            kernel_size=3,
+            stride=2,
+            padding=0,
+            data_format='NHWC',
+        )
+        self.relu4 = nn.ReLU()
         self.flatten = nn.Flatten()
         self.fc = nn.Linear(729, 10)
         self.softmax = nn.Softmax()
@@ -62,8 +71,12 @@ class SimpleNet(nn.Layer):
         x = self.relu1(x)
         x = self.conv2(x)
         x = self.relu2(x)
+        res = x
         x = self.conv3(x)
         x = self.relu3(x)
+        res = self.conv4(res)
+        res = self.relu4(res)
+        x = x + res
         x = self.flatten(x)
         x = self.fc(x)
         x = self.softmax(x)
