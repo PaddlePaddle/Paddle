@@ -111,58 +111,33 @@ class MultiHeadMatmulFusePattern
     const auto &reshape_4 = src.Op("pd.reshape");
     reshape_4({&src.Tensor("transpose_4_out"), &full_int_array_4()},
               {&src.Tensor("reshape_4_out"), &src.Tensor("reshape_4_xshape")});
-    const auto &matmul_6 =
-        src.Op("pd.matmul",
-               {{"transpose_x", src.Attr("matmul_6_transpose_x")},
-                {"transpose_y", src.Attr("matmul_6_transpose_y")}});
-    src.Tensor("matmul_6_out") =
-        matmul_6(src.Tensor("reshape_4_out"), src.Tensor("matmul_6_in_2"));
-    const auto &add_4 = src.Op("pd.add");
-    src.Tensor("add_4_out") =
-        add_4(src.Tensor("matmul_6_out"), src.Tensor("add_4_in_2"));
 
     //
     // Constraints.
     //
     src.RequireNativeCall([](const ir::drr::MatchContext &match_ctx) -> bool {
       const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
-      if (softmax_axis == -1 || softmax_axis == 3) return false;
+      if (softmax_axis != -1 && softmax_axis != 3) return false;
 
-      const auto &matmul_1_transpose_x =
-          match_ctx.Attr<int>("matmul_1_transpose_x");
-      const auto &matmul_1_transpose_y =
-          match_ctx.Attr<int>("matmul_1_transpose_y");
+      bool matmul_1_transpose_x = match_ctx.Attr<bool>("matmul_1_transpose_x");
+      bool matmul_1_transpose_y = match_ctx.Attr<bool>("matmul_1_transpose_y");
       if (matmul_1_transpose_x || matmul_1_transpose_y) return false;
 
-      const auto &matmul_2_transpose_x =
-          match_ctx.Attr<int>("matmul_2_transpose_x");
-      const auto &matmul_2_transpose_y =
-          match_ctx.Attr<int>("matmul_2_transpose_y");
+      bool matmul_2_transpose_x = match_ctx.Attr<bool>("matmul_2_transpose_x");
+      bool matmul_2_transpose_y = match_ctx.Attr<bool>("matmul_2_transpose_y");
       if (matmul_2_transpose_x || matmul_2_transpose_y) return false;
 
-      const auto &matmul_3_transpose_x =
-          match_ctx.Attr<int>("matmul_3_transpose_x");
-      const auto &matmul_3_transpose_y =
-          match_ctx.Attr<int>("matmul_3_transpose_y");
+      bool matmul_3_transpose_x = match_ctx.Attr<bool>("matmul_3_transpose_x");
+      bool matmul_3_transpose_y = match_ctx.Attr<bool>("matmul_3_transpose_y");
       if (matmul_3_transpose_x || matmul_3_transpose_y) return false;
 
-      const auto &matmul_4_transpose_x =
-          match_ctx.Attr<int>("matmul_4_transpose_x");
-      const auto &matmul_4_transpose_y =
-          match_ctx.Attr<int>("matmul_4_transpose_y");
+      bool matmul_4_transpose_x = match_ctx.Attr<bool>("matmul_4_transpose_x");
+      bool matmul_4_transpose_y = match_ctx.Attr<bool>("matmul_4_transpose_y");
       if (matmul_4_transpose_x || !matmul_4_transpose_y) return false;
 
-      const auto &matmul_5_transpose_x =
-          match_ctx.Attr<int>("matmul_5_transpose_x");
-      const auto &matmul_5_transpose_y =
-          match_ctx.Attr<int>("matmul_5_transpose_y");
+      bool matmul_5_transpose_x = match_ctx.Attr<bool>("matmul_5_transpose_x");
+      bool matmul_5_transpose_y = match_ctx.Attr<bool>("matmul_5_transpose_y");
       if (matmul_5_transpose_x || matmul_5_transpose_y) return false;
-
-      const auto &matmul_6_transpose_x =
-          match_ctx.Attr<int>("matmul_6_transpose_x");
-      const auto &matmul_6_transpose_y =
-          match_ctx.Attr<int>("matmul_6_transpose_y");
-      if (matmul_6_transpose_x || matmul_6_transpose_y) return false;
 
       return true;
     });
@@ -184,7 +159,8 @@ class MultiHeadMatmulFusePattern
     const auto &multihead_matmul =
         res.Op("pd.multihead_matmul",
                {{"head_number", head_number}, {"alpha", alpha}});
-    res.Tensor("add_4_out") = multihead_matmul(res.Tensor("matmul_1_in_1"));
+    res.Tensor("transpose_4_out") =
+        multihead_matmul(res.Tensor("matmul_1_in_1"));
   }
 };
 

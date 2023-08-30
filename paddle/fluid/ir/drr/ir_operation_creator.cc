@@ -118,7 +118,7 @@ Operation* CreateOperation(const OpCall& op_call,
     return full_op;
   }
 
-  PADDLE_THROW(phi::errors::Unavailable("Unknown op :" + op_call.name()));
+  PADDLE_THROW(phi::errors::Unavailable("Unknown op : " + op_call.name()));
 }
 
 }  // namespace drr
