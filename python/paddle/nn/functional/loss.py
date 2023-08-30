@@ -1638,17 +1638,17 @@ def kl_div(input, label, reduction='mean', name=None):
             >>> print(pred_loss.shape)
             []
 
-            # 'mean' reduction, loss shape will be [1]
+            >>> # 'mean' reduction, loss shape will be [1]
             >>> pred_loss = F.kl_div(x, target, reduction='mean')
             >>> print(pred_loss.shape)
             []
 
-            # 'sum' reduction, loss shape will be [1]
+            >>> # 'sum' reduction, loss shape will be [1]
             >>> pred_loss = F.kl_div(x, target, reduction='sum')
             >>> print(pred_loss.shape)
             []
 
-            # 'none' reduction, loss shape is same with input shape
+            >>> # 'none' reduction, loss shape is same with input shape
             >>> pred_loss = F.kl_div(x, target, reduction='none')
             >>> print(pred_loss.shape)
             [5, 20]
@@ -1958,7 +1958,7 @@ def rnnt_loss(
 
         .. code-block:: python
 
-            # declarative mode
+            >>> # declarative mode
             >>> import paddle.nn.functional as F
             >>> import numpy as np
             >>> import paddle
@@ -1967,11 +1967,11 @@ def rnnt_loss(
             >>> fn = functools.partial(F.rnnt_loss, reduction='sum', fastemit_lambda=0.0, blank=0)
 
             >>> acts = np.array([[[[0.1, 0.6, 0.1, 0.1, 0.1],
-            ...                 [0.1, 0.1, 0.6, 0.1, 0.1],
-            ...                 [0.1, 0.1, 0.2, 0.8, 0.1]],
-            ...                 [[0.1, 0.6, 0.1, 0.1, 0.1],
-            ...                 [0.1, 0.1, 0.2, 0.1, 0.1],
-            ...                 [0.7, 0.1, 0.2, 0.1, 0.1]]]])
+            ...                    [0.1, 0.1, 0.6, 0.1, 0.1],
+            ...                    [0.1, 0.1, 0.2, 0.8, 0.1]],
+            ...                   [[0.1, 0.6, 0.1, 0.1, 0.1],
+            ...                    [0.1, 0.1, 0.2, 0.1, 0.1],
+            ...                    [0.7, 0.1, 0.2, 0.1, 0.1]]]])
             >>> labels = [[1, 2]]
 
             >>> acts = paddle.to_tensor(acts, stop_gradient=False)
