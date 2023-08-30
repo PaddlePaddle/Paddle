@@ -17,7 +17,7 @@ include(ExternalProject)
 set(CBLAS_PREFIX_DIR ${THIRD_PARTY_PATH}/openblas)
 set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
-set(CBLAS_TAG v0.3.7)
+set(CBLAS_TAG v0.3.23)
 set(CMAKE_VERBOSE_MAKEFILE 1)
 
 # OpenBLAS support Raptor Lake from v0.3.22
@@ -29,15 +29,15 @@ if(UNIX
 endif()
 
 if(APPLE AND WITH_ARM)
-  set(CBLAS_TAG v0.3.13)
+  set(CBLAS_TAG v0.3.23)
 endif()
 
 if(WITH_MIPS)
-  set(CBLAS_TAG v0.3.13)
+  set(CBLAS_TAG v0.3.23)
 endif()
 
 if(WITH_LOONGARCH)
-  set(CBLAS_TAG v0.3.18)
+  set(CBLAS_TAG v0.3.23)
 endif()
 
 file(GLOB CBLAS_SOURCE_FILE_LIST ${CBLAS_SOURCE_DIR})
