@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 
-os.environ["FLAGS_enable_new_ir_api"] = "0"
 import paddle
 
 paddle.enable_static()
@@ -41,23 +39,14 @@ class TestBuildModule(unittest.TestCase):
             )
             self.assertEqual(sum_value, 5 * 4 * 4)
 
-        from paddle.new_ir_utils import IrChange
-
-        ir_change = IrChange()
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": True})
-        ir_change._switch_to_new_ir()
-
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', [4, 4], dtype='float32')
             out = paddle.mean(x)
             exe = paddle.static.Executor()
             x_feed = np.ones([4, 4], dtype=np.float32) * 10
-            # y_feed = np.ones([4, 4], dtype=np.float32) * 2
             (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
             self.assertEqual(sum_value, 10)
-        paddle.framework.set_flags({"FLAGS_enable_new_ir_api": False})
-        ir_change._switch_to_old_ir()
 
 
 if __name__ == "__main__":
