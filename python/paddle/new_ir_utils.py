@@ -20,6 +20,8 @@ from .fluid.wrapped_decorator import signature_safe_contextmanager
 
 class IrChange:
     def __init__(self):
+        old_flag = paddle.fluid.framework.get_flags("FLAGS_enable_new_ir_api")
+        paddle.fluid.framework.set_flags({"FLAGS_enable_new_ir_api": False})
         if not paddle.ir.core._use_new_ir_api():
             self.old_Program = paddle.static.Program
             self.old_program_guard = paddle.fluid.program_guard
@@ -29,6 +31,7 @@ class IrChange:
                 "IrChange only init when paddle.ir.core._use_new_ir_api() is false, \
                 please set FLAGS_enable_new_ir_api = false"
             )
+        paddle.fluid.framework.set_flags(old_flag)
 
     def _switch_to_new_ir(self):
         if paddle.ir.core._use_new_ir_api():

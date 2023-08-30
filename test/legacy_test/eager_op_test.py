@@ -3029,7 +3029,6 @@ class OpTest(unittest.TestCase):
                         user_defined_grad_outputs,
                         no_grad_set,
                     )
-
                 print("New IR gradient ends...........")
                 self._assert_is_close(
                     numeric_grads,
