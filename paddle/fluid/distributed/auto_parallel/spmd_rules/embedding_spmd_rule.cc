@@ -91,8 +91,7 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
         phi::errors::InvalidArgument(
             "Row-wise parallel of embedding table does NOT support Sparse, but "
             "row axis of embedding table is sharded by mesh dimension [%d].",
-            padding_idx,
-            weight_ndim));
+            weight_row_axis_mapping));
   }
 
   VLOG(6) << "EmbeddingSPMDRule InferForward Inputs: "
@@ -125,11 +124,12 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   // step3.1: Handle Partial
-  // (TODO) support case where embedding table is partial in very beginning.
+  // (TODO) support case where embedding table is partial at very beginning.
   std::vector<int64_t> partial_on_dims;
   if (weight_row_axis_mapping > -1) {
     partial_on_dims.push_back(weight_row_axis_mapping);
   }
+  output_dist_attr_dst.set_partial_status(partial_on_dims);
 
   // step4: merge potential conflict in inputs
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -156,10 +156,69 @@ EmbeddingSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
-EmbeddingSPMDRule::InferBackward(const std::vector<DistTensorSpec>& input_specs,
-                                 const paddle::framework::AttributeMap& attrs) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "InferBackward of EmbeddingSPMDRule is NOT implemented yet."));
+EmbeddingSPMDRule::InferBackward(
+    const std::vector<DistTensorSpec>& input_specs,
+    const std::vector<DistTensorSpec>& output_specs,
+    const paddle::framework::AttributeMap& attrs) {
+  // InferBackward is called after InferForward, so we skip some checks.
+  auto output_specs_size = output_specs.size();
+  PADDLE_ENFORCE_EQ(
+      output_specs_size,
+      1,
+      phi::errors::InvalidArgument(
+          "The size of OutputSpec of embedding should be 1, but got [%d].",
+          output_specs_size));
+
+  auto x_shape = input_specs[0].shape();
+  int x_ndim = x_shape.size();
+  auto out_shape = output_specs[0].shape();
+  int out_ndim = out_shape.size();
+
+  PADDLE_ENFORCE_EQ(x_ndim,
+                    out_ndim - 1,
+                    phi::errors::InvalidArgument(
+                        "There should be x_ndim + 1 = out_ndim in Embedding, "
+                        "but got x_ndim: [%d] and out_ndim: [%d].",
+                        x_ndim,
+                        out_ndim));
+
+  auto out_dist_attr_src = output_specs[0].dist_attr();
+  std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
+
+  // step1: build Einsum Notation
+  std::string alphabet = "abcdefghilmnopqrstuvwxyz";
+  std::string x_axes = GetBroadcastAxes(out_ndim - 1, out_ndim - 1, alphabet);
+  std::string weight_axes = "jk";
+  std::string out_axes = x_axes + "k";
+
+  // step2: Sharding Propogation
+  // should not use input dims mapping for backward sharding merge
+  auto axis_to_dim_map =
+      ShardingMergeForTensors({{out_axes, out_dims_mapping}}, false);
+  TensorDistAttr x_dist_attr_dst =
+      CopyTensorDistAttrForOutput(input_specs[0].dist_attr());
+  x_dist_attr_dst.set_dims_mapping(GetDimsMappingForAxes(
+      x_axes, axis_to_dim_map, /*unsharded_miss_axis=*/true));
+  TensorDistAttr weight_dist_attr_dst =
+      CopyTensorDistAttrForOutput(input_specs[1].dist_attr());
+  weight_dist_attr_dst.set_dims_mapping(GetDimsMappingForAxes(
+      weight_axes, axis_to_dim_map, /*unsharded_miss_axis=*/true));
+
+  // step3: Handle Partial
+  // NOTE we skip the partial backward inference in Partial Stage-I.
+  // output partial --> weight sharded on first axis.
+
+  VLOG(4) << "EmbeddingSPMDRule InferBackward: "
+          << "Einsum notation: [" << x_axes << "," << weight_axes << " --> "
+          << out_axes << "]. " << std::endl
+          << "Out shape: [" << str_join(out_shape) << "], src_dims_mapping: ["
+          << str_join(out_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(out_dims_mapping) << "]; Input X dims_mapping: ["
+          << str_join(x_dist_attr_dst.dims_mapping())
+          << "], Input Weight dims_mapping:["
+          << str_join(weight_dist_attr_dst.dims_mapping()) << "].";
+
+  return {{x_dist_attr_dst, weight_dist_attr_dst}, {out_dist_attr_src}};
 }
 
 }  // namespace auto_parallel
