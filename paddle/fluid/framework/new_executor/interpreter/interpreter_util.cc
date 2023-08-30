@@ -321,13 +321,11 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
 void CreateAllOps(const framework::BlockDesc& block,
                   std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
-    ops->emplace_back(
-        std::unique_ptr<OperatorBase>(CreateOpFromOpDesc<OperatorBase>(op)));
+    ops->emplace_back(std::unique_ptr<OperatorBase>(CreateOpFromOpDesc(op)));
   }
 }
 
-template <typename T>
-T* CreateOpFromOpDesc(OpDesc* op) {
+OperatorBase* CreateOpFromOpDesc(OpDesc* op) {
   auto op_type = op->Type();
   VLOG(8) << "CreateOp from : " << op_type;
 
@@ -361,7 +359,7 @@ T* CreateOpFromOpDesc(OpDesc* op) {
     }
   }
 #endif
-  return dynamic_cast<T*>(op_base);
+  return op_base;
 }
 
 std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(

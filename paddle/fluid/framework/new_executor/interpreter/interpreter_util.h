@@ -128,8 +128,7 @@ void SetDeviceCommContext(::ir::Operation* op,
 
 std::unordered_set<std::string> GetSpecialOpNames();
 
-template <typename T>
-T* CreateOpFromOpDesc(OpDesc* op);
+OperatorBase* CreateOpFromOpDesc(OpDesc* op);
 
 }  // namespace interpreter
 }  // namespace framework

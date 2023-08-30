@@ -136,11 +136,10 @@ bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
     // Note(sonder): For conditional_block, static build is only supported
     // when the op has the same place, dtype and layout of the output for two
     // conditional branches.
-    // CreateOpFromOpDesc<ops::ConditionalBlockOp>(op);
-    // VLOG(4) << op_base->DebugStringEx(scope);
-    // op_base->SetSubBlockCore(*scope, place);
-    // op_base->PreStaticBuild();
-    // VLOG(4) << op_base->DebugStringEx(scope);
+    auto op_base = CreateOpFromOpDesc(op);
+    VLOG(4) << op_base->DebugStringEx(scope);
+    op_base->RunPreStaticBuild(*scope, place);
+    VLOG(4) << op_base->DebugStringEx(scope);
     return false;
   } else {
     return false;
