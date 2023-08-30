@@ -60,6 +60,7 @@ using paddle::dialect::DenseTensorType;
 using pybind11::return_value_policy;
 
 USE_PASS(dead_code_elimination);
+USE_PASS(inplace);
 
 namespace paddle {
 namespace pybind {
