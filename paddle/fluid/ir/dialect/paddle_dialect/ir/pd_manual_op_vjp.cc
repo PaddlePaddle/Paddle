@@ -53,5 +53,6 @@ std::vector<std::vector<ir::OpResult>> SumOp::Vjp(
   }
   return res;
 }
+
 }  // namespace dialect
 }  // namespace paddle

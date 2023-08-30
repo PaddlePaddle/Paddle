@@ -205,7 +205,7 @@ Generator::Generator(uint64_t seed, uint64_t device_id) {
   std::seed_seq seq({seed});
   auto engine = std::make_shared<std::mt19937_64>(seq);
   this->state_.cpu_engine = *engine;
-  this->state_.device = device_id;
+  this->state_.device = static_cast<int64_t>(device_id);
   this->state_.current_seed = seed;
   this->state_.thread_offset = 0;
   this->engine_ = engine;
