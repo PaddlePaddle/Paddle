@@ -57,27 +57,12 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_manual_op.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 
 namespace paddle {{
 namespace dialect {{
-struct PdOpSig{{
-  std::string name;
-  std::vector<std::string> inputs;
-  std::vector<std::string> outputs;
-  PdOpSig() = default;
-  PdOpSig(const PdOpSig& input_info) = default;
 
-  PdOpSig(const std::string& name,
-          const std::vector<std::string>& inputs,
-          const std::vector<std::string>& outputs)
-      : name(name),
-        inputs(inputs),
-        outputs(outputs) {{}}
-}};
-
-bool HaveLegacyOpToPdOpsMap(std::string op_name);
-
-const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
+extern std::unordered_map<std::string, std::vector<PdOpSig>> legacy_op_to_pd_ops_map;
 
 }} // namespace dialect
 }} // namespace paddle
@@ -196,14 +181,6 @@ namespace dialect {{
 std::unordered_map<std::string, std::vector<PdOpSig>> legacy_op_to_pd_ops_map = {{
 {maps}
 }};
-
-bool HaveLegacyOpToPdOpsMap(std::string op_name) {{
-  return legacy_op_to_pd_ops_map.find(op_name) != legacy_op_to_pd_ops_map.end();
-}}
-
-const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {{
-  return legacy_op_to_pd_ops_map[op_name];
-}}
 
 }} // namespace dialect
 }} // namespace paddle

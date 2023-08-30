@@ -16,12 +16,25 @@
 
 #include <unordered_map>
 
+#include "build/paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/utils.h"
+
+namespace paddle {
+namespace dialect {
+bool HaveLegacyOpToPdOpsMap(std::string op_name) {
+  return legacy_op_to_pd_ops_map.find(op_name) != legacy_op_to_pd_ops_map.end();
+}
+
+const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
+  return legacy_op_to_pd_ops_map[op_name];
+}
+}  // namespace dialect
+}  // namespace paddle
 
 namespace paddle {
 namespace translator {
