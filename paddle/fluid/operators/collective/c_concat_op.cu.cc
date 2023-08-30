@@ -109,13 +109,12 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
             comm->nranks(),
             platform::errors::InvalidArgument(
                 "nranks: %s should equal to %s", nranks, comm->nranks()));
-        if (ctx.Attr<bool>("use_calc_stream")) {
-          // should ExecutionContext for calc stream.
-          stream = ctx.cuda_device_context().stream();
-        } else {
-          stream = comm->stream();
-        }
+        stream = comm->stream();
         VLOG(3) << "old NCCLCommContext has rid " << rid;
+      }
+      if (ctx.Attr<bool>("use_calc_stream")) {
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
       }
       if (comm_ctx) {
         comm_ctx->AllGather(&temp_out, *x, stream);

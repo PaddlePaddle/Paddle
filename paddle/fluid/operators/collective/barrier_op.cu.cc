@@ -53,6 +53,8 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
       auto stream = comm_ctx->GetStream();
       ncclRedOp_t nccl_red_type = ncclSum;
       comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
+      platform::GpuStreamSync(stream);
+      VLOG(3) << "new NCCLCommContext has rid " << rid;
     } else {
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       // should ExecutionContext for calc stream.
