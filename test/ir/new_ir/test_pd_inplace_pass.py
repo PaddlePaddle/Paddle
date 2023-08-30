@@ -30,19 +30,21 @@ class TestPdInplacePass(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.scope_guard(new_scope):
             with paddle.static.program_guard(main_program):
-                x = paddle.ones([2, 2], dtype='float32')
-                y = paddle.nn.functional.relu(x)
+                x = paddle.static.data('x', [2, 2], dtype='float32')
+                y = paddle.ones([2, 2], dtype='float32')
+                z = paddle.divide(x, y)
+                out = paddle.nn.functional.relu(z)
 
                 op_names = [op.name() for op in main_program.block().ops]
                 self.assertTrue('pd.relu' in op_names)
                 self.assertTrue('pd.relu_' not in op_names)
 
                 exe = paddle.static.Executor()
-                (sum_value,) = exe.run(
-                    fetch_list=[main_program.block().ops[1].result(0)]
-                )
+                x_feed = np.ones([2, 2], dtype=np.float32) * 10
+                (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
                 self.assertEqual(
-                    (sum_value == np.ones([2, 2], dtype="float32")).all(), True
+                    (sum_value == np.ones([2, 2], dtype="float32") * 10).all(),
+                    True,
                 )
 
                 op_names = [op.name() for op in main_program.block().ops]

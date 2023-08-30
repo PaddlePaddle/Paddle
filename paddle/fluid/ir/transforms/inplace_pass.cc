@@ -68,7 +68,7 @@ std::unordered_set<ir::Value> GetSkipDeletionValues(ir::Block* block) {
       skip_gc_values.insert(op->result(0));
       continue;
     }
-    if (op->name() == "pd.fetch") {
+    if (op->name() == "pd.fetch" || op->name() == "pd.shadow_output") {
       skip_gc_values.insert(op->operand_source(0));
       continue;
     }
