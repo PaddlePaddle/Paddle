@@ -19,6 +19,5 @@
 
 PD_REGISTER_KERNEL(ftrl, CPU, ALL_LAYOUT, phi::FTRLKernel, float) {}
 
-// PD_REGISTER_KERNEL(ftrl_sparse, CPU, ALL_LAYOUT, phi::FTRLSparseKernel,
-// float) {
-// }
+PD_REGISTER_KERNEL(ftrl_sparse, CPU, ALL_LAYOUT, phi::FTRLSparseKernel, float) {
+}

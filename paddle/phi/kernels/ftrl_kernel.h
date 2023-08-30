@@ -32,18 +32,18 @@ void FTRLKernel(const Context& ctx,
                 DenseTensor* squared_accumulator_out,
                 DenseTensor* linear_accumulator_out);
 
-// template <typename T, typename Context>
-// void FTRLSparseKernel(const Context& ctx,
-//                       const SelectedRows& grad,
-//                       const DenseTensor& learningRate,
-//                       const DenseTensor& param,
-//                       const DenseTensor& squared_accumulator,
-//                       const DenseTensor& linear_accumulator,
-//                       float l1,
-//                       float l2,
-//                       float lr_power,
-//                       DenseTensor* param_out,
-//                       DenseTensor* squared_accumulator_out,
-//                       DenseTensor* linear_accumulator_out);
+template <typename T, typename Context>
+void FTRLSparseKernel(const Context& ctx,
+                      const SelectedRows& grad,
+                      const DenseTensor& learningRate,
+                      const DenseTensor& param,
+                      const DenseTensor& squared_accumulator,
+                      const DenseTensor& linear_accumulator,
+                      float l1,
+                      float l2,
+                      float lr_power,
+                      DenseTensor* param_out,
+                      DenseTensor* squared_accumulator_out,
+                      DenseTensor* linear_accumulator_out);
 
 }  // namespace phi
