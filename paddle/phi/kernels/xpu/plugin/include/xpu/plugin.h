@@ -75,6 +75,46 @@ DLL_EXPORT int fast_layer_norm(Context* ctx,
                                float eps,
                                const float* scale,
                                const float* bias);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_sum(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_mean(Context* ctx,
+                                const T* x,
+                                T* y,
+                                const std::vector<int>& xshape,
+                                const std::vector<int>& rdims);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_max(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims);
+
+template <typename T>
+DLL_EXPORT int fast_reduce_min(Context* ctx,
+                               const T* x,
+                               T* y,
+                               const std::vector<int>& xshape,
+                               const std::vector<int>& rdims);
+
+template <typename T, typename TID>
+DLL_EXPORT int fast_embedding(Context* ctx,
+                              const T* x,
+                              const TID* indices,
+                              T* y,
+                              int64_t xm,
+                              int64_t n,
+                              int64_t ym,
+                              int64_t padding_idx,
+                              TID start_index = 0);
+
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu

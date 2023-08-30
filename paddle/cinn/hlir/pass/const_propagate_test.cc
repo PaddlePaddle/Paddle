@@ -57,7 +57,8 @@ TEST(const_conv, const_conv) {
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
   auto scope = BuildScope(target, graph);
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   auto& prerun_instrs = runtime_program->GetPreRunInstructions();
   auto& run_instrs = runtime_program->GetRunInstructions();
@@ -101,7 +102,8 @@ TEST(const_bn, const_bn) {
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
   auto scope = BuildScope(target, graph);
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
   auto& prerun_instrs = runtime_program->GetPreRunInstructions();
   auto& run_instrs = runtime_program->GetRunInstructions();

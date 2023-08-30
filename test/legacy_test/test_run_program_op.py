@@ -246,6 +246,8 @@ class RunProgramOpTest(unittest.TestCase):
                     [out.name + '@GRAD' for out in outputs['Out']],
                     'x_grad_names',
                     [p.name + '@GRAD' for p in inputs['X']],
+                    'x_names',
+                    [t.name for t in inputs['X']],
                 )
             )
 
@@ -297,6 +299,8 @@ class RunProgramOpTest(unittest.TestCase):
                     [out.name + '@GRAD' for out in outputs['Out']],
                     'x_grad_names',
                     [p.name + '@GRAD' for p in inputs['X']],
+                    'x_names',
+                    [t.name for t in inputs['X']],
                 )
             )
 

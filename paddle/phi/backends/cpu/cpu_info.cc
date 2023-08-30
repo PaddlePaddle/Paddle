@@ -78,7 +78,8 @@ size_t CpuTotalPhysicalMemory() {
 size_t CpuMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
-  return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
+  return static_cast<size_t>(FLAGS_fraction_of_cpu_memory_to_use *
+                             static_cast<double>(CpuTotalPhysicalMemory()));
 }
 
 size_t CpuMaxChunkSize() {
@@ -97,7 +98,8 @@ size_t CpuMinChunkSize() {
 size_t CUDAPinnedMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
-  return FLAGS_fraction_of_cuda_pinned_memory_to_use * CpuTotalPhysicalMemory();
+  return static_cast<size_t>(FLAGS_fraction_of_cuda_pinned_memory_to_use *
+                             static_cast<double>(CpuTotalPhysicalMemory()));
 }
 
 size_t CUDAPinnedMinChunkSize() {

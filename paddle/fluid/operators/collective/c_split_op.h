@@ -28,10 +28,7 @@ namespace operators {
 template <typename T, typename DeviceContext>
 class CSplitOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx UNUSED) const override {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support c_split for cpu kernel now."));
-  }
+  void Compute(const framework::ExecutionContext& ctx UNUSED) const override {}
 };
 
 }  // namespace operators
