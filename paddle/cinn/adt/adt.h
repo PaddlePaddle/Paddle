@@ -115,11 +115,17 @@ class Tagged {
    public:                                                                     \
     class_name(const class_name&) = default;                                   \
     class_name(class_name&&) = default;                                        \
+    class_name& operator=(const class_name& other) = default;                  \
                                                                                \
     template <typename Arg,                                                    \
               std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, class_name>, \
                                bool> = true>                                   \
-    explicit class_name(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}       \
+    class_name(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}                \
+                                                                               \
+    template <typename T>                                                      \
+    auto Visit(const T& visitor) const {                                       \
+      return std::visit(visitor, variant_);                                    \
+    }                                                                          \
                                                                                \
     template <typename... Fs>                                                  \
     auto operator>>(match<Fs...> const& match) const {                         \
@@ -130,7 +136,25 @@ class Tagged {
                                                                                \
    private:                                                                    \
     std::variant<__VA_ARGS__> variant_;                                        \
-  };
+  }
+
+#define DEFINE_ADT_UNARY(name)    \
+  template <typename T>           \
+  struct name : public Tuple<T> { \
+    using Tuple<T>::Tuple;        \
+  }
+
+#define DEFINE_ADT_BINARY(name)        \
+  template <typename T0, typename T1>  \
+  struct name : public Tuple<T0, T1> { \
+    using Tuple<T0, T1>::Tuple;        \
+  }
+
+DEFINE_ADT_UNARY(Neg);
+DEFINE_ADT_BINARY(Add);
+DEFINE_ADT_BINARY(Mul);
+DEFINE_ADT_BINARY(Div);
+DEFINE_ADT_BINARY(Mod);
 
 using Name = std::string;
 

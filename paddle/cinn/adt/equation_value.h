@@ -16,63 +16,46 @@
 
 #include "cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation.h"
+#include "paddle/cinn/adt/match_and_rewrite.h"
 
-namespace cinn::adt::equation::value {
+namespace cinn::adt::equation {
 
-DEFINE_ADT_TAG(tSymbolic);
 DEFINE_ADT_TAG(tPointer);
-DEFINE_ADT_TAG(tIterator);
+DEFINE_ADT_TAG(tIterVar);
 
-using IterVar = tIterator<UniqueId>;
-
-// Undefined = {}
-struct Undefined final {};
-
-#define DEFINE_ADT_UNARY(name)    \
-  template <typename T>           \
-  struct name : public Tuple<T> { \
-    using Tuple<T>::Tuple;        \
-  }
-
-#define DEFINE_ADT_BINARY(name)        \
-  template <typename T0, typename T1>  \
-  struct name : public Tuple<T0, T1> { \
-    using Tuple<T0, T1>::Tuple;        \
-  }
-
-DEFINE_ADT_UNARY(Neg);
-DEFINE_ADT_BINARY(Add);
-DEFINE_ADT_BINARY(Mul);
-DEFINE_ADT_BINARY(Div);
-DEFINE_ADT_BINARY(Mod);
+using IterVar = tIterVar<UniqueId>;
 
 DEFINE_ADT_UNION(Constant,
                  std::size_t,
-                 tSymbolic<UniqueId>,
+                 tStride<UniqueId>,
+                 tDim<UniqueId>,
                  Neg<Constant>,
                  Add<Constant, Constant>,
                  Mul<Constant, Constant>);
 
-// IndexDot T = Dot [Constant] T
+// Undefined = {}
+struct Undefined final {};
+
+// IndexDot T = DotValue [Constant] T
 template <typename StrideT, typename T>
-struct Dot : public Tuple<List<StrideT>, T> {
+struct DotValue : public Tuple<List<StrideT>, T> {
   using Tuple<List<StrideT>, T>::Tuple;
 };
 
 template <typename T>
-struct IndexDot final : public Dot<Constant, T> {
-  using Dot<Constant, T>::Dot;
+struct IndexDot final : public DotValue<Constant, T> {
+  using DotValue<Constant, T>::DotValue;
 };
 
-// IndexUnDot T = UnDot [Constant] T
+// IndexUnDot T = UnDotValue [Constant] T
 template <typename StrideT, typename T>
-struct UnDot : public Tuple<List<StrideT>, T> {
+struct UnDotValue : public Tuple<List<StrideT>, T> {
   using Tuple<List<StrideT>, T>::Tuple;
 };
 
 template <typename T>
-struct IndexUnDot final : public UnDot<Constant, T> {
-  using UnDot<Constant, T>::UnDot;
+struct IndexUnDot final : public UnDotValue<Constant, T> {
+  using UnDotValue<Constant, T>::UnDotValue;
 };
 
 // ConstantAdd T = Add T Constant
@@ -117,4 +100,53 @@ DEFINE_ADT_UNION(Value,
                  ListGetItem<Value>,
                  PtrGetItem<Value>);
 
-}  // namespace cinn::adt::equation::value
+}  // namespace cinn::adt::equation
+
+namespace cinn::adt {
+
+template <>
+struct MatchTrait<equation::Value, equation::Undefined> final {
+  static constexpr int ArgSize() { return 0; }
+};
+
+template <>
+struct MatchTrait<equation::Value, equation::IterVar> final {
+  static constexpr int ArgSize() { return 0; }
+};
+
+template <typename T>
+struct MatchTrait<equation::Value, List<T>> final {
+  using base_type = List<equation::Value>;
+  using arg0_type = T;
+
+  static constexpr int ArgSize() { return 0; }
+
+  template <int I>
+  static equation::Value Arg(const base_type& value) {
+    return value->at(I);
+  }
+};
+
+#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                   \
+  template <typename T>                                         \
+  struct MatchTrait<equation::Value, equation::name<T>> final { \
+    using base_type = equation::name<equation::Value>;          \
+    using arg0_type = T;                                        \
+                                                                \
+    static constexpr int ArgSize() { return 1; }                \
+                                                                \
+    template <int I>                                            \
+    static equation::Value Arg(const base_type& value) {        \
+      return std::get<I>(value.tuple());                        \
+    }                                                           \
+  };
+
+DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexDot);
+DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexUnDot);
+DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantAdd);
+DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantDiv);
+DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantMod);
+DEFINE_ADT_MATCH_TRAIT_EQUATION(ListGetItem);
+DEFINE_ADT_MATCH_TRAIT_EQUATION(PtrGetItem);
+
+}  // namespace cinn::adt
