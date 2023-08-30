@@ -17,7 +17,6 @@
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
@@ -100,7 +99,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
       if (in_black_list ||
           (is_operator_base &&
            !IsOperatorBasesHandledInStaticBuild(op, op_type, place, scope)) ||
-          is_custom_op || use_mkldnn || need_move_to_phi) {
+          is_custom_op || use_mkldnn) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
     }
@@ -137,7 +136,7 @@ bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
     // Note(sonder): For conditional_block, static build is only supported
     // when the op has the same place, dtype and layout of the output for two
     // conditional branches.
-    CreateOpFromOpDesc<ops::ConditionalBlockOp>(op);
+    // CreateOpFromOpDesc<ops::ConditionalBlockOp>(op);
     // VLOG(4) << op_base->DebugStringEx(scope);
     // op_base->SetSubBlockCore(*scope, place);
     // op_base->PreStaticBuild();
