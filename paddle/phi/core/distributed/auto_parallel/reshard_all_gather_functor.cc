@@ -17,7 +17,6 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/all_gather_kernel.h"
 
 namespace phi {
