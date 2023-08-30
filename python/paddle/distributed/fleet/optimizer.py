@@ -37,12 +37,15 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
         Fleet: instance of fleet.
     Examples:
         .. code-block:: python
-            import paddle
-            import paddle.distributed.fleet as fleet
-            fleet.init(is_collective=True)
-            strategy = fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
+            >>> # doctest: +SKIP('raise AttributeError')
+            >>> import paddle
+            >>> import paddle.distributed.fleet as fleet
+            >>> fleet.init(is_collective=True)
+            >>> strategy = fleet.DistributedStrategy()
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+            >>> optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
     """
     fleet_env = fleet.fleet
     fleet_env.user_defined_optimizer = optimizer
