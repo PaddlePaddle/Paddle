@@ -58,9 +58,9 @@ def check_recompute_necessary(inputs):
             necessary_for_each_input.append(input_.stop_gradient)
         elif type(input_) is tuple:
             for i in input_:
-                if isinstance(input_, (core.eager.Tensor, paddle.Tensor)):
+                if isinstance(i, (core.eager.Tensor, paddle.Tensor)):
                     necessary_for_each_input.append(i.stop_gradient)
-    if not any(necessary_for_each_input):
+    if all(necessary_for_each_input):
         logger.warning(
             "[Recompute]: None of the inputs to current recompute block need grad, "
             "therefore there is NO need to recompute this block in backward !"
@@ -105,6 +105,13 @@ class RecomputeFunction(PyLayer):
             elif type(arg) is tuple:
                 is_tensors = [paddle.is_tensor(a) for a in arg]
                 if all(is_tensors):
+                    tensors_stop_gradient = [a.stop_gradient for a in arg]
+                    if not all(tensors_stop_gradient) and any(
+                        tensors_stop_gradient
+                    ):
+                        raise ValueError(
+                            "Recompute receive a tuple containing tensor holds different stop gradient."
+                        )
                     tensor_inputs.append(arg)
                     ctx.tensor_indices.append(i)
                     ctx.duplicate_tensor[i] = True
@@ -232,7 +239,12 @@ class RecomputeFunction(PyLayer):
                 if isinstance(inp, core.eager.Tensor):
                     grads.append(inp._grad_ivar())
                 elif type(inp) is tuple and duplicate_tensor[idx]:
-                    grads.append(tuple(i._grad_ivar() for i in inp))
+                    # input is a tuple and is a tuple of tensors
+                    if all(i.stop_gradient for i in inp):
+                        # all tensors in the tuple doesn't need grad
+                        grads.append(None)
+                    else:
+                        grads.append(tuple(i._grad_ivar() for i in inp))
 
             if in_dynamic_mode():
                 grads = tuple(grads)

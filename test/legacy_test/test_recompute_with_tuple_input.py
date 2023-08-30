@@ -51,7 +51,7 @@ class TestPyLayer(unittest.TestCase):
         loss = paddle.mean(o, keepdim=True)
         loss.backward()
 
-    def test_tuple_input_with_error(self):
+    def test_tuple_input_with_non_tensor(self):
         layer = Layer()
         x1 = paddle.rand(shape=[10, 10])
         x1.stop_gradient = False
@@ -61,6 +61,28 @@ class TestPyLayer(unittest.TestCase):
             o = recompute(layer, (x1, True), y)
         except ValueError:
             pass
+
+    def test_tuple_input_with_different_stop_gradient(self):
+        layer = Layer()
+        x1 = paddle.rand(shape=[10, 10])
+        x1.stop_gradient = False
+        x2 = paddle.rand(shape=[10, 10])
+        y = paddle.rand(shape=[10, 10])
+        y.stop_gradient = False
+        try:
+            o = recompute(layer, (x1, True), y)
+        except ValueError:
+            pass
+
+    def test_tuple_input_all_no_gradient(self):
+        layer = Layer()
+        x1 = paddle.rand(shape=[10, 10])
+        x2 = paddle.rand(shape=[10, 10])
+        y = paddle.rand(shape=[10, 10])
+        y.stop_gradient = False
+        o = recompute(layer, (x1, x2), y)
+        loss = paddle.mean(o, keepdim=True)
+        loss.backward()
 
 
 if __name__ == '__main__':
