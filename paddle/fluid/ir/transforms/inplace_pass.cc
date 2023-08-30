@@ -101,6 +101,13 @@ GetEagerDeletionValues(ir::Block* block) {
       }
       value_2_op[input_value] = op;
     }
+
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      ir::Value output_value = op->result(i);
+      if (ValueCanBeDeleted(output_value)) {
+        value_2_op[output_value] = op;
+      }
+    }
   }
 
   std::unordered_map<ir::Operation*, std::unordered_set<ir::Value>>
@@ -117,18 +124,39 @@ GetEagerDeletionValues(ir::Block* block) {
 std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
   const auto eager_deletion_input_values = GetEagerDeletionValues(block);
 
+  std::unordered_set<ir::Value> visited_values;
+  std::unordered_set<ir::Value> reused_input_values;
+  std::unordered_set<ir::Value> reused_output_values;
+
   std::unordered_map<ir::Operation*, ir::OpInfo> inplace_ops;
   for (auto& op : *block) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      visited_values.insert(op->operand_source(i));
+    }
+
     if (eager_deletion_input_values.count(op) == 0) {
       VLOG(6)
           << "Operation " << op->name()
           << " not in eager_deletion_input_values, so that can not do inplace.";
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        visited_values.insert(op->result(i));
+      }
       continue;
     }
 
     if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
-      VLOG(6) << "Operation " << op->name()
-              << " doesn't have inplace version, so that can not do inplace.";
+      VLOG(6) << "Operation " << op->name() << " is already an inplace op.";
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        visited_values.insert(op->result(i));
+      }
+
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        reused_input_values.insert(op->operand_source(i));
+      }
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        reused_output_values.insert(op->result(i));
+      }
+
       continue;
     }
 
@@ -138,6 +166,9 @@ std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
     if (!inplace_op_info) {
       VLOG(6) << "Operation " << op->name()
               << " doesn't have inplace version, so that can not do inplace.";
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        visited_values.insert(op->result(i));
+      }
       continue;
     }
 
@@ -153,16 +184,66 @@ std::unordered_map<ir::Operation*, ir::OpInfo> GetInplaceOp(ir::Block* block) {
     std::unordered_map<int, int> inplace_out_2_in =
         inplace_op_yaml_info_parser.GetInplaceIdMap();
 
-    bool can_do_inplace = true;
-    for (auto& kv : inplace_out_2_in) {
-      if (eager_deletion_input_values.at(op).count(
-              op->operand_source(kv.second)) == 0) {
-        can_do_inplace = false;
+    std::unordered_set<ir::Value> op_inputs;
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      op_inputs.insert(op->operand_source(i));
+    }
+    std::unordered_set<ir::Value> op_outputs;
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      op_outputs.insert(op->result(i));
+    }
+    std::unordered_set<ir::Value> valid_values;
+    for (const auto& value : eager_deletion_input_values.at(op)) {
+      if (value && op_inputs.count(value) != 0 &&
+          op_outputs.count(value) == 0) {
+        valid_values.insert(value);
       }
     }
+
+    if (valid_values.empty()) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        visited_values.insert(op->result(i));
+      }
+      continue;
+    }
+
+    bool can_do_inplace = true;
+    for (auto& kv : inplace_out_2_in) {
+      int out_slot = kv.first;
+      int in_slot = kv.second;
+      if (valid_values.count(op->operand_source(in_slot)) == 0) {
+        can_do_inplace = false;
+        break;
+      }
+
+      if (visited_values.count(op->result(out_slot)) > 0) {
+        can_do_inplace = false;
+        break;
+      }
+
+      if (!ValueCanBeDeleted(op->result(out_slot))) {
+        can_do_inplace = false;
+        break;
+      }
+
+      if (reused_input_values.count(op->operand_source(in_slot)) > 0 ||
+          reused_output_values.count(op->result(out_slot)) > 0) {
+        can_do_inplace = false;
+        break;
+      }
+    }
+
     if (can_do_inplace) {
       inplace_ops[op] = inplace_op_info;
       VLOG(6) << op->name() << " has inplace version op: " << inplace_op_name;
+      for (auto& kv : inplace_out_2_in) {
+        reused_input_values.insert(op->operand_source(kv.second));
+        reused_output_values.insert(op->result(kv.first));
+      }
+    }
+
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      visited_values.insert(op->result(i));
     }
   }
   return inplace_ops;
