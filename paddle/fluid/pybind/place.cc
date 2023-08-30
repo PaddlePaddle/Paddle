@@ -215,7 +215,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
           >>> import paddle
           >>> fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
-          ...                                    )DOC");
+          ...
+)DOC");
   g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
   customplace
       .def("__init__",

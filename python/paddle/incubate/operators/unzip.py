@@ -61,7 +61,7 @@ def unzip(input, lod):
             ...               [0.0, 0.0, 0.0, 0.0],
             ...               [0.0, 0.0, 0.0, 0.0]
             ...           ]
-            >>> '''
+            ... '''
     """
     helper = LayerHelper('unzip', **locals())
     out = helper.create_variable(dtype=input.dtype)
