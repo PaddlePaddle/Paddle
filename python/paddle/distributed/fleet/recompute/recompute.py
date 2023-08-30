@@ -31,8 +31,18 @@ __all__ = []
 def detach_variable(inputs):
     out = []
     for inp in inputs:
-        if not isinstance(inp, core.eager.Tensor):
+        if not isinstance(inp, core.eager.Tensor) and type(inp) is not tuple:
             out.append(inp)
+            continue
+
+        if type(inp) is tuple:
+            detach_inp = []
+            for i in inp:
+                assert isinstance(i, core.eager.Tensor)
+                tmp_i = i.detach()
+                tmp_i.stop_gradient = i.stop_gradient
+                detach_inp.append(tmp_i)
+            out.append(tuple(detach_inp))
             continue
 
         x = inp.detach()
