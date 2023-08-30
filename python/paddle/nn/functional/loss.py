@@ -940,17 +940,33 @@ def hsigmoid_loss(
             >>> import paddle.nn.functional as F
 
             >>> paddle.set_device('cpu')
+            >>> paddle.seed(2023)
 
             >>> input = paddle.uniform([4, 3])
             >>> print(input)
+            Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[ 0.73167229,  0.04029441, -0.48078126],
+                    [ 0.81050646, -0.15199822, -0.18717426],
+                    [ 0.94041789,  0.48874724,  0.03570259],
+                    [ 0.46585739,  0.95573163, -0.91368192]])
 
             >>> label = paddle.to_tensor([0, 1, 4, 5])
             >>> num_classes = 5
             >>> weight=paddle.uniform([num_classes-1, 3])
             >>> print(weight)
+            Tensor(shape=[4, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[-0.14721161,  0.43916738, -0.58377075],
+                    [-0.60536981, -0.23151302, -0.70793629],
+                    [-0.54572451, -0.10784978, -0.56684279],
+                    [ 0.35370791, -0.07079649,  0.84765708]])
 
             >>> out=F.hsigmoid_loss(input, label, num_classes, weight)
             >>> print(out)
+            Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[2.23681736],
+                    [1.97140026],
+                    [1.66425037],
+                    [2.54727197]])
     """
     if num_classes < 2:
         raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
@@ -1063,11 +1079,14 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
 
             >>> input = paddle.rand([3, 3]).astype('float32')
             >>> label = paddle.rand([3, 3]).astype('float32')
             >>> output = paddle.nn.functional.smooth_l1_loss(input, label)
             >>> print(output)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [0.08307374])
     """
 
     if in_dynamic_mode():
