@@ -81,12 +81,26 @@ class RecomputeFunction(PyLayer):
         # save input for backward
         ctx.inputs = []
         ctx.tensor_indices = []
+        ctx.duplicate_tensor = [False for _ in range(len(args))]
         tensor_inputs = []
         for i, arg in enumerate(args):
             if paddle.is_tensor(arg):
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
+            elif type(arg) is tuple:
+                is_tensors = [paddle.is_tensor(a) for a in arg]
+                if all(is_tensors):
+                    tensor_inputs.append(arg)
+                    ctx.tensor_indices.append(i)
+                    ctx.duplicate_tensor[i] = True
+                    ctx.inputs.append(None)
+                elif any(is_tensors):
+                    raise ValueError(
+                        "Recompute receive a tuple containing tensor and non-tensor at same time."
+                    )
+                else:
+                    ctx.inputs.append(arg)
             else:
                 ctx.inputs.append(arg)
         ctx.save_for_backward(*tensor_inputs)
@@ -132,6 +146,7 @@ class RecomputeFunction(PyLayer):
             # Restore inputs
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices
+            duplicate_tensor = ctx.duplicate_tensor
             tensors = ctx.saved_tensor()
             for i, idx in enumerate(tensor_indices):
                 inputs[idx] = tensors[i]
@@ -198,18 +213,17 @@ class RecomputeFunction(PyLayer):
                     forward_outputs_with_grad, backward_inputs_with_grad
                 )
 
+            grads = []
+            for idx, inp in enumerate(detached_inputs):
+                if isinstance(inp, core.eager.Tensor):
+                    grads.append(inp._grad_ivar())
+                elif type(inp) is tuple and duplicate_tensor[idx]:
+                    grads.append(tuple(i._grad_ivar() for i in inp))
+
             if in_dynamic_mode():
-                grads = tuple(
-                    inp._grad_ivar()
-                    for inp in detached_inputs
-                    if isinstance(inp, core.eager.Tensor)
-                )
+                grads = tuple(grads)
             else:
-                grads = [
-                    inp._grad_ivar()
-                    for inp in detached_inputs
-                    if isinstance(inp, core.eager.Tensor)
-                ]
+                grads = list(grads)
             return grads
 
 
