@@ -31,13 +31,17 @@ __all__ = []
 def detach_variable(inputs):
     out = []
     for inp in inputs:
-        if not isinstance(inp, core.eager.Tensor) and type(inp) is not tuple:
+        if not isinstance(inp, core.eager.Tensor) and (
+            type(inp) is not tuple or not isinstance(inp[0], core.eager.Tensor)
+        ):
+            # the inp is not a tensor or not a tuple of tensors
             out.append(inp)
             continue
 
         if type(inp) is tuple:
             detach_inp = []
             for i in inp:
+                # detach all tensors in the tuple
                 assert isinstance(i, core.eager.Tensor)
                 tmp_i = i.detach()
                 tmp_i.stop_gradient = i.stop_gradient
@@ -58,6 +62,7 @@ def check_recompute_necessary(inputs):
             necessary_for_each_input.append(input_.stop_gradient)
         elif type(input_) is tuple:
             for i in input_:
+                # traverse all tensors in the tuple
                 if isinstance(i, (core.eager.Tensor, paddle.Tensor)):
                     necessary_for_each_input.append(i.stop_gradient)
     if all(necessary_for_each_input):
@@ -105,18 +110,22 @@ class RecomputeFunction(PyLayer):
             elif type(arg) is tuple:
                 is_tensors = [paddle.is_tensor(a) for a in arg]
                 if all(is_tensors):
+                    # the tuple is a tuple of tensors
                     tensors_stop_gradient = [a.stop_gradient for a in arg]
                     if not all(tensors_stop_gradient) and any(
                         tensors_stop_gradient
                     ):
+                        # tensors in the tuple have different stop_gradient value, which pylayer doesn't support
                         raise ValueError(
                             "Recompute receive a tuple containing tensor holds different stop gradient."
                         )
                     tensor_inputs.append(arg)
                     ctx.tensor_indices.append(i)
+                    # Mark the tuple is a tuple of tensors
                     ctx.duplicate_tensor[i] = True
                     ctx.inputs.append(None)
                 elif any(is_tensors):
+                    # the tuple contains tensors and non-tensor values
                     raise ValueError(
                         "Recompute receive a tuple containing tensor and non-tensor at same time."
                     )
@@ -241,9 +250,10 @@ class RecomputeFunction(PyLayer):
                 elif type(inp) is tuple and duplicate_tensor[idx]:
                     # input is a tuple and is a tuple of tensors
                     if all(i.stop_gradient for i in inp):
-                        # all tensors in the tuple doesn't need grad
+                        # all tensors in the tuple doesn't need grad, only return a None for the whole tuple
                         grads.append(None)
                     else:
+                        # all tensors in the tuple nees grad, should return a tuple of grads
                         grads.append(tuple(i._grad_ivar() for i in inp))
 
             if in_dynamic_mode():
