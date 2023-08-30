@@ -264,6 +264,17 @@ include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
 
 ########################### include third_party according to flags ###############################
+if(WITH_GPU
+   AND NOT WITH_ARM
+   AND NOT WIN32
+   AND NOT APPLE)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
+    include(external/cutlass) # download, build, install cusparselt
+    list(APPEND third_party_deps extern_cutlass)
+    set(WITH_CUTLASS ON)
+  endif()
+endif()
+
 if(WITH_CINN)
   if(WITH_MKL)
     add_definitions(-DCINN_WITH_MKL_CBLAS)
@@ -543,11 +554,6 @@ if(WITH_GPU
    AND NOT WITH_ARM
    AND NOT WIN32
    AND NOT APPLE)
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
-    include(external/cutlass) # download, build, install cusparselt
-    list(APPEND third_party_deps extern_cutlass)
-    set(WITH_CUTLASS ON)
-  endif()
   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
     foreach(arch ${NVCC_ARCH_BIN})
       if(${arch} GREATER_EQUAL 80)
