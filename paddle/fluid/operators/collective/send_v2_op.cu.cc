@@ -17,11 +17,13 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace paddle {
 namespace operators {
@@ -166,7 +168,16 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(std::to_string(rid))) {
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(rid)));
       comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,

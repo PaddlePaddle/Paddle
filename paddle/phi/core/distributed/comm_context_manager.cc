@@ -79,7 +79,6 @@ void CommContextManager::CreateNCCLCommContext(
 
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
-  << std::endl;
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::GPUContext> dev_ctx(
         new phi::GPUContext(phi::GPUPlace(CommContextManager::device_id)));

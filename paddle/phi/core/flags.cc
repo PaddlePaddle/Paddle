@@ -1298,3 +1298,19 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
 PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+/**
+ * Communication library related FLAG
+ * Name: FLAGS_dynamic_static_unified_comm
+ * Since Version: 2.5
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether to use new communication library in auto parallel and static
+ * mode. If true, it will use unified CommContextManager for communication.
+ */
+PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
+                         false,
+                         "Whether to use new communication library in auto "
+                         "parallel and static mode.");
+#endif  // FLAGS_dynamic_static_unified_comm

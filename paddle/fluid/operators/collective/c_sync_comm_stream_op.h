@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -42,7 +44,16 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     gpuStream_t stream = nullptr;
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(std::to_string(ring_id))) {
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(ring_id)));
       auto comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
           comm_context_manager.Get(std::to_string(ring_id)));
       stream = comm_ctx->GetStream();
