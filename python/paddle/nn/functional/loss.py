@@ -333,16 +333,15 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
       .. code-block:: python
 
-          >>> import paddle
+            >>> import paddle
 
-          >>> DATATYPE = "float32"
+            >>> DATATYPE = "float32"
 
-          >>> anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
-          >>> positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
-          >>> labels = paddle.rand(shape=(18,), dtype=DATATYPE)
-
-          >>> npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
-          >>> print(npair_loss)
+            >>> anchor = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+            >>> positive = paddle.rand(shape=(18, 6), dtype=DATATYPE)
+            >>> labels = paddle.rand(shape=(18,), dtype=DATATYPE)
+            >>> npair_loss = paddle.nn.functional.npair_loss(anchor, positive, labels, l2_reg = 0.002)
+            >>> print(npair_loss)
     """
     if anchor.size == 0:
         raise ValueError("The dims of anchor should be greater than 0.")
