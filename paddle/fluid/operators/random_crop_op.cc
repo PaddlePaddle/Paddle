@@ -88,7 +88,6 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace f = paddle::framework;
 REGISTER_OPERATOR(
     random_crop,
     ops::RandomCropOp,
