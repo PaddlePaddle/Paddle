@@ -124,8 +124,8 @@
     func: SetValueInferMeta
     param: [x]
   kernel:
-    func: set_value
-    param: [x, starts, ends, steps, axes, decrease_axes, none_axes]
+    func: [set_value_with_tensor]
+    param: [x, values, starts, ends, steps, axes, decrease_axes, none_axes]
   inplace: (x -> out)
   backward: set_value_grad
 
