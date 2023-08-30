@@ -431,7 +431,7 @@ class While:
 
     Examples:
         .. code-block:: python
-            :name: Examples 1
+            :name: example-1
 
             >>> import paddle
             >>> import numpy as np
@@ -456,7 +456,7 @@ class While:
             [array([10], dtype=int64)]
 
         .. code-block:: python
-            :name: Examples 2
+            :name: example-2
 
             >>> import paddle
             >>> import numpy as np

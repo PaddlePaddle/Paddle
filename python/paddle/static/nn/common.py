@@ -411,7 +411,6 @@ def continuous_value_model(input, cvm, use_cvm=True):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
             >>> import paddle
 
             >>> paddle.enable_static()
@@ -2246,7 +2245,7 @@ def deformable_conv(
             >>> out = paddle.static.nn.common.deformable_conv(input=data, offset=offset, mask=mask,
             ...                                     num_filters=2, filter_size=filter_size, padding=1, modulated=True)
 
-            # deformable conv v1:
+            >>> # deformable conv v1:
             >>> import paddle
             >>> C_in, H_in, W_in = 3, 32, 32
             >>> filter_size, deformable_groups = 3, 1
@@ -2477,8 +2476,7 @@ def deform_conv2d(
     Examples:
         .. code-block:: python
 
-            #deformable conv v2:
-
+            >>> # deformable conv v2:
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -2490,8 +2488,7 @@ def deform_conv2d(
             >>> out = paddle.static.nn.deform_conv2d(x=data, offset=offset, mask=mask,
             ...                                      num_filters=2, filter_size=filter_size, padding=1)
 
-            #deformable conv v1:
-
+            >>> # deformable conv v1:
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -3369,13 +3366,14 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
         .. code-block:: python
 
-            # for LodTensor inputs
+            >>> # for LodTensor inputs
             >>> import paddle
             >>> paddle.enable_static()
             >>> x = paddle.static.data(name='x', shape=[9, 16],
             ...                     dtype='float32', lod_level=1)
             >>> out_x = paddle.static.nn.row_conv(input=x, future_context_size=2)
-            # for Tensor inputs
+
+            >>> # for Tensor inputs
             >>> y = paddle.static.data(name='y', shape=[9, 4, 16], dtype='float32')
             >>> out_y = paddle.static.nn.row_conv(input=y, future_context_size=2)
     """
