@@ -111,7 +111,7 @@ class IR_API alignas(8) Operation final {
 
   template <typename T>
   bool isa() const {
-    return ir::isa<T>(*this);
+    return ir::isa<T>(this);
   }
 
   template <typename Trait>
