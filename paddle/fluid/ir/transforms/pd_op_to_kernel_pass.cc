@@ -493,8 +493,6 @@ phi::KernelKey GetKernelKey(
 
 std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
                                                    phi::Place place) {
-  prog->Print(std::cout);
-  std::cout << "=========================" << std::endl;
   auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
 
   auto block = prog->block();
@@ -761,13 +759,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog,
     if (op_info_interface) {
       op_info_parser =
           std::make_unique<OpYamlInfoParser>(op_info_interface.GetOpInfo());
-      VLOG(0) << "op_info_parser is not null " << op_info_parser.get();
     }
 
     std::string kernel_fn_str;
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
-      VLOG(0) << "kernel_fn_str: " << kernel_fn_str;
     }
     auto kernel_key =
         GetKernelKey(op_item, place, map_value_pair, op_info_parser.get());

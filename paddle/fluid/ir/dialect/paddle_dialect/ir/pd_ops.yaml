@@ -92,7 +92,7 @@
   output : Tensor(out)
   kernel:
     func: save_combine_tensor
-    param: [X, file_path, overwrite, save_as_fp16, save_to_memory]
+    param: [x, file_path, overwrite, save_as_fp16, save_to_memory]
   optional : out
 
 - op : set_value
