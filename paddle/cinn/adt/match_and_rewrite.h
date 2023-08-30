@@ -15,7 +15,6 @@
 #pragma once
 
 namespace cinn::adt {
-
 template <typename SumT, typename T>
 struct MatchTrait;
 
@@ -29,7 +28,7 @@ struct ExprMatchTrait<true> final {
   template <typename ExprT, typename T>
   struct match_trait_type {
     static_assert(std::is_same<ExprT, T>::value, "");
-    static constexpr int ArgSize() { return 0; }
+    static constexpr int is_template = false;
   };
 };
 
@@ -76,12 +75,11 @@ struct Match</*is_leaf*/ false, ExprT> final {
             std::is_same<std::decay_t<ExprT>, arg0_type>::value;
         static constexpr bool is_arg0_template =
             ExprMatchTrait<is_arg0_expr_type>::
-                template match_trait_type<ExprT, arg0_type>::ArgSize() > 0;
+                template match_trait_type<ExprT, arg0_type>::is_template;
         static constexpr bool is_arg0_leaf =
             is_arg0_expr_type || !is_arg0_template;
-        const ExprT& arg0 =
-            MatchTrait<ExprT, source_pattern_type>::template Arg<0>(impl);
-        return Match<is_arg0_leaf, ExprT>::template Call<arg0_type>(arg0);
+        return MatchTrait<ExprT, source_pattern_type>::MatchChildren(
+            impl, &Match<is_arg0_leaf, ExprT>::template Call<arg0_type>);
       } else {
         return false;
       }

@@ -28,6 +28,8 @@ class UniqueId final {
  public:
   UniqueId(const UniqueId&) = default;
   UniqueId(UniqueId&&) = default;
+  UniqueId& operator=(const UniqueId&) = default;
+  UniqueId& operator=(UniqueId&&) = default;
 
   static UniqueId New() {
     static std::atomic<std::uint64_t> seq_number{0};

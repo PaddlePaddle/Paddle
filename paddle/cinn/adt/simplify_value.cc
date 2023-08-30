@@ -19,15 +19,16 @@
 namespace cinn::adt::equation {
 
 struct SimplifyDotUndot {
-  using source_pattern_type = IndexDot<IndexUnDot<Value>>;
+  using source_pattern_type = IndexDot<List<ListGetItem<IndexUnDot<Value>>>>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
-    ADT_TODO();
+    auto list_get_items =
+        value.Get<IndexDot<Value>>().Get<0>().Get<List<Value>>();
   }
 };
 
 struct SimplifyUndotDot {
-  using source_pattern_type = IndexUnDot<IndexDot<Value>>;
+  using source_pattern_type = ListGetItem<IndexUnDot<IndexDot<List<Value>>>>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     ADT_TODO();
@@ -44,9 +45,9 @@ struct SimplifyListGetItem {
 
 // Only simplify top-layer of value
 Value SimplifyValue(const IndexExprInferContext& ctx, Value value) {
-  Value value = MatchAndRewrite<SimplifyDotUndot>(value, ctx);
-  Value value = MatchAndRewrite<SimplifyUndotDot>(value, ctx);
-  Value value = MatchAndRewrite<SimplifyListGetItem>(value, ctx);
+  value = MatchAndRewrite<SimplifyDotUndot>(value, ctx);
+  value = MatchAndRewrite<SimplifyUndotDot>(value, ctx);
+  value = MatchAndRewrite<SimplifyListGetItem>(value, ctx);
   return value;
 }
 

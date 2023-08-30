@@ -106,12 +106,12 @@ namespace cinn::adt {
 
 template <>
 struct MatchTrait<equation::Value, equation::Undefined> final {
-  static constexpr int ArgSize() { return 0; }
+  static constexpr int is_template = false;
 };
 
 template <>
 struct MatchTrait<equation::Value, equation::IterVar> final {
-  static constexpr int ArgSize() { return 0; }
+  static constexpr int is_template = false;
 };
 
 template <typename T>
@@ -119,26 +119,33 @@ struct MatchTrait<equation::Value, List<T>> final {
   using base_type = List<equation::Value>;
   using arg0_type = T;
 
-  static constexpr int ArgSize() { return 0; }
+  static constexpr int is_template = false;
 
-  template <int I>
-  static equation::Value Arg(const base_type& value) {
-    return value->at(I);
+  template <typename MatchPredicatorT>
+  static bool MatchChildren(const base_type& list,
+                            const MatchPredicatorT& MatchPredicator) {
+    for (const auto& value : *list) {
+      if (!MatchPredicator(value)) {
+        return false;
+      }
+    }
+    return true;
   }
 };
 
-#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                   \
-  template <typename T>                                         \
-  struct MatchTrait<equation::Value, equation::name<T>> final { \
-    using base_type = equation::name<equation::Value>;          \
-    using arg0_type = T;                                        \
-                                                                \
-    static constexpr int ArgSize() { return 1; }                \
-                                                                \
-    template <int I>                                            \
-    static equation::Value Arg(const base_type& value) {        \
-      return std::get<I>(value.tuple());                        \
-    }                                                           \
+#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                            \
+  template <typename T>                                                  \
+  struct MatchTrait<equation::Value, equation::name<T>> final {          \
+    using base_type = equation::name<equation::Value>;                   \
+    using arg0_type = T;                                                 \
+                                                                         \
+    static constexpr int is_template = true;                             \
+                                                                         \
+    template <typename MatchPredicatorT>                                 \
+    static bool MatchChildren(const base_type& value,                    \
+                              const MatchPredicatorT& MatchPredicator) { \
+      return MatchPredicator(std::get<0>(value.tuple()));                \
+    }                                                                    \
   };
 
 DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexDot);

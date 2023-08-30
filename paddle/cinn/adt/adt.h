@@ -63,6 +63,11 @@ class Union {
 template <typename... Ts>
 class Tuple {
  public:
+  Tuple(const Tuple&) = default;
+  Tuple(Tuple&&) = default;
+  Tuple& operator=(const Tuple&) = default;
+  Tuple& operator=(Tuple&&) = default;
+
   template <typename... Args>
   explicit Tuple(Args&&... args)
       : tuple_(
@@ -79,6 +84,8 @@ class List final {
  public:
   List(const List&) = default;
   List(List&&) = default;
+  List& operator=(const List&) = default;
+  List& operator=(List&&) = default;
 
   template <typename... Args>
   explicit List(Args&&... args)
@@ -95,6 +102,11 @@ class List final {
 template <typename T>
 class Tagged {
  public:
+  Tagged(const Tagged&) = default;
+  Tagged(Tagged&&) = default;
+  Tagged& operator=(const Tagged&) = default;
+  Tagged& operator=(Tagged&&) = default;
+
   template <typename ValueT>
   explicit Tagged(ValueT&& value) : value_(value) {}
 
@@ -104,10 +116,14 @@ class Tagged {
   T value_;
 };
 
-#define DEFINE_ADT_TAG(name)       \
-  template <typename T>            \
-  struct name : public Tagged<T> { \
-    using Tagged<T>::Tagged;       \
+#define DEFINE_ADT_TAG(name)                \
+  template <typename T>                     \
+  struct name : public Tagged<T> {          \
+    using Tagged<T>::Tagged;                \
+    name(const name&) = default;            \
+    name(name&&) = default;                 \
+    name& operator=(const name&) = default; \
+    name& operator=(name&&) = deafult;      \
   };
 
 #define DEFINE_ADT_UNION(class_name, ...)                                      \
@@ -116,6 +132,7 @@ class Tagged {
     class_name(const class_name&) = default;                                   \
     class_name(class_name&&) = default;                                        \
     class_name& operator=(const class_name& other) = default;                  \
+    class_name& operator=(class_name&& other) = default;                       \
                                                                                \
     template <typename Arg,                                                    \
               std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, class_name>, \

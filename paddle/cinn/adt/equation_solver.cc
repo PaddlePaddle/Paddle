@@ -33,7 +33,6 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   const auto& [out_iter, in_iter] = id.tuple();
   Variable in_variable{in_iter.value()};
   CHECK(ctx.HasValue(in_variable));
-
   return {{out_iter.value(), ctx.GetValue(in_variable)}};
 }
 
@@ -43,7 +42,6 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   const auto& [out_index, in_index] = id.tuple();
   Variable in_variable{in_index.value()};
   CHECK(ctx.HasValue(in_variable));
-
   return {{out_index.value(), ctx.GetValue(in_variable)}};
 }
 
@@ -57,7 +55,6 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   }
   List<Constant> stride_constants{strides->begin(), strides->end()};
   IndexDot<Value> index_dot{stride_constants, in_values};
-
   return {{out_index.value(), index_dot}};
 }
 
