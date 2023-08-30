@@ -47,6 +47,7 @@ class StaticPyLayerContext:
                 name=saved_var.name,
                 dtype=saved_var.dtype,
                 shape=saved_var.shape,
+                type=saved_var.type,
             )
             out_list.append(out)
             

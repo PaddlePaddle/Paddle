@@ -131,7 +131,7 @@ class TestPyLayerBase(unittest.TestCase):
         return self._run(*args, **kwargs)
 
     # TODO(MarioLulab): In the future, this will be supported: not only `paddle.Tensor`
-    # but also non-Tensor objects will be included in the parameter list.
+    # but also non-Tensor objects will be included in the argument list.
     def _run_and_compare(self, *args, **kwargs):
         # Step1. Clone args and kwargs to avoid dygraph and static overwriting with each other
         dygraph_inp_args = []
@@ -245,14 +245,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
 
         self._run_and_compare(input1)
 
-    def test_inplace(self):
-        simple_net = SimpleNetInplace()
-        self.dygraph_func = simple_net
-
-        input1 = paddle.randn([3, 4]).astype("float32")
-        input1.stop_gradient = False
-        self._run_and_compare(input1)
-
 
 class TestPyLayerInsideNet(TestPyLayerBase):
     def test_single_in_single_out(self):
@@ -260,6 +252,14 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         self.dygraph_func = simple_net
 
         input1 = paddle.randn([3, 4]).astype("float32")
+        self._run_and_compare(input1)
+
+    def test_inplace(self):
+        simple_net = SimpleNetInplace()
+        self.dygraph_func = simple_net
+
+        input1 = paddle.randn([3, 4]).astype("float32")
+        input1.stop_gradient = False
         self._run_and_compare(input1)
 
 

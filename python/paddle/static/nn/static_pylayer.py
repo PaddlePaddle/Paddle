@@ -161,9 +161,9 @@ def _get_ctx_from_func_(func):
 
 def _rename_var_recursively_(cur_block, var_old_to_new):
     """
-    Rename the var name both the Variable instances and the input and output arg names of
-    all ops in `cur_block` based on `var_old_to_new`.
-    `var_old_to_new` maybe the following format:
+    Rename the var both the Variable instances and all ops' input and output arg names
+    in `cur_block` based on dict `var_old_to_new`.
+    Dict `var_old_to_new` should be the following format:
     {
         old_name_0 : new_name_0,
         old_name_1 : new_name_1,
@@ -173,8 +173,7 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
     """
 
     for old_var_name, new_var_name in var_old_to_new.items():
-        # NOTE(MarioLulab): The reason why not using Block._rename_var is that `old_var_name` does not correspond to a Variable instance in Block
-        # and Block._rename_var will raise ValueError.
+        # NOTE(MarioLulab): The reason why not using `Block._rename_var`` is that `Block._rename_var` will raise ValueError, when `old_var_name` does not correspond to a Variable instance in Block.
 
         if cur_block.has_var(old_var_name):
             # `Block.desc._rename_var` can rename var in block and then rename var name in all ops
