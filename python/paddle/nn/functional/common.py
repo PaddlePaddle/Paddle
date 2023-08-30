@@ -1931,9 +1931,9 @@ def linear(x, weight, bias=None, name=None):
             >>> y = paddle.nn.functional.linear(x, weight, bias)
             >>> print(y)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1.31539762, 1.31539762, 1.31539762, 1.31539762],
-             [0.18737471, 0.18737471, 0.18737471, 0.18737471],
-             [1.23271096, 1.23271096, 1.23271096, 1.23271096]])
+            [[ 1.58740902,  1.58740902,  1.58740902,  1.58740902],
+             [ 1.08524013,  1.08524013,  1.08524013,  1.08524013],
+             [-0.67769694, -0.67769694, -0.67769694, -0.67769694]])
     """
     if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
