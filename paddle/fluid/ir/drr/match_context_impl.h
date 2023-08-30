@@ -73,14 +73,14 @@ struct IrAttrTypeCast<std::vector<int64_t>> {
         result.push_back(
             array_attr.at(i).dyn_cast<ir::Int64Attribute>().data());
       }
-      return result;
     } else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
       result =
           attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
-      return result;
+    } else {
+      PADDLE_THROW(phi::errors::Unavailable(
+          "Dynamic cast failed for IR attribute vector<int64_t>"));
     }
-    PADDLE_THROW(phi::errors::Unavailable(
-        "Dynamic cast failed for IR attribute vector<int64_t>"));
+    return result;
   }
 };
 

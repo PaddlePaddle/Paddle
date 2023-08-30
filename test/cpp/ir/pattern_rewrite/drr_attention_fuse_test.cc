@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
@@ -243,7 +244,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 
   paddle::dialect::ReshapeOp reshape_op1 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          add_op1.out(), std::vector<int64_t>{1, 300, 8, 32});
+          add_op1.out(), std::vector<int64_t>{0, 0, 8, 32});
 
   paddle::dialect::TransposeOp transpose_op1 =
       builder.Build<paddle::dialect::TransposeOp>(reshape_op1.out(),
@@ -270,7 +271,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 
   paddle::dialect::ReshapeOp reshape_op2 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          add_op2.out(), std::vector<int64_t>{1, 300, 8, 32});
+          add_op2.out(), std::vector<int64_t>{0, 0, 8, 32});
 
   paddle::dialect::TransposeOp transpose_op2 =
       builder.Build<paddle::dialect::TransposeOp>(reshape_op2.out(),
@@ -298,7 +299,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 
   paddle::dialect::ReshapeOp reshape_op3 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          add_op3.out(), std::vector<int64_t>{1, 300, 8, 32});
+          add_op3.out(), std::vector<int64_t>{0, 0, 8, 32});
 
   paddle::dialect::TransposeOp transpose_op3 =
       builder.Build<paddle::dialect::TransposeOp>(reshape_op3.out(),
@@ -325,35 +326,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 
   paddle::dialect::ReshapeOp reshape_op4 =
       builder.Build<paddle::dialect::ReshapeOp>(
-          transpose_op4.out(), std::vector<int64_t>{1, 300, 256});
-
-  //   paddle::dialect::FullOp full_mat4_y_op =
-  //       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256,
-  //       256},
-  //                                              1.1,
-  //                                              phi::DataType::FLOAT32,
-  //                                              phi::CPUPlace());
-  //   paddle::dialect::MatmulOp matmul_op6 =
-  //       builder.Build<paddle::dialect::MatmulOp>(
-  //           reshape_op4.out(), full_mat4_y_op.out(), false, false);
-
-  //   paddle::dialect::FullOp full_eleadd4_y_op =
-  //       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{256},
-  //                                              1.5,
-  //                                              phi::DataType::FLOAT32,
-  //                                              phi::CPUPlace());
-  //   paddle::dialect::AddOp add_op4 = builder.Build<paddle::dialect::AddOp>(
-  //       matmul_op6.out(), full_eleadd4_y_op.out());
-
-  //   paddle::dialect::FullOp full_slice_axes_op =
-  //       builder.Build<paddle::dialect::FullOp>(
-  //           std::vector<int>{64}, 2, phi::DataType::INT64, phi::CPUPlace());
-  //   paddle::dialect::FullOp full_slice_starts_op =
-  //       builder.Build<paddle::dialect::FullOp>(
-  //           std::vector<int>{64}, 2, phi::DataType::INT64, phi::CPUPlace());
-  //   paddle::dialect::SliceOp slice_op1 =
-  //   builder.Build<paddle::dialect::SliceOp>(
-  //       add_op4.out(), full_slice_axes_op.out(), full_slice_starts_op);
+          transpose_op4.out(), std::vector<int64_t>{0, 0, 256});
 
   builder.Build<paddle::dialect::FetchOp>(reshape_op4.out(), "out", 0);
 }
@@ -364,15 +337,12 @@ TEST(DrrTest, AttentionFuse) {
   ir::Program program(ctx);
   ir::Builder builder = ir::Builder(ctx, program.block());
   BuildProgram(builder);
-  program.Print(std::cout);
-  //   EXPECT_EQ(program.block()->size(), 14u);
+  EXPECT_EQ(program.block()->size(), 31u);
 
-  //   ir::PassManager pm(ctx);
-  //   pm.AddPass(std::make_unique<DrrPatternRewritePass>());
-  //   pm.AddPass(ir::CreateDeadCodeEliminationPass());
-  //   // pm.EnablePassTiming();
-  //   pm.EnableIRPrinting();
+  ir::PassManager pm(ctx);
+  pm.AddPass(std::make_unique<AttentionFusePass>());
+  pm.EnableIRPrinting();
 
-  //   CHECK_EQ(pm.Run(&program), true);
-  //   EXPECT_EQ(program.block()->size(), 7u);
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 31u);
 }
