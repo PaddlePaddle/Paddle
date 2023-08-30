@@ -323,7 +323,6 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.run_test()
 
 
-
 class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
@@ -520,7 +519,7 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
 
                     program_config = ProgramConfig(
                         ops=ops,
-                        weights = {},
+                        weights={},
                         inputs={
                             "input_data1": TensorConfig(
                                 data_gen=partial(generate_input1, batch, dim1)
@@ -533,7 +532,7 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
                             ),
                             "weight_value": TensorConfig(
                                 data_gen=partial(generate_weight1)
-                            )
+                            ),
                         },
                         outputs=["reshape24_output"],
                     )
