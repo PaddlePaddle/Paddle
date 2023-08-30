@@ -52,9 +52,7 @@ def get_ir_program_1():
             shape=[4, 5], dtype='float32', value=2.0
         )
         x.stop_gradient = False
-        dout = paddle.tensor.fill_constant(
-            shape=[1], dtype='float32', value=1.0
-        )
+        dout = paddle.tensor.fill_constant(shape=[], dtype='float32', value=1.0)
         dout.stop_gradiable = False
         out = paddle.sum(x)
     newir_program = ir.translate_to_new_ir(main_program.desc)
