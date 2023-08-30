@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cmath>
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -44,7 +43,7 @@ class Atan2OpConverter : public OpConverter {
     std::vector<float> zero_vec{0.f};
     std::vector<float> one_vec{1.f};
     std::vector<float> two_vec{2.f};
-    std::vector<float> pi_vec{M_PI};
+    std::vector<float> pi_vec{3.1415926535};
     auto zero_tensor = Add1DConstantLayer(zero_vec);
     auto one_tensor = Add1DConstantLayer(one_vec);
     auto two_tensor = Add1DConstantLayer(two_vec);
