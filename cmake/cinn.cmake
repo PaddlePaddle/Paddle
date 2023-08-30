@@ -183,6 +183,11 @@ if(WITH_MKL)
   endif()
 endif()
 
+if(NOT WITH_GFLAGS)
+  target_link_libraries(cinnapi gflags)
+  add_dependencies(cinnapi gflags)
+endif()
+
 if(WITH_GPU)
   target_link_libraries(
     cinnapi
@@ -235,6 +240,11 @@ function(gen_cinncore LINKTYPE)
       target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
       add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
     endif()
+  endif()
+
+  if(NOT WITH_GFLAGS)
+    target_link_libraries(${CINNCORE_TARGET} gflags)
+    add_dependencies(${CINNCORE_TARGET} gflags)
   endif()
 
   if(WITH_GPU)
