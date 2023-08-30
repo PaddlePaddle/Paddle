@@ -111,6 +111,21 @@ std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
   return reduce_loop_var_names;
 }
 
+std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
+  ir::ScheduleBlockRealize* schedule_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  ir::ScheduleBlock* schedule_block =
+      schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
+  std::unordered_set<std::string> reduce_var_names;
+  for (int i = 0; i < iter_vars.size(); ++i) {
+    if (iter_vars[i]->is_reduce_axis) {
+      reduce_var_names.insert(iter_vars[i]->name);
+    }
+  }
+  return reduce_var_names;
+}
+
 GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
                                const std::shared_ptr<Graph::Group>& group,
                                const common::Target& target)
@@ -202,13 +217,110 @@ void GroupScheduler::DoLoopAlignment() {
   VLOG(5) << "[Start LoopAlignment] func body: "
           << ir_sch_->GetModule().GetExprs().front();
   ir::ScheduleBlockNode* global_master = FindGlobalMasterNode();
+  ir::Expr master_block = global_master->Block();
+  std::vector<int> original_master_loop_extents;
+  std::vector<int> spacial_master_loop_extents;
+  std::vector<int> original_master_loop_order;
+  std::vector<int> recover_loop_order;
+
+  std::vector<ir::Expr> master_iter_values =
+      master_block.As<ir::ScheduleBlockRealize>()->iter_values;
+  std::vector<ir::Var> master_iter_vars =
+      master_block.As<ir::ScheduleBlockRealize>()
+          ->schedule_block.As<ir::ScheduleBlock>()
+          ->iter_vars;
+  std::vector<ir::Expr> master_loops = ir_sch_->GetLoops(master_block);
+
+  std::unordered_set<std::string> reduce_var_names =
+      GetReduceVarNames(master_block);
+  if (!reduce_var_names.empty()) {
+    std::set<ir::Expr> reduce_loads = ir::CollectIRNodesWithoutTensor(
+        master_block,
+        [&](const ir::Expr* x) {
+          bool find_reduce_var = false;
+          if (x->As<ir::Load>()) {
+            int i = 0;
+            for (ir::Expr index : x->As<ir::Load>()->indices) {
+              if (index.as_var() &&
+                  reduce_var_names.count(index.as_var_ref()->name) > 0) {
+                find_reduce_var = true;
+              }
+              ++i;
+            }
+          }
+          return find_reduce_var;
+        },
+        /* uniq_target = */ true);
+    CHECK_EQ(reduce_loads.size(), 1);
+
+    std::vector<ir::Expr> indices =
+        reduce_loads.begin()->As<ir::Load>()->indices;
+    for (ir::Expr index : indices) {
+      CHECK_NOTNULL(index.as_var());
+      int idx = 0;
+      bool is_reduce_var = false;
+      for (const ir::Var& iter_var : master_iter_vars) {
+        if (iter_var->name == index.as_var_ref()->name) {
+          is_reduce_var = iter_var->is_reduce_axis;
+          break;
+        }
+        ++idx;
+      }
+      std::vector<ir::Var> loop_vars_in_order;
+      ir::CollectIRNodesInOrder(
+          master_iter_values[idx], [&](const ir::Expr* x) {
+            if (x->as_var()) {
+              loop_vars_in_order.push_back(x->as_var_ref());
+            }
+            return false;
+          });
+      for (const ir::Var& loop_var : loop_vars_in_order) {
+        for (int i = 0; i < master_loops.size(); ++i) {
+          if (master_loops[i].As<ir::For>()->loop_var->name == loop_var->name) {
+            original_master_loop_order.push_back(i);
+            int extent = ir::GetLoopExtent(master_loops[i]);
+            original_master_loop_extents.push_back(extent);
+            if (!is_reduce_var) {
+              spacial_master_loop_extents.push_back(extent);
+            }
+          }
+        }
+      }
+    }
+
+    for (int i = 0; i < original_master_loop_order.size(); ++i) {
+      for (int j = 0; j < original_master_loop_order.size(); ++j) {
+        if (original_master_loop_order[j] == i) {
+          recover_loop_order.push_back(j);
+          break;
+        }
+      }
+    }
+    CHECK_EQ(original_master_loop_order.size(), recover_loop_order.size());
+  } else {
+    for (int i = 0; i < master_loops.size(); ++i) {
+      original_master_loop_extents.push_back(
+          ir::GetLoopExtent(master_loops[i]));
+      spacial_master_loop_extents.push_back(ir::GetLoopExtent(master_loops[i]));
+      original_master_loop_order.push_back(i);
+      recover_loop_order.push_back(i);
+    }
+  }
+
+  int total_master_loop_extents = 1;
+  int total_spacial_loop_extents = 1;
+  for (int extent : original_master_loop_extents) {
+    total_master_loop_extents *= extent;
+  }
+  for (int extent : spacial_master_loop_extents) {
+    total_spacial_loop_extents *= extent;
+  }
 
   auto LoopAlignmentFunc = [&](ir::ScheduleBlockNode* node) {
     if (IsProhibitScheduleExternCallBlock(node->Block())) {
       return false;
     }
-    VLOG(6) << "try to align loops of block: " << node->id()
-            << " with block: " << global_master->id();
+
     if (node == global_master) {
       return false;
     }
@@ -225,57 +337,50 @@ void GroupScheduler::DoLoopAlignment() {
       }
     }
 
+    VLOG(6) << "try to align loops of block: " << node->id()
+            << " with block: " << global_master->id();
+
     // 1. Fuse source loops
     ir::Expr source_loop = ir_sch_->Fuse(node->ControlStmts());
     int total_source_extent = ir::GetLoopExtent(source_loop);
 
     // 2. Split source loop to align with the target loops
-    std::vector<int> factors;
-    int cur_extent = 1;
-    std::vector<ir::Expr> target_loops = global_master->ControlStmts();
-    for (ir::Expr target_loop : target_loops) {
-      if (target_loop.As<ir::For>() == nullptr) {
-        continue;
+    std::vector<int> target_loop_extents;
+    if (total_source_extent < total_spacial_loop_extents) {
+      int cur_extent = 1;
+      for (int extent : spacial_master_loop_extents) {
+        cur_extent *= extent;
+        if (cur_extent == total_source_extent) {
+          target_loop_extents.push_back(extent);
+          break;
+        } else if (cur_extent > total_source_extent) {
+          target_loop_extents.push_back(-1);
+          break;
+        } else {
+          target_loop_extents.push_back(extent);
+        }
       }
-      if (cur_extent >= total_source_extent && factors.size() &&
-              ir::GetLoopExtent(target_loop) > 1 ||
-          total_source_extent % (cur_extent * ir::GetLoopExtent(target_loop)) !=
-              0) {
-        break;
-      }
-      factors.push_back(ir::GetLoopExtent(target_loop));
-      cur_extent *= ir::GetLoopExtent(target_loop);
-    }
-    if (cur_extent < total_source_extent) {
-      factors.push_back(-1);
+    } else if (total_source_extent == total_spacial_loop_extents) {
+      target_loop_extents = spacial_master_loop_extents;
+    } else if (total_source_extent < total_master_loop_extents) {
+      target_loop_extents = spacial_master_loop_extents;
+      target_loop_extents.push_back(-1);
+    } else if (total_source_extent == total_master_loop_extents) {
+      target_loop_extents = original_master_loop_extents;
     }
     std::vector<ir::Expr> source_loops;
-    if (factors.size() > 0 && factors[0] < total_source_extent) {
-      source_loops = ir_sch_->Split(source_loop, factors);
+    if (target_loop_extents.size() > 0 &&
+        target_loop_extents[0] < total_source_extent) {
+      source_loops = ir_sch_->Split(source_loop, target_loop_extents);
     } else {
       source_loops = {source_loop};
     }
 
-    // 3. Copy bind info from target loops
-    for (int idx = 0; idx < target_loops.size(); ++idx) {
-      std::string thread_axis = "";
-      ir::ForType target_for_type = target_loops[idx].As<ir::For>()->for_type();
-      if (target_for_type == ir::ForType::GPUBlock) {
-        thread_axis += "blockIdx.";
-      } else if (target_for_type == ir::ForType::GPUThread) {
-        thread_axis += "threadIdx.";
-      } else {
-        continue;
-      }
-      int offset = target_loops[idx].As<ir::For>()->bind_info().offset;
-      thread_axis += ('x' + offset);
-      if (idx >= source_loops.size()) {
-        ir::Expr unit_loop = ir_sch_->AddUnitLoop(node->Block());
-        ir_sch_->Bind(unit_loop, thread_axis);
-      } else {
-        ir_sch_->Bind(source_loops[idx], thread_axis);
-      }
+    // 3. Rerorder loops to match the target loops
+    if (total_source_extent == total_master_loop_extents) {
+      ir_sch_->Reorder(node->id(), recover_loop_order);
     }
+
     return true;
   };
 
@@ -681,33 +786,54 @@ void GroupScheduler::AllocateStorage() {
   auto GetCoefficientAndRange = [&for_map](ir::Expr indice_value,
                                            const ir::ForType& for_type,
                                            const std::string& block_name) {
-    ir::Expr indice_copy = optim::IRCopy(indice_value);
-    Range range{1, 1};
+    std::vector<std::pair<int, Range>> coef_and_ranges(3);
+    std::vector<ir::Expr> indice_copies;
+    for (int i = 0; i < 3; ++i) {
+      indice_copies.push_back(optim::IRCopy(indice_value));
+    }
     std::set<ir::Expr> var_set = ir::CollectIRNodesWithoutTensor(
-        indice_copy, [](const ir::Expr* x) { return x->as_var(); });
+        indice_value, [](const ir::Expr* x) { return x->as_var(); });
+    std::unordered_set<std::string> visited_var_names;
     for (ir::Expr var : var_set) {
       std::string name = var.as_var_ref()->name;
+      if (visited_var_names.count(name) > 0) {
+        continue;
+      }
+      visited_var_names.insert(name);
       CHECK(for_map.find(block_name) != for_map.end());
       CHECK(for_map[block_name].find(name) != for_map[block_name].end());
       ir::Expr for_expr = for_map[block_name][name];
-      if (for_type == for_expr.As<ir::For>()->for_type() &&
-          for_expr.As<ir::For>()->extent.get_constant() > 1) {
-        optim::ReplaceVarWithExpr(&indice_copy, var.as_var_ref(), ir::Expr(1));
-        range.min *= for_expr.As<ir::For>()->min.get_constant();
-        range.max *= for_expr.As<ir::For>()->min.get_constant() +
-                     for_expr.As<ir::For>()->extent.get_constant();
-      } else {
-        optim::ReplaceVarWithExpr(&indice_copy, var.as_var_ref(), ir::Expr(0));
+      for (int i = 0; i < 3; ++i) {
+        if (for_type == for_expr.As<ir::For>()->for_type() &&
+            for_expr.As<ir::For>()->bind_info().offset == i &&
+            for_expr.As<ir::For>()->extent.get_constant() > 1) {
+          optim::ReplaceVarWithExpr(
+              &(indice_copies[i]), var.as_var_ref(), ir::Expr(1));
+          coef_and_ranges[i].second.min =
+              for_expr.As<ir::For>()->min.get_constant();
+          coef_and_ranges[i].second.max =
+              for_expr.As<ir::For>()->min.get_constant() +
+              for_expr.As<ir::For>()->extent.get_constant();
+        } else {
+          optim::ReplaceVarWithExpr(
+              &(indice_copies[i]), var.as_var_ref(), ir::Expr(0));
+        }
       }
     }
-    VLOG(6) << "before simplify, the coefficient of " << indice_value << " = "
-            << indice_copy << ", range = (" << range.min << ", " << range.max
-            << ")";
-    indice_copy = common::AutoSimplify(indice_copy);
-    VLOG(6) << "after simplify, the coefficient of " << indice_value << " = "
-            << indice_copy << ", range = (" << range.min << ", " << range.max
-            << ")";
-    return std::make_pair(static_cast<int>(indice_copy.get_constant()), range);
+    for (int i = 0; i < 3; ++i) {
+      VLOG(6) << "before simplify [" << i << "], the coefficient of "
+              << indice_value << " = " << indice_copies[i] << ", range = ("
+              << coef_and_ranges[i].second.min << ", "
+              << coef_and_ranges[i].second.max << ")";
+      indice_copies[i] = common::AutoSimplify(indice_copies[i]);
+      VLOG(6) << "after simplify [" << i << "], the coefficient of "
+              << indice_value << " = " << indice_copies << ", range = ("
+              << coef_and_ranges[i].second.min << ", "
+              << coef_and_ranges[i].second.max << ")";
+      coef_and_ranges[i].first =
+          static_cast<int>(indice_copies[i].get_constant());
+    }
+    return coef_and_ranges;
   };
 
   // Determine whether the indice of a pair of Store and Load cross CUDA threads
@@ -737,25 +863,55 @@ void GroupScheduler::AllocateStorage() {
             << store_serial_overall_range.max << ")";
     VLOG(6) << "load_serial_overall_range = (" << load_serial_overall_range.min
             << ", " << load_serial_overall_range.max << ")";
-    VLOG(6) << "store_thread_coefficient_and_range = <"
-            << store_thread_coefficient_and_range.first << ", ("
-            << store_thread_coefficient_and_range.second.min << ", "
-            << store_thread_coefficient_and_range.second.max << ")>";
-    VLOG(6) << "load_thread_coefficient_and_range = <"
-            << load_thread_coefficient_and_range.first << ", ("
-            << load_thread_coefficient_and_range.second.min << ", "
-            << load_thread_coefficient_and_range.second.max << ")>";
+    VLOG(6) << "store_thread_coefficient_and_range[0] = <"
+            << store_thread_coefficient_and_range[0].first << ", ("
+            << store_thread_coefficient_and_range[0].second.min << ", "
+            << store_thread_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "load_thread_coefficient_and_range[0] = <"
+            << load_thread_coefficient_and_range[0].first << ", ("
+            << load_thread_coefficient_and_range[0].second.min << ", "
+            << load_thread_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "store_thread_coefficient_and_range[1] = <"
+            << store_thread_coefficient_and_range[1].first << ", ("
+            << store_thread_coefficient_and_range[1].second.min << ", "
+            << store_thread_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "load_thread_coefficient_and_range[1] = <"
+            << load_thread_coefficient_and_range[1].first << ", ("
+            << load_thread_coefficient_and_range[1].second.min << ", "
+            << load_thread_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "store_thread_coefficient_and_range[2] = <"
+            << store_thread_coefficient_and_range[2].first << ", ("
+            << store_thread_coefficient_and_range[2].second.min << ", "
+            << store_thread_coefficient_and_range[2].second.max << ")>";
+    VLOG(6) << "load_thread_coefficient_and_range[2] = <"
+            << load_thread_coefficient_and_range[2].first << ", ("
+            << load_thread_coefficient_and_range[2].second.min << ", "
+            << load_thread_coefficient_and_range[2].second.max << ")>";
     return !(store_thread_overall_range.min <= load_thread_overall_range.min &&
              store_thread_overall_range.max >= load_thread_overall_range.max &&
              store_serial_overall_range.min <= load_serial_overall_range.min &&
              store_serial_overall_range.max >= load_serial_overall_range.max &&
-             (store_thread_coefficient_and_range.first ==
-                  load_thread_coefficient_and_range.first ||
-              load_thread_coefficient_and_range.first == 0) &&
-             store_thread_coefficient_and_range.second.min <=
-                 load_thread_coefficient_and_range.second.min &&
-             store_thread_coefficient_and_range.second.max >=
-                 load_thread_coefficient_and_range.second.max);
+             (store_thread_coefficient_and_range[0].first ==
+                  load_thread_coefficient_and_range[0].first ||
+              load_thread_coefficient_and_range[0].first == 0) &&
+             store_thread_coefficient_and_range[0].second.min <=
+                 load_thread_coefficient_and_range[0].second.min &&
+             store_thread_coefficient_and_range[0].second.max >=
+                 load_thread_coefficient_and_range[0].second.max &&
+             (store_thread_coefficient_and_range[1].first ==
+                  load_thread_coefficient_and_range[1].first ||
+              load_thread_coefficient_and_range[1].first == 0) &&
+             store_thread_coefficient_and_range[1].second.min <=
+                 load_thread_coefficient_and_range[1].second.min &&
+             store_thread_coefficient_and_range[1].second.max >=
+                 load_thread_coefficient_and_range[1].second.max &&
+             (store_thread_coefficient_and_range[2].first ==
+                  load_thread_coefficient_and_range[2].first ||
+              load_thread_coefficient_and_range[2].first == 0) &&
+             store_thread_coefficient_and_range[2].second.min <=
+                 load_thread_coefficient_and_range[2].second.min &&
+             store_thread_coefficient_and_range[2].second.max >=
+                 load_thread_coefficient_and_range[2].second.max);
   };
 
   // Determine whether the indice of a pair of Store and Load cross CUDA block
@@ -787,27 +943,57 @@ void GroupScheduler::AllocateStorage() {
     VLOG(6) << "load_thread_and_serial_overall_range = ("
             << load_thread_and_serial_overall_range.min << ", "
             << load_thread_and_serial_overall_range.max << ")";
-    VLOG(6) << "store_block_coefficient_and_range = <"
-            << store_block_coefficient_and_range.first << ", ("
-            << store_block_coefficient_and_range.second.min << ", "
-            << store_block_coefficient_and_range.second.max << ")>";
-    VLOG(6) << "load_block_coefficient_and_range = <"
-            << load_block_coefficient_and_range.first << ", ("
-            << load_block_coefficient_and_range.second.min << ", "
-            << load_block_coefficient_and_range.second.max << ")>";
+    VLOG(6) << "store_block_coefficient_and_range[0] = <"
+            << store_block_coefficient_and_range[0].first << ", ("
+            << store_block_coefficient_and_range[0].second.min << ", "
+            << store_block_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "load_block_coefficient_and_range[0] = <"
+            << load_block_coefficient_and_range[0].first << ", ("
+            << load_block_coefficient_and_range[0].second.min << ", "
+            << load_block_coefficient_and_range[0].second.max << ")>";
+    VLOG(6) << "store_block_coefficient_and_range[1] = <"
+            << store_block_coefficient_and_range[1].first << ", ("
+            << store_block_coefficient_and_range[1].second.min << ", "
+            << store_block_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "load_block_coefficient_and_range[1] = <"
+            << load_block_coefficient_and_range[1].first << ", ("
+            << load_block_coefficient_and_range[1].second.min << ", "
+            << load_block_coefficient_and_range[1].second.max << ")>";
+    VLOG(6) << "store_block_coefficient_and_range[2] = <"
+            << store_block_coefficient_and_range[2].first << ", ("
+            << store_block_coefficient_and_range[2].second.min << ", "
+            << store_block_coefficient_and_range[2].second.max << ")>";
+    VLOG(6) << "load_block_coefficient_and_range[2] = <"
+            << load_block_coefficient_and_range[2].first << ", ("
+            << load_block_coefficient_and_range[2].second.min << ", "
+            << load_block_coefficient_and_range[2].second.max << ")>";
     return !(store_block_overall_range.min <= load_block_overall_range.min &&
              store_block_overall_range.max >= load_block_overall_range.max &&
              store_thread_and_serial_overall_range.min <=
                  load_thread_and_serial_overall_range.min &&
              store_thread_and_serial_overall_range.max >=
                  load_thread_and_serial_overall_range.max &&
-             (store_block_coefficient_and_range.first ==
-                  load_block_coefficient_and_range.first ||
-              load_block_coefficient_and_range.first == 0) &&
-             store_block_coefficient_and_range.second.min <=
-                 load_block_coefficient_and_range.second.min &&
-             store_block_coefficient_and_range.second.max >=
-                 load_block_coefficient_and_range.second.max);
+             (store_block_coefficient_and_range[0].first ==
+                  load_block_coefficient_and_range[0].first ||
+              load_block_coefficient_and_range[0].first == 0) &&
+             store_block_coefficient_and_range[0].second.min <=
+                 load_block_coefficient_and_range[0].second.min &&
+             store_block_coefficient_and_range[0].second.max >=
+                 load_block_coefficient_and_range[0].second.max &&
+             (store_block_coefficient_and_range[1].first ==
+                  load_block_coefficient_and_range[1].first ||
+              load_block_coefficient_and_range[1].first == 0) &&
+             store_block_coefficient_and_range[1].second.min <=
+                 load_block_coefficient_and_range[1].second.min &&
+             store_block_coefficient_and_range[1].second.max >=
+                 load_block_coefficient_and_range[1].second.max &&
+             (store_block_coefficient_and_range[2].first ==
+                  load_block_coefficient_and_range[2].first ||
+              load_block_coefficient_and_range[2].first == 0) &&
+             store_block_coefficient_and_range[2].second.min <=
+                 load_block_coefficient_and_range[2].second.min &&
+             store_block_coefficient_and_range[2].second.max >=
+                 load_block_coefficient_and_range[2].second.max);
   };
 
   // function to set storage of each tensor

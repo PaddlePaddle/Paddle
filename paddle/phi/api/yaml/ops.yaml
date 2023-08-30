@@ -1515,7 +1515,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta
+    func : LogicalBinaryInferMeta
   kernel :
     func : logical_and
     data_type : x
@@ -1526,7 +1526,7 @@
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
+    func : LogicalNotInfermeta
   kernel :
     func : logical_not
     data_type : x
@@ -1537,7 +1537,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta
+    func : LogicalBinaryInferMeta
   kernel :
     func : logical_or
     data_type : x
@@ -1548,7 +1548,7 @@
   args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
-    func : ElementwiseInferMeta
+    func : LogicalBinaryInferMeta
   kernel :
     func : logical_xor
     data_type : x
