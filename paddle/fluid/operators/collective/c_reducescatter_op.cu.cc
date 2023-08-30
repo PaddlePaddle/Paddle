@@ -80,14 +80,12 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
                             "dim[0] (%d) should be divisible by nranks(%d)",
                             out_dims[0],
                             comm->nranks()));
-
-      if (ctx.Attr<bool>("use_calc_stream")) {
-        // should ExecutionContext for calc stream.
-        stream = ctx.cuda_device_context().stream();
-      } else {
-        stream = comm->stream();
-      }
+      stream = comm->stream();
       VLOG(3) << "old NCCLCommContext has ring_id " << rid;
+    }
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     }
 
     int nranks = comm_ctx ? comm_ctx->GetSize() : comm->nranks();
@@ -108,7 +106,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     if (comm_ctx) {
-      comm_ctx->Broadcast(out, *in, ncclSum, stream);
+      comm_ctx->ReduceScatter(out, *in, ncclSum, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
           send_buff,

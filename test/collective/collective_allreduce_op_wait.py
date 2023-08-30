@@ -105,6 +105,9 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
 
             return toutdata
 
+    def get_model_new_comm(self, main_prog, startup_program, dtype="float32"):
+        return self.get_model(main_prog, startup_program)
+
 
 if __name__ == "__main__":
     runtime_main(TestCollectiveAllreduce, "allreduce", 0)

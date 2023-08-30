@@ -253,13 +253,12 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
       VLOG(3) << "new comm_context_manager has rid " << rid;
     } else {  // old comm_context
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
-      if (ctx.Attr<bool>("use_calc_stream")) {
-        // should ExecutionContext for calc stream.
-        stream = ctx.cuda_device_context().stream();
-      } else {
-        stream = comm->stream();
-      }
+      stream = comm->stream();
       VLOG(3) << "old NCCLCommContext has rid " << rid;
+    }
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     }
 
     ncclRedOp_t nccl_red_type = ncclSum;

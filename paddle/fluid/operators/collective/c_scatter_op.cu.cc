@@ -97,13 +97,12 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
                             nranks,
                             comm->nranks()));
 
-      if (ctx.Attr<bool>("use_calc_stream")) {
-        // should ExecutionContext for calc stream.
-        stream = ctx.cuda_device_context().stream();
-      } else {
-        stream = comm->stream();
-      }
+      stream = comm->stream();
       VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
+    }
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     }
 
     framework::DDim x_dims = x->dims();
@@ -111,7 +110,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     phi::DenseTensor temp;
     auto out_ptr = temp.mutable_data<T>(out_dims, place);
 
-    if (comm_ctx) {
+    if (FLAGS_dynamic_static_unified_comm) {
       if (root_id == comm_ctx->GetRank()) {
         comm_ctx->Broadcast(
             const_cast<phi::DenseTensor*>(x), *x, root_id, stream);
@@ -145,7 +144,9 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     out_dims[0] = out_dims[0] / nranks;
-    auto start_index = out_dims[0] * comm->rank();
+    auto start_index = FLAGS_dynamic_static_unified_comm
+                           ? out_dims[0] * comm_ctx->GetRank()
+                           : out_dims[0] * comm->rank();
     auto end_index = start_index + out_dims[0];
     temp = temp.Slice(start_index, end_index);
     temp.Resize(out_dims);

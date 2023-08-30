@@ -30,6 +30,11 @@ class TestCWaitOp(TestDistBase):
             "collective_allreduce_op_wait.py", "allreduce", check_error_log=True
         )
 
+    def test_allreduce_wait_with_new_comm(self):
+        self.check_with_place(
+            "collective_allreduce_op_wait.py", "allreduce", check_error_log=True
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

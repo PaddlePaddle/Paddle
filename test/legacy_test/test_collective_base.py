@@ -24,6 +24,7 @@ from contextlib import closing
 
 import numpy as np
 
+import paddle
 import paddle.fluid.unique_name as nameGen
 from paddle import fluid
 from paddle.fluid import core
@@ -110,9 +111,13 @@ class TestCollectiveRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        self.initCommunicator(
-            startup_prog, rank, nranks, True, current_endpoint, endpoints
-        )
+        if args["dynamic_static_unified_comm"]:
+            paddle.distributed.collective._init_parallel_env("nccl")
+        else:
+            self.initCommunicator(
+                startup_prog, rank, nranks, True, current_endpoint, endpoints
+            )
+
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -140,6 +145,10 @@ def runtime_main(test_class, col_type, sub_type):
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
+    args["dtype"] = os.getenv("DTYPE")
+    args["dynamic_static_unified_comm"] = bool(
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+    )
     model.run_trainer(args)
 
 
@@ -226,6 +235,14 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
+        # print("tr0_out: ")
+        # print(tr0_out)
+        # print("tr0_err: ")
+        # print(tr0_err)
+        # print("tr1_out: ")
+        # print(tr1_out)
+        # print("tr1_err: ")
+        # print(tr1_err)
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
         # close trainer file
@@ -257,6 +274,8 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
+            "Flags_dynamic_static_unified_comm": "False",
+            "DTYPE": "float32",
         }
         required_envs.update(need_envs)
         if check_error_log:

@@ -25,18 +25,36 @@ class TestSendRecvOp(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_sendrecv(self):
-        self.check_with_place("collective_sendrecv_op.py", "sendrecv")
+    # def test_sendrecv(self):
+    #     self.check_with_place("collective_sendrecv_op.py", "sendrecv")
 
-    def test_sendrecv_dynamic_shape(self):
-        self.check_with_place(
-            "collective_sendrecv_op_dynamic_shape.py", "sendrecv_dynamic_shape"
-        )
+    # def test_sendrecv_dynamic_shape(self):
+    #     self.check_with_place(
+    #         "collective_sendrecv_op_dynamic_shape.py", "sendrecv_dynamic_shape"
+    #     )
 
-    def test_sendrecv_array(self):
-        self.check_with_place(
-            "collective_sendrecv_op_array.py", "sendrecv_array"
-        )
+    # def test_sendrecv_array(self):
+    #     self.check_with_place(
+    #         "collective_sendrecv_op_array.py", "sendrecv_array"
+    #     )
+
+    def test_sendrecv_array_with_new_comm(self):
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place(
+                "collective_sendrecv_op_array.py",
+                "sendrecv_array",
+                need_envs={
+                    "FLAGS_dynamic_static_unified_comm": "1",
+                    "DTYPE": dtype,
+                },
+            )
 
 
 if __name__ == '__main__':

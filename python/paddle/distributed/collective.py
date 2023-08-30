@@ -335,7 +335,6 @@ def _init_parallel_env(backend):
         for endpoint in global_env.trainer_endpoints:
             endpoints_str += endpoint
         endpoints_str += "ring_id:{}".format("0")
-        print("endpoints_str: ", endpoints_str)
         endpoints_str_hash = hashlib.md5(
             endpoints_str.encode(encoding='UTF-8')
         ).hexdigest()
