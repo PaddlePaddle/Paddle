@@ -41,10 +41,14 @@ class Atan2OpConverter : public OpConverter {
                                               *div_layer->getOutput(0),
                                               nvinfer1::UnaryOperation::kATAN);
     // make constant Tensor
-    auto zero_tensor = Add1DConstantLayer(static_cast<float>(0));
-    auto one_tensor = Add1DConstantLayer(static_cast<float>(1));
-    auto two_tensor = Add1DConstantLayer(static_cast<float>(2));
-    auto pi_tensor = Add1DConstantLayer(static_cast<float>(M_PI));
+    std::vector<float> zero_vec{0.f};
+    std::vector<float> one_vec{1.f};
+    std::vector<float> two_vec{2.f};
+    std::vector<float> pi_vec{M_PI};
+    auto zero_tensor = Add1DConstantLayer(zero_vec);
+    auto one_tensor = Add1DConstantLayer(one_vec);
+    auto two_tensor = Add1DConstantLayer(two_vec);
+    auto pi_tensor = Add1DConstantLayer(pi_vec);
 
     // X2<0
     auto x2_less_layer =
