@@ -87,11 +87,10 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<int64_t>(out);
   auto dim_x = x.dims();
   auto dim_out = out->dims();
-  int rows = dim_x[dim_x.size() - 2];
-  int cols = dim_x[dim_x.size() - 1];
+  int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
+  int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
   int k = std::min(rows, cols);
-  auto numel = x.numel();
-  int batches = numel / (rows * cols);
+  int batches = static_cast<int>(x.numel() / (rows * cols));
 
   T rtol_T = 0;
 

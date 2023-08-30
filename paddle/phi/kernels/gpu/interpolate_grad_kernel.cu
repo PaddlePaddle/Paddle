@@ -1096,11 +1096,7 @@ static void Interpolate2DCUDABwd(
                                                   interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
-#ifdef __HIPCC__
-    constexpr int thread_per_block = 256;
-#else
     constexpr int thread_per_block = 512;
-#endif
     KeBicubicInterpBw<T>
         <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
             input_grad_data,
