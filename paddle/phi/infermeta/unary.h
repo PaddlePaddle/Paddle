@@ -73,6 +73,13 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
+void SendV2InferMeta(const int peer, const int ring_id);
+
+void RecvV2InferMeta(int peer,
+                     DataType dtype,
+                     const std::vector<int>& out_shape,
+                     MetaTensor* out);
+
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
@@ -101,6 +108,12 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 MetaTensor* sampled_local_class_center);
 
 void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out);
+
+void CIdentityInferMeta(const MetaTensor& x,
+                        int ring_id,
+                        bool use_calc_stream,
+                        bool use_model_parallel,
+                        MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 

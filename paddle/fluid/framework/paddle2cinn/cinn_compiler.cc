@@ -322,11 +322,11 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
 
   auto scope = BuildScope(target, cinn_graph);
   CompilationContext context(cinn_graph, scope, target);
-  auto graph_compiler = std::make_unique<GraphCompiler>(context);
   context.with_instantiate_variables = false;
   if (!FLAGS_enable_pe_launch_cinn) {
     context.with_buffer_handle_instruction_inserted = true;
   }
+  auto graph_compiler = std::make_unique<GraphCompiler>(context);
   std::unique_ptr<AutoTuner> auto_tuner;
   if (FLAGS_enable_cinn_auto_tune) {
     VLOG(4) << "Compile with auto-tune";
@@ -339,11 +339,11 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   }
   context.fetch_var_ids = std::move(fetch_ids);
   context.stream = stream;
-  auto compiled_res = graph_compiler->Build();
+  auto compiled_res = graph_compiler->Build(&context);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(auto_tuner),
-                   std::move(compiled_res),
+                   std::move(compiled_res.runtime_program),
                    scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

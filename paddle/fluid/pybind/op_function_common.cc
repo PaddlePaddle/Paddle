@@ -37,7 +37,6 @@
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/common/complex.h"
 
-namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 

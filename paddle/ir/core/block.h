@@ -17,8 +17,10 @@
 #include <cstddef>
 #include <list>
 
+#include "paddle/ir/core/block_operand.h"
 #include "paddle/ir/core/dll_decl.h"
 #include "paddle/ir/core/region.h"
+#include "paddle/ir/core/use_iterator.h"
 
 namespace ir {
 class Operation;
@@ -56,6 +58,18 @@ class IR_API Block {
   void clear();
   operator Region::iterator() { return position_; }
 
+  ///
+  /// \brief Provide iterator interface to access Value use chain.
+  ///
+  using UseIterator = ValueUseIterator<BlockOperand>;
+  UseIterator use_begin() const;
+  UseIterator use_end() const;
+  BlockOperand first_use() const { return first_use_; }
+  void set_first_use(BlockOperand first_use) { first_use_ = first_use; }
+  bool use_empty() const { return !first_use_; }
+  bool HasOneUse() const;
+  BlockOperand *first_use_addr() { return &first_use_; }
+
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
@@ -68,5 +82,6 @@ class IR_API Block {
   Region *parent_;  // not owned
   OpListType ops_;  // owned
   Region::iterator position_;
+  BlockOperand first_use_;
 };
 }  // namespace ir

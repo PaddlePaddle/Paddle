@@ -15,6 +15,7 @@
 
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/program_interpreter.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
@@ -52,7 +53,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       ir_program = plan_.IrProgram(job_type);
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
-      SetColAttrForFetchOps(*job, program);
     }
 
     int64_t micro_batch_id = job->MicroBatchId();
@@ -62,6 +62,10 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  "which should be in the range of [0, %lld].",
                                  micro_batch_id,
                                  micro_batch_num));
+
+    if (micro_batch_num > 1 && !FLAGS_enable_new_ir_api) {
+      SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
+    }
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
@@ -110,6 +114,22 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
       interpretercores_.back()->SetCopyProgram(program);
+      // NOTE(lizhiyu): Now we only check backward subprogram. After static
+      // build strategy is completely, we should
+      //                check all the program in the PP strategy.
+      if (job_type == "backward" && jobs.size() > 1) {
+        PADDLE_ENFORCE_EQ(static_cast<const ProgramInterpreter*>(
+                              interpretercores_.back()->Impl())
+                              ->IsStaticBuild(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "When using pipeline strategy in auto "
+                              "prarallelism with new executor, "
+                              "the backward subprogram must be builded in real "
+                              "static build mode, but it can not "
+                              "be staticly builded in this case. You can "
+                              "enable 'GLOG_v=1' to obtain log information."));
+      }
     }
   }
 }
@@ -118,14 +138,6 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& feed_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
-
-  if (plan_.MicroBatchNum() > 1) {
-    PADDLE_ENFORCE_EQ(feed_names.size(),
-                      0,
-                      phi::errors::Unimplemented(
-                          "Unsupported feed data for multiple micro_batch, "
-                          "please use non-iterative DataLoader for now."));
-  }
 
   const auto& jobs = plan_.JobList();
 
@@ -160,7 +172,13 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       interpretercores_[job_idx]->ShareBuildResultsFrom(
           interpretercores_[type_to_first_id[job_type]]);
     }
-    interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+    // TODO(zhaoyinglia): use a more general method
+    if (jobs.size() > 1 && job_type != "forward") {
+      const std::vector<std::string> tmp_feed_names = {};
+      interpretercores_[job_idx]->Run(tmp_feed_names, /*need_fetch = */ false);
+    } else {
+      interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+    }
   }
 
   // return Fetch Tensors
