@@ -91,8 +91,6 @@ class LookAhead(Optimizer):
             ...             opt.clear_grad()
             ...             print("Train Epoch {} batch {}: loss = {}".format(
             ...                 epoch_id, batch_id, np.mean(loss.numpy())))
-            ...             # just run one batch to avoid timeout error 
-            ...             break
             >>> layer = LinearNet()
             >>> loss_fn = nn.CrossEntropyLoss()
             >>> optimizer = paddle.optimizer.SGD(learning_rate=0.1, parameters=layer.parameters())
