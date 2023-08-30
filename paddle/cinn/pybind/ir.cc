@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/ir/registry.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_visitor.h"
@@ -99,6 +100,7 @@ void BindLoweredFunc(py::module *m) {
              return llvm::formatv(
                  "<LoweredFunc {0}>", self.get(), self->name.c_str());
            })
+      .def("body", [](const ir::LoweredFunc &self) { return self->body; })
       .def_static("make",
                   py::overload_cast<const std::string &,
                                     const std::vector<Argument> &,
@@ -560,6 +562,19 @@ void BindIrIr(py::module *m) {
           "make",
           py::overload_cast<const std::string &, Type>(&ir::_Buffer_::Make))
       .def_static("make", py::overload_cast<>(&ir::_Buffer_::Make));
+
+  py::class_<ir::ModuleExpr> module_expr(*m, "ModuleExpr");
+  module_expr.def(py::init<const std::vector<Expr> &>());
+
+  DefineExprNode<ir::ScheduleBlock>(m, "ScheduleBlock");
+  py::class_<ir::ScheduleBlock, ir::ExprNode<ir::ScheduleBlock>> schedule_block(
+      *m, "ScheduleBlock");
+  schedule_block.def_static("make", &ir::ScheduleBlock::Make);
+
+  DefineExprNode<ir::ScheduleBlockRealize>(m, "ScheduleBlockRealize");
+  py::class_<ir::ScheduleBlockRealize, ir::ExprNode<ir::ScheduleBlockRealize>>
+      schedule_block_realize(*m, "ScheduleBlockRealize");
+  schedule_block_realize.def_static("make", &ir::ScheduleBlockRealize::Make);
 }
 
 void BindOperation(py::module *m) {

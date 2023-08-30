@@ -123,6 +123,9 @@ from ..core_api.ir import (  # noqa: F401
     _Buffer_,
     Buffer,
     For,
+    ModuleExpr,
+    ScheduleBlock,
+    ScheduleBlockRealize,
 )
 
 

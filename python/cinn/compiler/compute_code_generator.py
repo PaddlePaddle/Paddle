@@ -30,6 +30,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         self.inputs_signature = inputs_signature
         self.cinn_llir_func = None
         self.variables_table = {}
+        self.schedule_block_iter_var2expr = {}
 
     def visit_FunctionDef(self, node) -> None:
         """
@@ -88,12 +89,23 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         for stmt in stmts:
             cinn_stmt = self.visit(stmt)
             assert cinn_stmt is not None, f"Unsupport parse:\n{stmt}"
-            if cinn_stmt is None:
+            # Some situations do not require conversion to CINN IR
+            if str(cinn_stmt) in ["iter_var"]:
                 continue
-            cinn_stmts.append(self.visit(stmt))
+            cinn_stmts.append(cinn_stmt)
         return cinn_stmts
 
     def visit_arguments(self, node):
+        """
+        Parse CINN Low Level IR Argument.
+        If it is not jit mode, it will get information from arg.annoatation.
+
+        Args:
+            node(ast.arguments): The ast argument Node
+
+        Returns:
+            list[string]: A list of parameter names
+        """
         arg_names = [arg.arg for arg in node.args]
 
         if len(self.inputs_signature) != len(arg_names):
@@ -212,11 +224,28 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         rhs_expr = self.eval_expression(node.value)
 
         # 2 parse LHS
-        assert isinstance(
-            lhs, ast.Subscript
-        ), f'Currently only tensor assignment expressions are supported. {lhs.value} is not a Tensor'
-        expr_tensor, expr_indices = self.visit(lhs)
-        return ir.Store.make(expr_tensor, rhs_expr, expr_indices)
+        if isinstance(lhs, ast.Subscript):
+            expr_tensor, expr_indices = self.visit(lhs)
+
+            tensor_body = ir.Store.make(expr_tensor, rhs_expr, expr_indices)
+            schedule_block = ir.ScheduleBlockRealize.make(
+                list(self.schedule_block_iter_var2expr.values()),
+                ir.ScheduleBlock.make(
+                    list(self.schedule_block_iter_var2expr.keys()),
+                    [],
+                    [],
+                    lhs.value.id,
+                    tensor_body,
+                ),
+            )
+            self.schedule_block_iter_var2expr = {}
+            return schedule_block
+        else:
+            iter_var = ir.Var(lhs.id)
+            iter_var_expr = ir.Expr(iter_var)
+            self.set_value(lhs.id, iter_var_expr)
+            self.schedule_block_iter_var2expr[iter_var] = rhs_expr
+            return "iter_var"
 
     def visit_Constant(self, node):
         return ir.Expr(node.value)
@@ -230,11 +259,27 @@ class ComputeCodeGenerator(ast.NodeVisitor):
     def eval_expression(self, node):
         """
         Parse Expr expression composed of AST nodes
+
+        Args:
+            node(ast): The ast of Python
+
+        Returns:
+            cinn.ir.Expr: Expr is equivalent to node
         """
+
+        if isinstance(node, ast.Name):
+            assert (
+                node.id in self.variables_table
+            ), f"Undefined Variable: {node.id}"
+            return self.variables_table[node.id]
+
         args = []
         if isinstance(node, ast.BinOp):
             args = [node.left, node.right]
         elif isinstance(node, ast.UnaryOp):
+            args = [node.operand]
+        elif isinstance(node, ast.Expr):
+            node = node.value
             args = [node.operand]
         elif isinstance(node, ast.Compare):
             assert (
