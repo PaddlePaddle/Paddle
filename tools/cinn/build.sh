@@ -25,7 +25,7 @@ cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 #export LLVM11_DIR=${workspace}/THIRDS/usr
 
 if [[ "" == ${JOBS} ]]; then
-  JOBS=`python3 -c 'import multiprocessing; print(str(multiprocessing.cpu_count()))'`
+  JOBS=`nproc`
 fi
 
 cuda_config=OFF
@@ -121,19 +121,6 @@ function prepare_model {
 
     proxy_on
     mkdir -p $build_dir/paddle
-    cd $build_dir/paddle
-    if [[ ! -f "libexternal_kernels.so.tgz" ]]; then
-        wget https://github.com/T8T9/files/raw/main/libexternal_kernels.so.tgz
-    fi
-    tar -zxvf libexternal_kernels.so.tgz
-    if [[ ! -f "paddle_1.8_fc_model.tgz" ]]; then
-        wget https://github.com/T8T9/files/raw/main/paddle_1.8_fc_model.tgz
-    fi
-    tar -zxvf paddle_1.8_fc_model.tgz
-    if [[ ! -f "mkldnn.tgz" ]]; then
-        wget https://github.com/T8T9/files/raw/main/mkldnn.tgz
-    fi
-    tar -zxvf mkldnn.tgz
     cd $build_dir/third_party
     python${py_version} $workspace/test/cinn/fake_model/naive_mul.py
     python${py_version} $workspace/test/cinn/fake_model/naive_multi_fc.py
