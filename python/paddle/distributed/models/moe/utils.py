@@ -31,7 +31,6 @@ def _number_count(numbers, upper_range):
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed.models.moe import utils
-            
             >>> numbers = [[0, 2], [0, 2]]
             >>> upper_range = 6
             >>> numbers = paddle.to_tensor(numbers, dtype="int64")
@@ -77,7 +76,6 @@ def _assign_pos(x, cum_count):
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed.models.moe import utils
-            
             >>> number_count = [2, 0, 2, 0]
             >>> numbers = [[0, 2], [0, 2]]
             >>> number_count = paddle.to_tensor(number_count, dtype="int64")
@@ -146,7 +144,6 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed.models.moe import utils
-            
             >>> expert_count = [1, 2, 2, 8, 3, 6]
             >>> capacity = [5, 5, 5]
             >>> n_work = 2
@@ -196,7 +193,6 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> from paddle.distributed.models.moe import utils
-            
             >>> gate_idx = paddle.to_tensor([1, 3, 3, 3, 3, 2, 1, 1], dtype='int64')
             >>> expert_count = paddle.to_tensor([0, 3, 1, 3, 0, 0, 0, 0], dtype='int64')
             >>> n_worker = 1
