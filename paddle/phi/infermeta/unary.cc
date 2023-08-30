@@ -2091,6 +2091,13 @@ void KthvalueInferMeta(const MetaTensor& x,
   indices->set_dtype(x.dtype());
 }
 
+void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out) {
+  UnchangedInferMeta(x, out);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
+}
+
 void LogsumexpInferMeta(const MetaTensor& input,
                         const std::vector<int64_t>& axis,
                         bool keepdim,
