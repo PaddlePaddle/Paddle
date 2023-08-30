@@ -2461,16 +2461,10 @@ class OpTest(unittest.TestCase):
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR checker begins...........")
-                from paddle.new_ir_utils import IrChange
+                with paddle.new_ir_utils._newir_guard():
+                    new_ir_checker = NewIRChecker(self, self.outputs)
+                    new_ir_checker.check()
 
-                ir_change = IrChange()
-                set_flags({"FLAGS_enable_new_ir_api": True})
-                ir_change._switch_to_new_ir()
-
-                new_ir_checker = NewIRChecker(self, self.outputs)
-                new_ir_checker.check()
-                set_flags({"FLAGS_enable_new_ir_api": False})
-                ir_change._switch_to_old_ir()
                 print("New IR checker ends...........")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
@@ -3027,21 +3021,14 @@ class OpTest(unittest.TestCase):
                 or type(place) is paddle.fluid.libpaddle.CUDAPlace
             ):
                 print("New IR gradient begins...........")
-                from paddle.new_ir_utils import IrChange
-
-                ir_change = IrChange()
-                set_flags({"FLAGS_enable_new_ir_api": True})
-
-                ir_change._switch_to_new_ir()
-                new_ir_grad = self._get_ir_gradient(
-                    inputs_to_check,
-                    place,
-                    output_names,
-                    user_defined_grad_outputs,
-                    no_grad_set,
-                )
-                set_flags({"FLAGS_enable_new_ir_api": False})
-                ir_change._switch_to_old_ir()
+                with paddle.new_ir_utils._newir_guard():
+                    new_ir_grad = self._get_ir_gradient(
+                        inputs_to_check,
+                        place,
+                        output_names,
+                        user_defined_grad_outputs,
+                        no_grad_set,
+                    )
                 print("New IR gradient ends...........")
                 self._assert_is_close(
                     numeric_grads,
