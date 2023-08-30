@@ -968,7 +968,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             >>> print(res_2)
             [[2 2]
              [2 2]]
-            
+
             >>> print(res_3)
             [3 3 3]
     '''
@@ -1150,7 +1150,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             >>> #     return 3, 2
 
             >>> def true_func():
-            ...     return paddle.full(shape=[1, 2], 
+            ...     return paddle.full(shape=[1, 2],
             ...                        dtype='int32',
             ...                        fill_value=1
             ...         ), paddle.full(shape=[2, 3],
@@ -1160,7 +1160,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
 
             >>> def false_func():
-            ...     return paddle.full(shape=[3, 4], 
+            ...     return paddle.full(shape=[3, 4],
             ...                        dtype='float32',
             ...                        fill_value=3
             ...         ), paddle.full(shape=[4, 5],

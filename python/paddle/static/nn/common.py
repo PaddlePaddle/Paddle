@@ -3196,7 +3196,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             >>> # operations such as +/- can't be used.
             >>> def tanh_grad(y, dy):
             ...     return np.array(dy) * (1 - np.square(np.array(y)))
-            
+
             >>> # Creates a forward function for debugging running networks(print value)
             >>> def debug_func(x):
             ...     # print(x)
