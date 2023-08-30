@@ -85,7 +85,7 @@ void AccuracyKernel(const Context& dev_ctx,
   }
 
   *correct_data = num_correct;
-  *total_data = num_samples;
+  *total_data = static_cast<int>(num_samples);
   *accuracy_data =
       static_cast<float>(num_correct) / static_cast<float>(num_samples);
 }

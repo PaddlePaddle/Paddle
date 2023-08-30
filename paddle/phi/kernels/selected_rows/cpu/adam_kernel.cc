@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-DECLARE_int32(inner_op_parallelism);
+PD_DECLARE_int32(inner_op_parallelism);
 
 namespace phi {
 namespace sr {
