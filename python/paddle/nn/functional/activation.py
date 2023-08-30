@@ -660,7 +660,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
             >>> import paddle
             >>> import paddle.nn.functional as F
-
+            >>> paddle.seed(1)
             >>> input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
             ...                                    [ 3.0, -4.0,  5.0, -6.0],
             ...                                    [-7.0, -8.0,  8.0,  9.0]],
@@ -670,11 +670,11 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
             >>> out = F.rrelu(input_tensor, 0.1, 0.3)
             >>> print(out)
             Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[-0.37894946,  3.        , -0.53791130,  5.        ],
-               [ 3.        , -1.07578683,  5.        , -1.34144068],
-               [-1.99465966, -0.88882494,  8.        ,  9.        ]],
-              [[ 1.        , -0.21715607, -0.79473138,  4.        ],
-               [-1.41272187,  6.        ,  7.        , -2.01925254],
+            [[[[-0.20715050,  3.        , -1.01193857,  5.        ],
+               [ 3.        , -0.94084597,  5.        , -0.65544695],
+               [-1.24268556, -2.34339547,  8.        ,  9.        ]],
+              [[ 1.        , -0.44942653, -0.68969047,  4.        ],
+               [-1.03736508,  6.        ,  7.        , -0.95799232],
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
     if not isinstance(lower, float) or not isinstance(upper, float):

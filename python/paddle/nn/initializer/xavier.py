@@ -276,7 +276,7 @@ class XavierUniform(XavierInitializer):
         .. code-block:: python
 
             >>> import paddle
-
+            >>> paddle.seed(1)
             >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
             >>> weight_attr = paddle.framework.ParamAttr(
             ...     name="linear_weight",
@@ -288,19 +288,19 @@ class XavierUniform(XavierInitializer):
             >>> print(linear.weight)
             Parameter containing:
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [[ 0.92002285, -0.69480133],
-             [ 0.52059436, -0.26484519]])
+            [[-1.18095720,  0.64892638],
+             [ 0.43125069, -1.11156428]])
             >>> print(linear.bias)
             Parameter containing:
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [1.22124684, 0.00590599])
+            [-0.27524316,  1.13808715])
 
             >>> res = linear(data)
             >>> print(res)
             Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
-            [[[ 2.66186404, -0.95374054]],
-             [[ 2.66186404, -0.95374054]],
-             [[ 2.66186404, -0.95374054]]])
+            [[[-1.02494967,  0.67544925]],
+             [[-1.02494967,  0.67544925]],
+             [[-1.02494967,  0.67544925]]])
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):

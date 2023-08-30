@@ -1929,6 +1929,7 @@ def linear(x, weight, bias=None, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1., 1., 1., 1.])
             >>> y = paddle.nn.functional.linear(x, weight, bias)
+            >>> print(y)
             Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1.31539762, 1.31539762, 1.31539762, 1.31539762],
              [0.18737471, 0.18737471, 0.18737471, 0.18737471],
@@ -2188,13 +2189,13 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         >>> remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes, num_samples)
         >>> print(label)
         Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
-        [10, 3 , 11, 14, 15, 15, 7 , 12, 5 , 13])
+        [17, 10, 5 , 18, 8 , 8 , 19, 14, 10, 14])
         >>> print(remapped_label)
         Tensor(shape=[10], dtype=int64, place=Place(cpu), stop_gradient=True,
-        [3, 0, 4, 7, 8, 8, 2, 5, 1, 6])
+        [4, 2, 0, 5, 1, 1, 6, 3, 2, 3])
         >>> print(sampled_class_index)
-        Tensor(shape=[9], dtype=int64, place=Place(cpu), stop_gradient=True,
-        [3 , 5 , 7 , 10, 11, 12, 13, 14, 15])
+        Tensor(shape=[7], dtype=int64, place=Place(cpu), stop_gradient=True,
+        [5 , 8 , 10, 14, 17, 18, 19])
 
     .. code-block:: python
         :name: code-example2
