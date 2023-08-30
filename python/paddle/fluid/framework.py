@@ -104,6 +104,7 @@ class GlobalThreadLocal(threading.local):
         if name == '_dygraph_tracer_':
             global _dygraph_tracer_
             _dygraph_tracer_ = val
+            core._switch_tracer(val)
         self.__dict__[name] = val
 
 
@@ -7614,12 +7615,10 @@ def dygraph_guard_if_declarative():
 def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
-    core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 
@@ -7630,7 +7629,6 @@ def _static_guard():
     try:
         yield
     finally:
-        core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 
