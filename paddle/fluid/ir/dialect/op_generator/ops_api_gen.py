@@ -57,6 +57,7 @@ static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 
 NO_DY_FUNCTION_IMPL_TEMPLATE = """
 static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+  VLOG(6) << "Call static_api_{name}";
   return static_api_{name}(self, args, kwargs);
 }}"""
 
