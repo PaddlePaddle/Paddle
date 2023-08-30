@@ -329,6 +329,12 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
   return *abstract_attribute;
 }
 
+template <typename Interface>
+typename Interface::Concept *AbstractType::GetInterfaceImpl() const {
+  void *model = GetInterfaceImpl(TypeId::get<Interface>());
+  return reinterpret_cast<typename Interface::Concept *>(model);
+}
+
 BFloat16Type BFloat16Type::get(IrContext *ctx) {
   return ctx->impl().bfp16_type;
 }

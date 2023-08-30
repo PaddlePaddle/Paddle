@@ -74,6 +74,14 @@ class IR_API AbstractType {
   ///
   static const AbstractType &lookup(TypeId type_id, IrContext *ctx);
 
+  ///
+  /// \brief Returns an instance of the concept object for the given interface
+  /// if it was registered to this type, null otherwise. This should not be used
+  /// directly.
+  ///
+  template <typename Interface>
+  typename Interface::Concept *GetInterfaceImpl() const;
+
  private:
   ///
   /// \brief The constructor is set to private and provides the user with the

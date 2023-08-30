@@ -114,12 +114,19 @@ IR_API std::ostream &operator<<(std::ostream &os, Type type);
 /// \brief This class represents the base of a type interface.
 ///
 
-template <typename ConcreteType>
-class TypeInterfaceBase : public Type {
+template <typename ConcreteInterface> /*ShapedTypeInterface*/
+class TypeInterfaceBase : public ir::Type {
  public:
   TypeInterfaceBase() : Type() {}
   explicit TypeInterfaceBase(Type type) : Type() {}
-  static ConcreteType dyn_cast(Type *type);
+
+  // Accessor for the ID of this interface.
+  static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+
+  static ConcreteInterface dyn_cast(Type type) {
+    return ConcreteInterface(
+        type, type.abstract_type().GetInterfaceImpl<ConcreteInterface>());
+  }
 };
 
 }  // namespace ir

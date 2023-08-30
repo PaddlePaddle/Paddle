@@ -133,6 +133,7 @@ class OpInterfaceBase : public OpBase {
  public:
   explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
 
+  // Accessor for the ID of this interface.
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
   static ConcreteInterface dyn_cast(Operation *op) {
