@@ -55,6 +55,8 @@ __all__ = [
     'xpu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
+    'in_new_ir_mode',
+    'in_dygraph_or_new_ir_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
@@ -207,6 +209,14 @@ def in_dygraph_mode():
 
     """
     return global_var._dygraph_tracer_ is not None
+
+
+def in_new_ir_mode():
+    return ir.core._use_new_ir_api()
+
+
+def in_dygraph_or_new_ir_mode():
+    return in_dygraph_mode() or in_new_ir_mode()
 
 
 global_ipu_index = -1
