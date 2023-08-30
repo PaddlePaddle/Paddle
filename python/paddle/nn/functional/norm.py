@@ -72,7 +72,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
             >>> y = F.normalize(x, axis=0)
             >>> print(y)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 0.24253564, 0.37139067],
             [1.        , 0.97014254, 0.92847669]])
 
