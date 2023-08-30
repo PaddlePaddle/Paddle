@@ -41,7 +41,7 @@ def unzip(input, lod):
             ...             [1.0, 2.0, 3.0, 4.0],
             ...             [10.0, 20.0, 30.0, 40.0],
             ...             [100.0, 200.0, 300.0, 400.0]
-            ...         ])
+            ...           ])
             >>> lod_np = np.array([0, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12])
             >>> input = paddle.to_tensor(input_np, "int64")
             >>> lod = paddle.to_tensor(lod_np, "int64")
