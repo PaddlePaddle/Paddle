@@ -72,10 +72,10 @@ void BatchNormKernel(const Context& ctx,
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensionss is [%d]",
           x_dims.size()));
-  const int N = x_dims[0];
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int sample_size = x.numel() / N / C;
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int sample_size = static_cast<int>(x.numel() / N / C);
 
   // alloc memory
   ctx.template Alloc<T>(y);

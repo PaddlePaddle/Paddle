@@ -37,6 +37,10 @@
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/value.h"
+#include "paddle/ir/pass/pass.h"
+#include "paddle/ir/pass/pass_manager.h"
+#include "paddle/ir/pass/pass_registry.h"
+#include "paddle/ir/transforms/dead_code_elimination_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "pybind11/stl.h"
 
@@ -45,12 +49,16 @@ using ir::Block;
 using ir::Operation;
 using ir::OpOperand;
 using ir::OpResult;
+using ir::Pass;
+using ir::PassManager;
 using ir::Program;
 using ir::Type;
 using ir::Value;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
 using pybind11::return_value_policy;
+
+USE_PASS(dead_code_elimination);
 
 namespace paddle {
 namespace pybind {
@@ -405,6 +413,10 @@ void BindUtils(pybind11::module *m) {
          []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
+  m->def("register_paddle_dialect", []() {
+    ir::IrContext::Instance()
+        ->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  });
   m->def(
       "translate_to_new_ir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
@@ -465,6 +477,52 @@ void BindUtils(pybind11::module *m) {
     )DOC");
 }
 
+void BindIrPass(pybind11::module *m) {
+  py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
+                                               "Pass",
+                                               R"DOC(
+    Pass class.
+
+  )DOC");
+  pass.def("name", &Pass::name)
+      .def("opt_level",
+           [](const Pass &self) { return self.pass_info().opt_level; })
+      .def("dependents",
+           [](const Pass &self) { return self.pass_info().dependents; });
+}
+
+void BindPassManager(pybind11::module *m) {
+  py::class_<PassManager, std::shared_ptr<PassManager>> pass_manager(
+      *m,
+      "PassManager",
+      R"DOC(
+    A class that manages all passes.
+
+  )DOC");
+  pass_manager
+      .def(
+          "__init__",
+          [](PassManager &self, uint8_t opt_level) {
+            new (&self) PassManager(ir::IrContext::Instance(), opt_level);
+          },
+          py::arg("opt_level") = 2)
+      .def("add_pass",
+           [](PassManager &self, std::string pass_name) {
+             self.AddPass(
+                 std::move(ir::PassRegistry::Instance().Get(pass_name)));
+           })
+      .def("passes",
+           [](PassManager &self) {
+             std::vector<std::string> pass_names;
+             for (const auto &pass : self.passes()) {
+               pass_names.emplace_back(pass->name());
+             }
+             return pass_names;
+           })
+      .def("run", [](PassManager &self, Program *p) { self.Run(p); })
+      .def("empty", &PassManager::Empty);
+}
+
 void BindNewIR(pybind11::module *module) {
   auto ir_module = module->def_submodule("ir");
   BindProgram(&ir_module);
@@ -475,6 +533,8 @@ void BindNewIR(pybind11::module *module) {
   BindOpResult(&ir_module);
   BindType(&ir_module);
   BindUtils(&ir_module);
+  BindIrPass(&ir_module);
+  BindPassManager(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
 }

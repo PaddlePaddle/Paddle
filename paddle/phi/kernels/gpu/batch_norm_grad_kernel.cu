@@ -34,7 +34,7 @@
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PD_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace phi {
 
 template <typename T>

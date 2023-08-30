@@ -30,12 +30,15 @@ void OverlapAddGradKernel(const Context& dev_ctx,
   const size_t out_grad_rank = out_grad.dims().size();
   const size_t x_grad_rank = x_grad->dims().size();
 
-  const int n_frames =
-      (axis == 0) ? x_grad->dims()[0] : x_grad->dims()[x_grad_rank - 1];
-  const int frame_length =
-      (axis == 0) ? x_grad->dims()[1] : x_grad->dims()[x_grad_rank - 2];
-  const int seq_length =
-      (axis == 0) ? out_grad.dims()[0] : out_grad.dims()[out_grad_rank - 1];
+  const int n_frames = static_cast<int>(
+      (axis == 0) ? x_grad->dims()[0]
+                  : x_grad->dims()[static_cast<int>(x_grad_rank) - 1]);
+  const int frame_length = static_cast<int>(
+      (axis == 0) ? x_grad->dims()[1]
+                  : x_grad->dims()[static_cast<int>(x_grad_rank) - 2]);
+  const int seq_length = static_cast<int>(
+      (axis == 0) ? out_grad.dims()[0]
+                  : out_grad.dims()[static_cast<int>(out_grad_rank) - 1]);
 
   // When the number of input dims is larger than 2, it needs to copy
   // from x to resize input into 2d and output into 3d. Morevoer, output
@@ -50,12 +53,14 @@ void OverlapAddGradKernel(const Context& dev_ctx,
     phi::DDim x_grad_resized_dims;
     phi::DDim out_grad_resized_dims;
     if (axis == 0) {
-      preserved_dims = phi::slice_ddim(out_grad_.dims(), 1, out_grad_rank);
+      preserved_dims =
+          phi::slice_ddim(out_grad_.dims(), 1, static_cast<int>(out_grad_rank));
       x_grad_resized_dims = {
           n_frames, frame_length, phi::product(preserved_dims)};
       out_grad_resized_dims = {seq_length, phi::product(preserved_dims)};
     } else {
-      preserved_dims = phi::slice_ddim(out_grad_.dims(), 0, out_grad_rank - 1);
+      preserved_dims = phi::slice_ddim(
+          out_grad_.dims(), 0, static_cast<int>(out_grad_rank) - 1);
       x_grad_resized_dims = {
           phi::product(preserved_dims), frame_length, n_frames};
       out_grad_resized_dims = {phi::product(preserved_dims), seq_length};

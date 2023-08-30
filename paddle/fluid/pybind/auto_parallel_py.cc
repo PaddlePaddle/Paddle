@@ -28,11 +28,9 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
-#endif
 
 namespace py = pybind11;
 
@@ -114,7 +112,6 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 }
 
 void BindAutoParallel(py::module *m) {
-#ifdef PADDLE_WITH_DISTRIBUTE
   auto ReshardFunction =
       py::class_<phi::distributed::ReshardFunction>(*m, "ReshardFunction")
           .def(
@@ -151,7 +148,6 @@ void BindAutoParallel(py::module *m) {
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
       .def(py::init<>());
-#endif
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
       .def(py::init<>())
@@ -338,7 +334,14 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
       .def("infer_forward", &SPMDRuleBase::InferForward)
-      .def("infer_backward", &SPMDRuleBase::InferBackward);
+      .def("infer_backward",
+           static_cast<std::pair<std::vector<TensorDistAttr>,
+                                 std::vector<TensorDistAttr>> (SPMDRuleBase::*)(
+               const std::vector<DistTensorSpec> &,
+               const std::vector<DistTensorSpec> &,
+               const paddle::framework::AttributeMap &)>(
+               &SPMDRuleBase::InferBackward));
+  // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
 
   py::class_<DistTensorSpec>(*m, "DistTensorSpec")
       .def(py::init<>())

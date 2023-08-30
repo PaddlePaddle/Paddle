@@ -17,7 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/platform/flags.h"
-DECLARE_bool(benchmark);
+PD_DECLARE_bool(benchmark);
 
 PADDLE_DEFINE_EXPORTED_bool(
     eager_delete_scope,
@@ -33,7 +33,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 namespace paddle {
 namespace framework {
 
-Scope::~Scope() { DropKids(); }
+Scope::~Scope() { DropKids(); }  // NOLINT
 
 Scope& Scope::NewScope() const {
   Scope* child = new Scope(this);

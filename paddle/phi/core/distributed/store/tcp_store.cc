@@ -43,7 +43,7 @@ MasterDaemon::MasterDaemon(SocketType socket, int nranks, int timeout)
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
-MasterDaemon::~MasterDaemon() {
+MasterDaemon::~MasterDaemon() {  // NOLINT
   VLOG(4) << ("begin to destruct MasterDaemon");
   StopByControlFd();
   _background_thread.join();
@@ -172,7 +172,7 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
   for (size_t i = 1; i < fds.size(); i++) {
 #else
   // 0: listen socket, 1:controller pipe, so loop from 2.
-  for (size_t i = 2; i < fds.size(); i++) {
+  for (uint i = 2; i < fds.size(); i++) {
 #endif
     try {
       if (fds[i].revents == 0) {
@@ -345,14 +345,16 @@ TCPStore::TCPStore(std::string host,
                    bool is_master,
                    size_t num_workers,
                    int timeout)
-    : Store(timeout), _is_master(is_master), _num_workers(num_workers) {
+    : Store(timeout),
+      _is_master(is_master),
+      _num_workers(static_cast<int>(num_workers)) {
   _timeout = timeout;
   PADDLE_ENFORCE_GT(
       timeout, 0, phi::errors::InvalidArgument("timeout must >= %d", timeout));
 
   VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-    _server = detail::TCPServer::create(port, num_workers, timeout);
+    _server = detail::TCPServer::create(port, this->_num_workers, timeout);
   }
 
   _client = detail::TCPClient::connect(host, port);

@@ -15,13 +15,17 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 #include <cstdlib>
+
+// the <winsock2.h> needs to be included before <winsock.h>, otherwise
+// there will be symbol redefinition error on windows
+#include "paddle/phi/core/distributed/store/tcp_store.h"
+
 #include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace phi {
 namespace distributed {
@@ -42,7 +46,7 @@ bool IsDimsMappingReplicated(const std::vector<int64_t>& dims_mapping) {
 std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   const auto& process_shape = process_mesh.shape();
   const auto& process_ids = process_mesh.process_ids();
-  int64_t ndims_mesh = process_shape.size();
+  int64_t ndims_mesh = static_cast<int64_t>(process_shape.size());
   int64_t cur_global_rank = GetCurGlobalRank();
 
   VLOG(3) << "Searching current global rank " << cur_global_rank
@@ -158,7 +162,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   std::string unique_comm_key = GenUniqueCommKey(process_ids);
 
   if (!CommContextManager::GetInstance().Has(unique_comm_key)) {
-    int64_t world_size = process_ids.size();
+    int64_t world_size = static_cast<int64_t>(process_ids.size());
     int64_t rank = GetLocalRankInParticipate(process_ids);
     VLOG(3) << "local world size: " << world_size << " local rank: " << rank;
 
@@ -170,6 +174,15 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
+#endif
+    } else if (phi::CustomContext::classof(&dev_ctx)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      CommContextManager::CreateXCCLCommContext(
+          store,
+          unique_comm_key,
+          dev_ctx.GetPlace().GetDeviceType(),
+          rank,
+          world_size);
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

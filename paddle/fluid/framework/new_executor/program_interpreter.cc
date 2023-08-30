@@ -615,7 +615,6 @@ void ProgramInterpreter::Convert(
     auto& op_func_node = nodes[op_idx];
     stream_analyzer_.SetMannualEventsInfo(mannual_wait_evnets_);
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
 #ifdef PADDLE_WITH_CUDA
     if (FLAGS_new_executor_use_cuda_graph) {
       auto& op = op_func_node.operator_base_;
@@ -638,6 +637,7 @@ void ProgramInterpreter::Convert(
           .RecordCapturingDeviceContext(dev_ctx_);
     }
 #endif
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
   }
 
   BuildOperatorDependences();

@@ -106,7 +106,7 @@ class EagerNumpyAllocation : public phi::Allocation {
             "The underlying PyObject pointer of numpy array cannot be None"));
     Py_INCREF(arr_);
   }
-  ~EagerNumpyAllocation() override {
+  ~EagerNumpyAllocation() override {  // NOLINT
     py::gil_scoped_acquire gil;
     Py_DECREF(arr_);
   }
@@ -1187,8 +1187,8 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
                                          PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in eager_api_to_uva_tensor.";
-  auto new_tensor = std::shared_ptr<paddle::Tensor>(
-      new paddle::Tensor(egr::Controller::Instance().GenerateUniqueName()));
+  auto new_tensor = std::make_shared<paddle::Tensor>(
+      egr::Controller::Instance().GenerateUniqueName());
   PyObject* obj = PyTuple_GET_ITEM(args, 0);
   auto array = py::cast<py::array>(py::handle(obj));
 
