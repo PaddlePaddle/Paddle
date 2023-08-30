@@ -22,7 +22,7 @@
 
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 
-DECLARE_int32(cudnn_cache_saturation_count);
+PD_DECLARE_int32(cudnn_cache_saturation_count);
 
 namespace phi {
 namespace autotune {
