@@ -93,16 +93,24 @@ else()
     enforce)
 endif()
 
+set(fluid_deps
+    tracer
+    layer
+    proto_desc
+    operator
+    op_registry
+    variable_helper
+    memcpy)
+
 cc_test(
   test_fc_mkldnn_different_shape
   SRCS test_fc_mkldnn_different_shape.cc
-  DEPS fleet_executor
+  DEPS ${fluid_deps}
+       fleet_executor
        naive_executor
-       op_registry
+       fc_op
        generated_op
        generated_static_op
-       fc_op
-       phi
        scope
        device_context
        enforce)
