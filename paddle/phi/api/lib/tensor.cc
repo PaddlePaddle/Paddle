@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -34,9 +35,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace paddle {
 
@@ -141,11 +139,7 @@ bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_dist_tensor() const {
-#ifdef PADDLE_WITH_DISTRIBUTE
   return phi::distributed::DistTensor::classof(impl_.get());
-#else
-  return false;
-#endif
 }
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());

@@ -94,18 +94,7 @@ class InterpreterBaseImpl {
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
 
-  virtual const interpreter::DependencyBuilder& GetDependencyBuilder()
-      const = 0;
-
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
-
-  virtual const interpreter::StreamAnalyzer& GetStreamAnalyzer() const = 0;
-
-  virtual const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder()
-      const = 0;
-
-  virtual const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer()
-      const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
 };

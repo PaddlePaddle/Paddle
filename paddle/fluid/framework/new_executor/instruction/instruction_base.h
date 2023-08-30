@@ -21,7 +21,6 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/ir/core/value.h"
 
 namespace ir {
 class Value;

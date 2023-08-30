@@ -1073,6 +1073,11 @@ PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,
     "enable hash collisions stat for hbm table, default false");
+PHI_DEFINE_EXPORTED_bool(
+    cache_inference_while_scope,
+    false,
+    "Cache the scope of the while op to avoid repeated creation of the scope "
+    "for each iteration and improve inference performance.");
 PHI_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
                            0.75,
                            "the load factor of hbm table, default 0.75");

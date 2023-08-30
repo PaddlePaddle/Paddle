@@ -32,6 +32,10 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "glog/logging.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
+#endif
 
 namespace phi {
 namespace distributed {
@@ -88,6 +92,35 @@ void CommContextManager::CreateGlooCommContext(
   // set actual store to manager
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(gloo_comm_context));
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void CommContextManager::CreateXCCLCommContext(
+    const std::shared_ptr<Store>& store,
+    const std::string& unique_comm_key,
+    const std::string& device_type,
+    int rank,
+    int size) {
+  phi::ccl::CCLRootId xccl_root_id;
+  if (rank == 0) {
+    phi::DeviceManager::CCLGetUniqueId(device_type, &xccl_root_id);
+  }
+
+  std::string unique_key = "XCCLCommContext/" + unique_comm_key;
+  if (rank == 0) {
+    store->set(unique_key, xccl_root_id);
+  } else {
+    xccl_root_id = store->get(unique_key);
+  }
+  VLOG(3) << "init xccl rank: " << rank << ", nranks: " << size
+          << ", unique_comm_key: " << unique_comm_key << ", xccl uniqueid: "
+          << phi::ccl::SerializeXCCLUniqueId(xccl_root_id);
+  auto xccl_comm_context =
+      std::make_unique<XCCLCommContext>(device_type, rank, size, xccl_root_id);
+  auto& comm_context_manager = CommContextManager::GetInstance();
+  comm_context_manager.SetStore(store);
+  comm_context_manager.Emplace(unique_comm_key, std::move(xccl_comm_context));
 }
 #endif
 

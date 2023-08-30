@@ -56,6 +56,9 @@ void DistModelDataBuf::Resize(size_t length) {
 }
 
 DistModelDataBuf& DistModelDataBuf::operator=(const DistModelDataBuf& other) {
+  if (this == &other) {
+    return *this;
+  }
   if (!other.memory_owned_) {
     data_ = other.data_;
     length_ = other.length_;

@@ -135,6 +135,8 @@ class TestRunProgram(unittest.TestCase):
             [out.name + '@GRAD'],
             'x_grad_names',
             [x_t.name + '@GRAD', y_t.name + '@GRAD'],
+            'x_names',
+            [x_t.name, y_t.name],
         ]
 
         use_interpretorcore = True

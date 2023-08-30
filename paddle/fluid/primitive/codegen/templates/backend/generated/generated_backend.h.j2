@@ -1,0 +1,29 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "paddle/phi/api/include/tensor.h"
+
+
+namespace paddle {
+namespace primitive {
+namespace backend {
+
+using Tensor = paddle::Tensor;
+using Scalar = paddle::experimental::Scalar;
+using IntArray = paddle::experimental::IntArray;
+using DataType = phi::DataType;
+
+{% for api in apis %}
+  {%- if api.name in backend_white_list -%}
+{{common.sig(api.name, api.inputs, api.outputs, api.attrs, True)}};
+
+  {% endif %}
+{% endfor %}
+}  // namespace backend
+}  // namespace primitive
+}  // namespace paddle

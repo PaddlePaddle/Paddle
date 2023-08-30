@@ -198,7 +198,7 @@ std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
     const AnalysisConfig &config) {
   if (config.glog_info_disabled()) {
-    FLAGS_logtostderr = 1;
+    FLAGS_logtostderr = true;
     FLAGS_minloglevel = 2;  // GLOG_ERROR
   }
 

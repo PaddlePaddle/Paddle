@@ -259,11 +259,13 @@ def replace_ellipsis(var, item):
     return item
 
 
-def replace_ndarray(item):
+def replace_ndarray_and_range(item):
     new_item = []
     for slice_item in item:
         if isinstance(slice_item, np.ndarray):
             new_item.append(paddle.assign(slice_item))
+        elif isinstance(slice_item, range):
+            new_item.append(list(slice_item))
         else:
             new_item.append(slice_item)
     return new_item
@@ -416,7 +418,7 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
-    item = replace_ndarray(item)
+    item = replace_ndarray_and_range(item)
     item = replace_ellipsis(var, item)
     item, none_axes = replace_none(item)
     slice_info = SliceInfo()
@@ -564,7 +566,13 @@ def _setitem_impl_(var, item, value):
         output = var
     else:
         helper = paddle.fluid.layer_helper.LayerHelper('set_value', **locals())
-        output = helper.create_variable_for_type_inference(dtype=var.dtype)
+        if helper.main_program.current_block_idx != 0:
+            # not in global block, we should create a global variable.
+            output = helper._create_global_variable_for_type_inference(
+                dtype=var.dtype
+            )
+        else:
+            output = helper.create_variable_for_type_inference(dtype=var.dtype)
 
     cur_block = default_main_program().current_block()
     cur_block.append_op(
@@ -581,7 +589,7 @@ def _setitem_impl_(var, item, value):
             ProgramTranslator,
         )
 
-        ProgramTranslator.get_instance()._params_map.add(
+        ProgramTranslator.get_instance()._inplace_map.add(
             cur_block.program, var.desc.id(), output
         )
 
@@ -700,7 +708,7 @@ def parse_index(x, indices):
     if not isinstance(indices, tuple):
         indices = (indices,)
 
-    indices = replace_ndarray(indices)
+    indices = replace_ndarray_and_range(indices)
     indices = replace_ellipsis(x, indices)
     indices, none_axes = replace_none(indices)
 
@@ -907,7 +915,15 @@ def _setitem_static(x, indices, values):
             helper = paddle.fluid.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+            if helper.main_program.current_block_idx != 0:
+                # not in global block, we should create a global variable.
+                output = helper._create_global_variable_for_type_inference(
+                    dtype=x.dtype
+                )
+            else:
+                output = helper.create_variable_for_type_inference(
+                    dtype=x.dtype
+                )
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
@@ -919,7 +935,7 @@ def _setitem_static(x, indices, values):
 
         if not paddle.in_dynamic_mode():
             # map var to the new output
-            paddle.jit.api.ProgramTranslator.get_instance()._params_map.add(
+            paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
             )
         return output
@@ -973,7 +989,15 @@ def _setitem_static(x, indices, values):
             helper = paddle.fluid.layer_helper.LayerHelper(
                 'set_value', **locals()
             )
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+            if helper.main_program.current_block_idx != 0:
+                # not in global block, we should create a global variable.
+                output = helper._create_global_variable_for_type_inference(
+                    dtype=x.dtype
+                )
+            else:
+                output = helper.create_variable_for_type_inference(
+                    dtype=x.dtype
+                )
         cur_block = default_main_program().current_block()
         cur_block.append_op(
             type="set_value",
@@ -984,7 +1008,7 @@ def _setitem_static(x, indices, values):
         )
         if not paddle.in_dynamic_mode():
             # map var to the new output
-            paddle.jit.api.ProgramTranslator.get_instance()._params_map.add(
+            paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
             )
         return output

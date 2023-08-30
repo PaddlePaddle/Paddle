@@ -575,8 +575,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plt = paddle::platform;
-namespace frm = paddle::framework;
+
 REGISTER_OPERATOR(pyramid_hash,
                   ops::PyramidHashOP,
                   ops::PyramidHashOpMaker,
