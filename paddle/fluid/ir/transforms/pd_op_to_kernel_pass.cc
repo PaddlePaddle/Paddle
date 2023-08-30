@@ -178,12 +178,12 @@ std::vector<std::shared_ptr<phi::TensorBase>> GetFakeTensorList(
   } else if (input_type.isa<ir::VectorType>()) {
     auto vec_inner_types = input_type.dyn_cast<ir::VectorType>().data();
     for (size_t i = 0; i < vec_inner_types.size(); ++i) {
-      if (vec_inner_types[i].isa<dialect::AllocatedDenseTensorType>()) {
+      if (vec_inner_types[0].isa<dialect::AllocatedDenseTensorType>()) {
         vec_res.push_back(build_fake_dense_tensor(
-            vec_inner_types[i].dyn_cast<dialect::AllocatedDenseTensorType>()));
-      } else if (vec_inner_types[i].isa<dialect::AllocatedSelectedRowsType>()) {
+            vec_inner_types[0].dyn_cast<dialect::AllocatedDenseTensorType>()));
+      } else if (vec_inner_types[0].isa<dialect::AllocatedSelectedRowsType>()) {
         vec_res.push_back(build_fake_selected_rows(
-            vec_inner_types[i].dyn_cast<dialect::AllocatedSelectedRowsType>()));
+            vec_inner_types[0].dyn_cast<dialect::AllocatedSelectedRowsType>()));
       }
     }
   }
