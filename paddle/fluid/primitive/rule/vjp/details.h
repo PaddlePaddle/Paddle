@@ -122,8 +122,8 @@ void sum_grad(const Tensor& x,
       }
       auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
       auto out_grad_reshape_res = reshape<T>(out_grad, out_grad_shape);
-      auto out_grad_ = std::get<0>(out_grad_reshape_res);
-      x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+      auto out_grad_new = std::get<0>(out_grad_reshape_res);
+      x_grad_tmp = expand<T>(out_grad_new, IntArray(x_dim));
     } else {
       x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
     }

@@ -46,7 +46,7 @@ class TestPrimMode(unittest.TestCase):
             x.stop_gradient = False
             y.stop_gradient = False
             divide_out = paddle.divide(x, y)
-            sum_out = paddle.mean(divide_out, axis=0)
+            sum_out = paddle.mean(divide_out, axis=-1)
             [new_out] = decompose(main_program, [sum_out])
             gradients = grad(new_out, (x, y))
 
