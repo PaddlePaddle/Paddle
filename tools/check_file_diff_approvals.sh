@@ -86,7 +86,9 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
            "paddle/fluid/prim/api/api.yaml"
            "python/paddle/incubate/autograd/composite_rules.py"
-	   "python/paddle/incubate/autograd/primitives.py"
+           "python/paddle/incubate/autograd/primitives.py"
+           "python/paddle/autograd/backward.py"
+           "python/paddle/autograd/backward_utils.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -218,6 +220,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
             echo_line="You must have one RD (cyber-pioneer(chenzhuo), xiaoguoguo626807(wangruting), Charles-hit(wanghao), JiabinYang) approval for changing ${API_FILE} , which manages the composite rules.\n"
             check_approval 1 cyber-pioneer xiaoguoguo626807 Charles-hit JiabinYang
+      elif [ "${API_FILE}" == "python/paddle/autograd/backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
+            echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/backward.py or python/paddle/autograd/backward_utils.py changes.\n"
+            check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
@@ -280,12 +285,6 @@ HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "pa
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg or heavyrain-lzy for paddle/phi/api/yaml/ops.yaml or paddle/phi/api/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n"
     check_approval 1 chenwhql zyfncg heavyrain-lzy
-fi
-
-HAS_MODIFIED_AUTOGRAD_BACKWARD=`git diff --name-only upstream/$BRANCH | grep -E "python/paddle/autograd/backward.py|python/paddle/autograd/backward_utils.py" || true`
-if [ "${HAS_MODIFIED_AUTOGRAD_BACKWARD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/backward.py or python/paddle/autograd/backward_utils.py changes.\n"
-    check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
 fi
 
 HAS_MODIFIED_FRAMEWORK_EXECUTOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/new_executor" || true`
