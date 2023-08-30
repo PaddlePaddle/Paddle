@@ -1300,3 +1300,9 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
                          "Enable new IR in executor");
 
 DEFINE_bool(enable_record_memory, false, "enable memory recorder");  // NOLINT
+
+PHI_DEFINE_EXPORTED_bool(
+    eager_delete_scope,
+    true,
+    "Delete local scope eagerly. It will reduce GPU memory usage but "
+    "slow down the destruction of variables.(around 1% performance harm)");

@@ -20,7 +20,7 @@ namespace framework {
 namespace newir {
 
 const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
-    {"pd.full", "fill_constant"}, {"pd.matmul", "matmul"}};
+    {"pd.full", "fill_constant"}};
 
 std::string CompatibleInfo::OpName(const ::ir::Operation& op) {
   std::string name = op.name();
