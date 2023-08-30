@@ -45,15 +45,29 @@ def softmax_mask_fuse(x, mask, name=None):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate as incubate
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> import paddle.incubate as incubate
 
-            x = paddle.rand([2, 8, 8, 32])
-            mask = paddle.rand([2, 1, 8, 32])
+            >>> x = paddle.rand([2, 8, 8, 32])
+            >>> mask = paddle.rand([2, 1, 8, 32])
 
-            rst = incubate.softmax_mask_fuse(x, mask)
-            # [[[[0.02404429, 0.04658398, 0.02746007, ..., 0.01489375, 0.02397441, 0.02851614] ... ]]]
+            >>> rst = incubate.softmax_mask_fuse(x, mask)
+            >>> print(rst)
+            >>> Tensor(shape=[1, 1, 32, 32], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            >>> [[[[1.        , 0.        , 0.        , ..., 0.        ,
+                    0.        , 0.        ],
+                   [0.49575609, 0.50424391, 0.        , ..., 0.        ,
+                    0.        , 0.        ],
+                   [0.26035303, 0.25114325, 0.48850375, ..., 0.        ,
+                    0.        , 0.        ],
+                    ...,
+                   [0.04379999, 0.04194880, 0.05150032, ..., 0.02721255,
+                    0.        , 0.        ],
+                   [0.02348574, 0.01959674, 0.02609110, ..., 0.04046615,
+                    0.02248267, 0.        ],
+                   [0.02280738, 0.03144657, 0.02892209, ..., 0.03885521,
+                    0.03342311, 0.02842640]]]])
     """
     if in_dynamic_mode():
         out = _legacy_C_ops.fused_softmax_mask(x, mask)
