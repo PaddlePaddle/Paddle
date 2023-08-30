@@ -179,7 +179,7 @@ paddle_type_to_proto_type = {
 _is_first_import_ = True
 
 
-def in_dygraph_mode():
+def in_dygraph_mode(new_ir=True):
     """
 
     .. note::
@@ -206,7 +206,9 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return global_var._dygraph_tracer_ is not None
+    return global_var._dygraph_tracer_ is not None or (
+        new_ir and ir.core._use_new_ir_api()
+    )
 
 
 global_ipu_index = -1
@@ -485,7 +487,7 @@ def _non_static_only_(func):
 
 def _static_only_(func):
     def __impl__(*args, **kwargs):
-        assert not in_dygraph_mode(), (
+        assert not in_dygraph_mode(False), (
             "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode."
             % func.__name__
         )
@@ -4047,7 +4049,7 @@ class Block:
         )
 
     def create_var(self, *args, **kwargs):
-        if in_dygraph_mode():
+        if in_dygraph_mode(False):
             var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
@@ -7604,14 +7606,12 @@ def dygraph_guard_if_declarative():
 def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
-    if tracer is not None:
-        core._switch_tracer(tracer)
+    core._switch_tracer(tracer)
 
     try:
         yield
     finally:
-        if tmp_tracer is not None:
-            core._switch_tracer(tmp_tracer)
+        core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 
@@ -7622,8 +7622,7 @@ def _static_guard():
     try:
         yield
     finally:
-        if tmp_tracer is not None:
-            core._switch_tracer(tmp_tracer)
+        core._switch_tracer(tmp_tracer)
         global_var._dygraph_tracer_ = tmp_tracer
 
 

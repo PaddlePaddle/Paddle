@@ -21,7 +21,9 @@ CPP_FILE_TEMPLATE = """
 #include <pybind11/pybind11.h>
 
 #include "paddle/fluid/pybind/static_op_function.h"
+#include "paddle/fluid/pybind/eager_op_function.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 
 {body}
 
@@ -44,6 +46,15 @@ void BindOpsAPI(pybind11::module *module) {{
 
 FUNCTION_IMPL_TEMPLATE = """
 static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+  if (egr::Controller::Instance().GetCurrentTracer() == nullptr) {{
+    return static_api_{name}(self, args, kwargs);
+  }} else {{
+    return eager_api_{name}(self, args, kwargs);
+  }}
+}}"""
+
+NO_DY_FUNCTION_IMPL_TEMPLATE = """
+static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
   return static_api_{name}(self, args, kwargs);
 }}"""
 
@@ -56,7 +67,27 @@ class OpsAPIGen(CodeGen):
         super().__init__()
 
     def _gen_one_function_impl(self, name):
-        return FUNCTION_IMPL_TEMPLATE.format(name=name)
+        if (
+            name.endswith('grad')
+            or name.endswith('xpu')
+            or name.endswith('_')
+            or name
+            in [
+                'set_value_with_tensor',
+                'assign_value',
+                'fetch',
+                'print',
+                'add_n_with_kernel',
+                'embedding_grad_sparse',
+                'shadow_feed',
+                'set_value',
+                'send_v2',
+                'recv_v2',
+            ]
+        ):
+            return NO_DY_FUNCTION_IMPL_TEMPLATE.format(name=name)
+        else:
+            return FUNCTION_IMPL_TEMPLATE.format(name=name)
 
     def _gen_one_ops_api(self, name):
         return OPS_API_TEMPLATE.format(name=name)
