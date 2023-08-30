@@ -40,20 +40,20 @@ namespace tensorrt {
 namespace plugin {
 
 enum class GeneratePluginDataType {
-  BOOL,
-  UINT8,
-  INT8,
-  INT16,
-  INT32,
-  INT64,
-  FP16,
-  FP32,
-  FP64,
-  BF16,
-  SIZE_T,
-  COMPLEX64,
-  COMPLEX128,
-  OPTIONAL
+  PLUGIN_BOOL,
+  PLUGIN_UINT8,
+  PLUGIN_INT8,
+  PLUGIN_INT16,
+  PLUGIN_INT32,
+  PLUGIN_INT64,
+  PLUGIN_FP16,
+  PLUGIN_FP32,
+  PLUGIN_FP64,
+  PLUGIN_BF16,
+  PLUGIN_SIZE_T,
+  PLUGIN_COMPLEX64,
+  PLUGIN_COMPLEX128,
+  PLUGIN_OPTIONAL,
 };
 
 GeneratePluginDataType ProtoTypeToGeneratePluginDataType(

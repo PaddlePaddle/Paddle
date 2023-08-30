@@ -390,7 +390,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
 
     plugin::GenericPlugin::InputOutPutVarInfo in_out_info;
     using paddle::inference::tensorrt::plugin::GeneratePluginDataType;
-    auto input_data_type = GeneratePluginDataType::FP32;
+    auto input_data_type = GeneratePluginDataType::PLUGIN_FP32;
 
     PADDLE_ENFORCE_EQ(
         input->getType() == nvinfer1::DataType::kHALF ||
@@ -400,17 +400,20 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
             "This op has no dynamic plugin infershape function!"));
 
     if (input->getType() == nvinfer1::DataType::kHALF) {
-      input_data_type = GeneratePluginDataType::FP16;
+      input_data_type = GeneratePluginDataType::PLUGIN_FP16;
     }
     for (size_t i = 0; i < 3; ++i) {
       in_out_info.inputs_data_type.push_back(input_data_type);
     }
     for (size_t i = 3; i < input_params.size(); ++i) {
-      in_out_info.inputs_data_type.push_back(GeneratePluginDataType::OPTIONAL);
+      in_out_info.inputs_data_type.push_back(
+          GeneratePluginDataType::PLUGIN_OPTIONAL);
     }
     in_out_info.outputs_data_type.push_back(input_data_type);
-    in_out_info.outputs_data_type.push_back(GeneratePluginDataType::FP32);
-    in_out_info.outputs_data_type.push_back(GeneratePluginDataType::INT64);
+    in_out_info.outputs_data_type.push_back(
+        GeneratePluginDataType::PLUGIN_FP32);
+    in_out_info.outputs_data_type.push_back(
+        GeneratePluginDataType::PLUGIN_INT64);
 
     std::vector<nvinfer1::ITensor*> inputs = {
         query,

@@ -33,31 +33,31 @@ GeneratePluginDataType ProtoTypeToGeneratePluginDataType(
   using framework::proto::VarType_Type;
   switch (proto_type) {
     case VarType_Type::VarType_Type_BOOL:
-      return GeneratePluginDataType::BOOL;
+      return GeneratePluginDataType::PLUGIN_BOOL;
     case VarType_Type::VarType_Type_UINT8:
-      return GeneratePluginDataType::UINT8;
+      return GeneratePluginDataType::PLUGIN_UINT8;
     case VarType_Type::VarType_Type_INT8:
-      return GeneratePluginDataType::INT8;
+      return GeneratePluginDataType::PLUGIN_INT8;
     case VarType_Type::VarType_Type_INT16:
-      return GeneratePluginDataType::INT16;
+      return GeneratePluginDataType::PLUGIN_INT16;
     case VarType_Type::VarType_Type_INT32:
-      return GeneratePluginDataType::INT32;
+      return GeneratePluginDataType::PLUGIN_INT32;
     case VarType_Type::VarType_Type_INT64:
-      return GeneratePluginDataType::INT64;
+      return GeneratePluginDataType::PLUGIN_INT64;
     case VarType_Type::VarType_Type_FP16:
-      return GeneratePluginDataType::FP16;
+      return GeneratePluginDataType::PLUGIN_FP16;
     case VarType_Type::VarType_Type_FP32:
-      return GeneratePluginDataType::FP32;
+      return GeneratePluginDataType::PLUGIN_FP32;
     case VarType_Type::VarType_Type_FP64:
-      return GeneratePluginDataType::FP64;
+      return GeneratePluginDataType::PLUGIN_FP64;
     case VarType_Type::VarType_Type_SIZE_T:
-      return GeneratePluginDataType::SIZE_T;
+      return GeneratePluginDataType::PLUGIN_SIZE_T;
     case VarType_Type::VarType_Type_BF16:
-      return GeneratePluginDataType::BF16;
+      return GeneratePluginDataType::PLUGIN_BF16;
     case VarType_Type::VarType_Type_COMPLEX64:
-      return GeneratePluginDataType::COMPLEX64;
+      return GeneratePluginDataType::PLUGIN_COMPLEX64;
     case VarType_Type::VarType_Type_COMPLEX128:
-      return GeneratePluginDataType::COMPLEX128;
+      return GeneratePluginDataType::PLUGIN_COMPLEX128;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "This data type is currently not supported"));
@@ -532,19 +532,19 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   auto protoType2PhiType =
       [&](GeneratePluginDataType proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
-    if (proto_type == GeneratePluginDataType::FP16) {
+    if (proto_type == GeneratePluginDataType::PLUGIN_FP16) {
       return {phi::DataType::FLOAT16, sizeof(half)};
-    } else if (proto_type == GeneratePluginDataType::FP32) {
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_FP32) {
       if (isFp16Supported() && nv_dtype == nvinfer1::DataType::kHALF) {
         return {phi::DataType::FLOAT16, sizeof(half)};
       } else {
         return {phi::DataType::FLOAT32, sizeof(float)};
       }
-    } else if (proto_type == GeneratePluginDataType::INT64) {
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_INT64) {
       return {phi::DataType::INT64, sizeof(int64_t)};
-    } else if (proto_type == GeneratePluginDataType::INT32) {
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_INT32) {
       return {phi::DataType::INT32, sizeof(int32_t)};
-    } else if (proto_type == GeneratePluginDataType::BOOL) {
+    } else if (proto_type == GeneratePluginDataType::PLUGIN_BOOL) {
       return {phi::DataType::BOOL, sizeof(bool)};
     } else {
       CHECK(false) << "precision is not supported";
@@ -564,7 +564,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   phi_kernel_contexts_[data_type]->ClearInputOutput();
 
   for (int i = 0; i < getNbInputs(); i++) {
-    if (inputs_data_type_[i] == GeneratePluginDataType::OPTIONAL) {
+    if (inputs_data_type_[i] == GeneratePluginDataType::PLUGIN_OPTIONAL) {
       phi_kernel_contexts_[data_type]->EmplaceBackInput(nullptr);
       continue;
     }
