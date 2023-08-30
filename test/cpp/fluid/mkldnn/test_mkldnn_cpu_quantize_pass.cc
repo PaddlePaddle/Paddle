@@ -29,7 +29,7 @@ using std::pair;
 using std::string;
 using std::unordered_map;
 
-DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
+PD_DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 namespace paddle {
 namespace pass {

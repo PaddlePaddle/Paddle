@@ -33,8 +33,8 @@ namespace framework {
 class ParallelCompiler {
  public:
   struct Task {
-    Task(ParallelCompiler* compiler, CompilationContext* context, int group_id)
-        : pcompiler(compiler), context(context), group_id(group_id) {}
+    Task(int group_id, ParallelCompiler* compiler, CompilationContext* context)
+        : group_id(group_id), pcompiler(compiler), context(context) {}
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();

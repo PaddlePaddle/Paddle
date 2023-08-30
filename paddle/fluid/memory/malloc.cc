@@ -72,5 +72,13 @@ gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
 }
 
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void RecordStream(std::shared_ptr<Allocation> allocation,
+                  phi::stream::stream_t stream) {
+  return allocation::AllocatorFacade::Instance().RecordStream(allocation,
+                                                              stream);
+}
+#endif
 }  // namespace memory
 }  // namespace paddle

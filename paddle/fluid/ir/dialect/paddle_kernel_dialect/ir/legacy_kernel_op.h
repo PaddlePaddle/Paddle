@@ -14,22 +14,25 @@
 
 #pragma once
 
-#include <Python.h>
-
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
+#include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/op_base.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
-namespace pybind {
+namespace dialect {
+class LegacyKernelOp : public ir::Op<LegacyKernelOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_kernel.legacy_kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  std::string op_name();
+  std::string kernel_name();
+  phi::KernelKey kernel_key();
+  void Verify();
+};
 
-PyObject *static_api_add_n(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_mean(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_sum(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_divide(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_concat(PyObject *self, PyObject *args, PyObject *kwargs);
-PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs);
-
-}  // namespace pybind
+}  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)

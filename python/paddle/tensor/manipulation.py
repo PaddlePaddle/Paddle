@@ -230,6 +230,18 @@ def cast(x, dtype):
         return out
 
 
+@inplace_apis_in_dygraph_only
+def cast_(x, dtype):
+    """
+    Inplace version of ``cast`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_cast`.
+    """
+    if in_dynamic_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.cast_(x, dtype)
+
+
 def slice(input, axes, starts, ends):
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
@@ -1121,7 +1133,7 @@ def concat(x, axis=0, name=None):
         return _C_ops.concat(input, axis)
     else:
         if paddle.ir.core._use_new_ir_api():
-            if not isinstance(input, Variable):
+            if not isinstance(input, paddle.ir.Value):
                 input = [t for t in input if t.shape.count(0) == 0]
             return paddle._ir_ops.concat(input, axis)
         check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -1976,6 +1988,14 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     else:
+        if paddle.ir.core._use_new_ir_api():
+            if not isinstance(num_or_sections, int):
+                return paddle._ir_ops.split(input, num_or_sections, dim)
+            else:
+                raise NotImplementedError(
+                    "_ir_ops.split_with_num is not implemented, please change sections as list"
+                )
+
         check_variable_and_dtype(
             input,
             'input',

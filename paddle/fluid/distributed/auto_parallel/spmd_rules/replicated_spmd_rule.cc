@@ -18,8 +18,6 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-using phi::distributed::auto_parallel::str_join;
-
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 ReplicatedSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
                                  const paddle::framework::AttributeMap& attrs) {
