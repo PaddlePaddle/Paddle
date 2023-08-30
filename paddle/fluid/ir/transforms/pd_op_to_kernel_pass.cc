@@ -216,9 +216,11 @@ ir::Type BuildOutputType(ir::Type type,
   if (type.isa<dialect::DenseTensorType>()) {
     auto dense_tensor_type = type.dyn_cast<dialect::DenseTensorType>();
     auto out_dtype = dense_tensor_type.dtype();
-    if (data_type != phi::DataType::UNDEFINED) {
-      out_dtype = TransToIrDataType(data_type, ctx);
-    }
+
+    // TODO(phlrain): open this after fix pr(55509) confict
+    // if (data_type != phi::DataType::UNDEFINED) {
+    //   out_dtype = TransToIrDataType(data_type, ctx);
+    // }
 
     return dialect::AllocatedDenseTensorType::get(
         ctx,
@@ -232,9 +234,11 @@ ir::Type BuildOutputType(ir::Type type,
   } else if (type.isa<dialect::SelectedRowsType>()) {
     auto selected_rows_type = type.dyn_cast<dialect::SelectedRowsType>();
     auto out_dtype = selected_rows_type.dtype();
-    if (data_type != phi::DataType::UNDEFINED) {
-      out_dtype = TransToIrDataType(data_type, ctx);
-    }
+
+    // TODO(phlrain): open this after fix pr(55509) confict
+    // if (data_type != phi::DataType::UNDEFINED) {
+    //   out_dtype = TransToIrDataType(data_type, ctx);
+    // }
     return dialect::AllocatedSelectedRowsType::get(
         ctx,
         place,
