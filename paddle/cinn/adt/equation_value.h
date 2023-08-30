@@ -25,16 +25,30 @@ DEFINE_ADT_TAG(tIterVar);
 
 using IterVar = tIterVar<UniqueId>;
 
+OVERLOAD_OPERATOR_EQ_NE(IterVar, TagEqual);
+
 DEFINE_ADT_UNION(Constant,
-                 std::size_t,
+                 std::int64_t,
                  tStride<UniqueId>,
                  tDim<UniqueId>,
                  Neg<Constant>,
                  Add<Constant, Constant>,
                  Mul<Constant, Constant>);
 
+OVERLOAD_OPERATOR_EQ_NE(Constant, UnionEqual);
+OVERLOAD_OPERATOR_EQ_NE(tStride<UniqueId>, TagEqual);
+OVERLOAD_OPERATOR_EQ_NE(tDim<UniqueId>, TagEqual);
+OVERLOAD_OPERATOR_EQ_NE(Neg<Constant>, TupleEqual);
+using AddConstant = Add<Constant, Constant>;
+using MulConstant = Mul<Constant, Constant>;
+OVERLOAD_OPERATOR_EQ_NE(AddConstant, TupleEqual);
+OVERLOAD_OPERATOR_EQ_NE(MulConstant, TupleEqual);
+
 // Undefined = {}
-struct Undefined final {};
+struct Undefined final {
+  bool operator==(const Undefined&) const { return true; }
+  bool operator!=(const Undefined&) const { return false; }
+};
 
 // IndexDot T = DotValue [Constant] T
 template <typename StrideT, typename T>
@@ -100,60 +114,14 @@ DEFINE_ADT_UNION(Value,
                  ListGetItem<Value>,
                  PtrGetItem<Value>);
 
+OVERLOAD_OPERATOR_EQ_NE(Value, UnionEqual);
+OVERLOAD_OPERATOR_EQ_NE(List<Value>, ListEqual);
+OVERLOAD_OPERATOR_EQ_NE(IndexDot<Value>, TupleEqual);
+OVERLOAD_OPERATOR_EQ_NE(IndexUnDot<Value>, TupleEqual);
+OVERLOAD_OPERATOR_EQ_NE(ConstantAdd<Value>, TupleEqual);
+OVERLOAD_OPERATOR_EQ_NE(ConstantDiv<Value>, TupleEqual);
+OVERLOAD_OPERATOR_EQ_NE(ConstantMod<Value>, TupleEqual);
+OVERLOAD_OPERATOR_EQ_NE(ListGetItem<Value>, TupleEqual);
+OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
+
 }  // namespace cinn::adt::equation
-
-namespace cinn::adt {
-
-template <>
-struct MatchTrait<equation::Value, equation::Undefined> final {
-  static constexpr int is_template = false;
-};
-
-template <>
-struct MatchTrait<equation::Value, equation::IterVar> final {
-  static constexpr int is_template = false;
-};
-
-template <typename T>
-struct MatchTrait<equation::Value, List<T>> final {
-  using base_type = List<equation::Value>;
-  using arg0_type = T;
-
-  static constexpr int is_template = false;
-
-  template <typename MatchPredicatorT>
-  static bool MatchChildren(const base_type& list,
-                            const MatchPredicatorT& MatchPredicator) {
-    for (const auto& value : *list) {
-      if (!MatchPredicator(value)) {
-        return false;
-      }
-    }
-    return true;
-  }
-};
-
-#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                            \
-  template <typename T>                                                  \
-  struct MatchTrait<equation::Value, equation::name<T>> final {          \
-    using base_type = equation::name<equation::Value>;                   \
-    using arg0_type = T;                                                 \
-                                                                         \
-    static constexpr int is_template = true;                             \
-                                                                         \
-    template <typename MatchPredicatorT>                                 \
-    static bool MatchChildren(const base_type& value,                    \
-                              const MatchPredicatorT& MatchPredicator) { \
-      return MatchPredicator(std::get<0>(value.tuple()));                \
-    }                                                                    \
-  };
-
-DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexDot);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(IndexUnDot);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantAdd);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantDiv);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantMod);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(ListGetItem);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(PtrGetItem);
-
-}  // namespace cinn::adt

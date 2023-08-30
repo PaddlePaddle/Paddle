@@ -162,19 +162,7 @@ DEFINE_ADT_UNION(Variable,
                  FakeOpPlaceHolder);
 // clang-format on
 
-inline bool operator==(const Variable& lhs, const Variable& rhs) {
-  return std::visit(
-      [](auto&& lhs, auto&& rhs) {
-        if constexpr (std::is_same<std::decay_t<decltype(lhs)>,
-                                   std::decay_t<decltype(rhs)>>::value) {
-          return lhs == rhs;
-        } else {
-          return false;
-        }
-      },
-      lhs.variant(),
-      rhs.variant());
-}
+OVERLOAD_OPERATOR_EQ_NE(Variable, UnionEqual);
 
 inline bool operator==(const Iterator& lhs, const Iterator& rhs) {
   return lhs.value() == rhs.value();
@@ -234,7 +222,7 @@ struct hash<cinn::adt::equation::Variable> final {
               return std::hash<cinn::adt::equation::FakeOpPlaceHolder>()(
                   placeholder);
             }};
-    return cinn::adt::hash_combine(hash_value, variable.index());
+    return cinn::adt::hash_combine(hash_value, variable.variant().index());
   }
 };
 

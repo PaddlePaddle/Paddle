@@ -75,9 +75,22 @@ class Tuple {
 
   const std::tuple<Ts...>& tuple() const { return tuple_; }
 
+  template <std::size_t I>
+  const auto& Get() const {
+    return std::get<I>(*tuple_);
+  }
+
  protected:
   std::shared_ptr<std::tuple<Ts...>> tuple_;
 };
+
+template <typename T>
+bool TupleEqual(const T& lhs, const T& rhs) {
+  if (&lhs.tuple() == &rhs.tuple()) {
+    return true;
+  }
+  return lhs.tuple() == rhs.tuple();
+}
 
 template <typename T>
 class List final {
@@ -95,9 +108,19 @@ class List final {
   std::vector<T>& operator*() const { return *vector_; }
   std::vector<T>* operator->() const { return vector_.get(); }
 
+  const auto& Get(std::size_t idx) const { return vector_->at(idx); }
+
  private:
   std::shared_ptr<std::vector<T>> vector_;
 };
+
+template <typename T>
+bool ListEqual(const T& lhs, const T& rhs) {
+  if (&*lhs == &*rhs) {
+    return true;
+  }
+  return *lhs == *rhs;
+}
 
 template <typename T>
 class Tagged {
@@ -115,6 +138,14 @@ class Tagged {
  private:
   T value_;
 };
+
+template <typename T>
+bool TagEqual(const T& lhs, const T& rhs) {
+  if (&lhs == &rhs) {
+    return true;
+  }
+  return lhs.value() == rhs.value();
+}
 
 #define DEFINE_ADT_TAG(name)                \
   template <typename T>                     \
@@ -140,6 +171,16 @@ class Tagged {
     class_name(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}                \
                                                                                \
     template <typename T>                                                      \
+    const T& Get() const {                                                     \
+      return std::get<T>(variant_);                                            \
+    }                                                                          \
+                                                                               \
+    template <typename T>                                                      \
+    bool Has() const {                                                         \
+      return std::holds_alternative<T>(variant_);                              \
+    }                                                                          \
+                                                                               \
+    template <typename T>                                                      \
     auto Visit(const T& visitor) const {                                       \
       return std::visit(visitor, variant_);                                    \
     }                                                                          \
@@ -154,6 +195,24 @@ class Tagged {
    private:                                                                    \
     std::variant<__VA_ARGS__> variant_;                                        \
   }
+
+template <typename UnionT>
+bool UnionEqual(const UnionT& lhs, const UnionT& rhs) {
+  if (&lhs == &rhs) {
+    return true;
+  }
+  return std::visit(
+      [](auto&& lhs, auto&& rhs) {
+        if constexpr (std::is_same<std::decay_t<decltype(lhs)>,
+                                   std::decay_t<decltype(rhs)>>::value) {
+          return lhs == rhs;
+        } else {
+          return false;
+        }
+      },
+      lhs.variant(),
+      rhs.variant());
+}
 
 #define DEFINE_ADT_UNARY(name)    \
   template <typename T>           \
@@ -172,6 +231,14 @@ DEFINE_ADT_BINARY(Add);
 DEFINE_ADT_BINARY(Mul);
 DEFINE_ADT_BINARY(Div);
 DEFINE_ADT_BINARY(Mod);
+
+#define OVERLOAD_OPERATOR_EQ_NE(type, function)              \
+  inline bool operator==(const type& lhs, const type& rhs) { \
+    return function(lhs, rhs);                               \
+  }                                                          \
+  inline bool operator!=(const type& lhs, const type& rhs) { \
+    return !(lhs == rhs);                                    \
+  }
 
 using Name = std::string;
 

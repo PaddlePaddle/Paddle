@@ -1,5 +1,5 @@
 core_gather_headers()
 
-# gather_srcs(cinnapi_src SRCS xxx.cc)
+gather_srcs(cinnapi_src SRCS equation_solver.cc simplify_value.cc)
 
-# message(STATUS "srcs: ${cinnapi_src}")
+message(STATUS "ADT srcs: ${cinnapi_src}")

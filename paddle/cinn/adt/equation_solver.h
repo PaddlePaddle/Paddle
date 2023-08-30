@@ -21,7 +21,12 @@ namespace cinn::adt::equation::value {
 
 class IndexExprInferContext;
 
-void InferIndexExpr(
+void SolveEquations(
+    const EquationGraphTopoWalker<const Variable, const Function*>& walker,
+    const Variable& start,
+    IndexExprInferContext* ctx);
+
+bool IsEquationsSolvable(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
     const Variable& start,
     IndexExprInferContext* ctx);

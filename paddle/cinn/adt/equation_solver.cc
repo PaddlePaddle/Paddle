@@ -27,7 +27,7 @@ namespace cinn::adt::equation {
 
 class IndexExprInferContext;
 
-std::unordered_map<Variable, Value> InferIndexExpr(
+std::unordered_map<Variable, Value> InferValues(
     const Identity<tOut<Iterator>, tIn<Iterator>>& id,
     const IndexExprInferContext& ctx) {
   const auto& [out_iter, in_iter] = id.tuple();
@@ -36,7 +36,7 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   return {{out_iter.value(), ctx.GetValue(in_variable)}};
 }
 
-std::unordered_map<Variable, Value> InferIndexExpr(
+std::unordered_map<Variable, Value> InferValues(
     const Identity<tOut<Index>, tIn<Index>>& id,
     const IndexExprInferContext& ctx) {
   const auto& [out_index, in_index] = id.tuple();
@@ -45,7 +45,7 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   return {{out_index.value(), ctx.GetValue(in_variable)}};
 }
 
-std::unordered_map<Variable, Value> InferIndexExpr(
+std::unordered_map<Variable, Value> InferValues(
     const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
     const IndexExprInferContext& ctx) {
   const auto& [strides, out_index, in_iters] = dot.tuple();
@@ -58,7 +58,7 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   return {{out_index.value(), index_dot}};
 }
 
-std::unordered_map<Variable, Value> InferIndexExpr(
+std::unordered_map<Variable, Value> InferValues(
     const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
     const IndexExprInferContext& ctx) {
   const auto& [strides, out_iters, in_index] = undot.tuple();
@@ -74,7 +74,7 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   return ret;
 }
 
-std::unordered_map<Variable, Value> InferIndexExpr(
+std::unordered_map<Variable, Value> InferValues(
     const ConstructFakeOpPlaceHolder<tOut<FakeOpPlaceHolder>, tIn<List<Index>>>&
         construct_placeholder,
     const IndexExprInferContext& ctx) {
@@ -86,29 +86,61 @@ std::unordered_map<Variable, Value> InferIndexExpr(
   return {{out_placeholder.value(), in_values}};
 }
 
-std::unordered_map<Variable, Value> InferIndexExpr(const Function* function,
-                                                   IndexExprInferContext* ctx) {
+std::unordered_map<Variable, Value> InferValues(const Function* function,
+                                                IndexExprInferContext* ctx) {
   return std::visit(
-      [&](auto&& function) { return InferIndexExpr(function, *ctx); },
+      [&](auto&& function) { return InferValues(function, *ctx); },
       function->variant());
 }
 
-void InferIndexExpr(
+DEFINE_ADT_TAG(tHasUniqueInferedValue);
+
+tHasUniqueInferedValue<bool> MergeInferedValuesIntoCtx(
+    const Function* function, IndexExprInferContext* ctx) {
+  auto output_variable2value = InferValues(function, ctx);
+  for (const auto& [variable, unsimplified_value] : output_variable2value) {
+    Value simplified_value({SimplifyValue(*ctx, unsimplified_value)});
+    if (!ctx->HasValue(variable)) {
+      ctx->SetValue(variable, simplified_value);
+    } else {
+      const Value& old_value = ctx->GetValue(variable);
+      if (simplified_value != old_value) {
+        return tHasUniqueInferedValue<bool>{false};
+      }
+    }
+  }
+  return tHasUniqueInferedValue<bool>{true};
+}
+
+void SolveEquations(
     const EquationGraphTopoWalker<const Variable, const Function*>& walker,
     const Variable& start,
     IndexExprInferContext* ctx) {
   walker(start, [&](const Function* function) {
-    auto output_variable2value = InferIndexExpr(function, ctx);
-    for (const auto& [variable, unsimplified_value] : output_variable2value) {
-      Value simplified_value({SimplifyValue(*ctx, unsimplified_value)});
-      if (!ctx->HasValue(variable)) {
-        ctx->SetValue(variable, simplified_value);
-      } else {
-        const Value& old_value = ctx->GetValue(variable);
-        CHECK(simplified_value == old_value);
-      }
+    tHasUniqueInferedValue<bool> has_unique_value =
+        MergeInferedValuesIntoCtx(function, ctx);
+    CHECK(has_unique_value.value());
+  });
+}
+
+bool IsEquationsSolvable(
+    const EquationGraphTopoWalker<const Variable, const Function*>& walker,
+    const Variable& start,
+    IndexExprInferContext* ctx) {
+  bool is_solvable = true;
+
+  const auto& HasConflictInferedValue = [&](const Function* function) {
+    tHasUniqueInferedValue<bool> has_unique_value =
+        MergeInferedValuesIntoCtx(function, ctx);
+    return !has_unique_value.value();
+  };
+
+  walker(start, [&](const Function* function) {
+    if (is_solvable && HasConflictInferedValue(function)) {
+      is_solvable = false;
     }
   });
+  return is_solvable;
 }
 
 }  // namespace cinn::adt::equation
