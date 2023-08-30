@@ -305,30 +305,29 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     OpDesc multihead_op_desc(mul0->Op()->Block());
     auto reshape_desc = reshape2->Op();
     int head_number =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
-            .at(2);
-
+      PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+    int head_size =
+      PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(3);
     multihead_op_desc.SetType("flash_multihead_matmul");
     multihead_op_desc.SetInput("Input", {input0->Name()});
     if (mul0_w->Var()->Persistable() && mul1_w->Var()->Persistable() &&
         mul2_w->Var()->Persistable()) {
       weight_is_constant = true;
     }
-    auto* wq_tensor =
-        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wk_tensor =
-        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wv_tensor =
-        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
     // check the scale
-    int hidden_out = wq_tensor->dims()[1];
-    int head_size = hidden_out / head_number;
+    int hidden_out = head_number * head_size;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
       VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
                  "flash attention plugin, Stop fusing.";
       return;
     }
     if (use_trt_fma && weight_is_constant) {
+      auto* wq_tensor =
+        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
+      auto* wk_tensor =
+          scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
+      auto* wv_tensor =
+          scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
       float* wq_data = wq_tensor->data<float>();
       float* wk_data = wk_tensor->data<float>();
       float* wv_data = wv_tensor->data<float>();
