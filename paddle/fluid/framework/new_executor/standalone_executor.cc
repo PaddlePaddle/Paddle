@@ -161,6 +161,10 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     is_interpretercore_build_result_shared_ = true;
   }
 
+  std::vector<std::unordered_map<std::string, std::shared_ptr<EventInter>>>
+      map_waited_events;
+  map_waited_events.resize(plan_.MicroBatchNum());
+
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
@@ -171,6 +175,14 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
+    // Note(lizhiyu): Add mannual event info
+    if (!FLAGS_enable_new_ir_in_executor) {
+      auto prog_inter = const_cast<ProgramInterpreter*>(
+          static_cast<const ProgramInterpreter*>(
+              interpretercores_[job_idx]->Impl()));
+      prog_inter->SetMannualEventsInfo(
+          &(map_waited_events[job->MicroBatchId()]));
+    }
     // Note(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
         !FLAGS_enable_new_ir_in_executor) {

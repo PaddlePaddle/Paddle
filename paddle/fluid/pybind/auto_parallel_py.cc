@@ -386,6 +386,15 @@ void BindAutoParallel(py::module *m) {
       .def_property("scheduling_priority",
                     &OperatorDistAttr::scheduling_priority,
                     &OperatorDistAttr::set_scheduling_priority)
+      .def_property("has_mannual_event",
+                    &OperatorDistAttr::has_mannual_event,
+                    &OperatorDistAttr::set_has_mannual_event)
+      .def_property("mannual_wait_events",
+                    &OperatorDistAttr::mannual_wait_events,
+                    &OperatorDistAttr::set_mannual_wait_events)
+      .def_property("event_name",
+                    &OperatorDistAttr::event_name,
+                    &OperatorDistAttr::set_event_name)
       .def_property("annotated",
                     &OperatorDistAttr::annotated,
                     &OperatorDistAttr::set_annotated)

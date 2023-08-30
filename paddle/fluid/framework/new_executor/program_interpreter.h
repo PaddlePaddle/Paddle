@@ -81,6 +81,17 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+  GetMualtableManuanlEvents() {
+    return mannual_wait_evnets_;
+  }
+
+  void SetMannualEventsInfo(
+      std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+          mannual_envets) {
+    mannual_wait_evnets_ = mannual_envets;
+  }
+
   bool IsStaticBuild() const { return static_build_; }
 
  private:
@@ -161,6 +172,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::atomic<size_t> unfinished_op_number_{0};
 
   ExecutionConfig execution_config_;
+
+  std::unordered_map<std::string, std::shared_ptr<EventInter>>*
+      mannual_wait_evnets_;
 
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned

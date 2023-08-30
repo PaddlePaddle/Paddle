@@ -141,6 +141,27 @@ class OperatorDistAttr {
     execution_stream_ = execution_stream;
   }
 
+  void set_event_name(const std::string& event_name) {
+    event_name_ = event_name;
+  }
+
+  void set_has_mannual_event(bool has_mannual_event) {
+    has_mannual_event_ = has_mannual_event;
+  }
+
+  void set_mannual_wait_events(
+      const std::vector<std::string>& mannual_wait_events) {
+    mannual_wait_events_ = mannual_wait_events;
+  }
+
+  bool has_mannual_event() const { return has_mannual_event_; }
+
+  const std::string& event_name() const { return event_name_; }
+
+  const std::vector<std::string>& mannual_wait_events() const {
+    return mannual_wait_events_;
+  }
+
   int stream_priority() const { return stream_priority_; }
 
   void set_stream_priority(int stream_priority) {
@@ -214,6 +235,9 @@ class OperatorDistAttr {
   int64_t impl_idx_ = 0;
   bool is_recompute_ = false;
   std::string execution_stream_ = kDefault;
+  bool has_mannual_event_ = false;
+  std::vector<std::string> mannual_wait_events_;
+  std::string event_name_{kDefault};
   int stream_priority_ = 0;          // lower value, higher priority
   int64_t scheduling_priority_ = 0;  // lower value, higher priority
   std::map<std::string, bool> annotated_;
