@@ -53,9 +53,8 @@ __global__ void KernelHistogram(const T* input,
                                 const T* min_value,
                                 const T* max_value,
                                 T* output) {
-  // extern __shared__ T buf_hist1[];
   extern __shared__ __align__(sizeof(T)) unsigned char buf_hist_tmp[];
-  T *buf_hist = reinterpret_cast<T *>(buf_hist_tmp);
+  T* buf_hist = reinterpret_cast<T*>(buf_hist_tmp);
   for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
     buf_hist[i] = 0;
   }
@@ -64,7 +63,8 @@ __global__ void KernelHistogram(const T* input,
   CUDA_KERNEL_LOOP(input_index, total_elements) {
     // const IndexType input_index = threadIdx.x + blockIdx.x * blockDim.x;
     const auto input_value = input[input_index];
-    const auto weight_value = has_weight ? weight[input_index] : static_cast<T>(1);
+    const auto weight_value =
+        has_weight ? weight[input_index] : static_cast<T>(1);
     if (input_value >= *min_value && input_value <= *max_value) {
       const IndexType output_index =
           GetBin<T, IndexType>(input_value, *min_value, *max_value, nbins);
@@ -90,9 +90,8 @@ __global__ void KernelHistogramDensity(const T* input,
   T count_weight = 0;
   T total_weight;
   __shared__ T total[BlockSize];
-  // extern __shared__ float buf_histd[];
   extern __shared__ __align__(sizeof(float)) unsigned char buf_histd_tmp[];
-  float *buf_histd = reinterpret_cast<float *>(buf_histd_tmp);
+  float* buf_histd = reinterpret_cast<float*>(buf_histd_tmp);
 
   for (int i = threadIdx.x; i < (total_elements); i += BlockSize) {
     const auto input_value = input[i];
@@ -122,9 +121,9 @@ __global__ void KernelHistogramDensity(const T* input,
     buf_histd[i] = 0;
   }
   __syncthreads();
-  
-  const float interval_len = static_cast<float>(*max_value - *min_value)
-                             / nbins;
+
+  const float interval_len =
+      static_cast<float>(*max_value - *min_value) / nbins;
   CUDA_KERNEL_LOOP(input_index, total_elements) {
     // const IndexType input_index = threadIdx.x + blockIdx.x * blockDim.x;
     const auto input_value = input[input_index];
@@ -132,9 +131,8 @@ __global__ void KernelHistogramDensity(const T* input,
     if (input_value >= *min_value && input_value <= *max_value) {
       const IndexType output_index =
           GetBin<T, IndexType>(input_value, *min_value, *max_value, nbins);
-      float prob_value = static_cast<float>(weight_value)
-                         / static_cast<float>(total_weight)
-                         / interval_len;
+      float prob_value = static_cast<float>(weight_value) /
+                         static_cast<float>(total_weight) / interval_len;
       phi::CudaAtomicAdd(&buf_histd[output_index], prob_value);
     }
   }
@@ -259,22 +257,36 @@ void HistogramKernel(const Context& dev_ctx,
   const T* weight_data = has_weight ? weight->data<T>() : nullptr;
 
   auto stream = dev_ctx.stream();
-  if(!density) {
+  if (!density) {
     T* out_data = dev_ctx.template Alloc<T>(output);
     phi::funcs::SetConstant<Context, T>()(dev_ctx, output, static_cast<T>(0));
-    KernelHistogram<T, IndexType>
-        <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS,
-           nbins * sizeof(int64_t), stream>>>(
-            input_data, input_numel, has_weight, weight_data,
-            nbins, min_block_ptr, max_block_ptr, out_data);
+    KernelHistogram<T, IndexType><<<GET_BLOCKS(input_numel),
+                                    PADDLE_CUDA_NUM_THREADS,
+                                    nbins * sizeof(int64_t),
+                                    stream>>>(input_data,
+                                              input_numel,
+                                              has_weight,
+                                              weight_data,
+                                              nbins,
+                                              min_block_ptr,
+                                              max_block_ptr,
+                                              out_data);
   } else {
     float* out_data = dev_ctx.template Alloc<float>(output);
-    phi::funcs::SetConstant<Context, float>()(dev_ctx, output, static_cast<float>(0));
+    phi::funcs::SetConstant<Context, float>()(
+        dev_ctx, output, static_cast<float>(0));
     KernelHistogramDensity<PADDLE_CUDA_NUM_THREADS, T, IndexType>
-        <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS,
-           nbins * sizeof(int64_t), stream>>>(
-            input_data, input_numel, has_weight, weight_data,
-            nbins, min_block_ptr, max_block_ptr, out_data);
+        <<<GET_BLOCKS(input_numel),
+           PADDLE_CUDA_NUM_THREADS,
+           nbins * sizeof(int64_t),
+           stream>>>(input_data,
+                     input_numel,
+                     has_weight,
+                     weight_data,
+                     nbins,
+                     min_block_ptr,
+                     max_block_ptr,
+                     out_data);
   }
 }
 

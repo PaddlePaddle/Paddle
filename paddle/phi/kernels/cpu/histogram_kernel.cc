@@ -70,27 +70,31 @@ void HistogramKernel(const Context& dev_ctx,
           minval));
 
   bool has_weight = weight.is_initialized();
-  auto weight_data = (weight.get_ptr() == nullptr ? nullptr : weight.get_ptr()->data<T>());
+  auto weight_data =
+      (weight.get_ptr() == nullptr ? nullptr : weight.get_ptr()->data<T>());
 
   // compute output
   if (density) {
     T total = static_cast<T>(0);
-    for(int64_t i = 0; i < input_numel; i++) {
+    for (int64_t i = 0; i < input_numel; i++) {
       if (input_data[i] >= output_min && input_data[i] <= output_max) {
-        total += has_weight ? static_cast<T>(weight_data[i]) : static_cast<T>(1);
+        total +=
+            has_weight ? static_cast<T>(weight_data[i]) : static_cast<T>(1);
       }
     }
     float* out_data = dev_ctx.template Alloc<float>(output);
-    phi::funcs::SetConstant<Context, float>()(dev_ctx, output, static_cast<float>(0));
+    phi::funcs::SetConstant<Context, float>()(
+        dev_ctx, output, static_cast<float>(0));
 
-    const float interval_len = static_cast<float>(output_max - output_min) / nbins;
+    const float interval_len =
+        static_cast<float>(output_max - output_min) / nbins;
     for (int64_t i = 0; i < input_numel; i++) {
       if (input_data[i] >= output_min && input_data[i] <= output_max) {
         const int64_t bin = (int64_t)((input_data[i] - output_min) * nbins /
                                       (output_max - output_min));
         T weight_idx = weight_data == nullptr ? 1 : weight_data[i];
-        out_data[std::min(bin, nbins - 1)] += (static_cast<float>(weight_idx)
-                                              / total) / interval_len;
+        out_data[std::min(bin, nbins - 1)] +=
+            (static_cast<float>(weight_idx) / total) / interval_len;
       }
     }
   } else {
@@ -102,7 +106,7 @@ void HistogramKernel(const Context& dev_ctx,
                                       (output_max - output_min));
         T weight_idx = weight_data == nullptr ? 1 : weight_data[i];
         out_data[std::min(bin, nbins - 1)] += weight_idx;
-      } 
+      }
     }
   }
 }

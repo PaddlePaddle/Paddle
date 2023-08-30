@@ -658,7 +658,7 @@ tensor_method_func = [  # noqa
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
-    'histogram_bin_edges'
+    'histogram_bin_edges',
     'sigmoid',
     'sigmoid_',
     'vander',

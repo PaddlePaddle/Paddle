@@ -1631,7 +1631,9 @@ def bmm(x, y, name=None):
         return out
 
 
-def histogram(input, weight=None, bins=100, min=0, max=0, density=False, name=None):
+def histogram(
+    input, weight=None, bins=100, min=0, max=0, density=False, name=None
+):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
     If min and max are both zero, the minimum and maximum values of the data are used.

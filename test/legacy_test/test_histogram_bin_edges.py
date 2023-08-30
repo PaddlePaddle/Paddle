@@ -15,22 +15,22 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+
 
 class TestHistogramBinEdgesAPI(unittest.TestCase):
     """Test histogram_bin_edges api."""
+
     def setUp(self):
         self.input_np = np.random.uniform(-5, 5, [2, 3]).astype(np.float32)
         self.bins = 4
-        self.range = (0., 3.)
+        self.range = (0.0, 3.0)
         self.place = [paddle.CPUPlace()]
 
     def test_api_static(self):
         paddle.enable_static()
+
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
                 inputs = paddle.static.data(
@@ -42,7 +42,9 @@ class TestHistogramBinEdgesAPI(unittest.TestCase):
                     feed={'input': self.input_np},
                     fetch_list=[out],
                 )
-            out_ref = np.histogram_bin_edges(self.input_np, self.bins, self.range)
+            out_ref = np.histogram_bin_edges(
+                self.input_np, self.bins, self.range
+            )
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
         for place in self.place:
@@ -53,8 +55,9 @@ class TestHistogramBinEdgesAPI(unittest.TestCase):
             paddle.disable_static(place)
             inputs = paddle.to_tensor(self.input_np)
             out1 = paddle.histogram_bin_edges(inputs, bins=4, range=(0, 3))
-
-            out_ref1 = np.histogram_bin_edges(self.input_np, bins=4, range=(0, 3))
+            out_ref1 = np.histogram_bin_edges(
+                self.input_np, bins=4, range=(0, 3)
+            )
             np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
             paddle.enable_static()
 
@@ -67,17 +70,23 @@ class TestHistogramBinEdgesAPI(unittest.TestCase):
         range = self.range
         # bin dtype is not int
         self.assertRaises(
-            TypeError, 
-            paddle.histogram_bin_edges,
-            input, bins=1.5, range=range
+            TypeError, paddle.histogram_bin_edges, input, bins=1.5, range=range
         )
         # the range len is not equal 2
         self.assertRaises(
-            ValueError, paddle.histogram_bin_edges, input, bins=bins, range=(0, 2, 3)
+            ValueError,
+            paddle.histogram_bin_edges,
+            input,
+            bins=bins,
+            range=(0, 2, 3),
         )
         # the min of range greater than max
         self.assertRaises(
-            ValueError, paddle.histogram_bin_edges, input, bins=bins, range=(3, 0)
+            ValueError,
+            paddle.histogram_bin_edges,
+            input,
+            bins=bins,
+            range=(3, 0),
         )
 
 
