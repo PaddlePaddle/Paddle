@@ -67,6 +67,18 @@ T GetAttr(const std::string& attr_name,
   }
 }
 
+void BindIrOutput(const OpCall& op_call,
+                  Operation* op,
+                  MatchContextImpl* match_ctx) {
+  for (size_t i = 0; i < op_call.outputs().size(); ++i) {
+    std::shared_ptr<IrValue> ir_value = nullptr;
+    if (op->result(i)) {
+      ir_value = std::make_shared<IrValue>(op->result(i));
+    }
+    match_ctx->BindIrValue(op_call.outputs()[i]->name(), ir_value);
+  }
+}
+
 Operation* CreateOperation(const OpCall& op_call,
                            const MatchContextImpl& src_match_ctx,
                            ir::PatternRewriter& rewriter,  // NOLINT
@@ -116,6 +128,29 @@ Operation* CreateOperation(const OpCall& op_call,
     res_match_ctx->BindIrValue(op_call.outputs()[0]->name(),
                                std::make_shared<IrValue>(full_op->result(0)));
     return full_op;
+  } else if (op_call.name() == "pd.fused_gemm_epilogue") {
+    const auto& inputs = op_call.inputs();
+    std::vector<Value> ir_values =
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+    Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueOp>(
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[1].dyn_cast<ir::OpResult>(),
+        ir_values[2].dyn_cast<ir::OpResult>(),
+        CreateAttributeMap(op_call, src_match_ctx));
+    BindIrOutput(op_call, op, res_match_ctx);
+    return op;
+  } else if (op_call.name() == "pd.fused_gemm_epilogue_grad") {
+    const auto& inputs = op_call.inputs();
+    std::vector<Value> ir_values =
+        GetIrValuesByDrrTensors(inputs, *res_match_ctx);
+    Operation* op = rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
+        ir_values[0].dyn_cast<ir::OpResult>(),
+        ir_values[1].dyn_cast<ir::OpResult>(),
+        ir_values[2].dyn_cast<ir::OpResult>(),
+        ir_values[3].dyn_cast<ir::OpResult>(),
+        CreateAttributeMap(op_call, src_match_ctx));
+    BindIrOutput(op_call, op, res_match_ctx);
+    return op;
   }
 
   PADDLE_THROW(phi::errors::Unavailable("Unknown op :" + op_call.name()));

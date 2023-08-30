@@ -46,6 +46,9 @@ class DrrRewritePattern : public ir::RewritePattern {
         source_pattern_graph_(drr_context.source_pattern_graph()),
         constraints_(drr_context.constraints()),
         result_pattern_graph_(drr_context.result_pattern_graph()) {
+    IR_ENFORCE(source_pattern_graph_->owned_op_call().size(),
+               "source_pattern_graph is empty, please check the drr pattern "
+               "define code.");
     source_pattern_graph_->Print();
     result_pattern_graph_->Print();
   }
@@ -55,7 +58,7 @@ class DrrRewritePattern : public ir::RewritePattern {
     std::shared_ptr<MatchContextImpl> src_match_ctx =
         std::make_shared<MatchContextImpl>();
     if (PatternGraphMatch(op, src_match_ctx)) {
-      VLOG(6) << "DRR pattern (" << ir::get_type_name<DrrPattern>()
+      VLOG(4) << "DRR pattern (" << ir::get_type_name<DrrPattern>()
               << ") is matched in program.";
       PatternGraphRewrite(*src_match_ctx, rewriter);
       return true;
@@ -68,6 +71,7 @@ class DrrRewritePattern : public ir::RewritePattern {
       ir::Operation* op,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const {
     // Match
+    VLOG(1) << "PatternGraphMatch Start: op(" << op->name() << ")";
     const auto* anchor = source_pattern_graph_->AnchorNode();
     IR_ENFORCE(anchor);
     std::unordered_set<const OpCall*> drr_visited;
@@ -89,6 +93,8 @@ class DrrRewritePattern : public ir::RewritePattern {
       auto* ir_node = ir_q.front();
       drr_q.pop();
       ir_q.pop();
+      VLOG(1) << "####### drr_node->name(): " << drr_node->name()
+              << " ir_node->name(): " << ir_node->name();
       if (drr_node->name() != ir_node->name()) {
         matched = false;
         break;
@@ -113,6 +119,8 @@ class DrrRewritePattern : public ir::RewritePattern {
         source_pattern_match_ctx->BindIrValue(
             drr_input_tensors[i]->name(),
             std::make_shared<IrValue>(ir_input_value));
+        VLOG(1) << "###### " << i << " " << drr_brother_ops.size() << " "
+                << ir_input_value.use_count();
         if (drr_brother_ops.size() != ir_input_value.use_count()) {
           matched = false;
           break;
@@ -150,19 +158,25 @@ class DrrRewritePattern : public ir::RewritePattern {
           continue;
         }
 
+        VLOG(1) << "###### drr_ancestor_op";
+
         // check ancestor op
         auto* drr_ancestor_op = drr_input_tensors[i]->producer();
         auto* ir_ancestor_op = ir_input_value.GetDefiningOp();
         if (drr_ancestor_op->name() != ir_ancestor_op->name()) {
           matched = false;
           break;
-        } else {
+        }
+
+        if (drr_visited.count(drr_ancestor_op) == 0) {
           drr_q.push(drr_ancestor_op);
           ir_q.push(ir_ancestor_op);
           drr_visited.insert(drr_ancestor_op);
           ir_visited.insert(ir_ancestor_op);
         }
       }
+
+      VLOG(1) << "###### drr_output_tensors";
 
       // op's outputs
       const auto& drr_output_tensors = drr_node->outputs();
@@ -222,6 +236,9 @@ class DrrRewritePattern : public ir::RewritePattern {
     }
 
     if (matched) {
+      VLOG(1) << "##### step: " << step
+              << "  ### source_pattern_graph_->CountOfOpCalls(): "
+              << source_pattern_graph_->CountOfOpCalls();
       IR_ENFORCE(step == source_pattern_graph_->CountOfOpCalls());
     } else {
       return matched;
@@ -244,12 +261,18 @@ class DrrRewritePattern : public ir::RewritePattern {
     MatchContextImpl res_match_ctx = CreateOperations(
         *result_pattern_graph_, source_pattern_match_ctx, rewriter);
 
+    VLOG(1) << "#### CreateOperations";
+
     // 2. Process Assign Tensor
     RebindIrTensorForAssignTensor(*result_pattern_graph_, &res_match_ctx);
+
+    VLOG(1) << "#### RebindIrTensorForAssignTensor";
 
     // 3. Replace Output Values in source_pattern_graph by Output Values in
     // result_pattern_graph
     ReplaceOutputTensor(source_pattern_match_ctx, res_match_ctx, rewriter);
+
+    VLOG(1) << "#### ReplaceOutputTensor";
 
     // 4. Delete Operations in source_pattern_graph
     DeleteSourcePatternOp(
@@ -268,7 +291,7 @@ class DrrRewritePattern : public ir::RewritePattern {
           in_tensor,
           std::make_shared<IrValue>(src_match_ctx.GetIrValue(in_tensor)));
     }
-
+    VLOG(1) << "#### WalkGraphNodesTopoOrder";
     // topo order visit result_pattern_graph
     GraphTopo graph_topo_visit(&result_pattern_graph);
     graph_topo_visit.WalkGraphNodesTopoOrder(

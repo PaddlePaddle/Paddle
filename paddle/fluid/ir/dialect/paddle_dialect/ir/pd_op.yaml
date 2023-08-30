@@ -355,3 +355,45 @@
     force_backend: null
   inplace: null
   backward: null
+
+- name: fused_gemm_epilogue
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false, data_transform: {}}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false, data_transform: {}}
+  - {typename: Tensor, name: bias, optional: false, no_need_buffer: false, data_transform: {}}
+  attrs:
+  - {typename: bool, name: trans_x}
+  - {typename: bool, name: trans_y}
+  - {typename: str, name: activation}
+  outputs:
+    - {typename: Tensor, name: out, optional: false, intermediate: false}
+    - {typename: Tensor, name: reserve_space, optional: true, intermediate: false}
+  infer_meta:
+    func: FusedGemmEpilogueInferMeta
+    param: [x, y, bias, trans_x, trans_y, activation]
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null
+
+- name: fused_gemm_epilogue_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false, data_transform: {}}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false, data_transform: {}}
+  - {typename: Tensor, name: reserve_space, optional: true, no_need_buffer: false, data_transform: {}}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false, data_transform: {}}
+  attrs:
+  - {typename: bool, name: trans_x}
+  - {typename: bool, name: trans_y}
+  - {typename: str, name: activation_grad}
+  outputs:
+    - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+    - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+    - {typename: Tensor, name: bias_grad, optional: false, intermediate: false}
+  infer_meta:
+    func: FusedGemmEpilogueGradInferMeta
+    param: [x, y, reserve_space, out_grad, trans_x, trans_y, activation_grad]
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null

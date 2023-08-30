@@ -103,11 +103,25 @@ class MatchContextImpl final {
   }
 
   const IrValue& GetIrValue(const std::string& tensor_name) const {
-    return *tensor_map_.at(tensor_name);
+    auto iter = tensor_map_.find(tensor_name);
+    PADDLE_ENFORCE_EQ(
+        iter,
+        tensor_map_.end(),
+        phi::errors::OutOfRange(
+            "the drr tensor(%s) is not found in the map to ir value.",
+            tensor_name));
+    return *iter->second;
   }
 
   ir::Attribute GetIrAttr(const std::string& attr_name) const {
-    return attr_map_.at(attr_name);
+    auto iter = attr_map_.find(attr_name);
+    PADDLE_ENFORCE_EQ(
+        iter,
+        attr_map_.end(),
+        phi::errors::OutOfRange(
+            "the drr attr(%s) is not found in the map to ir attribute.",
+            attr_name));
+    return iter->second;
   }
 
   const std::unordered_map<const OpCall*, std::shared_ptr<IrOperation>>&

@@ -71,6 +71,15 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset);
 
+void FusedGemmEpilogueInferMeta(const MetaTensor& x,
+                                const MetaTensor& y,
+                                const MetaTensor& bias,
+                                bool trans_x,
+                                bool trans_y,
+                                const std::string& activation,
+                                MetaTensor* out,
+                                MetaTensor* reserve_space);
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
