@@ -29,7 +29,6 @@
 
 USE_OP_ITSELF(conv2d);
 PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
-DEFINE_bool(enable_mkldnn, true, "Enable MKLDNN");
 
 void AddVarToScope(const std::string var_name,
                    paddle::framework::Scope* scope,

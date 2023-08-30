@@ -27,7 +27,15 @@ cc_test(
 cc_test(
   test_conv_mkldnn_nhwc
   SRCS test_conv_mkldnn_nhwc.cc
-  DEPS executor op_registry scope device_context enforce)
+  DEPS executor
+       op_registry
+       depthwise_conv
+       tensor
+       phi
+       scope
+       device_context
+       enforce
+       generated_static_op)
 
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry
