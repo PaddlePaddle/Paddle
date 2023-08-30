@@ -272,7 +272,7 @@ if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 
 HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH |grep "cc_test_old" || true`
 if [ "${HAS_USED_CCTESTOLD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by phlrain or risemeup1(liujiaodi) or zhangbo9674 for using cc_test_old. Thanks!\n"
+    echo_line="You must be approved by phlrain or risemeup1 or zhangbo9674 for using cc_test_old. Thanks!\n"
     check_approval 1 phlrain risemeup1 zhangbo9674
 fi
 
