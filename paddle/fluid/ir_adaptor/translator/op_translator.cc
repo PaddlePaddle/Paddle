@@ -1699,6 +1699,7 @@ OpTranslator::OpTranslator() {
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
+  special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();

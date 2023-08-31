@@ -1979,6 +1979,15 @@ void LogLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void LogicalBinaryInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            MetaTensor* out) {
+  ElementwiseInferMeta(x, y, out);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
+}
+
 void LUUnpackInferMeta(const MetaTensor& x,
                        const MetaTensor& pivots,
                        bool unpack_ludata,

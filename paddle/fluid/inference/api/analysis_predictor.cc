@@ -1708,10 +1708,10 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 
   auto SetGflags = [](const AnalysisConfig &config) {
     auto SetGflag = [](const char *name, const char *value) {
-      std::string ret = ::GFLAGS_NAMESPACE::SetCommandLineOption(name, value);
+      bool success = paddle::flags::SetFlagValue(name, value);
       PADDLE_ENFORCE_EQ(
-          ret.empty(),
-          false,
+          success,
+          true,
           platform::errors::InvalidArgument(
               "Fail to set gflag: %s, please make sure the gflag exists.",
               name));
@@ -3089,8 +3089,8 @@ std::tuple<int, int, int> GetTrtRuntimeVersion() {
 #endif
 }
 
-std::string UpdateDllFlag(const char *name, const char *value) {
-  return paddle::UpdateDllFlag(name, value);
+void UpdateDllFlag(const char *name, const char *value) {
+  paddle::UpdateDllFlag(name, value);
 }
 
 void ConvertToMixedPrecision(const std::string &model_file,

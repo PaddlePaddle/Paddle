@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,25 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/op_base.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
-namespace operators {
-
-template <typename T, typename DevCtx>
-class DistributedFusedLambInitOpKernel : public framework::OpKernel<T> {
+namespace dialect {
+class LegacyKernelOp : public ir::Op<LegacyKernelOp> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The distributed_fused_lamb_init operator does not support CPU yet."));
-  }
+  using Op::Op;
+  static const char *name() { return "pd_kernel.legacy_kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  std::string op_name();
+  std::string kernel_name();
+  phi::KernelKey kernel_key();
+  void Verify();
 };
 
-}  // namespace operators
+}  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
