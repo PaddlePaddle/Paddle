@@ -1025,10 +1025,6 @@ class _ExecutorCache:
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
 
-        pm = PassManager(3)
-        pm.add_pass('inplace')  # apply pass to elimitate dead code
-        pm.run(program)
-
         default_job = core.Job("default")
         type_to_program = {"default": program}
         plan = core.Plan([default_job], type_to_program)
