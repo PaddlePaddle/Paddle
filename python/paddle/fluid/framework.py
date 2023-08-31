@@ -35,6 +35,7 @@ from .proto import framework_pb2, data_feed_pb2
 from . import core
 from . import unique_name
 from .. import ir
+from paddle.fluid.libpaddle import DataType
 import paddle.version as fluid_version
 import warnings
 import functools
@@ -156,6 +157,22 @@ extra_op_attrs = {
     "uniform": ["diag_num"],
     "unique": ["is_sorted"],
 }
+
+paddle_type_to_proto_type = {
+    DataType.BOOL: core.VarDesc.VarType.BOOL,
+    DataType.FLOAT16: core.VarDesc.VarType.FP16,
+    DataType.UINT16: core.VarDesc.VarType.BF16,
+    DataType.FLOAT32: core.VarDesc.VarType.FP32,
+    DataType.FLOAT64: core.VarDesc.VarType.FP64,
+    DataType.INT8: core.VarDesc.VarType.INT8,
+    DataType.INT16: core.VarDesc.VarType.INT16,
+    DataType.INT32: core.VarDesc.VarType.INT32,
+    DataType.INT64: core.VarDesc.VarType.INT64,
+    DataType.UINT8: core.VarDesc.VarType.UINT8,
+    DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
+    DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
+}
+
 
 # FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
@@ -1015,40 +1032,34 @@ def convert_np_dtype_to_dtype_(np_dtype):
     else:
         dtype = np.dtype(np_dtype)
 
-    if ir.core._use_new_ir_api():
-        if dtype in ir.core.np_type_to_paddle_type.keys():
-            return ir.core.np_type_to_paddle_type[dtype]
-        else:
-            raise ValueError("Not supported numpy dtype %s" % dtype)
+    if dtype == np.float32:
+        return core.VarDesc.VarType.FP32
+    elif dtype == np.float64:
+        return core.VarDesc.VarType.FP64
+    elif dtype == np.float16:
+        return core.VarDesc.VarType.FP16
+    elif dtype == np.int32:
+        return core.VarDesc.VarType.INT32
+    elif dtype == np.int16:
+        return core.VarDesc.VarType.INT16
+    elif dtype == np.int64:
+        return core.VarDesc.VarType.INT64
+    elif dtype == np.bool_:
+        return core.VarDesc.VarType.BOOL
+    elif dtype == np.uint16:
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        return core.VarDesc.VarType.BF16
+    elif dtype == np.uint8:
+        return core.VarDesc.VarType.UINT8
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == np.complex128:
+        return core.VarDesc.VarType.COMPLEX128
     else:
-        if dtype == np.float32:
-            return core.VarDesc.VarType.FP32
-        elif dtype == np.float64:
-            return core.VarDesc.VarType.FP64
-        elif dtype == np.float16:
-            return core.VarDesc.VarType.FP16
-        elif dtype == np.int32:
-            return core.VarDesc.VarType.INT32
-        elif dtype == np.int16:
-            return core.VarDesc.VarType.INT16
-        elif dtype == np.int64:
-            return core.VarDesc.VarType.INT64
-        elif dtype == np.bool_:
-            return core.VarDesc.VarType.BOOL
-        elif dtype == np.uint16:
-            # since there is still no support for bfloat16 in NumPy,
-            # uint16 is used for casting bfloat16
-            return core.VarDesc.VarType.BF16
-        elif dtype == np.uint8:
-            return core.VarDesc.VarType.UINT8
-        elif dtype == np.int8:
-            return core.VarDesc.VarType.INT8
-        elif dtype == np.complex64:
-            return core.VarDesc.VarType.COMPLEX64
-        elif dtype == np.complex128:
-            return core.VarDesc.VarType.COMPLEX128
-        else:
-            raise ValueError("Not supported numpy dtype %s" % dtype)
+        raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
