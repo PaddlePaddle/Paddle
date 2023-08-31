@@ -50,16 +50,29 @@ def fused_rotary_position_embedding(
             import paddle
             from paddle.incubate.nn.functional import fused_rotary_position_embedding
 
-            q = paddle.randn([1, 1, 4, 10], dtype='float16')
-            k = paddle.randn([1, 1, 4, 10], dtype='float16')
-            v = paddle.randn([1, 1, 4, 10], dtype='float16')
-            out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v)
+            # batch_size = 2
+            # seq_len = 8
+            # num_heads = 2
+            # head_dim = 10
 
-            x = paddle.randn([1, 1, 1, 10], dtype='float16')
-            y = paddle.randn([1, 1, 1, 10], dtype='float16')
+            # q, k, v: [batch_size, seq_len, num_heads, head_dim]
+            q = paddle.randn([2, 8, 2, 10], dtype='float16')
+            k = paddle.randn([2, 8, 2, 10], dtype='float16')
+            v = paddle.randn([2, 8, 2, 10], dtype='float16')
+
+            # sin, cos: [1, seq_len, 1, head_dim]
+            x = paddle.randn([1, 8, 1, 10], dtype='float16')
+            y = paddle.randn([1, 8, 1, 10], dtype='float16')
             sin = paddle.sin(x)
             cos = paddle.cos(y)
-            out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos)
+
+            # position_ids: [batch_size, seq_len]
+            position_ids = paddle.randint(high=8, shape=[2, 8], dtype='int64')
+
+            # out_q, out_k, out_v: [batch_size, seq_len, num_heads, head_dim]
+            out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False)
+            print(out_q.shape)
+            # [2, 8, 2, 10]
     """
     if in_dynamic_mode():
         return _C_ops.fused_rotary_position_embedding(
