@@ -25,9 +25,7 @@ from .program_translator import convert_to_static, unwrap_decorators
 def is_pylayer_func(func):
     """predict whether a function is from PyLayer."""
     func_self = getattr(func, '__self__', None)
-    if func_self and isinstance(func_self, PyLayerMeta):
-        return True
-    return False
+    return func_self and isinstance(func_self, PyLayerMeta)
 
 
 class StaticPyLayerContext:

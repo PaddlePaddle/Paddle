@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
 from paddle.autograd.py_layer import PyLayer
 
 SEED = 2023
@@ -104,11 +103,7 @@ class SimpleNetInplace(paddle.nn.Layer):
 
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
         self.to_static = False
 
     def _run(self, *input_args, **input_kwargs):
@@ -117,10 +112,10 @@ class TestPyLayerBase(unittest.TestCase):
         ), "Please setting `self.dygraph_func` before calling `self._run`"
 
         paddle.jit.enable_to_static(self.to_static)
-        with fluid.dygraph.guard(self.place):
-            result = self.dygraph_func(*input_args, **input_kwargs)
-            result.mean().backward()
-            return result
+        paddle.set_device(self.place)
+        result = self.dygraph_func(*input_args, **input_kwargs)
+        result.mean().backward()
+        return result
 
     def _run_dygraph(self, *args, **kwargs):
         self.to_static = False

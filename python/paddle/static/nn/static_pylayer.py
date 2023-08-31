@@ -150,9 +150,10 @@ def _get_ctx_from_func_(func):
     if fn_bind_args is None:
         return None
 
+    from paddle.jit.dy2static.py_layer import StaticPyLayerContext
     fn_ctx = None
     if len(fn_bind_args) > 0 and isinstance(
-        fn_bind_args[0], paddle.jit.dy2static.py_layer.StaticPyLayerContext
+        fn_bind_args[0], StaticPyLayerContext
     ):
         fn_ctx = fn_bind_args[0]
 
