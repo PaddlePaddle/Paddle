@@ -17,7 +17,7 @@
 #include <sstream>
 
 #include "paddle/cinn/hlir/dialect/cinn_dialect/ir/cinn_dialect.h"
-#include "paddle/cinn/hlir/dialect/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/ir/cinn_op.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_op.h"
 #include "paddle/ir/core/ir_context.h"
