@@ -21,8 +21,6 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
-#include <mudnn.h>
-
 namespace phi {
 
 template <typename T, typename Context>
