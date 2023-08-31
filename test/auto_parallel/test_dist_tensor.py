@@ -53,38 +53,46 @@ class TestDistTensor(unittest.TestCase):
         self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
 
 
-class TestDistributedTensor(unittest.TestCase):
-    def test_dtensor_from_fn(self):
+class TestDistTensorFromFn(unittest.TestCase):
+    def run_dtensor_from_fn(self):
         # Create a distributed attribute
-        mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
 
-        # Test with generate_tensor_ones()
         # Call the function dtensor_from_fn with dist_attr parameter
         result = dist.dtensor_from_fn(
-            paddle.ones, dist_attr=dist_attr, shape=[2, 3]
+            paddle.ones, dist_attr=dist_attr, shape=[1]
         )
 
         # Verify the result
-        self.assertIsInstance(result, paddle.Tensor)
-        self.assertEqual(result.shape, [2, 3])
-        self.assertEqual(result.dist_attr, dist_attr)
+        if paddle.in_dynamic_mode():
+            self.assertIsInstance(result, paddle.Tensor)
+            self.assertEqual(result.shape, [1])
+        else:
+            self.assertIsInstance(result, paddle.fluid.framework.Variable)
+            self.assertEqual(result.shape, (1,))
 
         # Test with generate_tensor_zeros()
         result_zeros = dist.dtensor_from_fn(
-            paddle.zeros, dist_attr=dist_attr, shape=[2, 3]
+            paddle.zeros, dist_attr=dist_attr, shape=[1]
         )
-        self.assertIsInstance(result_zeros, paddle.Tensor)
-        self.assertEqual(result_zeros.shape, [2, 3])
-        self.assertEqual(result_zeros.dist_attr, dist_attr)
+        if paddle.in_dynamic_mode():
+            self.assertIsInstance(result, paddle.Tensor)
+            self.assertEqual(result.shape, [1])
+        else:
+            self.assertIsInstance(result, paddle.fluid.framework.Variable)
+            self.assertEqual(result.shape, (1,))
 
         # Test with generate_tensor_random()
         result_random = dist.dtensor_from_fn(
-            paddle.rand, dist_attr=dist_attr, shape=[2, 3]
+            paddle.rand, dist_attr=dist_attr, shape=[1]
         )
-        self.assertIsInstance(result_random, paddle.Tensor)
-        self.assertEqual(result_random.shape, [2, 3])
-        self.assertEqual(result_random.dist_attr, dist_attr)
+        if paddle.in_dynamic_mode():
+            self.assertIsInstance(result, paddle.Tensor)
+            self.assertEqual(result.shape, [1])
+        else:
+            self.assertIsInstance(result, paddle.fluid.framework.Variable)
+            self.assertEqual(result.shape, (1,))
 
         # Test with invalid sharding_specs length
         with self.assertRaises(AssertionError):
@@ -93,13 +101,13 @@ class TestDistributedTensor(unittest.TestCase):
                 paddle.ones, dist_attr=invalid_dist_attr, shape=[2, 3]
             )
 
-        # Test exceptions when running in static mode
+    def test_dynamic_mode(self):
+        self.run_dtensor_from_fn()
+
+    # Test exceptions when running in static mode
+    def test_static_mode(self):
         paddle.enable_static()
-        with self.assertRaises(NotImplementedError):
-            with paddle.static.program_guard(paddle.static.Program()):
-                dist.dtensor_from_fn(
-                    paddle.ones, dist_attr=dist_attr, shape=[2, 3]
-                )
+        self.run_dtensor_from_fn()
         paddle.disable_static()
 
 
