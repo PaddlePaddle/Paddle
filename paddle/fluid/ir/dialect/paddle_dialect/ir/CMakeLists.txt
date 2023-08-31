@@ -84,6 +84,35 @@ add_custom_command(
           ${op_compat_yaml_file}
   VERBATIM)
 
+set(python_c_gen_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/op_generator/python_c_gen.py)
+set(python_c_header_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/static_op_function.h)
+set(python_c_source_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/static_op_function.cc)
+set(python_c_header_file_tmp ${python_c_header_file}.tmp)
+set(python_c_source_file_tmp ${python_c_source_file}.tmp)
+
+add_custom_command(
+  OUTPUT ${python_c_header_file} ${python_c_source_file}
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+    --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
+    ${python_c_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
+          ${python_c_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_source_file_tmp}
+          ${python_c_source_file}
+  COMMENT "copy_if_different ${python_c_header_file} ${python_c_source_file}"
+  DEPENDS ${python_c_gen_file} ${op_forward_yaml_file1} ${op_forward_yaml_file2}
+          ${op_backward_yaml_file1} ${op_backward_yaml_file2}
+          ${op_compat_yaml_file}
+  VERBATIM)
+
+add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
+                                                     ${python_c_source_file})
+
 cc_library(
   pd_dialect_core
   SRCS pd_attribute.cc pd_type.cc

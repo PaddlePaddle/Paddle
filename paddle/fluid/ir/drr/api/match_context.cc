@@ -41,6 +41,8 @@ template int64_t MatchContext::Attr<int64_t>(const std::string&) const;
 template float MatchContext::Attr<float>(const std::string&) const;
 template std::vector<int32_t> MatchContext::Attr<std::vector<int32_t>>(
     const std::string&) const;
+template std::vector<int64_t> MatchContext::Attr<std::vector<int64_t>>(
+    const std::string&) const;
 
 }  // namespace drr
 }  // namespace ir

@@ -53,7 +53,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       ir_program = plan_.IrProgram(job_type);
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
-      SetColAttrForFetchOps(*job, program);
     }
 
     int64_t micro_batch_id = job->MicroBatchId();
@@ -63,6 +62,10 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  "which should be in the range of [0, %lld].",
                                  micro_batch_id,
                                  micro_batch_num));
+
+    if (micro_batch_num > 1 && !FLAGS_enable_new_ir_api) {
+      SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
+    }
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
@@ -136,14 +139,6 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
-  if (plan_.MicroBatchNum() > 1) {
-    PADDLE_ENFORCE_EQ(feed_names.size(),
-                      0,
-                      phi::errors::Unimplemented(
-                          "Unsupported feed data for multiple micro_batch, "
-                          "please use non-iterative DataLoader for now."));
-  }
-
   const auto& jobs = plan_.JobList();
 
   std::map<std::string, size_t> type_to_first_id;
@@ -177,7 +172,13 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       interpretercores_[job_idx]->ShareBuildResultsFrom(
           interpretercores_[type_to_first_id[job_type]]);
     }
-    interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+    // TODO(zhaoyinglia): use a more general method
+    if (jobs.size() > 1 && job_type != "forward") {
+      const std::vector<std::string> tmp_feed_names = {};
+      interpretercores_[job_idx]->Run(tmp_feed_names, /*need_fetch = */ false);
+    } else {
+      interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+    }
   }
 
   // return Fetch Tensors

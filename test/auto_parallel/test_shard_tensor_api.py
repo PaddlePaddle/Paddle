@@ -27,7 +27,7 @@ class TestDistAttrBasic(unittest.TestCase):
         exception = None
         try:
             mesh = [[0, 1], [2, 3]]
-            dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', 'y'])
+            dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
         except ValueError as ex:
             self.assertIn(
                 "The mesh must be an instance of paddle.distributed.ProcessMesh",
@@ -44,7 +44,7 @@ class TestDistAttrBasic(unittest.TestCase):
                 [[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"]
             )
             dist_attr = dist.DistAttr(
-                mesh=mesh, sharding_specs={"x": 0, "y": 1}
+                mesh=mesh, sharding_specs={"x": None, "y": None}
             )
         except ValueError as ex:
             self.assertIn(
@@ -63,7 +63,7 @@ class TestShardTensorDynamic(unittest.TestCase):
 
     def test_dynamic(self):
         dist_attr = dist.DistAttr(
-            mesh=self.mesh, sharding_specs=['x', None, None]
+            mesh=self.mesh, sharding_specs=[None, None, None]
         )
 
         input = paddle.rand([4, 1024, 512])
@@ -71,7 +71,7 @@ class TestShardTensorDynamic(unittest.TestCase):
         print(dist_attr.dims_mapping)
 
         self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
-        self.assertEqual(d_tensor.dist_attr.dims_mapping, [0, -1, -1])
+        self.assertEqual(d_tensor.dist_attr.dims_mapping, [-1, -1, -1])
         self.assertTrue(d_tensor.dist_attr.is_annotated("process_mesh"))
         self.assertTrue(d_tensor.dist_attr.is_annotated("dims_mapping"))
 
@@ -111,7 +111,7 @@ class TestShardTensorStaticDy2Static(unittest.TestCase):
                 [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
             )
             dist_attr = dist.DistAttr(
-                mesh=mesh, sharding_specs=['x', None, None]
+                mesh=mesh, sharding_specs=[None, None, None]
             )
 
             input = paddle.rand([4, 1024, 512])
@@ -126,7 +126,7 @@ class TestShardTensorStaticDy2Static(unittest.TestCase):
             static_tensor
         )
         self.assertEqual(dist_input.dist_attr.process_mesh, mesh)
-        self.assertEqual(dist_input.dist_attr.dims_mapping, [0, -1, -1])
+        self.assertEqual(dist_input.dist_attr.dims_mapping, [-1, -1, -1])
         self.assertTrue(dist_input.dist_attr.is_annotated("process_mesh"))
         self.assertTrue(dist_input.dist_attr.is_annotated("dims_mapping"))
 

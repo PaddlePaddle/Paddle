@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import paddle
 
 
 def _switch_to_new_ir():
     if paddle.ir.core._use_new_ir_api():
         paddle.framework.set_flags({"FLAGS_enable_new_ir_in_executor": True})
+        paddle.ir.register_paddle_dialect()
         paddle.static.Program = paddle.ir.Program
         paddle.fluid.Program = paddle.ir.Program
         paddle.fluid.program_guard = paddle.ir.core.program_guard

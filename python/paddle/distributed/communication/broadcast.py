@@ -48,18 +48,18 @@ def broadcast(tensor, src, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.broadcast(data, src=1)
-            print(data)
-            # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> dist.broadcast(data, src=1)
+            >>> print(data)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
     return stream.broadcast(
         tensor,
@@ -89,17 +89,17 @@ def broadcast_object_list(object_list, src, group=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                object_list = [{"foo": [1, 2, 3]}]
-            else:
-                object_list = [{"bar": [4, 5, 6]}]
-            dist.broadcast_object_list(object_list, src=1)
-            print(object_list)
-            # [{"bar": [4, 5, 6]}] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     object_list = [{"foo": [1, 2, 3]}]
+            >>> else:
+            ...     object_list = [{"bar": [4, 5, 6]}]
+            >>> dist.broadcast_object_list(object_list, src=1)
+            >>> print(object_list)
+            >>> # [{"bar": [4, 5, 6]}] (2 GPUs)
     """
     assert (
         framework.in_dynamic_mode()

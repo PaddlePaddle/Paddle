@@ -27,6 +27,7 @@
 #include "paddle/fluid/ir/drr/pattern_graph.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/type_name.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
@@ -97,7 +98,10 @@ class DrrRewritePattern : public ir::RewritePattern {
               << ", ir_node name: " << ir_node->name();
       if (drr_node->name() != ir_node->name()) {
         matched = false;
+        VLOG(6) << " --- match false: " << drr_node->name();
         break;
+      } else {
+        VLOG(6) << " --- match true: " << drr_node->name();
       }
       source_pattern_match_ctx->BindIrOperation(
           drr_node, std::make_shared<IrOperation>(ir_node));
@@ -108,6 +112,8 @@ class DrrRewritePattern : public ir::RewritePattern {
       // check input's size
       if (drr_input_tensors.size() != ir_input_value_size) {
         matched = false;
+        VLOG(6) << " --- match false: " << drr_input_tensors.size()
+                << " not equal " << ir_input_value_size;
         break;
       }
       for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
@@ -121,6 +127,8 @@ class DrrRewritePattern : public ir::RewritePattern {
             std::make_shared<IrValue>(ir_input_value));
         if (drr_brother_ops.size() != ir_input_value.use_count()) {
           matched = false;
+          VLOG(6) << " --- match false: " << drr_brother_ops.size()
+                  << " not equal " << ir_input_value.use_count();
           break;
         }
 
@@ -129,7 +137,9 @@ class DrrRewritePattern : public ir::RewritePattern {
             continue;
           }
           std::pair<bool, ir::Operation*> found{false, nullptr};
-          for (auto& it : ir_input_value) {
+          for (auto it = ir_input_value.use_begin();
+               it != ir_input_value.use_end();
+               ++it) {
             auto* ir_op = it.owner();
             if (ir_visited.count(ir_op)) {
               continue;
@@ -146,6 +156,7 @@ class DrrRewritePattern : public ir::RewritePattern {
             drr_visited.insert(drr_brother_op);
             ir_visited.insert(found.second);
           } else {
+            VLOG(6) << " --- match false: brother op not same";
             matched = false;
             break;
           }
@@ -178,6 +189,8 @@ class DrrRewritePattern : public ir::RewritePattern {
       // check output's size
       if (drr_output_tensors.size() != ir_output_value_size) {
         matched = false;
+        VLOG(6) << " --- match false: " << drr_output_tensors.size()
+                << " not equal " << ir_output_value_size;
         break;
       }
 
@@ -195,6 +208,8 @@ class DrrRewritePattern : public ir::RewritePattern {
         }
         if (drr_child_ops.size() != ir_output_value.use_count()) {
           matched = false;
+          VLOG(6) << " --- match false: " << drr_child_ops.size()
+                  << " not equal " << ir_output_value.use_count();
           break;
         }
 
@@ -203,7 +218,9 @@ class DrrRewritePattern : public ir::RewritePattern {
             continue;
           }
           std::pair<bool, ir::Operation*> found{false, nullptr};
-          for (auto& it : ir_output_value) {
+          for (auto it = ir_output_value.use_begin();
+               it != ir_output_value.use_end();
+               ++it) {
             auto* ir_op = it.owner();
             if (ir_visited.count(ir_op)) {
               continue;
@@ -230,7 +247,10 @@ class DrrRewritePattern : public ir::RewritePattern {
     }
 
     if (matched) {
-      IR_ENFORCE(step == source_pattern_graph_->CountOfOpCalls());
+      VLOG(6) << "step: " << step
+              << " CountOfOpCalls: " << source_pattern_graph_->CountOfOpCalls();
+      IR_ENFORCE(step == source_pattern_graph_->CountOfOpCalls(),
+                 "step not equal to count of opcalls");
     } else {
       return matched;
     }
@@ -240,7 +260,10 @@ class DrrRewritePattern : public ir::RewritePattern {
     MatchContext match_context{source_pattern_match_ctx};
     for (const auto& constraint : constraints_) {
       matched = constraint(match_context);
-      if (!matched) break;
+      if (!matched) {
+        VLOG(6) << " --- match false: constraint not satisfied";
+        break;
+      }
     }
 
     return matched;

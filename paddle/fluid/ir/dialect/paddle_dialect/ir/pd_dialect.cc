@@ -50,7 +50,8 @@ void PaddleDialect::initialize() {
       >();
   RegisterOps<paddle::dialect::AddNOp,
               paddle::dialect::FusedGemmEpilogueOp,
-              paddle::dialect::FusedGemmEpilogueGradOp>();
+              paddle::dialect::FusedGemmEpilogueGradOp,
+              paddle::dialect::SplitGradOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }
