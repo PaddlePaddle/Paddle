@@ -14,13 +14,15 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
+#include <iostream>
+
 #include "gtest/gtest.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "test/cpp/phi/core/allocator.h"
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
 namespace tests {
 
 TEST(dist_tensor, constructor) {
@@ -32,27 +34,33 @@ TEST(dist_tensor, constructor) {
   DDim dims({3, 4});
   DenseTensorMeta meta(dtype, dims);
 
-  auto dist_attr = std::make_shared<TensorDistAttr>(phi::vectorize(dims));
+  auto dist_attr = TensorDistAttr(phi::vectorize(dims));
 
-  DistTensor x1(alloc, meta, dist_attr);
-  EXPECT_TRUE(x1.defined());
-  EXPECT_TRUE(x1.initialized());
+  // copy construct
+  DenseTensor x1(alloc, meta);
+  DistTensor dist_x1(x1, dist_attr);
+  EXPECT_TRUE(dist_x1.defined());
+  EXPECT_TRUE(dist_x1.initialized());
+  EXPECT_TRUE(dist_x1.valid());
+  EXPECT_EQ(dist_x1.numel(), 12L);
+  EXPECT_EQ(dist_x1.local_dims()[0], 3L);
+  EXPECT_EQ(dist_x1.local_dims()[1], 4L);
 
-  DistTensor x2(alloc, DenseTensorMeta(dtype, dims), dist_attr);
-  EXPECT_TRUE(x2.defined());
-  EXPECT_TRUE(x2.initialized());
-
-  DistTensor x3(x2.value().Holder(), meta, dist_attr);
-  EXPECT_TRUE(x3.defined());
-  EXPECT_TRUE(x3.initialized());
-
-  auto a = std::make_shared<DenseTensor>(alloc, DenseTensorMeta(dtype, dims));
-  DistTensor x4(a, a->meta(), dist_attr);
-  EXPECT_TRUE(x4.defined());
-  EXPECT_TRUE(x4.initialized());
+  // empty construct
+  DistTensor dist_x2(dims, dist_attr);
+  EXPECT_TRUE(!dist_x2.defined());
+  EXPECT_TRUE(!dist_x2.initialized());
+  // allocate error test
+  bool caught_exception = false;
+  try {
+    dist_x2.AllocateFrom(alloc, phi::DataType::FLOAT32, 12L, false);
+  } catch (phi::EnforceNotMet& error) {
+    caught_exception = true;
+    EXPECT_NE(std::string(error.what()).find("Unavailable"), 0UL);
+  }
+  EXPECT_TRUE(caught_exception);
 }
 
 }  // namespace tests
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

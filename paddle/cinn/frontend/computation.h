@@ -27,8 +27,7 @@ struct ComputationContext;
 
 class CinnComputation {
  public:
-  struct CompileOptions
-      : public hlir::framework::GraphCompiler::CompileOptions {
+  struct CompileOptions : public hlir::framework::CompilationContext {
     bool use_decomposer = false;
     bool do_prerun = true;
     bool use_default_passes = true;

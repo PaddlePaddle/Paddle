@@ -827,9 +827,8 @@ static bool CollectGradInformationFromOpInfo(
     const std::string& in_name = op_proto.inputs()[0].name();
     ins[in_name] = {};
     for (size_t i = 0; i < NUM_CREATED_DUP_INPUTS; i++) {
-      ins[in_name].emplace_back(std::shared_ptr<paddle::imperative::VarBase>(
-          new paddle::imperative::VarBase("auto_" + in_name + "_" +
-                                          std::to_string(i))));
+      ins[in_name].emplace_back(std::make_shared<paddle::imperative::VarBase>(
+          "auto_" + in_name + "_" + std::to_string(i)));
       ins[in_name][i]->SetOverridedStopGradient(false);
       ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
@@ -852,8 +851,8 @@ static bool CollectGradInformationFromOpInfo(
       // but we only need to identify the slot name order,
       // therefore fill in 1 single input VarBase is enough in this scenario
 
-      ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
-          new paddle::imperative::VarBase("auto_" + in_name))};
+      ins[in_name] = {
+          std::make_shared<paddle::imperative::VarBase>("auto_" + in_name)};
       ins[in_name][0]->SetOverridedStopGradient(false);
       ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
@@ -870,8 +869,8 @@ static bool CollectGradInformationFromOpInfo(
     // We always create output VarBase regardless of its dispensability.
     // We dont know the exact number of outputs during code generation,
     // however, simply identifying the slot name order would be enough
-    outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
-        new paddle::imperative::VarBase("auto_" + out_name))};
+    outs[out_name] = {
+        std::make_shared<paddle::imperative::VarBase>("auto_" + out_name)};
     outs[out_name][0]->SetOverridedStopGradient(false);
     outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
@@ -1179,7 +1178,7 @@ static std::string GenerateGradNodeCreationContent(
   const char* GRAD_OP_NODE_TEMPLATE =
       "      auto grad_node = std::shared_ptr<%sGradNodeCompat>(new "
       "%sGradNodeCompat(%d, "
-      "%d));\n";
+      "%d)); // NOLINT\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
   grad_node_creation_str += paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE,
                                                     op_type,
@@ -1666,7 +1665,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         if (!output.dispensable()) {
           std::string input_name =
               output_name.substr(0, output_name.size() - 3);
-          const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ins[\"%s\"] },";
+          const char* FWD_OUTS_CONTENT_TEMPLATE = R"({ "%s", ins["%s"] },)";
           outs_contents_str += paddle::string::Sprintf(
               FWD_OUTS_CONTENT_TEMPLATE, output_name, input_name);
         }
@@ -1690,7 +1689,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
               "Inplace op %s has no input corresponding to output %s.",
               op_type,
               output_name));
-      const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ins[\"%s\"] },";
+      const char* FWD_OUTS_CONTENT_TEMPLATE = R"({ "%s", ins["%s"] },)";
       auto inplace_input_name = forward_inplace_map[output_name];
       outs_contents_str += paddle::string::Sprintf(
           FWD_OUTS_CONTENT_TEMPLATE, output_name, inplace_input_name);
@@ -3299,7 +3298,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
 }  // namespace framework
 }  // namespace paddle
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 3) {
     std::cerr << "argc must be 3" << std::endl;
     return -1;

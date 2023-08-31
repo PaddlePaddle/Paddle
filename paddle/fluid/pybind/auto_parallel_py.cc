@@ -15,23 +15,28 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
+#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
+#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/pybind.h"
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
 namespace py = pybind11;
@@ -40,21 +45,22 @@ namespace paddle {
 namespace pybind {
 
 using paddle::distributed::auto_parallel::DistTensorSpec;
+using paddle::distributed::auto_parallel::kDefault;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
 using paddle::distributed::auto_parallel::SPMDRuleBase;
 using paddle::distributed::auto_parallel::SPMDRuleMap;
+using paddle::framework::BlockDesc;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
+using phi::distributed::ProcessMesh;
+using phi::distributed::TensorDistAttr;
 using phi::distributed::auto_parallel::Device;
 using phi::distributed::auto_parallel::DeviceCapability;
 using phi::distributed::auto_parallel::DeviceMesh;
 using phi::distributed::auto_parallel::DistributedMapper;
-using phi::distributed::auto_parallel::kDefault;
 using phi::distributed::auto_parallel::Link;
 using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
-using phi::distributed::auto_parallel::ProcessMesh;
-using phi::distributed::auto_parallel::TensorDistAttr;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 
@@ -114,15 +120,13 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
 }
 
 void BindAutoParallel(py::module *m) {
-#ifdef PADDLE_WITH_DISTRIBUTE
   auto ReshardFunction =
       py::class_<phi::distributed::ReshardFunction>(*m, "ReshardFunction")
           .def(
               "is_suitable",
               [](phi::distributed::ReshardFunction &self,
                  py::handle py_tensor,
-                 const std::shared_ptr<phi::distributed::TensorDistAttr>
-                     &dist_attr) {
+                 const phi::distributed::TensorDistAttr &dist_attr) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dist =
                     std::dynamic_pointer_cast<phi::distributed::DistTensor>(
@@ -135,8 +139,7 @@ void BindAutoParallel(py::module *m) {
               [](phi::distributed::ReshardFunction &self,
                  phi::DeviceContext *dev_ctx,
                  py::handle py_tensor,
-                 const std::shared_ptr<phi::distributed::TensorDistAttr>
-                     &dist_attr) {
+                 const phi::distributed::TensorDistAttr &dist_attr) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dist =
                     std::dynamic_pointer_cast<phi::distributed::DistTensor>(
@@ -153,7 +156,6 @@ void BindAutoParallel(py::module *m) {
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
       .def(py::init<>());
-#endif
 
   py::class_<ProcessMesh>(*m, "ProcessMesh")
       .def(py::init<>())
@@ -281,8 +283,7 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::class_<TensorDistAttr, std::shared_ptr<TensorDistAttr>> py_dist_attr(
-      *m, "TensorDistAttr");
+  py::class_<TensorDistAttr> py_dist_attr(*m, "TensorDistAttr");
   g_tensor_dist_attr_pytype =
       reinterpret_cast<PyTypeObject *>(py_dist_attr.ptr());
   py_dist_attr.def(py::init<>())
@@ -341,7 +342,49 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
       .def("infer_forward", &SPMDRuleBase::InferForward)
-      .def("infer_backward", &SPMDRuleBase::InferBackward);
+      .def("infer_backward",
+           static_cast<std::pair<std::vector<TensorDistAttr>,
+                                 std::vector<TensorDistAttr>> (SPMDRuleBase::*)(
+               const std::vector<DistTensorSpec> &,
+               const std::vector<DistTensorSpec> &,
+               const paddle::framework::AttributeMap &)>(
+               &SPMDRuleBase::InferBackward));
+  // .def("infer_backward", &SPMDRuleBase::InferBackward) [revert in future]
+
+  py::class_<phi::distributed::SpmdRule>(*m, "SpmdRule")
+      .def("infer_forward",
+           [](const phi::distributed::SpmdRule &self,
+              const std::vector<DistTensorSpec> &input_specs,
+              const std::vector<phi::Attribute> &attrs) {
+             phi::distributed::InferSpmdContext ctx;
+             for (auto &spec : input_specs) {
+               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             for (auto &attr : attrs) {
+               ctx.EmplaceBackAttr(attr);
+             }
+             return self.InferForward(ctx);
+           })
+      .def("infer_backward",
+           [](const phi::distributed::SpmdRule &self,
+              const std::vector<DistTensorSpec> &input_specs,
+              const std::vector<DistTensorSpec> &output_specs,
+              const std::vector<phi::Attribute> &attrs) {
+             phi::distributed::InferSpmdContext ctx;
+             for (auto &spec : input_specs) {
+               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             for (auto &spec : output_specs) {
+               ctx.EmplaceBackInput(phi::distributed::DistMetaTensor(
+                   phi::make_ddim(spec.shape()), spec.dist_attr()));
+             }
+             for (auto &attr : attrs) {
+               ctx.EmplaceBackAttr(attr);
+             }
+             return self.InferBackward(ctx);
+           });
 
   py::class_<DistTensorSpec>(*m, "DistTensorSpec")
       .def(py::init<>())
@@ -469,6 +512,14 @@ void BindAutoParallel(py::module *m) {
       "get_spmd_rule",
       [](const std::string op_type) {
         return SPMDRuleMap::Instance().Get(op_type);
+      },
+      py::return_value_policy::reference);
+
+  m->def(
+      "get_phi_spmd_rule",
+      [](const std::string op_type) {
+        return phi::distributed::SpmdRuleFactory::Instance().GetSpmdRule(
+            op_type);
       },
       py::return_value_policy::reference);
 

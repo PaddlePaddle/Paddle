@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import paddle
 from paddle import _legacy_C_ops
+from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.framework import LayerHelper, _create_tensor, in_dynamic_mode
@@ -24,40 +23,32 @@ from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 
-_first_get_mp_env_flag = True
 
-
-def _get_mp_env_flag(flag):
-    global _first_get_mp_env_flag
-    if _first_get_mp_env_flag:
-        print(
-            "Flags_mp_aysnc_allreduce is {}, which is used to support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear.".format(
-                str(os.getenv("Flags_mp_aysnc_allreduce")).lower()
+class c_identity_eager(PyLayer):
+    @staticmethod
+    def forward(ctx, tensor, group, skip_c_identity_dynamic):
+        ctx.group = group
+        if skip_c_identity_dynamic:
+            return tensor
+        else:
+            return _legacy_C_ops.c_identity(
+                tensor,
+                'use_calc_stream',
+                True,
+                'ring_id',
+                group.id,
+                'use_model_parallel',
+                True,
             )
-        )
-        print(
-            "Flags_fused_linear_param_grad_add is {}, which is used to support fused_linear_param_grad_add in ColumnParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.".format(
-                str(os.getenv("Flags_fused_linear_param_grad_add")).lower()
-            )
-        )
-        print(
-            "Flags_skip_mp_c_identity is {}, which is used to support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.".format(
-                str(os.getenv("Flags_skip_mp_c_identity")).lower()
-            )
-        )
-    # Model parallel environment flag.
-    # Flags_mp_aysnc_allreduce: support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
-    # Flags_fused_linear_param_grad_add: support fused_linear_param_grad_add in ColumnParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.
-    # Flags_skip_mp_c_identity: support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when Flags_mp_aysnc_allreduce is True.
-    assert flag in [
-        "Flags_mp_aysnc_allreduce",
-        "Flags_fused_linear_param_grad_add",
-        "Flags_skip_mp_c_identity",
-    ], "Only support set Flags_mp_aysnc_allreduce (support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear), Flags_fused_linear_param_grad_add (support fused_linear_param_grad_add in ColumnParallelLinear) and Flags_skip_mp_c_identity (support skip c_identity in ColumnParallelLinear with Flags_mp_aysnc_allreduce=True, and skip c_identity in RowParallelLinear)"
-    return str(os.getenv(flag)).lower() in ["true", "1"]
+
+    @staticmethod
+    def backward(ctx, dy):
+        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        ctx.group.process_group.all_reduce_on_calc_stream(dy, op_type)
+        return dy
 
 
-def _c_identity(tensor, group=None):
+def _c_identity(tensor, group=None, skip_c_identity_dynamic=False):
     """
     Return a copy of the tensor, mainly used with model parallel.
 
@@ -74,33 +65,7 @@ def _c_identity(tensor, group=None):
     ring_id = 0 if group is None else group.id
 
     if in_dynamic_mode():
-        from paddle.autograd import PyLayer
-
-        class c_identity_eager(PyLayer):
-            @staticmethod
-            def forward(ctx, tensor):
-                if _get_mp_env_flag(
-                    "Flags_mp_aysnc_allreduce"
-                ) and _get_mp_env_flag("Flags_skip_mp_c_identity"):
-                    return tensor
-                else:
-                    return _legacy_C_ops.c_identity(
-                        tensor,
-                        'use_calc_stream',
-                        True,
-                        'ring_id',
-                        group.id,
-                        'use_model_parallel',
-                        True,
-                    )
-
-            @staticmethod
-            def backward(ctx, dy):
-                op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                group.process_group.all_reduce_on_calc_stream(dy, op_type)
-                return dy
-
-        return c_identity_eager.apply(tensor)
+        return c_identity_eager.apply(tensor, group, skip_c_identity_dynamic)
     else:
         op_type = 'c_identity'
         helper = LayerHelper(op_type, **locals())
@@ -109,7 +74,7 @@ def _c_identity(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
 
@@ -169,7 +134,7 @@ def _c_concat(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_concat',
         )
 
@@ -235,7 +200,7 @@ def _c_split(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_split',
         )
 
@@ -254,12 +219,56 @@ def _c_split(tensor, group=None):
         return out
 
 
+class mp_allreduce_eager(PyLayer):
+    @staticmethod
+    def forward(
+        ctx,
+        tensor,
+        group,
+        use_calc_stream,
+        use_model_parallel,
+        op,
+        skip_c_identity_dynamic,
+    ):
+        ctx.ring_id = group.id
+        ctx.skip_c_identity_dynamic = skip_c_identity_dynamic
+
+        if use_calc_stream:
+            op_type = _get_reduce_op(op, "_mp_allreduce")
+            group.process_group.all_reduce_on_calc_stream(tensor, op_type)
+            return tensor
+        else:
+            return _legacy_C_ops.c_allreduce_sum_(
+                tensor,
+                'use_calc_stream',
+                use_calc_stream,
+                'ring_id',
+                group.id,
+            )
+
+    @staticmethod
+    def backward(ctx, dy):
+        if ctx.skip_c_identity_dynamic:
+            return dy
+        else:
+            return _legacy_C_ops.c_identity(
+                dy,
+                'use_calc_stream',
+                True,
+                'ring_id',
+                ctx.ring_id,
+                'use_model_parallel',
+                True,
+            )
+
+
 def _mp_allreduce(
     tensor,
     op=ReduceOp.SUM,
     group=None,
     use_calc_stream=True,
     use_model_parallel=True,
+    skip_c_identity_dynamic=False,
 ):
     """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]"""
     if group is not None and not group.is_member():
@@ -268,50 +277,13 @@ def _mp_allreduce(
     if in_dynamic_mode():
         group = collective._get_default_group() if group is None else group
         assert op == ReduceOp.SUM, f"Unknown parameter: {op}."
-
-        from paddle.autograd import PyLayer
-
-        class mp_allreduce_eager(PyLayer):
-            @staticmethod
-            def forward(
-                ctx, tensor, group, use_calc_stream, use_model_parallel
-            ):
-                ctx.ring_id = group.id
-
-                if use_calc_stream:
-                    op_type = _get_reduce_op(op, "_mp_allreduce")
-                    group.process_group.all_reduce_on_calc_stream(
-                        tensor, op_type
-                    )
-                    return tensor
-                else:
-                    return _legacy_C_ops.c_allreduce_sum_(
-                        tensor,
-                        'use_calc_stream',
-                        use_calc_stream,
-                        'ring_id',
-                        ring_id,
-                    )
-
-            @staticmethod
-            def backward(ctx, dy):
-                if _get_mp_env_flag(
-                    "Flags_mp_aysnc_allreduce"
-                ) and _get_mp_env_flag("Flags_skip_mp_c_identity"):
-                    return dy
-                else:
-                    return _legacy_C_ops.c_identity(
-                        dy,
-                        'use_calc_stream',
-                        True,
-                        'ring_id',
-                        ctx.ring_id,
-                        'use_model_parallel',
-                        True,
-                    )
-
         return mp_allreduce_eager.apply(
-            tensor, group, use_calc_stream, use_model_parallel
+            tensor,
+            group,
+            use_calc_stream,
+            use_model_parallel,
+            op,
+            skip_c_identity_dynamic,
         )
     else:
         ring_id = 0 if group is None else group.id
@@ -322,7 +294,7 @@ def _mp_allreduce(
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64' 'uint16'],
             op_type,
         )
 

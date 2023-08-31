@@ -152,20 +152,21 @@ class Strategy(BaseConfig):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            strategy = auto.Strategy()
-            sharding = strategy.sharding
-            self.assertEqual(sharding.enabled, False)
-            self.assertEqual(sharding.stage, 1)
-            self.assertEqual(sharding.degree, 8)
-            sharding.enabled = True
-            sharding.stage = 2
-            sharding.degree = 2
-            self.assertEqual(sharding.enabled, True)
-            self.assertEqual(sharding.stage, 2)
-            self.assertEqual(sharding.degree, 2)
+            >>> strategy = auto.Strategy()
+            >>> sharding = strategy.sharding
+            >>> assert sharding.enable == False
+            >>> assert sharding.stage == 1
+            >>> assert sharding.degree == 8
+
+            >>> sharding.enable = True
+            >>> sharding.stage = 2
+            >>> sharding.degree = 2
+            >>> assert sharding.enable == True
+            >>> assert sharding.stage == 2
+            >>> assert sharding.degree == 2
 
     """
 

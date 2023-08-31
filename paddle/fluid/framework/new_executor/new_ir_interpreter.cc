@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
@@ -41,7 +41,12 @@
 #endif
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
-#include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_dialect.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
@@ -346,9 +351,6 @@ void NewIRInterpreter::UpdateSyncOpNum() {
 
 void NewIRInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
-      "pd.sync_batch_norm_",
-      "pd.sync_batch_norm",
-      "pd.sync_batch_norm_grad",
       "pd.c_softmax_with_cross_entropy",
       "pd.c_allgather",
       "pd.c_allreduce_max",
@@ -360,6 +362,7 @@ void NewIRInterpreter::UpdateNcclOpNum() {
       "pd.c_reduce_prod",
       "pd.c_reducescatter",
       "pd.c_broadcast",
+      "pd.c_broadcast_",
       "pd.c_scatter",
       "pd.partial_send",
       "pd.partial_recv",
@@ -370,11 +373,12 @@ void NewIRInterpreter::UpdateNcclOpNum() {
       "pd.barrier",
       "pd.alltoall",
       "pd.global_gather",
-      "pd.distributed_fused_lamb_op",
-      "pd.margin_cross_entropy_op",
-      "pd.sync_batch_norm_op",
-      "pd.data_norm_op",
-      "pd.class_center_sample_op",
+      "pd.distributed_fused_lamb",
+      "pd.margin_cross_entropy",
+      "pd.sync_batch_norm",
+      "pd.sync_batch_norm_",
+      "pd.data_norm",
+      "pd.class_center_sample",
       "pd.all_to_all",
       "pd.dist_concat",
       "pd.all_gather",
@@ -405,11 +409,12 @@ void NewIRInterpreter::UpdateNcclOpNum() {
       "pd.barrier_grad",
       "pd.alltoall_grad",
       "pd.global_gather_grad",
-      "pd.distributed_fused_lamb_op_grad",
-      "pd.margin_cross_entropy_op_grad",
-      "pd.sync_batch_norm_op_grad",
-      "pd.data_norm_op_grad",
-      "pd.class_center_sample_op_grad",
+      "pd.distributed_fused_lamb_grad",
+      "pd.margin_cross_entropy_grad",
+      "pd.margin_cross_entropy_grad_"
+      "pd.sync_batch_norm_grad",
+      "pd.data_norm_grad",
+      "pd.class_center_sample_grad",
       "pd.all_to_all_grad",
       "pd.dist_concat_grad",
       "pd.all_gather_grad",
@@ -517,7 +522,7 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (dialect::IsLegacyOp(op_name)) {
+      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(op_idx++,
                                                       place_,

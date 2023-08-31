@@ -13,18 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
-#include "gflags/gflags.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(use_stride_kernel);
+PD_DECLARE_bool(use_stride_kernel);
 
 #include "glog/logging.h"
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace paddle {
 namespace experimental {
@@ -532,26 +530,21 @@ void TransStride(phi::DeviceContext* dev_ctx,
                  phi::SelectedRows* from,
                  phi::SelectedRows* to) {}
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out) {
   if (out) {
     // TODO(chenweihang): now all dist case are nullptr
     if (out->impl() == nullptr) {
-      auto dense_t = std::make_shared<phi::DenseTensor>();
       // TODO(chenweihang): polish code, dist_attr is null now
-      auto dist_attr =
-          std::make_shared<phi::distributed::auto_parallel::TensorDistAttr>();
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-          dense_t, phi::DenseTensorMeta(), dist_attr);
+          phi::DDim(), phi::distributed::TensorDistAttr());
       out->set_impl(dist_t);
     }
     return static_cast<phi::distributed::DistTensor*>(out->impl().get());
   }
   return nullptr;
 }
-#endif
 
 }  // namespace experimental
 }  // namespace paddle

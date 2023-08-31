@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/ir/dialect/pd_type.h"
-#include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
+#include "paddle/fluid/ir/dialect/paddle_dialect/utils/utils.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/extended_tensor.h"
