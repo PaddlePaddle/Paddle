@@ -102,7 +102,11 @@ def fused_layer_norm(
     residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
     outputs_dict['residual_out'] = residual_out
 
-    inputs = {'x': x, 'norm_weight': norm_weight, 'norm_bias': norm_bias}
+    inputs = {'x': x}
+    if norm_weight is not None:
+        inputs['norm_weight'] = norm_weight
+    if norm_bias is not None:
+        inputs['norm_bias'] = norm_bias
     if residual is not None:
         inputs['residual'] = residual
     if bias is not None:

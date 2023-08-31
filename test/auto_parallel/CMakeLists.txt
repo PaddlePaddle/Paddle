@@ -1,6 +1,8 @@
 # file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 # string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+add_subdirectory(spmd_rules)
+
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH multi cards and timeout
@@ -160,6 +162,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
   py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api)
+  py_test_modules(test_cost_interface MODULES test_cost_interface)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

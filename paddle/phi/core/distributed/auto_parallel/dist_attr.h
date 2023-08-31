@@ -30,9 +30,6 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
-
-constexpr const char* kDefault = "default";
 
 class TensorDistAttr {
  public:
@@ -125,13 +122,15 @@ class TensorDistAttr {
   // in partial-support-stage-I partial will always be a runtime attribute,
   // there is not need to serialize it. support the partial serialization in
   // future partial-support-stage-II.
-  void from_proto(const TensorDistAttrProto& proto);
+  void from_proto(const auto_parallel::TensorDistAttrProto& proto);
 
-  TensorDistAttrProto to_proto() const;
+  auto_parallel::TensorDistAttrProto to_proto() const;
 
   std::string serialize_to_string();
 
   void parse_from_string(const std::string& data);
+
+  bool empty() const;
 
  private:
   static std::vector<std::string> fields_;
@@ -157,6 +156,5 @@ inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return !operator==(lhs, rhs);
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

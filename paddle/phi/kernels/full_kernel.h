@@ -32,6 +32,13 @@ void FullKernel(const Context& dev_ctx,
                 DenseTensor* out);
 
 template <typename T, typename Context>
+void FullWithTensorKernel(const Context& dev_ctx,
+                          const DenseTensor& shape,
+                          const DenseTensor& value,
+                          DataType dtype,
+                          DenseTensor* out);
+
+template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const Scalar& val,

@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
-#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(use_fast_math);
+PD_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
@@ -606,7 +606,7 @@ void LayerNormKernel(const Context &dev_ctx,
   if ((feature_size >= 768 && feature_size <= 2048 && feature_size % 256 == 0 ||
        feature_size == 4096) &&
       scale != nullptr && bias != nullptr) {
-    can_call_fast_kernel = false;
+    can_call_fast_kernel = true;
   }
 
   if (can_call_fast_kernel) {

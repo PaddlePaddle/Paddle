@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
@@ -102,7 +103,7 @@ PHI_DEFINE_string(rccl_dir,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
+PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
 
 namespace phi {

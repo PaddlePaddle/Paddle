@@ -60,6 +60,15 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
   out->set_layout(layout);
 }
 
+void DataInferMeta(const std::string& name,
+                   const phi::IntArray& shape,
+                   phi::DataType data_type,
+                   MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape.GetData());
+  out->set_dims(out_dims);
+  out->set_dtype(data_type);
+}
+
 void EyeInferMeta(const Scalar& num_rows,
                   const Scalar& num_columns,
                   DataType dtype,
@@ -81,10 +90,6 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dims({rows, columns});
   out->set_dtype(dtype);
 }
-
-void FeedWithPlaceInferMeta(int64_t index,
-                            phi::DataType data_type,
-                            MetaTensor* out) {}
 
 void GaussianInferMeta(const IntArray& shape,
                        float mean,

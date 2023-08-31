@@ -12,6 +12,7 @@ gather_srcs(
   program.cc
   parallel_compiler.cc
   graph_compiler.cc
+  graph_compiler_util.cc
   graph.cc
   node.cc
   pass.cc
@@ -52,5 +53,5 @@ cinn_cc_test(test_hlir_framework_op SRCS op_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_print_graph_pass SRCS print_graph_pass_test.cc
              DEPS cinncore)
 cinn_cc_test(test_hlir_framework_graph SRCS graph_test.cc DEPS cinncore)
-
-#cinn_cc_test(test_hlir_framework_graph_compiler SRCS graph_compiler_test.cc DEPS cinncore)
+cinn_cc_test(test_hlir_framework_graph_compiler SRCS graph_compiler_test.cc
+             DEPS cinncore)
