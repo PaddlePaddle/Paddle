@@ -926,7 +926,6 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
         .. code-block:: python
 
             >>> import paddle
-
             >>> paddle.enable_static()
 
             >>> def fn_1():
@@ -938,8 +937,8 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             >>> def fn_3():
             ...    return paddle.full(shape=[3], dtype='int32', fill_value=3)
 
-            >>> main_program = paddle.static.default_startup_program()
-            >>> startup_program = paddle.static.default_main_program()
+            >>> startup_program = paddle.static.default_startup_program()
+            >>> main_program = paddle.static.default_main_program()
             >>> with paddle.static.program_guard(main_program, startup_program):
             ...    index_1 = paddle.full(shape=[1], dtype='int32', fill_value=1)
             ...    index_2 = paddle.full(shape=[1], dtype='int32', fill_value=2)
@@ -961,6 +960,14 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             ...    exe = paddle.static.Executor(paddle.CPUPlace())
             ...    res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
+            Variable: fill_constant_1.tmp_0
+            - message: The content of input layer:
+            - lod: {}
+            - place: Place(cpu)
+            - shape: [2, 3]
+            - layout: NCHW
+            - dtype: int64
+            - data: [3 3 3 3 3 3]
 
             >>> print(res_1)
             [[1. 1.]]
@@ -1701,7 +1708,7 @@ def Print(
             - place: Place(cpu)
             - shape: [2, 3]
             - layout: NCHW
-            - dtype: long
+            - dtype: int64
             - data: [3 3 3 3 3 3]
     '''
     check_variable_and_dtype(

@@ -3231,8 +3231,8 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         .. code-block:: python
             :name: code-example2
 
-            # This example shows how to turn Tensor into numpy array and
-            # use numpy API to register an Python OP
+            >>> # This example shows how to turn Tensor into numpy array and
+            >>> # use numpy API to register an Python OP
             >>> import paddle
             >>> import numpy as np
 
