@@ -40,22 +40,22 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            out_tensor_list = []
-            if dist.get_rank() == 0:
-                data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
-                data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
-            else:
-                data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
-                data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
-            dist.alltoall([data1, data2], out_tensor_list)
-            print(out_tensor_list)
-            # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
-            # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
+            >>> dist.init_parallel_env()
+            >>> out_tensor_list = []
+            >>> if dist.get_rank() == 0:
+            ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            ...     data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
+            >>> else:
+            ...     data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
+            ...     data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
+            >>> dist.alltoall([data1, data2], out_tensor_list)
+            >>> print(out_tensor_list)
+            >>> # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
+            >>> # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     return stream.alltoall(
         out_tensor_list, in_tensor_list, group, sync_op, False
@@ -92,46 +92,46 @@ def alltoall_single(
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            rank = dist.get_rank()
-            size = dist.get_world_size()
+            >>> dist.init_parallel_env()
+            >>> rank = dist.get_rank()
+            >>> size = dist.get_world_size()
 
-            # case 1 (2 GPUs)
-            data = paddle.arange(2, dtype='int64') + rank * 2
-            # data for rank 0: [0, 1]
-            # data for rank 1: [2, 3]
-            output = paddle.empty([2], dtype='int64')
-            dist.alltoall_single(data, output)
-            print(output)
-            # output for rank 0: [0, 2]
-            # output for rank 1: [1, 3]
+            >>> # case 1 (2 GPUs)
+            >>> data = paddle.arange(2, dtype='int64') + rank * 2
+            >>> # data for rank 0: [0, 1]
+            >>> # data for rank 1: [2, 3]
+            >>> output = paddle.empty([2], dtype='int64')
+            >>> dist.alltoall_single(data, output)
+            >>> print(output)
+            >>> # output for rank 0: [0, 2]
+            >>> # output for rank 1: [1, 3]
 
-            # case 2 (2 GPUs)
-            in_split_sizes = [i + 1 for i in range(size)]
-            # in_split_sizes for rank 0: [1, 2]
-            # in_split_sizes for rank 1: [1, 2]
-            out_split_sizes = [rank + 1 for i in range(size)]
-            # out_split_sizes for rank 0: [1, 1]
-            # out_split_sizes for rank 1: [2, 2]
-            data = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
-            # data for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
-            # data for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
-            output = paddle.empty([(rank + 1) * size, size], dtype='float32')
-            group = dist.new_group([0, 1])
-            task = dist.alltoall_single(data,
-                                        output,
-                                        in_split_sizes,
-                                        out_split_sizes,
-                                        sync_op=False,
-                                        group=group)
-            task.wait()
-            print(output)
-            # output for rank 0: [[0., 0.], [1., 1.]]
-            # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
+            >>> # case 2 (2 GPUs)
+            >>> in_split_sizes = [i + 1 for i in range(size)]
+            >>> # in_split_sizes for rank 0: [1, 2]
+            >>> # in_split_sizes for rank 1: [1, 2]
+            >>> out_split_sizes = [rank + 1 for i in range(size)]
+            >>> # out_split_sizes for rank 0: [1, 1]
+            >>> # out_split_sizes for rank 1: [2, 2]
+            >>> data = paddle.ones([sum(in_split_sizes), size], dtype='float32') * rank
+            >>> # data for rank 0: [[0., 0.], [0., 0.], [0., 0.]]
+            >>> # data for rank 1: [[1., 1.], [1., 1.], [1., 1.]]
+            >>> output = paddle.empty([(rank + 1) * size, size], dtype='float32')
+            >>> group = dist.new_group([0, 1])
+            >>> task = dist.alltoall_single(data,
+            ...                             output,
+            ...                             in_split_sizes,
+            ...                             out_split_sizes,
+            ...                             sync_op=False,
+            ...                             group=group)
+            >>> task.wait()
+            >>> print(output)
+            >>> # output for rank 0: [[0., 0.], [1., 1.]]
+            >>> # output for rank 1: [[0., 0.], [0., 0.], [1., 1.], [1., 1.]]
 
     """
     return stream.alltoall_single(

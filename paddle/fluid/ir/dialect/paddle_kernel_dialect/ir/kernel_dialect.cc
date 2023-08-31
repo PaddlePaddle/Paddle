@@ -16,6 +16,7 @@
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_op.h"
 #include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/legacy_kernel_op.h"
 #include "paddle/fluid/platform/init_phi.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
@@ -32,24 +33,38 @@ PaddleKernelDialect::PaddleKernelDialect(ir::IrContext *context)
 
 void PaddleKernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
-  RegisterTypes<paddle::dialect::AllocatedSelectedRowsType>();
-  RegisterOps<dialect::PhiKernelOp>();
-
+  RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
+                paddle::dialect::AllocatedSelectedRowsType>();
+  RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
   RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
 void PaddleKernelDialect::PrintType(ir::Type type, std::ostream &os) const {
-  AllocatedDenseTensorType tensor_type =
-      type.dyn_cast<AllocatedDenseTensorType>();
+  if (type.isa<AllocatedDenseTensorType>()) {
+    AllocatedDenseTensorType tensor_type =
+        type.dyn_cast<AllocatedDenseTensorType>();
 
-  os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
-  os << "tensor<";
-  for (auto d : phi::vectorize(tensor_type.dims())) {
-    os << d;
-    os << "x";
+    os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
+    os << "tensor<";
+    for (auto d : phi::vectorize(tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    tensor_type.dtype().Print(os);
+    os << ">";
+  } else if (type.isa<AllocatedSelectedRowsType>()) {
+    AllocatedSelectedRowsType tensor_type =
+        type.dyn_cast<AllocatedSelectedRowsType>();
+
+    os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
+    os << "tensor<";
+    for (auto d : phi::vectorize(tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    tensor_type.dtype().Print(os);
+    os << ">";
   }
-  tensor_type.dtype().Print(os);
-  os << ">";
 }
 
 void PaddleKernelDialect::PrintAttribute(ir::Attribute attr,

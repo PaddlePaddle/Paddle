@@ -171,7 +171,6 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
   return ret;
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 // TODO(chenweihang): impl Reshard input and output function

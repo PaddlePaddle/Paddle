@@ -88,7 +88,7 @@ std::vector<DimTrans*> MakeReshapeDimTrans(
     if (tgt_idx >= tgt_len) {
       t = 1;
     } else {
-      t = tgt_shape[tgt_idx];
+      t = inferred_tgt_shape[tgt_idx];
       tgt_splitted_shape.emplace_back(t);
       tgt_idx++;
     }

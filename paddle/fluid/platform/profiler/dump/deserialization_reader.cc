@@ -150,7 +150,7 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
-DeserializationReader::~DeserializationReader() {
+DeserializationReader::~DeserializationReader() {  // NOLINT
   delete node_trees_proto_;
   input_file_stream_.close();
 }
