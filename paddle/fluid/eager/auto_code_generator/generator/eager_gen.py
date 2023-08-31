@@ -176,6 +176,11 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+  //std::cout << "The pointer to the current object: " << this << std::endl;
+  //std::stringstream ss;
+  //ss << this;
+  //std::string this_pointer = ss.str();
+
   // Fill Zero For GradIn Tensors
 {}
   // Apply Gradient Hooks
@@ -204,7 +209,9 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Create Grad Node
 {}
   VLOG(4) << \"Finish AD API GRAD: {}";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
+  
   {}
   // Return
 {}
@@ -259,10 +266,10 @@ FORWARD_FUNCTION_TEMPLATE = """
 """
 
 AFTER_LOG_PRINT_TEMPLATE = """
-  if(VLOG_IS_ON(4)){{
+  if(VLOG_IS_ON(6)){{
       const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  \\n Output: [%s] }} \";
       {}
-      VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+      VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }}
 """
 
