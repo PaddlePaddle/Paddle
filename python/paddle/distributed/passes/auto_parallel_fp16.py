@@ -805,6 +805,8 @@ class FP16Pass(AMPPass):
             is_train = fp16_state._build_state()
 
             cast_startup_program()
+            if is_train:
+                self._cast_loss(self.target_dtype)
 
         if is_train:
             if self.target_dtype == "float16":
