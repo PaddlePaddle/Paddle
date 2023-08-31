@@ -228,13 +228,13 @@ cc_test(
 
 set(BRPC_DEPS "")
 if(WITH_PSCORE)
-  set(BRPC_DEPS brpc ssl crypto)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
 endif()
 if(WITH_PSLIB)
   if(WITH_PSLIB_BRPC)
     set(BRPC_DEPS pslib_brpc)
   elseif(NOT WITH_HETERPS)
-    set(BRPC_DEPS brpc ssl crypto)
+    set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
   endif()
   if(WITH_ARM_BRPC)
     set(BRPC_DEPS arm_brpc)
@@ -833,7 +833,7 @@ if(WITH_DISTRIBUTE)
            heter_service_proto
            fleet
            heter_server
-           brpc
+           ${${EXTERNAL_BRPC_DEPS}}
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
