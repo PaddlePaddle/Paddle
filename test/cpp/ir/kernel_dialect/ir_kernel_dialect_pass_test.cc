@@ -154,7 +154,7 @@ TEST(kernel_dialect, legacy_op_test) {
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
-  
+
   ir::OpInfo kernel_op_info =
       ctx->GetRegisteredOpInfo(paddle::dialect::LegacyKernelOp::name());
   ir::OperationArgument argument(kernel_op_info);
