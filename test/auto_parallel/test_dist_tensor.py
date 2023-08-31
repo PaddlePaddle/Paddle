@@ -92,9 +92,33 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         local_in3, dist_in3 = self.create_local_and_dist_tensor_pair(x3)
         local_out = paddle.concat([local_in1, local_in2, local_in3])
         dist_out = paddle.concat([dist_in1, dist_in2, dist_in3])
+        self.check_tensor_eq(local_out, dist_out)
+        local_out.backward()
+        dist_out.backward()
         self.check_tensor_eq(local_in1.grad, dist_in1.grad)
         self.check_tensor_eq(local_in2.grad, dist_in2.grad)
         self.check_tensor_eq(local_in3.grad, dist_in3.grad)
+
+    def test_broadcast_tensors_for_dist_tensor(self):
+        x1 = np.random.random(size=[4, 4]).astype("float32")
+        x2 = np.random.random(size=[4, 4]).astype("float32")
+        local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
+        local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(x2)
+
+        local_out1, local_out2 = paddle.broadcast_tensors(
+            [local_in1, local_in2]
+        )
+        dist_out1, dist_out2 = paddle.broadcast_tensors([dist_in1, dist_in2])
+        self.check_tensor_eq(local_out1, dist_out1)
+        self.check_tensor_eq(local_out2, dist_out2)
+
+        # local_out = local_out1 + local_out2
+        # dist_out = dist_out1 + dist_out2
+
+        # local_out.backward()
+        # dist_out.backward()
+        # self.check_tensor_eq(local_in1.grad, dist_in1.grad)
+        # self.check_tensor_eq(local_in2.grad, dist_in2.grad)
 
     def test_matmul_api_for_dist_tensor(self):
         x = np.random.random(size=[4, 4]).astype("float32")
@@ -108,7 +132,6 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         # test backward
         local_out.backward()
         dist_out.backward()
-
         self.check_tensor_eq(local_x.grad, dist_x.grad)
         self.check_tensor_eq(local_y.grad, dist_y.grad)
 

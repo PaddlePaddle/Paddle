@@ -673,7 +673,6 @@ PrepareDataForDistTensor(const std::vector<Tensor>& input,
   }
   return out;
 }
-#endif
 
 }  // namespace experimental
 }  // namespace paddle
