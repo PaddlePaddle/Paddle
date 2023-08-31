@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/ir/core/dialect.h"
 
-namespace paddle {
-namespace operators {
-
-template <typename T, typename DevCtx>
-class DistributedFusedLambInitOpKernel : public framework::OpKernel<T> {
+namespace test {
+class TestDialect : public ir::Dialect {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The distributed_fused_lamb_init operator does not support CPU yet."));
+  explicit TestDialect(ir::IrContext *context)
+      : ir::Dialect(name(), context, ir::TypeId::get<TestDialect>()) {
+    initialize();
   }
+  static const char *name() { return "test"; }
+
+ private:
+  void initialize();
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace test
+IR_DECLARE_EXPLICIT_TYPE_ID(test::TestDialect)

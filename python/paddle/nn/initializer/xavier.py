@@ -214,24 +214,33 @@ class XavierNormal(XavierInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(1)
+            >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            >>> weight_attr = paddle.framework.ParamAttr(
+            ...     name="linear_weight",
+            ...     initializer=paddle.nn.initializer.XavierNormal())
+            >>> bias_attr = paddle.framework.ParamAttr(
+            ...     name="linear_bias",
+            ...     initializer=paddle.nn.initializer.XavierNormal())
+            >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[-0.21607460,  0.08382989],
+             [ 0.29147008, -0.07049121]])
 
-            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
-            weight_attr = paddle.framework.ParamAttr(
-                name="linear_weight",
-                initializer=paddle.nn.initializer.XavierNormal())
-            bias_attr = paddle.framework.ParamAttr(
-                name="linear_bias",
-                initializer=paddle.nn.initializer.XavierNormal())
-            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            # inear.weight:  [[ 0.06910077 -0.18103665]
-            #                 [-0.02546741 -1.0402188 ]]
-            # linear.bias:  [-0.5012929   0.12418364]
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [1.06076419, 0.87684733])
 
-            res = linear(data)
-            # res:  [[[-0.4576595 -1.0970719]]
-            #        [[-0.4576595 -1.0970719]]
-            #        [[-0.4576595 -1.0970719]]]
+            >>> res = linear(data)
+            >>> print(res)
+            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[1.13615966, 0.89018601]],
+             [[1.13615966, 0.89018601]],
+             [[1.13615966, 0.89018601]]])
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):
@@ -266,24 +275,32 @@ class XavierUniform(XavierInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(1)
+            >>> data = paddle.ones(shape=[3, 1, 2], dtype='float32')
+            >>> weight_attr = paddle.framework.ParamAttr(
+            ...     name="linear_weight",
+            ...     initializer=paddle.nn.initializer.XavierUniform())
+            >>> bias_attr = paddle.framework.ParamAttr(
+            ...     name="linear_bias",
+            ...     initializer=paddle.nn.initializer.XavierUniform())
+            >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[-1.18095720,  0.64892638],
+             [ 0.43125069, -1.11156428]])
+            >>> print(linear.bias)
+            Parameter containing:
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [-0.27524316,  1.13808715])
 
-            data = paddle.ones(shape=[3, 1, 2], dtype='float32')
-            weight_attr = paddle.framework.ParamAttr(
-                name="linear_weight",
-                initializer=paddle.nn.initializer.XavierUniform())
-            bias_attr = paddle.framework.ParamAttr(
-                name="linear_bias",
-                initializer=paddle.nn.initializer.XavierUniform())
-            linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr)
-            # linear.weight:  [[-0.04229349 -1.1248565 ]
-            #                  [-0.10789523 -0.5938053 ]]
-            # linear.bias:  [ 1.1983747  -0.40201235]
-
-            res = linear(data)
-            # res:  [[[ 1.0481861 -2.1206741]]
-            #        [[ 1.0481861 -2.1206741]]
-            #        [[ 1.0481861 -2.1206741]]]
+            >>> res = linear(data)
+            >>> print(res)
+            Tensor(shape=[3, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[-1.02494967,  0.67544925]],
+             [[-1.02494967,  0.67544925]],
+             [[-1.02494967,  0.67544925]]])
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):

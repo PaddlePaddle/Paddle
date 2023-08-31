@@ -14,19 +14,23 @@
 
 #pragma once
 
-#include <map>
-#include <vector>
-#include "paddle/phi/common/int_array.h"
+#include <cstdint>
+#include <memory>
+#include <string>
 
 namespace phi {
-class DeviceContext;
-class DenseTensor;
-
 namespace distributed {
-std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
-                                             const DenseTensor& input,
-                                             const IntArray& sections,
-                                             int64_t axis);
+class Store;
+
+int64_t GetCurGlobalRank();
+
+std::string GetMasterAddr();
+
+int64_t GetGlobalWorldSize();
+
+uint16_t GetMasterPort();
+
+std::shared_ptr<Store> CreateOrGetGlobalTCPStore();
 
 }  // namespace distributed
 }  // namespace phi

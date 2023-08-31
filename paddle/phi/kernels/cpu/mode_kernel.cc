@@ -89,7 +89,7 @@ void ModeKernel(const Context& dev_ctx,
     DDim trans_shape(in_dims);
     DDim trans_out_shape(in_dims);
 
-    for (size_t i = 0; i < trans_axis.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans_axis.size()); i++) {
       trans_shape[i] = in_dims[trans_axis[i]];
       trans_out_shape[i] = in_dims[trans_axis[i]];
     }
@@ -98,7 +98,7 @@ void ModeKernel(const Context& dev_ctx,
     DenseTensor trans_input;
     trans_input.Resize(trans_shape);
     dev_ctx.template Alloc<T>(&trans_input);
-    int ndims = trans_axis.size();
+    int ndims = static_cast<int>(trans_axis.size());
 
     // transpose the input value
     funcs::TransCompute<CPUContext, T>(

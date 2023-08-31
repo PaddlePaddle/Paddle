@@ -17,8 +17,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -208,7 +206,14 @@ bool MetaTensor::is_dense() const { return DenseTensor::classof(tensor_); }
 bool MetaTensor::is_selected_rows() const {
   return SelectedRows::classof(tensor_);
 }
+bool MetaTensor::is_dist() const {
+  return distributed::DistTensor::classof(tensor_);
+}
 bool MetaTensor::is_tensor_array() const { return false; }
+
+bool MetaTensor::is_same_tensor(const MetaTensor& meta_tensor) const {
+  return tensor_ != nullptr && tensor_ == meta_tensor.tensor();
+}
 
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   ValidCheck(*this);

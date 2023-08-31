@@ -380,8 +380,9 @@ void CompareRawInferMeta(const MetaTensor& x,
     out->set_dims(make_ddim(out_dims_array));
     out->share_lod(x);
   }
-
-  out->set_dtype(DataType::BOOL);
+  if (!out->is_same_tensor(x)) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void CompareInferMeta(const MetaTensor& x,
@@ -1939,6 +1940,15 @@ void LogLossInferMeta(const MetaTensor& input,
   out->set_dims({pred_dims[0], 1});
   out->set_dtype(input.dtype());
   out->share_lod(input);
+}
+
+void LogicalBinaryInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            MetaTensor* out) {
+  ElementwiseInferMeta(x, y, out);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void LUUnpackInferMeta(const MetaTensor& x,

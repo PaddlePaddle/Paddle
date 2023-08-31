@@ -14,17 +14,25 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
+#include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/op_base.h"
+#include "paddle/phi/core/kernel_factory.h"
 
-namespace phi {
-class DeviceContext;
-class DenseTensor;
-namespace distributed {
+namespace paddle {
+namespace dialect {
+class LegacyKernelOp : public ir::Op<LegacyKernelOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_kernel.legacy_kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  std::string op_name();
+  std::string kernel_name();
+  phi::KernelKey kernel_key();
+  void Verify();
+};
 
-DenseTensor ReshardConcatFunctor(const DeviceContext& dev_ctx,
-                                 const std::vector<const DenseTensor*>& input,
-                                 int64_t axis);
+}  // namespace dialect
+}  // namespace paddle
 
-}  // namespace distributed
-}  // namespace phi
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)
