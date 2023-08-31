@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
