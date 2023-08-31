@@ -154,7 +154,7 @@ SpmdInfo DefaultDataParallelSpmdBackward(
 
   for (int64_t i = 0; i < ninputs; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
-            << str_join(phi::vectorize(ins[i]->dims()) << "] "
+            << str_join(phi::vectorize(ins[i]->dims())) << "] "
             << "dst_dims_mapping: ["
             << str_join(dst_input_dist_attrs[i].dims_mapping()) << "]";
   }
