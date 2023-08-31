@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -47,6 +48,7 @@ class TestDuplicateOutput(unittest.TestCase):
         self.net = paddle.jit.to_static(SimpleNet())
         self.x = paddle.to_tensor([1.0])
 
+    @test_and_compare_with_new_ir(False)
     def _run_static(self):
         loss0, loss1 = self.net(self.x)
         loss0.backward()

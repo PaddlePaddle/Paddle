@@ -20,6 +20,7 @@ import unittest
 
 import numpy as np
 import transformer_util as util
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from transformer_dygraph_model import (
     CrossEntropyCriterion,
     Transformer,
@@ -37,6 +38,7 @@ SEED = 10
 STEP_NUM = 10
 
 
+@test_and_compare_with_new_ir(True)
 def train_static(args, batch_generator):
     paddle.enable_static()
     paddle.seed(SEED)
@@ -419,6 +421,7 @@ def predict_dygraph(args, batch_generator):
         return seq_ids, seq_scores
 
 
+@test_and_compare_with_new_ir(True)
 def predict_static(args, batch_generator):
     test_prog = fluid.Program()
     with fluid.program_guard(test_prog):
