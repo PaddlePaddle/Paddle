@@ -64,9 +64,6 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
   parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
   CompilationResult result = (*parallel_compiler_.get())();
 
-  // Dump compilation result
-  backends::CompilationInfoDumper dumper(result);
-
   if (context->stage != CompilationStage::DEFAULT) {
     return result;
   }

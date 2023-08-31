@@ -81,6 +81,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
+  bool IsStaticBuild() const { return static_build_; }
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);

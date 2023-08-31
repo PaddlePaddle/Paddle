@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace framework {

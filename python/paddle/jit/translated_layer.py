@@ -898,6 +898,7 @@ def _valid_vars(vars):
 def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_vars = []
+    input_var_names = []
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
@@ -918,6 +919,7 @@ def _run_dygraph(instance, input, program_holder):
             # NOTE: we changed var name here,
             # but it may be an important name set by user
             var.name = program_holder.input_descs[i].name()
+        input_var_names.append(var.name)
         input_vars.append(var)
     if instance._input_args_names is None:
         instance._input_args_names = [
@@ -986,6 +988,8 @@ def _run_dygraph(instance, input, program_holder):
         instance._is_test,
         'program_id',
         paddle.utils._hash_with_id(trace_program, instance),
+        'x_names',
+        input_var_names,
     ]
     if not instance._is_test:
         attrs.extend(

@@ -137,11 +137,9 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                        phi::DenseTensor* from,
                        phi::DenseTensor* to);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 /* ------------------ for auto parallel ----------------------- */
 
 phi::distributed::DistTensor* SetKernelDistOutput(Tensor* out);
-#endif
 
 }  // namespace experimental
 }  // namespace paddle
