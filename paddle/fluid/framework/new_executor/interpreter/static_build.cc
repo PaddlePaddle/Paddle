@@ -13,15 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
-#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesCanHandledInStaticBuild = {
-    "read", "conditional_block"};
+std::set<std::string> OperatorBasesHandledInStaticBuild = {"read",
+                                                           "conditional_block"};
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
@@ -95,7 +94,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
-           !OperatorBasesCanHandledInStaticBuild.count(op_type)) ||
+           !OperatorBasesHandledInStaticBuild.count(op_type)) ||
           is_custom_op || use_mkldnn) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
