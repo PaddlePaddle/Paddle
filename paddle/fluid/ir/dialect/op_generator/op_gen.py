@@ -68,13 +68,13 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 """
 
 LEGACY_OP_TO_PD_OPS_MAP_H = """
-namespace paddle {{
-namespace dialect {{
+namespace paddle {
+namespace dialect {
 
 extern std::unordered_map<std::string, std::vector<PdOpSig>> legacy_op_to_pd_ops_map;
 
-}} // namespace dialect
-}} // namespace paddle
+} // namespace dialect
+} // namespace paddle
 """
 GET_OP_LIST_TEMPALTE = """{}
 """
