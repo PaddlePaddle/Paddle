@@ -18,7 +18,7 @@ namespace backend {
 
 {%- macro sig(name, inputs, attrs, outputs) -%}
 template <>
-{{common.ret(outputs)}} {{name}}<Tensor>({{common.params(inputs, attrs)}})
+{{common.ret(outputs)}} {{name}}<Tensor>({{common.params(inputs, attrs, False)}})
 {%- endmacro -%}
 
 {% macro body(name, inputs, attrs, outputs) %}

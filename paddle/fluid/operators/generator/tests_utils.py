@@ -84,3 +84,21 @@ def supports_no_need_buffer(op):
 
 def is_tensor_list(s):
     return s == 'Tensor[]'
+
+
+def exist_mutable_attribute(attrs):
+    for attr in attrs:
+        if (
+            attr['typename'] in ['Scalar', 'IntArray']
+            and attr['support_tensor'] is True
+        ):
+            return True
+        else:
+            return False
+
+
+def is_mutable_attribute(attr):
+    return (
+        attr['typename'] in ['Scalar', 'IntArray']
+        and attr['support_tensor'] is True
+    )
