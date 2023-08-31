@@ -202,8 +202,8 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
                                MetaTensor* out);
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,
-                                const MetaTensor& w,
-                                const MetaTensor& w_max,
+                                const MetaTensor& filter,
+                                const MetaTensor& filter_max,
                                 const MetaTensor& bias,
                                 const MetaTensor& branch,
                                 const std::vector<int>& act_type,

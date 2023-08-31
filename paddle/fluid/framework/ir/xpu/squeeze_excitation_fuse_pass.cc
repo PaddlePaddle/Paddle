@@ -215,6 +215,11 @@ SqueezeExcitationFusePattern::SqueezeExcitationFusePattern(
 }  // namespace patterns
 
 void SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph,
+      platform::errors::PreconditionNotMet("graph should not be null. "));
+  Init(name_scope_, graph);
+
   int found_subgraph_count = 0;
   for (auto with_branch : {true, false}) {
     for (auto with_bias : {true, false}) {
@@ -241,11 +246,6 @@ int SqueezeExcitationFusePass::ApplyImpl(ir::Graph* graph,
                                          const std::string& act_type,
                                          bool with_branch,
                                          bool with_bias) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      graph,
-      platform::errors::PreconditionNotMet("graph should not be null. "));
-  Init(name_scope_, graph);
-
   GraphPatternDetector gpd;
   patterns::SqueezeExcitationFusePattern pattern(gpd.mutable_pattern(),
                                                  name_scope_,

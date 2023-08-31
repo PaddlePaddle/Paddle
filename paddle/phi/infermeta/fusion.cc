@@ -822,8 +822,8 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
 }
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,
-                                const MetaTensor& w,
-                                const MetaTensor& w_max,
+                                const MetaTensor& filter,
+                                const MetaTensor& filter_max,
                                 const MetaTensor& bias,
                                 const MetaTensor& branch,
                                 const std::vector<int>& act_type,
@@ -840,7 +840,6 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
           "received: input's dimension is %u, input's shape is [%s].",
           in_dims.size(),
           in_dims));
-
   std::vector<int64_t> out_shape(
       {in_dims[0], filter_dims[1], in_dims[2], in_dims[3]});
   // set output dims
