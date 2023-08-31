@@ -73,11 +73,8 @@ def to_tensor(pic, data_format='CHW'):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> tensor = F.to_tensor(fake_img)
             >>> print(tensor.shape)
             [3, 256, 300]
@@ -131,11 +128,8 @@ def resize(img, size, interpolation='bilinear'):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> converted_img = F.resize(fake_img, 224)
             >>> print(converted_img.size)
             (262, 224)
@@ -200,11 +194,8 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> padded_img = F.pad(fake_img, padding=1)
             >>> print(padded_img.size)
             (302, 258)
@@ -250,11 +241,8 @@ def crop(img, top, left, height, width):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> cropped_img = F.crop(fake_img, 56, 150, 200, 100)
             >>> print(cropped_img.size)
             (100, 200)
@@ -294,11 +282,8 @@ def center_crop(img, output_size):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> cropped_img = F.center_crop(fake_img, (150, 100))
             >>> print(cropped_img.size)
             (100, 150)
@@ -335,11 +320,8 @@ def hflip(img):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> flipped_img = F.hflip(fake_img)
             >>> print(flipped_img.size)
             (300, 256)
@@ -377,11 +359,8 @@ def vflip(img):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> flipped_img = F.vflip(fake_img)
             >>> print(flipped_img.size)
             (300, 256)
@@ -424,7 +403,6 @@ def adjust_brightness(img, brightness_factor):
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
             >>> np.random.seed(2023)
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> print(fake_img.size)
@@ -477,11 +455,8 @@ def adjust_contrast(img, contrast_factor):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> converted_img = F.adjust_contrast(fake_img, 0.4)
             >>> print(converted_img.size)
             (300, 256)
@@ -521,11 +496,8 @@ def adjust_saturation(img, saturation_factor):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> converted_img = F.adjust_saturation(fake_img, 0.4)
             >>> print(converted_img.size)
             (300, 256)
@@ -575,11 +547,8 @@ def adjust_hue(img, hue_factor):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> converted_img = F.adjust_hue(fake_img, 0.4)
             >>> print(converted_img.size)
             (300, 256)
@@ -676,9 +645,7 @@ def affine(
 
             >>> import paddle
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-
             >>> affined_img = F.affine(fake_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
             >>> print(affined_img.shape)
             [3, 256, 300]
@@ -810,11 +777,8 @@ def rotate(
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> rotated_img = F.rotate(fake_img, 90)
             >>> print(rotated_img.size)
             (300, 256)
@@ -918,12 +882,9 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
 
             >>> import paddle
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-
             >>> startpoints = [[0, 0], [33, 0], [33, 25], [0, 25]]
             >>> endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
-
             >>> perspectived_img = F.perspective(fake_img, startpoints, endpoints)
             >>> print(perspectived_img.shape)
             [3, 256, 300]
@@ -969,7 +930,6 @@ def to_grayscale(img, num_output_channels=1):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
             >>> fake_img = Image.fromarray(fake_img)
             >>> gray_img = F.to_grayscale(fake_img)
@@ -1015,14 +975,10 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
             >>> import numpy as np
             >>> from PIL import Image
             >>> from paddle.vision.transforms import functional as F
-
             >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
             >>> fake_img = Image.fromarray(fake_img)
-
             >>> mean = [127.5, 127.5, 127.5]
             >>> std = [127.5, 127.5, 127.5]
-
             >>> normalized_img = F.normalize(fake_img, mean, std, data_format='HWC')
             >>> print(normalized_img.max(), normalized_img.min())
             0.99215686 -1.0
