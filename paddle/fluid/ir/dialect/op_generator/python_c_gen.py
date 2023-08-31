@@ -81,6 +81,29 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 }}
 """
 
+NO_OUTPUT_API_IMPL_TEMPLATE = """
+PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
+    try {{
+        VLOG(6) << "Add {api_name} op into program";
+        VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+        // Get OpResult from args
+        {inputs}
+
+        // Parse Attributes
+        {attrs}
+
+        // Call ir static api
+        paddle::dialect::{api_name}({args});
+
+        return nullptr;
+    }} catch (...) {{
+        ThrowExceptionToPython(std::current_exception());
+        return nullptr;
+    }}
+}}
+"""
+
 INPUT_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
         auto {name} = {cast_func}({name}_obj, "{api_name}", {index});"""
@@ -263,7 +286,15 @@ class PythonCCodeGen(CodeGen):
         attr_name_list = op_info.attribute_name_list
         mutable_attr_name_list = op_info.mutable_attribute_name_list
         no_mutable_attr_name_list = op_info.non_mutable_attribute_name_list
-        if len(mutable_attr_name_list) > 0:
+
+        if op_name == "send_v2":
+            ret = NO_OUTPUT_API_IMPL_TEMPLATE.format(
+                api_name=op_name,
+                inputs=self._gen_inputs(op_info, op_name),
+                attrs=self._gen_attrs_without_mutable(op_info, op_name),
+                args=', '.join(input_name_list + attr_name_list),
+            )
+        elif len(mutable_attr_name_list) > 0:
             ret = MUTABLE_ATTR_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
                 inputs=self._gen_inputs(op_info, op_name),
