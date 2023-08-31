@@ -151,6 +151,7 @@ def _get_ctx_from_func_(func):
         return None
 
     from paddle.jit.dy2static.py_layer import StaticPyLayerContext
+
     fn_ctx = None
     if len(fn_bind_args) > 0 and isinstance(
         fn_bind_args[0], StaticPyLayerContext
@@ -297,7 +298,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                 ...         ret.name
                 ...     ],
                 ... )
-                
+
                 >>> print(x)
                 [[1. 2. 3. 4. 5.]]
                 >>> print(x_grad)
