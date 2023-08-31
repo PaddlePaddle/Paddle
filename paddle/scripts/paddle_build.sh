@@ -3554,9 +3554,7 @@ EOF
     fi
     
     # reset ccache zero stats for collect PR's actual hit rate
-    if [ "$MAX_JOBS" != " " ]; then
-        export MAX_JOBS=${MAX_JOBS}
-    else
+    if [ "${MAX_JOBS}" == " " ]; then
         export MAX_JOBS=${parallel_number}
     fi
     ccache -z
