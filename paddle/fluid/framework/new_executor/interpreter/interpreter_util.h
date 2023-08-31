@@ -36,7 +36,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 

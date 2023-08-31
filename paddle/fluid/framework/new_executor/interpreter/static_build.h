@@ -29,12 +29,6 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
                            VariableScope* var_scope,
                            bool use_local_scope);
 
-bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
-                                         const std::string& op_type,
-                                         const phi::Place& place,
-                                         VariableScope* var_scope,
-                                         bool use_local_scope);
-
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const platform::Place& place,
                                           Scope* scope);

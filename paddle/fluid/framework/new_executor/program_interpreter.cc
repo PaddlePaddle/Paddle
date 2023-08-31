@@ -174,6 +174,8 @@ void ProgramInterpreter::PreStaticBuild() {
                       phi::errors::InvalidArgument(
                           "ProgramInterpreter::PreStaticBuild() "
                           "should be called when static_build_ is true"));
+    paddle::framework::interpreter::BuildVariableScope(
+        block_, execution_config_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::BuildOpFuncList(

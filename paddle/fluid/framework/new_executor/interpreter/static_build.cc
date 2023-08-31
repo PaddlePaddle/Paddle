@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
@@ -56,8 +57,6 @@ std::set<std::string> StaticBuildBlackList = {
 namespace paddle {
 namespace framework {
 namespace interpreter {
-
-namespace ops = paddle::operators;
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
                            const phi::Place& place,
@@ -99,8 +98,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
     if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
       if (in_black_list ||
           (is_operator_base &&
-           !IsOperatorBasesHandledInStaticBuild(
-               op, op_type, place, var_scope, use_local_scope)) ||
+           !OperatorBasesCanHandledInStaticBuild
+                .count(op_type) ||
           is_custom_op || use_mkldnn) {
         invalid_ops.insert(std::make_pair(op_type, kernel_code));
       }
@@ -122,34 +121,6 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
   }
 
   return invalid_ops.empty();
-}
-
-bool IsOperatorBasesHandledInStaticBuild(OpDesc* op,
-                                         const std::string& op_type,
-                                         const phi::Place& place,
-                                         VariableScope* var_scope,
-                                         bool use_local_scope) {
-  if (!OperatorBasesCanHandledInStaticBuild.count(op_type)) {
-    return false;
-  }
-
-  if (op_type == "read") {
-    return true;
-  } else if (op_type == "conditional_block") {
-    // Note(sonder): For conditional_block, static build is only supported
-    // when the op has the same place, dtype and layout of the output for two
-    // conditional branches.
-    VLOG(3) << "use_local_scope: " << use_local_scope;
-    Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
-                                         : var_scope->GetMutableScope();
-    auto op_base = CreateOpFromOpDesc(op);
-    VLOG(4) << op_base->DebugStringEx(local_scope);
-    op_base->RunPreStaticBuild(*local_scope, place);
-    VLOG(4) << op_base->DebugStringEx(local_scope);
-    return false;
-  } else {
-    return false;
-  }
 }
 
 inline bool IsExtendedTensor(const phi::TensorBase& tensor) {
@@ -404,6 +375,10 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
             *dev_ctx, target_place, dtype, out_tensor->layout(), out_tensor);
       }
     }
+  } else if (op_type == "conditional_block") {
+    VLOG(4) << op_base->DebugStringEx(scope);
+    op_base->RunPreStaticBuild(*scope, place);
+    VLOG(4) << op_base->DebugStringEx(scope);
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Can not static build for op: %s", op_type));
