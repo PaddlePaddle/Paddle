@@ -20,7 +20,6 @@ rem =================================================
 @ECHO ON
 setlocal enabledelayedexpansion
 
-
 rem -------clean up environment-----------
 set work_dir=%cd%
 if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
