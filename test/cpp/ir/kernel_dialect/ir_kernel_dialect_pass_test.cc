@@ -133,7 +133,7 @@ ir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
                                     std::vector<std::string> attributes,
                                     std::string attr_name,
                                     phi::KernelKey kernel_key) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::IrContext* ctx = ir::IrContext::Instance();
   ir::AttributeMap attr_map;
   for (size_t i = 0; i < attribute_names.size(); i++) {
     ir::Attribute attr_value = ir::StrAttribute::get(ctx, attributes[i]);
@@ -155,7 +155,8 @@ TEST(kernel_dialect, legacy_op_test) {
   phi::KernelKey kernel_key(
       phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
   
-  ir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(paddle::dialect::LegacyKernelOp::name());
+  ir::OpInfo kernel_op_info =
+      ctx->GetRegisteredOpInfo(paddle::dialect::LegacyKernelOp::name());
   ir::OperationArgument argument(kernel_op_info);
   argument.attributes = CreateAttributeMap({"op_name", "kernel_name"},
                                            {"pd.kernel_op", "kernel_op"},
