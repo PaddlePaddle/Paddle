@@ -278,6 +278,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,
             seed=self.seed,
+            flag=True,
             position_ids=position_ids,
         )
         for i in range(len(p_fw)):

@@ -60,7 +60,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   phi::Array<T*, 3> outs_data;
   phi::Array<const T*, 3> ins_data;
   phi::Array<const T*, 2> sin_cos_data;
-  const int64_t* position_ids_data;
+  const int64_t* position_ids_data = NULL;
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
@@ -89,13 +89,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     sin_cos_data[1] = cos->data<T>();
 
     flag_sin_cos = true;
-  }
 
-  bool flag_position_ids = false;
-  if (position_ids.get_ptr()) {
-    position_ids_data = position_ids->data<int64_t>();
-
-    flag_position_ids = true;
+    if (position_ids.get_ptr()) {
+      position_ids_data = position_ids->data<int64_t>();
+    }
   }
 
   int sign = -1;
@@ -105,7 +102,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                      sin_cos_data,
                                      position_ids_data,
                                      flag_sin_cos,
-                                     flag_position_ids,
                                      sign,
                                      batch_size,
                                      seq_len,
@@ -120,7 +116,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                      sin_cos_data,
                                      position_ids_data,
                                      flag_sin_cos,
-                                     flag_position_ids,
                                      sign,
                                      batch_size,
                                      seq_len,

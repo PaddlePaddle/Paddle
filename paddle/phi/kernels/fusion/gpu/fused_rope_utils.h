@@ -23,7 +23,6 @@ template <typename T, typename MPType, int VecSize = 2>
 __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
                                     const int64_t* position_ids_data,
                                     bool flag_sin_cos,
-                                    bool flag_position_ids,
                                     int64_t index,
                                     int64_t seq_len,
                                     int64_t num_heads,
@@ -40,7 +39,7 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
       int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
       int64_t pos_seq_ori = index_wc / (num_heads * head_dim);
       int64_t pos_seq;
-      if (flag_position_ids) {
+      if (position_ids_data) {
         int64_t pos_bs = (index + nx) / (seq_len * num_heads * head_dim);
         int64_t index_ids = pos_bs * seq_len + pos_seq_ori;
         pos_seq = position_ids_data[index_ids];
@@ -60,15 +59,7 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
     for (int nx = 0; nx < VecSize; ++nx) {
       // get sin_index and cos_index
       int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int64_t pos_seq_ori = index_wc / (num_heads * head_dim);
-      int64_t pos_seq;
-      if (flag_position_ids) {
-        int64_t pos_bs = (index + nx) / (seq_len * num_heads * head_dim);
-        int64_t index_ids = pos_bs * seq_len + pos_seq_ori;
-        pos_seq = position_ids_data[index_ids];
-      } else {
-        pos_seq = pos_seq_ori;
-      }
+      int64_t pos_seq = index_wc / (num_heads * head_dim);
       MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
       MPType indicses =
           static_cast<MPType>(1) /
@@ -86,7 +77,6 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     phi::Array<const T*, 2> sin_cos_data,
     const int64_t* position_ids_data,
     bool flag_sin_cos,
-    bool flag_position_ids,
     int sign,
     int64_t batch_size,
     int64_t seq_len,
@@ -113,7 +103,6 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     VectorizedGetSinCos(sin_cos_data,
                         position_ids_data,
                         flag_sin_cos,
-                        flag_position_ids,
                         index,
                         seq_len,
                         num_heads,
@@ -155,7 +144,6 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     phi::Array<const T*, 2> sin_cos_data,
     const int64_t* position_ids_data,
     bool flag_sin_cos,
-    bool flag_position_ids,
     int sign,
     int64_t batch_size,
     int64_t seq_len,
@@ -182,7 +170,6 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     VectorizedGetSinCos(sin_cos_data,
                         position_ids_data,
                         flag_sin_cos,
-                        flag_position_ids,
                         index,
                         seq_len,
                         num_heads,
