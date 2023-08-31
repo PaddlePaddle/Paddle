@@ -211,6 +211,11 @@ void EmbeddingInferMeta(const MetaTensor& x,
                         int64_t padding_idx,
                         MetaTensor* out);
 
+void CEmbeddingInferMeta(const MetaTensor& weight,
+                         const MetaTensor& x,
+                         int64_t start_index,
+                         MetaTensor* out);
+
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,

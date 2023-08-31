@@ -99,8 +99,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                     "@fetch";
         }
       }
+      VLOG(0) << "base_program:";
+      base_program->Print(std::cout);
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+      VLOG(0) << "kernel_program:";
+      kernel_program->Print(std::cout);
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,

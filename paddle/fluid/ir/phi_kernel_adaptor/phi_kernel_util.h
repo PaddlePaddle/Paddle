@@ -87,6 +87,11 @@ void BuildPhiContext(ir::Operation* op,
 
   auto attr_map = op->attributes();
 
+  VLOG(0) << "zyl attr_map:";
+  for (const auto& attr : attr_map) {
+    VLOG(0) << "Key: " << attr.first << " Value: " << attr.second;
+  }
+
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
 
   auto& name2id = op_yaml_info.InputName2Id();
@@ -128,9 +133,14 @@ void BuildPhiContext(ir::Operation* op,
     }
   }
 
+  VLOG(0) << "is_kernel:" << is_kernel;
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
+    VLOG(0) << "zyl Attr:" << t;
+  }
+  for (auto& t : vec_kernel_fn_attr_params) {
     if (name2id.count(t)) {
+      VLOG(0) << "zyl name2id:" << name2id.count(t);
       // tensor attribute, get information from input
       ir::Value ptr = op->operand_source(name2id.at(t));
 
@@ -186,6 +196,18 @@ void BuildPhiContext(ir::Operation* op,
     } else if (attr_type_name == "ir::Int32Attribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
     } else if (attr_type_name == "ir::Int64Attribute") {
+      VLOG(0) << "zyl attr_type_name:" << attr_type_name;
+      VLOG(0) << "attr_map[t]";
+      auto attr_map_t = attr_map[t];
+      VLOG(0) << "dyn_cast";
+      auto t_cast = attr_map_t.dyn_cast<ir::Int64Attribute>();
+      VLOG(0) << attr_map_t.isa<ir::Int64Attribute>();
+      VLOG(0) << attr_map_t.isa<ir::Int32Attribute>();
+      VLOG(0) << ".data()";
+      auto t_cast_data = t_cast.data();
+      VLOG(0) << "t_cast_data:";
+      VLOG(0) << t_cast_data;
+      VLOG(0) << "zyl attr_type_name:" << attr_type_name;
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
