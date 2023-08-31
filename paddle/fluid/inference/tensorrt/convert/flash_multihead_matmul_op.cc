@@ -319,7 +319,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         nvinfer1::MatrixOperation matrix_operation_y =
             nvinfer1::MatrixOperation::kNONE;
         auto* weight_tensor =
-            engine_->GetITensor(op_desc.Input(weight_name).front());
+            engine_->GetITensor(op_desc.Input(qkv_weight_name[i]).front());
         weight_reshape_before_mm[i] =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *weight_tensor);
         weight_reshape_before_mm[i]->setInput(
