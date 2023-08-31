@@ -35,8 +35,8 @@
 cd /d %~dp0%
 
 SET INSTALL_FLAG=%1
-::  0. PR_CI_Openblas
-::  1. PR_CI_Inference，will install VS2019 CUDA11.2
+::  0. PR_CI_Windows_OPENBLAS
+::  1. PR_CI_Windows_Inference，will install VS2019, CUDA11.2
 ::  2. PR_CI_Windows，CUDA10.2
 
 
@@ -167,9 +167,10 @@ goto :eof
 :: Download Visual Studio 2017 when it not installed.
 :vs
 echo ">>>>>>>> step [4/9]: Visual Studio"
-cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio2017
 if %INSTALL_FLAG% == 1 (
   cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio2019
+) else (
+  cmd /C "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"  > nul 2> nul || call :install_visual_studio2017
 )
 goto :cuda
 
@@ -296,8 +297,6 @@ echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 wget -O sccache.exe "https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe"
 copy sccache.exe C:\Python38 /Y 
-copy sccache.exe C:\Python39 /Y
-copy sccache.exe C:\Python310 /Y
 goto :eof
 :: ===== end step 7: sccache on windows =====
 
