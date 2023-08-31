@@ -108,9 +108,17 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
             cb,
             cb_params);
         break;
+      case PaddleDType::BFLOAT16:
+        src.CopyToCpuImpl(
+            dst.mutable_data<paddle::platform::bfloat16>(PlaceType::kCPU),
+            exec_stream,
+            cb,
+            cb_params);
+        break;
       default:
         PADDLE_THROW(paddle::platform::errors::Unimplemented(
-            "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16, FLOAT32 and "
+            "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16, BFLOAT16, FLOAT32 "
+            "and "
             "FLOAT64 is supported in Tensor. Others not implements"));
     }
     // gpu => gpu or cpu => gpu
@@ -172,9 +180,17 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
             src.data<paddle::platform::float16>(&src_place, &data_size));
         data_len = data_size * 2;
         break;
+      case PaddleDType::BFLOAT16:
+        dst_data = static_cast<void*>(
+            dst.mutable_data<paddle::platform::bfloat16>(PlaceType::kGPU));
+        src_data = static_cast<void*>(
+            src.data<paddle::platform::bfloat16>(&src_place, &data_size));
+        data_len = data_size * 2;
+        break;
       default:
         PADDLE_THROW(paddle::platform::errors::Unimplemented(
-            "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16, FLOAT32 and "
+            "Only INT32, INT64, UINT8, INT8, BOOL, FLOAT16, BFLOAT16, FLOAT32 "
+            "and "
             "FLOAT64 is supported in Tensor. Others not implements"));
     }
 
@@ -243,6 +259,9 @@ Status::Status(const Status& status) : impl_(std::make_shared<Impl>()) {
 }
 
 Status& Status::operator=(const Status& status) noexcept {
+  if (this == &status) {
+    return *this;
+  }
   *impl_ = *status.impl_;
   return *this;
 }

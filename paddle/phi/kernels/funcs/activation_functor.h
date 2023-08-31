@@ -590,7 +590,7 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto a = static_cast<T>(scale_a);
+    auto a = static_cast<T>(scale_a);  // NOLINT
     auto b = static_cast<T>(scale_b);
     auto temp = (a * x).tanh() * (a * x).tanh();
     dx.device(d) = dout * a * b * (static_cast<T>(1) - temp);
@@ -1551,7 +1551,7 @@ struct LeakyReluFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    if (alpha < 1.f) {
+    if (alpha < 1.f) {  // NOLINT
       out.device(d) = x.cwiseMax(static_cast<T>(alpha) * x);
     } else {
       out.device(d) = x.cwiseMin(static_cast<T>(alpha) * x);
@@ -1620,7 +1620,7 @@ struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto th = static_cast<T>(threshold);
+    auto th = static_cast<T>(threshold);  // NOLINT
     out.device(d) = (x > th).template cast<T>() * x;
   }
 };
@@ -1638,7 +1638,7 @@ struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto th = static_cast<T>(threshold);
+    auto th = static_cast<T>(threshold);  // NOLINT
     dx.device(d) = dout * (x > th).template cast<T>();
   }
 
@@ -1716,7 +1716,7 @@ struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);
+    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
     auto temp2 = x > static_cast<T>(threshold);
     out.device(d) = x * (temp1 || temp2).template cast<T>();
   }
@@ -1736,7 +1736,7 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);
+    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
     auto temp2 = x > static_cast<T>(threshold);
     dx.device(d) = dout * (temp1 || temp2).template cast<T>();
   }
@@ -1755,7 +1755,7 @@ struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto lambdaT = static_cast<T>(lambda);
+    auto lambdaT = static_cast<T>(lambda);  // NOLINT
     auto temp1 = (x > lambdaT).template cast<T>();
     auto temp2 = (x < -lambdaT).template cast<T>();
     out.device(d) = temp1 * (x - lambdaT) + temp2 * (x + lambdaT);
@@ -1774,7 +1774,7 @@ struct SoftShrinkGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto lambdaT = static_cast<T>(lambda);
+    auto lambdaT = static_cast<T>(lambda);  // NOLINT
     auto temp1 = (x > lambdaT).template cast<T>();
     auto temp2 = (x < -lambdaT).template cast<T>();
     dx.device(d) = dout * (temp1 + temp2).template cast<T>();
@@ -2628,7 +2628,7 @@ struct CELUGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto temp_a_pos = static_cast<T>(alpha > 0);
+    auto temp_a_pos = static_cast<T>(alpha > 0);  // NOLINT
     auto temp_a_neg = static_cast<T>(alpha <= 0);
     auto temp_x_pos = (x > static_cast<T>(0)).template cast<T>();
     auto temp_x_neg = (x <= static_cast<T>(0)).template cast<T>();

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -31,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 
@@ -384,9 +384,14 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
-  out->set_dtype(out_dtype);
   out->set_layout(x.layout());
   out->share_lod(x);
+  // In inpalce case, setting the dtype of out will reset the dtype of x at the
+  // same time, which will cause bugs, so move the dtype setting of out to the
+  // kernel
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(out_dtype);
+  }
 }
 
 void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
@@ -396,6 +401,50 @@ void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   out->set_dims(dim);
   out->set_layout(x.layout());
   out->set_dtype(x.dtype());
+}
+
+void SendV2InferMeta(const int peer, const int ring_id) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for send_v2 op must be non-negative.", peer));
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      errors::InvalidArgument(
+          "The ring_id (%d) for send_v2 op must be non-negative.", ring_id));
+}
+
+void RecvV2InferMeta(int peer,
+                     DataType dtype,
+                     const std::vector<int>& out_shape,
+                     MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for p_recv op must be non-negative.", peer));
+
+  PADDLE_ENFORCE_GE(out_shape.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of the output shape must be greater than 0 "
+                        "but the value given is %d.",
+                        out_shape.size()));
+
+  for (size_t i = 0; i < out_shape.size(); ++i) {
+    PADDLE_ENFORCE_GE(
+        out_shape[i],
+        1,
+        errors::InvalidArgument("The shape attribute for recv must be set "
+                                "explicitly, but the %dth element is %d which "
+                                "is less than 1. Or dynamic_shape should be "
+                                "set to True for both send_v2 and recv_v2.",
+                                i,
+                                out_shape[i]));
+  }
+  out->set_dtype(dtype);
 }
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
@@ -459,6 +508,20 @@ void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
   out->share_lod(x);
+}
+
+void CIdentityInferMeta(const MetaTensor& x,
+                        int ring_id,
+                        bool use_calc_stream,
+                        bool use_model_parallel,
+                        MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      errors::InvalidArgument(
+          "The ring_id (%d) for c_identity must be non-negative.", ring_id));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
@@ -2018,6 +2081,13 @@ void KthvalueInferMeta(const MetaTensor& x,
   indices->set_dims(dims);
   indices->share_lod(x);
   indices->set_dtype(x.dtype());
+}
+
+void LogicalNotInfermeta(const MetaTensor& x, MetaTensor* out) {
+  UnchangedInferMeta(x, out);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void LogsumexpInferMeta(const MetaTensor& input,
@@ -5039,6 +5109,48 @@ void UnStackInferMeta(const MetaTensor& x,
   }
 }
 
+void WeightQuantizeInferMeta(const MetaTensor& x,
+                             const std::string& algo,
+                             MetaTensor* out,
+                             MetaTensor* scale) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      phi::errors::InvalidArgument(
+          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[0] % 64,
+      0,
+      phi::errors::InvalidArgument(
+          "The first dimension of input must be divisible by 64, but got[%d]",
+          x_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "The second dimension of input must be divisible by 16, but got[%d]",
+          x_dims[1]));
+  std::vector<int64_t> dim_scale({x_dims[1]});
+  std::vector<int64_t> dim_out;
+  if (algo == "weight_only_int8" || algo == "llm.int8") {
+    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
+  } else if (algo == "weight_only_int4") {
+    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
+  } else {
+    phi::errors::InvalidArgument(
+        "The algo must be in ['weight_only_int8', 'weight_only_int4', "
+        "'llm.int8'], but got[%s]",
+        algo);
+  }
+  out->set_dims(phi::make_ddim(dim_out));
+
+  out->set_dtype(DataType::INT8);
+
+  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dtype(DataType::FLOAT32);
+}
+
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
@@ -5097,46 +5209,6 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
   stats->set_dims(phi::make_ddim({3}));
   values->set_dtype(DataType::FLOAT32);
   values->set_dims(phi::make_ddim({3}));
-}
-
-void QuantForCompressInferMeta(const MetaTensor& x,
-                               int bits,
-                               const std::string& layout,
-                               MetaTensor* out,
-                               MetaTensor* scale) {
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      2UL,
-      phi::errors::InvalidArgument(
-          "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
-  PADDLE_ENFORCE_GE(
-      x_dims[0],
-      64,
-      phi::errors::OutOfRange("The first dimension of input is out of range "
-                              "(expected at least 64, but got %ld).",
-                              x_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[0] % 64,
-      0,
-      phi::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 64, but got[%d]",
-          x_dims[0]));
-  std::vector<int64_t> dim_scale({x_dims[1]});
-  std::vector<int64_t> dim_out;
-  if (bits == 8) {
-    dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
-  } else if (bits == 4) {
-    dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
-  } else {
-    phi::errors::InvalidArgument("The bit must be 8 or 4, but got %d", bits);
-  }
-  out->set_dims(phi::make_ddim(dim_out));
-
-  out->set_dtype(DataType::INT8);
-
-  scale->set_dims(phi::make_ddim(dim_scale));
-  scale->set_dtype(DataType::FLOAT32);
 }
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {

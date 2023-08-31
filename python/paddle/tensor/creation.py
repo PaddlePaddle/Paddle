@@ -87,10 +87,10 @@ def create_global_var(
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                           persistable=True, force_cpu=True, name='new_var')
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+            ...                                persistable=True, force_cpu=True, name='new_var')
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
@@ -172,9 +172,9 @@ def create_parameter(
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            W = paddle.create_parameter(shape=[784, 200], dtype='float32')
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
     for item in shape:
@@ -243,8 +243,8 @@ def create_tensor(dtype, name=None, persistable=False):
     Examples:
         .. code-block:: python
 
-          import paddle
-          tensor = paddle.tensor.create_tensor(dtype='float32')
+            >>> import paddle
+            >>> tensor = paddle.tensor.create_tensor(dtype='float32')
     """
     check_dtype(
         dtype,
@@ -290,9 +290,13 @@ def linspace(start, stop, num, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-             import paddle
-             data = paddle.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
-             data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
+            >>> import paddle
+            >>> data = paddle.linspace(0, 10, 5, 'float32')
+            >>> print(data.numpy())
+            [0. 2.5 5. 7.5 10.]
+            >>> data = paddle.linspace(0, 10, 1, 'float32')
+            >>> print(data.numpy())
+            [0.]
 
     """
     if dtype is None:
@@ -418,11 +422,13 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.logspace(0, 10, 5, 2, 'float32')
-            # [1.          , 5.65685415  , 32.         , 181.01933289, 1024.       ]
-            data = paddle.logspace(0, 10, 1, 2, 'float32')
-            # [1.]
+            >>> import paddle
+            >>> data = paddle.logspace(0, 10, 5, 2, 'float32')
+            >>> print(data.numpy())
+            [1.0000000e+00 5.6568542e+00 3.2000000e+01 1.8101933e+02 1.0240000e+03]
+            >>> data = paddle.logspace(0, 10, 1, 2, 'float32')
+            >>> print(data.numpy())
+            [1.]
     """
     if dtype is None:
         dtype = 'float32'
@@ -739,38 +745,38 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         Tensor: A Tensor constructed from ``data`` .
 
     Examples:
+        .. code-block:: python
 
-    .. code-block:: python
+            >>> import paddle
 
-        import paddle
+            >>> type(paddle.to_tensor(1))
+            <class 'paddle.Tensor'>
 
-        type(paddle.to_tensor(1))
-        # <class 'paddle.Tensor'>
+            >>> paddle.to_tensor(1)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            1)
 
-        paddle.to_tensor(1)
-        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        1)
+            >>> x = paddle.to_tensor(1, stop_gradient=False)
+            >>> print(x)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=False,
+            1)
 
-        x = paddle.to_tensor(1, stop_gradient=False)
-        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=False,
-        #        1)
+            >>> paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            1)
 
-        paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
-        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        1)
+            >>> paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0.10000000, 0.20000000],
+             [0.30000001, 0.40000001]])
 
-        paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
-        # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
-        #        [[0.10000000, 0.20000000],
-        #         [0.30000001, 0.40000001]])
+            >>> type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+            <class 'paddle.Tensor'>
 
-        type(paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
-        # <class 'paddle.Tensor'>
-
-        paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
-        # Tensor(shape=[2, 2], dtype=complex64, place=CPUPlace, stop_gradient=True,
-        #        [[(1+1j), (2+0j)],
-        #         [(3+2j), (4+0j)]])
+            >>> paddle.to_tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+            Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1+1j), (2+0j)],
+             [(3+2j), (4+0j)]])
     """
     place = _get_paddle_place(place)
     if place is None:
@@ -808,12 +814,13 @@ def full_like(x, fill_value, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
-          output = paddle.full_like(input, 2.0)
-          # [[2. 2. 2.]
-          #  [2. 2. 2.]]
+            >>> input = paddle.full(shape=[2, 3], fill_value=0.0, dtype='float32', name='input')
+            >>> output = paddle.full_like(input, 2.0)
+            >>> print(output.numpy())
+            [[2. 2. 2.]
+             [2. 2. 2.]]
     """
     if dtype is None:
         dtype = x.dtype
@@ -897,7 +904,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 shape = paddle.utils.convert_shape_to_list(shape)
 
             if not isinstance(dtype, core.DataType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+                dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
 
             if out is None:
                 out = paddle._ir_ops.full(shape, float(value), dtype, place)
@@ -984,27 +991,30 @@ def ones(shape, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # shape is a list/tuple
-            data1 = paddle.ones(shape=[3, 2])
-            # [[1. 1.]
-            #  [1. 1.]
-            #  [1. 1.]]
+            >>> # shape is a list/tuple
+            >>> data1 = paddle.ones(shape=[3, 2])
+            >>> print(data1.numpy())
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
 
-            # shape is a Tensor
-            shape = paddle.to_tensor([3, 2])
-            data2 = paddle.ones(shape=shape)
-            # [[1. 1.]
-            #  [1. 1.]
-            #  [1. 1.]]
+            >>> # shape is a Tensor
+            >>> shape = paddle.to_tensor([3, 2])
+            >>> data2 = paddle.ones(shape=shape)
+            >>> print(data2.numpy())
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
 
-            # shape is a Tensor List
-            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
-            data3 = paddle.ones(shape=shape)
-            # [[1. 1.]
-            #  [1. 1.]
-            #  [1. 1.]]
+            >>> # shape is a Tensor List
+            >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            >>> data3 = paddle.ones(shape=shape)
+            >>> print(data3.numpy())
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
     """
     if dtype is None:
         dtype = core.VarDesc.VarType.FP32
@@ -1032,11 +1042,15 @@ def ones_like(x, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1,2,3])
-            out1 = paddle.ones_like(x) # [1., 1., 1.]
-            out2 = paddle.ones_like(x, dtype='int32') # [1, 1, 1]
+            >>> x = paddle.to_tensor([1,2,3])
+            >>> out1 = paddle.ones_like(x)
+            >>> print(out1.numpy())
+            [1 1 1]
+            >>> out2 = paddle.ones_like(x, dtype='int32')
+            >>> print(out2.numpy())
+            [1 1 1]
 
     """
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
@@ -1061,27 +1075,30 @@ def zeros(shape, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # shape is a list/tuple
-            data1 = paddle.zeros(shape=[3, 2])
-            # [[0. 0.]
-            #  [0. 0.]
-            #  [0. 0.]]
+            >>> # shape is a list/tuple
+            >>> data1 = paddle.zeros(shape=[3, 2])
+            >>> print(data1.numpy())
+            [[0. 0.]
+             [0. 0.]
+             [0. 0.]]
 
-            # shape is a Tensor
-            shape = paddle.to_tensor([3, 2])
-            data2 = paddle.zeros(shape=shape)
-            # [[0. 0.]
-            #  [0. 0.]
-            #  [0. 0.]]
+            >>> # shape is a Tensor
+            >>> shape = paddle.to_tensor([3, 2])
+            >>> data2 = paddle.zeros(shape=shape)
+            >>> print(data2.numpy())
+            [[0. 0.]
+             [0. 0.]
+             [0. 0.]]
 
-            # shape is a Tensor List
-            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
-            data3 = paddle.zeros(shape=shape)
-            # [[0. 0.]
-            #  [0. 0.]
-            #  [0. 0.]]
+            >>> # shape is a Tensor List
+            >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            >>> data3 = paddle.zeros(shape=shape)
+            >>> print(data3.numpy())
+            [[0. 0.]
+             [0. 0.]
+             [0. 0.]]
     """
     if dtype is None:
         dtype = 'float32'
@@ -1110,11 +1127,15 @@ def zeros_like(x, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1, 2, 3])
-            out1 = paddle.zeros_like(x) # [0., 0., 0.]
-            out2 = paddle.zeros_like(x, dtype='int32') # [0, 0, 0]
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> out1 = paddle.zeros_like(x)
+            >>> print(out1.numpy())
+            [0 0 0]
+            >>> out2 = paddle.zeros_like(x, dtype='int32')
+            >>> print(out2.numpy())
+            [0 0 0]
 
     """
     return full_like(x=x, fill_value=0, dtype=dtype, name=name)
@@ -1140,15 +1161,17 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          data = paddle.eye(3, dtype='int32')
-          # [[1 0 0]
-          #  [0 1 0]
-          #  [0 0 1]]
-          data = paddle.eye(2, 3, dtype='int32')
-          # [[1 0 0]
-          #  [0 1 0]]
+            >>> data = paddle.eye(3, dtype='int32')
+            >>> print(data.numpy())
+            [[1 0 0]
+             [0 1 0]
+             [0 0 1]]
+            >>> data = paddle.eye(2, 3, dtype='int32')
+            >>> print(data.numpy())
+            [[1 0 0]
+             [0 1 0]]
     """
 
     def _check_attr(attr, message):
@@ -1219,34 +1242,38 @@ def full(shape, fill_value, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # shape is a list/tuple
-            data1 = paddle.full(shape=[3, 2], fill_value=1.)
-            # [[1. 1.]
-            #  [1. 1.]
-            #  [1. 1.]]
+            >>> # shape is a list/tuple
+            >>> data1 = paddle.full(shape=[3, 2], fill_value=1.)
+            >>> print(data1.numpy())
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
 
-            # shape is a Tensor
-            shape = paddle.to_tensor([3, 2])
-            data2 = paddle.full(shape=shape, fill_value=2.)
-            # [[2. 2.]
-            #  [2. 2.]
-            #  [2. 2.]]
+            >>> # shape is a Tensor
+            >>> shape = paddle.to_tensor([3, 2])
+            >>> data2 = paddle.full(shape=shape, fill_value=2.)
+            >>> print(data2.numpy())
+            [[2. 2.]
+             [2. 2.]
+             [2. 2.]]
 
-            # shape is a Tensor List
-            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
-            data3 = paddle.full(shape=shape, fill_value=3.)
-            # [[3. 3.]
-            #  [3. 3.]
-            #  [3. 3.]]
+            >>> # shape is a Tensor List
+            >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            >>> data3 = paddle.full(shape=shape, fill_value=3.)
+            >>> print(data3.numpy())
+            [[3. 3.]
+             [3. 3.]
+             [3. 3.]]
 
-            # fill_value is a Tensor.
-            val = paddle.full([], 2.0, "float32")
-            data5 = paddle.full(shape=[3, 2], fill_value=val)
-            # [[2. 2.]
-            #  [2. 2.]
-            #  [2. 2.]]
+            >>> # fill_value is a Tensor.
+            >>> val = paddle.full([], 2.0, "float32")
+            >>> data5 = paddle.full(shape=[3, 2], fill_value=val)
+            >>> print(data5.numpy())
+            [[2. 2.]
+             [2. 2.]
+             [2. 2.]]
     """
 
     if dtype is None:
@@ -1292,21 +1319,25 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            out1 = paddle.arange(5)
-            # [0, 1, 2, 3, 4]
+            >>> out1 = paddle.arange(5)
+            >>> print(out1.numpy())
+            [0 1 2 3 4]
 
-            out2 = paddle.arange(3, 9, 2.0)
-            # [3, 5, 7]
+            >>> out2 = paddle.arange(3, 9, 2.0)
+            >>> print(out2.numpy())
+            [3. 5. 7.]
 
-            # use 4.999 instead of 5.0 to avoid floating point rounding errors
-            out3 = paddle.arange(4.999, dtype='float32')
-            # [0., 1., 2., 3., 4.]
+            >>> # use 4.999 instead of 5.0 to avoid floating point rounding errors
+            >>> out3 = paddle.arange(4.999, dtype='float32')
+            >>> print(out3.numpy())
+            [0. 1. 2. 3. 4.]
 
-            start_var = paddle.to_tensor(3)
-            out4 = paddle.arange(start_var, 7)
-            # [3, 4, 5, 6]
+            >>> start_var = paddle.to_tensor(3)
+            >>> out4 = paddle.arange(start_var, 7)
+            >>> print(out4.numpy())
+            [3 4 5 6]
 
     """
     if end is None:
@@ -1444,33 +1475,37 @@ def tril(x, diagonal=0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            data = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1 , 2 , 3 , 4 ],
-            #         [5 , 6 , 7 , 8 ],
-            #         [9 , 10, 11, 12]])
+            >>> data = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            >>> print(data)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [5 , 6 , 7 , 8 ],
+             [9 , 10, 11, 12]])
 
-            tril1 = paddle.tril(data)
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1 , 0 , 0 , 0 ],
-            #         [5 , 6 , 0 , 0 ],
-            #         [9 , 10, 11, 0 ]])
+            >>> tril1 = paddle.tril(data)
+            >>> print(tril1)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 0 , 0 , 0 ],
+             [5 , 6 , 0 , 0 ],
+             [9 , 10, 11, 0 ]])
 
-            # example 2, positive diagonal value
-            tril2 = paddle.tril(data, diagonal=2)
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1 , 2 , 3 , 0 ],
-            #         [5 , 6 , 7 , 8 ],
-            #         [9 , 10, 11, 12]])
+            >>> # example 2, positive diagonal value
+            >>> tril2 = paddle.tril(data, diagonal=2)
+            >>> print(tril2)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 0 ],
+             [5 , 6 , 7 , 8 ],
+             [9 , 10, 11, 12]])
 
-            # example 3, negative diagonal value
-            tril3 = paddle.tril(data, diagonal=-1)
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0 , 0 , 0 , 0 ],
-            #         [5 , 0 , 0 , 0 ],
-            #         [9 , 10, 0 , 0 ]])
+            >>> # example 3, negative diagonal value
+            >>> tril3 = paddle.tril(data, diagonal=-1)
+            >>> print(tril3)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0 , 0 , 0 , 0 ],
+             [5 , 0 , 0 , 0 ],
+             [9 , 10, 0 , 0 ]])
     """
     if in_dynamic_mode():
         return _C_ops.tril(x, diagonal)
@@ -1515,34 +1550,38 @@ def triu(x, diagonal=0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1 , 2 , 3 , 4 ],
-            #         [5 , 6 , 7 , 8 ],
-            #         [9 , 10, 11, 12]])
+            >>> x = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [5 , 6 , 7 , 8 ],
+             [9 , 10, 11, 12]])
 
-            # example 1, default diagonal
-            triu1 = paddle.tensor.triu(x)
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1 , 2 , 3 , 4 ],
-            #         [0 , 6 , 7 , 8 ],
-            #         [0 , 0 , 11, 12]])
+            >>> # example 1, default diagonal
+            >>> triu1 = paddle.tensor.triu(x)
+            >>> print(triu1)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [0 , 6 , 7 , 8 ],
+             [0 , 0 , 11, 12]])
 
-            # example 2, positive diagonal value
-            triu2 = paddle.tensor.triu(x, diagonal=2)
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 0, 3, 4],
-            #         [0, 0, 0, 8],
-            #         [0, 0, 0, 0]])
+            >>> # example 2, positive diagonal value
+            >>> triu2 = paddle.tensor.triu(x, diagonal=2)
+            >>> print(triu2)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 3, 4],
+             [0, 0, 0, 8],
+             [0, 0, 0, 0]])
 
-            # example 3, negative diagonal value
-            triu3 = paddle.tensor.triu(x, diagonal=-1)
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1 , 2 , 3 , 4 ],
-            #         [5 , 6 , 7 , 8 ],
-            #         [0 , 10, 11, 12]])
+            >>> # example 3, negative diagonal value
+            >>> triu3 = paddle.tensor.triu(x, diagonal=-1)
+            >>> print(triu3)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [5 , 6 , 7 , 8 ],
+             [0 , 10, 11, 12]])
 
     """
     if in_dynamic_mode():
@@ -1578,20 +1617,19 @@ def meshgrid(*args, **kwargs):
          Tensor: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
 
     Examples:
-      .. code-block:: python
+        .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          x = paddle.randint(low=0, high=100, shape=[100])
-          y = paddle.randint(low=0, high=100, shape=[200])
+            >>> x = paddle.randint(low=0, high=100, shape=[100])
+            >>> y = paddle.randint(low=0, high=100, shape=[200])
 
-          grid_x, grid_y = paddle.meshgrid(x, y)
+            >>> grid_x, grid_y = paddle.meshgrid(x, y)
 
-          print(grid_x.shape)
-          print(grid_y.shape)
-
-          #the shape of res_1 is (100, 200)
-          #the shape of res_2 is (100, 200)
+            >>> print(grid_x.shape)
+            [100, 200]
+            >>> print(grid_y.shape)
+            [100, 200]
 
     """
 
@@ -1655,63 +1693,63 @@ def diagflat(x, offset=0, name=None):
         .. code-block:: python
             :name: code-example-1
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1, 2, 3])
-            y = paddle.diagflat(x)
-            print(y)
-            # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1, 0, 0],
-            #         [0, 2, 0],
-            #         [0, 0, 3]])
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.diagflat(x)
+            >>> print(y)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 0, 0],
+             [0, 2, 0],
+             [0, 0, 3]])
 
-            y = paddle.diagflat(x, offset=1)
-            print(y)
-            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 1, 0, 0],
-            #         [0, 0, 2, 0],
-            #         [0, 0, 0, 3],
-            #         [0, 0, 0, 0]])
+            >>> y = paddle.diagflat(x, offset=1)
+            >>> print(y)
+            Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 0, 0],
+             [0, 0, 2, 0],
+             [0, 0, 0, 3],
+             [0, 0, 0, 0]])
 
-            y = paddle.diagflat(x, offset=-1)
-            print(y)
-            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 0, 0, 0],
-            #         [1, 0, 0, 0],
-            #         [0, 2, 0, 0],
-            #         [0, 0, 3, 0]])
+            >>> y = paddle.diagflat(x, offset=-1)
+            >>> print(y)
+            Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0],
+             [1, 0, 0, 0],
+             [0, 2, 0, 0],
+             [0, 0, 3, 0]])
 
         .. code-block:: python
             :name: code-example-2
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[1, 2], [3, 4]])
-            y = paddle.diagflat(x)
-            print(y)
-            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1, 0, 0, 0],
-            #         [0, 2, 0, 0],
-            #         [0, 0, 3, 0],
-            #         [0, 0, 0, 4]])
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> y = paddle.diagflat(x)
+            >>> print(y)
+            Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 0, 0, 0],
+             [0, 2, 0, 0],
+             [0, 0, 3, 0],
+             [0, 0, 0, 4]])
 
-            y = paddle.diagflat(x, offset=1)
-            print(y)
-            # Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 1, 0, 0, 0],
-            #         [0, 0, 2, 0, 0],
-            #         [0, 0, 0, 3, 0],
-            #         [0, 0, 0, 0, 4],
-            #         [0, 0, 0, 0, 0]])
+            >>> y = paddle.diagflat(x, offset=1)
+            >>> print(y)
+            Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 0, 0, 0],
+             [0, 0, 2, 0, 0],
+             [0, 0, 0, 3, 0],
+             [0, 0, 0, 0, 4],
+             [0, 0, 0, 0, 0]])
 
-            y = paddle.diagflat(x, offset=-1)
-            print(y)
-            # Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 0, 0, 0, 0],
-            #         [1, 0, 0, 0, 0],
-            #         [0, 2, 0, 0, 0],
-            #         [0, 0, 3, 0, 0],
-            #         [0, 0, 0, 4, 0]])
+            >>> y = paddle.diagflat(x, offset=-1)
+            >>> print(y)
+            Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0],
+             [1, 0, 0, 0, 0],
+             [0, 2, 0, 0, 0],
+             [0, 0, 3, 0, 0],
+             [0, 0, 0, 4, 0]])
     """
     if in_dynamic_mode():
         if len(x.shape) <= 1:
@@ -1788,53 +1826,53 @@ def diag(x, offset=0, padding_value=0, name=None):
         .. code-block:: python
             :name: code-example-1
 
-            import paddle
+            >>> import paddle
 
-            paddle.disable_static()
-            x = paddle.to_tensor([1, 2, 3])
-            y = paddle.diag(x)
-            print(y)
-            # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1, 0, 0],
-            #         [0, 2, 0],
-            #         [0, 0, 3]])
+            >>> paddle.disable_static()
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.diag(x)
+            >>> print(y)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 0, 0],
+             [0, 2, 0],
+             [0, 0, 3]])
 
-            y = paddle.diag(x, offset=1)
-            print(y)
-            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0, 1, 0, 0],
-            #         [0, 0, 2, 0],
-            #         [0, 0, 0, 3],
-            #         [0, 0, 0, 0]])
+            >>> y = paddle.diag(x, offset=1)
+            >>> print(y)
+            Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 0, 0],
+             [0, 0, 2, 0],
+             [0, 0, 0, 3],
+             [0, 0, 0, 0]])
 
-            y = paddle.diag(x, padding_value=6)
-            print(y)
-            # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[1, 6, 6],
-            #         [6, 2, 6],
-            #         [6, 6, 3]])
+            >>> y = paddle.diag(x, padding_value=6)
+            >>> print(y)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 6, 6],
+             [6, 2, 6],
+             [6, 6, 3]])
 
         .. code-block:: python
             :name: code-example-2
 
-            import paddle
+            >>> import paddle
 
-            paddle.disable_static()
-            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
-            y = paddle.diag(x)
-            print(y)
-            # Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [1, 5])
+            >>> paddle.disable_static()
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            >>> y = paddle.diag(x)
+            >>> print(y)
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 5])
 
-            y = paddle.diag(x, offset=1)
-            print(y)
-            # Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [2, 6])
+            >>> y = paddle.diag(x, offset=1)
+            >>> print(y)
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 6])
 
-            y = paddle.diag(x, offset=-1)
-            print(y)
-            # Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [4])
+            >>> y = paddle.diag(x, offset=-1)
+            >>> print(y)
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [4])
     """
     if in_dynamic_mode():
         return _C_ops.diag(x, offset, padding_value)
@@ -1890,27 +1928,33 @@ def empty(shape, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # shape is a list/tuple
-            data1 = paddle.empty(shape=[3, 2])
-            # [[1. 1.]
-            #  [1. 1.]
-            #  [1. 1.]]
+            >>> # shape is a list/tuple
+            >>> data1 = paddle.empty(shape=[3, 2])
+            >>> print(data1.numpy())
+            >>> # doctest: +SKIP('change everytime')
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
 
-            # shape is a Tensor
-            shape = paddle.to_tensor([3, 2])
-            data2 = paddle.empty(shape=shape)
-            # [[1. 1.]
-            #  [1. 1.]
-            #  [1. 1.]]
+            >>> # shape is a Tensor
+            >>> shape = paddle.to_tensor([3, 2])
+            >>> data2 = paddle.empty(shape=shape)
+            >>> print(data2.numpy())
+            >>> # doctest: +SKIP('change everytime')
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
 
-            # shape is a Tensor List
-            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
-            data3 = paddle.empty(shape=shape)
-            # [[1. 1.]
-            #  [1. 1.]
-            #  [1. 1.]]
+            >>> # shape is a Tensor List
+            >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            >>> data3 = paddle.empty(shape=shape)
+            >>> print(data3.numpy())
+            >>> # doctest: +SKIP('change everytime')
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
     """
 
     if dtype is None:
@@ -1985,14 +2029,16 @@ def empty_like(x, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          paddle.set_device("cpu")  # and use cpu device
+            >>> paddle.set_device("cpu")  # and use cpu device
 
-          x = paddle.randn([2, 3], 'float32')
-          output = paddle.empty_like(x)
-          #[[1.8491974e+20 1.8037303e+28 1.7443726e+28]     # uninitialized
-          # [4.9640171e+28 3.0186127e+32 5.6715899e-11]]    # uninitialized
+            >>> x = paddle.randn([2, 3], 'float32')
+            >>> output = paddle.empty_like(x)
+            >>> print(output)
+            >>> # doctest: +SKIP('change everytime')
+            [[1.8491974e+20 1.8037303e+28 1.7443726e+28]
+             [4.9640171e+28 3.0186127e+32 5.6715899e-11]]
     """
 
     if dtype is None:
@@ -2075,16 +2121,32 @@ def assign(x, output=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
-            data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-            array = np.array([[1, 1],
-                                [3, 4],
-                                [1, 3]]).astype(np.int64)
-            result1 = paddle.zeros(shape=[3, 3], dtype='float32')
-            paddle.assign(array, result1) # result1 = [[1, 1], [3 4], [1, 3]]
-            result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-            result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            >>> import paddle
+            >>> import numpy as np
+            >>> data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64')
+            >>> print(data.numpy())
+            [[2.5 2.5]
+             [2.5 2.5]
+             [2.5 2.5]]
+            >>> array = np.array([[1, 1],
+            ...                     [3, 4],
+            ...                     [1, 3]]).astype(np.int64)
+            >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
+            >>> paddle.assign(array, result1)
+            >>> print(result1.numpy())
+            [[1 1]
+             [3 4]
+             [1 3]]
+            >>> result2 = paddle.assign(data)
+            >>> print(result2.numpy())
+            [[2.5 2.5]
+             [2.5 2.5]
+             [2.5 2.5]]
+            >>> result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32'))
+            >>> print(result3.numpy())
+            [[2.5 2.5]
+             [2.5 2.5]
+             [2.5 2.5]]
     """
     # speed up
     if x is output and isinstance(x, Variable):
@@ -2245,16 +2307,21 @@ def clone(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> import numpy as np
 
-            x = paddle.ones([2])
-            x.stop_gradient = False
-            clone_x = paddle.clone(x)
+            >>> x = paddle.ones([2])
+            >>> x.stop_gradient = False
+            >>> x.retain_grads()
+            >>> clone_x = paddle.clone(x)
+            >>> clone_x.retain_grads()
 
-            y = clone_x**3
-            y.backward()
-            print(clone_x.grad)          # [3]
-            print(x.grad)                # [3]
+            >>> y = clone_x**3
+            >>> y.backward()
+            >>> print(clone_x.grad.numpy())
+            [3. 3.]
+            >>> print(x.grad.numpy())
+            [3. 3.]
     """
     return x.clone()
 
@@ -2278,10 +2345,19 @@ def _memcpy(input, place=None, output=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result = paddle._memcpy(data, place=paddle.CPUPlace())  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+            >>> data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64')
+            >>> print(data.numpy())
+            [[2.5 2.5]
+             [2.5 2.5]
+             [2.5 2.5]]
+            >>> # doctest: +SKIP('NOTE(zhiqiu): not public')
+            >>> result = paddle._memcpy(data, place=paddle.CPUPlace())
+            >>> print(result2)
+            [[2.5 2.5]
+             [2.5 2.5]
+             [2.5 2.5]]
     """
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
@@ -2351,14 +2427,14 @@ def complex(real, imag, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
-            y = paddle.arange(3, dtype=paddle.float32)
-            z = paddle.complex(x, y)
-            print(z)
-            # Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            #        [[0j    , 1j    , 2j    ],
-            #         [(1+0j), (1+1j), (1+2j)]])
+            >>> import paddle
+            >>> x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
+            >>> y = paddle.arange(3, dtype=paddle.float32)
+            >>> z = paddle.complex(x, y)
+            >>> print(z)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[0j    , 1j    , 2j    ],
+             [(1+0j), (1+1j), (1+2j)]])
     """
     if in_dynamic_mode():
         return _C_ops.complex(real, imag)
@@ -2409,25 +2485,28 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # example 1, default offset value
-            data1 = paddle.tril_indices(4,4,0)
-            print(data1)
-            # [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3],
-            #  [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]]
+            >>> # example 1, default offset value
+            >>> data1 = paddle.tril_indices(4,4,0)
+            >>> print(data1)
+            Tensor(shape=[2, 10], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 1, 2, 2, 2, 3, 3, 3, 3],
+             [0, 0, 1, 0, 1, 2, 0, 1, 2, 3]])
 
-            # example 2, positive offset value
-            data2 = paddle.tril_indices(4,4,2)
-            print(data2)
-            # [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
-            #  [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]]
+            >>> # example 2, positive offset value
+            >>> data2 = paddle.tril_indices(4,4,2)
+            >>> print(data2)
+            Tensor(shape=[2, 15], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+             [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]])
 
-            # example 3, negative offset value
-            data3 = paddle.tril_indices(4,4,-1)
-            print(data3)
-            # [[ 1, 2, 2, 3, 3, 3],
-            #  [ 0, 0, 1, 0, 1, 2]]
+            >>> # example 3, negative offset value
+            >>> data3 = paddle.tril_indices(4,4,-1)
+            >>> print(data3)
+            Tensor(shape=[2, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 2, 3, 3, 3],
+             [0, 0, 1, 0, 1, 2]])
     """
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -2491,22 +2570,22 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     Examples:
         .. code-block:: python
 
-            import paddle
-            # example 1, default offset value
-            data1 = paddle.triu_indices(4,4,0)
-            print(data1)
-            # [[0, 0, 0, 0, 1, 1, 1, 2, 2, 3],
-            #  [0, 1, 2, 3, 1, 2, 3, 2, 3, 3]]
-            # example 2, positive offset value
-            data2 = paddle.triu_indices(4,4,2)
-            print(data2)
-            # [[0, 0, 1],
-            #  [2, 3, 3]]
-            # example 3, negative offset value
-            data3 = paddle.triu_indices(4,4,-1)
-            print(data3)
-            # [[0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3],
-            #  [0, 1, 2, 3, 0, 1, 2, 3, 1, 2, 3, 2, 3]]
+            >>> import paddle
+            >>> # example 1, default offset value
+            >>> data1 = paddle.triu_indices(4,4,0)
+            >>> print(data1.numpy())
+            [[0 0 0 0 1 1 1 2 2 3]
+             [0 1 2 3 1 2 3 2 3 3]]
+            >>> # example 2, positive offset value
+            >>> data2 = paddle.triu_indices(4,4,2)
+            >>> print(data2.numpy())
+            [[0 0 1]
+             [2 3 3]]
+            >>> # example 3, negative offset value
+            >>> data3 = paddle.triu_indices(4,4,-1)
+            >>> print(data3.numpy())
+            [[0 0 0 0 1 1 1 1 2 2 2 3 3]
+             [0 1 2 3 0 1 2 3 1 2 3 2 3]]
     """
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -2563,16 +2642,16 @@ def polar(abs, angle, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            abs = paddle.to_tensor([1, 2], dtype=paddle.float64)
-            angle = paddle.to_tensor([np.pi / 2, 5 * np.pi / 4], dtype=paddle.float64)
-            out = paddle.polar(abs, angle)
-            print(out)
-            # Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
-            #       [ (6.123233995736766e-17+1j) ,
-            #       (-1.4142135623730954-1.414213562373095j)])
+            >>> abs = paddle.to_tensor([1, 2], dtype=paddle.float64)
+            >>> angle = paddle.to_tensor([np.pi / 2, 5 * np.pi / 4], dtype=paddle.float64)
+            >>> out = paddle.polar(abs, angle)
+            >>> print(out)
+            Tensor(shape=[2], dtype=complex128, place=Place(cpu), stop_gradient=True,
+            [ (6.123233995736766e-17+1j)             ,
+             (-1.4142135623730954-1.414213562373095j)])
     """
     check_variable_and_dtype(abs, 'abs', ['float32', 'float64'], 'paddle.polar')
     check_variable_and_dtype(

@@ -276,7 +276,7 @@ set(SSA_GRAPH_EXECUTOR_DEPS
     inplace_addto_op_pass
     set_reader_device_info_utils)
 cc_library(
-  ssa_graph_executor
+  ssa_graph_executor NOT_FOR_INFER
   SRCS ssa_graph_executor.cc
   DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
