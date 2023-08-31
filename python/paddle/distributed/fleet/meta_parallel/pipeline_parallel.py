@@ -1125,6 +1125,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._using_cache
         ), "cache should be enabled for pipeline with interleave"
 
+        # NOTE(shenliang03): Due to ring_exchange for pipeline with interleave, cache should be enabled
+        assert (
+            self._using_cache
+        ), "cache should be enabled for pipeline with interleave"
+
         # init some attributes for this batch run
         self.scaler = scaler
         self.total_loss = None
