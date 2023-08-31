@@ -1059,12 +1059,13 @@ class KLDivLoss(Layer):
 
     """
 
-    def __init__(self, reduction='mean'):
+    def __init__(self, reduction='mean', log_target=False):
         super().__init__()
         self.reduction = reduction
+        self.log_target = log_target
 
     def forward(self, input, label):
-        out = F.kl_div(input, label, self.reduction)
+        out = F.kl_div(input, label, self.reduction, self.log_target)
         return out
 
 

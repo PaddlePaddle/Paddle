@@ -1566,7 +1566,7 @@ def poisson_nll_loss(
     return loss_out
 
 
-def kl_div(input, label, reduction='mean', name=None):
+def kl_div(input, label, reduction='mean', log_target=False, name=None):
     r"""
     Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the

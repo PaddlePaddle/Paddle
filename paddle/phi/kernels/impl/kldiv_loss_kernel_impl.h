@@ -26,19 +26,25 @@ template <typename T>
 struct KLDivLossForward {
   HOSTDEVICE KLDivLossForward() {}
 
-  HOSTDEVICE T operator()(const T& target, const T& input) const {
+  HOSTDEVICE T operator()(const T& target,
+                          const T& input,
+                          const bool log_target) const {
     if (target <= 0) {
       return 0;
-    } else {
+    } else if (log_target) {
       return target * (std::log(target) - input);
+    } else {
+      return target * (std::log(target) - std::log(input));
     }
   }
 };
+
 template <typename T, typename Context>
 void KLDivLossKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& label,
                      const std::string& reduction,
+                     bool log_target,
                      DenseTensor* out) {
   auto& place = *(dev_ctx.eigen_device());
   auto* input = &x;
