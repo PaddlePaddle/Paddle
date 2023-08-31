@@ -30,8 +30,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd.recv_v2",
     "pd.c_allreduce_sum",
     "pd.c_allreduce_sum_",
-    "pd.c_identity",
-    "pd.c_identity_",
     "pd.c_reduce_sum",
     "pd.c_reduce_sum_"};
 
