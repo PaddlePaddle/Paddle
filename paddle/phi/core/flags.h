@@ -87,7 +87,6 @@
 #define PHI_DECLARE_int64(name) PHI_DECLARE_VARIABLE(int64_t, I64, name)
 #define PHI_DECLARE_uint64(name) PHI_DECLARE_VARIABLE(uint64_t, U64, name)
 #define PHI_DECLARE_double(name) PHI_DECLARE_VARIABLE(double, D, name)
-#define PHI_DECLARE_string(name) PHI_DECLARE_VARIABLE(std::string, S, name)
 
 // ----------------------------DEFINE FLAGS-----------------------------
 #define PHI_DEFINE_bool(name, val, txt) \
@@ -102,8 +101,33 @@
   PHI_DEFINE_VARIABLE(uint64_t, U64, name, val, txt)
 #define PHI_DEFINE_double(name, val, txt) \
   PHI_DEFINE_VARIABLE(double, D, name, val, txt)
+
+#ifdef PADDLE_WITH_GFLAGS
+#define PHI_DECLARE_string(name)                        \
+  namespace fLS {                                       \
+  extern PHI_IMPORT_FLAG ::fLS::clstring& FLAGS_##name; \
+  }                                                     \
+  using fLS::FLAGS_##name
+
+#define PHI_DEFINE_string(name, val, txt)                                    \
+  namespace fLS {                                                            \
+  using ::fLS::clstring;                                                     \
+  clstring FLAGS_##name##_default = val;                                     \
+  clstring FLAGS_##name##_current = val;                                     \
+  static GFLAGS_NAMESPACE::FlagRegisterer o_##name(#name,                    \
+                                                   MAYBE_STRIPPED_HELP(txt), \
+                                                   __FILE__,                 \
+                                                   &FLAGS_##name##_current,  \
+                                                   &FLAGS_##name##_default); \
+  PHI_EXPORT_FLAG clstring& FLAGS_##name = FLAGS_##name##_current;           \
+  } /* NOLINT */                                                             \
+  using ::fLS::FLAGS_##name
+#else
+#define PHI_DECLARE_string(name) PHI_DECLARE_VARIABLE(std::string, S, name)
+
 #define PHI_DEFINE_string(name, val, txt) \
   PHI_DEFINE_VARIABLE(std::string, S, name, val, txt)
+#endif
 
 namespace phi {
 
