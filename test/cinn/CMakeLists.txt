@@ -294,4 +294,20 @@ if(WITH_GPU)
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 
+  file(
+    GLOB CINN_IR_TEST
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "ir/test_*.py")
+
+  foreach(ir_test_name ${CINN_IR_TEST})
+    string(REGEX REPLACE ".py" "" ir_test_name ${ir_test_name})
+    add_test(
+      NAME ${ir_test_name}
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${ir_test_name}.py
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  endforeach()
+
 endif()

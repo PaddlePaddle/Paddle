@@ -90,7 +90,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
             cinn_stmt = self.visit(stmt)
             assert cinn_stmt is not None, f"Unsupport parse:\n{stmt}"
             # Some situations do not require conversion to CINN IR
-            if str(cinn_stmt) in ["iter_var"]:
+            if str(cinn_stmt) in ["no compute"]:
                 continue
             cinn_stmts.append(cinn_stmt)
         return cinn_stmts
@@ -245,7 +245,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
             iter_var_expr = ir.Expr(iter_var)
             self.set_value(lhs.id, iter_var_expr)
             self.schedule_block_iter_var2expr[iter_var] = rhs_expr
-            return "iter_var"
+            return "no compute"
 
     def visit_Constant(self, node):
         return ir.Expr(node.value)
@@ -255,6 +255,12 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         for ast_block in node.body:
             blocks.append(self.visit(ast_block))
         return ir.Block.make(blocks)
+
+    def visit_Expr(self, node):
+        return self.eval_expression(node.value)
+
+    def visit_Call(self, node):
+        return self.eval_expression(node)
 
     def eval_expression(self, node):
         """
@@ -272,14 +278,13 @@ class ComputeCodeGenerator(ast.NodeVisitor):
                 node.id in self.variables_table
             ), f"Undefined Variable: {node.id}"
             return self.variables_table[node.id]
+        if isinstance(node, ast.Call) and node.func.attr in ["fuse", "split"]:
+            return "no compute"
 
         args = []
         if isinstance(node, ast.BinOp):
             args = [node.left, node.right]
         elif isinstance(node, ast.UnaryOp):
-            args = [node.operand]
-        elif isinstance(node, ast.Expr):
-            node = node.value
             args = [node.operand]
         elif isinstance(node, ast.Compare):
             assert (

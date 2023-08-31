@@ -42,8 +42,24 @@ void BindSchedule(py::module *m) {
           })
       .def("fuse",
            py::overload_cast<const std::vector<Expr> &>(&ir::IRSchedule::Fuse))
+      .def("get_module",
+           py::overload_cast<>(&ir::IRSchedule::GetModule, py::const_))
+      .def("get_block",
+           py::overload_cast<const std::string &>(&ir::IRSchedule::GetBlock,
+                                                  py::const_))
+      .def("get_all_blocks",
+           py::overload_cast<>(&ir::IRSchedule::GetAllBlocks, py::const_))
       .def("get_loops",
            py::overload_cast<const std::string &>(&ir::IRSchedule::GetLoops,
-                                                  py::const_));
+                                                  py::const_))
+      .def("get_name2loops_dict",
+           [](const ir::IRSchedule &self, const std::string &block_name) {
+             std::vector<ir::Expr> loops = self.GetLoops(block_name);
+             std::map<std::string, ir::Expr> name2loops;
+             for (const ir::Expr &loop : loops) {
+               name2loops[loop.As<ir::For>()->loop_var->name] = loop;
+             }
+             return name2loops;
+           });
 }
 }  // namespace cinn::pybind
