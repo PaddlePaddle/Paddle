@@ -72,20 +72,28 @@ class OpsAPIGen(CodeGen):
     def _gen_one_function_impl(self, name):
         if (
             name.endswith('grad')
+            or name.endswith('grad_')
             or name.endswith('xpu')
-            or name.endswith('_')
             or name
             in [
-                'set_value_with_tensor',
-                'assign_value',
                 'fetch',
-                'print',
-                'add_n_with_kernel',
-                'embedding_grad_sparse',
-                'shadow_feed',
+                'set_value_with_tensor',
+                'set_value_with_tensor_',
+                'fused_bn_add_activation_',
+                'fused_batch_norm_act_',
+                'add_n_',
                 'set_value',
+                'assign_value',
+                'set_value_',
+                'embedding_grad_sparse',
+                'add_n_with_kernel',
+                'print',
                 'send_v2',
+                'shadow_feed',
                 'recv_v2',
+                'rnn_',
+                'fused_scale_bias_relu_conv_bnstats',
+                'batch_norm_',
             ]
         ):
             return NO_DY_FUNCTION_IMPL_TEMPLATE.format(name=name)

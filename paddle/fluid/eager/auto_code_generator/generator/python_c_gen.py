@@ -511,6 +511,12 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 return_str,
             )
 
+            python_c_funcion_declare_str = (
+                PYTHON_C_FUNCTION_DECLARE_TEMPLATE.format(
+                    name=inplaced_forward_api_name
+                )
+            )
+
             python_c_inplace_func_reg_str = (
                 PYTHON_C_FUNCTION_REG_TEMPLATE.format(
                     forward_api_name_prefix,
@@ -524,10 +530,14 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             # self.forward_api_name ending with '_' means it only has inplace api
             if self.forward_api_name[-1] == '_':
                 self.python_c_function_str = python_c_inplace_func_str
+                self.python_c_funcion_declare_str = python_c_funcion_declare_str
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str = python_c_inplace_func_reg_str
             else:
                 self.python_c_function_str += python_c_inplace_func_str
+                self.python_c_funcion_declare_str += (
+                    python_c_funcion_declare_str
+                )
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str += python_c_inplace_func_reg_str
 
