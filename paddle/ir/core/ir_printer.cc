@@ -156,7 +156,7 @@ void IrPrinter::PrintGeneralOperation(const Operation* op) {
 }
 
 void IrPrinter::PrintFullOperation(const Operation* op) {
-  PrintOperation(op);
+  PrintGeneralOperation(op);
   if (op->num_regions() > 0) {
     os << newline;
   }
