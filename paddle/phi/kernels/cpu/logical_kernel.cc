@@ -77,6 +77,8 @@ void LogicalNotKernel(const Context& dev_ctx,
                      int64_t,                               \
                      int,                                   \
                      int8_t,                                \
+                     phi::dtype::complex<float>,            \
+                     phi::dtype::complex<double>,           \
                      int16_t) {}
 
 REGISTER_LOGICAL_CPU_KERNEL(logical_and, And)

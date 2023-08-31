@@ -46,13 +46,13 @@ class CommContextManager {
 
   bool Has(const std::string& unique_comm_key) const;
 
+  static void SetDeviceId(int dev_id);
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
                                     int rank,
                                     int size);
-
-  static void SetCUDADeviceId(int dev_id);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -76,6 +76,7 @@ class CommContextManager {
   std::unordered_map<std::string, std::unique_ptr<CommContext>>
       id_to_comm_context_;
   std::shared_ptr<Store> store_;
+  static int device_id;
 };
 
 }  // namespace distributed

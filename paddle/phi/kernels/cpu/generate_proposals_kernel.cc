@@ -28,7 +28,7 @@ static void AppendProposals(DenseTensor* dst,
   auto* out_data = dst->data();
   auto* to_add_data = src.data();
   size_t size_of_t = SizeOf(src.dtype());
-  offset *= size_of_t;
+  offset *= static_cast<int64_t>(size_of_t);
   std::memcpy(
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),
       to_add_data,
@@ -367,7 +367,7 @@ void GenerateProposalsKernel(const Context& ctx,
     AppendProposals(rpn_roi_probs, num_proposals, nscores);
     num_proposals += proposals.dims()[0];
     lod0.push_back(num_proposals);
-    tmp_num.push_back(proposals.dims()[0]);
+    tmp_num.push_back(static_cast<int>(proposals.dims()[0]));
   }
   if (rpn_rois_num != nullptr) {
     rpn_rois_num->Resize(phi::make_ddim({num}));
