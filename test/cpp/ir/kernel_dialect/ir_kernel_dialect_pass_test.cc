@@ -70,6 +70,9 @@ TEST(program_test, program) {
 
   builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
 
+  builder.Build<paddle::dialect::CConcatOp>(
+    op1->result(0), 2, 1, 1, false, false);
+
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   paddle::framework::Scope scope;
@@ -106,41 +109,16 @@ TEST(program_test, program) {
                 .kernel_key()
                 .dtype(),
             phi::DataType::FLOAT32);
-}
-
-TEST(legacy_op_test, program) {
-  VLOG(0) << "TEST legacy_op_test begin";
-  // (1) Init environment.
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::Program program((ctx));
-
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-
-  ir::Builder builder = ir::Builder(ctx, program.block());
-
-  paddle::dialect::RecvV2Op op =
-      builder.Build<paddle::dialect::RecvV2Op>(
-        std::vector<int32_t>{2, 2}, phi::DataType::FLOAT32, 0, 0, false, false);
-
-  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
-  paddle::framework::Scope scope;
-  PhiKernelAdaptor phi_kernel_adaptor(&scope);
-  phi_kernel_adaptor.run_kernel_prog(kernel_program.get());
-
-  auto out_tensor =
-      scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
-
   EXPECT_EQ(kernel_program->block()
-                ->front()
+                ->back()
                 ->dyn_cast<paddle::dialect::LegacyKernelOp>()
                 .op_name(),
-            "pd.recv_v2");
+            "pd.c_concat");
   EXPECT_EQ(kernel_program->block()
-                ->front()
+                ->back()
                 ->dyn_cast<paddle::dialect::LegacyKernelOp>()
                 .kernel_name(),
-            "recv_v2");
+            "c_concat");
 }
 
 TEST(dialect_attr, attr) {
