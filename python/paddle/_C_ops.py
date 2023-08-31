@@ -21,6 +21,7 @@ for name in dir(core.eager.ops):
     __all__.append(name)
 
 for name in dir(core.ir.ops):
-    globals()[name] = getattr(core.ir.ops, name)
-    if name not in __all__:
-        __all__.append(name)
+    if name == 'mean':
+        globals()[name] = getattr(core.ir.ops, name)
+        if name not in __all__:
+            __all__.append(name)
