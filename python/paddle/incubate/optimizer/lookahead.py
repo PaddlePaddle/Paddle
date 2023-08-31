@@ -105,7 +105,7 @@ class LookAhead(Optimizer):
             ...     drop_last=True,
             ...     num_workers=2)
 
-            >>> # doctest: +SKIP('The run time will too long to pass the CI check.')
+            >>> # doctest: +SKIP('The run time is too long to pass the CI check.')
             >>> train(layer, loader, loss_fn, lookahead)
 
     """
