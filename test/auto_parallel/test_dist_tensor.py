@@ -83,6 +83,21 @@ class TestDistTensorForDygraphAPI(unittest.TestCase):
         dist_out.backward()
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 
+    def test_matmul_api_for_dist_tensor(self):
+        x = np.random.random(size=[4, 4]).astype("float32")
+        y = np.random.random(size=[4, 4]).astype("float32")
+        local_x, dist_x = self.create_local_and_dist_tensor_pair(x)
+        local_y, dist_y = self.create_local_and_dist_tensor_pair(y)
+        local_out = paddle.matmul(local_x, local_y)
+        dist_out = paddle.matmul(dist_x, dist_y)
+        self.check_tensor_eq(local_out, dist_out)
+
+        # test backward
+        local_out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(local_x.grad, dist_x.grad)
+        self.check_tensor_eq(local_y.grad, dist_y.grad)
+
 
 if __name__ == "__main__":
     unittest.main()
