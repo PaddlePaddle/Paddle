@@ -33,9 +33,9 @@ class PsRequestMessage;
 class PsResponseMessage;
 class PsService;
 
-using paddle::distributed::PsRequestMessage;
-using paddle::distributed::PsResponseMessage;
-using paddle::distributed::PsService;
+using ::paddle::distributed::PsRequestMessage;
+using ::paddle::distributed::PsResponseMessage;
+using ::paddle::distributed::PsService;
 
 class PSCore {
  public:
@@ -51,7 +51,7 @@ class PSCore {
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   virtual int InitWorker(
       const std::string& dist_desc,
-      const std::map<uint64_t, std::vector<paddle::distributed::Region>>&
+      const std::map<uint64_t, std::vector<::paddle::distributed::Region>>&
           regions,
       const std::vector<std::string>* host_sign_list,
       int node_num,
@@ -63,16 +63,16 @@ class PSCore {
   virtual int CreateClient2ClientConnection(int pserver_timeout_ms,
                                             int pserver_connect_timeout_ms,
                                             int max_retry);
-  std::shared_ptr<paddle::distributed::PSServer>
+  std::shared_ptr<::paddle::distributed::PSServer>
       _server_ptr;  // pointer to server
-  std::shared_ptr<paddle::distributed::PSClient>
+  std::shared_ptr<::paddle::distributed::PSClient>
       _worker_ptr;  // pointer to worker
-  virtual paddle::distributed::PSParameter* GetParam();
+  virtual ::paddle::distributed::PSParameter* GetParam();
 
  private:
   void InitGFlag(const std::string& gflags);
-  paddle::distributed::PSParameter _ps_param;
-  paddle::distributed::PaddlePSEnvironment _ps_env;
+  ::paddle::distributed::PSParameter _ps_param;
+  ::paddle::distributed::PaddlePSEnvironment _ps_env;
 };
 
 }  // namespace distributed

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,16 @@
 
 #pragma once
 
-#include <map>
+#include <functional>
+#include <string>
 #include <vector>
-#include "paddle/phi/common/int_array.h"
 
 namespace phi {
-class DeviceContext;
-class DenseTensor;
-
 namespace distributed {
-std::vector<DenseTensor> ReshardSplitFunctor(const DeviceContext& dev_ctx,
-                                             const DenseTensor& input,
-                                             const IntArray& sections,
-                                             int64_t axis);
+class TensorDistAttr;
+
+using SpmdInfo =
+    std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>;
 
 }  // namespace distributed
 }  // namespace phi

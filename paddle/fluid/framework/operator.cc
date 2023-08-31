@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -43,6 +42,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 class DenseTensor;
@@ -62,9 +62,9 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 
-DECLARE_bool(benchmark);
+PD_DECLARE_bool(benchmark);
 PHI_DECLARE_bool(check_nan_inf);
-DECLARE_bool(enable_unused_var_check);
+PD_DECLARE_bool(enable_unused_var_check);
 PHI_DECLARE_bool(run_kp_kernel);
 PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
