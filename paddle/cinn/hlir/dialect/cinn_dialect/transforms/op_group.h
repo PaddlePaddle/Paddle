@@ -16,24 +16,25 @@
 
 #include <memory>
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
 #include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_node.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
 
+namespace cinn {
+namespace dialect {
 namespace ir {
-namespace api {
 
 class OpGroup {
  public:
-  explicit OpGroup(const std::shared_ptr<::ir::Group>& group) : group_(group) {}
+  explicit OpGroup(const std::shared_ptr<ir::Group>& group) : group_(group) {}
 
   OpGroup(const OpGroup& other) = default;
 
-  using Comparator = ::ir::Group::SharedGroupComparator;
-  using Hasher = ::ir::Group::SharedGroupHasher;
+  using Comparator = ir::Group::SharedGroupComparator;
+  using Hasher = ir::Group::SharedGroupHasher;
 
   class OpGroupListIterator {
    public:
-    OpGroupListIterator(std::unordered_set<std::shared_ptr<::ir::Group>,
+    OpGroupListIterator(std::unordered_set<std::shared_ptr<ir::Group>,
                                            Hasher,
                                            Comparator>::const_iterator it)
         : iter_(it) {}
@@ -60,13 +61,13 @@ class OpGroup {
     OpGroup operator*() const { return OpGroup(*iter_); }
 
    private:
-    std::unordered_set<std::shared_ptr<::ir::Group>, Hasher, Comparator>::
+    std::unordered_set<std::shared_ptr<ir::Group>, Hasher, Comparator>::
         const_iterator iter_;
   };
 
   class ProducerOpGroupListView {
    public:
-    explicit ProducerOpGroupListView(const std::weak_ptr<::ir::Group>& group)
+    explicit ProducerOpGroupListView(const std::weak_ptr<ir::Group>& group)
         : group_(group) {}
 
     ProducerOpGroupListView(const ProducerOpGroupListView& other) = delete;
@@ -93,12 +94,12 @@ class OpGroup {
     }
 
    private:
-    const std::weak_ptr<::ir::Group> group_;
+    const std::weak_ptr<ir::Group> group_;
   };
 
   class ConsumerOpGroupListView {
    public:
-    explicit ConsumerOpGroupListView(const std::weak_ptr<::ir::Group>& group)
+    explicit ConsumerOpGroupListView(const std::weak_ptr<ir::Group>& group)
         : group_(group) {}
 
     ConsumerOpGroupListView(const ConsumerOpGroupListView& other) = delete;
@@ -125,7 +126,7 @@ class OpGroup {
     }
 
    private:
-    const std::weak_ptr<::ir::Group> group_;
+    const std::weak_ptr<ir::Group> group_;
   };
 
   const std::string& group_id() const { return group_.lock()->group_id; }
@@ -141,9 +142,10 @@ class OpGroup {
   //
   // Example: Get the all Reduction op_nodes in the group.
   //   OpGroup group = ...;
-  //   std::set<api::OpNode> reduce_ op_set;
+  //   std::set<cinn::dialect::ir::OpNode> reduce_ op_set;
   //   // The lambda funtion of VisitOpNode to get reduction op_nodes.
-  //   auto get_reduce_op = [&reduce_op_set](const api::OpNode& op){
+  //   auto get_reduce_op = [&reduce_op_set](const cinn::dialect::ir::OpNode&
+  //   op){
   //     if (op.kind() == OpPatternKind::kReduction) {
   //       reduce_op_set.insert(op);
   //     }
@@ -152,7 +154,7 @@ class OpGroup {
   void WalkOpNodes(
       const std::function<void(const OpNode&)>& VisitOpNode) const {
     group_.lock()->WalkNodes(
-        [&](const Operation* node) { VisitOpNode(OpNode(node)); });
+        [&](const ::ir::Operation* node) { VisitOpNode(OpNode(node)); });
   }
 
   ProducerOpGroupListView producers() const {
@@ -163,7 +165,7 @@ class OpGroup {
     return ConsumerOpGroupListView(group_);
   }
 
-  std::shared_ptr<::ir::Group> GetGroup() const { return group_.lock(); }
+  std::shared_ptr<ir::Group> GetGroup() const { return group_.lock(); }
 
   bool operator==(const OpGroup& other) const {
     return group_.lock().get() == other.group_.lock().get();
@@ -174,17 +176,18 @@ class OpGroup {
   }
 
  private:
-  const std::weak_ptr<::ir::Group> group_;
+  const std::weak_ptr<ir::Group> group_;
 };
 
-}  // namespace api
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
 
 namespace std {
 
 template <>
-struct hash<ir::api::OpGroup> {
-  size_t operator()(const ir::api::OpGroup& obj) const {
+struct hash<cinn::dialect::ir::OpGroup> {
+  size_t operator()(const cinn::dialect::ir::OpGroup& obj) const {
     return std::hash<size_t>()(reinterpret_cast<size_t>(obj.GetGroup().get()));
   }
 };

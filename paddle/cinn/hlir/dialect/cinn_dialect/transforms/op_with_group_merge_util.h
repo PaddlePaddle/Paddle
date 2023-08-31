@@ -26,6 +26,8 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
+namespace cinn {
+namespace dialect {
 namespace ir {
 
 enum OpPatternKind {
@@ -65,18 +67,18 @@ std::vector<T> GetVectorAttr(const ::ir::Operation* op,
           "attr [%s] MUST in attribute map for [%s] op", name, op->name()));
   auto& val = attr_map.at(name);
 
-  PADDLE_ENFORCE(val.isa<ir::ArrayAttribute>(),
+  PADDLE_ENFORCE(val.isa<::ir::ArrayAttribute>(),
                  phi::errors::PreconditionNotMet(
                      "axis Type MUST ArrayAttribute for [%s] op", op->name()));
-  auto array_list = val.dyn_cast<ir::ArrayAttribute>().AsVector();
+  auto array_list = val.dyn_cast<::ir::ArrayAttribute>().AsVector();
   std::vector<T> vec_res;
   if (array_list.size() > 0) {
-    PADDLE_ENFORCE_EQ(array_list[0].isa<ir::Int64Attribute>(),
+    PADDLE_ENFORCE_EQ(array_list[0].isa<::ir::Int64Attribute>(),
                       true,
                       phi::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < array_list.size(); ++i) {
-      vec_res.push_back(array_list[i].dyn_cast<ir::Int64Attribute>().data());
+      vec_res.push_back(array_list[i].dyn_cast<::ir::Int64Attribute>().data());
     }
   }
   return vec_res;
@@ -94,19 +96,19 @@ struct Group {
   // global unique id.
   std::string unique_id{"uniq"};
   // node in this group
-  std::vector<Operation*> nodes;
-  std::unordered_set<Operation*> nodes_set;
+  std::vector<::ir::Operation*> nodes;
+  std::unordered_set<::ir::Operation*> nodes_set;
   // input nodes of the group.
-  std::unordered_map<Operation*, int> input_nodes;
+  std::unordered_map<::ir::Operation*, int> input_nodes;
   // output nodes of the group.
-  std::unordered_set<Operation*> output_nodes;
+  std::unordered_set<::ir::Operation*> output_nodes;
   // op pattern kind.
   OpPatternKind op_pattern_kind{kElementWise};
   // internal node, the output is used by multi-node.
   // internal node can't use compute inline, should use buffer.
-  std::unordered_set<Operation*> internal_nodes;
+  std::unordered_set<::ir::Operation*> internal_nodes;
   // master node for schedule
-  std::unordered_set<Operation*> master_nodes;
+  std::unordered_set<::ir::Operation*> master_nodes;
 
   // fused sub-groups, used for fusion merge pass
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
@@ -129,9 +131,9 @@ struct Group {
     }
   };
 
-  std::vector<Operation*> CollectNodes() {
+  std::vector<::ir::Operation*> CollectNodes() {
     if (fused_sub_groups.size()) {
-      std::vector<Operation*> tmp_nodes;
+      std::vector<::ir::Operation*> tmp_nodes;
       for (auto& group : fused_sub_groups) {
         tmp_nodes.insert(
             tmp_nodes.end(), group->nodes.begin(), group->nodes.end());
@@ -142,7 +144,8 @@ struct Group {
     }
   }
 
-  void WalkNodes(const std::function<void(const Operation*)>& VisitNode) const {
+  void WalkNodes(
+      const std::function<void(const ::ir::Operation*)>& VisitNode) const {
     if (fused_sub_groups.size()) {
       for (auto& group : fused_sub_groups) {
         for (const auto& node : group->nodes) {
@@ -156,16 +159,16 @@ struct Group {
     }
   }
 
-  std::unordered_set<Operation*> NodeSet() {
-    std::unordered_set<Operation*> node_set;
+  std::unordered_set<::ir::Operation*> NodeSet() {
+    std::unordered_set<::ir::Operation*> node_set;
     for (auto node : CollectNodes()) {
       node_set.insert(node);
     }
     return node_set;
   }
 
-  std::unordered_set<Value> GetInputNodeDatas() { return {}; }
-  std::unordered_set<Value> GetOutputNodeDatas() { return {}; }
+  std::unordered_set<::ir::Value> GetInputNodeDatas() { return {}; }
+  std::unordered_set<::ir::Value> GetOutputNodeDatas() { return {}; }
 
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 
@@ -213,33 +216,33 @@ struct Group {
       consumer_groups_;
 };
 
-phi::DDim GetFirstInputShape(const Operation* op);
+phi::DDim GetFirstInputShape(const ::ir::Operation* op);
 
-phi::DDim GetValueShape(const Value value);
+phi::DDim GetValueShape(const ::ir::Value value);
 
 bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
                             const std::vector<int64_t>& axes);
 
-int GetSharedSize(const Operation* node);
+int GetSharedSize(const ::ir::Operation* node);
 
-inline bool always_fuse(const Operation* producer,
+inline bool always_fuse(const ::ir::Operation* producer,
                         const std::shared_ptr<Group>& consumer) {
   return true;
 }
 
-inline bool no_fuse(const Operation* producer,
+inline bool no_fuse(const ::ir::Operation* producer,
                     const std::shared_ptr<Group>& consumer) {
   return false;
 }
 
-inline bool is_same_shape(const Operation* producer,
+inline bool is_same_shape(const ::ir::Operation* producer,
                           const std::shared_ptr<Group>& consumer) {
   auto master_node = consumer->master_nodes.begin();
   return GetValueShape(producer->result(0)) ==
          GetValueShape((*master_node)->result(0));
 }
 
-inline bool is_same_size(const Operation* producer,
+inline bool is_same_size(const ::ir::Operation* producer,
                          const std::shared_ptr<Group>& consumer) {
   auto master_node = consumer->master_nodes.begin();
   auto producer_shape = GetValueShape(producer->result(0));
@@ -253,15 +256,15 @@ inline bool is_same_size(const Operation* producer,
 }
 
 inline bool without_last_dimension_in_reduce(
-    const Operation* producer, const std::shared_ptr<Group>& consumer) {
+    const ::ir::Operation* producer, const std::shared_ptr<Group>& consumer) {
   auto in_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
   auto reduce_axes = GetVectorAttr(producer, "axis");
   return WithoutLastDimInReduce(in_shape, reduce_axes);
 }
 
-inline bool reduce_fuse_reduce(const Operation* producer,
+inline bool reduce_fuse_reduce(const ::ir::Operation* producer,
                                const std::shared_ptr<Group>& consumer) {
-  Operation* reducer = NULL;
+  ::ir::Operation* reducer = NULL;
   for (auto* master : consumer->master_nodes) {
     if (GetOpKind(master->name()) == kReduction) {
       reducer = master;
@@ -322,11 +325,11 @@ inline bool reduce_fuse_reduce(const Operation* producer,
   return false;
 }
 
-inline bool is_horizontal_relation(const Operation* producer,
+inline bool is_horizontal_relation(const ::ir::Operation* producer,
                                    const std::shared_ptr<Group>& consumer) {
-  auto check_depency = [&](const Operation* node) {
-    std::queue<const Operation*> candidates;
-    std::unordered_set<const Operation*> visited_set;
+  auto check_depency = [&](const ::ir::Operation* node) {
+    std::queue<const ::ir::Operation*> candidates;
+    std::unordered_set<const ::ir::Operation*> visited_set;
     candidates.push(node);
 
     while (!candidates.empty()) {
@@ -367,14 +370,14 @@ inline bool is_horizontal_relation(const Operation* producer,
 }
 
 inline bool horizontal_or_vertical_reduce_relation(
-    const Operation* producer, const std::shared_ptr<Group>& consumer) {
+    const ::ir::Operation* producer, const std::shared_ptr<Group>& consumer) {
   // check is same shape with horizontal relation.
   if (is_same_size(producer, consumer)) {
     return true;
   }
 
   // reducer node in fusion op.
-  Operation* reducer = NULL;
+  ::ir::Operation* reducer = NULL;
   for (auto* master : consumer->master_nodes) {
     if (GetOpKind(master->name()) == kReduction) {
       reducer = master;
@@ -427,7 +430,7 @@ inline bool horizontal_or_vertical_reduce_relation(
              : true;
 }
 
-inline bool horizontal_or_can_inline(const Operation* producer,
+inline bool horizontal_or_can_inline(const ::ir::Operation* producer,
                                      const std::shared_ptr<Group>& consumer) {
   // horizontal relation.
   if (is_horizontal_relation(producer, consumer)) {
@@ -459,13 +462,13 @@ inline bool horizontal_or_can_inline(const Operation* producer,
   return false;
 }
 
-inline bool horizontal_with_same_size(const Operation* producer,
+inline bool horizontal_with_same_size(const ::ir::Operation* producer,
                                       const std::shared_ptr<Group>& consumer) {
   return is_horizontal_relation(producer, consumer) &&
          is_same_size(producer, consumer);
 }
 
-inline bool reduce_fuse_broadcast(const Operation* producer,
+inline bool reduce_fuse_broadcast(const ::ir::Operation* producer,
                                   const std::shared_ptr<Group>& consumer) {
   if (is_horizontal_relation(producer, consumer)) {
     if (is_same_size(producer, consumer)) {
@@ -482,7 +485,7 @@ inline bool reduce_fuse_broadcast(const Operation* producer,
   auto reduce_axes = GetVectorAttr(producer, "axis");
   auto keep_dim = producer->attributes()
                       .at("keep_dim")
-                      .dyn_cast<ir::BoolAttribute>()
+                      .dyn_cast<::ir::BoolAttribute>()
                       .data();
   for (auto& axis : reduce_axes) {
     if (axis < 0) {
@@ -504,30 +507,31 @@ inline bool reduce_fuse_broadcast(const Operation* producer,
 
   auto routput_shape =
       phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
-  auto find_reducer = [&](const Operation* node,
-                          const Operation* reducer,
-                          const std::unordered_set<Operation*>& nodes_set) {
-    std::queue<const Operation*> candidates;
-    candidates.push(node);
+  auto find_reducer =
+      [&](const ::ir::Operation* node,
+          const ::ir::Operation* reducer,
+          const std::unordered_set<::ir::Operation*>& nodes_set) {
+        std::queue<const ::ir::Operation*> candidates;
+        candidates.push(node);
 
-    while (!candidates.empty()) {
-      auto candidate = candidates.front();
-      candidates.pop();
+        while (!candidates.empty()) {
+          auto candidate = candidates.front();
+          candidates.pop();
 
-      for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto producer = candidate->operand_source(i).GetDefiningOp();
-        if (producer == reducer) {
-          return true;
+          for (size_t i = 0; i < candidate->num_operands(); ++i) {
+            auto producer = candidate->operand_source(i).GetDefiningOp();
+            if (producer == reducer) {
+              return true;
+            }
+
+            if (nodes_set.count(producer)) {
+              candidates.push(producer);
+            }
+          }
         }
 
-        if (nodes_set.count(producer)) {
-          candidates.push(producer);
-        }
-      }
-    }
-
-    return false;
-  };
+        return false;
+      };
 
   for (auto node : consumer->nodes_set) {
     if (GetOpKind(node->name()) != kBroadcast) {
@@ -576,3 +580,5 @@ inline bool reduce_fuse_broadcast(const Operation* producer,
 }
 
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

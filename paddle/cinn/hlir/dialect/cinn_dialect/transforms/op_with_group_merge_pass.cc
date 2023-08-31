@@ -19,7 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_pass.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_pass.h"
 
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/operation.h"
@@ -27,6 +27,8 @@
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
 
+namespace cinn {
+namespace dialect {
 namespace ir {
 
 std::unordered_map<std::string, OpPatternKind> OpKindMap = {
@@ -53,13 +55,13 @@ OpPatternKind GetOpKind(const std::string& op_name) {
   return found_it->second;
 }
 
-phi::DDim GetFirstInputShape(const Operation* op) {
+phi::DDim GetFirstInputShape(const ::ir::Operation* op) {
   auto in = op->operand(0);
 
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const Value value) {
+phi::DDim GetValueShape(const ::ir::Value value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
@@ -83,7 +85,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
   }
 }
 
-int GetSharedSize(const Operation* node) {
+int GetSharedSize(const ::ir::Operation* node) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(node->result(0)));
 
   auto axes = GetVectorAttr(node, "axis");
@@ -133,7 +135,7 @@ int GetSharedSize(const Operation* node) {
 }
 
 using ConditionFunction =
-    std::function<bool(const Operation*, const GroupPtr&)>;
+    std::function<bool(const ::ir::Operation*, const GroupPtr&)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -141,7 +143,7 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(const ir::Program& graph) {
+  explicit OpFusionPassHelper(const ::ir::Program& graph) {
     // init fusion relation
     InitFusionRelation();
     // filter node data, create group for each node
@@ -349,7 +351,8 @@ class OpFusionPassHelper {
           // must be horizontal, as Elementwise + Broadcast is left to fusion
           // merge pass.
           {kBroadcast,
-           [](const Operation* producer, const GroupPtr& consumer) -> bool {
+           [](const ::ir::Operation* producer,
+              const GroupPtr& consumer) -> bool {
              // NOTE, producer and consumer NEVER be same size
              if (is_same_size(producer, consumer)) {
                return true;
@@ -456,7 +459,8 @@ class OpFusionPassHelper {
     }
   }
 
-  bool CanFuse(const Operation* producer, const Operation* consumer) {
+  bool CanFuse(const ::ir::Operation* producer,
+               const ::ir::Operation* consumer) {
     auto& relation = fusion_relation_map_[GetOpKind(producer->name())];
     // first step: check producer can be fused into consumer
     if (relation.op_kind.count(GetOpKind(consumer->name()))) {
@@ -471,13 +475,13 @@ class OpFusionPassHelper {
 
     return false;
   }
-  std::vector<Operation*> nodes_;
-  std::unordered_map<const Operation*, GroupPtr> fusion_groups_;
-  std::unordered_set<const Operation*> output_nodes_set_;
+  std::vector<::ir::Operation*> nodes_;
+  std::unordered_map<const ::ir::Operation*, GroupPtr> fusion_groups_;
+  std::unordered_set<const ::ir::Operation*> output_nodes_set_;
 
   std::vector<std::shared_ptr<Group>> groups_;
 
-  std::unordered_set<const Operation*> local_ops_;
+  std::unordered_set<const ::ir::Operation*> local_ops_;
 
   struct FusionRelation {
     // producer -> consumer
@@ -488,7 +492,7 @@ class OpFusionPassHelper {
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
 };
 
-GroupList OpFusionPassInternal(const ir::Program& program) {
+GroupList OpFusionPassInternal(const ::ir::Program& program) {
   VLOG(3) << "OpFusionPass...!";
   auto op_fusion_helper = OpFusionPassHelper(program);
   auto res = op_fusion_helper();
@@ -521,3 +525,5 @@ GroupList OpFusionPassInternal(const ir::Program& program) {
 // }
 
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

@@ -19,24 +19,26 @@
 #include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_group.h"
 #include "paddle/ir/core/value.h"
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_pass.h"
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/general_fusion_merge_pass_utils.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/group_with_group_merge_pass_utils.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_pass.h"
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/group_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
+namespace cinn {
+namespace dialect {
 namespace ir {
 
-using GroupPtr = std::shared_ptr<::ir::Group>;
+using GroupPtr = std::shared_ptr<ir::Group>;
 using GroupList = std::vector<GroupPtr>;
 
 using Comparator = ir::Group::SharedGroupComparator;
 using Hasher = ir::Group::SharedGroupHasher;
 
-using OpGroupPtr = ir::api::OpGroup;
+using OpGroupPtr = ir::OpGroup;
 using OpGroupList = std::vector<OpGroupPtr>;
 
 using ConditionFunction = std::function<bool(const GroupPtr&, const GroupPtr&)>;
@@ -440,7 +442,7 @@ struct HorizontalFuseUtil {
   }
 
   static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
-    return ::ir::IsSameSize(src, dst);
+    return cinn::dialect::ir::IsSameSize(src, dst);
   }
 
   static bool HorizontalElementwiseFuseReduce(const OpGroupPtr& src,
@@ -465,7 +467,7 @@ struct HorizontalFuseUtil {
         phi::product(GetValueShape(GetMasterNode(*ele_group).Op()->result(0)));
 
     bool can_fuse = false;
-    reduce_group->WalkOpNodes([&](const api::OpNode& op) {
+    reduce_group->WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
       if (op.kind() == OpPatternKind::kReduction) {
         size_t size_master = phi::product(GetValueShape(op.Op()->result(0)));
         if (size_ele == size_master) {
@@ -795,7 +797,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
   static bool IsSameSize(LightwareFusePassCtx* ctx,
                          const OpGroupPtr& src,
                          const OpGroupPtr& dst) {
-    return ::ir::IsSameSize(src, dst);
+    return cinn::dialect::ir::IsSameSize(src, dst);
   }
 
   static bool ElementwiseFuseBroadcast(LightwareFusePassCtx* ctx,
@@ -1235,7 +1237,7 @@ class GeneralFusionMergePassHelper {
       const auto& MarkFusible = [&](const OpGroupList& candidates) {
         tagged_lists.push_back(candidates);
       };
-      GraphGroupLightwareFusePassCtx fuse_ctx(api::OpGroup(producer),
+      GraphGroupLightwareFusePassCtx fuse_ctx(ir::OpGroup(producer),
                                               MarkFusible);
       EnableFusedHorizontalGroups(&fuse_ctx);
       return tagged_lists;
@@ -1297,7 +1299,7 @@ class GeneralFusionMergePassHelper {
       OpGroupList consumer_groups;
       consumer_groups.reserve(consumers.size());
       for (auto& consumer : consumers) {
-        consumer_groups.push_back(api::OpGroup(consumer));
+        consumer_groups.push_back(ir::OpGroup(consumer));
       }
       GraphGroupInputFusePassCtx fuse_ctx(consumer_groups, MarkFusible);
       EnableFusedInputGroups(&fuse_ctx);
@@ -1513,7 +1515,7 @@ class GeneralFusionMergePassHelper {
                                     const OpGroupPtr& second) {
         tagged_sets.push_back(std::make_pair(first, second));
       };
-      GraphGroupLightwareFusePassCtx fuse_ctx(api::OpGroup(producer),
+      GraphGroupLightwareFusePassCtx fuse_ctx(ir::OpGroup(producer),
                                               MarkFusible);
       TagVerticalGroups(&fuse_ctx);
       return tagged_sets;
@@ -1762,7 +1764,7 @@ class GeneralFusionMergePassHelper {
                                     const OpGroupPtr& second) {
         tagged_sets.insert(std::make_pair(first, second));
       };
-      GraphGroupLightwareFusePassCtx fuse_ctx(api::OpGroup(producer),
+      GraphGroupLightwareFusePassCtx fuse_ctx(ir::OpGroup(producer),
                                               MarkFusible);
       TagRecomputeGroups(&fuse_ctx);
       return tagged_sets;
@@ -2057,7 +2059,7 @@ class GeneralFusionMergePassHelper {
     // init the postion of groups in fusion groups.
     for (size_t idx = 0; idx < fusion_groups_.size(); ++idx) {
       auto group = fusion_groups_[idx];
-      auto belong_group = std::make_shared<::ir::Group>();
+      auto belong_group = std::make_shared<ir::Group>();
       // copy from group.
       belong_group->max_depth = group->depth;
       belong_group->min_depth = group->depth;
@@ -2120,3 +2122,5 @@ GroupList GeneralFusionMergePassInternal(const ::ir::Program* graph,
 }
 
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

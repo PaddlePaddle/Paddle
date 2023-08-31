@@ -14,17 +14,19 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
 #include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_group.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
 
+namespace cinn {
+namespace dialect {
 namespace ir {
 
-using OpGroupPtr = api::OpGroup;
+using OpGroupPtr = ir::OpGroup;
 using OpGroupList = std::vector<OpGroupPtr>;
 
-static api::OpNode GetMasterNode(const OpGroupPtr& op_group) {
-  std::vector<api::OpNode> master_nodes;
-  op_group.WalkOpNodes([&](const api::OpNode& op) {
+static cinn::dialect::ir::OpNode GetMasterNode(const OpGroupPtr& op_group) {
+  std::vector<cinn::dialect::ir::OpNode> master_nodes;
+  op_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     if (op.kind() == OpPatternKind::kReduction) {
       master_nodes.push_back(op);
     }
@@ -34,13 +36,13 @@ static api::OpNode GetMasterNode(const OpGroupPtr& op_group) {
   }
 
   op_group.WalkOpNodes(
-      [&](const api::OpNode& op) { master_nodes.push_back(op); });
+      [&](const cinn::dialect::ir::OpNode& op) { master_nodes.push_back(op); });
   return master_nodes.back();
 }
 
 static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
-  api::OpNode src_master_node = GetMasterNode(src);
-  api::OpNode dst_master_node = GetMasterNode(dst);
+  cinn::dialect::ir::OpNode src_master_node = GetMasterNode(src);
+  cinn::dialect::ir::OpNode dst_master_node = GetMasterNode(dst);
 
   auto size_0 = src_master_node.Op()
                     ->result(0)
@@ -56,20 +58,22 @@ static bool IsSameSize(const OpGroupPtr& src, const OpGroupPtr& dst) {
   return phi::product(size_0) == phi::product(size_1);
 }
 
-static std::unordered_set<api::OpNode> GetInputOps(const OpGroupPtr& op_group) {
+static std::unordered_set<cinn::dialect::ir::OpNode> GetInputOps(
+    const OpGroupPtr& op_group) {
   std::unordered_set<const ::ir::Operation*> ops_set;
-  op_group.WalkOpNodes(
-      [&ops_set](const api::OpNode& op_node) { ops_set.insert(op_node.Op()); });
+  op_group.WalkOpNodes([&ops_set](const cinn::dialect::ir::OpNode& op_node) {
+    ops_set.insert(op_node.Op());
+  });
 
-  std::unordered_set<api::OpNode> input_ops;
-  op_group.WalkOpNodes([&](const api::OpNode& op) {
+  std::unordered_set<cinn::dialect::ir::OpNode> input_ops;
+  op_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     // const auto& input_tensors = op.inputs();
     auto* ir_op = op.Op();
     for (size_t i = 0; i < ir_op->num_operands(); ++i) {
       auto in = ir_op->operand_source(i);
       if (in) {
         if (!ops_set.count(in.GetDefiningOp())) {
-          input_ops.insert(api::OpNode(in.GetDefiningOp()));
+          input_ops.insert(cinn::dialect::ir::OpNode(in.GetDefiningOp()));
         }
       }
     }
@@ -77,13 +81,14 @@ static std::unordered_set<api::OpNode> GetInputOps(const OpGroupPtr& op_group) {
   return input_ops;
 }
 
-static std::unordered_set<api::OpNode> GetOutputOps(
+static std::unordered_set<cinn::dialect::ir::OpNode> GetOutputOps(
     const OpGroupPtr& op_group) {
   std::unordered_set<const ::ir::Operation*> ops_set;
-  op_group.WalkOpNodes(
-      [&ops_set](const api::OpNode& op_node) { ops_set.insert(op_node.Op()); });
-  std::unordered_set<api::OpNode> output_ops;
-  op_group.WalkOpNodes([&](const api::OpNode& op) {
+  op_group.WalkOpNodes([&ops_set](const cinn::dialect::ir::OpNode& op_node) {
+    ops_set.insert(op_node.Op());
+  });
+  std::unordered_set<cinn::dialect::ir::OpNode> output_ops;
+  op_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     auto* ir_op = op.Op();
     for (size_t i = 0; i < ir_op->num_results(); ++i) {
       auto out = ir_op->result(i);
@@ -91,7 +96,7 @@ static std::unordered_set<api::OpNode> GetOutputOps(
         for (auto it = out.use_begin(); it != out.use_end(); ++it) {
           auto* op = it->owner();
           if (!ops_set.count(op)) {
-            output_ops.insert(api::OpNode(op));
+            output_ops.insert(cinn::dialect::ir::OpNode(op));
             break;
           }
         }
@@ -103,7 +108,7 @@ static std::unordered_set<api::OpNode> GetOutputOps(
 
 // limit the group args number to less equal 512, as args stack size is 4K.
 static bool limit_args(const OpGroupPtr& first, const OpGroupPtr& second) {
-  std::unordered_set<api::OpNode> args;
+  std::unordered_set<cinn::dialect::ir::OpNode> args;
   for (auto& group : {first, second}) {
     for (const auto& node : GetInputOps(group)) {
       args.insert(node);
@@ -140,7 +145,7 @@ bool WithoutLastDimInReduce(const phi::DDim& inshape,
   }
 }
 
-static int GetSharedSize(const api::OpNode& op_node) {
+static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
   const auto& inshape = op_node.Op()
                             ->operand(0)
                             .type()
@@ -198,18 +203,18 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
   if (!limit_args(first, second)) {
     return false;
   }
-  std::unique_ptr<api::OpNode> reducer_0 = nullptr;
-  first.WalkOpNodes([&](const api::OpNode& op) {
+  std::unique_ptr<cinn::dialect::ir::OpNode> reducer_0 = nullptr;
+  first.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     if (!reducer_0 && op.kind() == kReduction) {
-      reducer_0.reset(new api::OpNode(op));
+      reducer_0.reset(new cinn::dialect::ir::OpNode(op));
     }
   });
   CHECK(reducer_0) << "Can't find reduce op in group " << first.group_id();
 
-  std::unique_ptr<api::OpNode> reducer_1 = nullptr;
-  second.WalkOpNodes([&](const api::OpNode& op) {
+  std::unique_ptr<cinn::dialect::ir::OpNode> reducer_1 = nullptr;
+  second.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     if (!reducer_1 && op.kind() == kReduction) {
-      reducer_1.reset(new api::OpNode(op));
+      reducer_1.reset(new cinn::dialect::ir::OpNode(op));
     }
   });
 
@@ -252,7 +257,7 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
       reducer_0_reduce_dim == reducer_1_reduce_dim) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
-      fusion_group.WalkOpNodes([&](const api::OpNode& op) {
+      fusion_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
         if (op.kind() == OpPatternKind::kReduction) {
           shared_size += GetSharedSize(op);
         }
@@ -273,7 +278,7 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
       reducer_0_reduce_dim == reducer_1_reduce_dim) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
-      fusion_group.WalkOpNodes([&](const api::OpNode& op) {
+      fusion_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
         if (op.kind() == OpPatternKind::kReduction) {
           shared_size += GetSharedSize(op);
         }
@@ -292,3 +297,5 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
 }
 
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

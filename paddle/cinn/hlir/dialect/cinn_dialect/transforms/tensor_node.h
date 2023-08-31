@@ -20,9 +20,9 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
-namespace ir {
 namespace cinn {
-namespace api {
+namespace dialect {
+namespace ir {
 
 class OpNode;
 
@@ -44,6 +44,6 @@ class TensorNode final {
   ::ir::Value node_data_;
 };
 
-}  // namespace api
-}  // namespace cinn
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

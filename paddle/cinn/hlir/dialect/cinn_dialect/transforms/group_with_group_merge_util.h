@@ -26,8 +26,10 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
 
+namespace cinn {
+namespace dialect {
 namespace ir {
 
 const std::set<std::string> ConstantOps = {
@@ -53,13 +55,13 @@ inline bool limit_args(const std::shared_ptr<ir::Group>& first,
   }
 }
 
-inline bool always_fuse(const std::shared_ptr<::ir::Group>& first,
-                        const std::shared_ptr<::ir::Group>& second) {
+inline bool always_fuse(const std::shared_ptr<ir::Group>& first,
+                        const std::shared_ptr<ir::Group>& second) {
   return true;
 }
 
-inline bool is_same_shape(const std::shared_ptr<::ir::Group>& first,
-                          const std::shared_ptr<::ir::Group>& second) {
+inline bool is_same_shape(const std::shared_ptr<ir::Group>& first,
+                          const std::shared_ptr<ir::Group>& second) {
   if (!limit_args(first, second)) {
     return false;
   }
@@ -69,8 +71,8 @@ inline bool is_same_shape(const std::shared_ptr<::ir::Group>& first,
   return output_var_0 == output_var_1;
 }
 
-inline bool is_same_size(const std::shared_ptr<::ir::Group>& first,
-                         const std::shared_ptr<::ir::Group>& second) {
+inline bool is_same_size(const std::shared_ptr<ir::Group>& first,
+                         const std::shared_ptr<ir::Group>& second) {
   if (!limit_args(first, second)) {
     return false;
   }
@@ -86,14 +88,14 @@ inline bool is_same_size(const std::shared_ptr<::ir::Group>& first,
   return size_0 == size_1;
 }
 
-inline bool is_const_group(const std::shared_ptr<::ir::Group>& group) {
+inline bool is_const_group(const std::shared_ptr<ir::Group>& group) {
   return group->CollectNodes().size() == 1 &&
          ConstantOps.count(group->CollectNodes()[0]->name());
 }
 
 inline bool elementwise_fuse_broadcast(
-    const std::shared_ptr<::ir::Group>& first,
-    const std::shared_ptr<::ir::Group>& second) {
+    const std::shared_ptr<ir::Group>& first,
+    const std::shared_ptr<ir::Group>& second) {
   // if producer just include const op.
   if (is_const_group(first)) {
     return true;
@@ -125,9 +127,9 @@ inline bool elementwise_fuse_broadcast(
 }
 
 inline bool honrizontal_elementwise_fuse_reduce(
-    const std::shared_ptr<::ir::Group>& first,
-    const std::shared_ptr<::ir::Group>& second) {
-  std::shared_ptr<::ir::Group> ele_group, reduce_group;
+    const std::shared_ptr<ir::Group>& first,
+    const std::shared_ptr<ir::Group>& second) {
+  std::shared_ptr<ir::Group> ele_group, reduce_group;
   if (first->op_pattern_kind == kReduction) {
     ele_group = second;
     reduce_group = first;
@@ -155,9 +157,8 @@ inline bool honrizontal_elementwise_fuse_reduce(
   return false;
 }
 
-inline bool elementwise_fuse_reduce(
-    const std::shared_ptr<::ir::Group>& first,
-    const std::shared_ptr<::ir::Group>& second) {
+inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
+                                    const std::shared_ptr<ir::Group>& second) {
   // if (helper->target_ == common::DefaultHostTarget()) {
   //   return true;
   // }
@@ -281,8 +282,8 @@ inline bool elementwise_fuse_reduce(
   return false;
 }
 
-inline bool broadcast_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
-                                  const std::shared_ptr<::ir::Group>& second) {
+inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
+                                  const std::shared_ptr<ir::Group>& second) {
   // if same shape with horizontal relation
   if (is_same_size(first, second)) {
     return true;
@@ -308,9 +309,8 @@ inline bool broadcast_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
   return false;
 }
 
-inline bool reduce_fuse_elementwise(
-    const std::shared_ptr<::ir::Group>& first,
-    const std::shared_ptr<::ir::Group>& second) {
+inline bool reduce_fuse_elementwise(const std::shared_ptr<ir::Group>& first,
+                                    const std::shared_ptr<ir::Group>& second) {
   if (!is_same_size(first, second)) {
     return false;
   }
@@ -320,8 +320,8 @@ inline bool reduce_fuse_elementwise(
   return true;
 }
 
-inline bool horizontal_relation(const std::shared_ptr<::ir::Group>& first,
-                                const std::shared_ptr<::ir::Group>& second,
+inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
+                                const std::shared_ptr<ir::Group>& second,
                                 const OpPatternKind op_pattern_kind) {
   // merge injective
   auto merge_nodes_set = [](const std::shared_ptr<ir::Group>& group) {
@@ -388,8 +388,8 @@ inline bool horizontal_relation(const std::shared_ptr<::ir::Group>& first,
 }
 
 inline bool horizontal_with_injective(
-    const std::shared_ptr<::ir::Group>& first,
-    const std::shared_ptr<::ir::Group>& second) {
+    const std::shared_ptr<ir::Group>& first,
+    const std::shared_ptr<ir::Group>& second) {
   if (is_const_group(first)) {
     return true;
   }
@@ -401,8 +401,8 @@ inline bool horizontal_with_injective(
 }
 
 inline bool injective_horizontal_with_reduce(
-    const std::shared_ptr<::ir::Group>& first,
-    const std::shared_ptr<::ir::Group>& second) {
+    const std::shared_ptr<ir::Group>& first,
+    const std::shared_ptr<ir::Group>& second) {
   // check injective with injective.
   if (!horizontal_relation(first, second, kInjective)) {
     return false;
@@ -410,8 +410,8 @@ inline bool injective_horizontal_with_reduce(
   return elementwise_fuse_reduce(first, second);
 }
 
-inline bool reduce_fuse_broadcast(const std::shared_ptr<::ir::Group>& first,
-                                  const std::shared_ptr<::ir::Group>& second) {
+inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
+                                  const std::shared_ptr<ir::Group>& second) {
   // if same shape with horizontal relation
   if (is_same_size(first, second)) {
     return true;
@@ -536,8 +536,8 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<::ir::Group>& first,
   return true;
 }
 
-inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
-                               const std::shared_ptr<::ir::Group>& second) {
+inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
+                               const std::shared_ptr<ir::Group>& second) {
   if (!limit_args(first, second)) {
     return false;
   }
@@ -633,3 +633,5 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<::ir::Group>& first,
 }
 
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

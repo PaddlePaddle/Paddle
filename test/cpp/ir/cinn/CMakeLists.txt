@@ -27,8 +27,8 @@ if(WITH_TESTING AND WITH_CINN)
     SRCS
     ir_op_fusion_test.cc
     DEPS
-    general_fusion_merge_pass
-    fusion_merge_pass
+    group_with_group_merge_pass
+    op_with_group_merge_pass
     pd_dialect
     cinn_dialect
     ir

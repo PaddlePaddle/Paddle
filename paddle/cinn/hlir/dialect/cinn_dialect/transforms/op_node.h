@@ -15,11 +15,12 @@
 #pragma once
 
 #include <memory>
-#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/fusion_merge_util.h"
+#include "paddle/cinn/hlir/dialect/cinn_dialect/transforms/op_with_group_merge_util.h"
 #include "paddle/ir/core/operation.h"
 
+namespace cinn {
+namespace dialect {
 namespace ir {
-namespace api {
 
 class OpNode {
  public:
@@ -41,22 +42,23 @@ class OpNode {
 
   bool operator<(const OpNode& other) const { return node_ < other.node_; }
 
-  const Operation* Op() const { return node_; }
+  const ::ir::Operation* Op() const { return node_; }
 
  private:
   friend struct std::hash<OpNode>;
 
-  const Operation* node_;
+  const ::ir::Operation* node_;
 };
 
-}  // namespace api
 }  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
 
 namespace std {
 
 template <>
-struct hash<ir::api::OpNode> {
-  size_t operator()(const ir::api::OpNode& obj) const {
+struct hash<cinn::dialect::ir::OpNode> {
+  size_t operator()(const cinn::dialect::ir::OpNode& obj) const {
     return std::hash<size_t>()(reinterpret_cast<size_t>(obj.node_));
   }
 };
