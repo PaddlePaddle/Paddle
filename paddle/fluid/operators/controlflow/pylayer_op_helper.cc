@@ -25,8 +25,8 @@ class ProgramDesc;
 namespace paddle {
 namespace operators {
 
-static bool IsMatchedPyLayerOpAndPyLayerGradGradOp(const OpVariant &fwd_op,
-                                                   const OpVariant &bwd_op) {
+static bool IsMatchedPyLayerOpAndPyLayerGradOp(const OpVariant &fwd_op,
+                                               const OpVariant &bwd_op) {
   return fwd_op.Outputs().at(PyLayerOp::kScope) ==
          bwd_op.Inputs().at(PyLayerOp::kScope);
 }
@@ -116,7 +116,7 @@ static void PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
   for (auto &bwd_op : *pylayer_grad_ops) {
     const OpVariant *matched_fwd_op = nullptr;
     for (auto &fwd_op : pylayer_op_set) {
-      if (IsMatchedPyLayerOpAndPyLayerGradGradOp(fwd_op, bwd_op)) {
+      if (IsMatchedPyLayerOpAndPyLayerGradOp(fwd_op, bwd_op)) {
         PADDLE_ENFORCE_EQ(matched_fwd_op,
                           nullptr,
                           platform::errors::PreconditionNotMet(

@@ -53,8 +53,6 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         prog_, block_id_, ops_);
-    operators::PrepareSafeEagerDeletionOnPyLayerOpAndPyLayerGradOp(
-        prog_, block_id_, ops_);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         prog_, block_id_, ops_);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
