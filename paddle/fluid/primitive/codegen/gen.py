@@ -37,7 +37,16 @@ sys.path.append(
 # fmt: on
 
 
-VJPS = ['tanh_grad', 'mean_grad', 'add_grad', 'divide_grad', 'sum_grad']
+VJPS = [
+    'tanh_grad',
+    'mean_grad',
+    'add_grad',
+    'divide_grad',
+    'sum_grad',
+    'gelu_grad',
+    'erg_grad',
+    'matmul_grad',
+]
 VJP_COMPS = ['divide_grad', 'sum_grad']
 BACKENDS = [
     'add_n',
@@ -58,6 +67,9 @@ BACKENDS = [
     'add_grad',
     'divide_grad',
     'sum_grad',
+    'gelu_grad',
+    'erf_grad',
+    'matmul_grad',
 ]
 
 
