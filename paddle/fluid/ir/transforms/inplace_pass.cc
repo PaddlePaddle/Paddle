@@ -19,6 +19,7 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_type.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/trait/inplace.h"
 #include "paddle/fluid/ir/dialect/paddle_dialect/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/ir/dialect/paddle_kernel_dialect/ir/kernel_type.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/pass/pass.h"
@@ -111,9 +112,8 @@ GetEagerDeletionValues(ir::Block* block) {
     }
 
     auto op_attrs = op->attributes();
-    PADDLE_ENFORCE(op_attrs.count("op_name") > 0,
-                   paddle::platform::errors::Fatal(
-                       "kernel_dialect op should own an 'op_name' attribute."));
+    IR_ENFORCE(op_attrs.count("op_name") > 0,
+               "kernel_dialect op should own an 'op_name' attribute.");
     auto upper_op_name =
         op_attrs.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
 
@@ -183,8 +183,6 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
     auto upper_op_attrs = op->attributes();
     auto upper_op_name =
         upper_op_attrs.at("op_name").dyn_cast<::ir::StrAttribute>().AsString();
-    ir::OpInfo upper_op_info =
-        ir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name);
     ir::OpInfo upper_inplace_op_info =
         ir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
@@ -238,7 +236,6 @@ std::unordered_map<ir::Operation*, std::string> GetInplaceOps(
         break;
       }
     }
-
     if (can_do_inplace) {
       inplace_ops[op] = upper_op_name + "_";
       VLOG(6) << upper_op_name
