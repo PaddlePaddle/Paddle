@@ -328,7 +328,8 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
 
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const phi::Place& place,
-                                          Scope* scope) {
+                                          Scope* scope,
+                                          bool is_last_op) {
   const std::string& op_type = op.Type();
   if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
     return;
@@ -370,9 +371,21 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       }
     }
   } else if (op_type == "conditional_block") {
-    VLOG(4) << op.OutVarInfoString(scope);
+    if (is_last_op) {
+      return;
+    }
+    const std::string out_var_info_before_build = op.OutVarInfoString(scope);
     op.RunPreStaticBuild(*scope, place);
-    VLOG(4) << op.OutVarInfoString(scope);
+    const std::string out_var_info_after_build = op.OutVarInfoString(scope);
+    if (out_var_info_before_build != out_var_info_after_build) {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("The output of conditional_block is "
+                                     "changed after static build. Static build "
+                                     "is not supported in this case. "
+                                     "Before: %s, After: %s",
+                                     out_var_info_before_build,
+                                     out_var_info_after_build));
+    }
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Can not static build for op: %s", op_type));
@@ -578,6 +591,7 @@ void FakeInitializeOutputsForStructureKernel(
     }
   }
 }
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
