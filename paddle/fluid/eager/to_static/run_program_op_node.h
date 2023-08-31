@@ -498,7 +498,8 @@ inline void NewIRRunProgramAPI(
     // update interpretercore skip_gc_var
     auto skip_names =
         details::GetNameFromValue(forward_global_block, middle_values);
-    auto skip_names_set = std::set(skip_names.begin(), skip_names.end());
+    auto skip_names_set =
+        std::set<std::string>(skip_names.begin(), skip_names.end());
     skip_names = details::GetNameFromValue(forward_global_block, output_values);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
