@@ -983,9 +983,12 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
             >>> format = "coo"
+            >>> paddle.seed(2023)
             >>> dense_x = paddle.randn((5, 5), dtype='float64')
 
             >>> if format == "coo":
@@ -994,9 +997,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             ...     sparse_x = dense_x.to_sparse_csr()
 
             >>> print("sparse.pca_lowrank API only support CUDA 11.x")
-            >>> U, S, V = None, None, None
+            >>> # U, S, V = None, None, None
             >>> # use code blow when your device CUDA version >= 11.0
-            >>> # U, S, V = paddle.sparse.pca_lowrank(sparse_x)
+            >>> U, S, V = paddle.sparse.pca_lowrank(sparse_x)
 
             >>> print(U)
             Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
