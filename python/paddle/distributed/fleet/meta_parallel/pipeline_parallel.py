@@ -247,10 +247,12 @@ class PipelineParallel(MetaParallelBase):
 
         p2p.initialize_p2p_groups(
             hcg,
-            self._using_cache,
             self._enable_partial_send_recv,
             self._enable_timer,
         )
+
+        # construct pipeline meta info
+        self._p2p_helper = p2p.P2pHelper(self._using_cache)
 
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0
@@ -444,12 +446,16 @@ class PipelineParallel(MetaParallelBase):
                 schedule += f"f{step_id};"
                 logger.info(f"forward step for micro step {step_id}")
                 continue
-            input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
+            input_tensor = self._p2p_helper.recv_forward(
+                self.is_pipeline_first_stage()
+            )
 
             self._record_stamp("F", step_id, '"B"', self._forward_color)
             output_tensor = self._forward_step(input_tensor, micro_dataset)
             self._record_stamp("F", step_id, '"E"', self._forward_color)
-            p2p.send_forward(output_tensor, self.is_pipeline_last_stage())
+            self._p2p_helper.send_forward(
+                output_tensor, self.is_pipeline_last_stage()
+            )
 
             input_buffers.append(input_tensor)
             output_buffers.append(output_tensor)
@@ -458,7 +464,9 @@ class PipelineParallel(MetaParallelBase):
                 self._release_output(output_tensor)
 
         if steady_steps > 0 and not static_scheduler:
-            input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
+            input_tensor = self._p2p_helper.recv_forward(
+                self.is_pipeline_first_stage()
+            )
 
         for i in range(steady_steps):
             if static_scheduler:
@@ -477,7 +485,7 @@ class PipelineParallel(MetaParallelBase):
                 "F", startup_steps + i, '"E"', self._forward_color
             )
 
-            output_tensor_grad = p2p.send_forward_recv_backward(
+            output_tensor_grad = self._p2p_helper.send_forward_recv_backward(
                 output_tensor, self.is_pipeline_last_stage()
             )
 
@@ -499,11 +507,11 @@ class PipelineParallel(MetaParallelBase):
 
             if last_iter:
                 input_tensor = None
-                p2p.send_backward(
+                self._p2p_helper.send_backward(
                     input_tensor_grad, self.is_pipeline_first_stage()
                 )
             else:
-                input_tensor = p2p.send_backward_recv_forward(
+                input_tensor = self._p2p_helper.send_backward_recv_forward(
                     input_tensor_grad, self.is_pipeline_first_stage()
                 )
 
@@ -515,7 +523,7 @@ class PipelineParallel(MetaParallelBase):
             input_tensor = input_buffers.pop(0)
             output_tensor = output_buffers.pop(0)
 
-            output_tensor_grad = p2p.recv_backward(
+            output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage()
             )
 
@@ -528,7 +536,9 @@ class PipelineParallel(MetaParallelBase):
             self._record_stamp(
                 "B", steady_steps + i, '"E"', self._backward_color
             )
-            p2p.send_backward(input_tensor_grad, self.is_pipeline_first_stage())
+            self._p2p_helper.send_backward(
+                input_tensor_grad, self.is_pipeline_first_stage()
+            )
 
         if static_scheduler:
             return schedule
@@ -640,28 +650,38 @@ class PipelineParallel(MetaParallelBase):
         micro_dataset = self._wrap_data(data)
 
         for step_id in range(startup_steps):
-            input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
+            input_tensor = self._p2p_helper.recv_forward(
+                self.is_pipeline_first_stage()
+            )
 
             output_tensor = self._forward_step(input_tensor, micro_dataset)
-            p2p.send_forward(output_tensor, self.is_pipeline_last_stage())
+            self._p2p_helper.send_forward(
+                output_tensor, self.is_pipeline_last_stage()
+            )
 
             input_buffers.append(input_tensor)
             output_buffers.append(output_tensor)
 
         if steady_steps > 0:
-            input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
+            input_tensor = self._p2p_helper.recv_forward(
+                self.is_pipeline_first_stage()
+            )
 
         for i in range(steady_steps):
             last_iter = i == (steady_steps - 1)
 
             output_tensor = self._forward_step(input_tensor, micro_dataset)
-            p2p.send_forward(output_tensor, self.is_pipeline_last_stage())
+            self._p2p_helper.send_forward(
+                output_tensor, self.is_pipeline_last_stage()
+            )
 
             input_buffers.append(input_tensor)
             output_buffers.append(output_tensor)
 
             if not last_iter:
-                input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
+                input_tensor = self._p2p_helper.recv_forward(
+                    self.is_pipeline_first_stage()
+                )
 
         if self._compute_loss:
             self.train_loss = self._broadcast_final_loss()
@@ -1069,6 +1089,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 "enable static_scheduler will return the pp schedule instead of the loss"
             )
             schedule = ""
+        # NOTE(shenliang03): Due to ring_exchange for pipeline with interleave, cache should be enabled
+
+        assert (
+            self._using_cache
+        ), "cache should be enabled for pipeline with interleave"
 
         # init some attributes for this batch run
         self.scaler = scaler
@@ -1114,7 +1139,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.set_virtual_pipeline_rank(0)
         if not static_scheduler:
             self.input_tensors[0].append(
-                p2p.recv_forward(
+                self._p2p_helper.recv_forward(
                     self.is_pipeline_first_stage(), sync_recv=False
                 )
             )
@@ -1166,7 +1191,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 (
                     input_tensor,
                     output_tensor_grad,
-                ) = p2p.send_forward_backward_recv_forward_backward(
+                ) = self._p2p_helper.send_forward_backward_recv_forward_backward(
                     output_tensor,
                     input_tensor_grad,
                     recv_prev=recv_prev,
@@ -1178,7 +1203,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     output_tensor_grad
                 )
             else:
-                input_tensor = p2p.send_forward_recv_forward(
+                input_tensor = self._p2p_helper.send_forward_recv_forward(
                     output_tensor, recv_prev=recv_prev
                 )
             # append input_tensor no matter none or not
@@ -1289,7 +1314,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             (
                 input_tensor,
                 output_tensor_grad,
-            ) = p2p.send_forward_backward_recv_forward_backward(
+            ) = self._p2p_helper.send_forward_backward_recv_forward_backward(
                 output_tensor,
                 input_tensor_grad,
                 recv_prev=recv_prev,
@@ -1343,7 +1368,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_next = False
                 # append output_tensor_grad no matter none or not
                 self.output_tensor_grads[next_backward_virtual_pp_rank].append(
-                    p2p.send_backward_recv_backward(
+                    self._p2p_helper.send_backward_recv_backward(
                         input_tensor_grad, recv_next=recv_next
                     )
                 )
