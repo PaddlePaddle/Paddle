@@ -70,6 +70,27 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        reinterpret_cast<double *>(C),
                        ldc);
   } else if (dtype == CUDA_R_16F) {
+#if CUDA_VERSION >= 11000
+    return cublasGemmEx(handle,
+                        transa,
+                        transb,
+                        m,
+                        n,
+                        k,
+                        &alpha,
+                        A,
+                        CUDA_R_16F,
+                        lda,
+                        B,
+                        CUDA_R_16F,
+                        ldb,
+                        &beta,
+                        C,
+                        CUDA_R_16F,
+                        ldc,
+                        CUBLAS_COMPUTE_32F,
+                        CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+#else
     common::float16 alpha_fp16{alpha};
     common::float16 beta_fp16{beta};
     return cublasHgemm(handle,
@@ -86,6 +107,7 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        reinterpret_cast<const __half *>(&beta_fp16),
                        reinterpret_cast<__half *>(C),
                        ldc);
+#endif
   } else if (dtype == CUDA_R_16BF) {
 #if CUDA_VERSION >= 11000
     return cublasGemmEx(handle,
@@ -174,6 +196,35 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                      strideC,
                                      batchCount);
   } else if (dtype == CUDA_R_16F) {
+#if CUDA_VERSION >= 11000
+    auto compute_type = CUBLAS_COMPUTE_32F;
+    if (FLAGS_gemm_use_half_precision_compute_type == true) {
+      compute_type = CUBLAS_COMPUTE_16F;
+    }
+    return cublasGemmStridedBatchedEx(handle,
+                                      transa,
+                                      transb,
+                                      m,
+                                      n,
+                                      k,
+                                      &alpha,
+                                      A,
+                                      CUDA_R_16BF,
+                                      lda,
+                                      strideA,
+                                      B,
+                                      CUDA_R_16BF,
+                                      ldb,
+                                      strideB,
+                                      &beta,
+                                      C,
+                                      CUDA_R_16BF,
+                                      ldc,
+                                      strideC,
+                                      batchCount,
+                                      compute_type,
+                                      CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+#else
     common::float16 alpha_fp16{alpha};
     common::float16 beta_fp16{beta};
     return cublasHgemmStridedBatched(
@@ -195,6 +246,7 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
         ldc,
         strideC,
         batchCount);
+#endif
   } else if (dtype == CUDA_R_16BF) {
 #if CUDA_VERSION >= 11000
     return cublasGemmStridedBatchedEx(handle,
