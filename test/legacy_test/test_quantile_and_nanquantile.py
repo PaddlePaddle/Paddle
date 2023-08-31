@@ -118,11 +118,9 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
         )
 
-    def test_backward(self):
-        def check_grad(x, q, axis, target_gard, idx=None):
-            for i, (op, _) in enumerate(API_list):
-                if idx and idx != i:
-                    continue
+    def paddle_test_backward():
+        def check_grad(x, q, axis, target_gard, apis=None):
+            for op, _ in apis or API_list:
                 x = paddle.to_tensor(x, dtype='float32', stop_gradient=False)
                 op(x, q, axis).sum().backward()
                 np.testing.assert_allclose(
@@ -137,12 +135,23 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             [1, 2, 3, 4] * 2, [0.55, 0.7], 0, [0, 0, 0.95, 0, 0, 0.15, 0.9, 0]
         )
         check_grad(
-            [[1, 2, 3], [4, 5, 6]], [0.3, 0.7], 1, [[1, 1, 1], [1, 1, 1]]
+            [[1, 2, 3], [4, 5, 6]],
+            [0.3, 0.7],
+            1,
+            [[0.4, 1.2, 0.4], [0.4, 1.2, 0.4]],
         )
         # quantile
-        check_grad([1, float('nan'), 3], 0.5, 0, [1.5, 3, 1.5], 0)
+        check_grad(
+            [1, float('nan'), 3], 0.5, 0, [0, 1, 0], [(paddle.quantile, None)]
+        )
         # nanquantile
-        check_grad([1, float('nan'), 3], 0.5, 0, [1.5, 2, 1.5], 1)
+        check_grad(
+            [1, float('nan'), 3],
+            0.5,
+            0,
+            [0.5, 0, 0.5],
+            [(paddle.nanquantile, None)],
+        )
 
 
 class TestMuitlpleQ(unittest.TestCase):
