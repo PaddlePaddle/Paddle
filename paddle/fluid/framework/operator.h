@@ -291,6 +291,7 @@ class OperatorBase {
   /// if scope is not null, also show dimensions of arguments
   virtual std::string DebugStringEx(const Scope* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
+  std::string VarInfoString(const Scope* scope) const;
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportXPU() const { return false; }

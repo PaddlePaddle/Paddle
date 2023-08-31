@@ -25,9 +25,7 @@ namespace framework {
 namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
-                           const phi::Place& place,
-                           VariableScope* var_scope,
-                           bool use_local_scope);
+                           const phi::Place& place);
 
 void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const platform::Place& place,

@@ -17,7 +17,6 @@
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
@@ -59,9 +58,7 @@ namespace framework {
 namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block,
-                           const phi::Place& place,
-                           VariableScope* var_scope,
-                           bool use_local_scope) {
+                           const phi::Place& place) {
   // in_black_list = (kernelCode >> 7) & 1
   // is_operator_base = (kernelCode >> 6) & 1
   // is_custom_op = (kernelCode >> 5) & 1
@@ -376,9 +373,9 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       }
     }
   } else if (op_type == "conditional_block") {
-    VLOG(4) << op_base->DebugStringEx(scope);
-    op_base->RunPreStaticBuild(*scope, place);
-    VLOG(4) << op_base->DebugStringEx(scope);
+    VLOG(4) << op->DebugStringEx(scope);
+    op->RunPreStaticBuild(*scope, place);
+    VLOG(4) << op->DebugStringEx(scope);
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("Can not static build for op: %s", op_type));

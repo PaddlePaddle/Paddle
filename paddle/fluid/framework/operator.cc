@@ -953,6 +953,10 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   return ss.str();
 }
 
+std::string OperatorBase::VarInfoString(const Scope* scope) const {
+  std::stringstream ss;
+}
+
 OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& inputs,
                            const VariableNameMap& outputs,
