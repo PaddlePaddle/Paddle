@@ -1219,6 +1219,7 @@ void IndexPutGradInferMeta(const MetaTensor& x,
 
 void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& cos,
+                            const MetaTensor& position_ids,
                             const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,

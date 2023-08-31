@@ -93,7 +93,7 @@ def get_sin_cos_tensor(seq_len, head_dim, sign):
 
 
 def paddle_fused_rotary_position_embedding(
-    init_q, init_k, init_v, use_neox_rotary_style=True
+    init_q, init_k, init_v, position_ids=None, use_neox_rotary_style=True
 ):
     # permute q, k, v from [batch_size, seq_len, num_heads, head_dim]
     # to [batch_size, num_heads, seq_len, head_dim]
@@ -102,8 +102,16 @@ def paddle_fused_rotary_position_embedding(
     sign = -1 if use_neox_rotary_style else 1
     sin_tensor, cos_tensor = get_sin_cos_tensor(q.shape[2], q.shape[3], sign)
 
-    # permute sin, cos from [1, seq_len, 1, head_dim]
-    # to [1, 1, seq_len, head_dim]
+    if position_ids is not None:
+        sin_tensor = sin_tensor.squeeze(axis=[0, 2])  # [seq_len, dim]
+        cos_tensor = cos_tensor.squeeze(axis=[0, 2])  # [seq_len, dim]
+        sin_tensor = sin_tensor[position_ids].unsqueeze(
+            2
+        )  # [bs, seq_len, 1, dim]
+        cos_tensor = cos_tensor[position_ids].unsqueeze(
+            2
+        )  # [bs, seq_len, 1, dim]
+
     perm = [0, 2, 1, 3]
     sin_tensor = paddle.transpose(x=sin_tensor, perm=perm)
     cos_tensor = paddle.transpose(x=cos_tensor, perm=perm)
@@ -128,7 +136,7 @@ def paddle_fused_rotary_position_embedding(
 )
 class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def setUp(self):
-        self.shape = [1, 8, 2, 16]
+        self.shape = [2, 8, 2, 16]
         self.dtype = 'float32'
         self.training = True
         self.seed = 1203
@@ -139,7 +147,12 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         return tmp
 
     def get_forward_backward(
-        self, rope_function, seed, flag=0, use_neox_rotary_style=True
+        self,
+        rope_function,
+        seed,
+        flag=False,
+        use_neox_rotary_style=True,
+        position_ids=None,
     ):
         paddle.disable_static()
         paddle.seed(seed)
@@ -154,11 +167,16 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                     tensor_q.shape[1], tensor_q.shape[3], 1
                 )
                 out_q, out_k, out_v = rope_function(
-                    tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
+                    tensor_q,
+                    tensor_k,
+                    tensor_v,
+                    tensor_sin,
+                    tensor_cos,
+                    position_ids=position_ids,
                 )
             else:
                 out_q, out_k, out_v = rope_function(
-                    tensor_q, tensor_k, tensor_v
+                    tensor_q, tensor_k, tensor_v, position_ids=position_ids
                 )
         else:
             if flag:
@@ -171,11 +189,16 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                     tensor_v,
                     tensor_sin,
                     tensor_cos,
+                    position_ids=position_ids,
                     use_neox_rotary_style=False,
                 )
             else:
                 out_q, out_k, out_v = rope_function(
-                    tensor_q, tensor_k, tensor_v, use_neox_rotary_style=False
+                    tensor_q,
+                    tensor_k,
+                    tensor_v,
+                    position_ids=position_ids,
+                    use_neox_rotary_style=False,
                 )
 
         fw.append(out_q)
@@ -214,7 +237,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             paddle_fused_rotary_position_embedding, seed=self.seed
         )
         f_fw, f_bw = self.get_forward_backward(
-            fused_rotary_position_embedding, seed=self.seed, flag=1
+            fused_rotary_position_embedding, seed=self.seed, flag=True
         )
         for i in range(len(p_fw)):
             np.testing.assert_allclose(
@@ -234,6 +257,28 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             fused_rotary_position_embedding,
             seed=self.seed,
             use_neox_rotary_style=False,
+        )
+        for i in range(len(p_fw)):
+            np.testing.assert_allclose(
+                p_fw[i].numpy(), f_fw[i].numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                p_bw[i].numpy(), f_bw[i].numpy(), rtol=1e-05
+            )
+
+    def test_fused_rope_position_ids(self):
+        position_ids = paddle.to_tensor(
+            [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
+        )
+        p_fw, p_bw = self.get_forward_backward(
+            paddle_fused_rotary_position_embedding,
+            seed=self.seed,
+            position_ids=position_ids,
+        )
+        f_fw, f_bw = self.get_forward_backward(
+            fused_rotary_position_embedding,
+            seed=self.seed,
+            position_ids=position_ids,
         )
         for i in range(len(p_fw)):
             np.testing.assert_allclose(

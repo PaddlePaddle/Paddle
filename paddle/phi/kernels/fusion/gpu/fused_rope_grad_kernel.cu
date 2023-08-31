@@ -27,6 +27,7 @@ template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& sin,
                          const paddle::optional<DenseTensor>& cos,
+                         const paddle::optional<DenseTensor>& position_ids,
                          const DenseTensor& dout_q,
                          const paddle::optional<DenseTensor>& dout_k,
                          const paddle::optional<DenseTensor>& dout_v,
@@ -59,6 +60,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   phi::Array<T*, 3> outs_data;
   phi::Array<const T*, 3> ins_data;
   phi::Array<const T*, 2> sin_cos_data;
+  const int64_t* position_ids_data;
 
   ins_data[0] = dout_q.data<T>();
   outs_data[0] = dq->data<T>();
@@ -89,12 +91,21 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     flag_sin_cos = true;
   }
 
+  bool flag_position_ids = false;
+  if (position_ids.get_ptr()) {
+    position_ids_data = position_ids->data<int64_t>();
+
+    flag_position_ids = true;
+  }
+
   int sign = -1;
   if (use_neox_rotary_style) {
     VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
         <<<grid, block, 0, stream>>>(ins_data,
                                      sin_cos_data,
+                                     position_ids_data,
                                      flag_sin_cos,
+                                     flag_position_ids,
                                      sign,
                                      batch_size,
                                      seq_len,
@@ -107,7 +118,9 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
         <<<grid, block, 0, stream>>>(ins_data,
                                      sin_cos_data,
+                                     position_ids_data,
                                      flag_sin_cos,
+                                     flag_position_ids,
                                      sign,
                                      batch_size,
                                      seq_len,
