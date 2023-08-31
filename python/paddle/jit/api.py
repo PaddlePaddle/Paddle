@@ -1248,10 +1248,10 @@ def save(layer, path, input_spec=None, **configs):
             file_prefix = file_prefix + '.' + attr_func
         file_prefix = os.path.join(model_path, file_prefix)
         with scope_guard(scope):
-            input_vars = []
-            for var in concrete_program.main_program.clone().list_vars():
-                if var.name in input_var_names:
-                    input_vars.append(var)
+            input_vars = [
+                concrete_program.main_program.global_block().var(name)
+                for name in input_var_names
+            ]
             save_inference_model(
                 path_prefix=file_prefix,
                 feed_vars=input_vars,
