@@ -1310,3 +1310,10 @@ PHI_DEFINE_EXPORTED_bool(
     true,
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");
+
+// Used to filter events, works like glog VLOG(level).
+// RecordEvent will works if host_trace_level >= level.
+PHI_DEFINE_EXPORTED_int64(host_trace_level,
+                          1,
+                          "RecordEvent will works "
+                          "if host_trace_level >= level.");
