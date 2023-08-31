@@ -415,27 +415,27 @@ class Converter:
     @staticmethod
     def split(complete_tensor, partition_index_list, length):
         """
-                Slice a complete tensor.
+        Slice a complete tensor.
 
-                Returns:
-                    sliced_tensor_list(list): sliced tensors with 'partition_index_list'
-        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-                Examples:
-                    .. code-block:: python
+        Returns:
+            sliced_tensor_list(list): sliced tensors with 'partition_index_list'
 
+        Examples:
+            .. code-block:: python
 
-                        >>> import numpy as np
-                        >>> from paddle.distributed.auto_parallel.static.converter import Converter
-                        >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
-                        >>> rank = 2
-                        >>> complete_shape = [1, 1, 6]
-                        >>> dims_mapping = [-1, -1, 0]
-                        >>> process_shape = [3]
-                        >>> process_group = [0, 1, 2]
+                >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> import numpy as np
+                >>> from paddle.distributed.auto_parallel.static.converter import Converter
+                >>> complete_tensor = np.array([[[1.11, 1.12, 1.13, 1.14, 1.15, 1.16]]])
+                >>> rank = 2
+                >>> complete_shape = [1, 1, 6]
+                >>> dims_mapping = [-1, -1, 0]
+                >>> process_shape = [3]
+                >>> process_group = [0, 1, 2]
 
-                        >>> sliced_tensor_list = Converter.split(complete_tensor, [[], [], [2, 4]], 3)
-                        >>> print(sliced_tensor_list)
-                        [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
+                >>> sliced_tensor_list = Converter.split(complete_tensor, [[], [], [2, 4]], 3)
+                >>> print(sliced_tensor_list)
+                [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
         """
         sliced_tensor_list = []
         axis = len(complete_tensor.shape) - length
