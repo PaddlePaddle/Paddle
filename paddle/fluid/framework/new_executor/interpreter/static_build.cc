@@ -46,8 +46,7 @@ std::set<std::string> StaticBuildBlackList = {
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
     "cinn_launch" /*: to handle subgraph infermeta*/,
     "run_program" /*: to handle scope output*/,
-    "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
-    "distributed_fused_lamb_init"};
+    "sparse_sparse_coo_tensor" /*: to handle sparse output*/};
 
 namespace paddle {
 namespace framework {
