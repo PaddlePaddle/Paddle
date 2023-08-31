@@ -20,69 +20,13 @@
 #include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_attribute.h"
 #include "paddle/fluid/ir/drr/api/drr_pattern_context.h"
 #include "paddle/fluid/ir/drr/api/tensor_interface.h"
+#include "paddle/fluid/ir/drr/attr_type_uilts.h"
 #include "paddle/fluid/ir/drr/ir_operation.h"
 #include "paddle/fluid/ir/drr/ir_value.h"
 #include "paddle/ir/core/builtin_attribute.h"
 
 namespace ir {
 namespace drr {
-
-template <class T>
-struct CppTypeToIrAttribute;
-
-#define PD_SPECIALIZE_CppTypeToIrAttribute(cpp_type, ir_attr_type) \
-  template <>                                                      \
-  struct CppTypeToIrAttribute<cpp_type> {                          \
-    using type = ir_attr_type;                                     \
-  };
-
-PD_SPECIALIZE_CppTypeToIrAttribute(bool, BoolAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, Int32Attribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, Int64Attribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(float, FloatAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
-                                   paddle::dialect::DataTypeAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
-
-template <typename T>
-struct IrAttrTypeCast {
-  static T To(const ir::Attribute& attr) {
-    return attr.dyn_cast<typename CppTypeToIrAttribute<T>::type>().data();
-  }
-};
-
-template <>
-struct IrAttrTypeCast<std::vector<int32_t>> {
-  static std::vector<int32_t> To(const ir::Attribute& attr) {
-    std::vector<int32_t> result;
-    auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();
-    for (size_t i = 0; i < array_attr.size(); i++) {
-      result.push_back(array_attr.at(i).dyn_cast<ir::Int32Attribute>().data());
-    }
-    return result;
-  }
-};
-
-template <>
-struct IrAttrTypeCast<std::vector<int64_t>> {
-  static std::vector<int64_t> To(const ir::Attribute& attr) {
-    std::vector<int64_t> result;
-    if (attr.dyn_cast<ir::ArrayAttribute>()) {
-      auto array_attr = attr.dyn_cast<ir::ArrayAttribute>();
-      for (size_t i = 0; i < array_attr.size(); i++) {
-        result.push_back(
-            array_attr.at(i).dyn_cast<ir::Int64Attribute>().data());
-      }
-      return result;
-    } else if (attr.dyn_cast<paddle::dialect::IntArrayAttribute>()) {
-      result =
-          attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
-      return result;
-    }
-    PADDLE_THROW(phi::errors::Unavailable(
-        "Dynamic cast failed for IR attribute vector<int64_t>"));
-  }
-};
 
 class MatchContextImpl final {
  public:
@@ -104,7 +48,7 @@ class MatchContextImpl final {
 
   const IrValue& GetIrValue(const std::string& tensor_name) const {
     auto iter = tensor_map_.find(tensor_name);
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NE(
         iter,
         tensor_map_.end(),
         phi::errors::OutOfRange(
@@ -115,7 +59,7 @@ class MatchContextImpl final {
 
   ir::Attribute GetIrAttr(const std::string& attr_name) const {
     auto iter = attr_map_.find(attr_name);
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NE(
         iter,
         attr_map_.end(),
         phi::errors::OutOfRange(

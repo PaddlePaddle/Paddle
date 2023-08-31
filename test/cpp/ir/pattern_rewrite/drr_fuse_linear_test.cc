@@ -90,11 +90,13 @@ class FusedLinearGradPattern
     fused_gemm_epilogue(
         {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
         {&res.Tensor("out")});
-    fused_gemm_epilogue_grad(
-        {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("out_grad")},
-        {&res.Tensor("x_grad"),
-         &res.Tensor("w_grad"),
-         &res.Tensor("bias_grad")});
+    fused_gemm_epilogue_grad({&res.Tensor("x"),
+                              &res.Tensor("w"),
+                              &res.NoneTensor(),
+                              &res.Tensor("out_grad")},
+                             {&res.Tensor("x_grad"),
+                              &res.Tensor("w_grad"),
+                              &res.Tensor("bias_grad")});
   }
 };
 
@@ -127,7 +129,6 @@ class FusedLinearPass : public ir::Pass {
 };
 
 void BuildProgram(ir::Builder &builder) {  // NOLINT
-  VLOG(1) << "####### BuildProgram Start";
   paddle::dialect::FullOp full_input_op1 =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 512, 64},
                                              1.5);
@@ -222,10 +223,8 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::MatmulGradOp>(
           full_input_op1.out(), full_weight_op1.out(), add_op1_grad.x_grad());
 
-  VLOG(1) << "####### BuildProgram FetchOp";
   builder.Build<paddle::dialect::FetchOp>(gelu_op2.out(), "out", 0);
   builder.Build<paddle::dialect::FetchOp>(matmul_op1_grad.x_grad(), "dx", 1);
-  VLOG(1) << "####### BuildProgram Finish";
 }
 
 TEST(DrrTest, FusedLinear) {
@@ -244,5 +243,5 @@ TEST(DrrTest, FusedLinear) {
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 34u);
+  EXPECT_EQ(program.block()->size(), 26u);
 }

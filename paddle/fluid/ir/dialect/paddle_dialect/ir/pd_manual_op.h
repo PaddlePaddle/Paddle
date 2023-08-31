@@ -51,9 +51,67 @@ class AddNOp : public ir::Op<AddNOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class FusedGemmEpilogueOp : public ir::Op<FusedGemmEpilogueOp,
+                                          paddle::dialect::OpYamlInfoInterface,
+                                          paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.fused_gemm_epilogue"; }
+  static const char *attributes_name[3];
+  static constexpr uint32_t attributes_num = 3;
+  static OpInfoTuple GetOpInfo();
+
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult x_,
+                    ir::OpResult y_,
+                    ir::OpResult bias_,
+                    ir::AttributeMap attributes);
+  void Verify();
+  ir::Value x() { return operand_source(0); }
+  ir::Value y() { return operand_source(1); }
+  ir::Value bias() { return operand_source(2); }
+  ir::OpResult out() { return result(0); }
+  ir::OpResult reserve_space() { return result(1); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
+class FusedGemmEpilogueGradOp
+    : public ir::Op<FusedGemmEpilogueGradOp,
+                    paddle::dialect::OpYamlInfoInterface,
+                    paddle::dialect::InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.fused_gemm_epilogue_grad"; }
+  static const char *attributes_name[3];
+  static constexpr uint32_t attributes_num = 3;
+  static OpInfoTuple GetOpInfo();
+
+  static void Build(ir::Builder &builder,             // NOLINT
+                    ir::OperationArgument &argument,  // NOLINT
+                    ir::OpResult x_,
+                    ir::OpResult y_,
+                    ir::OpResult reserve_space_,
+                    ir::OpResult out_grad_,
+                    ir::AttributeMap attributes);
+  void Verify();
+  ir::Value x() { return operand_source(0); }
+  ir::Value y() { return operand_source(1); }
+  ir::Value reserve_space() { return operand_source(2); }
+  ir::Value out_grad() { return operand_source(3); }
+  ir::OpResult x_grad() { return result(0); }
+  ir::OpResult y_grad() { return result(1); }
+  ir::OpResult bias_grad() { return result(2); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 
 #endif
