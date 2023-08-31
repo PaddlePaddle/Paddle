@@ -184,11 +184,6 @@ class Int64AttributeVisitor : public AttributeVisitor {
     VLOG(10) << "translating int to Int64Attribute";
     return ir::Int64Attribute::get(ctx, is);
   }
-
-  ir::Attribute operator()(int64_t is) override {
-    VLOG(10) << "translating int64_t to Int64Attribute";
-    return ir::Int64Attribute::get(ctx, is);
-  }
 };
 
 class IntArrayAttributeVisitor : public AttributeVisitor {
