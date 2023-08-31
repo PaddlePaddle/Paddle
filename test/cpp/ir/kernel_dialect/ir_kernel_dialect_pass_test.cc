@@ -45,7 +45,6 @@
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 
-
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
@@ -71,7 +70,7 @@ TEST(program_test, program) {
   builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
 
   builder.Build<paddle::dialect::CConcatOp>(
-    op1->result(0), 2, 1, 1, false, false);
+      op1->result(0), 2, 1, 1, false, false);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
