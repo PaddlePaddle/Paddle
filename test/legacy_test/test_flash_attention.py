@@ -302,13 +302,13 @@ class TestFlashAttentionAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 fetches_result[0], out_, rtol=5e-03, atol=1e-03
             )
-            return out, out_, fetches_result[0]
+            return out, out_, q.grad.numpy(), k.grad.numpy(), v.grad.numpy()
 
     def test_all(self):
         query = np.random.random(self.shape)
         key = np.random.random(self.shape)
         value = np.random.random(self.shape)
-        out, out_, _ = self.flash_attn_compute(query, key, value)
+        out, out_, _, _, _ = self.flash_attn_compute(query, key, value)
 
     def test_all_flag(self):
         paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
@@ -316,14 +316,16 @@ class TestFlashAttentionAPI(unittest.TestCase):
         key = np.random.random(self.shape)
         value = np.random.random(self.shape)
 
-        out1, out1_, fetches_result1 = self.flash_attn_compute(
+        out1, out1_, q_grad1, k_grad1, v_grad1 = self.flash_attn_compute(
             query, key, value
         )
-        out2, out2_, fetches_result2 = self.flash_attn_compute(
+        out2, out2_, q_grad2, k_grad2, v_grad2 = self.flash_attn_compute(
             query, key, value
         )
         self.assertTrue(np.equal(out1.numpy(), out2.numpy()).all())
-        self.assertTrue(np.equal(fetches_result1, fetches_result2).all())
+        self.assertTrue(np.equal(q_grad1, q_grad2).all())
+        self.assertTrue(np.equal(k_grad1, k_grad2).all())
+        self.assertTrue(np.equal(v_grad1, v_grad2).all())
         paddle.set_flags({'FLAGS_cudnn_deterministic': 0})
 
 
