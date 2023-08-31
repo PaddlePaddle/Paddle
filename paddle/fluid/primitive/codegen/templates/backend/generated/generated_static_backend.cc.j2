@@ -53,15 +53,32 @@ template <>
     {%- endif -%}
   {% endfor %}
   auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}});
-  {% if outputs|length > 1 %}
-  return std::make_tuple(
+  {% if outputs|length == 1 %}
+    {% if outputs[0].typename == 'Tensor' %}
+  Tensor {{outputs[0].name}}(std::make_shared<LazyTensor>(op_res));
+  return {{outputs[0].name}};
+    {% elif outputs[0].typename == 'Tensor[]' %}
+  std::vector<Tensor> {{outputs[0].name}}(op_res.size());
+  std::transform(op_res.begin(), op_res.end(), {{outputs[0].name}}.begin(), [](const ir::OpResult& res) {
+    return Tensor(std::make_shared<LazyTensor>(res));
+  });
+  return {{outputs[0].name}};
+    {% else %} {#- render nothing -#}
+    {% endif %}
+  {% elif outputs|length > 1 %}
     {% for i in range(outputs|length) %}
-    Tensor(std::make_shared<LazyTensor>(std::get<{{i}}>(op_res))){%- if i!=outputs|length - 1 -%}, {% endif %}
-
+  auto op_res_{{i}} = std::get<{{i}}>(op_res);
+      {% if outputs[i].typename == 'Tensor' %}
+  Tensor {{outputs[i].name}}(std::make_shared<LazyTensor>(op_res_{{i}}));
+      {% elif outputs[i].typename == 'Tensor[]' %}
+  std::vector<Tensor> {{outputs[i].name}}(op_res_{{i}}.size());
+  std::transform(op_res_{{i}}.begin(), op_res_{{i}}.end(), {{outputs[i].name}}.begin(), [](const ir::OpResult& res) {
+    return Tensor(std::make_shared<LazyTensor>(res));
+  });
+      {% else %} {#- render nothing -#}
+      {% endif %}
     {% endfor %}
-  );
-  {% elif outputs|length == 1 %}
-  return Tensor(std::make_shared<LazyTensor>(op_res));
+  return std::make_tuple({% for i in range(outputs|length) %}{{outputs[i].name}}{%- if i!=outputs|length - 1 -%}, {% endif %}{% endfor %});
   {% else %} {#- render nothing -#}
   {% endif %}
 {% endmacro %}

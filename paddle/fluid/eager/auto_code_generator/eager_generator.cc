@@ -827,9 +827,8 @@ static bool CollectGradInformationFromOpInfo(
     const std::string& in_name = op_proto.inputs()[0].name();
     ins[in_name] = {};
     for (size_t i = 0; i < NUM_CREATED_DUP_INPUTS; i++) {
-      ins[in_name].emplace_back(std::shared_ptr<paddle::imperative::VarBase>(
-          new paddle::imperative::VarBase("auto_" + in_name + "_" +
-                                          std::to_string(i))));
+      ins[in_name].emplace_back(std::make_shared<paddle::imperative::VarBase>(
+          "auto_" + in_name + "_" + std::to_string(i)));
       ins[in_name][i]->SetOverridedStopGradient(false);
       ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
@@ -852,8 +851,8 @@ static bool CollectGradInformationFromOpInfo(
       // but we only need to identify the slot name order,
       // therefore fill in 1 single input VarBase is enough in this scenario
 
-      ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
-          new paddle::imperative::VarBase("auto_" + in_name))};
+      ins[in_name] = {
+          std::make_shared<paddle::imperative::VarBase>("auto_" + in_name)};
       ins[in_name][0]->SetOverridedStopGradient(false);
       ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
@@ -870,8 +869,8 @@ static bool CollectGradInformationFromOpInfo(
     // We always create output VarBase regardless of its dispensability.
     // We dont know the exact number of outputs during code generation,
     // however, simply identifying the slot name order would be enough
-    outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
-        new paddle::imperative::VarBase("auto_" + out_name))};
+    outs[out_name] = {
+        std::make_shared<paddle::imperative::VarBase>("auto_" + out_name)};
     outs[out_name][0]->SetOverridedStopGradient(false);
     outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
@@ -1179,7 +1178,7 @@ static std::string GenerateGradNodeCreationContent(
   const char* GRAD_OP_NODE_TEMPLATE =
       "      auto grad_node = std::shared_ptr<%sGradNodeCompat>(new "
       "%sGradNodeCompat(%d, "
-      "%d));\n";
+      "%d)); // NOLINT\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
   grad_node_creation_str += paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE,
                                                     op_type,

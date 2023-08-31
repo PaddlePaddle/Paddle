@@ -707,26 +707,26 @@ def grad(
         outputs,
         'outputs',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
-        'paddle.autograd.backward.grad',
+        'paddle.autograd.ir_backward.grad',
     )
     check_type(
         inputs,
         'inputs',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
-        'paddle.autograd.backward.grad',
+        'paddle.autograd.ir_backward.grad',
     )
     check_type(
         grad_outputs,
         'grad_outputs',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, type(None)),
-        'paddle.autograd.backward.grad',
+        'paddle.autograd.ir_backward.grad',
     )
 
     check_type(
         no_grad_vars,
         'no_grad_vars',
         ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, set, type(None)),
-        'paddle.autograd.backward.grad',
+        'paddle.autograd.ir_backward.grad',
     )
     outputs = _as_list(outputs)
     inputs = _as_list(inputs)

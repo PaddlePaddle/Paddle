@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
@@ -29,14 +28,24 @@ class TestBuildModule(unittest.TestCase):
             y = paddle.static.data('y', [4, 4], dtype='float32')
             divide_out = paddle.divide(x, y)
             sum_out = paddle.sum(divide_out)
-
             exe = paddle.static.Executor()
             x_feed = np.ones([4, 4], dtype=np.float32) * 10
             y_feed = np.ones([4, 4], dtype=np.float32) * 2
             (sum_value,) = exe.run(
-                feed={'x': x_feed, 'y': y_feed}, fetch_list=[sum_out]
+                main_program,
+                feed={'x': x_feed, 'y': y_feed},
+                fetch_list=[sum_out],
             )
             self.assertEqual(sum_value, 5 * 4 * 4)
+
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', [4, 4], dtype='float32')
+            out = paddle.mean(x)
+            exe = paddle.static.Executor()
+            x_feed = np.ones([4, 4], dtype=np.float32) * 10
+            (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
+            self.assertEqual(sum_value, 10)
 
 
 if __name__ == "__main__":

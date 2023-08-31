@@ -37,7 +37,15 @@ sys.path.append(
 # fmt: on
 
 
-VJPS = ['tanh_grad', 'mean_grad', 'add_grad', 'divide_grad', 'sum_grad']
+VJPS = [
+    'tanh_grad',
+    'mean_grad',
+    'add_grad',
+    'divide_grad',
+    'sum_grad',
+    'concat_grad',
+    'split_grad',
+]
 VJP_COMPS = ['divide_grad', 'sum_grad']
 BACKENDS = [
     'add_n',
@@ -58,6 +66,8 @@ BACKENDS = [
     'add_grad',
     'divide_grad',
     'sum_grad',
+    'concat_grad',
+    'split_grad',
 ]
 
 
@@ -180,7 +190,11 @@ def to_apis_dict(apis):
 def get_inplace_api(apis):
     inplace_apis = []
     for api in apis:
-        if 'inplace' in api and api['inplace'] is not None:
+        if (
+            'inplace' in api
+            and api['inplace'] is not None
+            and not api['name'].endswith('_')
+        ):
             inplace_api = api.copy()
             inplace_api['name'] = api['name'] + '_'
             inplace_apis.append(inplace_api)
@@ -196,14 +210,13 @@ def extend_compat_info(apis, compats):
     apis_dict = to_apis_dict(apis)
     for compat_item in compats:
         fwd_op_name = compat_item["op"]
-        backward_op_names = (
-            compat_item["backward"].split(',')
-            if 'backward' in compat_item
-            else []
-        )
         if fwd_op_name not in apis_dict:
             continue
         fwd_api = apis_dict[fwd_op_name]
+        backward_op_names = []
+        while fwd_op_name is not None and fwd_op_name in apis_dict:
+            backward_op_names.append(apis_dict[fwd_op_name]['backward'])
+            fwd_op_name = apis_dict[fwd_op_name]['backward']
         backward_apis = []
         for backward_op_name in backward_op_names:
             if backward_op_name in apis_dict:
@@ -215,6 +228,7 @@ def extend_compat_info(apis, compats):
                 if (
                     'support_tensor' in attr_info
                     and attr_info['support_tensor'] is True
+                    or 'tensor_name' in attr_info
                 ):
                     support_tensor_attrs_names.append(attr_name)
                 if 'data_type' in attr_info:
@@ -226,6 +240,8 @@ def extend_compat_info(apis, compats):
                 if (
                     'support_tensor' in attr_info
                     and attr_info['support_tensor'] is True
+                    or 'tensor_name' in attr_info
+                    or 'tensors_name' in attr_info
                 ):
                     support_tensor_attrs_names.append(attr_name)
         if len(support_tensor_attrs_names) > 0:
