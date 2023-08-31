@@ -188,6 +188,14 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_strides[0] = sizeof_dtype * numel;
     }
   } else if (self->tensor.is_dense_tensor()) {
+
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+
+    if (!dense_tensor->meta().is_contiguous()) {
+      PADDLE_THROW(platform::errors::InvalidArgument("tensor's dims = %s, holder size = %d.", dense_tensor->dims(), dense_tensor->Holder()->size()));
+    }
+
     auto tensor_stride = self->tensor.strides();
 
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
