@@ -86,7 +86,9 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
            "paddle/fluid/prim/api/api.yaml"
            "python/paddle/incubate/autograd/composite_rules.py"
-	   "python/paddle/incubate/autograd/primitives.py"
+           "python/paddle/incubate/autograd/primitives.py"
+           "python/paddle/autograd/ir_backward.py"
+           "python/paddle/autograd/backward_utils.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -218,6 +220,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
             echo_line="You must have one RD (cyber-pioneer(chenzhuo), xiaoguoguo626807(wangruting), Charles-hit(wanghao), JiabinYang) approval for changing ${API_FILE} , which manages the composite rules.\n"
             check_approval 1 cyber-pioneer xiaoguoguo626807 Charles-hit JiabinYang
+      elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
+            echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
+            check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
@@ -269,6 +274,12 @@ if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/kernels/declarations.h using. Thanks!\n"
     check_approval 1 chenwhql zyfncg
   fi
+
+HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH |grep "cc_test_old" || true`
+if [ "${HAS_USED_CCTESTOLD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by phlrain or risemeup1 or zhangbo9674 for using cc_test_old. Thanks!\n"
+    check_approval 1 phlrain risemeup1 zhangbo9674
+fi
 
 HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/op_compat.yaml" || true`
 if [ "${HAS_MODIFIED_API_COMPAT_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
