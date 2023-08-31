@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,16 @@
 
 #pragma once
 
-#include <cstdint>
+#include <functional>
+#include <string>
 #include <vector>
 
 namespace phi {
-class DeviceContext;
-class DenseTensor;
 namespace distributed {
+class TensorDistAttr;
 
-DenseTensor ReshardConcatFunctor(const DeviceContext& dev_ctx,
-                                 const std::vector<const DenseTensor*>& input,
-                                 int64_t axis);
+using SpmdInfo =
+    std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>;
 
 }  // namespace distributed
 }  // namespace phi
