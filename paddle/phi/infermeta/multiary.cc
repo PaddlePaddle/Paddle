@@ -2566,24 +2566,25 @@ void LambInferMeta(const MetaTensor& param,
   }
 }
 
-void LarsMomentumInferMeta(const MetaTensor& param,
-                           const MetaTensor& grad,
-                           const MetaTensor& velocity,
-                           const MetaTensor& learning_rate,
-                           const MetaTensor& master_param,
-                           float mu,
-                           float lars_coeff,
-                           const std::vector<float>& lars_weight_decay,
-                           float epsilon,
-                           bool multi_precision,
-                           float rescale_grad,
-                           MetaTensor* param_out,
-                           MetaTensor* velocity_out,
-                           MetaTensor* master_param_out) {
-  auto lr_dims = learning_rate.dims();
-  auto grad_dim = grad.dims();
-  auto param_dim = param.dims();
-  auto velocity_dim = velocity.dims();
+void LarsMomentumInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& velocity,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const std::vector<const MetaTensor*>& grad,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    const std::vector<float>& lars_weight_decay,
+    float mu,
+    float lars_coeff,
+    float epsilon,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> velocity_out,
+    std::vector<MetaTensor*> master_param_out) {
+  std::vector<DDim> lr_dims = GetMetaTensorsDim(learning_rate);
+  std::vector<DDim> grad_dim = GetMetaTensorsDim(grad);
+  std::vector<DDim> param_dim = GetMetaTensorsDim(param);
+  std::vector<DDim> velocity_dim = GetMetaTensorsDim(velocity);
 
   PADDLE_ENFORCE_EQ(
       param_dim.size(),
@@ -2612,12 +2613,14 @@ void LarsMomentumInferMeta(const MetaTensor& param,
           lars_weight_decay.size(),
           grad_dim.size()));
 
-  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
-                    1,
-                    phi::errors::InvalidArgument(
-                        "Learning_rate should be a scalar. But Received "
-                        "LearningRate's dim [%s]",
-                        phi::product(lr_dims)));
+  for (auto& lr_dim : lr_dims) {
+    PADDLE_ENFORCE_EQ(phi::product(lr_dim),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "Learning_rate should be a scalar. But Received "
+                          "LearningRate's dim [%s]",
+                          phi::product(lr_dim)));
+  }
 
   for (int i = 0; i < param_dim.size(); ++i) {
     PADDLE_ENFORCE_EQ(
@@ -2639,10 +2642,13 @@ void LarsMomentumInferMeta(const MetaTensor& param,
             param_dim[i],
             velocity_dim[i]));
   }
-  param_out->set_dims(param_dim);
-  velocity_out->set_dims(param_dim);
-  if (master_param != nullptr) {
-    master_param_out->set_dims(param_dim);
+
+  for (size_t i = 0; i < param_out.size(); i++) {
+    param_out[i]->set_dims(param_dim[i]);
+    velocity_out[i]->set_dims(param_dim[i]);
+    if (master_param != nullptr) {
+      master_param_out[i]->set_dims(param_dim[i]);
+    }
   }
 }
 
