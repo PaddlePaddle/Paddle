@@ -55,7 +55,7 @@ class ListenAndServ:
     Examples:
         .. code-block:: python
 
-            >>> import paddle.fluid as fluid
+            >>> import paddle.base as fluid
             >>> from paddle.incubate.nn.layer.io import ListenAndServ
             >>> import paddle
             >>> paddle.enable_static()

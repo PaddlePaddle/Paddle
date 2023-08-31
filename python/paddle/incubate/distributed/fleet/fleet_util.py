@@ -153,6 +153,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.set_zero(myvar.name, myscope)
@@ -182,6 +183,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.print_global_auc(myscope, stat_pos=stat_pos.name,
@@ -227,6 +229,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> auc_value, _ = fleet_util.get_global_auc(myscope,
@@ -300,7 +303,7 @@ class FleetUtil:
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> fleet_util.load_fleet_model("hdfs:/my/model/path", table_id=1)
+                >>> fleet_util.load_fleet_model_one_table(1, path="hdfs:/my/model/path")
         """
         fleet.load_one_table(table_id, path)
 
@@ -422,7 +425,6 @@ class FleetUtil:
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.write_model_donefile(output_path="hdfs:/my/output",
-                ...                                 model_path="hdfs:/my/model",
                 ...                                 day=20190723,
                 ...                                 pass_id=66,
                 ...                                 xbox_base_key=int(time.time()),
@@ -526,7 +528,6 @@ class FleetUtil:
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.write_xbox_donefile(
                 ...     output_path="hdfs:/my/output/",
-                ...     model_path="hdfs:/my/output/20190722/01",
                 ...     day=20190722,
                 ...     pass_id=1,
                 ...     xbox_base_key=int(time.time()),
@@ -778,7 +779,7 @@ class FleetUtil:
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> fleet_util.save_batch_model("hdfs:/my/path", 20190722, 88)
+                >>> fleet_util.save_delta_model("hdfs:/my/path", 20190722, 88)
 
         """
         day = str(day)
@@ -803,7 +804,7 @@ class FleetUtil:
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
-                >>> fleet_util.save_xbox_base_model("hdfs:/my/path", 20190722, 88)
+                >>> fleet_util.save_xbox_base_model("hdfs:/my/path", 20190722)
 
         """
         day = str(day)
@@ -896,6 +897,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.pull_all_dense_params(my_scope, my_program)
@@ -972,6 +974,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.save_paddle_inference_model(exe,
@@ -1067,6 +1070,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.save_paddle_params(exe,
@@ -1166,8 +1170,9 @@ class FleetUtil:
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> last_save_day, last_path, xbox_base_key = \
-                ...     fleet_util.get_last_save_xbox_base("hdfs:/my/path", 20190722,
-                ...                                        88)
+                ...     fleet_util.get_last_save_xbox_base("hdfs:/my/path",
+                ...                                        hadoop_fs_name="hdfs://xxx",
+                ...                                        hadoop_fs_ugi="user,passwd")
 
         """
         donefile_path = output_path + "/xbox_base_done.txt"
@@ -1215,7 +1220,9 @@ class FleetUtil:
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> last_save_day, last_save_pass, last_path, xbox_base_key = \
-                ...     fleet_util.get_last_save_xbox("hdfs:/my/path", 20190722, 88)
+                ...     fleet_util.get_last_save_xbox("hdfs:/my/path",
+                ...                                   hadoop_fs_name="hdfs://xxx",
+                ...                                   hadoop_fs_ugi="user,passwd")
 
         """
         donefile_path = output_path + "/xbox_patch_done.txt"
@@ -1264,7 +1271,9 @@ class FleetUtil:
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> last_save_day, last_save_pass, last_path, xbox_base_key = \
-                ...     fleet_util.get_last_save_model("hdfs:/my/path", 20190722, 88)
+                ...     fleet_util.get_last_save_model("hdfs:/my/path",
+                ...                                    hadoop_fs_name="hdfs://xxx",
+                ...                                    hadoop_fs_ugi="user,passwd")
 
         """
         last_save_day = -1
@@ -1386,6 +1395,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> metric_list = fleet_util.get_global_metrics(myscope,
@@ -1587,6 +1597,7 @@ class FleetUtil:
             .. code-block:: python
 
                 >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                >>> # doctest: +SKIP('dependency on custom variables')
                 >>> from paddle.incubate.distributed.fleet.fleet_util import FleetUtil
                 >>> fleet_util = FleetUtil()
                 >>> fleet_util.print_global_metrics(myscope,
@@ -1985,7 +1996,6 @@ class GPUPSUtil(FleetUtil):
                 >>> fleet_util = GPUPSUtil()
                 >>> fleet_util.set_fsclient(hdfs_client)
                 >>> fleet_util.write_model_donefile(output_path="hdfs:/my/output",
-                ...                                 model_path="hdfs:/my/model",
                 ...                                 day=20190723,
                 ...                                 pass_id=66,
                 ...                                 xbox_base_key=int(time.time()))
@@ -2086,7 +2096,6 @@ class GPUPSUtil(FleetUtil):
                 >>> fleet_util.set_fsclient(hdfs_client)
                 >>> fleet_util.write_xbox_donefile(
                 ...     output_path="hdfs:/my/output/",
-                ...     model_path="hdfs:/my/output/20190722/01",
                 ...     day=20190722,
                 ...     pass_id=1,
                 ...     xbox_base_key=int(time.time()),

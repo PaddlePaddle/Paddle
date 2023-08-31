@@ -64,7 +64,8 @@ class FusedLinear(Layer):
             >>> x = paddle.randn([3, 4])
             >>> linear = FusedLinear(4, 5)
             >>> y = linear(x)
-            >>> print(y.shape) # [3, 5]
+            >>> print(y.shape)
+            [3, 5]
     """
 
     def __init__(
