@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
@@ -23,10 +24,15 @@
 #include "paddle/fluid/ir/transforms/inplace_pass.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/program.h"
+#include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_new_ir_api);
+
+PADDLE_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
+                            true,
+                            "new ir kernel program apply inplace pass.");
 
 namespace paddle {
 namespace framework {
@@ -104,17 +110,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
 
-      std::cout << "======> before apply inplace pass";
-      kernel_program->Print(std::cout);
-      std::cout << std::endl;
-
-      ir::PassManager pm(ir::IrContext::Instance(), 3);
-      pm.AddPass(ir::CreateInplacePass());
-      pm.Run(kernel_program.get());
-
-      std::cout << "======> after apply inplace pass";
-      kernel_program->Print(std::cout);
-      std::cout << std::endl;
+      if (FLAGS_new_ir_apply_inplace_pass) {
+        ir::PassManager pm(ir::IrContext::Instance(), 3);
+        pm.AddPass(ir::CreateInplacePass());
+        pm.Run(kernel_program.get());
+      }
 
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,

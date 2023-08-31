@@ -1,8 +1,14 @@
 set(TEST_PRIM_PURE_NEW_IR_CASES test_prim_program)
 
 foreach(target ${TEST_PRIM_PURE_NEW_IR_CASES})
-  py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
-                  FLAGS_enable_new_ir_api=true)
+  py_test_modules(
+    ${target}
+    MODULES
+    ${target}
+    ENVS
+    GLOG_v=1
+    FLAGS_enable_new_ir_api=true
+    FLAGS_new_ir_apply_inplace_pass=true)
 endforeach()
 
 file(
