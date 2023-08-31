@@ -27,7 +27,7 @@
 
 constexpr int64_t kWaitBlockTImeout = 10;
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 
 namespace paddle {
 namespace distributed {
